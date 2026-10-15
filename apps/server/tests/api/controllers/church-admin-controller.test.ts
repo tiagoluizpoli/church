@@ -36,7 +36,7 @@ const cycleManager = {
   createCycle: vi.fn(),
   listCycles: vi.fn(),
   getCycle: vi.fn(),
-  lockCycle: vi.fn(),
+  sendCycle: vi.fn(),
   reopenEvent: vi.fn(),
 };
 
@@ -120,7 +120,7 @@ function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
 beforeAll(async () => {
   app = await createFastify();
   const controller = new ChurchAdminController({
-    planningCycleManager: cycleManager as never,
+    cycleManager: cycleManager as never,
     eventTemplateManager: templateManager as never,
     planningEventManager: planningEventManager as never,
     activeChurchResolver: activeChurchResolver as never,
@@ -161,14 +161,14 @@ describe('Church admin planning routes', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/admin/planning-cycles',
+      url: '/api/v1/admin/cycles',
     });
 
     expect(response.statusCode).toBe(401);
     expect(cycleManager.listCycles).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/admin/planning-cycles returns 201 and 409 for overlap conflicts', async () => {
+  it('POST /api/v1/admin/cycles returns 201 and 409 for overlap conflicts', async () => {
     cycleManager.createCycle.mockResolvedValue({
       id: '22222222-2222-2222-2222-222222222222',
       churchId: '11111111-1111-1111-1111-111111111111',
@@ -182,7 +182,7 @@ describe('Church admin planning routes', () => {
 
     const success = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles',
+      url: '/api/v1/admin/cycles',
       payload: {
         name: 'August 2026',
         startDate: '2026-08-01',
@@ -195,7 +195,7 @@ describe('Church admin planning routes', () => {
     cycleManager.createCycle.mockRejectedValueOnce(new OverlappingCycleError());
     const conflict = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles',
+      url: '/api/v1/admin/cycles',
       payload: {
         name: 'Overlap',
         startDate: '2026-08-15',
@@ -206,10 +206,10 @@ describe('Church admin planning routes', () => {
     expect(conflict.statusCode).toBe(409);
   });
 
-  it('POST /api/v1/admin/planning-cycles/:id/lock returns 204 and 403 for non-admin users', async () => {
+  it('POST /api/v1/admin/cycles/:id/send returns 204 and 403 for non-admin users', async () => {
     const ok = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/lock',
+      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/send',
     });
 
     expect(ok.statusCode).toBe(204);
@@ -218,23 +218,23 @@ describe('Church admin planning routes', () => {
 
     const forbidden = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/lock',
+      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/send',
     });
 
     expect(forbidden.statusCode).toBe(403);
 
-    cycleManager.lockCycle.mockRejectedValueOnce(
-      new IllegalStateTransitionError('locked', 'locked'),
+    cycleManager.sendCycle.mockRejectedValueOnce(
+      new IllegalStateTransitionError('sent', 'sent'),
     );
     const conflict = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/lock',
+      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/send',
     });
 
     expect(conflict.statusCode).toBe(409);
   });
 
-  it('POST /api/v1/admin/planning-cycles/:id/apply-templates returns 201 and 422 for invalid bodies', async () => {
+  it('POST /api/v1/admin/cycles/:id/apply-templates returns 201 and 422 for invalid bodies', async () => {
     planningEventManager.generateFromTemplates.mockResolvedValue({
       generatedEventCount: 5,
       generatedSlotCount: 9,
@@ -242,7 +242,7 @@ describe('Church admin planning routes', () => {
 
     const success = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/apply-templates',
+      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/apply-templates',
       payload: {
         templateIds: ['33333333-3333-3333-3333-333333333333'],
       },
@@ -256,7 +256,7 @@ describe('Church admin planning routes', () => {
 
     const invalid = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/apply-templates',
+      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/apply-templates',
       payload: {
         templateIds: [],
       },
@@ -265,7 +265,7 @@ describe('Church admin planning routes', () => {
     expect(invalid.statusCode).toBe(422);
   });
 
-  it('POST /api/v1/admin/planning-cycles/:id/events stores the client-computed church-local Instants as given (#149)', async () => {
+  it('POST /api/v1/admin/cycles/:id/events stores the client-computed church-local Instants as given (#149)', async () => {
     // Quick-create sends already church-local bounds; the controller no
     // longer reinterprets them (no datesRepresentChurchCalendarDays flag).
     // The church-timezone day-placement proof itself (a real church, a real
@@ -277,7 +277,7 @@ describe('Church admin planning routes', () => {
       new Event(
         {
           churchId: '11111111-1111-1111-1111-111111111111',
-          planningCycleId: '22222222-2222-2222-2222-222222222222',
+          cycleId: '22222222-2222-2222-2222-222222222222',
           title: 'Domingo',
           start: parseInstant({ value: '2026-06-28T03:00:00.000Z' }),
           end: parseInstant({ value: '2026-06-29T02:59:59.999Z' }),
@@ -290,7 +290,7 @@ describe('Church admin planning routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/events',
+      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/events',
       payload: {
         title: 'Domingo',
         start: '2026-06-28T03:00:00.000Z',
@@ -381,10 +381,10 @@ describe('Church admin planning routes', () => {
     });
   });
 
-  it('POST .../slots: creates a slot and returns 201, and returns 409 for a locked cycle', async () => {
+  it('POST .../slots: creates a slot and returns 201, and returns 409 for a sent cycle', async () => {
     const cycleId = '22222222-2222-2222-2222-222222222222';
     const eventId = '66666666-6666-6666-6666-666666666666';
-    const slotsUrl = `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots`;
+    const slotsUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots`;
 
     planningEventManager.createSlot.mockResolvedValue({
       id: '99999999-9999-9999-9999-999999999999',
@@ -427,7 +427,7 @@ describe('Church admin planning routes', () => {
     const cycleId = '22222222-2222-2222-2222-222222222222';
     const eventId = '66666666-6666-6666-6666-666666666666';
     const slotId = '99999999-9999-9999-9999-999999999999';
-    const slotUrl = `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots/${slotId}`;
+    const slotUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots/${slotId}`;
 
     planningEventManager.updateSlot.mockResolvedValue({
       id: slotId,

@@ -193,11 +193,11 @@ const ROOT_INFRASTRUCTURE_PATHS = new Set([
 ]);
 
 const SERVER_INTEGRATION_TEST_PATHS = new Set([
-  'apps/server/tests/application/event-builder.rostering.integration.test.ts',
+  'apps/server/tests/application/event-builder.assign.integration.test.ts',
   'apps/server/tests/application/planning-phase3.managers.test.ts',
   'apps/server/tests/application/scheduling-phase4.managers.test.ts',
   'apps/server/tests/application/scheduling-phase5.volunteer-availability.test.ts',
-  'apps/server/tests/application/scheduling-phase6.rostering.test.ts',
+  'apps/server/tests/application/scheduling-phase6.assign.test.ts',
   'apps/server/tests/application/scheduling-phase7.live-changes.test.ts',
   'apps/server/tests/transfer/volunteer-transfer.repository.test.ts',
 ]);

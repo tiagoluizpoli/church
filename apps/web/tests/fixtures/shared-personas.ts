@@ -3,9 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import {
-  ROSTERING_CHURCH_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-} from './journeys/rostering-church';
+  ASSIGN_CHURCH_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+} from './journeys/assign-church';
 
 /**
  * The suite's shared read-only personas (#320 decision 19): global setup
@@ -36,10 +36,10 @@ export const VOLUNTEER_STORAGE_STATE = path.join(AUTH_DIR, 'volunteer.json');
 export const SHARED_PERSONAS_FILE = path.join(AUTH_DIR, 'shared-personas.json');
 
 export const SHARED_PERSONAS_SCHEMA = z.object({
-  church: ROSTERING_CHURCH_SCHEMA,
+  church: ASSIGN_CHURCH_SCHEMA,
   personas: z.object({
-    churchAdmin: ROSTERING_PERSONA_SCHEMA,
-    volunteer: ROSTERING_PERSONA_SCHEMA,
+    churchAdmin: ASSIGN_PERSONA_SCHEMA,
+    volunteer: ASSIGN_PERSONA_SCHEMA,
   }),
 });
 

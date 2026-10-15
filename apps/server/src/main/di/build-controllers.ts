@@ -1,13 +1,13 @@
 import type { FastifyController } from '../../api/contracts/fastify-controller';
 import {
   ActiveChurchController,
+  AssignController,
   ChurchAdminController,
   EventController,
   MinistryController,
+  PrepareController,
   RedemptionController,
-  RosteringController,
   SchedulingCapabilityController,
-  TailoringController,
   VolunteerController,
   VolunteerScheduleController,
 } from '../../api/controllers';
@@ -31,7 +31,7 @@ export function buildControllers({
     ministryInvitationManager,
     redemptionManager,
     volunteerTransferManager,
-    planningCycleManager,
+    cycleManager,
     planningEventManager,
     volunteerManager,
     participationManager,
@@ -46,7 +46,7 @@ export function buildControllers({
       selectionManager: activeChurchSelectionManager,
     }),
     new ChurchAdminController({
-      planningCycleManager,
+      cycleManager,
       eventTemplateManager,
       planningEventManager,
       activeChurchResolver,
@@ -61,13 +61,13 @@ export function buildControllers({
       activeChurchResolver,
       authorityGuard,
     }),
-    new TailoringController({
+    new PrepareController({
       participationManager,
       availabilityCheckManager,
       activeChurchResolver,
       authorityGuard,
     }),
-    new RosteringController({
+    new AssignController({
       participationManager,
       assignmentManager,
       activeChurchResolver,

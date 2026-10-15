@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   assignment,
+  cycle,
   event,
   ministry,
   ministryParticipation,
-  planningCycle,
   role,
   shift,
   slotRequirement,
@@ -45,8 +45,8 @@ describe('Database Level Constraints (T035)', () => {
     if (!insertedMinistry) throw new Error('Ministry insert failed');
     ministryId = insertedMinistry.id;
 
-    const [cycle] = await testDb
-      .insert(planningCycle)
+    const [cycleRow] = await testDb
+      .insert(cycle)
       .values({
         churchId,
         name: 'Constraint cycle',
@@ -54,13 +54,13 @@ describe('Database Level Constraints (T035)', () => {
         endDate: new Date('2026-06-01T00:00:00Z'),
       })
       .returning();
-    if (!cycle) throw new Error('Cycle insert failed');
+    if (!cycleRow) throw new Error('Cycle insert failed');
 
     const [insertedEvent] = await testDb
       .insert(event)
       .values({
         churchId,
-        planningCycleId: cycle.id,
+        cycleId: cycleRow.id,
         title: 'Constraint Event',
         start: new Date('2026-05-10T09:00:00Z'),
         end: new Date('2026-05-10T12:00:00Z'),

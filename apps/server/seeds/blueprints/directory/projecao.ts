@@ -5,7 +5,7 @@ export const PROJECAO = defineMinistry({
   name: 'Projeção',
   roles: ['Operador de Projeção'],
   teams: [],
-  roster: [
+  schedule: [
     // Ministry leader (1)
     {
       seat: { ministryLeader: true, roles: ['Operador de Projeção'] },

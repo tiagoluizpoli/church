@@ -40,7 +40,7 @@ export class DrizzleVolunteerNotificationRepository
       .values({
         churchId,
         volunteerId: input.volunteerId,
-        planningCycleId: input.planningCycleId ?? null,
+        cycleId: input.cycleId ?? null,
         ministryId: input.ministryId ?? null,
         eventId: input.eventId ?? null,
         assignmentId: input.assignmentId ?? null,

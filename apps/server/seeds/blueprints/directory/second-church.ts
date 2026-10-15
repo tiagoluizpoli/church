@@ -24,7 +24,7 @@ export const IGREJA_COLHEITA: ChurchDirectoryBlueprint = {
       name: 'Kids',
       roles: ['Líder', 'Auxiliar'],
       teams: ['Kids'],
-      roster: [
+      schedule: [
         {
           seat: {
             ministryLeader: true,
@@ -63,7 +63,7 @@ export const IGREJA_COLHEITA: ChurchDirectoryBlueprint = {
 
 /**
  * Users who belong to both Churches. Each stays an active Volunteer only in
- * the Church whose roster declares them; the other Church sees a plain member.
+ * the Church whose schedule declares them; the other Church sees a plain member.
  */
 export const MULTI_CHURCH_MEMBERSHIPS: readonly MultiChurchMembershipGroup[] = [
   {

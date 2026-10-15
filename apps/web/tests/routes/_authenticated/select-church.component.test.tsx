@@ -163,16 +163,12 @@ describe('select-church route (compare-access selector)', () => {
       resolvedActiveChurchStatus({ churchId: 'church-a' }),
     );
 
-    const { router } = renderSelectChurch(
-      '/select-church?redirect=%2Fscheduling%2Fplanning-cycles',
-    );
+    const { router } = renderSelectChurch('/select-church?redirect=%2Fcycles');
     const options = await screen.findAllByText('Igreja Central');
     await user.click(options[0]);
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe(
-        '/scheduling/planning-cycles',
-      );
+      expect(router.state.location.pathname).toBe('/cycles');
     });
   });
 
@@ -197,9 +193,7 @@ describe('select-church route (compare-access selector)', () => {
       resolvedActiveChurchStatus({ churchId: 'church-b' }),
     );
 
-    const { router } = renderSelectChurch(
-      '/select-church?redirect=%2Fscheduling%2Fplanning-cycles',
-    );
+    const { router } = renderSelectChurch('/select-church?redirect=%2Fcycles');
     const options = await screen.findAllByText('Comunidade Esperança');
     await user.click(options[0]);
 

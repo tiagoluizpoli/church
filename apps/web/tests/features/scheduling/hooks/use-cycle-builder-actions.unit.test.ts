@@ -35,7 +35,7 @@ function dataWithAssignments(
     events: [
       {
         participationId: 'participation-1',
-        state: 'rostering',
+        state: 'assigning',
         eventId: 'event-1',
         title: 'Sunday service',
         start: '2027-01-04T03:00:00.000Z',

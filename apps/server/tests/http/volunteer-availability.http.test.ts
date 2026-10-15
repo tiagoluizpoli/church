@@ -51,8 +51,8 @@ const SHIFT_ID = '66666666-6666-4666-8666-666666666666';
 
 interface MockCheckDetail {
   id: string;
-  planningCycleId: string;
-  planningCycleName: string;
+  cycleId: string;
+  cycleName: string;
   ministryId: string;
   ministryName: string;
   state: 'pending' | 'confirmed';
@@ -71,8 +71,8 @@ interface MockCheckDetail {
 function createCheckDetail(): MockCheckDetail {
   return {
     id: CHECK_ID,
-    planningCycleId: '22222222-2222-4222-8222-222222222222',
-    planningCycleName: 'August 2026',
+    cycleId: '22222222-2222-4222-8222-222222222222',
+    cycleName: 'August 2026',
     ministryId: '33333333-3333-4333-8333-333333333331',
     ministryName: 'Scheduling Ministry A',
     state: 'pending',
@@ -131,8 +131,8 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
     volunteerManager.listAvailabilityChecks.mockResolvedValue([
       {
         id: CHECK_ID,
-        planningCycleId: '22222222-2222-4222-8222-222222222222',
-        planningCycleName: 'August 2026',
+        cycleId: '22222222-2222-4222-8222-222222222222',
+        cycleName: 'August 2026',
         ministryId: '33333333-3333-4333-8333-333333333331',
         ministryName: 'Scheduling Ministry A',
         state: 'pending',

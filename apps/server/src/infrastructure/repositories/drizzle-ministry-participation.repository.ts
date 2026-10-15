@@ -1,9 +1,9 @@
 import { NotFoundError } from '@church/core';
 import {
+  cycle,
   event,
   ministryParticipation,
   participationSlotInclusion,
-  planningCycle,
   slotRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
@@ -25,7 +25,7 @@ import type {
   UpdateParticipationStateInput,
 } from '../../domain/contracts/infrastructure/ministry-participation.repository';
 import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
-import { aggregateCycleTailoringStatus } from '../../domain/entities/ministry-participation';
+import { aggregateCyclePrepareStatus } from '../../domain/entities/ministry-participation';
 import type { ParticipationSlotInclusion } from '../../domain/entities/participation-slot-inclusion';
 import {
   mapMinistryParticipation,
@@ -301,32 +301,32 @@ export class DrizzleMinistryParticipationRepository
   ): Promise<MinistryCycleSummaryRow[]> {
     const db = getClient(this.db, input.tx);
 
-    const lockedCycles = await db
+    const sentCycles = await db
       .select({
-        id: planningCycle.id,
-        name: planningCycle.name,
-        startDate: planningCycle.startDate,
-        endDate: planningCycle.endDate,
+        id: cycle.id,
+        name: cycle.name,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
       })
-      .from(planningCycle)
+      .from(cycle)
       .where(
         and(
-          withChurchIsolation(planningCycle, input.churchId),
-          eq(planningCycle.state, 'locked'),
+          withChurchIsolation(cycle, input.churchId),
+          eq(cycle.state, 'sent'),
         ),
       )
-      .orderBy(asc(planningCycle.startDate));
+      .orderBy(asc(cycle.startDate));
 
-    if (lockedCycles.length === 0) {
+    if (sentCycles.length === 0) {
       return [];
     }
 
-    const lockedCycleIds = lockedCycles.map((cycle) => cycle.id);
-    const cycles: typeof lockedCycles = input.teamId ? [] : lockedCycles;
+    const sentCycleIds = sentCycles.map((cycle) => cycle.id);
+    const cycles: typeof sentCycles = input.teamId ? [] : sentCycles;
 
     if (input.teamId) {
       const teamCycleRows = await db
-        .select({ cycleId: event.planningCycleId })
+        .select({ cycleId: event.cycleId })
         .from(slotRequirement)
         .innerJoin(
           ministryParticipation,
@@ -340,13 +340,11 @@ export class DrizzleMinistryParticipationRepository
             withChurchIsolation(event, input.churchId),
             eq(ministryParticipation.ministryId, input.ministryId),
             eq(slotRequirement.teamId, input.teamId),
-            inArray(event.planningCycleId, lockedCycleIds),
+            inArray(event.cycleId, sentCycleIds),
           ),
         );
       const teamCycleIds = new Set(teamCycleRows.map((row) => row.cycleId));
-      cycles.push(
-        ...lockedCycles.filter((cycle) => teamCycleIds.has(cycle.id)),
-      );
+      cycles.push(...sentCycles.filter((cycle) => teamCycleIds.has(cycle.id)));
     }
 
     if (cycles.length === 0) {
@@ -360,7 +358,7 @@ export class DrizzleMinistryParticipationRepository
     const participations = await db
       .select({
         id: ministryParticipation.id,
-        cycleId: event.planningCycleId,
+        cycleId: event.cycleId,
         state: ministryParticipation.state,
         touchedAt: ministryParticipation.touchedAt,
       })
@@ -371,7 +369,7 @@ export class DrizzleMinistryParticipationRepository
           withChurchIsolation(ministryParticipation, input.churchId),
           withChurchIsolation(event, input.churchId),
           eq(ministryParticipation.ministryId, input.ministryId),
-          inArray(event.planningCycleId, cycleIds),
+          inArray(event.cycleId, cycleIds),
         ),
       );
 
@@ -379,7 +377,7 @@ export class DrizzleMinistryParticipationRepository
 
     // Slot counts computed as a separate query (not an additional join on
     // the query above) specifically to avoid join fanout inflating the
-    // touched/published/fired-or-later counts derived from `participations`.
+    // touched/published/requested-or-later counts derived from `participations`.
     const slotCounts =
       participationIds.length === 0
         ? []
@@ -425,17 +423,20 @@ export class DrizzleMinistryParticipationRepository
       const publishedCount = cycleParticipations.filter(
         (participation) => participation.state === 'published',
       ).length;
-      const firedOrLaterCount = cycleParticipations.filter(
-        (participation) => participation.state !== 'tailoring',
+      const requestedOrLaterCount = cycleParticipations.filter(
+        (participation) => participation.state !== 'preparing',
       ).length;
 
-      const { status, availabilityFiredForAll, availabilityFiredForAny } =
-        aggregateCycleTailoringStatus({
-          eventCount,
-          touchedCount,
-          publishedCount,
-          firedOrLaterCount,
-        });
+      const {
+        status,
+        availabilityRequestedForAll,
+        availabilityRequestedForAny,
+      } = aggregateCyclePrepareStatus({
+        eventCount,
+        touchedCount,
+        publishedCount,
+        requestedOrLaterCount,
+      });
 
       return {
         cycleId: cycle.id,
@@ -446,8 +447,8 @@ export class DrizzleMinistryParticipationRepository
         eventCount,
         slotCount,
         status,
-        availabilityFiredForAll,
-        availabilityFiredForAny,
+        availabilityRequestedForAll,
+        availabilityRequestedForAny,
       };
     });
   }

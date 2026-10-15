@@ -3,6 +3,7 @@ import {
   assignment,
   availabilityCheck,
   church,
+  cycle,
   event,
   eventTemplate,
   member,
@@ -14,7 +15,6 @@ import {
   ministryVolunteerTeam,
   organization,
   participationSlotInclusion,
-  planningCycle,
   role,
   shift,
   slotRequirement,
@@ -42,7 +42,7 @@ import {
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
-/** One per (published participation, Volunteer rostered when it was published). */
+/** One per (published participation, Volunteer assigned when it was published). */
 const SCHEDULE_PUBLISHED = 362;
 /** rafael.moura and joao.pereira never opened theirs. */
 const UNREAD_PUBLISHED = 5;
@@ -607,15 +607,15 @@ describe('development seed recipe', () => {
     ]);
   });
 
-  it('materializes only the previous complete month as one locked PlanningCycle', async () => {
+  it('materializes only the previous complete month as one sent Cycle', async () => {
     const cycles = await testDb
       .select({
-        churchId: planningCycle.churchId,
-        startDate: planningCycle.startDate,
-        endDate: planningCycle.endDate,
-        state: planningCycle.state,
+        churchId: cycle.churchId,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
+        state: cycle.state,
       })
-      .from(planningCycle);
+      .from(cycle);
 
     expect(
       cycles.map((cycle) => ({
@@ -628,7 +628,7 @@ describe('development seed recipe', () => {
         churchId: seeded.church.id,
         startDate: '2026-02-01',
         endDate: '2026-03-01',
-        state: 'locked',
+        state: 'sent',
       },
     ]);
   });
@@ -1004,7 +1004,7 @@ describe('development seed recipe', () => {
             from ${availabilityCheck} c
             join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
             join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
-            join ${event} e on e.id = p.event_id and e.planning_cycle_id = c.planning_cycle_id
+            join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
             join ${shift} s on s.participation_id = p.id
             where not exists (select 1 from availability u
               where u.availability_check_id = c.id and u.shift_id = s.id))
@@ -1095,7 +1095,7 @@ describe('development seed recipe', () => {
       },
     ]);
 
-    // Every Assignment carries the `created` audit the rostering flow writes,
+    // Every Assignment carries the `created` audit the assign flow writes,
     // by the leader who assigned it, when it was assigned.
     const [created] = await testDb
       .execute<CreatedAuditRow>(sql`
@@ -1169,17 +1169,17 @@ describe('development seed recipe', () => {
       { type: 'assignment_removed', total: 1, unread: 1 },
     ]);
 
-    // One per Volunteer and published participation they were rostered on
+    // One per Volunteer and published participation they were assigned on
     // when it was published; replacements came after and got none.
     expect(
       await queryCount({
         query: sql`select count(*) as value from (
             select distinct a.participation_id, a.volunteer_id from ${assignment} a
             where a.assigned_at = '2026-01-27T13:00:00Z'
-          ) as rostered
+          ) as assigned
           where not exists (select 1 from volunteer_notification n
             join ${ministryParticipation} p on p.event_id = n.event_id and p.ministry_id = n.ministry_id
-            where p.id = rostered.participation_id and n.volunteer_id = rostered.volunteer_id
+            where p.id = assigned.participation_id and n.volunteer_id = assigned.volunteer_id
               and n.type = 'schedule_published')`,
       }),
     ).toBe(0);
@@ -1187,7 +1187,7 @@ describe('development seed recipe', () => {
     const published = await testDb.execute<NotificationRow>(sql`
       select u.email, n.type, n.title, n.body, n.payload = jsonb_build_object(
           'eventId', n.event_id::text, 'ministryId', n.ministry_id::text, 'section', 'assignments') as shaped,
-        n.planning_cycle_id is not null as "inCycle", n.assignment_id is null as "noAssignment",
+        n.cycle_id is not null as "inCycle", n.assignment_id is null as "noAssignment",
         to_char(n.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at,
         to_char(n.read_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as read
       from volunteer_notification n
@@ -1216,7 +1216,7 @@ describe('development seed recipe', () => {
       select u.email, n.type, n.title, n.body, n.payload = jsonb_build_object(
           'assignmentId', n.assignment_id::text, 'eventId', n.event_id::text,
           'ministryId', n.ministry_id::text) as shaped,
-        n.planning_cycle_id is not null as "inCycle",
+        n.cycle_id is not null as "inCycle",
         a.volunteer_id = (select id from ${volunteer} where user_id =
           (select id from ${user} where email = 'daniel.moreira@igreja-semente.test')) as "namesNewAssignment",
         to_char(n.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at,
@@ -1329,17 +1329,17 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'the historical PlanningCycle is unlocked',
-      problem: 'PlanningCycle',
+      label: 'the historical Cycle is not sent',
+      problem: 'Cycle',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${planningCycle} set state = 'draft'`);
+        await tx.execute(sql`update ${cycle} set state = 'draft'`);
       },
     },
     {
-      label: "a PlanningCycle covers the anchor's month",
-      problem: 'PlanningCycle',
+      label: "a Cycle covers the anchor's month",
+      problem: 'Cycle',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`insert into ${planningCycle} (church_id, name, start_date, end_date)
+        await tx.execute(sql`insert into ${cycle} (church_id, name, start_date, end_date)
           values (${seeded.church.id}, 'Março 2026', '2026-03-01', '2026-04-01')`);
       },
     },
@@ -1355,7 +1355,7 @@ describe('development seed recipe', () => {
       label: 'a MinistryParticipation is left unpublished',
       problem: 'MinistryParticipation',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${ministryParticipation} set state = 'rostering'
+        await tx.execute(sql`update ${ministryParticipation} set state = 'assigning'
           where id = (select id from ${ministryParticipation} order by id limit 1)`);
       },
     },
@@ -1417,7 +1417,7 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'a rostered Volunteer misses the publish notification',
+      label: 'an assigned Volunteer misses the publish notification',
       problem: 'notification',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from volunteer_notification

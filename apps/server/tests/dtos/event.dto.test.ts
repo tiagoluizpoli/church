@@ -15,7 +15,7 @@ import { TimeSlot } from '@/domain/entities/time-slot';
 
 const fullEventProps = {
   churchId: 'church-1',
-  planningCycleId: 'cycle-1',
+  cycleId: 'cycle-1',
   sourceTemplateId: 'template-1',
   title: 'Sunday Service',
   description: 'Weekly gathering',
@@ -26,7 +26,7 @@ const fullEventProps = {
 
 const minimalEventProps = {
   churchId: 'church-2',
-  planningCycleId: 'cycle-2',
+  cycleId: 'cycle-2',
   title: 'Midweek Study',
   start: parseInstant({ value: '2026-05-16T10:00:00Z' }),
   end: parseInstant({ value: '2026-05-16T12:00:00Z' }),
@@ -46,7 +46,7 @@ describe('eventMapper.toResponse', () => {
     expect(response).toEqual({
       id: 'event-1',
       churchId: 'church-1',
-      planningCycleId: 'cycle-1',
+      cycleId: 'cycle-1',
       sourceTemplateId: 'template-1',
       title: 'Sunday Service',
       description: 'Weekly gathering',
@@ -78,7 +78,7 @@ describe('eventMapper.toResponse', () => {
     expect(response).toEqual({
       id: 'event-2',
       churchId: 'church-2',
-      planningCycleId: 'cycle-2',
+      cycleId: 'cycle-2',
       sourceTemplateId: undefined,
       title: 'Midweek Study',
       description: undefined,

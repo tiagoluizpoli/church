@@ -139,7 +139,7 @@ export class DrizzleEventRepository implements EventRepository {
       .insert(event)
       .values({
         churchId,
-        planningCycleId: input.planningCycleId,
+        cycleId: input.cycleId,
         sourceTemplateId: input.sourceTemplateId ?? null,
         title: input.title,
         description: input.description ?? null,

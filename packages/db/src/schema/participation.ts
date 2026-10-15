@@ -17,7 +17,7 @@ export const ministryParticipation = pgTable(
     eventId: uuid('event_id')
       .notNull()
       .references(() => event.id, { onDelete: 'cascade' }),
-    state: participationStateEnum('state').default('tailoring').notNull(),
+    state: participationStateEnum('state').default('preparing').notNull(),
     touchedAt: timestamp('touched_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

@@ -23,8 +23,8 @@ export { assignmentResponseSchema };
 
 export const availabilityCheckSummarySchema = z.object({
   id: z.string(),
-  planningCycleId: z.string(),
-  planningCycleName: z.string(),
+  cycleId: z.string(),
+  cycleName: z.string(),
   ministryId: z.string(),
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
@@ -53,8 +53,8 @@ const availabilityCheckShiftSchema = z.object({
 
 export const availabilityCheckDetailResponseSchema = z.object({
   id: z.string(),
-  planningCycleId: z.string(),
-  planningCycleName: z.string(),
+  cycleId: z.string(),
+  cycleName: z.string(),
   ministryId: z.string(),
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
@@ -189,8 +189,8 @@ function availabilityCheckSummaryToResponse(
 ): AvailabilityCheckSummaryResponse {
   return {
     id: summary.id,
-    planningCycleId: summary.planningCycleId,
-    planningCycleName: summary.planningCycleName,
+    cycleId: summary.cycleId,
+    cycleName: summary.cycleName,
     ministryId: summary.ministryId,
     ministryName: summary.ministryName,
     state: summary.state,
@@ -205,8 +205,8 @@ function availabilityCheckDetailToResponse(
 ): AvailabilityCheckDetailResponse {
   return {
     id: detail.id,
-    planningCycleId: detail.planningCycleId,
-    planningCycleName: detail.planningCycleName,
+    cycleId: detail.cycleId,
+    cycleName: detail.cycleName,
     ministryId: detail.ministryId,
     ministryName: detail.ministryName,
     state: detail.state,

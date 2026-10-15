@@ -1,18 +1,18 @@
 import type { Instant } from '@church/time';
 import type {
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
 } from '../../branded-ids';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 
-export interface FireAvailabilityInput {
+export interface AskAvailabilityInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
 }
 
-export interface FireAvailabilityResult {
+export interface AskAvailabilityResult {
   createdCheckCount: number;
   notifiedVolunteerCount: number;
 }
@@ -29,11 +29,11 @@ export interface ListCheckStatusesInput {
 
 export interface ListCycleCheckStatusesInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryId: MinistryId;
 }
 
-/** Per-membership acknowledgement status; `state` absent means no check fired yet. */
+/** Per-membership acknowledgement status; `state` absent means no check requested yet. */
 export interface CheckStatusRow {
   volunteerId: string;
   volunteerName: string;
@@ -42,9 +42,7 @@ export interface CheckStatusRow {
 }
 
 export interface IAvailabilityCheckManager {
-  fireAvailability(
-    input: FireAvailabilityInput,
-  ): Promise<FireAvailabilityResult>;
+  askAvailability(input: AskAvailabilityInput): Promise<AskAvailabilityResult>;
   resendReminder(input: ResendReminderInput): Promise<void>;
   listCheckStatuses(input: ListCheckStatusesInput): Promise<CheckStatusRow[]>;
   listCycleCheckStatuses(

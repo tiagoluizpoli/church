@@ -7,19 +7,19 @@
 import type {
   ApplyPlanningTemplates201,
   ApplyPlanningTemplatesBody,
+  CreateCycle201,
+  CreateCycleBody,
   CreateEventTemplate201,
   CreateEventTemplateBody,
-  CreatePlanningCycle201,
-  CreatePlanningCycleBody,
   CreatePlanningEvent201,
   CreatePlanningEventBody,
   CreatePlanningEventSlot201,
   CreatePlanningEventSlotBody,
+  GetCycle200,
   GetMinistryServingProfile200,
-  GetPlanningCycle200,
+  ListCycles200,
+  ListCyclesParams,
   ListEventTemplates200,
-  ListPlanningCycles200,
-  ListPlanningCyclesParams,
   SetMinistryDefaultDirection200,
   SetMinistryDefaultDirectionBody,
   UpdateEventTemplate200,
@@ -39,58 +39,58 @@ import { apiClient } from '../../utils/api-client';
 
   export const getPlanning = () => {
 /**
- * Create a new PlanningCycle spanning a CalendarDay range for the Church.
- * @summary Create a PlanningCycle
+ * Create a new Cycle spanning a CalendarDay range for the Church.
+ * @summary Create a Cycle
  */
-const createPlanningCycle = (
-    createPlanningCycleBody: CreatePlanningCycleBody,
+const createCycle = (
+    createCycleBody: CreateCycleBody,
  ) => {
-      return apiClient<CreatePlanningCycle201>(
-      {url: `/api/v1/admin/planning-cycles`, method: 'POST',
+      return apiClient<CreateCycle201>(
+      {url: `/api/v1/admin/cycles`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
-      data: createPlanningCycleBody
+      data: createCycleBody
     },
       );
     }
   /**
- * List the Church PlanningCycles, optionally filtered by state.
- * @summary List PlanningCycles
+ * List the Church Cycles, optionally filtered by state.
+ * @summary List Cycles
  */
-const listPlanningCycles = (
-    params?: ListPlanningCyclesParams,
+const listCycles = (
+    params?: ListCyclesParams,
  ) => {
-      return apiClient<ListPlanningCycles200>(
-      {url: `/api/v1/admin/planning-cycles`, method: 'GET',
+      return apiClient<ListCycles200>(
+      {url: `/api/v1/admin/cycles`, method: 'GET',
         params
     },
       );
     }
   /**
- * Get the details of a single PlanningCycle.
- * @summary Get a PlanningCycle
+ * Get the details of a single Cycle.
+ * @summary Get a Cycle
  */
-const getPlanningCycle = (
+const getCycle = (
     cycleId: string,
  ) => {
-      return apiClient<GetPlanningCycle200>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}`, method: 'GET'
+      return apiClient<GetCycle200>(
+      {url: `/api/v1/admin/cycles/${cycleId}`, method: 'GET'
     },
       );
     }
   /**
- * Lock a PlanningCycle, transitioning its Events from draft to scheduled.
- * @summary Lock a PlanningCycle
+ * Send a Cycle, transitioning its Events from draft to scheduled.
+ * @summary Send a Cycle
  */
-const lockPlanningCycle = (
+const sendCycle = (
     cycleId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/lock`, method: 'POST'
+      {url: `/api/v1/admin/cycles/${cycleId}/send`, method: 'POST'
     },
       );
     }
   /**
- * Move a scheduled Event in a locked PlanningCycle back to draft so it can be edited.
+ * Move a scheduled Event in a sent Cycle back to draft so it can be edited.
  * @summary Reopen an Event for editing
  */
 const reopenPlanningEvent = (
@@ -98,7 +98,7 @@ const reopenPlanningEvent = (
     eventId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/reopen`, method: 'POST'
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/reopen`, method: 'POST'
     },
       );
     }
@@ -156,22 +156,22 @@ const deleteEventTemplate = (
       );
     }
   /**
- * Generate one Event per matching CalendarDay in the PlanningCycle for each selected EventTemplate, with one TimeSlot per TimeBlock.
- * @summary Apply EventTemplates to a PlanningCycle
+ * Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one TimeSlot per TimeBlock.
+ * @summary Apply EventTemplates to a Cycle
  */
 const applyPlanningTemplates = (
     cycleId: string,
     applyPlanningTemplatesBody: ApplyPlanningTemplatesBody,
  ) => {
       return apiClient<ApplyPlanningTemplates201>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/apply-templates`, method: 'POST',
+      {url: `/api/v1/admin/cycles/${cycleId}/apply-templates`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: applyPlanningTemplatesBody
     },
       );
     }
   /**
- * Create a one-off Event within a PlanningCycle without using an EventTemplate.
+ * Create a one-off Event within a Cycle without using an EventTemplate.
  * @summary Create a manual Event
  */
 const createPlanningEvent = (
@@ -179,7 +179,7 @@ const createPlanningEvent = (
     createPlanningEventBody: CreatePlanningEventBody,
  ) => {
       return apiClient<CreatePlanningEvent201>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/events`, method: 'POST',
+      {url: `/api/v1/admin/cycles/${cycleId}/events`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createPlanningEventBody
     },
@@ -195,14 +195,14 @@ const updatePlanningEvent = (
     updatePlanningEventBody: UpdatePlanningEventBody,
  ) => {
       return apiClient<UpdatePlanningEvent200>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}`, method: 'PATCH',
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
       data: updatePlanningEventBody
     },
       );
     }
   /**
- * Cancel an Event within its PlanningCycle.
+ * Cancel an Event within its Cycle.
  * @summary Cancel an Event
  */
 const cancelPlanningEvent = (
@@ -210,7 +210,7 @@ const cancelPlanningEvent = (
     eventId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/cancel`, method: 'POST'
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/cancel`, method: 'POST'
     },
       );
     }
@@ -224,7 +224,7 @@ const createPlanningEventSlot = (
     createPlanningEventSlotBody: CreatePlanningEventSlotBody,
  ) => {
       return apiClient<CreatePlanningEventSlot201>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots`, method: 'POST',
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createPlanningEventSlotBody
     },
@@ -241,7 +241,7 @@ const updatePlanningEventSlot = (
     updatePlanningEventSlotBody: UpdatePlanningEventSlotBody,
  ) => {
       return apiClient<UpdatePlanningEventSlot200>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots/${slotId}`, method: 'PATCH',
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots/${slotId}`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
       data: updatePlanningEventSlotBody
     },
@@ -257,7 +257,7 @@ const deletePlanningEventSlot = (
     slotId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots/${slotId}`, method: 'DELETE'
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots/${slotId}`, method: 'DELETE'
     },
       );
     }
@@ -303,11 +303,11 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventSlot,updatePlanningEventSlot,deletePlanningEventSlot,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection}};
-export type CreatePlanningCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningCycle']>>>
-export type ListPlanningCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listPlanningCycles']>>>
-export type GetPlanningCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getPlanningCycle']>>>
-export type LockPlanningCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['lockPlanningCycle']>>>
+  return {createCycle,listCycles,getCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventSlot,updatePlanningEventSlot,deletePlanningEventSlot,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection}};
+export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
+export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
+export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
+export type SendCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['sendCycle']>>>
 export type ReopenPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['reopenPlanningEvent']>>>
 export type CreateEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createEventTemplate']>>>
 export type ListEventTemplatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listEventTemplates']>>>

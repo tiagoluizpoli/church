@@ -5,7 +5,7 @@ import { InvalidDateRangeError } from '@/domain/errors/invalid-date-range';
 
 const props = {
   churchId: 'c1',
-  planningCycleId: 'pc1',
+  cycleId: 'pc1',
   sourceTemplateId: 'et1',
   title: 'Sunday Service',
   description: 'Weekly gathering',
@@ -19,7 +19,7 @@ describe('Event Entity', () => {
     const event = new Event(props);
 
     expect(event.churchId).toBe('c1');
-    expect(event.planningCycleId).toBe('pc1');
+    expect(event.cycleId).toBe('pc1');
     expect(event.sourceTemplateId).toBe('et1');
     expect(event.title).toBe('Sunday Service');
     expect(event.description).toBe('Weekly gathering');

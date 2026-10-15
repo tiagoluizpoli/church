@@ -2,15 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
+  CycleId,
   MinistryId,
-  PlanningCycleId,
   TeamId,
   UserId,
 } from '@/domain/branded-ids';
 
 const churchId = ChurchId.from('11111111-1111-4111-8111-111111111111');
 const ministryId = MinistryId.from('22222222-2222-4222-8222-222222222222');
-const cycleId = PlanningCycleId.from('33333333-3333-4333-8333-333333333333');
+const cycleId = CycleId.from('33333333-3333-4333-8333-333333333333');
 const teamId = TeamId.from('44444444-4444-4444-8444-444444444444');
 const otherTeamId = TeamId.from('55555555-5555-4555-8555-555555555555');
 const userId = UserId.from('66666666-6666-4666-8666-666666666666');
@@ -73,7 +73,7 @@ function createManager() {
   };
 }
 
-describe('DbParticipationManager Team roster scope', () => {
+describe('DbParticipationManager Team schedule scope', () => {
   it('does not create a Participation while a TeamLeader reads a cycle', async () => {
     const {
       manager,
@@ -129,7 +129,7 @@ describe('DbParticipationManager Team roster scope', () => {
     participationRepository.findByMinistryEvent.mockResolvedValue({
       id: 'participation-1',
       ministryId,
-      state: 'rostering',
+      state: 'assigning',
     });
     participationRepository.listInclusions.mockResolvedValue([]);
     shiftRepository.listByParticipation.mockResolvedValue([
@@ -231,7 +231,7 @@ describe('DbParticipationManager Team roster scope', () => {
     participationRepository.findByMinistryEvent.mockResolvedValue({
       id: 'participation-1',
       ministryId,
-      state: 'rostering',
+      state: 'assigning',
     });
     participationRepository.listInclusions.mockResolvedValue([]);
     shiftRepository.listByParticipation.mockResolvedValue([

@@ -1,5 +1,5 @@
 import { addCalendarDays, type CalendarDay } from '@church/time';
-import { buildAssignment, buildPlanningCycle } from '../../builders/scheduling';
+import { buildAssignment, buildCycle } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
   type CreateJourneyRecipeInput,
@@ -8,22 +8,22 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  addRosteringChurchMembership,
-  buildRosteringChurch,
+  type AssignChurch,
+  type AssignChurchMembership,
+  type AssignChurchPlan,
+  addAssignChurchMembership,
+  assignChurchRootKinds,
+  buildAssignChurch,
   EVENT_END_TIME,
   EVENT_START_TIME,
   mergeRootKinds,
-  type RosteringChurch,
-  type RosteringChurchMembership,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+} from './assign-church';
 import {
-  buildRosteringEvent,
-  type RosteringCycleSummary,
-  type RosteringEvent,
-} from './rostering-event';
-import { planningCycleWindow } from './scheduling-cycle-window';
+  type AssignCycleSummary,
+  type AssignEvent,
+  buildAssignEvent,
+} from './assign-event';
+import { cycleWindow } from './scheduling-cycle-window';
 
 /**
  * The starting graph of the Volunteer Transfer journey (#65): two Churches
@@ -59,9 +59,9 @@ const CHURCH_A_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
-/** Church B's ChurchAdmin reads the vacated roster; `transferee` is the
+/** Church B's ChurchAdmin reads the vacated schedule; `transferee` is the
  * journey's User. */
 const CHURCH_B_PLAN = {
   ministries: {
@@ -98,29 +98,29 @@ const CHURCH_B_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const ROOT_KINDS = mergeRootKinds({
   rootKinds: [
-    rosteringChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
-    rosteringChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
   ],
 });
 
 /** The Church B seat the transferee holds and the transfer vacates. */
 export interface VolunteerTransferSeat {
-  cycle: RosteringCycleSummary;
-  event: RosteringEvent<'porter'>;
+  cycle: AssignCycleSummary;
+  event: AssignEvent<'porter'>;
   assignmentId: string;
 }
 
 export interface VolunteerTransferJourney {
   anchor: CalendarDay;
-  churchA: RosteringChurch<typeof CHURCH_A_PLAN>;
+  churchA: AssignChurch<typeof CHURCH_A_PLAN>;
   /** `personas.transferee` is the journey's User. */
-  churchB: RosteringChurch<typeof CHURCH_B_PLAN>;
+  churchB: AssignChurch<typeof CHURCH_B_PLAN>;
   /** The transferee's plain Church Membership in Church A. */
-  churchAMembership: RosteringChurchMembership;
+  churchAMembership: AssignChurchMembership;
   seat: VolunteerTransferSeat;
 }
 
@@ -136,14 +136,14 @@ export function createVolunteerTransferRecipe({
   async function load({
     db,
   }: SeedRecipeLoadInput): Promise<VolunteerTransferJourney> {
-    const churchA = await buildRosteringChurch({
+    const churchA = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: CHURCH_A_PLAN,
       scope: CHURCH_A_SCOPE,
     });
-    const churchB = await buildRosteringChurch({
+    const churchB = await buildAssignChurch({
       db,
       idOf,
       tag,
@@ -151,7 +151,7 @@ export function createVolunteerTransferRecipe({
       scope: CHURCH_B_SCOPE,
     });
     const { transferee } = churchB.personas;
-    const churchAMembership = await addRosteringChurchMembership({
+    const churchAMembership = await addAssignChurchMembership({
       db,
       idOf,
       church: churchA.church,
@@ -159,26 +159,26 @@ export function createVolunteerTransferRecipe({
       accessLevel: 'member',
     });
 
-    // A draft cycle whose one Event is still being tailored, as a Ministry
-    // leader's in-progress roster is; the transfer withdraws any active
+    // A draft cycle whose one Event is still being prepared, as a Ministry
+    // leader's in-progress schedule is; the transfer withdraws any active
     // Assignment on a future Time Slot, whatever the cycle's state.
     const churchId = churchB.church.id;
     const { hospitality } = churchB.ministries;
-    const window = planningCycleWindow({ anchor });
-    const cycle = await buildPlanningCycle({
+    const window = cycleWindow({ anchor });
+    const cycle = await buildCycle({
       db,
       churchId,
-      id: idOf({ kind: 'planning-cycle' }),
+      id: idOf({ kind: 'cycle' }),
       name: 'Ciclo Trimestral',
       startDate: window.startDate,
       endDate: window.endDate,
       state: 'draft',
     });
-    const event = await buildRosteringEvent({
+    const event = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: hospitality.id,
       key: 'seat',
       title: 'Culto de Transferência',
@@ -186,7 +186,7 @@ export function createVolunteerTransferRecipe({
       startTime: EVENT_START_TIME,
       endTime: EVENT_END_TIME,
       eventStatus: 'draft',
-      participationState: 'tailoring',
+      participationState: 'preparing',
       requirements: {
         porter: { roleId: hospitality.roles.porter.id, requiredCount: 1 },
       },

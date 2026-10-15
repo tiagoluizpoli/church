@@ -15,7 +15,7 @@ interface SummarizeCycleStaffingInput {
 }
 
 /**
- * The one number a coordinator building a 40-assignment roster never had: how
+ * The one number a coordinator building a 40-assignment schedule never had: how
  * much of the cycle is done. Counted over *included* slots only — a slot this
  * ministry is not serving asks for nobody, so counting it would make the
  * denominator lie (B-4).
@@ -61,7 +61,7 @@ interface SummarizeCycleCountsInput {
 }
 
 /**
- * The plain inventory counters (Planning and Tailoring's headers both carry
+ * The plain inventory counters (Planning and Prepare's headers both carry
  * these) that the staffing percentage alone doesn't answer: how many events,
  * slots, and shifts this cycle actually has.
  */

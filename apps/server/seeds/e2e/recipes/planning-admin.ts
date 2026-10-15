@@ -6,13 +6,13 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
+} from './assign-church';
 import {
-  planningCycleWindow,
+  cycleWindow,
   type SchedulingJourneyDates,
 } from './scheduling-cycle-window';
 
@@ -20,11 +20,11 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.planningAdmin;
 
 /**
  * The Church whose ChurchAdmin plans (#329: cycle administration, the
- * create-event form, template library, cycle lock edge cases): a Worship
+ * create-event form, template library, cycle send edge cases): a Worship
  * Ministry the admin leads, and a plain Volunteer persona for the denial
- * checks. It holds no PlanningCycle: the journey creates the cycles it
+ * checks. It holds no Cycle: the journey creates the cycles it
  * mutates, in a window of its own Church, so no other journey can overlap
- * them. Shared by the planning-cycle-access recipe.
+ * them. Shared by the cycle-access recipe.
  */
 export const PLANNING_ADMIN_PLAN = {
   ministries: {
@@ -56,10 +56,10 @@ export const PLANNING_ADMIN_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 export interface PlanningAdminJourney
-  extends RosteringChurch<typeof PLANNING_ADMIN_PLAN>,
+  extends AssignChurch<typeof PLANNING_ADMIN_PLAN>,
     SchedulingJourneyDates {}
 
 export function createPlanningAdminRecipe({
@@ -74,19 +74,19 @@ export function createPlanningAdminRecipe({
   async function load({
     db,
   }: SeedRecipeLoadInput): Promise<PlanningAdminJourney> {
-    const graph = await buildRosteringChurch({
+    const graph = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: PLANNING_ADMIN_PLAN,
     });
-    return { anchor, ...graph, cycleWindow: planningCycleWindow({ anchor }) };
+    return { anchor, ...graph, cycleWindow: cycleWindow({ anchor }) };
   }
 
   return {
     name: RECIPE_NAME,
     roots: rootsOf({
-      rootKinds: rosteringChurchRootKinds({ plan: PLANNING_ADMIN_PLAN }),
+      rootKinds: assignChurchRootKinds({ plan: PLANNING_ADMIN_PLAN }),
     }),
     load,
   };

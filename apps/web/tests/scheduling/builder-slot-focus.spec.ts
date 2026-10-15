@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { loadRosteringBoardJourney } from '@/tests/fixtures/journeys/rostering-board';
+import { loadAssignBoardJourney } from '@/tests/fixtures/journeys/assign-board';
 import {
-  rosteringBuilderPath,
+  assignBuilderPath,
   signInPersonaPage,
-} from '@/tests/fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/assign-church';
 
 /**
  * 023 phase 3 — slot-aware rail.
@@ -12,7 +12,7 @@ import {
  * board, without opening the assignment popover first, and the rail must
  * *promote* that shift's eligible candidates rather than hiding everyone else.
  * Qualification, like availability, is an override path rather than a hard
- * filter (B-2) — the rostering-board recipe qualifies every candidate for
+ * filter (B-2) — the assign-board recipe qualifies every candidate for
  * the Role they are offered for, so an unqualified pick is not exercised by
  * this spec.
  *
@@ -31,11 +31,11 @@ test.describe('slot focus drives the volunteer rail', () => {
   test('assigns a focused candidate straight from their card, no popover', async ({
     page,
   }, testInfo) => {
-    const journey = loadRosteringBoardJourney({ testInfo });
+    const journey = loadAssignBoardJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.leader });
 
     await page.goto(
-      rosteringBuilderPath({
+      assignBuilderPath({
         ministryId: journey.ministries.worship.id,
         cycleId: journey.cycle.id,
       }),

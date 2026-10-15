@@ -29,9 +29,9 @@ import {
   buildAssignedShift,
   buildAssignment,
   buildAssignmentAudit,
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
   buildShift,
   buildSlotRequirement,
   buildTimeSlot,
@@ -272,7 +272,7 @@ describe('integration composition of the shared seed builders', () => {
     });
   });
 
-  it('composes a scheduling graph from Planning Cycle to audited Assignment', async () => {
+  it('composes a scheduling graph from Cycle to audited Assignment', async () => {
     await buildUser({
       db: testDb,
       id: ADMIN_USER_ID,
@@ -307,7 +307,7 @@ describe('integration composition of the shared seed builders', () => {
     });
     const start = parseInstant({ value: '2024-06-05T09:00:00Z' });
     const end = parseInstant({ value: '2024-06-05T11:00:00Z' });
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db: testDb,
       churchId: CHURCH_ID,
       name: 'June cycle',
@@ -318,7 +318,7 @@ describe('integration composition of the shared seed builders', () => {
     const planned = await buildEvent({
       db: testDb,
       churchId: CHURCH_ID,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       title: 'Youth Gathering',
       start,
       end,
@@ -337,7 +337,7 @@ describe('integration composition of the shared seed builders', () => {
       churchId: CHURCH_ID,
       ministryId: ministry.id,
       eventId: planned.id,
-      state: 'tailoring',
+      state: 'preparing',
       timeSlotIds: [slot.id],
     });
     const shiftRow = await buildShift({
@@ -389,7 +389,7 @@ describe('integration composition of the shared seed builders', () => {
     const check = await buildAvailabilityCheck({
       db: testDb,
       churchId: CHURCH_ID,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryVolunteerId: membership.id,
     });
     await buildUnavailabilityMark({
@@ -459,7 +459,7 @@ describe('integration composition of the shared seed builders', () => {
     });
     const start = parseInstant({ value: '2024-06-05T09:00:00Z' });
     const end = parseInstant({ value: '2024-06-05T10:00:00Z' });
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db: testDb,
       churchId: CHURCH_ID,
       name: 'June cycle',
@@ -470,7 +470,7 @@ describe('integration composition of the shared seed builders', () => {
     const planned = await buildEvent({
       db: testDb,
       churchId: CHURCH_ID,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       title: 'Sunday',
       start,
       end,

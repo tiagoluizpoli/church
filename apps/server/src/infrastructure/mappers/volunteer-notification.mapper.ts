@@ -4,9 +4,9 @@ import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AssignmentId,
   ChurchId,
+  CycleId,
   EventId,
   MinistryId,
-  PlanningCycleId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../../domain/branded-ids';
@@ -25,9 +25,7 @@ export function mapVolunteerNotification(
   const props: VolunteerNotificationProps = {
     churchId: row.churchId as ChurchId,
     volunteerId: row.volunteerId as VolunteerId,
-    planningCycleId: (row.planningCycleId ?? undefined) as
-      | PlanningCycleId
-      | undefined,
+    cycleId: (row.cycleId ?? undefined) as CycleId | undefined,
     ministryId: (row.ministryId ?? undefined) as MinistryId | undefined,
     eventId: (row.eventId ?? undefined) as EventId | undefined,
     assignmentId: (row.assignmentId ?? undefined) as AssignmentId | undefined,

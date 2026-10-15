@@ -53,7 +53,7 @@ interface HeaderStatChipProps {
 }
 
 /** Same standalone chip Planning's header uses — each stat is its own
- * bordered pill, not one box divided into columns (that's Tailoring's shape,
+ * bordered pill, not one box divided into columns (that's Prepare's shape,
  * not this one). */
 function HeaderStatChip({ testId, label, value }: HeaderStatChipProps) {
   return (
@@ -69,7 +69,7 @@ function HeaderStatChip({ testId, label, value }: HeaderStatChipProps) {
 /**
  * What used to sit here was a bespoke `<header>` — its own type scale, no
  * card, no page shell — while every other scheduling screen (Planning,
- * Tailoring) sits inside `WorkspaceIntroPanel`. That made the builder read as
+ * Prepare) sits inside `WorkspaceIntroPanel`. That made the builder read as
  * a different product mid-workflow. This now renders through the same shell;
  * only the `aside` content (inventory counters, staffing progress, sync
  * status) stays builder-specific. Publish/audit controls live on the filter

@@ -6,7 +6,7 @@ import {
   type TimeOfDay,
 } from '@church/time';
 import { buildVolunteerNotification } from '../../builders/notification';
-import { buildAssignment, buildPlanningCycle } from '../../builders/scheduling';
+import { buildAssignment, buildCycle } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
   type CreateJourneyRecipeInput,
@@ -15,15 +15,15 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
+  type AssignChurch,
+  type AssignChurchPlan,
   anchoredInstant,
-  buildRosteringChurch,
+  assignChurchRootKinds,
+  buildAssignChurch,
   EVENT_END_TIME,
   EVENT_START_TIME,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
-import { buildRosteringEvent, type RosteringEvent } from './rostering-event';
+} from './assign-church';
+import { type AssignEvent, buildAssignEvent } from './assign-event';
 
 /**
  * The starting graph of the Volunteer Dashboard journeys (#329): a small
@@ -88,9 +88,9 @@ const PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
-type DashboardChurch = RosteringChurch<typeof PLAN>;
+type DashboardChurch = AssignChurch<typeof PLAN>;
 
 export interface VolunteerDashboardNotification {
   id: string;
@@ -101,11 +101,11 @@ export interface VolunteerDashboardNotification {
 export interface VolunteerDashboardJourney extends DashboardChurch {
   anchor: CalendarDay;
   /** Published Care event the Volunteer is confirmed on (a Team-scoped Role). */
-  careEvent: RosteringEvent<'careHost'>;
+  careEvent: AssignEvent<'careHost'>;
   /** Event whose availability the Volunteer has not answered. */
-  availabilityEvent: RosteringEvent<'usher'>;
+  availabilityEvent: AssignEvent<'usher'>;
   /** Past event whose Assignment was removed; no row is left on it. */
-  removedEvent: RosteringEvent<'usher'>;
+  removedEvent: AssignEvent<'usher'>;
   notification: VolunteerDashboardNotification;
 }
 
@@ -121,26 +121,26 @@ export function createVolunteerDashboardRecipe({
   async function load({
     db,
   }: SeedRecipeLoadInput): Promise<VolunteerDashboardJourney> {
-    const base = await buildRosteringChurch({ db, idOf, tag, plan: PLAN });
+    const base = await buildAssignChurch({ db, idOf, tag, plan: PLAN });
     const churchId = base.church.id;
     const { worship, care } = base.ministries;
     const { volunteer } = base.personas;
 
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db,
       churchId,
-      id: idOf({ kind: 'planning-cycle' }),
+      id: idOf({ kind: 'cycle' }),
       name: 'Ciclo E2E',
       startDate: anchor,
       endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS }),
-      state: 'locked',
+      state: 'sent',
     });
 
-    const careEvent = await buildRosteringEvent({
+    const careEvent = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: care.id,
       key: 'care',
       title: 'Encontro de Cuidado',
@@ -167,11 +167,11 @@ export function createVolunteerDashboardRecipe({
       id: idOf({ kind: 'assignment:care' }),
       status: 'confirmed',
     });
-    const availabilityEvent = await buildRosteringEvent({
+    const availabilityEvent = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: worship.id,
       key: 'availability',
       title: 'Ensaio Geral',
@@ -192,11 +192,11 @@ export function createVolunteerDashboardRecipe({
     // and own-cancellation alike), so the removed one leaves an open slot and
     // a notification whose payload still names the deleted id. The event is
     // past, which keeps it off the upcoming list and the availability tasks.
-    const removedEvent = await buildRosteringEvent({
+    const removedEvent = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: worship.id,
       key: 'removed',
       title: 'Culto de Domingo',
@@ -250,7 +250,7 @@ export function createVolunteerDashboardRecipe({
 
   return {
     name: RECIPE_NAME,
-    roots: rootsOf({ rootKinds: rosteringChurchRootKinds({ plan: PLAN }) }),
+    roots: rootsOf({ rootKinds: assignChurchRootKinds({ plan: PLAN }) }),
     load,
   };
 }

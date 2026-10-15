@@ -1,5 +1,5 @@
 /**
- * Dates for specs that create their own PlanningCycle through the product.
+ * Dates for specs that create their own Cycle through the product.
  * Each derives from the journey's anchor (a Church-local `yyyy-MM-dd`), so a
  * spec never reads the wall clock or a fixed calendar date. Journeys own
  * their Church, so cycle windows cannot overlap another journey's.

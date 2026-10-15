@@ -10,7 +10,7 @@ type EventRow = InferSelectModel<typeof event>;
 export function mapEvent(row: EventRow): Event {
   const props: EventProps = {
     churchId: row.churchId as ChurchId,
-    planningCycleId: row.planningCycleId as EventProps['planningCycleId'],
+    cycleId: row.cycleId as EventProps['cycleId'],
     sourceTemplateId:
       (row.sourceTemplateId as EventProps['sourceTemplateId']) ?? undefined,
     title: row.title,

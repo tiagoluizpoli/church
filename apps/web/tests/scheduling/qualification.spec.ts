@@ -1,16 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
-  loadRosterQualificationJourney,
-  type RosterQualificationJourney,
-} from '@/tests/fixtures/journeys/roster-qualification';
-import {
+  assignBuilderPath,
   newPersonaContext,
   requirementCellTestId,
-  rosteringBuilderPath,
   signInPersonaPage,
   worshipBuilderPath,
-} from '@/tests/fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/assign-church';
+import {
+  type AssignQualificationJourney,
+  loadAssignQualificationJourney,
+} from '@/tests/fixtures/journeys/assign-qualification';
 
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
@@ -19,7 +19,7 @@ const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
  *
  * These specs assert the *rule*, not the rendering: a volunteer becomes a
  * candidate for a shift because they hold the required role qualification, and
- * for no other reason. The roster-qualification recipe makes that separable:
+ * for no other reason. The assign-qualification recipe makes that separable:
  * the journey's own cycle has one Event needing a Team Alpha Greeter and an
  * Usher. Grace (Team Alpha) and Ada (no Team) are qualified for both Roles,
  * the TeamLeader only as an Usher, and `Ursula Unqualified` is an active
@@ -30,14 +30,14 @@ const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 // The volunteer-pool rail abbreviates via formatVolunteerName (FR-013) —
 // "First L." — while the assignment chip shows the full name. Both forms are
-// asserted where each appears (see us4-roster-publish.spec.ts). These match
+// asserted where each appears (see us4-schedule-publish.spec.ts). These match
 // the recipe's pool names (journey.pool.*.name).
 const UNQUALIFIED_SHORT_NAME = 'Ursula U.';
 const QUALIFIED_SHORT_NAME = 'Grace H.';
 const OUTSIDE_TEAM_SHORT_NAME = 'Ada L.';
 
 interface JourneyInput {
-  journey: RosterQualificationJourney;
+  journey: AssignQualificationJourney;
 }
 
 function teamBuilderUrl({ journey }: JourneyInput): string {
@@ -51,7 +51,7 @@ test.describe('qualification governs candidacy', () => {
   test('a ministry member with no role qualification is never offered as a candidate', async ({
     page,
   }, testInfo) => {
-    const journey = loadRosterQualificationJourney({ testInfo });
+    const journey = loadAssignQualificationJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.leader });
 
     await page.goto(worshipBuilderPath({ journey }));
@@ -83,7 +83,7 @@ test.describe('qualification governs candidacy', () => {
   test('the volunteer rail states which roles each candidate is qualified for', async ({
     page,
   }, testInfo) => {
-    const journey = loadRosterQualificationJourney({ testInfo });
+    const journey = loadAssignQualificationJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.leader });
 
     await page.goto(worshipBuilderPath({ journey }));
@@ -102,15 +102,15 @@ test.describe('qualification governs candidacy', () => {
   });
 });
 
-test.describe('TeamLeader roster discovery composes with qualification', () => {
+test.describe('TeamLeader schedule discovery composes with qualification', () => {
   test('a TeamLeader sees their own team’s qualified members and still never the unqualified one', async ({
     page,
   }, testInfo) => {
-    const journey = loadRosterQualificationJourney({ testInfo });
+    const journey = loadAssignQualificationJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.teamLeader });
 
     // The capability index has its own API seam. This proof is about the
-    // Team-scoped roster, whose stable public entry point is the roster link.
+    // Team-scoped schedule, whose stable public entry point is the schedule link.
     await page.goto(teamBuilderUrl({ journey }));
     await expect(page.getByTestId('cycle-builder')).toBeVisible({
       timeout: 15_000,
@@ -137,31 +137,31 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     ).toHaveCount(0);
   });
 
-  test('a TeamLeader assigns and removes a led-Team roster seat, but cannot mutate an unled requirement', async ({
+  test('a TeamLeader assigns and removes a led-Team schedule seat, but cannot mutate an unled requirement', async ({
     browser,
     page,
   }, testInfo) => {
-    const journey = loadRosterQualificationJourney({ testInfo });
+    const journey = loadAssignQualificationJourney({ testInfo });
     const { event } = journey;
     const teamId = journey.ministries.worship.teams.alpha.id;
     const grace = journey.pool.grace;
 
-    // The recipe's Event starts at availability_fired/draft so discovery
+    // The recipe's Event starts at availability_requested/draft so discovery
     // coverage can prove its safe default. Stage it through the leader-facing
     // API: scheduling its draft Event, then assigning Grace, moves the
-    // MinistryParticipation into rostering.
+    // MinistryParticipation into assign.
     const leaderContext = await newPersonaContext({
       browser,
       persona: journey.personas.leader,
     });
     const scheduleResponse = await leaderContext.request.patch(
-      `${SERVER_URL}/api/v1/admin/planning-cycles/${journey.cycle.id}/events/${event.id}`,
+      `${SERVER_URL}/api/v1/admin/cycles/${journey.cycle.id}/events/${event.id}`,
       { data: {} },
     );
     expect(scheduleResponse.ok()).toBeTruthy();
 
     const stageResponse = await leaderContext.request.post(
-      `${SERVER_URL}/api/v1/rostering/shifts/${event.shiftId}/assignments`,
+      `${SERVER_URL}/api/v1/assign/shifts/${event.shiftId}/assignments`,
       {
         data: {
           volunteerId: grace.volunteerId,
@@ -203,7 +203,7 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     const removeResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'DELETE' &&
-        response.url().includes('/api/v1/rostering/assignments/') &&
+        response.url().includes('/api/v1/assign/assignments/') &&
         response.url().includes(`teamId=${teamId}`),
     );
     await ledRequirement.getByTestId('assignment-chip').click();
@@ -222,7 +222,7 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
         response.request().method() === 'POST' &&
         response
           .url()
-          .includes(`/api/v1/rostering/shifts/${event.shiftId}/assignments`),
+          .includes(`/api/v1/assign/shifts/${event.shiftId}/assignments`),
     );
     await ledRequirement.getByRole('button', { name: 'Add' }).click();
     // Grace is Team Alpha's only qualified, available, not-yet-serving
@@ -241,7 +241,7 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     );
 
     const unledResponse = await page.request.post(
-      `${SERVER_URL}/api/v1/rostering/shifts/${event.shiftId}/assignments`,
+      `${SERVER_URL}/api/v1/assign/shifts/${event.shiftId}/assignments`,
       {
         data: {
           volunteerId: grace.volunteerId,
@@ -256,20 +256,20 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     // The TeamLeader can also remove the recreated seat directly over the
     // API, bypassing the UI.
     const cleanupResponse = await page.request.delete(
-      `${SERVER_URL}/api/v1/rostering/assignments/${recreatedAssignment.id}?teamId=${teamId}`,
+      `${SERVER_URL}/api/v1/assign/assignments/${recreatedAssignment.id}?teamId=${teamId}`,
     );
     expect(cleanupResponse.status()).toBe(204);
   });
 
-  test('a wrong-Team roster link returns to Scheduling without roster data', async ({
+  test('a wrong-Team schedule link returns to Scheduling without schedule data', async ({
     page,
   }, testInfo) => {
-    const journey = loadRosterQualificationJourney({ testInfo });
+    const journey = loadAssignQualificationJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.teamLeader });
 
     // Care's Team: one the TeamLeader does not lead, in another Ministry.
     await page.goto(
-      rosteringBuilderPath({
+      assignBuilderPath({
         ministryId: journey.ministries.worship.id,
         teamId: journey.ministries.care.teams.care.id,
       }),
@@ -279,6 +279,6 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     await expect(
       page.getByRole('heading', { name: 'Scheduling' }),
     ).toBeVisible();
-    await expect(page.getByTestId('team-roster-cycles')).toHaveCount(0);
+    await expect(page.getByTestId('team-schedule-cycles')).toHaveCount(0);
   });
 });

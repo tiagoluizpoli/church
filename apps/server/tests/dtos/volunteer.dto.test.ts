@@ -160,7 +160,7 @@ describe('volunteerMapper', () => {
           roleId: 'r1',
           status: 'confirmed',
           reason: 'because',
-          assignedAt: assignedAt,
+          assignedAt,
           assignedBy: 'u1',
         },
       ]);
@@ -265,8 +265,8 @@ describe('volunteerMapper', () => {
       const response = volunteerMapper.availabilityCheckListToResponse([
         {
           id: 'chk1',
-          planningCycleId: 'pc1',
-          planningCycleName: 'Spring 2026',
+          cycleId: 'pc1',
+          cycleName: 'Spring 2026',
           ministryId: 'm1',
           ministryName: 'Worship',
           state: 'confirmed',
@@ -284,8 +284,8 @@ describe('volunteerMapper', () => {
       const response = volunteerMapper.availabilityCheckListToResponse([
         {
           id: 'chk2',
-          planningCycleId: 'pc1',
-          planningCycleName: 'Spring 2026',
+          cycleId: 'pc1',
+          cycleName: 'Spring 2026',
           ministryId: 'm1',
           ministryName: 'Worship',
           state: 'pending',
@@ -312,8 +312,8 @@ describe('volunteerMapper', () => {
 
       const response = volunteerMapper.availabilityCheckDetailToResponse({
         id: 'chk1',
-        planningCycleId: 'pc1',
-        planningCycleName: 'Spring 2026',
+        cycleId: 'pc1',
+        cycleName: 'Spring 2026',
         ministryId: 'm1',
         ministryName: 'Worship',
         state: 'confirmed',
@@ -349,8 +349,8 @@ describe('volunteerMapper', () => {
     it('maps a detail with confirmedAt absent and shifts empty', () => {
       const response = volunteerMapper.availabilityCheckDetailToResponse({
         id: 'chk2',
-        planningCycleId: 'pc1',
-        planningCycleName: 'Spring 2026',
+        cycleId: 'pc1',
+        cycleName: 'Spring 2026',
         ministryId: 'm1',
         ministryName: 'Worship',
         state: 'pending',

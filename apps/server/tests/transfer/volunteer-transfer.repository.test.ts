@@ -27,9 +27,9 @@ import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositorie
 import { buildAvailabilityCheck } from '@/seeds/builders/availability';
 import {
   buildAssignedShift,
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
@@ -69,7 +69,7 @@ interface SeedScheduleResult {
  */
 async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
   const churchId = fixture.churchB.id;
-  const cycle = await buildPlanningCycle({
+  const cycle = await buildCycle({
     db: testDb,
     churchId,
     name: 'Transfer Cycle',
@@ -80,7 +80,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
   const runningEvent = await buildEvent({
     db: testDb,
     churchId,
-    planningCycleId: cycle.id,
+    cycleId: cycle.id,
     title: 'Transfer Sunday',
     // Event runs from before to well after the commit instant.
     start: parseInstant({ value: '2026-09-15T09:00:00Z' }),
@@ -92,7 +92,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
     churchId,
     ministryId: fixture.ministryInB,
     eventId: runningEvent.id,
-    state: 'tailoring',
+    state: 'preparing',
     timeSlotIds: [],
   });
 
@@ -126,7 +126,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
   const check = await buildAvailabilityCheck({
     db: testDb,
     churchId,
-    planningCycleId: cycle.id,
+    cycleId: cycle.id,
     ministryVolunteerId: fixture.dualMemberABMembershipInB,
   });
 
@@ -516,11 +516,11 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
     // the one `seedChurchBSchedule` already seeded (`cancelledAfter`), for
     // three withdrawn assignments total in this one Ministry.
     const churchId = fixture.churchB.id;
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db: testDb,
       churchId,
       name: 'Second Cycle',
-      // Non-overlapping with `seedChurchBSchedule`'s cycle — Planning Cycle
+      // Non-overlapping with `seedChurchBSchedule`'s cycle — Cycle
       // date ranges for a Church must not overlap.
       startDate: parseCalendarDay({ value: '2027-01-01' }),
       endDate: parseCalendarDay({ value: '2027-02-01' }),
@@ -529,7 +529,7 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
     const extraEvent = await buildEvent({
       db: testDb,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       title: 'Extra Assignments Event',
       start: fromDate({ date: new Date(COMMIT.getTime() - 1000) }),
       end: fromDate({ date: new Date(COMMIT.getTime() + 24 * 3_600_000) }),
@@ -540,7 +540,7 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
       churchId,
       ministryId: fixture.ministryInB,
       eventId: extraEvent.id,
-      state: 'tailoring',
+      state: 'preparing',
       timeSlotIds: [],
     });
     for (const offsetMs of [2_000, 3_000]) {

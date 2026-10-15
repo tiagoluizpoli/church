@@ -1,8 +1,8 @@
 import {
   assignment,
+  cycle,
   event,
   ministryParticipation,
-  planningCycle,
   shift,
   volunteerNotification,
 } from '@church/db';
@@ -139,10 +139,10 @@ describe('volunteer-dashboard E2E journey recipe', () => {
       .select({ createdAt: volunteerNotification.createdAt })
       .from(volunteerNotification)
       .where(eq(volunteerNotification.churchId, journey.church.id));
-    const [cycle] = await testDb
-      .select({ startDate: planningCycle.startDate })
-      .from(planningCycle)
-      .where(eq(planningCycle.churchId, journey.church.id));
+    const [cycleRow] = await testDb
+      .select({ startDate: cycle.startDate })
+      .from(cycle)
+      .where(eq(cycle.churchId, journey.church.id));
 
     expect(events).toHaveLength(3);
     expect(shifts).toHaveLength(3);
@@ -166,7 +166,7 @@ describe('volunteer-dashboard E2E journey recipe', () => {
     expect(churchDayOf({ value: notification?.createdAt ?? new Date(0) })).toBe(
       addCalendarDays({ day: LATE_ANCHOR, days: -1 }),
     );
-    expect(cycle?.startDate.toISOString().slice(0, 10)).toBe(LATE_ANCHOR);
+    expect(cycleRow?.startDate.toISOString().slice(0, 10)).toBe(LATE_ANCHOR);
   });
 
   it('restores the notification and assignment when a mutated graph is reloaded', async () => {

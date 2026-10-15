@@ -56,34 +56,25 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
   { pattern: /^\/volunteer\/availability$/, policy: 'fallback' },
   { pattern: /^\/scheduling\/?$/, policy: 'fallback' },
   {
-    pattern: /^\/scheduling\/planning-cycles\/?$/,
+    pattern: /^\/cycles\/?$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
-  { pattern: /^\/scheduling\/planning-cycles\/new$/, policy: 'fallback' },
+  { pattern: /^\/cycles\/new$/, policy: 'fallback' },
   {
-    pattern: /^\/scheduling\/planning-cycles\/templates$/,
+    pattern: /^\/event-templates$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
+  { pattern: /^\/cycles\/[^/]+$/, policy: 'fallback' },
   {
-    pattern: /^\/scheduling\/planning-cycles\/[^/]+$/,
-    policy: 'fallback',
-  },
-  {
-    pattern: /^\/scheduling\/tailoring\/?$/,
+    pattern: /^\/schedules\/?$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
-  { pattern: /^\/scheduling\/tailoring\/[^/]+$/, policy: 'fallback' },
-  {
-    pattern: /^\/scheduling\/tailoring\/[^/]+\/[^/]+$/,
-    policy: 'fallback',
-  },
-  {
-    pattern: /^\/scheduling\/rostering\/[^/]+\/[^/]+$/,
-    policy: 'fallback',
-  },
+  { pattern: /^\/schedules\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/schedules\/[^/]+\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/schedules\/[^/]+\/[^/]+\/assign$/, policy: 'fallback' },
 ];
 
 export function isChurchScopedQuery(query: Query): boolean {

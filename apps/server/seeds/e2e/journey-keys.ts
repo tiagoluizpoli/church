@@ -12,20 +12,20 @@ import { deriveSeedId } from '../builders/derived-id';
  * names to the loader; register each in `journey-recipes.ts`. */
 export const E2E_JOURNEY_RECIPE_NAMES = {
   volunteerAssignments: 'volunteer-assignments',
-  rosterPublish: 'roster-publish',
+  schedulePublish: 'schedule-publish',
   volunteerDashboard: 'volunteer-dashboard',
-  leaderTailoring: 'leader-tailoring',
+  leaderPrepare: 'leader-prepare',
   volunteerAvailability: 'volunteer-availability',
   liveChanges: 'live-changes',
-  rosteringBoard: 'rostering-board',
-  rosterQualification: 'roster-qualification',
+  assignBoard: 'assign-board',
+  assignQualification: 'assign-qualification',
   activeChurchSwitching: 'active-church-switching',
   volunteerTransfer: 'volunteer-transfer',
   ministryRedemption: 'ministry-redemption',
   crossTenantInvitation: 'cross-tenant-invitation',
   planningAdmin: 'planning-admin',
-  planningCycleAccess: 'planning-cycle-access',
-  planningCycleTenants: 'planning-cycle-tenants',
+  cycleAccess: 'cycle-access',
+  cycleTenants: 'cycle-tenants',
   ministryWorkspaceIndex: 'ministry-workspace-index',
   /** Not a journey: the suite's shared read-only personas, which global
    * setup loads once (`recipes/shared-personas.ts`). */

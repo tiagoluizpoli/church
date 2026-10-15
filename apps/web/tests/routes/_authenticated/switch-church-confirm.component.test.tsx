@@ -11,7 +11,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getSession = vi.fn();
 const { getActiveChurchStatus, listActiveChurchOptions, selectActiveChurch } =
   activeChurchApiMock;
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -24,7 +24,7 @@ vi.mock('@/utils/api-instances', async () => ({
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
   },
 }));
 
@@ -76,13 +76,11 @@ describe('switch-church-confirm route', () => {
     getActiveChurchStatus.mockResolvedValue(
       resolvedActiveChurchStatus({ churchId: 'church-a' }),
     );
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
   });
 
   it('names the current and target Church before switching', async () => {
-    renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
-    );
+    renderConfirm('/switch-church-confirm?target=church-b&redirect=%2Fcycles');
 
     expect(
       await screen.findByText('This link opens another Church'),
@@ -101,7 +99,7 @@ describe('switch-church-confirm route', () => {
     );
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
     await screen.findByText('This link opens another Church');
@@ -113,16 +111,14 @@ describe('switch-church-confirm route', () => {
       expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-b' });
     });
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe(
-        '/scheduling/planning-cycles',
-      );
+      expect(router.state.location.pathname).toBe('/cycles');
     });
   });
 
   it('falls back to the dashboard, not the resource route, when the exact destination carries a Church-owned resource id', async () => {
     // Deliberate: switchActiveChurch reuses the shared preserve-or-fallback
     // route policy from #78 (active-church-switch.ts), same as the manual
-    // switcher. A resource-scoped path (e.g. a specific PlanningCycle id)
+    // switcher. A resource-scoped path (e.g. a specific Cycle id)
     // always falls back — the id belonged to the *former* Church's data,
     // so it isn't safe to replay verbatim under the new one.
     const user = userEvent.setup();
@@ -134,7 +130,7 @@ describe('switch-church-confirm route', () => {
     );
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles%2Fcycle-1',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles%2Fcycle-1',
     );
 
     await screen.findByText('This link opens another Church');
@@ -154,7 +150,7 @@ describe('switch-church-confirm route', () => {
     const user = userEvent.setup();
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
     await screen.findByText('This link opens another Church');
@@ -174,7 +170,7 @@ describe('switch-church-confirm route', () => {
     });
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
     await waitFor(() => {
@@ -186,9 +182,7 @@ describe('switch-church-confirm route', () => {
   it('shows an error message when the Church list fails to load', async () => {
     listActiveChurchOptions.mockRejectedValue(new Error('network error'));
 
-    renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
-    );
+    renderConfirm('/switch-church-confirm?target=church-b&redirect=%2Fcycles');
 
     expect(
       await screen.findByText(

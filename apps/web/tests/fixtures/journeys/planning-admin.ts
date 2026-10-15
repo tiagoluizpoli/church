@@ -1,42 +1,43 @@
 import { z } from 'zod';
 import {
-  type LoadRosteringJourneyInput,
-  PLANNING_CYCLE_WINDOW_SCHEMA,
-  ROSTERING_CYCLE_SCHEMA,
-  ROSTERING_JOURNEY_BASE_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-  rosteringMinistrySchema,
-} from './rostering-church';
+  ASSIGN_CYCLE_SCHEMA,
+  ASSIGN_JOURNEY_BASE_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+  assignMinistrySchema,
+  CYCLE_WINDOW_SCHEMA,
+  type LoadAssignJourneyInput,
+} from './assign-church';
 import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 
 // Mirrors the server's `E2E_JOURNEY_RECIPE_NAMES`
 // (apps/server/seeds/e2e/journey-keys.ts); web cannot import server code.
 const PLANNING_ADMIN_RECIPE_NAME = 'planning-admin';
-const PLANNING_CYCLE_ACCESS_RECIPE_NAME = 'planning-cycle-access';
+const CYCLE_ACCESS_RECIPE_NAME = 'cycle-access';
 
 const PLANNING_ADMIN_FIELDS = {
-  cycleWindow: PLANNING_CYCLE_WINDOW_SCHEMA,
+  cycleWindow: CYCLE_WINDOW_SCHEMA,
   ministries: z.object({
-    worship: rosteringMinistrySchema({ roles: ['usher'], teams: [] }),
+    worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
   }),
   personas: z.object({
-    admin: ROSTERING_PERSONA_SCHEMA,
-    volunteer: ROSTERING_PERSONA_SCHEMA,
+    admin: ASSIGN_PERSONA_SCHEMA,
+    volunteer: ASSIGN_PERSONA_SCHEMA,
   }),
 };
 
-export const PLANNING_ADMIN_JOURNEY_SCHEMA =
-  ROSTERING_JOURNEY_BASE_SCHEMA.extend(PLANNING_ADMIN_FIELDS);
+export const PLANNING_ADMIN_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend(
+  PLANNING_ADMIN_FIELDS,
+);
 
 export type PlanningAdminJourney = z.infer<
   typeof PLANNING_ADMIN_JOURNEY_SCHEMA
 >;
 
-/** Loads this test's own Church, ChurchAdmin and Volunteer; no PlanningCycle,
+/** Loads this test's own Church, ChurchAdmin and Volunteer; no Cycle,
  * and signs nobody in. */
 export function loadPlanningAdminJourney({
   testInfo,
-}: LoadRosteringJourneyInput): PlanningAdminJourney {
+}: LoadAssignJourneyInput): PlanningAdminJourney {
   return loadJourneyRecipe({
     recipeName: PLANNING_ADMIN_RECIPE_NAME,
     schema: PLANNING_ADMIN_JOURNEY_SCHEMA,
@@ -44,24 +45,21 @@ export function loadPlanningAdminJourney({
   });
 }
 
-export const PLANNING_CYCLE_ACCESS_JOURNEY_SCHEMA =
-  ROSTERING_JOURNEY_BASE_SCHEMA.extend({
-    ...PLANNING_ADMIN_FIELDS,
-    /** A locked cycle, read-only for every journey. */
-    cycle: ROSTERING_CYCLE_SCHEMA,
-  });
+export const CYCLE_ACCESS_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
+  ...PLANNING_ADMIN_FIELDS,
+  /** A sent cycle, read-only for every journey. */
+  cycle: ASSIGN_CYCLE_SCHEMA,
+});
 
-export type PlanningCycleAccessJourney = z.infer<
-  typeof PLANNING_CYCLE_ACCESS_JOURNEY_SCHEMA
->;
+export type CycleAccessJourney = z.infer<typeof CYCLE_ACCESS_JOURNEY_SCHEMA>;
 
-/** Loads the planning-admin Church plus its own locked PlanningCycle. */
-export function loadPlanningCycleAccessJourney({
+/** Loads the planning-admin Church plus its own sent Cycle. */
+export function loadCycleAccessJourney({
   testInfo,
-}: LoadRosteringJourneyInput): PlanningCycleAccessJourney {
+}: LoadAssignJourneyInput): CycleAccessJourney {
   return loadJourneyRecipe({
-    recipeName: PLANNING_CYCLE_ACCESS_RECIPE_NAME,
-    schema: PLANNING_CYCLE_ACCESS_JOURNEY_SCHEMA,
+    recipeName: CYCLE_ACCESS_RECIPE_NAME,
+    schema: CYCLE_ACCESS_JOURNEY_SCHEMA,
     testInfo,
   });
 }

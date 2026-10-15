@@ -32,7 +32,7 @@ async function registeredRoutes(
 const PARKED_ROUTES = [
   'PATCH /api/v1/volunteer/assignments/:assignmentId',
   'POST /api/v1/volunteer/assignments/:assignmentId/cancel',
-  'GET /api/v1/rostering/cycles/:cycleId/audit',
+  'GET /api/v1/assign/cycles/:cycleId/audit',
 ];
 
 describe('composition root', () => {
@@ -44,9 +44,9 @@ describe('composition root', () => {
       'events',
       'ministries',
       'redemption',
-      'rostering',
+      'assign',
       'scheduling',
-      'tailoring',
+      'prepare',
       'volunteer',
     ];
     for (const prefix of prefixes) {

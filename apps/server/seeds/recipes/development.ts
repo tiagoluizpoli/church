@@ -38,7 +38,7 @@ export interface DevelopmentRecipeResult {
   church: SeededChurchSummary;
   secondChurch: SeededChurchSummary;
   keyPersonas: readonly KeyPersona[];
-  /** The previous complete month before the anchor's, locked and published. */
+  /** The previous complete month before the anchor's, sent and published. */
   historicalCycle: SeededHistoricalCycle;
 }
 
@@ -259,7 +259,7 @@ async function loadChurchDirectory({
     const ministryIds = await buildMinistryStructure({ context, ministry });
     ministryIdsByName.set(ministry.name, ministryIds);
 
-    for (const group of ministry.roster) {
+    for (const group of ministry.schedule) {
       for (const person of group.people) {
         const userId = await buildPersonUser({ context, person });
         await addPlainChurchMembership({ db, churchId: church.id, userId });

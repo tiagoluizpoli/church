@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import {
-  type LoadRosteringJourneyInput,
-  ROSTERING_CHURCH_MEMBERSHIP_SCHEMA,
-  ROSTERING_CHURCH_SCHEMA,
-  ROSTERING_CYCLE_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-  rosteringMinistrySchema,
-} from './rostering-church';
+  ASSIGN_CHURCH_MEMBERSHIP_SCHEMA,
+  ASSIGN_CHURCH_SCHEMA,
+  ASSIGN_CYCLE_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+  assignMinistrySchema,
+  type LoadAssignJourneyInput,
+} from './assign-church';
 import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 
 // Mirrors the server's `E2E_JOURNEY_RECIPE_NAMES`
@@ -16,17 +16,17 @@ const RECIPE_NAME = 'active-church-switching';
 export const ACTIVE_CHURCH_SWITCHING_JOURNEY_SCHEMA = z.object({
   anchor: z.string().min(1),
   churchA: z.object({
-    church: ROSTERING_CHURCH_SCHEMA,
+    church: ASSIGN_CHURCH_SCHEMA,
     ministries: z.object({
-      worship: rosteringMinistrySchema({ roles: ['usher'], teams: [] }),
+      worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
     }),
-    personas: z.object({ dualMember: ROSTERING_PERSONA_SCHEMA }),
+    personas: z.object({ dualMember: ASSIGN_PERSONA_SCHEMA }),
   }),
-  churchB: z.object({ church: ROSTERING_CHURCH_SCHEMA }),
-  churchBMembership: ROSTERING_CHURCH_MEMBERSHIP_SCHEMA,
+  churchB: z.object({ church: ASSIGN_CHURCH_SCHEMA }),
+  churchBMembership: ASSIGN_CHURCH_MEMBERSHIP_SCHEMA,
   cycles: z.object({
-    first: ROSTERING_CYCLE_SCHEMA,
-    second: ROSTERING_CYCLE_SCHEMA,
+    first: ASSIGN_CYCLE_SCHEMA,
+    second: ASSIGN_CYCLE_SCHEMA,
   }),
 });
 
@@ -41,7 +41,7 @@ export type ActiveChurchSwitchingJourney = z.infer<
  */
 export function loadActiveChurchSwitchingJourney({
   testInfo,
-}: LoadRosteringJourneyInput): ActiveChurchSwitchingJourney {
+}: LoadAssignJourneyInput): ActiveChurchSwitchingJourney {
   return loadJourneyRecipe({
     recipeName: RECIPE_NAME,
     schema: ACTIVE_CHURCH_SWITCHING_JOURNEY_SCHEMA,

@@ -10,9 +10,9 @@ import { BelowFullPublishError } from '../errors/below-full-publish';
 import { IllegalStateTransitionError } from '../errors/illegal-state-transition';
 
 export const PARTICIPATION_STATE_OPTIONS = [
-  'tailoring',
-  'availability_fired',
-  'rostering',
+  'preparing',
+  'availability_requested',
+  'assigning',
   'published',
 ] as const;
 export type ParticipationState = (typeof PARTICIPATION_STATE_OPTIONS)[number];
@@ -57,43 +57,43 @@ export function calculateCompletionPercent({
   return Math.min(100, Math.round((assignedCount / requiredCount) * 100));
 }
 
-export type CycleTailoringStatus = 'not_started' | 'in_progress' | 'published';
+export type CyclePrepareStatus = 'not_started' | 'in_progress' | 'published';
 
-export interface AggregateCycleTailoringStatusInput {
+export interface AggregateCyclePrepareStatusInput {
   eventCount: number;
   touchedCount: number;
   publishedCount: number;
-  firedOrLaterCount: number;
+  requestedOrLaterCount: number;
 }
 
-export interface CycleTailoringStatusResult {
-  status: CycleTailoringStatus;
-  availabilityFiredForAll: boolean;
-  availabilityFiredForAny: boolean;
+export interface CyclePrepareStatusResult {
+  status: CyclePrepareStatus;
+  availabilityRequestedForAll: boolean;
+  availabilityRequestedForAny: boolean;
 }
 
 /** R16: rolls up a cycle's per-event `MinistryParticipation` rows into one
  * leader-facing status using an "all participations must reach X" rule for
  * both the "Not started" and "Published" boundaries. `eventCount === 0` is
  * special-cased explicitly rather than left as an implicit vacuous-truth
- * result of reducing over an empty set — `availabilityFiredForAll` in
+ * result of reducing over an empty set — `availabilityRequestedForAll` in
  * particular would otherwise be vacuously (and wrongly) `true` for a cycle
  * the ministry has no events in (research.md R16's correction note). */
-export function aggregateCycleTailoringStatus({
+export function aggregateCyclePrepareStatus({
   eventCount,
   touchedCount,
   publishedCount,
-  firedOrLaterCount,
-}: AggregateCycleTailoringStatusInput): CycleTailoringStatusResult {
+  requestedOrLaterCount,
+}: AggregateCyclePrepareStatusInput): CyclePrepareStatusResult {
   if (eventCount === 0) {
     return {
       status: 'not_started',
-      availabilityFiredForAll: false,
-      availabilityFiredForAny: false,
+      availabilityRequestedForAll: false,
+      availabilityRequestedForAny: false,
     };
   }
 
-  const status: CycleTailoringStatus =
+  const status: CyclePrepareStatus =
     publishedCount === eventCount
       ? 'published'
       : touchedCount === 0
@@ -102,8 +102,8 @@ export function aggregateCycleTailoringStatus({
 
   return {
     status,
-    availabilityFiredForAll: firedOrLaterCount === eventCount,
-    availabilityFiredForAny: firedOrLaterCount > 0,
+    availabilityRequestedForAll: requestedOrLaterCount === eventCount,
+    availabilityRequestedForAny: requestedOrLaterCount > 0,
   };
 }
 
@@ -115,7 +115,7 @@ export class MinistryParticipation extends Entity<
     super(
       {
         ...props,
-        state: props.state ?? 'tailoring',
+        state: props.state ?? 'preparing',
         touchedAt: props.touchedAt ?? null,
       } as MinistryParticipationProps,
       id as MinistryParticipationId,
@@ -153,19 +153,19 @@ export class MinistryParticipation extends Entity<
     this._updatedAt = toDate({ instant: now() });
   }
 
-  fireAvailability(): void {
-    this.transitionTo('availability_fired', 'tailoring');
+  askAvailability(): void {
+    this.transitionTo('availability_requested', 'preparing');
   }
 
-  startRostering(): void {
-    this.transitionTo('rostering', 'availability_fired');
+  startAssigning(): void {
+    this.transitionTo('assigning', 'availability_requested');
   }
 
   publish({
     completionPercent,
     confirmBelowFull,
   }: PublishParticipationInput): void {
-    if (this.state !== 'rostering') {
+    if (this.state !== 'assigning') {
       throw new IllegalStateTransitionError(this.state, 'published');
     }
 

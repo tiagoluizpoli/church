@@ -7,6 +7,7 @@ import type {
   IAssignmentManager,
   IAuthorityManager,
   IAvailabilityCheckManager,
+  ICycleManager,
   IEventManager,
   IEventTemplateManager,
   InvitationVerificationCodeManager as IInvitationVerificationCodeManager,
@@ -14,7 +15,6 @@ import type {
   IMinistryManager,
   IOutboxDrainer,
   IParticipationManager,
-  IPlanningCycleManager,
   IPlanningEventManager,
   IVolunteerManager,
   RedemptionManager,
@@ -28,6 +28,7 @@ import type {
   AvailabilityRepository,
   ChurchMembershipRepository,
   ChurchRepository,
+  CycleRepository,
   EmailSender,
   EventRepository,
   EventTemplateRepository,
@@ -38,7 +39,6 @@ import type {
   MinistryServingProfileRepository,
   NotificationService,
   OutboxRepository,
-  PlanningCycleRepository,
   PlanningEventRepository,
   RedemptionIdentityGateway,
   RedemptionRepository,
@@ -61,7 +61,7 @@ export interface CompositionRootDependencies {
   // Repositories
   eventRepository: EventRepository;
   eventTemplateRepository: EventTemplateRepository;
-  planningCycleRepository: PlanningCycleRepository;
+  cycleRepository: CycleRepository;
   planningEventRepository: PlanningEventRepository;
   volunteerRepository: VolunteerRepository;
   assignmentRepository: AssignmentRepository;
@@ -100,7 +100,7 @@ export interface CompositionRootDependencies {
   // Managers
   eventManager: IEventManager;
   eventTemplateManager: IEventTemplateManager;
-  planningCycleManager: IPlanningCycleManager;
+  cycleManager: ICycleManager;
   planningEventManager: IPlanningEventManager;
   volunteerManager: IVolunteerManager;
   assignmentManager: IAssignmentManager;

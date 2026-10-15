@@ -4,7 +4,7 @@ export type CalendarDayKey = string;
 /**
  * Calendar day of a date-only value.
  *
- * Use this for values that name a day rather than a moment — planning-cycle
+ * Use this for values that name a day rather than a moment — cycle
  * bounds, which are anchored at UTC midnight (`2027-01-01T00:00:00.000Z` means
  * "January 1"). Reading those in the viewer's timezone would drag them back a
  * day west of UTC.

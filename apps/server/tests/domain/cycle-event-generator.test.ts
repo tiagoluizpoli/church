@@ -10,8 +10,8 @@ import type {
   EventTemplateId,
   TimeBlockId,
 } from '@/domain/branded-ids';
+import { Cycle } from '@/domain/entities/cycle';
 import { EventTemplate } from '@/domain/entities/event-template';
-import { PlanningCycle } from '@/domain/entities/planning-cycle';
 import { TimeBlock } from '@/domain/entities/time-block';
 import {
   CycleEventGenerator,
@@ -28,8 +28,8 @@ const blockBId = '33333333-3333-3333-3333-333333333332' as TimeBlockId;
 
 // Two-week cycle: 2026-07-01 (Wed) through 2026-07-15 (exclusive),
 // so weekday=3 (Wednesday) matches 2026-07-01 and 2026-07-08.
-function createCycle(): PlanningCycle {
-  return new PlanningCycle({
+function createCycle(): Cycle {
+  return new Cycle({
     props: {
       churchId,
       name: 'July cycle',
@@ -266,7 +266,7 @@ describe('CycleEventGenerator', () => {
     });
 
     // Cycle spans a single day (Wednesday 2026-07-01), no Monday inside it.
-    const singleDayCycle = new PlanningCycle({
+    const singleDayCycle = new Cycle({
       props: {
         churchId,
         name: 'Single day',

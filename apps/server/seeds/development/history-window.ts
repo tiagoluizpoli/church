@@ -8,7 +8,7 @@ export interface HistoricalCycleWindowInput {
   anchor: CalendarDay;
 }
 
-/** A PlanningCycle's bounds: `endDate` is exclusive, as the cycle's own. */
+/** A Cycle's bounds: `endDate` is exclusive, as the cycle's own. */
 export interface HistoricalCycleWindow {
   startDate: CalendarDay;
   endDate: CalendarDay;

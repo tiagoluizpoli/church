@@ -129,7 +129,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
     const bareEvent = await buildEvent({
       db: schedulingTestDb,
       churchId: seed.churchAId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       title: 'No participations yet',
       start: fromDate({ date: new Date('2026-08-03T09:00:00.000Z') }),
       end: fromDate({ date: new Date('2026-08-03T11:00:00.000Z') }),

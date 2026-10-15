@@ -120,11 +120,11 @@ export default defineConfig({
         test: {
           name: 'integration',
           include: [
-            'tests/application/event-builder.rostering.integration.test.ts',
+            'tests/application/event-builder.assign.integration.test.ts',
             'tests/application/planning-phase3.managers.test.ts',
             'tests/application/scheduling-phase4.managers.test.ts',
             'tests/application/scheduling-phase5.volunteer-availability.test.ts',
-            'tests/application/scheduling-phase6.rostering.test.ts',
+            'tests/application/scheduling-phase6.assign.test.ts',
             'tests/application/scheduling-phase7.live-changes.test.ts',
             'tests/behavior/**/*.test.ts',
             'tests/http/**/*.test.ts',

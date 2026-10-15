@@ -2,11 +2,11 @@ import { NotFoundError } from '@church/core';
 import {
   availabilityCheck,
   church,
+  cycle,
   event,
   ministry,
   ministryParticipation,
   ministryVolunteer,
-  planningCycle,
   shift,
   user,
   volunteer,
@@ -85,7 +85,7 @@ export class DrizzleAvailabilityCheckRepository
   ): Promise<AvailabilityCheck[]> {
     const db = getClient(this.db, input.tx);
     const conditions = [
-      eq(availabilityCheck.planningCycleId, input.planningCycleId),
+      eq(availabilityCheck.cycleId, input.cycleId),
       withChurchIsolation(availabilityCheck, input.churchId),
     ];
 
@@ -117,7 +117,7 @@ export class DrizzleAvailabilityCheckRepository
       .values(
         input.checks.map((check) => ({
           churchId: input.churchId,
-          planningCycleId: check.planningCycleId,
+          cycleId: check.cycleId,
           ministryVolunteerId: check.ministryVolunteerId,
         })),
       )
@@ -133,7 +133,7 @@ export class DrizzleAvailabilityCheckRepository
       volunteerId: ministryVolunteer.volunteerId,
       ministryId: ministryVolunteer.ministryId,
       ministryName: ministry.name,
-      planningCycleName: planningCycle.name,
+      cycleName: cycle.name,
       timeZone: church.timezone,
     };
   }
@@ -148,10 +148,7 @@ export class DrizzleAvailabilityCheckRepository
         eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
       )
       .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
-      .innerJoin(
-        planningCycle,
-        eq(planningCycle.id, availabilityCheck.planningCycleId),
-      )
+      .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .innerJoin(church, eq(church.id, availabilityCheck.churchId))
       .where(
         and(
@@ -170,7 +167,7 @@ export class DrizzleAvailabilityCheckRepository
       volunteerId: row.volunteerId as VolunteerId,
       ministryId: row.ministryId as MinistryId,
       ministryName: row.ministryName,
-      planningCycleName: row.planningCycleName,
+      cycleName: row.cycleName,
       timeZone: row.timeZone,
     };
   }
@@ -187,10 +184,7 @@ export class DrizzleAvailabilityCheckRepository
         eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
       )
       .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
-      .innerJoin(
-        planningCycle,
-        eq(planningCycle.id, availabilityCheck.planningCycleId),
-      )
+      .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .innerJoin(church, eq(church.id, availabilityCheck.churchId))
       .where(
         and(
@@ -204,7 +198,7 @@ export class DrizzleAvailabilityCheckRepository
       volunteerId: row.volunteerId as VolunteerId,
       ministryId: row.ministryId as MinistryId,
       ministryName: row.ministryName,
-      planningCycleName: row.planningCycleName,
+      cycleName: row.cycleName,
       timeZone: row.timeZone,
     }));
   }
@@ -233,7 +227,7 @@ export class DrizzleAvailabilityCheckRepository
         event,
         and(
           eq(event.id, ministryParticipation.eventId),
-          eq(event.planningCycleId, availabilityCheck.planningCycleId),
+          eq(event.cycleId, availabilityCheck.cycleId),
         ),
       )
       .innerJoin(shift, eq(shift.participationId, ministryParticipation.id))

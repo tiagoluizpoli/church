@@ -2,10 +2,10 @@ import { Entity, type LooseProps } from '@church/core';
 import { compareInstants, type Instant, now, toDate } from '@church/time';
 import type {
   ChurchId,
+  CycleId,
   EventId,
   EventTemplateId,
   MinistryId,
-  PlanningCycleId,
 } from '../branded-ids';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { TimeSlot } from './time-slot';
@@ -20,7 +20,7 @@ export type EventStatus = (typeof EVENT_STATUS_OPTIONS)[number];
 
 export interface EventProps {
   churchId: ChurchId;
-  planningCycleId: PlanningCycleId;
+  cycleId: CycleId;
   sourceTemplateId?: EventTemplateId;
   title: string;
   description?: string;
@@ -42,7 +42,7 @@ export class Event extends Entity<EventProps, EventId> {
           Partial<Pick<LooseProps<EventProps>, 'status'>>)
       | (Omit<
           LooseProps<EventProps>,
-          'planningCycleId' | 'sourceTemplateId' | 'status'
+          'cycleId' | 'sourceTemplateId' | 'status'
         > & {
           ministryId: MinistryId | string;
         } & Partial<Pick<LooseProps<EventProps>, 'status'>>),
@@ -59,12 +59,12 @@ export class Event extends Entity<EventProps, EventId> {
       throw new InvalidDateRangeError();
     }
     const normalizedProps =
-      'planningCycleId' in props
+      'cycleId' in props
         ? props
         : {
             ...props,
             ministryId: undefined,
-            planningCycleId: props.ministryId,
+            cycleId: props.ministryId,
           };
     super(
       {
@@ -81,8 +81,8 @@ export class Event extends Entity<EventProps, EventId> {
     return this._props.churchId;
   }
 
-  get planningCycleId(): PlanningCycleId {
-    return this._props.planningCycleId;
+  get cycleId(): CycleId {
+    return this._props.cycleId;
   }
 
   get sourceTemplateId(): EventTemplateId | undefined {

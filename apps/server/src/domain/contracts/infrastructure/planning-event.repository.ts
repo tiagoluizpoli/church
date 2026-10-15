@@ -1,8 +1,8 @@
 import type {
   ChurchId,
+  CycleId,
   EventId,
   EventTemplateId,
-  PlanningCycleId,
   TimeBlockId,
   TimeSlotId,
 } from '../../branded-ids';
@@ -11,7 +11,7 @@ import type { TransactionContext } from './transaction-context';
 
 export interface CreatePlanningEventInput {
   churchId: ChurchId;
-  planningCycleId: PlanningCycleId;
+  cycleId: CycleId;
   sourceTemplateId?: EventTemplateId;
   title: string;
   description?: string;
@@ -46,9 +46,9 @@ export interface DeletePlanningEventInput {
   tx?: TransactionContext;
 }
 
-export interface ListPlanningCycleEventsInput {
+export interface ListCycleEventsInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   tx?: TransactionContext;
 }
 
@@ -80,9 +80,7 @@ export interface PlanningEventRepository {
    * seen them (see BL-020 / issue #12).
    */
   deleteEvent(input: DeletePlanningEventInput): Promise<void>;
-  listCycleEvents(
-    input: ListPlanningCycleEventsInput,
-  ): Promise<EventWithSlots[]>;
+  listCycleEvents(input: ListCycleEventsInput): Promise<EventWithSlots[]>;
   createTimeSlot(input: CreatePlanningTimeSlotInput): Promise<TimeSlotId>;
   seedParticipations(input: SeedPlanningParticipationsInput): Promise<void>;
 }

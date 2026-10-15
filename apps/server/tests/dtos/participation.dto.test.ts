@@ -4,7 +4,7 @@ import {
   participationMapper,
   shiftResponseSchema,
 } from '@/api/dtos/participation.dto';
-import { PlanningCycleId } from '@/domain/branded-ids';
+import { CycleId } from '@/domain/branded-ids';
 import type {
   CycleParticipationView,
   MinistryCycleSummaryView,
@@ -23,7 +23,7 @@ function buildParticipation(): MinistryParticipation {
       churchId: 'church-1',
       ministryId: 'ministry-1',
       eventId: 'event-1',
-      state: 'rostering',
+      state: 'assigning',
     },
     id: 'participation-1',
   });
@@ -33,7 +33,7 @@ function buildEvent(): Event {
   return new Event(
     {
       churchId: 'church-1',
-      planningCycleId: 'cycle-1',
+      cycleId: 'cycle-1',
       title: 'Sunday Service',
       start: parseInstant({ value: '2026-05-15T09:00:00Z' }),
       end: parseInstant({ value: '2026-05-15T11:00:00Z' }),
@@ -79,7 +79,7 @@ describe('participationMapper', () => {
         churchId: 'church-1',
         ministryId: 'ministry-1',
         eventId: 'event-1',
-        state: 'rostering',
+        state: 'assigning',
       });
     });
   });
@@ -278,7 +278,7 @@ describe('participationMapper', () => {
   describe('ministryCycleSummaryListToResponse', () => {
     it('maps a summary view, recovering its CalendarDay bounds from raw Dates', () => {
       const view: MinistryCycleSummaryView = {
-        cycleId: PlanningCycleId.from('cycle-1'),
+        cycleId: CycleId.from('cycle-1'),
         name: 'July 2026',
         startDate: new Date('2026-07-01T00:00:00.000Z'),
         endDate: new Date('2026-08-01T00:00:00.000Z'),
@@ -286,8 +286,8 @@ describe('participationMapper', () => {
         eventCount: 4,
         slotCount: 8,
         status: 'in_progress',
-        availabilityFiredForAll: false,
-        availabilityFiredForAny: true,
+        availabilityRequestedForAll: false,
+        availabilityRequestedForAny: true,
       };
 
       const response = participationMapper.ministryCycleSummaryListToResponse([
@@ -304,8 +304,8 @@ describe('participationMapper', () => {
           eventCount: 4,
           slotCount: 8,
           status: 'in_progress',
-          availabilityFiredForAll: false,
-          availabilityFiredForAny: true,
+          availabilityRequestedForAll: false,
+          availabilityRequestedForAny: true,
         },
       ]);
       const summary = response.cycles[0];

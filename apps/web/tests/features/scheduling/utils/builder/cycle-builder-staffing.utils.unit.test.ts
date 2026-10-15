@@ -51,7 +51,7 @@ function makeEvent(
 ): CycleBuilderEventSummary {
   return {
     participationId: 'participation-1',
-    state: 'rostering',
+    state: 'assigning',
     eventId: 'event-1',
     title: 'teste',
     start: '2027-01-04T03:00:00.000Z',

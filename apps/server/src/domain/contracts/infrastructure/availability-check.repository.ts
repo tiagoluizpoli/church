@@ -2,9 +2,9 @@ import type { Instant } from '@church/time';
 import type {
   AvailabilityCheckId,
   ChurchId,
+  CycleId,
   EventId,
   MinistryId,
-  PlanningCycleId,
   ShiftId,
   VolunteerId,
 } from '../../branded-ids';
@@ -25,13 +25,13 @@ export interface ActiveMinistryMembership {
 
 export interface ListChecksByCycleInput {
   churchId: ChurchId;
-  planningCycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryVolunteerIds?: string[];
   tx?: TransactionContext;
 }
 
 export interface NewAvailabilityCheckInput {
-  planningCycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryVolunteerId: string;
 }
 
@@ -53,7 +53,7 @@ export interface CheckContext {
   volunteerId: VolunteerId;
   ministryId: MinistryId;
   ministryName: string;
-  planningCycleName: string;
+  cycleName: string;
   /** Church timezone for date-only (whole-day) expansion. */
   timeZone: string;
 }

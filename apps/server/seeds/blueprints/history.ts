@@ -44,7 +44,7 @@ export interface DeclineIncident {
 }
 
 /**
- * A cross-Ministry Volunteer two Ministries rostered at the same gathering.
+ * A cross-Ministry Volunteer two Ministries assigned at the same gathering.
  * The `withdrawn` Ministry's leader reassigned that post to
  * `replacementEmail`, as the product does: the old Assignment is deleted and
  * `reason` stays on the new one. The person serves `kept`; nothing overlaps.
@@ -70,8 +70,8 @@ export interface Shortfall {
 }
 
 /**
- * The trail the locked historical PlanningCycle carries on top of its
- * otherwise fully staffed, published roster. Every other Assignment is filled
+ * The trail the sent historical Cycle carries on top of its
+ * otherwise fully staffed, published schedule. Every other Assignment is filled
  * by rotation through each post's qualified Volunteers.
  */
 export interface HistoryBlueprint {

@@ -4,8 +4,8 @@ import type { SeedWriter } from '../recipe';
 import { requireInsertedRow } from './require-inserted-row';
 
 /**
- * Direct-state builders for a fired availability round: the check one
- * Ministry Membership answers per PlanningCycle, and the unavailability marks
+ * Direct-state builders for a requested availability round: the check one
+ * Ministry Membership answers per Cycle, and the unavailability marks
  * hanging off it (a Volunteer is available unless marked).
  */
 
@@ -15,7 +15,7 @@ export type SeededUnavailabilityMark = typeof availability.$inferSelect;
 export interface BuildConfirmedAvailabilityCheckInput {
   db: SeedWriter;
   churchId: string;
-  planningCycleId: string;
+  cycleId: string;
   ministryVolunteerId: string;
   id: string;
   /** Explicit, so a graph never depends on the wall clock at load time. */
@@ -26,7 +26,7 @@ export interface BuildConfirmedAvailabilityCheckInput {
 export async function buildConfirmedAvailabilityCheck({
   db,
   churchId,
-  planningCycleId,
+  cycleId,
   ministryVolunteerId,
   id,
   confirmedAt,
@@ -37,7 +37,7 @@ export async function buildConfirmedAvailabilityCheck({
       .values({
         id,
         churchId,
-        planningCycleId,
+        cycleId,
         ministryVolunteerId,
         state: 'confirmed',
         confirmedAt: toDate({ instant: confirmedAt }),
@@ -77,7 +77,7 @@ export type AvailabilityCheckState = SeededAvailabilityCheck['state'];
 export interface BuildAvailabilityCheckInput {
   db: SeedWriter;
   churchId: string;
-  planningCycleId: string;
+  cycleId: string;
   ministryVolunteerId: string;
   id?: string;
   /** Left to the column default (pending) when a fixture does not care. */
@@ -88,7 +88,7 @@ export interface BuildAvailabilityCheckInput {
 export async function buildAvailabilityCheck({
   db,
   churchId,
-  planningCycleId,
+  cycleId,
   ministryVolunteerId,
   id,
   state,
@@ -96,7 +96,7 @@ export async function buildAvailabilityCheck({
   return requireInsertedRow({
     rows: await db
       .insert(availabilityCheck)
-      .values({ id, churchId, planningCycleId, ministryVolunteerId, state })
+      .values({ id, churchId, cycleId, ministryVolunteerId, state })
       .returning(),
     description: `Availability Check for ${ministryVolunteerId}`,
   });

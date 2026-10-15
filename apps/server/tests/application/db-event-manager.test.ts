@@ -53,7 +53,7 @@ function buildEvent(): Event {
   return new Event(
     {
       churchId,
-      planningCycleId: 'cycle-1',
+      cycleId: 'cycle-1',
       title: 'Sunday Service',
       start: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
       end: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),

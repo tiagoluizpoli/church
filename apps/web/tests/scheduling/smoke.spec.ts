@@ -1,22 +1,22 @@
 import { expect, test } from '@playwright/test';
 import {
-  loadRosteringBoardJourney,
-  type RosteringBoardJourney,
-} from '@/tests/fixtures/journeys/rostering-board';
+  type AssignBoardJourney,
+  loadAssignBoardJourney,
+} from '@/tests/fixtures/journeys/assign-board';
 import {
+  assignPreparePath,
   dayFilterName,
   requirementCellTestId,
-  rosteringTailoringPath,
   signInPersonaPage,
   worshipBuilderPath,
-} from '@/tests/fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/assign-church';
 
-// T123 — Full system smoke: the journey's own cycle board (rostering-board
+// T123 — Full system smoke: the journey's own cycle board (assign-board
 // recipe) renders its key regions for an authenticated leader.
 test.use({ viewport: { width: 375, height: 812 } });
 
 interface JourneyInput {
-  journey: RosteringBoardJourney;
+  journey: AssignBoardJourney;
 }
 
 /** The team service's Team Alpha Greeter seat. */
@@ -31,7 +31,7 @@ function teamGreeterCellTestId({ journey }: JourneyInput): string {
 test('builder renders the cycle board, volunteer rail, and publish control', async ({
   page,
 }, testInfo) => {
-  const journey = loadRosteringBoardJourney({ testInfo });
+  const journey = loadAssignBoardJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.leader });
 
   await page.goto(worshipBuilderPath({ journey }));
@@ -71,26 +71,26 @@ test('builder renders the cycle board, volunteer rail, and publish control', asy
   ).toBeVisible();
 });
 
-test('tailoring lets a leader reach the cycle builder', async ({
+test('prepare lets a leader reach the cycle builder', async ({
   page,
 }, testInfo) => {
-  const journey = loadRosteringBoardJourney({ testInfo });
+  const journey = loadAssignBoardJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.leader });
 
   // Deep-link to the journey's own cycle rather than picking a row on
-  // /scheduling/tailoring.
+  // /schedules.
   await page.goto(
-    rosteringTailoringPath({
+    assignPreparePath({
       ministryId: journey.ministries.worship.id,
       cycleId: journey.cycle.id,
     }),
   );
 
-  // The cycle's own roster link; both it and the older "Assign" link on the
-  // cycle list resolve to the same rostering URL.
+  // The cycle's own schedule link; both it and the older "Assign" link on the
+  // cycle list resolve to the same assign URL.
   await page
     .getByTestId(
-      `open-roster-link-${journey.events.teamService.participationId}`,
+      `open-schedule-link-${journey.events.teamService.participationId}`,
     )
     .click();
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
@@ -101,7 +101,7 @@ test('tailoring lets a leader reach the cycle builder', async ({
 test('a draft assignment persists through publish and can be reassigned', async ({
   page,
 }, testInfo) => {
-  const journey = loadRosteringBoardJourney({ testInfo });
+  const journey = loadAssignBoardJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.leader });
   const { service, teamService } = journey.events;
 

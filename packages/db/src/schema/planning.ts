@@ -15,7 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
 import { ministry } from './core';
-import { planningCycleStateEnum } from './enums';
+import { cycleStateEnum } from './enums';
 
 export interface EqualShiftSplitSpec {
   kind: 'equal';
@@ -41,8 +41,8 @@ export interface ServingProfileHeadcount {
   count: number;
 }
 
-export const planningCycle = pgTable(
-  'planning_cycle',
+export const cycle = pgTable(
+  'cycle',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
@@ -51,7 +51,7 @@ export const planningCycle = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     startDate: date('start_date', { mode: 'date' }).notNull(),
     endDate: date('end_date', { mode: 'date' }).notNull(),
-    state: planningCycleStateEnum('state').default('draft').notNull(),
+    state: cycleStateEnum('state').default('draft').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -61,11 +61,8 @@ export const planningCycle = pgTable(
       .notNull(),
   },
   (table) => [
-    check(
-      'planning_cycle_date_check',
-      sql`${table.startDate} < ${table.endDate}`,
-    ),
-    index('planning_cycle_church_state_idx').on(table.churchId, table.state),
+    check('cycle_date_check', sql`${table.startDate} < ${table.endDate}`),
+    index('cycle_church_state_idx').on(table.churchId, table.state),
   ],
 );
 

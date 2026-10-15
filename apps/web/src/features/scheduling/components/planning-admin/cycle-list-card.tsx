@@ -1,8 +1,5 @@
-import type { PlanningCyclesTableRow } from './planning-admin.types';
-import {
-  stateBadgeVariant,
-  toPlanningCyclesTableRow,
-} from './planning-admin.utils';
+import type { CyclesTableRow } from './planning-admin.types';
+import { stateBadgeVariant, toCyclesTableRow } from './planning-admin.utils';
 import { useCycleListCard } from './planning-admin-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,8 +40,8 @@ export function CycleListCard({
   } = useCycleListCard();
   const selectedCycleId = selectedCycleIdOverride ?? selectedCycleIdFromContext;
 
-  const rows: PlanningCyclesTableRow[] = cycles.map((cycle) =>
-    toPlanningCyclesTableRow({ cycle }),
+  const rows: CyclesTableRow[] = cycles.map((cycle) =>
+    toCyclesTableRow({ cycle }),
   );
 
   const selectCycle = ({ cycleId }: SelectCycleInput) => {
@@ -57,7 +54,8 @@ export function CycleListCard({
       <CardHeader>
         <CardTitle>Existing cycles</CardTitle>
         <CardDescription>
-          Select a cycle to review, add events, apply templates, or lock it.
+          Select a cycle to review, add events, apply templates, or send it to
+          Ministries.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -66,7 +64,7 @@ export function CycleListCard({
           columns={CYCLE_TABLE_COLUMNS}
           items={rows}
           rowId={({ item }) => item.id}
-          rowTestId={({ item }) => `planning-cycle-row-${item.id}`}
+          rowTestId={({ item }) => `cycle-row-${item.id}`}
           isLoading={cyclesLoading}
           loadingContent={
             <p className="text-muted-foreground text-sm">Loading cycles…</p>
@@ -104,7 +102,7 @@ export function CycleListCard({
               type="button"
               variant="ghost"
               role="option"
-              data-testid="planning-cycle-option"
+              data-testid="cycle-option"
               aria-selected={selectedCycleId === item.id}
               className={cn(
                 'surface-subtle workspace-panel h-auto w-full items-stretch justify-start whitespace-normal p-0 text-left font-normal',

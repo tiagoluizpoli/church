@@ -6,12 +6,12 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
   mergeRootKinds,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+} from './assign-church';
 
 const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.crossTenantInvitation;
 
@@ -35,7 +35,7 @@ const CHURCH_A_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const CHURCH_B_PLAN = {
   ministries: {
@@ -49,12 +49,12 @@ const CHURCH_B_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const ROOT_KINDS = mergeRootKinds({
   rootKinds: [
-    rosteringChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
-    rosteringChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
   ],
 });
 
@@ -66,8 +66,8 @@ export interface CrossTenantInvitationEmails {
 }
 
 export interface CrossTenantInvitationJourney {
-  churchA: RosteringChurch<typeof CHURCH_A_PLAN>;
-  churchB: RosteringChurch<typeof CHURCH_B_PLAN>;
+  churchA: AssignChurch<typeof CHURCH_A_PLAN>;
+  churchB: AssignChurch<typeof CHURCH_B_PLAN>;
   /** Unique per journey key. A retry reuses the key and so the addresses; its
    * purge deletes the earlier attempt's Church B and invitation first. */
   emails: CrossTenantInvitationEmails;
@@ -84,14 +84,14 @@ export function createCrossTenantInvitationRecipe({
   async function load({
     db,
   }: SeedRecipeLoadInput): Promise<CrossTenantInvitationJourney> {
-    const churchA = await buildRosteringChurch({
+    const churchA = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: CHURCH_A_PLAN,
       scope: CHURCH_A_SCOPE,
     });
-    const churchB = await buildRosteringChurch({
+    const churchB = await buildAssignChurch({
       db,
       idOf,
       tag,

@@ -1,5 +1,5 @@
 import { now, toDate } from '@church/time';
-import { TeamRosterMutationPolicy } from '../domain/authority/team-roster-mutation-policy';
+import { TeamScheduleMutationPolicy } from '../domain/authority/team-schedule-mutation-policy';
 import {
   type AssignmentId,
   type ChurchId,
@@ -31,14 +31,14 @@ import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import type { Shift } from '../domain/entities/shift';
-import { RosterActionNotAvailableError } from '../domain/errors/roster-action-not-available';
+import { AssignActionNotAvailableError } from '../domain/errors/assign-action-not-available';
 
 interface ReassignTransactionResult {
   nextAssignment: Assignment;
   previousVolunteerId: VolunteerId;
 }
 
-interface AssertTeamLeaderRosterMutationInput {
+interface AssertTeamLeaderScheduleMutationInput {
   churchId: ChurchId;
   teamId: TeamId;
   shift: Shift;
@@ -123,7 +123,7 @@ export class DbAssignmentManager implements IAssignmentManager {
           tx,
         );
         if (!assignment.shiftId) {
-          throw new RosterActionNotAvailableError();
+          throw new AssignActionNotAvailableError();
         }
         const shift = await this.shiftRepository.getById({
           churchId,
@@ -135,7 +135,7 @@ export class DbAssignmentManager implements IAssignmentManager {
           participationId: shift.participationId,
           tx,
         });
-        await this.assertTeamLeaderRosterMutation({
+        await this.assertTeamLeaderScheduleMutation({
           churchId,
           teamId: input.teamLeaderScopeId,
           shift,
@@ -252,9 +252,9 @@ export class DbAssignmentManager implements IAssignmentManager {
     });
     if (input.teamLeaderScopeId) {
       if (input.teamId !== input.teamLeaderScopeId) {
-        throw new RosterActionNotAvailableError();
+        throw new AssignActionNotAvailableError();
       }
-      await this.assertTeamLeaderRosterMutation({
+      await this.assertTeamLeaderScheduleMutation({
         churchId: input.churchId,
         teamId: input.teamLeaderScopeId,
         shift,
@@ -368,8 +368,8 @@ export class DbAssignmentManager implements IAssignmentManager {
       tx,
     );
 
-    if (participation.state === 'availability_fired') {
-      participation.startRostering();
+    if (participation.state === 'availability_requested') {
+      participation.startAssigning();
       await this.participationRepository.updateState({
         churchId: input.churchId,
         participationId: participation.id,
@@ -394,7 +394,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     };
   }
 
-  private async assertTeamLeaderRosterMutation({
+  private async assertTeamLeaderScheduleMutation({
     churchId,
     teamId,
     shift,
@@ -402,7 +402,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     volunteerId,
     roleId,
     tx,
-  }: AssertTeamLeaderRosterMutationInput): Promise<void> {
+  }: AssertTeamLeaderScheduleMutationInput): Promise<void> {
     const [event, requirements, memberships] = await Promise.all([
       this.planningEventRepository.getEvent({
         churchId,
@@ -432,7 +432,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         ?.teamMemberships.map((membership) => TeamId.from(membership.teamId)) ??
       [];
 
-    const allowed = TeamRosterMutationPolicy.authorize({
+    const allowed = TeamScheduleMutationPolicy.authorize({
       teamId,
       participationState: participation.state,
       eventStatus: event.status,
@@ -442,7 +442,7 @@ export class DbAssignmentManager implements IAssignmentManager {
       volunteerTeamIds,
     });
     if (!allowed) {
-      throw new RosterActionNotAvailableError();
+      throw new AssignActionNotAvailableError();
     }
   }
 
@@ -465,7 +465,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     await this.notificationService.notifyVolunteer({
       churchId: churchId as string,
       volunteerId: previousVolunteerId as string,
-      planningCycleId: event.planningCycleId,
+      cycleId: event.cycleId,
       ministryId: participation.ministryId,
       eventId: event.id,
       assignmentId,
@@ -482,7 +482,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     await this.notificationService.notifyVolunteer({
       churchId: churchId as string,
       volunteerId: nextVolunteerId as string,
-      planningCycleId: event.planningCycleId,
+      cycleId: event.cycleId,
       ministryId: participation.ministryId,
       eventId: event.id,
       assignmentId,

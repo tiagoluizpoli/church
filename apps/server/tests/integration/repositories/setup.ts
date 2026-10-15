@@ -9,9 +9,9 @@ import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildAssignmentAudit,
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
   buildShift,
   buildSlotRequirement,
   buildTimeSlot,
@@ -207,7 +207,7 @@ export async function seed(): Promise<void> {
     teams: [],
   });
 
-  const cycle = await buildPlanningCycle({
+  const cycle = await buildCycle({
     db: testDb,
     churchId,
     id: '22222222-2222-2222-2222-222222222231',
@@ -221,7 +221,7 @@ export async function seed(): Promise<void> {
   await buildEvent({
     db: testDb,
     churchId,
-    planningCycleId: cycle.id,
+    cycleId: cycle.id,
     id: youthGatheringId,
     title: 'Youth Gathering',
     start: jun5At09,
@@ -231,7 +231,7 @@ export async function seed(): Promise<void> {
   await buildEvent({
     db: testDb,
     churchId,
-    planningCycleId: cycle.id,
+    cycleId: cycle.id,
     id: adultServiceId,
     title: 'Adult Service',
     start: jun4At09,
@@ -265,7 +265,7 @@ export async function seed(): Promise<void> {
     ministryId: adultMinistryId,
     eventId: youthGatheringId,
     id: youthParticipationId,
-    state: 'tailoring',
+    state: 'preparing',
     timeSlotIds: [],
   });
   await buildMinistryParticipation({

@@ -32,7 +32,7 @@ export function AvailabilityCheckList({
       <Card>
         <CardContent className="py-6 text-muted-foreground text-sm">
           No availability checks yet. Your leader will notify you once one is
-          fired.
+          requested.
         </CardContent>
       </Card>
     );
@@ -54,7 +54,7 @@ export function AvailabilityCheckList({
             <div className="space-y-1">
               <div className="font-medium">{check.ministryName}</div>
               <div className="text-muted-foreground text-sm">
-                {check.planningCycleName}
+                {check.cycleName}
               </div>
               <div className="text-muted-foreground text-xs">
                 {check.unavailableShiftCount} of {check.totalShiftCount} shifts

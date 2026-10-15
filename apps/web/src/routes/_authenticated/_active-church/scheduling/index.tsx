@@ -86,7 +86,7 @@ function SchedulingIndexRoute() {
             </section>
           ) : null}
           {teamEntries.length > 0 ? (
-            <section className="flex flex-col gap-4" aria-label="Team rosters">
+            <section className="flex flex-col gap-4" aria-label="Team schedule">
               {Object.entries(
                 Object.groupBy(teamEntries, (entry) => entry.ministryName),
               ).map(([ministryName, teams]) => (
@@ -94,7 +94,7 @@ function SchedulingIndexRoute() {
                   <h2 className="font-semibold text-lg">{ministryName}</h2>
                   <div className="grid gap-4 md:grid-cols-2">
                     {teams?.map((entry) => (
-                      <TeamRosterEntryCard key={entry.teamId} entry={entry} />
+                      <TeamScheduleEntryCard key={entry.teamId} entry={entry} />
                     ))}
                   </div>
                 </div>
@@ -133,7 +133,7 @@ function SchedulingEntryCard({
         </CardContent>
         <CardFooter>
           <Link
-            to="/scheduling/planning-cycles"
+            to="/cycles"
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
           >
             Open church planning
@@ -152,11 +152,11 @@ function SchedulingEntryCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Open the ministry workspace to manage its roster.</p>
+        <p>Open the ministry workspace to manage its schedule.</p>
       </CardContent>
       <CardFooter>
         <Link
-          to="/scheduling/tailoring/$ministryId"
+          to="/schedules/$ministryId"
           params={{ ministryId: entry.ministryId }}
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
@@ -167,7 +167,7 @@ function SchedulingEntryCard({
   );
 }
 
-function TeamRosterEntryCard({
+function TeamScheduleEntryCard({
   entry,
 }: {
   entry: Extract<GetSchedulingCapability200EntriesItem, { kind: 'team' }>;
@@ -176,19 +176,19 @@ function TeamRosterEntryCard({
     <Card>
       <CardHeader>
         <CardTitle>{entry.name}</CardTitle>
-        <CardDescription>Review this Team's roster work.</CardDescription>
+        <CardDescription>Review this Team's schedule work.</CardDescription>
       </CardHeader>
       <CardContent>
         <p>View only the requirements and Volunteers assigned to this Team.</p>
       </CardContent>
       <CardFooter>
         <Link
-          to="/scheduling/rostering/$ministryId"
+          to="/scheduling/teams/$ministryId"
           params={{ ministryId: entry.ministryId }}
           search={{ teamId: entry.teamId }}
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
-          Open {entry.name} roster
+          Open {entry.name} schedule
         </Link>
       </CardFooter>
     </Card>

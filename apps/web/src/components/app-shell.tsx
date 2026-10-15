@@ -65,6 +65,11 @@ interface IsActivePathInput {
   target: string;
 }
 
+interface IsNavItemActiveInput {
+  pathname: string;
+  item: NavItem;
+}
+
 interface ToBreadcrumbLabelInput {
   segment: string;
 }
@@ -104,15 +109,6 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { label: 'Availability', to: '/availability', icon: Clock },
 ];
 
-/** Breadcrumb segments normally auto-capitalize from the URL path (see
- * `toBreadcrumbLabel`) — this overrides the ones where the URL slug and the
- * leader-facing name have diverged. The `tailoring` route segment stays as
- * the URL/internal name (routes, e2e tests, testids) while the product now
- * calls this flow "Rostering" everywhere a leader actually reads it. */
-const STATIC_BREADCRUMB_OVERRIDES: [segment: string, label: string][] = [
-  ['tailoring', 'Rostering'],
-];
-
 const SCHEDULING_NAV_ITEM: NavItem = {
   label: 'Scheduling',
   to: '/scheduling',
@@ -120,15 +116,28 @@ const SCHEDULING_NAV_ITEM: NavItem = {
   children: [
     {
       label: 'Cycles',
-      to: '/scheduling/planning-cycles',
+      to: '/cycles',
       icon: CalendarRange,
     },
-    { label: 'Rostering', to: '/scheduling/tailoring', icon: UsersRound },
+    { label: 'Schedules', to: '/schedules', icon: UsersRound },
   ],
 };
 
 function isActivePath({ pathname, target }: IsActivePathInput): boolean {
   return pathname === target || pathname.startsWith(`${target}/`);
+}
+
+// Cycles and Schedules live outside /scheduling, so a section is also active
+// on any of its children's pages.
+function isNavItemActive({ pathname, item }: IsNavItemActiveInput): boolean {
+  return (
+    isActivePath({ pathname, target: item.to }) ||
+    Boolean(
+      item.children?.some((child) =>
+        isActivePath({ pathname, target: child.to }),
+      ),
+    )
+  );
 }
 
 function isOpaqueIdSegment({ segment }: IsOpaqueIdSegmentInput): boolean {
@@ -161,7 +170,7 @@ function findActiveNavBranch({
   items,
 }: FindActiveNavBranchInput): ActiveNavBranch {
   for (const item of items) {
-    if (!isActivePath({ pathname, target: item.to })) {
+    if (!isNavItemActive({ pathname, item })) {
       continue;
     }
 
@@ -237,7 +246,6 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const overridesBySegment = React.useMemo(
     () =>
       new Map([
-        ...STATIC_BREADCRUMB_OVERRIDES,
         ...(breadcrumbOverrides ?? []).map((override): [string, string] => [
           override.segment,
           override.label,
@@ -378,9 +386,9 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
             className={`flex-1 py-5 ${isCollapsed ? 'space-y-0.5 px-2' : 'space-y-1 px-3'}`}
           >
             {navItems.map((item) => {
-              const isActive = isActivePath({
+              const isActive = isNavItemActive({
                 pathname: location.pathname,
-                target: item.to,
+                item,
               });
               const activeChild =
                 item.children?.find((child) =>
@@ -642,9 +650,9 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
         className="fixed right-0 bottom-0 left-0 z-40 flex h-16 items-center justify-around border-sidebar-border border-t bg-sidebar/96 px-2 backdrop-blur md:hidden"
       >
         {navItems.map((item) => {
-          const isActive = isActivePath({
+          const isActive = isNavItemActive({
             pathname: location.pathname,
-            target: item.to,
+            item,
           });
           const Icon = item.icon;
           return (
@@ -696,9 +704,9 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
 
           <nav className="flex flex-col space-y-1">
             {navItems.map((item) => {
-              const isActive = isActivePath({
+              const isActive = isNavItemActive({
                 pathname: location.pathname,
-                target: item.to,
+                item,
               });
               const Icon = item.icon;
               return (

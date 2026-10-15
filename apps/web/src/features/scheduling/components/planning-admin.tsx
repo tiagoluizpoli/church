@@ -1,19 +1,19 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
-import { cycleIsLocked } from './planning-admin/planning-admin.utils';
+import {
+  CycleHeader,
+  CycleListStats,
+  PlanningTemplateLibraryStats,
+} from './planning-admin/cycle-header';
+import { cycleIsSent } from './planning-admin/planning-admin.utils';
 import {
   PlanningAdminProvider,
+  useCycleHeader,
   useCycleReviewCard,
+  useCycleSelection,
   useIsPlanningAccessDenied,
-  usePlanningCycleHeader,
-  usePlanningCycleSelection,
 } from './planning-admin/planning-admin-context';
-import {
-  PlanningCycleHeader,
-  PlanningCycleListStats,
-  PlanningTemplateLibraryStats,
-} from './planning-admin/planning-cycle-header';
 import { QuickCreateEventModal } from './quick-create-event-modal';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -27,7 +27,7 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 
-const CYCLES_PATH = '/scheduling/planning-cycles';
+const CYCLES_PATH = '/cycles';
 
 interface IsReviewingCyclePathInput {
   pathname: string;
@@ -40,7 +40,7 @@ function isReviewingCyclePath({
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&
     !pathname.endsWith('/new') &&
-    !pathname.endsWith('/templates')
+    !pathname.endsWith('/event-templates')
   );
 }
 
@@ -58,7 +58,7 @@ function describePlanningIntro({
   pathname,
   selectedCycleName,
 }: DescribePlanningIntroInput): PlanningIntroContent {
-  if (pathname.endsWith('/templates')) {
+  if (pathname.endsWith('/event-templates')) {
     return {
       title: 'Template library',
       description:
@@ -74,7 +74,7 @@ function describePlanningIntro({
     return {
       title: selectedCycleName,
       description:
-        'Cycles. Review this cycle, apply templates on demand, add exceptions, and lock the calendar when it is ready for staffing.',
+        'Cycles. Review this cycle, apply templates on demand, add exceptions, and send the cycle to Ministries when it is ready for staffing.',
     };
   }
 
@@ -114,10 +114,10 @@ function PlanningAdminLayout() {
   }
 
   const pathname = location.pathname;
-  const isTemplatesView = pathname.endsWith('/templates');
+  const isTemplatesView = pathname.endsWith('/event-templates');
   const isPlainListView =
     pathname === CYCLES_PATH || pathname === `${CYCLES_PATH}/`;
-  const { nameAndStatus } = usePlanningCycleHeader();
+  const { nameAndStatus } = useCycleHeader();
   const intro = describePlanningIntro({
     pathname,
     selectedCycleName: nameAndStatus?.name ?? null,
@@ -137,28 +137,28 @@ function PlanningAdminLayout() {
         autoFocusTitle
         aside={
           isReviewingCyclePath({ pathname }) ? (
-            <PlanningCycleHeader showName={false} />
+            <CycleHeader showName={false} />
           ) : isTemplatesView ? (
             <PlanningTemplateLibraryStats />
           ) : isPlainListView ? (
-            <PlanningCycleListStats />
+            <CycleListStats />
           ) : null
         }
       />
 
-      {isTemplatesView ? null : <PlanningCyclesActions pathname={pathname} />}
+      {isTemplatesView ? null : <CyclesActions pathname={pathname} />}
 
       <Outlet />
     </WorkspacePage>
   );
 }
 
-interface PlanningCyclesActionsProps {
+interface CyclesActionsProps {
   pathname: string;
 }
 
-function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
-  const { selectedCycleId } = usePlanningCycleSelection();
+function CyclesActions({ pathname }: CyclesActionsProps) {
+  const { selectedCycleId } = useCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
   const [createEventOpen, setCreateEventOpen] = useState(false);
@@ -166,16 +166,16 @@ function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
   const canMutateCalendar =
     isReviewingCycle &&
     Boolean(selectedCycle) &&
-    !cycleIsLocked({ cycle: selectedCycle });
+    !cycleIsSent({ cycle: selectedCycle });
 
   return (
     <>
       <div
         className="flex flex-wrap items-center justify-end gap-2"
-        data-testid="planning-cycles-actions-row"
+        data-testid="cycles-actions-row"
       >
         <Link
-          to="/scheduling/planning-cycles/templates"
+          to="/event-templates"
           search={
             isReviewingCycle && selectedCycleId
               ? { returnTo: selectedCycleId }
@@ -202,7 +202,7 @@ function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
         ) : null}
         {isReviewingCycle ? null : (
           <Link
-            to="/scheduling/planning-cycles/new"
+            to="/cycles/new"
             data-testid="open-create-cycle-dialog-button"
             className={buttonVariants({ variant: 'default' })}
           >

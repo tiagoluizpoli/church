@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ChurchId, EventId, MinistryId } from '@/domain/branded-ids';
 import {
-  aggregateCycleTailoringStatus,
+  aggregateCyclePrepareStatus,
   calculateCompletionPercent,
   MinistryParticipation,
 } from '@/domain/entities/ministry-participation';
@@ -15,7 +15,7 @@ const ministryId = '33333333-3333-4333-8333-333333333331' as MinistryId;
 const eventId = '99999999-9999-4999-8999-999999999999' as EventId;
 
 interface BuildParticipationInput {
-  state?: 'tailoring' | 'availability_fired' | 'rostering' | 'published';
+  state?: 'preparing' | 'availability_requested' | 'assigning' | 'published';
 }
 
 function buildParticipation({
@@ -32,23 +32,23 @@ function buildParticipation({
 }
 
 describe('MinistryParticipation lifecycle (DL1-MP)', () => {
-  it('DL1-MP-01 defaults to tailoring state', () => {
+  it('DL1-MP-01 defaults to prepare state', () => {
     const participation = buildParticipation();
 
-    expect(participation.state).toBe('tailoring');
+    expect(participation.state).toBe('preparing');
     expect(participation.churchId).toBe(churchId);
     expect(participation.ministryId).toBe(ministryId);
     expect(participation.eventId).toBe(eventId);
   });
 
-  it('DL1-MP-02 transitions in order tailoring→availability_fired→rostering→published', () => {
+  it('DL1-MP-02 transitions in order prepare→availability_requested→assign→published', () => {
     const participation = buildParticipation();
 
-    participation.fireAvailability();
-    expect(participation.state).toBe('availability_fired');
+    participation.askAvailability();
+    expect(participation.state).toBe('availability_requested');
 
-    participation.startRostering();
-    expect(participation.state).toBe('rostering');
+    participation.startAssigning();
+    expect(participation.state).toBe('assigning');
 
     participation.publish({ completionPercent: 100 });
     expect(participation.state).toBe('published');
@@ -60,7 +60,7 @@ describe('MinistryParticipation lifecycle (DL1-MP)', () => {
     expect(() => participation.publish({ completionPercent: 100 })).toThrow(
       IllegalStateTransitionError,
     );
-    expect(() => participation.startRostering()).toThrow(
+    expect(() => participation.startAssigning()).toThrow(
       IllegalStateTransitionError,
     );
   });
@@ -68,7 +68,7 @@ describe('MinistryParticipation lifecycle (DL1-MP)', () => {
   it('DL1-MP-04 rejects re-firing from published', () => {
     const participation = buildParticipation({ state: 'published' });
 
-    expect(() => participation.fireAvailability()).toThrow(
+    expect(() => participation.askAvailability()).toThrow(
       IllegalStateTransitionError,
     );
   });
@@ -92,26 +92,26 @@ describe('MinistryParticipation lifecycle (DL1-MP)', () => {
   });
 
   it('DL1-MP-06 publish below 100% requires the explicit confirm flag', () => {
-    const blocked = buildParticipation({ state: 'rostering' });
+    const blocked = buildParticipation({ state: 'assigning' });
 
     expect(() => blocked.publish({ completionPercent: 80 })).toThrow(
       BelowFullPublishError,
     );
-    expect(blocked.state).toBe('rostering');
+    expect(blocked.state).toBe('assigning');
 
-    const confirmed = buildParticipation({ state: 'rostering' });
+    const confirmed = buildParticipation({ state: 'assigning' });
     confirmed.publish({ completionPercent: 80, confirmBelowFull: true });
     expect(confirmed.state).toBe('published');
   });
 
   it('DL1-MP-07 publish mutates only its own state', () => {
-    const publishing = buildParticipation({ state: 'rostering' });
-    const sibling = buildParticipation({ state: 'tailoring' });
+    const publishing = buildParticipation({ state: 'assigning' });
+    const sibling = buildParticipation({ state: 'preparing' });
 
     publishing.publish({ completionPercent: 100 });
 
     expect(publishing.state).toBe('published');
-    expect(sibling.state).toBe('tailoring');
+    expect(sibling.state).toBe('preparing');
   });
 
   it('DL1-MP-08 touch() sets touchedAt on first call and is a no-op afterward', () => {
@@ -127,96 +127,96 @@ describe('MinistryParticipation lifecycle (DL1-MP)', () => {
   });
 });
 
-describe('aggregateCycleTailoringStatus (R16)', () => {
+describe('aggregateCyclePrepareStatus (R16)', () => {
   it('reads "not started" when eventCount is 0, never vacuously "published"', () => {
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 0,
         touchedCount: 0,
         publishedCount: 0,
-        firedOrLaterCount: 0,
+        requestedOrLaterCount: 0,
       }),
     ).toEqual({
       status: 'not_started',
-      availabilityFiredForAll: false,
-      availabilityFiredForAny: false,
+      availabilityRequestedForAll: false,
+      availabilityRequestedForAny: false,
     });
   });
 
   it('reads "not started" when no participation has been touched', () => {
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 3,
         touchedCount: 0,
         publishedCount: 0,
-        firedOrLaterCount: 0,
+        requestedOrLaterCount: 0,
       }),
     ).toEqual({
       status: 'not_started',
-      availabilityFiredForAll: false,
-      availabilityFiredForAny: false,
+      availabilityRequestedForAll: false,
+      availabilityRequestedForAny: false,
     });
   });
 
   it('reads "in progress" when some but not all participations are touched/published', () => {
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 3,
         touchedCount: 1,
         publishedCount: 0,
-        firedOrLaterCount: 1,
+        requestedOrLaterCount: 1,
       }).status,
     ).toBe('in_progress');
 
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 3,
         touchedCount: 3,
         publishedCount: 2,
-        firedOrLaterCount: 3,
+        requestedOrLaterCount: 3,
       }).status,
     ).toBe('in_progress');
   });
 
   it('reads "published" only when every participation is published', () => {
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 3,
         touchedCount: 3,
         publishedCount: 3,
-        firedOrLaterCount: 3,
+        requestedOrLaterCount: 3,
       }).status,
     ).toBe('published');
   });
 
-  it('reads "published" even when touchedCount is 0 — a zero-requirement event can reach published via fireAvailability/startRostering/publish without ever calling touch()', () => {
+  it('reads "published" even when touchedCount is 0 — a zero-requirement event can reach published via askAvailability/startAssigning/publish without ever calling touch()', () => {
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 2,
         touchedCount: 0,
         publishedCount: 2,
-        firedOrLaterCount: 2,
+        requestedOrLaterCount: 2,
       }).status,
     ).toBe('published');
   });
 
-  it('availabilityFiredForAll is true only when every participation has moved past tailoring, independent of the published status boundary', () => {
+  it('availabilityRequestedForAll is true only when every participation has moved past prepare, independent of the published status boundary', () => {
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 2,
         touchedCount: 2,
         publishedCount: 0,
-        firedOrLaterCount: 2,
-      }).availabilityFiredForAll,
+        requestedOrLaterCount: 2,
+      }).availabilityRequestedForAll,
     ).toBe(true);
 
     expect(
-      aggregateCycleTailoringStatus({
+      aggregateCyclePrepareStatus({
         eventCount: 2,
         touchedCount: 2,
         publishedCount: 0,
-        firedOrLaterCount: 1,
-      }).availabilityFiredForAll,
+        requestedOrLaterCount: 1,
+      }).availabilityRequestedForAll,
     ).toBe(false);
   });
 });

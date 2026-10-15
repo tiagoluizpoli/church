@@ -92,7 +92,7 @@ export interface ListMinistryCycleSummariesInput {
   tx?: TransactionContext;
 }
 
-/** Iteration 3 (research.md R15/R16): one row per locked `PlanningCycle`
+/** Iteration 3 (research.md R15/R16): one row per sent `Cycle`
  * church-wide, annotated with this ministry's participation data. A cycle
  * the ministry has zero events in still appears, with `isPartOf: false`. */
 export interface MinistryCycleSummaryRow {
@@ -104,8 +104,8 @@ export interface MinistryCycleSummaryRow {
   eventCount: number;
   slotCount: number;
   status: 'not_started' | 'in_progress' | 'published';
-  availabilityFiredForAll: boolean;
-  availabilityFiredForAny: boolean;
+  availabilityRequestedForAll: boolean;
+  availabilityRequestedForAny: boolean;
 }
 
 export interface MinistryParticipationRepository {

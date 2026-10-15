@@ -133,8 +133,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     selectedCycle,
     cycleDetailsLoading,
     cycleEvents,
-    lockCyclePending,
-    handleLockCycle,
+    sendCyclePending,
+    handleSendCycle,
     updateEventPending,
     deleteEventPending,
     handleUpdateEvent,
@@ -187,7 +187,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
   /** Same falling-edge-of-pending close as the delete dialogs above, applied
    * to edit/create — closing synchronously in the submit handler let the
    * dialog report success before the mutation (and its cache invalidation)
-   * had actually settled, so a locked-cycle rejection or a slow request left
+   * had actually settled, so a sent-cycle rejection or a slow request left
    * the table showing stale data with no visible link between the closed
    * dialog and the eventual toast. */
   const prevUpdateEventPendingRef = useRef(updateEventPending);
@@ -415,17 +415,17 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                 <div>
                   <div className="font-medium text-sm">Calendar review</div>
                   <div className="text-muted-foreground text-xs">
-                    Confirm dates, slots, and event types before locking the
+                    Confirm dates, slots, and event types before sending the
                     package.
                   </div>
                 </div>
                 <Button
                   type="button"
-                  data-testid="lock-cycle-button"
-                  disabled={lockCyclePending}
-                  onClick={handleLockCycle}
+                  data-testid="send-cycle-button"
+                  disabled={sendCyclePending}
+                  onClick={handleSendCycle}
                 >
-                  {lockCyclePending ? 'Locking…' : 'Lock cycle'}
+                  {sendCyclePending ? 'Sending…' : 'Send to Ministries'}
                 </Button>
               </div>
             )}

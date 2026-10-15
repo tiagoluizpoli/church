@@ -107,7 +107,7 @@ export function QuickCreateEventModal({
       onOpenChange(false);
       resetForm();
       await queryClient.invalidateQueries({
-        queryKey: ['planning-cycle-details', cycleId],
+        queryKey: ['cycle-details', cycleId],
       });
       toast.success('Event added to cycle');
     } catch (err) {

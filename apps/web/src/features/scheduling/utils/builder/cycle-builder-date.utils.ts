@@ -195,7 +195,7 @@ interface IsDateWithinRangeInput {
   rangeEnd: string;
 }
 
-/** Mirrors `isDateWithinRange` in tailoring's `cycle-list.utils.ts` — either
+/** Mirrors `isDateWithinRange` in prepare's `cycle-list.utils.ts` — either
  * bound may be empty to leave that side open-ended. CalendarDay strings sort
  * lexicographically in calendar order, so plain comparison is exact. */
 export function isDateWithinRange({
@@ -216,7 +216,7 @@ interface EventMatchesDateSpanInput {
   timeZone: string;
 }
 
-/** Same `starts`/`ends`/`within` mode as the tailoring cycle-list filter,
+/** Same `starts`/`ends`/`within` mode as the prepare cycle-list filter,
  * applied to an event's own span rather than a raw calendar date — a date
  * column has no separate start/end, so the mode only has an effect where
  * it's applied (event span), not on the enumerated all-cycle-dates list. */

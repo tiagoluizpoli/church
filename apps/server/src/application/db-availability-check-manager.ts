@@ -1,8 +1,8 @@
-import type { PlanningCycleId } from '../domain/branded-ids';
+import type { CycleId } from '../domain/branded-ids';
 import type {
+  AskAvailabilityInput,
+  AskAvailabilityResult,
   CheckStatusRow,
-  FireAvailabilityInput,
-  FireAvailabilityResult,
   IAvailabilityCheckManager,
   ListCheckStatusesInput,
   ListCycleCheckStatusesInput,
@@ -20,9 +20,9 @@ import type { MinistryParticipation } from '../domain/entities/ministry-particip
 import { IllegalStateTransitionError } from '../domain/errors';
 
 interface NotifyMembershipsInput {
-  churchId: FireAvailabilityInput['churchId'];
+  churchId: AskAvailabilityInput['churchId'];
   participation: MinistryParticipation;
-  planningCycleId: PlanningCycleId;
+  cycleId: CycleId;
   memberships: ActiveMinistryMembership[];
 }
 
@@ -55,24 +55,24 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     this.unitOfWork = unitOfWork;
   }
 
-  async fireAvailability(
-    input: FireAvailabilityInput,
-  ): Promise<FireAvailabilityResult> {
-    const fired = await this.unitOfWork.run(async (tx) => {
+  async askAvailability(
+    input: AskAvailabilityInput,
+  ): Promise<AskAvailabilityResult> {
+    const requested = await this.unitOfWork.run(async (tx) => {
       const participation = await this.participationRepository.getById({
         churchId: input.churchId,
         participationId: input.participationId,
         tx,
       });
-      // Entity transition guards the state machine (tailoring → availability_fired).
-      participation.fireAvailability();
+      // Entity transition guards the state machine (prepare → availability_requested).
+      participation.askAvailability();
 
       const event = await this.eventRepository.getEvent({
         churchId: input.churchId,
         eventId: participation.eventId,
         tx,
       });
-      const planningCycleId = event.planningCycleId;
+      const cycleId = event.cycleId;
 
       const memberships =
         await this.availabilityCheckRepository.listActiveMemberships({
@@ -83,7 +83,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       const existingChecks = await this.availabilityCheckRepository.listByCycle(
         {
           churchId: input.churchId,
-          planningCycleId,
+          cycleId,
           ministryVolunteerIds: memberships.map(
             (membership) => membership.ministryVolunteerId,
           ),
@@ -101,7 +101,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       const createdChecks = await this.availabilityCheckRepository.createMany({
         churchId: input.churchId,
         checks: missingMemberships.map((membership) => ({
-          planningCycleId,
+          cycleId,
           ministryVolunteerId: membership.ministryVolunteerId,
         })),
         tx,
@@ -116,7 +116,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
 
       return {
         participation,
-        planningCycleId,
+        cycleId,
         createdCheckCount: createdChecks.length,
         newMemberships: missingMemberships,
       };
@@ -124,14 +124,14 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
 
     await this.notifyMemberships({
       churchId: input.churchId,
-      participation: fired.participation,
-      planningCycleId: fired.planningCycleId,
-      memberships: fired.newMemberships,
+      participation: requested.participation,
+      cycleId: requested.cycleId,
+      memberships: requested.newMemberships,
     });
 
     return {
-      createdCheckCount: fired.createdCheckCount,
-      notifiedVolunteerCount: fired.newMemberships.length,
+      createdCheckCount: requested.createdCheckCount,
+      notifiedVolunteerCount: requested.newMemberships.length,
     };
   }
 
@@ -148,7 +148,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     });
     return this.listCycleCheckStatuses({
       churchId: input.churchId,
-      cycleId: event.planningCycleId,
+      cycleId: event.cycleId,
       ministryId: participation.ministryId,
     });
   }
@@ -163,7 +163,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       });
     const checks = await this.availabilityCheckRepository.listByCycle({
       churchId: input.churchId,
-      planningCycleId: input.cycleId,
+      cycleId: input.cycleId,
       ministryVolunteerIds: memberships.map(
         (membership) => membership.ministryVolunteerId,
       ),
@@ -189,7 +189,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       participationId: input.participationId,
     });
 
-    if (participation.state === 'tailoring') {
+    if (participation.state === 'preparing') {
       throw new IllegalStateTransitionError(participation.state, 'resend');
     }
 
@@ -204,7 +204,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       });
     const checks = await this.availabilityCheckRepository.listByCycle({
       churchId: input.churchId,
-      planningCycleId: event.planningCycleId,
+      cycleId: event.cycleId,
       ministryVolunteerIds: memberships.map(
         (membership) => membership.ministryVolunteerId,
       ),
@@ -221,7 +221,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     await this.notifyMemberships({
       churchId: input.churchId,
       participation,
-      planningCycleId: event.planningCycleId,
+      cycleId: event.cycleId,
       memberships: pendingMemberships,
     });
   }
@@ -229,20 +229,20 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
   private async notifyMemberships({
     churchId,
     participation,
-    planningCycleId,
+    cycleId,
     memberships,
   }: NotifyMembershipsInput): Promise<void> {
     for (const membership of memberships) {
       await this.notificationService.notifyVolunteer({
         churchId: churchId as string,
         volunteerId: membership.volunteerId as string,
-        planningCycleId,
+        cycleId,
         ministryId: participation.ministryId,
         type: 'availability_reminder',
         title: 'Availability check',
         body: 'Your ministry leader asked for your availability for an upcoming planning period.',
         payload: {
-          planningCycleId: planningCycleId as string,
+          cycleId: cycleId as string,
           ministryId: participation.ministryId as string,
         },
       });

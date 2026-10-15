@@ -2,7 +2,7 @@ import { pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { church } from './church';
 import { ministryVolunteer } from './core';
 import { availabilityCheckStateEnum } from './enums';
-import { planningCycle } from './planning';
+import { cycle } from './planning';
 
 export const availabilityCheck = pgTable(
   'availability_check',
@@ -11,9 +11,9 @@ export const availabilityCheck = pgTable(
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    planningCycleId: uuid('planning_cycle_id')
+    cycleId: uuid('cycle_id')
       .notNull()
-      .references(() => planningCycle.id, { onDelete: 'cascade' }),
+      .references(() => cycle.id, { onDelete: 'cascade' }),
     ministryVolunteerId: uuid('ministry_volunteer_id')
       .notNull()
       .references(() => ministryVolunteer.id, { onDelete: 'cascade' }),
@@ -28,7 +28,7 @@ export const availabilityCheck = pgTable(
   },
   (table) => [
     uniqueIndex('availability_check_cycle_membership_idx').on(
-      table.planningCycleId,
+      table.cycleId,
       table.ministryVolunteerId,
     ),
   ],

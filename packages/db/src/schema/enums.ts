@@ -28,16 +28,12 @@ export const eventStatusEnum = pgEnum('event_status', [
   'past',
 ]);
 
-export const planningCycleStateEnum = pgEnum('planning_cycle_state', [
-  'draft',
-  'locked',
-  'archived',
-]);
+export const cycleStateEnum = pgEnum('cycle_state', ['draft', 'sent', 'past']);
 
 export const participationStateEnum = pgEnum('participation_state', [
-  'tailoring',
-  'availability_fired',
-  'rostering',
+  'preparing',
+  'availability_requested',
+  'assigning',
   'published',
 ]);
 

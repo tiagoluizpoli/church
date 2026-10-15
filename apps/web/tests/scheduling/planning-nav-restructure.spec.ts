@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
 import { planningMonth } from './planning-month.helpers';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadPlanningAdminJourney } from '@/tests/fixtures/journeys/planning-admin';
-import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
-test('planning-cycles, new, and $cycleId are distinct addressable URLs with working back/forward (FR-015, FR-016, SC-007)', async ({
+test('cycles, new, and $cycleId are distinct addressable URLs with working back/forward (FR-015, FR-016, SC-007)', async ({
   page,
 }, testInfo) => {
   const journey = loadPlanningAdminJourney({ testInfo });
@@ -12,12 +12,12 @@ test('planning-cycles, new, and $cycleId are distinct addressable URLs with work
   const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
   const cycleName = `Nav restructure check ${startDate}`;
 
-  await page.goto('/scheduling/planning-cycles');
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
+  await page.goto('/cycles');
+  await expect(page).toHaveURL(/\/cycles\/?$/);
   await expect(page.getByText('Existing cycles')).toBeVisible();
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  await expect(page).toHaveURL('/scheduling/planning-cycles/new');
+  await expect(page).toHaveURL('/cycles/new');
   const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
   await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
   await fillDatePickerField({
@@ -33,15 +33,13 @@ test('planning-cycles, new, and $cycleId are distinct addressable URLs with work
   await createCycleDialog.getByTestId('create-cycle-button').click();
 
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
-  await expect(page).toHaveURL(
-    /\/scheduling\/planning-cycles\/(?!new$)(?!templates$)[^/]+$/,
-  );
+  await expect(page).toHaveURL(/\/cycles\/(?!new$)[^/]+$/);
   const cycleReviewUrl = page.url();
 
   // Opening the template library from a selected cycle changes the URL too
   // (previously `activeView` component state only).
   await page.getByTestId('open-template-library-button').click();
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/templates\?/);
+  await expect(page).toHaveURL(/\/event-templates\?/);
   await expect(page.getByText('Saved templates')).toBeVisible();
 
   // Back/forward retrace: templates -> cycle review -> new -> index.
@@ -50,13 +48,13 @@ test('planning-cycles, new, and $cycleId are distinct addressable URLs with work
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
   await page.goBack();
-  await expect(page).toHaveURL('/scheduling/planning-cycles/new');
+  await expect(page).toHaveURL('/cycles/new');
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
+  await expect(page).toHaveURL(/\/cycles\/?$/);
 
   await page.goForward();
-  await expect(page).toHaveURL('/scheduling/planning-cycles/new');
+  await expect(page).toHaveURL('/cycles/new');
 
   await page.goForward();
   await expect(page).toHaveURL(cycleReviewUrl);

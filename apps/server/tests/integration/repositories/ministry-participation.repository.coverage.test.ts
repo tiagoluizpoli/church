@@ -69,7 +69,7 @@ describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation } = await seedCycleAndEvent({
       seed,
-      state: 'locked',
+      state: 'sent',
     });
     const repo = new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
@@ -98,7 +98,7 @@ interface SeedCycleAndEventInput {
   seed: Awaited<ReturnType<typeof seedSchedulingPhase3Base>>;
   ministryId?: string;
   churchId?: string;
-  state?: 'draft' | 'locked' | 'archived';
+  state?: 'draft' | 'sent' | 'past';
 }
 
 async function seedCycleAndEvent({
@@ -113,7 +113,7 @@ async function seedCycleAndEvent({
     name: `Cycle-${Math.random().toString(36).slice(2, 8)}`,
     startDate: new Date('2026-08-01T00:00:00.000Z'),
     endDate: new Date('2026-09-01T00:00:00.000Z'),
-    state: state ?? 'locked',
+    state: state ?? 'sent',
   });
   const graph = await createSchedulingPhase3EventGraph({
     churchId: targetChurchId,
@@ -133,7 +133,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     await resetSchedulingPhase3Db();
   });
 
-  it('returns isPartOf: false with 0 counts, not_started status, and availabilityFiredForAll: false for a locked cycle the ministry has zero events in — never vacuously true', async () => {
+  it('returns isPartOf: false with 0 counts, not_started status, and availabilityRequestedForAll: false for a sent cycle the ministry has zero events in — never vacuously true', async () => {
     const seed = await seedSchedulingPhase3Base();
     // Locked cycle with no events for ministryA at all.
     await createSchedulingPhase3Cycle({
@@ -141,7 +141,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       name: 'Untouched Cycle',
       startDate: new Date('2026-10-01T00:00:00.000Z'),
       endDate: new Date('2026-11-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const repo = new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
@@ -159,7 +159,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       eventCount: 0,
       slotCount: 0,
       status: 'not_started',
-      availabilityFiredForAll: false,
+      availabilityRequestedForAll: false,
     });
   });
 
@@ -201,7 +201,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       isPartOf: true,
       eventCount: 1,
       status: 'not_started',
-      availabilityFiredForAll: false,
+      availabilityRequestedForAll: false,
     });
   });
 
@@ -212,7 +212,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       name: 'Mixed Cycle',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graphA = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -247,7 +247,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     expect(row).toMatchObject({
       eventCount: 2,
       status: 'in_progress',
-      availabilityFiredForAll: false,
+      availabilityRequestedForAll: false,
     });
   });
 
@@ -258,7 +258,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       name: 'Multi-Slot Cycle',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graphA = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -311,14 +311,14 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     expect(rowAfter).toMatchObject({ eventCount: 2, slotCount: 2 });
   });
 
-  it('reads published only when every participation in the cycle is published, and availabilityFiredForAll independently of that boundary', async () => {
+  it('reads published only when every participation in the cycle is published, and availabilityRequestedForAll independently of that boundary', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
       name: 'Finished Cycle',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const { participation } = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -345,24 +345,24 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     expect(row).toMatchObject({
       eventCount: 1,
       status: 'published',
-      availabilityFiredForAll: true,
+      availabilityRequestedForAll: true,
     });
   });
 
-  it('availabilityFiredForAny is true once any participation has fired even while availabilityFiredForAll stays false, and false for a zero-event cycle (R6 vacuous-truth guard)', async () => {
+  it('availabilityRequestedForAny is true once any participation has been requested even while availabilityRequestedForAll stays false, and false for a zero-event cycle (R6 vacuous-truth guard)', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
-      name: 'Partially Fired Cycle',
+      name: 'Partially Requested Cycle',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
-    const firedGraph = await createSchedulingPhase3EventGraph({
+    const requestedGraph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
-      title: 'Fired Event',
+      title: 'Requested Event',
       start: new Date('2026-08-02T12:00:00.000Z'),
       end: new Date('2026-08-02T15:00:00.000Z'),
     });
@@ -374,11 +374,11 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       start: new Date('2026-08-03T12:00:00.000Z'),
       end: new Date('2026-08-03T15:00:00.000Z'),
     });
-    // Fire exactly one of the two participations.
+    // Request exactly one of the two participations.
     await schedulingTestDb
       .update(ministryParticipation)
-      .set({ touchedAt: new Date(), state: 'availability_fired' })
-      .where(eq(ministryParticipation.id, firedGraph.participation.id));
+      .set({ touchedAt: new Date(), state: 'availability_requested' })
+      .where(eq(ministryParticipation.id, requestedGraph.participation.id));
     const repo = new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
     });
@@ -390,8 +390,8 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     const row = rows.find((r) => r.cycleId === cycle.id);
     expect(row).toMatchObject({
       eventCount: 2,
-      availabilityFiredForAll: false,
-      availabilityFiredForAny: true,
+      availabilityRequestedForAll: false,
+      availabilityRequestedForAny: true,
     });
 
     // A cycle the ministry has zero events in must never be vacuously true.
@@ -400,7 +400,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       name: 'Empty Cycle',
       startDate: new Date('2026-10-01T00:00:00.000Z'),
       endDate: new Date('2026-11-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const rowsAfter = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -409,13 +409,13 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     const emptyRow = rowsAfter.find((r) => r.name === 'Empty Cycle');
     expect(emptyRow).toMatchObject({
       eventCount: 0,
-      availabilityFiredForAny: false,
+      availabilityRequestedForAny: false,
     });
   });
 
   it('church isolation: a query for church B never sees church A cycles/participations (Spec R2 §4)', async () => {
     const seed = await seedSchedulingPhase3Base();
-    await seedCycleAndEvent({ seed, state: 'locked' });
+    await seedCycleAndEvent({ seed, state: 'sent' });
     const repo = new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
     });

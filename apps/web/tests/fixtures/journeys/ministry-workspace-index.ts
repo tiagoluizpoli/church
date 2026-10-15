@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import {
-  type LoadRosteringJourneyInput,
-  ROSTERING_JOURNEY_BASE_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-  rosteringMinistrySchema,
-} from './rostering-church';
+  ASSIGN_JOURNEY_BASE_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+  assignMinistrySchema,
+  type LoadAssignJourneyInput,
+} from './assign-church';
 import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 
 // Mirrors the server's `E2E_JOURNEY_RECIPE_NAMES`
@@ -12,14 +12,14 @@ import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 const RECIPE_NAME = 'ministry-workspace-index';
 
 export const MINISTRY_WORKSPACE_INDEX_JOURNEY_SCHEMA =
-  ROSTERING_JOURNEY_BASE_SCHEMA.extend({
+  ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     ministries: z.object({
-      worship: rosteringMinistrySchema({ roles: [], teams: [] }),
-      care: rosteringMinistrySchema({ roles: [], teams: [] }),
+      worship: assignMinistrySchema({ roles: [], teams: [] }),
+      care: assignMinistrySchema({ roles: [], teams: [] }),
     }),
     personas: z.object({
-      admin: ROSTERING_PERSONA_SCHEMA,
-      ministryLeader: ROSTERING_PERSONA_SCHEMA,
+      admin: ASSIGN_PERSONA_SCHEMA,
+      ministryLeader: ASSIGN_PERSONA_SCHEMA,
     }),
   });
 
@@ -30,7 +30,7 @@ export type MinistryWorkspaceIndexJourney = z.infer<
 /** Loads this test's own Church; the Ministry leader leads only Worship. */
 export function loadMinistryWorkspaceIndexJourney({
   testInfo,
-}: LoadRosteringJourneyInput): MinistryWorkspaceIndexJourney {
+}: LoadAssignJourneyInput): MinistryWorkspaceIndexJourney {
   return loadJourneyRecipe({
     recipeName: RECIPE_NAME,
     schema: MINISTRY_WORKSPACE_INDEX_JOURNEY_SCHEMA,

@@ -1,5 +1,5 @@
 import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
-import { newPersonaRequest, type RosteringPersona } from './rostering-church';
+import { type AssignPersona, newPersonaRequest } from './assign-church';
 import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 
@@ -63,11 +63,11 @@ export async function mintMinistryInvitation({
 }
 
 /** What the `/login` form takes. */
-export type SignInCredentials = Pick<RosteringPersona, 'email' | 'password'>;
+export type SignInCredentials = Pick<AssignPersona, 'email' | 'password'>;
 
 export interface MintMinistryInvitationAsInput {
   /** The Church admin who mints; signed in on its own API context. */
-  persona: RosteringPersona;
+  persona: AssignPersona;
   ministryId: string;
   email: string;
   roleIds: string[];

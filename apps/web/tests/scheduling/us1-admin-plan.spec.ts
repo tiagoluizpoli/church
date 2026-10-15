@@ -3,13 +3,13 @@ import { fillDatePickerField } from './date-picker.helpers';
 import { planningMonth } from './planning-month.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
 import {
+  newPersonaContext,
+  signInPersonaPage,
+} from '@/tests/fixtures/journeys/assign-church';
+import {
   loadPlanningAdminJourney,
   type PlanningAdminJourney,
 } from '@/tests/fixtures/journeys/planning-admin';
-import {
-  newPersonaContext,
-  signInPersonaPage,
-} from '@/tests/fixtures/journeys/rostering-church';
 
 interface PlanningMonth {
   cycleName: string;
@@ -164,7 +164,7 @@ function createPlanningMonth({
 
 test.use({ viewport: { width: 767, height: 1200 } });
 
-test('church admin can plan, review, and lock a cycle while volunteers stay hidden from it', async ({
+test('church admin can plan, review, and send a cycle while volunteers stay hidden from it', async ({
   browser,
   page,
 }, testInfo) => {
@@ -175,7 +175,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   const wednesdayTemplateName = `Wednesday Service ${month.cycleName}`;
   const sundayGatheringName = `Sunday Gathering ${month.cycleName}`;
 
-  await page.goto('/scheduling/planning-cycles');
+  await page.goto('/cycles');
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
@@ -348,7 +348,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   );
 
   // FR-012: the one canonical create-event UI, reused here for a
-  // planning-cycle manual event (same form as the ministry "New Event" modal).
+  // cycle manual event (same form as the ministry "New Event" modal).
   await page.getByRole('button', { name: 'Add event' }).click();
   const createEventDialog = page.getByRole('dialog');
   await createEventDialog.getByLabel('Title').fill('Three-day retreat');
@@ -378,8 +378,8 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   // desktop breakpoint per `specs/019-planning-cycles-table-view`), so this
   // spec — now run at a narrow viewport to keep exercising the card/list
   // presentation — navigates directly instead.
-  await page.goto('/scheduling/planning-cycles');
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
+  await page.goto('/cycles');
+  await expect(page).toHaveURL(/\/cycles\/?$/);
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const overlapDialog = page.getByRole('dialog', { name: 'Create cycle' });
   await overlapDialog
@@ -398,25 +398,25 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await overlapDialog.getByTestId('create-cycle-button').click();
 
   await expect(overlapDialog.getByTestId('cycle-create-error')).toContainText(
-    'Planning cycle overlaps an existing cycle',
+    'Cycle overlaps an existing cycle',
   );
   await overlapDialog.getByRole('button', { name: 'Close' }).click();
 
   // Closing the failed overlap attempt returns to the cycles list (the
-  // dialog's own URL is /new); re-select the original cycle to lock it.
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
+  // dialog's own URL is /new); re-select the original cycle to send it.
+  await expect(page).toHaveURL(/\/cycles\/?$/);
   await page
-    .getByTestId('planning-cycle-option')
+    .getByTestId('cycle-option')
     .filter({ hasText: month.cycleName })
     .click();
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(
     month.cycleName,
   );
 
-  await page.getByTestId('lock-cycle-button').click();
-  await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
+  await page.getByTestId('send-cycle-button').click();
+  await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
 
-  // Step-sequence gating: locked-review is read-only — no editable
+  // Step-sequence gating: sent-review is read-only — no editable
   // template/apply controls, while the template library stays reachable.
   await expect(
     page.getByTestId('open-apply-templates-dialog-button'),
@@ -425,15 +425,15 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await expect(page.getByTestId('open-template-library-button')).toBeVisible();
 
   // A second session of the ChurchAdmin, who leads Worship: it sees the
-  // locked cycle too.
+  // sent cycle too.
   const leaderContext = await newPersonaContext({
     browser,
     persona: journey.personas.admin,
   });
   const leaderPage = await leaderContext.newPage();
-  await leaderPage.goto('/scheduling/planning-cycles');
+  await leaderPage.goto('/cycles');
   await leaderPage
-    .getByTestId('planning-cycle-option')
+    .getByTestId('cycle-option')
     .filter({ hasText: month.cycleName })
     .click();
   await expect(leaderPage.getByTestId('selected-cycle-name')).toHaveText(
@@ -446,11 +446,11 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     persona: journey.personas.volunteer,
   });
   const volunteerPage = await volunteerContext.newPage();
-  await volunteerPage.goto('/scheduling/planning-cycles');
+  await volunteerPage.goto('/cycles');
   // Phase 8: a route-level `beforeLoad` guard now redirects non-ChurchAdmin
   // callers away before the page ever renders (FR-015), superseding the old
   // in-component "planning-access-denied" card for this route.
-  await expect(volunteerPage).not.toHaveURL(/\/scheduling\/planning-cycles/);
+  await expect(volunteerPage).not.toHaveURL(/\/cycles/);
   await expect(volunteerPage.getByTestId('planning-admin-page')).toHaveCount(0);
   await volunteerContext.close();
 });

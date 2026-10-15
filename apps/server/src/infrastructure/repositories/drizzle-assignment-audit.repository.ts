@@ -89,7 +89,7 @@ export class DrizzleAssignmentAuditRepository
       .where(
         and(
           withChurchIsolation(assignmentAudit, input.churchId),
-          eq(event.planningCycleId, input.cycleId),
+          eq(event.cycleId, input.cycleId),
           eq(ministryParticipation.ministryId, input.ministryId),
         ),
       )

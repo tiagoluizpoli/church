@@ -8,9 +8,9 @@ import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
 import { buildEventTemplate } from '@/seeds/builders/planning';
 import {
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
   buildTimeSlot,
 } from '@/seeds/builders/scheduling';
 import {
@@ -41,7 +41,7 @@ export interface CreatePhase3CycleInput {
   name: string;
   startDate: Date;
   endDate: Date;
-  state?: 'draft' | 'locked' | 'archived';
+  state?: 'draft' | 'sent' | 'past';
 }
 
 export interface CreatePhase3EventGraphInput {
@@ -153,7 +153,7 @@ export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> 
 export async function createSchedulingPhase3Cycle(
   input: CreatePhase3CycleInput,
 ) {
-  return await buildPlanningCycle({
+  return await buildCycle({
     db: schedulingTestDb,
     churchId: input.churchId,
     name: input.name,
@@ -184,7 +184,7 @@ export async function createSchedulingPhase3EventGraph(
   const planningEvent = await buildEvent({
     db: schedulingTestDb,
     churchId: input.churchId,
-    planningCycleId: input.cycleId,
+    cycleId: input.cycleId,
     sourceTemplateId: input.sourceTemplateId,
     title: input.title,
     start,
@@ -197,7 +197,7 @@ export async function createSchedulingPhase3EventGraph(
     churchId: input.churchId,
     ministryId: input.ministryId,
     eventId: planningEvent.id,
-    state: 'tailoring',
+    state: 'preparing',
     timeSlotIds: [],
   });
 

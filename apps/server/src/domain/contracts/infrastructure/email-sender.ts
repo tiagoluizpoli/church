@@ -47,7 +47,7 @@ export interface RedemptionAcceptedEmail {
  * One digest per affected Ministry, addressed to every active leader —
  * `to` is a list because a Ministry may have more than one. Never names the
  * destination Church (spec §8.8): disclosing where the Volunteer went is not
- * required to re-roster, and the move is one the former Church cannot veto.
+ * required to re-schedule, and the move is one the former Church cannot veto.
  * `withdrawnAssignments` reuses the repository layer's own shape (issue #60's
  * `getDigestDetails` return) rather than redeclaring it here.
  */

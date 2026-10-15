@@ -6,7 +6,7 @@ import {
   weekdayIndex,
 } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { planningCycleWindow } from '@/seeds/e2e/recipes/scheduling-cycle-window';
+import { cycleWindow } from '@/seeds/e2e/recipes/scheduling-cycle-window';
 
 const SUNDAY = 0;
 const WINDOW_SPAN_DAYS = 29;
@@ -24,7 +24,7 @@ interface DayInput {
 }
 
 function sundaysIn({ day }: DayInput): CalendarDay[] {
-  const { startDate } = planningCycleWindow({ anchor: day });
+  const { startDate } = cycleWindow({ anchor: day });
   return Array.from({ length: WINDOW_SPAN_DAYS }, (_, offset) =>
     addCalendarDays({ day: startDate, days: offset }),
   ).filter((candidate) => weekdayIndex({ day: candidate }) === SUNDAY);
@@ -41,7 +41,7 @@ function daysBetween({ from, to }: DaysBetweenInput): number {
   return days;
 }
 
-describe('planningCycleWindow', () => {
+describe('cycleWindow', () => {
   it.each(
     WEEK_ANCHORS.map((day) => ({ day })),
   )('puts the first Sunday beyond the cancel lead time for anchor $day', ({

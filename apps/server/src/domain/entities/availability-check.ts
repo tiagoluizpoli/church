@@ -1,10 +1,6 @@
 import { Entity, type LooseProps } from '@church/core';
 import { type Instant, now, toDate } from '@church/time';
-import type {
-  AvailabilityCheckId,
-  ChurchId,
-  PlanningCycleId,
-} from '../branded-ids';
+import type { AvailabilityCheckId, ChurchId, CycleId } from '../branded-ids';
 import { IllegalStateTransitionError } from '../errors/illegal-state-transition';
 
 export const AVAILABILITY_CHECK_STATE_OPTIONS = [
@@ -16,7 +12,7 @@ export type AvailabilityCheckState =
 
 export interface AvailabilityCheckProps {
   churchId: ChurchId;
-  planningCycleId: PlanningCycleId;
+  cycleId: CycleId;
   /** Ministry membership (ministry_volunteer row) this check targets. */
   ministryVolunteerId: string;
   state: AvailabilityCheckState;
@@ -51,8 +47,8 @@ export class AvailabilityCheck extends Entity<
     return this._props.churchId;
   }
 
-  get planningCycleId(): PlanningCycleId {
-    return this._props.planningCycleId;
+  get cycleId(): CycleId {
+    return this._props.cycleId;
   }
 
   get ministryVolunteerId(): string {

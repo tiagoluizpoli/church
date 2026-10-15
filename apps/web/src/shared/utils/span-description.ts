@@ -7,7 +7,7 @@ export interface IsInvalidInstantRangeInput {
 
 /** True when `end` is not strictly after `start` — the shared "end must be
  * after start" guard behind every Instant start/end pair in the
- * planning-admin and tailoring dialogs. */
+ * planning-admin and prepare dialogs. */
 export function isInvalidInstantRange({
   start,
   end,

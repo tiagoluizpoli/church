@@ -7,7 +7,7 @@ import { joinMinistry } from './types';
 /**
  * The 25 people who deliberately serve in a second Ministry, so two Ministries
  * can try to schedule the same person at the same gathering. Each is declared
- * in their first Ministry's roster; this adds only the extra seat.
+ * in their first Ministry's schedule; this adds only the extra seat.
  */
 export const CROSS_MINISTRY = [
   joinMinistry({

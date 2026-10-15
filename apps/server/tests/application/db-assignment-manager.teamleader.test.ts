@@ -4,9 +4,9 @@ import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import type {
   AssignmentId,
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   TeamId,
@@ -20,7 +20,7 @@ import { Event } from '@/domain/entities/event';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
 import { Shift } from '@/domain/entities/shift';
 import { SlotRequirement } from '@/domain/entities/slot-requirement';
-import { RosterActionNotAvailableError } from '@/domain/errors/roster-action-not-available';
+import { AssignActionNotAvailableError } from '@/domain/errors/assign-action-not-available';
 
 const churchId = 'church-1' as ChurchId;
 const ministryId = 'ministry-1' as MinistryId;
@@ -82,7 +82,7 @@ function createManager(): DbAssignmentManager {
   });
 }
 
-function participation(state: 'rostering' | 'published') {
+function participation(state: 'assigning' | 'published') {
   return new MinistryParticipation({
     id: participationId,
     props: {
@@ -98,7 +98,7 @@ function event(status: 'scheduled' | 'past') {
   return new Event(
     {
       churchId,
-      planningCycleId: 'cycle-1' as PlanningCycleId,
+      cycleId: 'cycle-1' as CycleId,
       title: 'Sunday Service',
       start,
       end,
@@ -151,7 +151,7 @@ beforeEach(() => {
   shiftRepository.listRequirementsByParticipation.mockResolvedValue([
     requirement,
   ]);
-  participationRepository.getById.mockResolvedValue(participation('rostering'));
+  participationRepository.getById.mockResolvedValue(participation('assigning'));
   volunteerRepository.hasMembershipInMinistry.mockResolvedValue(true);
   volunteerRepository.hasRoleQualification.mockResolvedValue(true);
   volunteerRepository.listMinistryMemberships.mockResolvedValue([
@@ -174,8 +174,8 @@ afterEach(() => {
   resetClock();
 });
 
-describe('DbAssignmentManager TeamLeader roster mutations', () => {
-  it('creates an Assignment only after the transactional Team roster policy passes', async () => {
+describe('DbAssignmentManager TeamLeader schedule mutations', () => {
+  it('creates an Assignment only after the transactional Team schedule policy passes', async () => {
     const result = await createManager().createParticipationAssignment({
       churchId,
       shiftId,
@@ -205,11 +205,11 @@ describe('DbAssignmentManager TeamLeader roster mutations', () => {
         teamLeaderScopeId: teamId,
         actorId,
       }),
-    ).rejects.toBeInstanceOf(RosterActionNotAvailableError);
+    ).rejects.toBeInstanceOf(AssignActionNotAvailableError);
     expect(assignmentRepository.create).not.toHaveBeenCalled();
   });
 
-  it('removes an Assignment only after the transactional Team roster policy passes', async () => {
+  it('removes an Assignment only after the transactional Team schedule policy passes', async () => {
     await createManager().deleteAssignment({
       churchId,
       assignmentId,
@@ -230,7 +230,7 @@ describe('DbAssignmentManager TeamLeader roster mutations', () => {
         actorId,
         teamLeaderScopeId: teamId,
       }),
-    ).rejects.toBeInstanceOf(RosterActionNotAvailableError);
+    ).rejects.toBeInstanceOf(AssignActionNotAvailableError);
     expect(assignmentRepository.deleteById).not.toHaveBeenCalled();
   });
 });

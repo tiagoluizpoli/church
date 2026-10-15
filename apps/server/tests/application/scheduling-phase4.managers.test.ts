@@ -12,9 +12,9 @@ import { DbAvailabilityCheckManager } from '@/application/db-availability-check-
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   TimeBlockId,
@@ -129,7 +129,7 @@ interface SeedCycleGraphInput {
   seed: SchedulingPhase3Seed;
   ministryId?: string;
   churchId?: string;
-  state?: 'draft' | 'locked' | 'archived';
+  state?: 'draft' | 'sent' | 'past';
 }
 
 async function seedCycleWithEvent({
@@ -144,7 +144,7 @@ async function seedCycleWithEvent({
     name: `Cycle-${Math.random().toString(36).slice(2, 8)}`,
     startDate: new Date('2026-08-01T00:00:00.000Z'),
     endDate: new Date('2026-09-01T00:00:00.000Z'),
-    state: state ?? 'locked',
+    state: state ?? 'sent',
   });
   const graph = await createSchedulingPhase3EventGraph({
     churchId: targetChurchId,
@@ -176,19 +176,19 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
     const view = await participationManager.getCycleParticipation({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
     });
 
     expect(view.events).toHaveLength(1);
-    expect(view.events[0]?.participation.state).toBe('tailoring');
+    expect(view.events[0]?.participation.state).toBe('preparing');
     expect(view.events[0]?.slots).toHaveLength(1);
     expect(view.events[0]?.slots[0]?.included).toBe(false);
 
     // second call reuses the lazily created participation
     const again = await participationManager.getCycleParticipation({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
     });
     expect(again.events[0]?.participation.id).toBe(
@@ -392,7 +392,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       churchId: seed.churchAId,
       ministryId: ministryC.id,
       eventId: event.id,
-      state: 'tailoring',
+      state: 'preparing',
       timeSlotIds: [],
     });
 
@@ -422,14 +422,14 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     expect(shiftsC).toHaveLength(3);
   });
 
-  it('DL2-PT-08 shift mutations are blocked once availability is fired', async () => {
+  it('DL2-PT-08 shift mutations are blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, slot } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
     await schedulingTestDb.execute(
-      `UPDATE ministry_participation SET state = 'availability_fired' WHERE id = '${participation.id}'`,
+      `UPDATE ministry_participation SET state = 'availability_requested' WHERE id = '${participation.id}'`,
     );
 
     await expect(
@@ -527,7 +527,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycl
       name: 'Untouched Cycle',
       startDate: new Date('2026-10-01T00:00:00.000Z'),
       endDate: new Date('2026-11-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const { participationManager } = createPhase4Managers();
 
@@ -543,7 +543,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycl
       eventCount: 0,
       slotCount: 0,
       status: 'not_started',
-      availabilityFiredForAll: false,
+      availabilityRequestedForAll: false,
     });
   });
 });
@@ -553,7 +553,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('DL2-AF-01/02/03 fire creates one check per active membership and notifies each once', async () => {
+  it('DL2-AF-01/02/03 asking for availability creates one check per active membership and notifies each once', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { availabilityManager, notificationSpy } = createPhase4Managers();
@@ -587,7 +587,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
       status: 'inactive',
     });
 
-    const result = await availabilityManager.fireAvailability({
+    const result = await availabilityManager.askAvailability({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(participation.id),
     });
@@ -600,7 +600,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     );
     for (const event of notified) {
       expect(event.type).toBe('availability_reminder');
-      expect(event.planningCycleId).toBe(cycle.id);
+      expect(event.cycleId).toBe(cycle.id);
     }
     expect(
       notified.some(
@@ -609,7 +609,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     ).toBe(false);
   });
 
-  it('DL2-AF-04/05 fire flips state transactionally and never duplicates checks across events of the same cycle', async () => {
+  it('DL2-AF-04/05 asking for availability flips state transactionally and never duplicates checks across events of the same cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph1 = await seedCycleWithEvent({ seed });
     const graph2 = await createSchedulingPhase3EventGraph({
@@ -624,7 +624,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     const { availabilityManager, notificationSpy } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
-    const first = await availabilityManager.fireAvailability({
+    const first = await availabilityManager.askAvailability({
       churchId,
       participationId: MinistryParticipationId.from(graph1.participation.id),
     });
@@ -637,11 +637,11 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
       churchId,
       participationId: MinistryParticipationId.from(graph1.participation.id),
     });
-    expect(updated.state).toBe('availability_fired');
+    expect(updated.state).toBe('availability_requested');
 
     // firing again on the SAME participation is an illegal transition
     await expect(
-      availabilityManager.fireAvailability({
+      availabilityManager.askAvailability({
         churchId,
         participationId: MinistryParticipationId.from(graph1.participation.id),
       }),
@@ -649,7 +649,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
 
     // firing a second event's participation in the same cycle creates no duplicate checks
     notificationSpy.notifyVolunteer.mockClear();
-    const second = await availabilityManager.fireAvailability({
+    const second = await availabilityManager.askAvailability({
       churchId,
       participationId: MinistryParticipationId.from(graph2.participation.id),
     });
@@ -668,7 +668,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
       availabilityManager.resendReminder({ churchId, participationId }),
     ).rejects.toThrow(IllegalStateTransitionError);
 
-    await availabilityManager.fireAvailability({ churchId, participationId });
+    await availabilityManager.askAvailability({ churchId, participationId });
     notificationSpy.notifyVolunteer.mockClear();
 
     await availabilityManager.resendReminder({ churchId, participationId });
@@ -680,7 +680,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     expect(checks).toHaveLength(1);
   });
 
-  it('DL2-AF-07 checks and fire scope are church-isolated', async () => {
+  it('DL2-AF-07 checks and request scope are church-isolated', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graphB = await seedCycleWithEvent({
       seed,
@@ -690,14 +690,14 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     const { availabilityManager } = createPhase4Managers();
 
     await expect(
-      availabilityManager.fireAvailability({
+      availabilityManager.askAvailability({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(graphB.participation.id),
       }),
     ).rejects.toThrow();
   });
 
-  it('DL2-AF-08 fired notifications persist with the planning cycle scope', async () => {
+  it('DL2-AF-08 requested notifications persist with the cycle scope', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const notificationRepository = new DrizzleVolunteerNotificationRepository({
@@ -709,7 +709,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
       }),
     );
 
-    await availabilityManager.fireAvailability({
+    await availabilityManager.askAvailability({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(participation.id),
     });
@@ -725,7 +725,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
       );
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.planningCycleId).toBe(cycle.id);
+    expect(rows[0]?.cycleId).toBe(cycle.id);
   });
 });
 
@@ -748,7 +748,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     await resetSchedulingPhase3Db();
   });
 
-  it('updateShift adjusts bounds/label within tailoring, and is blocked once availability is fired', async () => {
+  it('updateShift adjusts bounds/label within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, slot } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
@@ -779,7 +779,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     expect(boundsOnlyUpdate.label).toBe('Relabeled shift');
 
     await schedulingTestDb.execute(
-      `UPDATE ministry_participation SET state = 'availability_fired' WHERE id = '${participation.id}'`,
+      `UPDATE ministry_participation SET state = 'availability_requested' WHERE id = '${participation.id}'`,
     );
 
     await expect(
@@ -791,7 +791,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('deleteShift removes a shift within tailoring, and is blocked once availability is fired', async () => {
+  it('deleteShift removes a shift within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, slot } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
@@ -820,7 +820,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     expect(remaining[0]?.id).toBe(second.id);
 
     await schedulingTestDb.execute(
-      `UPDATE ministry_participation SET state = 'availability_fired' WHERE id = '${participation.id}'`,
+      `UPDATE ministry_participation SET state = 'availability_requested' WHERE id = '${participation.id}'`,
     );
 
     await expect(
@@ -921,7 +921,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       name: 'Eligible-conflict cycle',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const targetGraph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -996,14 +996,14 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     expect(entry?.hasConflict).toBe(true);
   });
 
-  it('publishCycle() leaves a participation that is still tailoring unpublished', async () => {
+  it('publishCycle() leaves a participation that is still prepare unpublished', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
 
     const result = await participationManager.publishCycle({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     });
@@ -1018,7 +1018,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
           participation.id,
         ),
       );
-    expect(row[0]?.state).toBe('tailoring');
+    expect(row[0]?.state).toBe('preparing');
   });
 
   it('publishCycle() succeeds with zero required headcount and sends no notifications', async () => {
@@ -1028,12 +1028,12 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     const churchId = ChurchId.from(seed.churchAId);
 
     await schedulingTestDb.execute(
-      `UPDATE ministry_participation SET state = 'rostering' WHERE id = '${participation.id}'`,
+      `UPDATE ministry_participation SET state = 'assigning' WHERE id = '${participation.id}'`,
     );
 
     await participationManager.publishCycle({
       churchId,
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     });
@@ -1057,7 +1057,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
     await resetSchedulingPhase3Db();
   });
 
-  it('listCheckStatuses/listCycleCheckStatuses report per-membership state, distinguishing fired-and-pending, confirmed, and never-fired', async () => {
+  it('listCheckStatuses/listCycleCheckStatuses report per-membership state, distinguishing requested-and-pending, confirmed, and never-requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { availabilityManager } = createPhase4Managers();
@@ -1065,7 +1065,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
     const participationId = MinistryParticipationId.from(participation.id);
 
     // Base seed already made the admin volunteer a leader-membership of ministryA.
-    // Add one more active member who never gets fired (proves the "no check yet" branch).
+    // Add one more active member who never gets requested (proves the "no check yet" branch).
     await buildVolunteerWithMembership({
       db: schedulingTestDb,
       churchId: seed.churchAId,
@@ -1078,13 +1078,13 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
 
     const beforeFire = await availabilityManager.listCycleCheckStatuses({
       churchId,
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
     });
     expect(beforeFire).toHaveLength(2);
     expect(beforeFire.every((row) => row.state === undefined)).toBe(true);
 
-    await availabilityManager.fireAvailability({ churchId, participationId });
+    await availabilityManager.askAvailability({ churchId, participationId });
 
     const viaParticipation = await availabilityManager.listCheckStatuses({
       churchId,
@@ -1116,7 +1116,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
         ),
       );
     if (!checkRow)
-      throw new Error('expected a fired check for the admin volunteer');
+      throw new Error('expected a requested check for the admin volunteer');
     await schedulingTestDb
       .update((await import('@church/db')).availabilityCheck)
       .set({ state: 'confirmed', confirmedAt: new Date() })
@@ -1129,7 +1129,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
 
     const afterConfirm = await availabilityManager.listCycleCheckStatuses({
       churchId,
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
     });
     const confirmedRow = afterConfirm.find(

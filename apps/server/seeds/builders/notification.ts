@@ -21,8 +21,8 @@ export interface BuildVolunteerNotificationInput {
   ministryId?: string;
   eventId?: string;
   assignmentId?: string;
-  /** The PlanningCycle the notification is packaged under. */
-  planningCycleId?: string;
+  /** The Cycle the notification is packaged under. */
+  cycleId?: string;
   /** When the Volunteer opened it; absent leaves it unread. */
   readAt?: Instant;
 }
@@ -41,7 +41,7 @@ export async function buildVolunteerNotification({
   ministryId,
   eventId,
   assignmentId,
-  planningCycleId,
+  cycleId,
   readAt,
 }: BuildVolunteerNotificationInput): Promise<SeededVolunteerNotification> {
   return requireInsertedRow({
@@ -59,7 +59,7 @@ export async function buildVolunteerNotification({
         ministryId,
         eventId,
         assignmentId,
-        planningCycleId,
+        cycleId,
         readAt: readAt === undefined ? undefined : toDate({ instant: readAt }),
       })
       .returning(),

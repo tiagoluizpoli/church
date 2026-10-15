@@ -16,7 +16,7 @@ const boardData: CycleBuilderData = {
   events: [
     {
       participationId: 'participation-1',
-      state: 'rostering',
+      state: 'assigning',
       eventId: 'event-1',
       title: 'Sunday Gathering',
       start: '2026-08-02T09:00:00.000Z',

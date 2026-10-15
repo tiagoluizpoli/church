@@ -27,7 +27,7 @@ const janeiroData: CycleBuilderData = {
   events: [
     {
       participationId: 'participation-1',
-      state: 'rostering',
+      state: 'assigning',
       eventId: 'event-1',
       title: 'teste',
       // Mon Jan 4 2027, 00:00 → 23:59 in São Paulo.
@@ -91,7 +91,7 @@ const janeiroData: CycleBuilderData = {
     },
     {
       participationId: 'participation-2',
-      state: 'rostering',
+      state: 'assigning',
       eventId: 'event-2',
       title: 'segunda da benção',
       // Mon Jan 11 2027, 00:00 → 23:59 in São Paulo.
@@ -201,7 +201,7 @@ describe.each([
       events: [
         {
           participationId: 'participation-late-friday',
-          state: 'rostering',
+          state: 'assigning',
           eventId: 'event-late-friday',
           title: 'vigília noturna',
           start: '2027-01-09T01:00:00.000Z',

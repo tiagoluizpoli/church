@@ -1,10 +1,10 @@
 import {
   assignment,
+  cycle,
   member,
   ministryInvitation,
   ministryInvitationRole,
   ministryVolunteer,
-  planningCycle,
   session,
   timeSlot,
   volunteer,
@@ -27,7 +27,7 @@ import {
   type ActiveChurchSwitchingJourney,
   createActiveChurchSwitchingRecipe,
 } from '@/seeds/e2e/recipes/active-church-switching';
-import { anchoredInstant } from '@/seeds/e2e/recipes/rostering-church';
+import { anchoredInstant } from '@/seeds/e2e/recipes/assign-church';
 import {
   createVolunteerTransferRecipe,
   type VolunteerTransferJourney,
@@ -125,9 +125,9 @@ describe('active-church-switching E2E journey recipe', () => {
     ).toEqual([journey.churchA.ministries.worship.roles.usher.id]);
     expect(
       await testDb
-        .select({ id: planningCycle.id })
-        .from(planningCycle)
-        .where(eq(planningCycle.churchId, journey.churchB.church.id)),
+        .select({ id: cycle.id })
+        .from(cycle)
+        .where(eq(cycle.churchId, journey.churchB.church.id)),
     ).toEqual([]);
   });
 
@@ -139,20 +139,20 @@ describe('active-church-switching E2E journey recipe', () => {
 
     const cycles = await testDb
       .select({
-        id: planningCycle.id,
-        name: planningCycle.name,
-        state: planningCycle.state,
-        startDate: planningCycle.startDate,
-        endDate: planningCycle.endDate,
+        id: cycle.id,
+        name: cycle.name,
+        state: cycle.state,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
       })
-      .from(planningCycle)
-      .where(eq(planningCycle.churchId, journey.churchA.church.id))
-      .orderBy(planningCycle.startDate);
+      .from(cycle)
+      .where(eq(cycle.churchId, journey.churchA.church.id))
+      .orderBy(cycle.startDate);
     expect(cycles.map(({ id, name }) => ({ id, name }))).toEqual([
       journey.cycles.first,
       journey.cycles.second,
     ]);
-    expect(cycles.map(({ state }) => state)).toEqual(['locked', 'locked']);
+    expect(cycles.map(({ state }) => state)).toEqual(['sent', 'sent']);
     const [first, second] = cycles;
     const anchorDate = new Date(`${anchor}T00:00:00Z`);
     expect(first?.startDate.getTime()).toBeGreaterThan(anchorDate.getTime());

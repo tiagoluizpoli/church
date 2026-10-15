@@ -24,8 +24,8 @@ describe('AvailabilityCheckDetail (T157)', () => {
       <AvailabilityCheckDetail
         check={{
           id: 'check-1',
-          planningCycleId: 'cycle-1',
-          planningCycleName: 'Q1 Cycle',
+          cycleId: 'cycle-1',
+          cycleName: 'Q1 Cycle',
           ministryId: 'ministry-1',
           ministryName: 'Greeters',
           state: 'pending',
@@ -63,8 +63,8 @@ describe('AvailabilityCheckDetail (T157)', () => {
       <AvailabilityCheckDetail
         check={{
           id: 'check-1',
-          planningCycleId: 'cycle-1',
-          planningCycleName: 'Q1 Cycle',
+          cycleId: 'cycle-1',
+          cycleName: 'Q1 Cycle',
           ministryId: 'ministry-1',
           ministryName: 'Greeters',
           state: 'confirmed',

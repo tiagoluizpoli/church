@@ -30,7 +30,7 @@ describe('useActiveChurchTabSync', () => {
 
   it('surfaces a pending switch and cancels Church-scoped queries when another tab switches', async () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['planning-cycles'], { church: 'church-a' });
+    queryClient.setQueryData(['cycles'], { church: 'church-a' });
     const cancelQueries = vi.spyOn(queryClient, 'cancelQueries');
     const { result } = renderTabSync(queryClient);
 
@@ -53,9 +53,9 @@ describe('useActiveChurchTabSync', () => {
   });
 
   it('clears cache, navigates per route policy, and dismisses the block on continue', async () => {
-    mockHref = '/scheduling/planning-cycles?view=board';
+    mockHref = '/cycles?view=board';
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['planning-cycles'], { church: 'church-a' });
+    queryClient.setQueryData(['cycles'], { church: 'church-a' });
     const { result } = renderTabSync(queryClient);
 
     act(() => {
@@ -71,7 +71,7 @@ describe('useActiveChurchTabSync', () => {
       await result.current.continueSwitch();
     });
 
-    expect(queryClient.getQueryData(['planning-cycles'])).toBeUndefined();
+    expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/dashboard' });
     expect(result.current.pendingSwitch).toBeNull();
   });

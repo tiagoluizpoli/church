@@ -98,8 +98,8 @@ export interface MinistrySchedule {
 
 export interface VolunteerAvailabilityCheckSummary {
   id: string;
-  planningCycleId: string;
-  planningCycleName: string;
+  cycleId: string;
+  cycleName: string;
   ministryId: string;
   ministryName: string;
   state: AvailabilityCheckState;
@@ -120,8 +120,8 @@ export interface VolunteerCheckShift {
 
 export interface VolunteerAvailabilityCheckDetail {
   id: string;
-  planningCycleId: string;
-  planningCycleName: string;
+  cycleId: string;
+  cycleName: string;
   ministryId: string;
   ministryName: string;
   state: AvailabilityCheckState;

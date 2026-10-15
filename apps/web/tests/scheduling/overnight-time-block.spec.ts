@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { fillTimeOfDayField } from './time-field.helpers';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadPlanningAdminJourney } from '@/tests/fixtures/journeys/planning-admin';
-import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 test.use({ viewport: { width: 767, height: 1200 } });
 
@@ -12,7 +12,7 @@ test('church admin can create a template with an overnight time block', async ({
   await signInPersonaPage({ page, persona: journey.personas.admin });
   const templateName = 'Overnight Watch';
 
-  await page.goto('/scheduling/planning-cycles/templates');
+  await page.goto('/event-templates');
 
   await page.getByTestId('open-create-template-dialog-button').click();
   const createTemplateDialog = page.getByRole('dialog', {

@@ -3,6 +3,7 @@ import type {
   CycleBuilderView,
   PublishCycleView,
 } from '../../domain/contracts/application/participation-manager';
+import { assignMapper, eligibleVolunteerResponseSchema } from './assign.dto';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
@@ -11,10 +12,6 @@ import {
   shiftRequirementResponseSchema,
   shiftResponseSchema,
 } from './participation.dto';
-import {
-  eligibleVolunteerResponseSchema,
-  rosteringMapper,
-} from './rostering.dto';
 import { timeSlotMapper, timeSlotResponseSchema } from './time-slot.dto';
 
 // Cycle builder read (R1) — composes existing atomic schemas; no new leaf shapes.
@@ -44,7 +41,7 @@ export type CycleBuilderSlotViewResponse = z.infer<
 >;
 
 export const cycleBuilderEventViewSchema = z.object({
-  participation: participationResponseSchema, // carries state (rostering/published)
+  participation: participationResponseSchema, // carries state (assign/published)
   event: eventResponseSchema,
   slots: z.array(cycleBuilderSlotViewSchema),
 });
@@ -72,7 +69,12 @@ export type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
 
 export const publishCycleParticipationOutcomeSchema = z.object({
   participationId: z.string(),
-  state: z.enum(['tailoring', 'availability_fired', 'rostering', 'published']),
+  state: z.enum([
+    'preparing',
+    'availability_requested',
+    'assigning',
+    'published',
+  ]),
   requiredCount: z.number(),
   assignedCount: z.number(),
 });
@@ -123,7 +125,7 @@ export const cycleBuilderMapper = {
               assignmentMapper.toResponse(assignment),
             ),
             eligibleVolunteers: shiftView.eligibleVolunteers.map((volunteer) =>
-              rosteringMapper.eligibleVolunteerToResponse(volunteer),
+              assignMapper.eligibleVolunteerToResponse(volunteer),
             ),
           })),
         })),

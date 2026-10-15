@@ -7,13 +7,13 @@ describe('WorkspaceIntroPanel', () => {
     const { rerender } = render(
       <WorkspaceIntroPanel
         key="list"
-        title="Planning cycles"
-        description="Review your planning cycle."
+        title="Cycles"
+        description="Review your cycle."
         autoFocusTitle
       />,
     );
 
-    const heading = screen.getByRole('heading', { name: 'Planning cycles' });
+    const heading = screen.getByRole('heading', { name: 'Cycles' });
     expect(heading).toHaveFocus();
 
     rerender(

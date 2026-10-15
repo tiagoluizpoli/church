@@ -1,9 +1,9 @@
 import type { Instant, TimeOfDay } from '@church/time';
 import type {
-  GetPlanningCycle200Cycle,
-  GetPlanningCycle200EventsItem,
+  GetCycle200Cycle,
+  GetCycle200EventsItem,
+  ListCycles200CyclesItem,
   ListEventTemplates200TemplatesItem,
-  ListPlanningCycles200CyclesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 
 export interface CycleFormState {
@@ -25,16 +25,16 @@ export interface TemplateFormState {
   blocks: TemplateBlockDraft[];
 }
 
-export type PlanningCycleSummary = ListPlanningCycles200CyclesItem;
+export type CycleSummary = ListCycles200CyclesItem;
 export type PlanningTemplateSummary = ListEventTemplates200TemplatesItem;
-export type SelectedPlanningCycle = GetPlanningCycle200Cycle;
-export type PlanningCycleEventGroup = GetPlanningCycle200EventsItem;
+export type SelectedCycle = GetCycle200Cycle;
+export type CycleEventGroup = GetCycle200EventsItem;
 
-export interface PlanningCyclesTableRow {
+export interface CyclesTableRow {
   id: string;
   name: string;
   window: string;
-  state: PlanningCycleSummary['state'];
+  state: CycleSummary['state'];
 }
 
 export interface TemplateLibraryTableRow {
@@ -58,7 +58,7 @@ export interface CycleCalendarTableRow {
   title: string;
   start: string;
   end: string;
-  status: PlanningCycleEventGroup['event']['status'];
+  status: CycleEventGroup['event']['status'];
   slots: CycleCalendarSlotRow[];
 }
 

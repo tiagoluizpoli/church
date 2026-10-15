@@ -228,8 +228,8 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
   });
 });
 
-test.describe('Cycles day/slot edit and delete (US3)', () => {
-  test('draft cycle supports day/slot edit and delete with slot cascade; sent cycle shows no controls', async ({
+test.describe('Cycles day/time block edit and delete (US3)', () => {
+  test('draft cycle supports day/time block edit and delete with time block cascade; sent cycle shows no controls', async ({
     page,
   }, testInfo) => {
     const journey = loadPlanningAdminJourney({ testInfo });
@@ -329,19 +329,21 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
     const dayRow = page.locator(`#${dayRowId}`);
     await dayRow.getByRole('button', { name: /^Expand/ }).click();
 
-    // Delete the non-last slot (Message); Worship must remain, and its own
-    // delete control becomes disabled once it's the day's only slot.
-    await table.getByRole('button', { name: 'Delete slot Message' }).click();
-    await page.getByRole('button', { name: 'Delete slot' }).click();
+    // Delete the non-last time block (Message); Worship must remain, and its own
+    // delete control becomes disabled once it's the day's only time block.
+    await table
+      .getByRole('button', { name: 'Delete time block Message' })
+      .click();
+    await page.getByRole('button', { name: 'Delete time block' }).click();
     await expect(
-      table.getByRole('button', { name: 'Delete slot Message' }),
+      table.getByRole('button', { name: 'Delete time block Message' }),
     ).not.toBeAttached();
     await expect(
-      table.getByRole('button', { name: 'Delete slot Worship' }),
+      table.getByRole('button', { name: 'Delete time block Worship' }),
     ).toBeDisabled();
 
     // Edit the day's start date (+1 day); FR-007a's cascade shifts the
-    // remaining slot's underlying time by the same delta in the same
+    // remaining time block's underlying time by the same delta in the same
     // transaction (verified precisely at the integration level in
     // planning-phase3.managers.test.ts) — here we confirm the edit persists
     // and is visible end-to-end via the day row's own date text changing.
@@ -376,10 +378,12 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
 
     await expect.poll(() => dayRow.textContent()).not.toBe(dayRowTextBefore);
 
-    // Edit the slot itself.
-    await table.getByRole('button', { name: 'Edit slot Worship' }).click();
+    // Edit the time block itself.
+    await table
+      .getByRole('button', { name: 'Edit time block Worship' })
+      .click();
     const editEventTimeBlockDialog = page.getByRole('dialog', {
-      name: 'Edit slot',
+      name: 'Edit time block',
     });
     await editEventTimeBlockDialog.getByLabel('Label').fill('Worship (edited)');
     await editEventTimeBlockDialog
@@ -389,8 +393,8 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
     await expect(table.getByText('Worship (edited)')).toBeVisible();
 
     // Delete the whole day. cancelPlanningEvent soft-deletes at the data
-    // layer, but per FR-006 the row and its slots must disappear from the
-    // table and the header's event/slot counts must decrease.
+    // layer, but per FR-006 the row and its time blocks must disappear from the
+    // table and the header's event/time block counts must decrease.
     const eventCountChipBefore = await page
       .getByTestId('cycle-event-count-chip')
       .textContent();
@@ -418,7 +422,7 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
 test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test('draft cycle supports mobile add/edit/delete for day-events and slots; sent cycle shows no controls', async ({
+  test('draft cycle supports mobile add/edit/delete for day-events and time blocks; sent cycle shows no controls', async ({
     page,
   }, testInfo) => {
     const { templateName, monthStart } =
@@ -465,15 +469,17 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       mobileList.getByText(`${newEventTitle} (edited)`),
     ).not.toBeAttached();
 
-    // Expand the templated Sunday card, add a slot, edit it, then confirm
-    // its delete becomes disabled once it is the day's only remaining slot.
+    // Expand the templated Sunday card, add a time block, edit it, then confirm
+    // its delete becomes disabled once it is the day's only remaining time block.
     const templatedCard = mobileList
       .getByTestId('planning-event-card')
       .filter({ hasText: templateName })
       .first();
-    await templatedCard.getByRole('button', { name: /^Add slot to/ }).click();
+    await templatedCard
+      .getByRole('button', { name: /^Add time block to/ })
+      .click();
     const addEventTimeBlockDialog = page.getByRole('dialog', {
-      name: 'Add slot',
+      name: 'Add time block',
     });
     await addEventTimeBlockDialog.getByLabel('Label').fill('Prayer');
     await fillTimeOfDayField({
@@ -489,16 +495,16 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       time: '08:30',
     });
     await addEventTimeBlockDialog
-      .getByRole('button', { name: 'Add slot' })
+      .getByRole('button', { name: 'Add time block' })
       .click();
     await expect(addEventTimeBlockDialog).not.toBeAttached();
     await expect(templatedCard.getByText('Prayer')).toBeVisible();
 
     await templatedCard
-      .getByRole('button', { name: 'Edit slot Prayer' })
+      .getByRole('button', { name: 'Edit time block Prayer' })
       .click();
     const editEventTimeBlockDialog = page.getByRole('dialog', {
-      name: 'Edit slot',
+      name: 'Edit time block',
     });
     await editEventTimeBlockDialog.getByLabel('Label').fill('Prayer (edited)');
     await editEventTimeBlockDialog
@@ -507,19 +513,19 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await expect(editEventTimeBlockDialog).not.toBeAttached();
     await expect(templatedCard.getByText('Prayer (edited)')).toBeVisible();
 
-    // Delete the added slot; the day's original templated slot must remain
-    // and, once it is the only slot left, its own delete becomes disabled.
+    // Delete the added time block; the day's original templated time block must remain
+    // and, once it is the only time block left, its own delete becomes disabled.
     await templatedCard
-      .getByRole('button', { name: 'Delete slot Prayer (edited)' })
+      .getByRole('button', { name: 'Delete time block Prayer (edited)' })
       .click();
-    await page.getByRole('button', { name: 'Delete slot' }).click();
+    await page.getByRole('button', { name: 'Delete time block' }).click();
     await expect(
       templatedCard.getByRole('button', {
-        name: 'Delete slot Prayer (edited)',
+        name: 'Delete time block Prayer (edited)',
       }),
     ).not.toBeAttached();
     await expect(
-      templatedCard.getByRole('button', { name: 'Delete slot Worship' }),
+      templatedCard.getByRole('button', { name: 'Delete time block Worship' }),
     ).toBeDisabled();
 
     // Send the cycle: no mobile add/edit/delete affordance may remain.
@@ -535,10 +541,10 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       mobileList.getByRole('button', { name: /^Delete day/ }),
     ).toHaveCount(0);
     await expect(
-      mobileList.getByRole('button', { name: /^Edit slot/ }),
+      mobileList.getByRole('button', { name: /^Edit time block/ }),
     ).toHaveCount(0);
     await expect(
-      mobileList.getByRole('button', { name: /^Delete slot/ }),
+      mobileList.getByRole('button', { name: /^Delete time block/ }),
     ).toHaveCount(0);
   });
 

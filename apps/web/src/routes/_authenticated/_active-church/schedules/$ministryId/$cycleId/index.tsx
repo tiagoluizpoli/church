@@ -481,9 +481,9 @@ function PrepareWorkspaceRoute() {
         })),
       });
       if (failedCount > 0) {
-        toast.error('Some headcounts could not be saved. Try again.');
+        toast.error('Some people needed could not be saved. Try again.');
       } else {
-        toast.success('Headcounts saved.');
+        toast.success('People needed saved.');
       }
       await refreshParticipation();
     },
@@ -598,8 +598,8 @@ function PrepareWorkspaceRoute() {
         }
         description={
           cycleDateSpan
-            ? `${cycleDateSpan} · Filter to a day, confirm time blocks, split shifts, and set headcounts.`
-            : 'Filter to a day, confirm time blocks, split shifts, and set headcounts.'
+            ? `${cycleDateSpan} · Filter to a day, confirm time blocks, split shifts, and set people needed.`
+            : 'Filter to a day, confirm time blocks, split shifts, and set people needed.'
         }
         autoFocusTitle
         aside={
@@ -804,7 +804,7 @@ function PrepareWorkspaceRoute() {
             <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
             <AlertDialogDescription>
               {hasUnsavedDraftEdits
-                ? 'You have unsaved shift-split or headcount changes. Leaving now will discard them.'
+                ? 'You have unsaved shift-split or people needed changes. Leaving now will discard them.'
                 : "You've touched time blocks or shifts in this session but haven't sent availability requests yet. Leaving now won't notify volunteers of these changes."}
             </AlertDialogDescription>
           </AlertDialogHeader>

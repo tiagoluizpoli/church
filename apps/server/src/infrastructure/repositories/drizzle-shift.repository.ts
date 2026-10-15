@@ -16,8 +16,8 @@ import type {
 } from '../../domain/contracts/infrastructure/shift.repository';
 import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
-import { mapShiftRequirement } from '../mappers/event-time-block.mapper';
 import { mapShift } from '../mappers/shift.mapper';
+import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

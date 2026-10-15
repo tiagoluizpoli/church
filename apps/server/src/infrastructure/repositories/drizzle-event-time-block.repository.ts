@@ -20,10 +20,8 @@ import type {
 } from '../../domain/contracts/infrastructure/event-time-block.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { EventTimeBlock } from '../../domain/entities/event-time-block';
-import {
-  mapEventTimeBlock,
-  mapShiftRequirement,
-} from '../mappers/event-time-block.mapper';
+import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
+import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

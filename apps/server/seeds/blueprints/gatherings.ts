@@ -41,7 +41,7 @@ export interface StaffingNeed<
 
 /**
  * A Ministry's UsualSetup: every TemplateTimeBlock is declared, `null`
- * when the Ministry does not serve it. Each served block is one Shift.
+ * when the Ministry does not serve it. Each served TemplateTimeBlock is one Shift.
  */
 export interface MinistryServingRule<
   TRole extends string = string,

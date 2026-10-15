@@ -6,7 +6,8 @@ import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/d
 
 const CHURCH = '11111111-1111-1111-1111-111111111111' as ChurchId;
 const EVENT = '66666666-6666-6666-6666-666666666661' as EventId;
-const SLOT = '77777777-7777-7777-7777-777777777771' as EventTimeBlockId;
+const EVENT_TIME_BLOCK_ID =
+  '77777777-7777-7777-7777-777777777771' as EventTimeBlockId;
 
 const repo = new DrizzleEventTimeBlockRepository({ db: db });
 
@@ -34,7 +35,7 @@ describe('DrizzleEventTimeBlockRepository.findOverlapping (T091)', () => {
       new Date('2024-06-05T10:00:00Z'),
       new Date('2024-06-05T12:00:00Z'),
     );
-    expect(result.map((s) => s.id)).toContain(SLOT);
+    expect(result.map((s) => s.id)).toContain(EVENT_TIME_BLOCK_ID);
   });
 
   it('treats exactly-adjacent ranges as non-overlapping', async () => {
@@ -53,7 +54,7 @@ describe('DrizzleEventTimeBlockRepository.findOverlapping (T091)', () => {
       EVENT,
       new Date('2024-06-05T09:00:00Z'),
       new Date('2024-06-05T11:00:00Z'),
-      SLOT,
+      EVENT_TIME_BLOCK_ID,
     );
     expect(result).toEqual([]);
   });

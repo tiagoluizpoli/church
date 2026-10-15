@@ -22,10 +22,8 @@ import type {
   EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
 import { mapEvent } from '../mappers/event.mapper';
-import {
-  mapEventTimeBlock,
-  mapShiftRequirement,
-} from '../mappers/event-time-block.mapper';
+import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
+import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

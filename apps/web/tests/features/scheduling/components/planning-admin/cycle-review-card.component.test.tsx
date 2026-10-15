@@ -223,7 +223,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
-    const utcEventTimeBlockTime =
+    const utcTimeRange =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
 
     cleanup();
@@ -235,10 +235,10 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
-    const kiritimatiEventTimeBlockTime =
+    const kiritimatiTimeRange =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
 
-    expect(kiritimatiEventTimeBlockTime).not.toBe(utcEventTimeBlockTime);
+    expect(kiritimatiTimeRange).not.toBe(utcTimeRange);
   });
 });
 

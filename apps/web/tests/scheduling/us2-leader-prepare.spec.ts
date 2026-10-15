@@ -220,7 +220,7 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
 
   // The role catalog can list more roles than the usual setup set a
   // headcount for — the editor requires a value for every listed role
-  // before "Save headcounts" enables, so fill all of them per shift.
+  // before "Save people needed" enables, so fill all of them per shift.
   const firstShiftInputs = shiftRows
     .nth(0)
     .locator('[data-testid^="headcount-input-"]');

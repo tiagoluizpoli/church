@@ -126,7 +126,7 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
       <PrepareEventTimeBlockList {...NO_OP_PROPS} events={[makeEventView()]} />,
     );
 
-    expect(screen.queryByText('Headcount')).not.toBeInTheDocument();
+    expect(screen.queryByText('People needed')).not.toBeInTheDocument();
   });
 
   it('calls onToggleInclusion immediately when Serving is selected (T043)', async () => {
@@ -245,12 +245,12 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
       />,
     );
 
-    expect(screen.queryByText('Headcount')).not.toBeInTheDocument();
+    expect(screen.queryByText('People needed')).not.toBeInTheDocument();
     await user.click(
       screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
     );
 
-    expect(await screen.findByText('Headcount')).toBeInTheDocument();
+    expect(await screen.findByText('People needed')).toBeInTheDocument();
   });
 });
 
@@ -430,7 +430,7 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
     await user.click(
       screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
     );
-    expect(screen.getAllByText('Save headcounts')).toHaveLength(1);
+    expect(screen.getAllByText('Save people needed')).toHaveLength(1);
     await user.click(
       screen.getByTestId('save-headcounts-button-event-time-block-1'),
     );

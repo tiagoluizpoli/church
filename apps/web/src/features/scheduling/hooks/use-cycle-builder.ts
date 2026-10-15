@@ -73,7 +73,7 @@ interface CycleBuilderAssignmentDetails {
   membership?: AssigneeMembership;
 }
 
-interface RequiredCountShift {
+interface PeopleNeededShift {
   requirements: CycleBuilderRequirementSummary[];
 }
 
@@ -85,9 +85,9 @@ interface AssignedCountShift {
   assignments: AssignedCountAssignment[];
 }
 
-interface RequiredCountEventTimeBlock {
+interface PeopleNeededEventTimeBlock {
   included: boolean;
-  shifts: RequiredCountShift[];
+  shifts: PeopleNeededShift[];
 }
 
 interface AssignedCountEventTimeBlock {
@@ -176,8 +176,8 @@ export interface CycleBuilderRoleOption {
 
 const CYCLE_BUILDER_QUERY_KEY = ['cycle-builder'] as const;
 
-function sumRequiredCount(
-  eventTimeBlocks: RequiredCountEventTimeBlock[],
+function sumPeopleNeeded(
+  eventTimeBlocks: PeopleNeededEventTimeBlock[],
 ): number {
   return eventTimeBlocks.reduce((total, eventTimeBlock) => {
     if (!eventTimeBlock.included) return total;
@@ -301,7 +301,7 @@ function mapCycleBuilderData(
       };
     });
 
-    const peopleNeeded = sumRequiredCount(item.eventTimeBlocks);
+    const peopleNeeded = sumPeopleNeeded(item.eventTimeBlocks);
     const assignedCount = sumAssignedCount(item.eventTimeBlocks);
 
     return {

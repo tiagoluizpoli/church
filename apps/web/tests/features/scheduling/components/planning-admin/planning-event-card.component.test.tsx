@@ -19,7 +19,7 @@ function render(
   );
 }
 
-function twoEventTimeBlockRow(): CycleCalendarTableRow {
+function rowWithTwoEventTimeBlocks(): CycleCalendarTableRow {
   return {
     eventId: 'event-1',
     title: 'Sunday Service',
@@ -80,7 +80,7 @@ describe('PlanningEventCard affordances (US1)', () => {
   it('renders add/edit/delete affordances for a day-event and its time blocks when not read-only', () => {
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
@@ -120,7 +120,7 @@ describe('PlanningEventCard affordances (US1)', () => {
   it('renders none of the add/edit/delete affordances when read-only', () => {
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly
         {...baseProps()}
       />,
@@ -147,7 +147,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     const props = baseProps();
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...props}
       />,
@@ -171,7 +171,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     const props = baseProps();
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...props}
       />,
@@ -195,7 +195,7 @@ describe('PlanningEventCard affordances (US1)', () => {
   it('gives the day-delete trigger the same destructive visual weight as its time-block-level sibling', () => {
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
@@ -216,7 +216,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     const props = baseProps();
     const { rerender } = render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...props}
       />,
@@ -236,7 +236,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     rerender(
       <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
-          row={twoEventTimeBlockRow()}
+          row={rowWithTwoEventTimeBlocks()}
           isReadOnly={false}
           {...props}
           deleteEventPending
@@ -252,7 +252,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     rerender(
       <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
-          row={twoEventTimeBlockRow()}
+          row={rowWithTwoEventTimeBlocks()}
           isReadOnly={false}
           {...props}
         />
@@ -266,7 +266,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     const props = baseProps();
     const { rerender } = render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...props}
       />,
@@ -284,7 +284,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     rerender(
       <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
-          row={twoEventTimeBlockRow()}
+          row={rowWithTwoEventTimeBlocks()}
           isReadOnly={false}
           {...props}
           deleteEventTimeBlockPending
@@ -298,7 +298,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     rerender(
       <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
-          row={twoEventTimeBlockRow()}
+          row={rowWithTwoEventTimeBlocks()}
           isReadOnly={false}
           {...props}
         />
@@ -325,7 +325,7 @@ describe('PlanningEventCard timezone-aware formatting (US2)', () => {
   it("renders a day's date date-only and a time block's time as a dated instant range, with no raw ISO or arrow", () => {
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
@@ -344,30 +344,30 @@ describe('PlanningEventCard timezone-aware formatting (US2)', () => {
   it('changes the displayed date/time with the Church Timezone', () => {
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
       { churchTimezone: 'UTC' },
     );
-    const utcEventTimeBlockTime = within(
+    const utcTimeRange = within(
       screen.getByTestId('planning-event-card'),
     ).getAllByText(isTimeRangeText)[0].textContent;
 
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
       { churchTimezone: 'Pacific/Kiritimati' },
     );
     const cards = screen.getAllByTestId('planning-event-card');
-    const kiritimatiEventTimeBlockTime = within(
-      cards[cards.length - 1],
-    ).getAllByText(isTimeRangeText)[0].textContent;
+    const kiritimatiTimeRange = within(cards[cards.length - 1]).getAllByText(
+      isTimeRangeText,
+    )[0].textContent;
 
-    expect(kiritimatiEventTimeBlockTime).not.toBe(utcEventTimeBlockTime);
+    expect(kiritimatiTimeRange).not.toBe(utcTimeRange);
   });
 });
 
@@ -385,7 +385,7 @@ describe('PlanningEventCard exact-string display under a non-UTC ambient TZ (#15
   it('renders the Event day and each Shift/EventTimeBlock range as exact dd/MM/yyyy / HH:mm strings, driven by the Church Timezone param rather than the ambient TZ', () => {
     render(
       <PlanningEventCard
-        row={twoEventTimeBlockRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,

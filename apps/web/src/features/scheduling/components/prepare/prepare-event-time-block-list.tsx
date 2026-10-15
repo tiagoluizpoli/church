@@ -59,7 +59,7 @@ type RoleCatalogStatus = 'loading' | 'error' | 'ready';
 
 const headcountValueSchema = z
   .string()
-  .regex(/^[1-9]\d*$/, 'Enter a whole-number headcount of at least 1.');
+  .regex(/^[1-9]\d*$/, 'Enter a whole number of people needed, at least 1.');
 
 export interface PrepareEventTimeBlockListProps {
   events: GetCycleParticipation200EventsItem[];
@@ -240,11 +240,10 @@ function summarizeEventTimeBlock(
     0,
   );
   if (totalHeadcount === 0) {
-    return `${eventTimeBlockView.shifts.length} ${shiftLabel} · no headcounts set yet`;
+    return `${eventTimeBlockView.shifts.length} ${shiftLabel} · no people needed set yet`;
   }
 
-  const headcountLabel = totalHeadcount === 1 ? 'headcount' : 'headcounts';
-  return `${eventTimeBlockView.shifts.length} ${shiftLabel} · ${totalHeadcount} ${headcountLabel} requested`;
+  return `${eventTimeBlockView.shifts.length} ${shiftLabel} · ${totalHeadcount} people needed`;
 }
 
 /** Flat, day-grouped time block list — fully supersedes `ParticipationEventCard`'s
@@ -759,7 +758,7 @@ function HeadcountPanel({
   return (
     <div className="space-y-3">
       <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-        Headcount
+        People needed
       </div>
       {isSplitDirty ? (
         <p
@@ -774,7 +773,7 @@ function HeadcountPanel({
           className="text-muted-foreground text-xs"
           data-testid={`headcount-unsaved-indicator-${eventTimeBlockView.eventTimeBlock.id}`}
         >
-          Headcount changes not saved.
+          People needed changes not saved.
         </p>
       ) : null}
       {eventTimeBlockView.shifts.length === 0 ? (
@@ -829,7 +828,7 @@ function HeadcountPanel({
                 data-testid={`role-catalog-empty-${shift.id}`}
               >
                 This ministry has no roles configured yet — set up roles before
-                assigning headcounts.
+                setting people needed.
               </p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
@@ -879,14 +878,15 @@ function HeadcountPanel({
               })
             }
           >
-            {isSavingHeadcounts ? 'Saving…' : 'Save headcounts'}
+            {isSavingHeadcounts ? 'Saving…' : 'Save people needed'}
           </Button>
           {hasUnsetHeadcount ? (
             <p
               className="text-muted-foreground text-xs"
               data-testid={`headcount-save-explanation-${eventTimeBlockView.eventTimeBlock.id}`}
             >
-              Enter a whole-number headcount for every role before saving.
+              Enter a whole number of people needed for every role before
+              saving.
             </p>
           ) : null}
         </div>

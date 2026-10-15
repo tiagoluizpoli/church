@@ -349,20 +349,20 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     });
   });
 
-  it('availabilityRequestedForAny is true once any participation has fired even while availabilityRequestedForAll stays false, and false for a zero-event cycle (R6 vacuous-truth guard)', async () => {
+  it('availabilityRequestedForAny is true once any participation has been requested even while availabilityRequestedForAll stays false, and false for a zero-event cycle (R6 vacuous-truth guard)', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
-      name: 'Partially Fired Cycle',
+      name: 'Partially Requested Cycle',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
       state: 'sent',
     });
-    const firedGraph = await createSchedulingPhase3EventGraph({
+    const requestedGraph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
-      title: 'Fired Event',
+      title: 'Requested Event',
       start: new Date('2026-08-02T12:00:00.000Z'),
       end: new Date('2026-08-02T15:00:00.000Z'),
     });
@@ -374,11 +374,11 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       start: new Date('2026-08-03T12:00:00.000Z'),
       end: new Date('2026-08-03T15:00:00.000Z'),
     });
-    // Fire exactly one of the two participations.
+    // Request exactly one of the two participations.
     await schedulingTestDb
       .update(ministryParticipation)
       .set({ touchedAt: new Date(), state: 'availability_requested' })
-      .where(eq(ministryParticipation.id, firedGraph.participation.id));
+      .where(eq(ministryParticipation.id, requestedGraph.participation.id));
     const repo = new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
     });

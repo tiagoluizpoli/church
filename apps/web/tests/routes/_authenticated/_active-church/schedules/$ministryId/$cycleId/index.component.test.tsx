@@ -560,7 +560,7 @@ describe('Prepare workspace route — network failure (US3/T023d)', () => {
 });
 
 describe('Prepare workspace batched save (US4/T029)', () => {
-  it('fires exactly one askAvailability call per touched participation, not per slot/shift', async () => {
+  it('calls askAvailability exactly once call per touched participation, not per slot/shift', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);

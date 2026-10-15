@@ -4,7 +4,7 @@ import type { SeedWriter } from '../recipe';
 import { requireInsertedRow } from './require-inserted-row';
 
 /**
- * Direct-state builders for a fired availability round: the check one
+ * Direct-state builders for a requested availability round: the check one
  * Ministry Membership answers per Cycle, and the unavailability marks
  * hanging off it (a Volunteer is available unless marked).
  */

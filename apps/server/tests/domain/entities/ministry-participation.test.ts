@@ -134,7 +134,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 0,
         touchedCount: 0,
         publishedCount: 0,
-        firedOrLaterCount: 0,
+        requestedOrLaterCount: 0,
       }),
     ).toEqual({
       status: 'not_started',
@@ -149,7 +149,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 3,
         touchedCount: 0,
         publishedCount: 0,
-        firedOrLaterCount: 0,
+        requestedOrLaterCount: 0,
       }),
     ).toEqual({
       status: 'not_started',
@@ -164,7 +164,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 3,
         touchedCount: 1,
         publishedCount: 0,
-        firedOrLaterCount: 1,
+        requestedOrLaterCount: 1,
       }).status,
     ).toBe('in_progress');
 
@@ -173,7 +173,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 3,
         touchedCount: 3,
         publishedCount: 2,
-        firedOrLaterCount: 3,
+        requestedOrLaterCount: 3,
       }).status,
     ).toBe('in_progress');
   });
@@ -184,7 +184,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 3,
         touchedCount: 3,
         publishedCount: 3,
-        firedOrLaterCount: 3,
+        requestedOrLaterCount: 3,
       }).status,
     ).toBe('published');
   });
@@ -195,7 +195,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 2,
         touchedCount: 0,
         publishedCount: 2,
-        firedOrLaterCount: 2,
+        requestedOrLaterCount: 2,
       }).status,
     ).toBe('published');
   });
@@ -206,7 +206,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 2,
         touchedCount: 2,
         publishedCount: 0,
-        firedOrLaterCount: 2,
+        requestedOrLaterCount: 2,
       }).availabilityRequestedForAll,
     ).toBe(true);
 
@@ -215,7 +215,7 @@ describe('aggregateCyclePrepareStatus (R16)', () => {
         eventCount: 2,
         touchedCount: 2,
         publishedCount: 0,
-        firedOrLaterCount: 1,
+        requestedOrLaterCount: 1,
       }).availabilityRequestedForAll,
     ).toBe(false);
   });

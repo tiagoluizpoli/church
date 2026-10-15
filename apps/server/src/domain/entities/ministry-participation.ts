@@ -63,7 +63,7 @@ export interface AggregateCyclePrepareStatusInput {
   eventCount: number;
   touchedCount: number;
   publishedCount: number;
-  firedOrLaterCount: number;
+  requestedOrLaterCount: number;
 }
 
 export interface CyclePrepareStatusResult {
@@ -83,7 +83,7 @@ export function aggregateCyclePrepareStatus({
   eventCount,
   touchedCount,
   publishedCount,
-  firedOrLaterCount,
+  requestedOrLaterCount,
 }: AggregateCyclePrepareStatusInput): CyclePrepareStatusResult {
   if (eventCount === 0) {
     return {
@@ -102,8 +102,8 @@ export function aggregateCyclePrepareStatus({
 
   return {
     status,
-    availabilityRequestedForAll: firedOrLaterCount === eventCount,
-    availabilityRequestedForAny: firedOrLaterCount > 0,
+    availabilityRequestedForAll: requestedOrLaterCount === eventCount,
+    availabilityRequestedForAny: requestedOrLaterCount > 0,
   };
 }
 

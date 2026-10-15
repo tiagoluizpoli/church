@@ -58,7 +58,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
   async askAvailability(
     input: AskAvailabilityInput,
   ): Promise<AskAvailabilityResult> {
-    const fired = await this.unitOfWork.run(async (tx) => {
+    const requested = await this.unitOfWork.run(async (tx) => {
       const participation = await this.participationRepository.getById({
         churchId: input.churchId,
         participationId: input.participationId,
@@ -124,14 +124,14 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
 
     await this.notifyMemberships({
       churchId: input.churchId,
-      participation: fired.participation,
-      cycleId: fired.cycleId,
-      memberships: fired.newMemberships,
+      participation: requested.participation,
+      cycleId: requested.cycleId,
+      memberships: requested.newMemberships,
     });
 
     return {
-      createdCheckCount: fired.createdCheckCount,
-      notifiedVolunteerCount: fired.newMemberships.length,
+      createdCheckCount: requested.createdCheckCount,
+      notifiedVolunteerCount: requested.newMemberships.length,
     };
   }
 

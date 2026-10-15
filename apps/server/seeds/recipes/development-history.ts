@@ -834,7 +834,7 @@ interface AskAvailabilityRoundInput {
 }
 
 /**
- * Availability was fired for every Ministry Membership and every check
+ * Availability was requested for every Ministry Membership and every check
  * answered; only the blueprint's people left unavailability marks.
  */
 async function askAvailabilityRound({

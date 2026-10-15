@@ -176,10 +176,10 @@ async function setUpLiveChanges({
     throw new Error('Expected one generated event for the live-changes cycle.');
   }
 
-  const fireResponse = await page.request.post(
+  const requestResponse = await page.request.post(
     `${SERVER_URL}/api/v1/prepare/participations/${eventView.participation.id}/ask-availability`,
   );
-  expect(fireResponse.ok()).toBeTruthy();
+  expect(requestResponse.ok()).toBeTruthy();
 
   const shifts = eventView.slots[0]?.shifts ?? [];
   const [firstShift, secondShift] = shifts;

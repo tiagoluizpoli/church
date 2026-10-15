@@ -69,10 +69,10 @@ async function askAvailabilityForMinistry({
   expect(participation.events.length).toBeGreaterThanOrEqual(2);
 
   for (const eventView of participation.events) {
-    const fireResponse = await page.request.post(
+    const requestResponse = await page.request.post(
       `${SERVER_URL}/api/v1/prepare/participations/${eventView.participation.id}/ask-availability`,
     );
-    expect(fireResponse.ok()).toBeTruthy();
+    expect(requestResponse.ok()).toBeTruthy();
   }
 }
 
@@ -82,7 +82,7 @@ interface SetUpTwoMinistryOverlapCycleParams {
 }
 
 // Builds one sent cycle, applies a single Sunday template block to
-// both Worship and Care, and fires availability for every generated event in
+// both Worship and Care, and requests availability for every generated event in
 // both ministries. Because both ministries split the shared template block
 // with an equal-1 shift, every Sunday produces a same-date, same-time shift
 // pair across the two ministries — a guaranteed cross-ministry overlap for

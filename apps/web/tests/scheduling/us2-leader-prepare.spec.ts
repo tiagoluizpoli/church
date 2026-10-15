@@ -44,7 +44,7 @@ interface ParticipationResponse {
   events: ParticipationEventResponse[];
 }
 
-test('leader prepares participation, splits shifts, sets headcounts, and fires availability', async ({
+test('leader prepares participation, splits shifts, sets headcounts, and requests availability', async ({
   page,
 }, testInfo) => {
   // The journey owns its Church, Ministry and serving profile: no other

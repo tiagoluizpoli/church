@@ -33,7 +33,7 @@ export interface ListCycleCheckStatusesInput {
   ministryId: MinistryId;
 }
 
-/** Per-membership acknowledgement status; `state` absent means no check fired yet. */
+/** Per-membership acknowledgement status; `state` absent means no check requested yet. */
 export interface CheckStatusRow {
   volunteerId: string;
   volunteerName: string;

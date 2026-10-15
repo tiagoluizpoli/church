@@ -471,7 +471,7 @@ function PrepareWorkspaceRoute() {
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
-  /** One explicit save/publish action per visit: fires `askAvailability`
+  /** One explicit save/publish action per visit: calls `askAvailability`
    * once per touched participation still in `prepare` state, reusing
    * `resendAvailabilityReminder` for participations already past it (FR-017)
    * — remains available and re-invocable after schedule release, and never

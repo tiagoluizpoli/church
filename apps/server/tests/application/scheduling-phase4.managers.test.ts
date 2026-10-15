@@ -422,7 +422,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     expect(shiftsC).toHaveLength(3);
   });
 
-  it('DL2-PT-08 shift mutations are blocked once availability is fired', async () => {
+  it('DL2-PT-08 shift mutations are blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, slot } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
@@ -553,7 +553,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('DL2-AF-01/02/03 fire creates one check per active membership and notifies each once', async () => {
+  it('DL2-AF-01/02/03 asking for availability creates one check per active membership and notifies each once', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { availabilityManager, notificationSpy } = createPhase4Managers();
@@ -609,7 +609,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     ).toBe(false);
   });
 
-  it('DL2-AF-04/05 fire flips state transactionally and never duplicates checks across events of the same cycle', async () => {
+  it('DL2-AF-04/05 asking for availability flips state transactionally and never duplicates checks across events of the same cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph1 = await seedCycleWithEvent({ seed });
     const graph2 = await createSchedulingPhase3EventGraph({
@@ -680,7 +680,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     expect(checks).toHaveLength(1);
   });
 
-  it('DL2-AF-07 checks and fire scope are church-isolated', async () => {
+  it('DL2-AF-07 checks and request scope are church-isolated', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graphB = await seedCycleWithEvent({
       seed,
@@ -697,7 +697,7 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     ).rejects.toThrow();
   });
 
-  it('DL2-AF-08 fired notifications persist with the cycle scope', async () => {
+  it('DL2-AF-08 requested notifications persist with the cycle scope', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const notificationRepository = new DrizzleVolunteerNotificationRepository({
@@ -748,7 +748,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     await resetSchedulingPhase3Db();
   });
 
-  it('updateShift adjusts bounds/label within prepare, and is blocked once availability is fired', async () => {
+  it('updateShift adjusts bounds/label within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, slot } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
@@ -791,7 +791,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('deleteShift removes a shift within prepare, and is blocked once availability is fired', async () => {
+  it('deleteShift removes a shift within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, slot } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
@@ -1057,7 +1057,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
     await resetSchedulingPhase3Db();
   });
 
-  it('listCheckStatuses/listCycleCheckStatuses report per-membership state, distinguishing fired-and-pending, confirmed, and never-fired', async () => {
+  it('listCheckStatuses/listCycleCheckStatuses report per-membership state, distinguishing requested-and-pending, confirmed, and never-requested', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { availabilityManager } = createPhase4Managers();
@@ -1065,7 +1065,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
     const participationId = MinistryParticipationId.from(participation.id);
 
     // Base seed already made the admin volunteer a leader-membership of ministryA.
-    // Add one more active member who never gets fired (proves the "no check yet" branch).
+    // Add one more active member who never gets requested (proves the "no check yet" branch).
     await buildVolunteerWithMembership({
       db: schedulingTestDb,
       churchId: seed.churchAId,
@@ -1116,7 +1116,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
         ),
       );
     if (!checkRow)
-      throw new Error('expected a fired check for the admin volunteer');
+      throw new Error('expected a requested check for the admin volunteer');
     await schedulingTestDb
       .update((await import('@church/db')).availabilityCheck)
       .set({ state: 'confirmed', confirmedAt: new Date() })

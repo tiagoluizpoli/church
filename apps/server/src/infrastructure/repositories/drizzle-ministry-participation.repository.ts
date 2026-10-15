@@ -377,7 +377,7 @@ export class DrizzleMinistryParticipationRepository
 
     // Slot counts computed as a separate query (not an additional join on
     // the query above) specifically to avoid join fanout inflating the
-    // touched/published/fired-or-later counts derived from `participations`.
+    // touched/published/requested-or-later counts derived from `participations`.
     const slotCounts =
       participationIds.length === 0
         ? []
@@ -423,7 +423,7 @@ export class DrizzleMinistryParticipationRepository
       const publishedCount = cycleParticipations.filter(
         (participation) => participation.state === 'published',
       ).length;
-      const firedOrLaterCount = cycleParticipations.filter(
+      const requestedOrLaterCount = cycleParticipations.filter(
         (participation) => participation.state !== 'preparing',
       ).length;
 
@@ -435,7 +435,7 @@ export class DrizzleMinistryParticipationRepository
         eventCount,
         touchedCount,
         publishedCount,
-        firedOrLaterCount,
+        requestedOrLaterCount,
       });
 
       return {

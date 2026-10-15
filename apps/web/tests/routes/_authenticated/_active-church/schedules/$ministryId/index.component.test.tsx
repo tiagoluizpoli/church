@@ -130,7 +130,7 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
     expect(router.state.location.pathname).toBe('/schedules/ministry-1');
   });
 
-  it("renders the picker normally when 2+ isPartOf cycles are open, using each cycle's own name and real Events/Slots/Status columns", async () => {
+  it("renders the picker normally when 2+ isPartOf cycles are open, using each cycle's own name and real Events/Time blocks/Status columns", async () => {
     listScheduleSummaries.mockResolvedValue({
       cycles: [
         makeCycle({
@@ -372,11 +372,11 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
     renderScheduleList();
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
-    const filtersSlot = screen.getByTestId('schedule-list-filters-slot');
+    const filtersRegion = screen.getByTestId('schedule-list-filters');
     const card = table.closest('.surface-panel');
 
     expect(card).not.toBeNull();
-    expect(filtersSlot.closest('.surface-panel')).toBe(card);
+    expect(filtersRegion.closest('.surface-panel')).toBe(card);
   });
 
   it('shows a filtered (not blank-slate) empty state and a working "Clear filters" action when a filter combination matches zero cycles', async () => {
@@ -402,9 +402,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
     // The filter toolbar itself stays visible and usable even when the
     // filtered result is empty (design-critique follow-up) — it lives in
     // the same card as the empty message, not a separate floating block.
-    expect(
-      screen.getByTestId('schedule-list-filters-slot'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('schedule-list-filters')).toBeInTheDocument();
 
     await user.click(screen.getByTestId('prepare-cycle-filters-clear'));
 

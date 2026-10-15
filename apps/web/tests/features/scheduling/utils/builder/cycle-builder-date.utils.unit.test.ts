@@ -86,7 +86,7 @@ function makeEvent(
     peopleNeeded: 1,
     assignedCount: 0,
     eventTimeBlockCount: 1,
-    slots: [makeEventTimeBlock()],
+    eventTimeBlocks: [makeEventTimeBlock()],
     ...overrides,
   };
 }
@@ -109,7 +109,7 @@ describe('deriveEventDates', () => {
         title: 'segunda da benção',
         start: '2027-01-11T03:00:00.000Z',
         end: '2027-01-12T02:59:59.999Z',
-        slots: [
+        eventTimeBlocks: [
           makeEventTimeBlock({
             eventTimeBlockId: 'event-time-block-3',
             startTime: '2027-01-11T12:00:00.000Z',
@@ -133,9 +133,9 @@ describe('deriveEventDates', () => {
     ]);
   });
 
-  it('collapses two slots on one day into a single column', () => {
+  it('collapses two time blocks on one day into a single column', () => {
     const event = makeEvent({
-      slots: [
+      eventTimeBlocks: [
         makeEventTimeBlock({
           eventTimeBlockId: 'manha',
           startTime: '2027-01-04T12:00:00.000Z',
@@ -152,10 +152,10 @@ describe('deriveEventDates', () => {
     ).toEqual(['2027-01-04']);
   });
 
-  it('keeps a column for an event that has no slots yet', () => {
+  it('keeps a column for an event that has no time blocks yet', () => {
     expect(
       deriveEventDates({
-        events: [makeEvent({ slots: [] })],
+        events: [makeEvent({ eventTimeBlocks: [] })],
         timeZone: CHURCH_TIMEZONE,
       }),
     ).toEqual(['2027-01-04']);
@@ -164,7 +164,7 @@ describe('deriveEventDates', () => {
   it('lists each day of a genuinely multi-day event that serves on both', () => {
     const event = makeEvent({
       end: '2027-01-06T02:59:59.999Z',
-      slots: [
+      eventTimeBlocks: [
         makeEventTimeBlock({
           eventTimeBlockId: 'day-1',
           startTime: '2027-01-04T12:00:00.000Z',
@@ -184,7 +184,7 @@ describe('deriveEventDates', () => {
 
 describe('a 22:00 Friday → 01:00 Saturday church-local Event', () => {
   // 22:00 on Friday 2027-01-08 in São Paulo (UTC-3) is 01:00Z Saturday;
-  // 01:00 Saturday church-local is 04:00Z Saturday. FR-*: the slot renders
+  // 01:00 Saturday church-local is 04:00Z Saturday. FR-*: the time block renders
   // only under its start CalendarDay, Friday — never also under Saturday's
   // column, which is what US4 (#151) calls "a Friday Event".
   const lateFridayEventTimeBlock = makeEventTimeBlock({
@@ -203,10 +203,10 @@ describe('a 22:00 Friday → 01:00 Saturday church-local Event', () => {
     eventId: 'late-friday-event',
     start: '2027-01-09T01:00:00.000Z',
     end: '2027-01-09T04:00:00.000Z',
-    slots: [lateFridayEventTimeBlock],
+    eventTimeBlocks: [lateFridayEventTimeBlock],
   });
 
-  it('renders the slot under Friday, not the UTC/next-day column', () => {
+  it('renders the time block under Friday, not the UTC/next-day column', () => {
     expect(
       eventTimeBlocksOnDay({
         event,
@@ -256,14 +256,14 @@ describe('eventOccursOnDay', () => {
     ).toBe(false);
   });
 
-  it('claims every day of a genuinely multi-day event that has a slot there', () => {
-    // "Genuinely multi-day" means slots on both days — an event whose bounds
-    // merely span two days but which only has a slot on the first must not
+  it('claims every day of a genuinely multi-day event that has a time block there', () => {
+    // "Genuinely multi-day" means time blocks on both days — an event whose bounds
+    // merely span two days but which only has a time block on the first must not
     // claim the second (that shape is the phantom-day bug this guards
     // against; see the Friday/Saturday case below).
     const event = makeEvent({
       end: '2027-01-06T02:59:59.999Z',
-      slots: [
+      eventTimeBlocks: [
         makeEventTimeBlock({
           eventTimeBlockId: 'day-1',
           startTime: '2027-01-04T12:00:00.000Z',
@@ -299,7 +299,7 @@ describe('eventOccursOnDay', () => {
       eventId: 'late-friday-event',
       start: '2027-01-09T01:00:00.000Z',
       end: '2027-01-09T04:00:00.000Z',
-      slots: [lateFridayEventTimeBlock],
+      eventTimeBlocks: [lateFridayEventTimeBlock],
     });
 
     expect(
@@ -312,7 +312,7 @@ describe('eventOccursOnDay', () => {
 });
 
 describe('eventTimeBlocksOnDay', () => {
-  it('keeps an evening slot on the day it is served, not the next UTC day', () => {
+  it('keeps an evening time block on the day it is served, not the next UTC day', () => {
     // 21:00 local Monday = 00:00Z Tuesday — the shape that also breaks the
     // prepare page's day grouping.
     const eveningEventTimeBlock = makeEventTimeBlock({
@@ -320,7 +320,7 @@ describe('eventTimeBlocksOnDay', () => {
       startTime: '2027-01-05T00:00:00.000Z',
       endTime: '2027-01-05T02:00:00.000Z',
     });
-    const event = makeEvent({ slots: [eveningEventTimeBlock] });
+    const event = makeEvent({ eventTimeBlocks: [eveningEventTimeBlock] });
 
     expect(
       eventTimeBlocksOnDay({
@@ -338,7 +338,7 @@ describe('eventTimeBlocksOnDay', () => {
     ).toEqual([]);
   });
 
-  it('gives each day of a multi-day event only its own slots', () => {
+  it('gives each day of a multi-day event only its own time blocks', () => {
     const dayOne = makeEventTimeBlock({
       eventTimeBlockId: 'day-1',
       startTime: '2027-01-04T12:00:00.000Z',
@@ -349,10 +349,10 @@ describe('eventTimeBlocksOnDay', () => {
     });
     const event = makeEvent({
       end: '2027-01-06T02:59:59.999Z',
-      slots: [dayOne, dayTwo],
+      eventTimeBlocks: [dayOne, dayTwo],
     });
 
-    // Rendering the whole slot list per column is what made one assignment
+    // Rendering the whole time block list per column is what made one assignment
     // look like it had landed on several days.
     expect(
       eventTimeBlocksOnDay({

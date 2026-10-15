@@ -16,7 +16,7 @@ interface SummarizeCycleStaffingInput {
 
 /**
  * The one number a coordinator building a 40-assignment schedule never had: how
- * much of the cycle is done. Counted over *included* slots only — a slot this
+ * much of the cycle is done. Counted over *included* time blocks only — a time block this
  * ministry is not serving asks for nobody, so counting it would make the
  * denominator lie (B-4).
  */
@@ -27,9 +27,9 @@ export function summarizeCycleStaffing({
   let required = 0;
   let shiftsBelowTarget = 0;
   for (const event of data.events) {
-    for (const slot of event.slots) {
-      if (!slot.included) continue;
-      for (const shift of slot.shifts) {
+    for (const eventTimeBlock of event.eventTimeBlocks) {
+      if (!eventTimeBlock.included) continue;
+      for (const shift of eventTimeBlock.shifts) {
         filled += shift.assignedCount;
         required += shift.peopleNeeded;
         if (shift.assignedCount < shift.peopleNeeded) shiftsBelowTarget += 1;
@@ -46,7 +46,7 @@ export function summarizeCycleStaffing({
 
 export interface CycleCountsSummary {
   eventCount: number;
-  /** Included slots only — the same scope `summarizeCycleStaffing` uses. */
+  /** Included time blocks only — the same scope `summarizeCycleStaffing` uses. */
   eventTimeBlockCount: number;
   shiftCount: number;
   /** Active assignments across included shifts, i.e. `staffing.filled`. */
@@ -63,7 +63,7 @@ interface SummarizeCycleCountsInput {
 /**
  * The plain inventory counters (Planning and Prepare's headers both carry
  * these) that the staffing percentage alone doesn't answer: how many events,
- * slots, and shifts this cycle actually has.
+ * time blocks, and shifts this cycle actually has.
  */
 export function summarizeCycleCounts({
   data,
@@ -72,10 +72,10 @@ export function summarizeCycleCounts({
   let eventTimeBlockCount = 0;
   let shiftCount = 0;
   for (const event of data.events) {
-    for (const slot of event.slots) {
-      if (!slot.included) continue;
+    for (const eventTimeBlock of event.eventTimeBlocks) {
+      if (!eventTimeBlock.included) continue;
       eventTimeBlockCount += 1;
-      shiftCount += slot.shifts.length;
+      shiftCount += eventTimeBlock.shifts.length;
     }
   }
   return {

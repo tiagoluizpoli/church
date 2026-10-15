@@ -12,14 +12,14 @@ const eventFixture = {
 };
 
 describe('AvailabilityForm', () => {
-  it('saves the selected slot answers', async () => {
+  it('saves the selected time block answers', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
 
     renderWithProviders(
       <AvailabilityForm
         event={eventFixture}
-        slots={[
+        eventTimeBlocks={[
           {
             eventTimeBlockId: 'event-time-block-1',
             label: '8:00 AM Service',
@@ -54,7 +54,7 @@ describe('AvailabilityForm', () => {
     expect(secondUnavailableButton).toBeDefined();
 
     if (!firstAvailableButton || !secondUnavailableButton) {
-      throw new Error('Expected both slot response buttons to exist');
+      throw new Error('Expected both time block response buttons to exist');
     }
 
     await user.click(firstAvailableButton);
@@ -82,7 +82,7 @@ describe('AvailabilityForm', () => {
     renderWithProviders(
       <AvailabilityForm
         event={eventFixture}
-        slots={[
+        eventTimeBlocks={[
           {
             eventTimeBlockId: 'event-time-block-1',
             label: '8:00 AM Service',

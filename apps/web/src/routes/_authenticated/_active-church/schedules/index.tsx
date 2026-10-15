@@ -89,7 +89,10 @@ function PrepareMinistryListRoute() {
     const events = participationQueries[index]?.data?.events ?? [];
     eventTimeBlockCountByMinistryAndCycle[
       toScheduleKey({ ministryId, cycleId })
-    ] = events.reduce((total, eventView) => total + eventView.slots.length, 0);
+    ] = events.reduce(
+      (total, eventView) => total + eventView.eventTimeBlocks.length,
+      0,
+    );
   });
 
   const isLoading =
@@ -149,7 +152,7 @@ function PrepareMinistryListRoute() {
                 testId="prepare-ministry-event-total"
               />
               <StatPill
-                label="Slots"
+                label="Time blocks"
                 value={eventTimeBlockTotal}
                 testId="prepare-ministry-event-time-block-total"
               />

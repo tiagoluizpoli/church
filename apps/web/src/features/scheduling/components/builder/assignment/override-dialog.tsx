@@ -24,7 +24,7 @@ interface OverrideDialogProps {
   isPending: boolean;
   onConfirm: () => void;
   /**
-   * The team the conflicted slot belongs to, if any. The badge only reads
+   * The team the conflicted shift belongs to, if any. The badge only reads
    * "Team Leader" when the volunteer leads this specific team (FR-013).
    */
   contextTeamId?: string;

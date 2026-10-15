@@ -272,7 +272,7 @@ export interface ShiftedEndInput {
 /**
  * Preserves a day/event's own duration when only its start moves (FR-007's
  * date edit): shifts the end by the same delta so start < end always holds,
- * mirroring FR-007a's slot-cascade delta but for the event row itself.
+ * mirroring FR-007a's time-block-cascade delta but for the event row itself.
  */
 export function shiftedEnd({
   newStart,
@@ -293,8 +293,10 @@ export function calculateTotalEventTimeBlocks({
   events,
 }: TotalEventTimeBlocksInput): number {
   return (
-    events?.reduce((count, eventGroup) => count + eventGroup.slots.length, 0) ??
-    0
+    events?.reduce(
+      (count, eventGroup) => count + eventGroup.eventTimeBlocks.length,
+      0,
+    ) ?? 0
   );
 }
 
@@ -335,9 +337,9 @@ export interface IsMultiDayEventInput {
 }
 
 /**
- * A slot's start/end only needs its own date field when the parent event
+ * A time block's start/end only needs its own date field when the parent event
  * spans 2+ calendar days (a multi-day day-based event) — for a single-day
- * event the date is already implied, so the slot dialogs show time only.
+ * event the date is already implied, so the time block dialogs show time only.
  */
 export function isMultiDayEvent({
   eventStart,
@@ -395,7 +397,7 @@ export function toTemplateLibraryTableRow({
 export function toCycleCalendarTableRow({
   eventGroup,
 }: CycleCalendarTableRowInput): CycleCalendarTableRow {
-  const isOnlyEventTimeBlockInEvent = eventGroup.slots.length === 1;
+  const isOnlyEventTimeBlockInEvent = eventGroup.eventTimeBlocks.length === 1;
 
   return {
     eventId: eventGroup.event.id,
@@ -403,12 +405,12 @@ export function toCycleCalendarTableRow({
     start: eventGroup.event.start,
     end: eventGroup.event.end,
     status: eventGroup.event.status,
-    slots: eventGroup.slots.map(
-      (slot): CycleCalendarEventTimeBlockRow => ({
-        eventTimeBlockId: slot.id,
-        label: slot.label ?? 'Slot',
-        startTime: slot.startTime,
-        endTime: slot.endTime,
+    eventTimeBlocks: eventGroup.eventTimeBlocks.map(
+      (eventTimeBlock): CycleCalendarEventTimeBlockRow => ({
+        eventTimeBlockId: eventTimeBlock.id,
+        label: eventTimeBlock.label ?? 'Time block',
+        startTime: eventTimeBlock.startTime,
+        endTime: eventTimeBlock.endTime,
         isOnlyEventTimeBlockInEvent,
       }),
     ),

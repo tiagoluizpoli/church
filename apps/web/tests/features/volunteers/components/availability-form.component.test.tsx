@@ -19,7 +19,7 @@ afterAll(() => {
 });
 
 describe('AvailabilityForm (T157)', () => {
-  it('renders a slot window as dd/MM/yyyy HH:mm – HH:mm in the Church Timezone, not the ambient TZ', () => {
+  it('renders a time block window as dd/MM/yyyy HH:mm – HH:mm in the Church Timezone, not the ambient TZ', () => {
     renderWithProviders(
       <AvailabilityForm
         event={{
@@ -28,10 +28,10 @@ describe('AvailabilityForm (T157)', () => {
           start: '2027-01-04T12:00:00.000Z',
           end: '2027-01-04T14:00:00.000Z',
         }}
-        slots={[
+        eventTimeBlocks={[
           {
             eventTimeBlockId: 'event-time-block-1',
-            label: 'Morning slot',
+            label: 'Morning time block',
             startTime: '2027-01-04T12:00:00.000Z',
             endTime: '2027-01-04T14:00:00.000Z',
           },

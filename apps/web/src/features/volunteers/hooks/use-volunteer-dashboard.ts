@@ -7,7 +7,7 @@ import { getInitialExpandedAssignmentGroupId } from '../lib/assignment-grouping'
 import {
   type DashboardAssignmentGroup,
   type DashboardSnapshot,
-  mapAvailabilitySlots,
+  mapAvailabilityEventTimeBlocks,
 } from '../lib/dashboard-mappers';
 import {
   getDashboardSnapshotQueryConfig,
@@ -183,7 +183,7 @@ export function useVolunteerDashboard({
     queryKey: ['my-availability'],
     // Free-span availability was removed with the 017 reshape; the dashboard
     // availability section migrates to availability checks in T067a.
-    queryFn: async () => ({ slots: [] }),
+    queryFn: async () => ({ eventTimeBlocks: [] }),
   });
 
   const ministryScheduleQuery = useQuery({
@@ -283,7 +283,9 @@ export function useVolunteerDashboard({
 
   return {
     assignmentGroups,
-    availabilitySlots: mapAvailabilitySlots(availabilityQuery.data),
+    availabilityEventTimeBlocks: mapAvailabilityEventTimeBlocks(
+      availabilityQuery.data,
+    ),
     availabilityTasks,
     cancelAssignment,
     expandedAssignmentEventId,

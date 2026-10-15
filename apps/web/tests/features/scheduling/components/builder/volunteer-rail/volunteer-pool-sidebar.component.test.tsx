@@ -102,10 +102,10 @@ describe('VolunteerPoolSidebar (T102)', () => {
       />,
     );
 
-    const [firstSelectButton] = screen.getAllByTestId('volunteer-select-slot');
+    const [firstSelectButton] = screen.getAllByTestId('volunteer-select-shift');
     expect(firstSelectButton).toBeDefined();
     if (!firstSelectButton) {
-      throw new Error('Expected a Select slot button in volunteer pool');
+      throw new Error('Expected a Select shift button in volunteer pool');
     }
 
     await user.click(firstSelectButton);
@@ -175,7 +175,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
     const pickButtons = screen.getAllByTestId('volunteer-pick-me');
     expect(pickButtons).toHaveLength(2);
     expect(
-      screen.queryByTestId('volunteer-select-slot'),
+      screen.queryByTestId('volunteer-select-shift'),
     ).not.toBeInTheDocument();
 
     // Alice (id 1) is under "Everyone else" yet still committable.
@@ -183,7 +183,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(onAssignFocusedVolunteer).toHaveBeenCalledWith('1');
   });
 
-  it('keeps Select slot on a card excluded from the assignable set', () => {
+  it('keeps Select shift on a card excluded from the assignable set', () => {
     renderSidebar(
       <VolunteerPoolSidebar
         volunteers={volunteers}
@@ -201,7 +201,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
     );
 
     expect(screen.getAllByTestId('volunteer-pick-me')).toHaveLength(1);
-    expect(screen.getByTestId('volunteer-select-slot')).toBeVisible();
+    expect(screen.getByTestId('volunteer-select-shift')).toBeVisible();
   });
 
   it('offers no Pick me action when focus assignment is not wired', () => {

@@ -60,8 +60,8 @@ export function buildShiftAssignmentIndex({
     const eventDayLabel = dateLabel({
       day: churchDayOf({ value: event.start, timeZone }),
     });
-    for (const slot of event.slots) {
-      for (const candidateShift of slot.shifts) {
+    for (const eventTimeBlock of event.eventTimeBlocks) {
+      for (const candidateShift of eventTimeBlock.shifts) {
         const timeRange = `${timeLabel({ instant: candidateShift.startTime, timeZone })}–${timeLabel({ instant: candidateShift.endTime, timeZone })}`;
         const shiftLabel =
           candidateShift.label != null
@@ -289,8 +289,8 @@ export function buildCellDerivedIndex({
 }: BuildCellDerivedIndexInput): Map<string, CellDerived> {
   const byKey = new Map<string, CellDerived>();
   for (const event of data.events) {
-    for (const slot of event.slots) {
-      for (const shift of slot.shifts) {
+    for (const eventTimeBlock of event.eventTimeBlocks) {
+      for (const shift of eventTimeBlock.shifts) {
         for (const requirement of shift.requirements) {
           byKey.set(
             focusKey({ shiftId: shift.shiftId, roleId: requirement.roleId }),

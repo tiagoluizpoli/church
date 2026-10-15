@@ -110,7 +110,7 @@ function makeEvent(
     peopleNeeded: 1,
     assignedCount: 0,
     eventTimeBlockCount: 1,
-    slots: [makeEventTimeBlock()],
+    eventTimeBlocks: [makeEventTimeBlock()],
     ...overrides,
   };
 }
@@ -119,7 +119,7 @@ function makeData(overrides: Partial<CycleBuilderData> = {}): CycleBuilderData {
   return {
     events: [
       makeEvent({
-        slots: [
+        eventTimeBlocks: [
           makeEventTimeBlock({
             shifts: [
               makeShift({ shiftId: 'shift-1', label: 'Morning' }),
@@ -588,7 +588,7 @@ describe('buildCellDerivedIndex', () => {
     const data = makeData({
       events: [
         makeEvent({
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({
               shifts: [
                 makeShift({
@@ -634,7 +634,7 @@ describe('buildCellDerivedIndex', () => {
     const data = makeData({
       events: [
         makeEvent({
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({ shifts: [makeShift({ requirements: [] })] }),
           ],
         }),

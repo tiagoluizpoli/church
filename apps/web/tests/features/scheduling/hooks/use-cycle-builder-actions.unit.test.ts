@@ -45,7 +45,7 @@ function dataWithAssignments(
         peopleNeeded: 1,
         assignedCount: assignments.length,
         eventTimeBlockCount: 1,
-        slots: [
+        eventTimeBlocks: [
           {
             eventTimeBlockId: 'event-time-block-1',
             label: 'Morning',
@@ -194,7 +194,7 @@ describe('useCycleBuilderActions', () => {
       volunteerId: 'volunteer-b',
     });
     const data = dataWithAssignments([source, target]);
-    const sourceShift = data.events[0]?.slots[0]?.shifts[0];
+    const sourceShift = data.events[0]?.eventTimeBlocks[0]?.shifts[0];
     if (!sourceShift) throw new Error('Test shift missing');
     sourceShift.shiftId = 'source-shift';
     sourceShift.assignments = [source];

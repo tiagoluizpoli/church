@@ -20,7 +20,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const ORIGINAL_TZ = process.env.TZ;
 const CHURCH_TIMEZONE = 'America/Sao_Paulo';
 
-/** Mirrors the real `Janeiro` cycle: two Mondays, the first with two slots. */
+/** Mirrors the real `Janeiro` cycle: two Mondays, the first with two time blocks. */
 const janeiroData: CycleBuilderData = {
   assignments: [],
   roles: [{ id: 'role-1', name: 'Coordinator' }],
@@ -38,7 +38,7 @@ const janeiroData: CycleBuilderData = {
       peopleNeeded: 2,
       assignedCount: 0,
       eventTimeBlockCount: 2,
-      slots: [
+      eventTimeBlocks: [
         {
           eventTimeBlockId: 'event-time-block-manha',
           label: 'manhã',
@@ -102,7 +102,7 @@ const janeiroData: CycleBuilderData = {
       peopleNeeded: 1,
       assignedCount: 0,
       eventTimeBlockCount: 1,
-      slots: [
+      eventTimeBlocks: [
         {
           eventTimeBlockId: 'event-time-block-manha-2',
           label: 'manhã',
@@ -181,11 +181,11 @@ describe.each([
     }
   });
 
-  it('keeps both of the first Monday slots on that one day', async () => {
+  it('keeps both of the first Monday time blocks on that one day', async () => {
     renderBoard();
 
     // manhã and tarde belong to the same event on the same local day: one
-    // column, both slots.
+    // column, both time blocks.
     expect(await screen.findAllByText('manhã')).toHaveLength(2); // Jan 4 + Jan 11
     expect(screen.getAllByText('tarde')).toHaveLength(1);
   });
@@ -211,7 +211,7 @@ describe.each([
           peopleNeeded: 1,
           assignedCount: 0,
           eventTimeBlockCount: 1,
-          slots: [
+          eventTimeBlocks: [
             {
               eventTimeBlockId: 'event-time-block-vigilia',
               label: 'vigília',

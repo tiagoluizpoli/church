@@ -59,7 +59,7 @@ export interface CycleCalendarTableRow {
   start: string;
   end: string;
   status: CycleEventGroup['event']['status'];
-  slots: CycleCalendarEventTimeBlockRow[];
+  eventTimeBlocks: CycleCalendarEventTimeBlockRow[];
 }
 
 export interface ExpandedCalendarRowsState {

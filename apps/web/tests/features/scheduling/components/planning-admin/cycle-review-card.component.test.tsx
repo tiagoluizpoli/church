@@ -64,7 +64,7 @@ function isDateOnlyText(content: string): boolean {
 }
 
 /** `dd/MM/yyyy HH:mm – HH:mm`, or `dd/MM/yyyy HH:mm – dd/MM/yyyy HH:mm` when
- * the slot's range crosses a church-local day boundary. */
+ * the time block's range crosses a church-local day boundary. */
 function isTimeRangeText(content: string): boolean {
   return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}\s?[–-]\s?(\d{2}\/\d{2}\/\d{4}\s)?\d{2}:\d{2}$/.test(
     content,
@@ -93,7 +93,7 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
           end: '2026-08-02T11:00:00Z',
           status: 'scheduled',
         },
-        slots: [
+        eventTimeBlocks: [
           {
             id: 'event-time-block-1',
             label: 'Worship',
@@ -116,7 +116,7 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
           end: '2026-08-05T20:00:00Z',
           status: 'scheduled',
         },
-        slots: [
+        eventTimeBlocks: [
           {
             id: 'event-time-block-3',
             label: null,
@@ -167,7 +167,7 @@ describe('CycleReviewCard header consolidation (US1)', () => {
 });
 
 describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
-  it('renders a day row date-only and an expanded slot row as a dated instant range, with no raw ISO or arrow', async () => {
+  it('renders a day row date-only and an expanded time block row as a dated instant range, with no raw ISO or arrow', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -243,7 +243,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
 });
 
 describe('CycleReviewCard table view (US2)', () => {
-  it('renders each weekday entry as a collapsed row and expands to reveal its slots', async () => {
+  it('renders each weekday entry as a collapsed row and expands to reveal its time blocks', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -275,14 +275,14 @@ describe('CycleReviewCard table view (US2)', () => {
     await user.click(
       within(table).getByRole('button', { name: 'Expand Wednesday Service' }),
     );
-    expect(within(table).getByText('Slot')).toBeInTheDocument();
+    expect(within(table).getByText('Time block')).toBeInTheDocument();
     expect(within(table).getByText('Worship')).toBeInTheDocument();
 
     await user.click(
       within(table).getByRole('button', { name: 'Collapse Sunday Service' }),
     );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).getByText('Slot')).toBeInTheDocument();
+    expect(within(table).getByText('Time block')).toBeInTheDocument();
   });
 
   it('keeps the sent cycle table read-only with no new editing affordance', async () => {
@@ -347,8 +347,8 @@ describe('CycleReviewCard table view (US2)', () => {
   });
 });
 
-describe('CycleReviewCard day/slot edit and delete (US3)', () => {
-  it("draft cycle shows day and slot edit/delete controls, disabling delete for a day's only slot", async () => {
+describe('CycleReviewCard day/time block edit and delete (US3)', () => {
+  it("draft cycle shows day and time block edit/delete controls, disabling delete for a day's only time block", async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -378,17 +378,19 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
     expect(
-      within(table).getByRole('button', { name: 'Delete slot Worship' }),
+      within(table).getByRole('button', { name: 'Delete time block Worship' }),
     ).toBeEnabled();
     expect(
-      within(table).getByRole('button', { name: 'Edit slot Worship' }),
+      within(table).getByRole('button', { name: 'Edit time block Worship' }),
     ).toBeInTheDocument();
 
     await user.click(
       within(table).getByRole('button', { name: 'Expand Wednesday Service' }),
     );
     expect(
-      within(table).getByRole('button', { name: 'Delete slot Slot' }),
+      within(table).getByRole('button', {
+        name: 'Delete time block Time block',
+      }),
     ).toBeDisabled();
   });
 
@@ -423,7 +425,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
-  it('deleting a non-last slot, after confirming, calls the delete-event-time-block handler', async () => {
+  it('deleting a non-last time block, after confirming, calls the delete-event-time-block handler', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -446,10 +448,10 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Delete slot Worship' }),
+      within(table).getByRole('button', { name: 'Delete time block Worship' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'Delete slot' }),
+      await screen.findByRole('button', { name: 'Delete time block' }),
     );
 
     await waitFor(() =>
@@ -538,10 +540,10 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Delete slot Worship' }),
+      within(table).getByRole('button', { name: 'Delete time block Worship' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'Delete slot' }),
+      await screen.findByRole('button', { name: 'Delete time block' }),
     );
 
     const dialog = await screen.findByRole('alertdialog');
@@ -558,7 +560,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
-  it('renders Delete day/slot actions and the confirm-delete action with destructive styling, distinct from Edit', async () => {
+  it('renders Delete day/time block actions and the confirm-delete action with destructive styling, distinct from Edit', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -588,7 +590,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
     expect(
-      within(table).getByRole('button', { name: 'Delete slot Worship' }),
+      within(table).getByRole('button', { name: 'Delete time block Worship' }),
     ).toHaveClass('text-destructive');
 
     await user.click(
@@ -599,7 +601,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     ).toHaveClass('text-destructive');
   });
 
-  it('adding a slot to a day, after filling the dialog, calls the create-event-time-block handler', async () => {
+  it('adding a time block to a day, after filling the dialog, calls the create-event-time-block handler', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -619,12 +621,18 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Add slot to Sunday Service' }),
+      within(table).getByRole('button', {
+        name: 'Add time block to Sunday Service',
+      }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: 'Add slot' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Add time block',
+    });
     await user.type(within(dialog).getByLabelText('Label'), 'Prayer');
-    await user.click(within(dialog).getByRole('button', { name: 'Add slot' }));
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Add time block' }),
+    );
 
     await waitFor(() =>
       expect(createPlanningEventTimeBlock).toHaveBeenCalledWith(
@@ -687,7 +695,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
-  it('editing a slot, after changing start/end time, calls the update-event-time-block handler', async () => {
+  it('editing a time block, after changing start/end time, calls the update-event-time-block handler', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -710,10 +718,12 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Edit slot Worship' }),
+      within(table).getByRole('button', { name: 'Edit time block Worship' }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit time block',
+    });
     await fillTimeOfDayField({
       user,
       field: within(dialog).getByTestId(
@@ -772,15 +782,15 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
       within(table).queryByRole('button', { name: /^Edit day/ }),
     ).not.toBeInTheDocument();
     expect(
-      within(table).queryByRole('button', { name: /^Delete slot/ }),
+      within(table).queryByRole('button', { name: /^Delete eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
-      within(table).queryByRole('button', { name: /^Edit slot/ }),
+      within(table).queryByRole('button', { name: /^Edit eventTimeBlock/ }),
     ).not.toBeInTheDocument();
   });
 });
 
-describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
+describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', () => {
   function singleAndMultiDayEventCycleResponse({
     state,
   }: TwoEventCycleResponseInput) {
@@ -801,7 +811,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
             end: '2026-08-02T11:00:00Z',
             status: 'scheduled',
           },
-          slots: [
+          eventTimeBlocks: [
             {
               id: 'event-time-block-1',
               label: 'Worship',
@@ -818,7 +828,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
             end: '2026-08-09T23:59:59Z',
             status: 'scheduled',
           },
-          slots: [
+          eventTimeBlocks: [
             {
               id: 'event-time-block-2',
               label: 'Check-in',
@@ -848,28 +858,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     );
   }
 
-  it('shows time-only fields (no date field) in the Add slot dialog for a single-day event', async () => {
-    mockSingleAndMultiDayCycle();
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', { name: 'Add slot to Sunday Service' }),
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: 'Add slot' });
-    expect(
-      within(dialog).getByTestId('create-event-time-block-start-time-field'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('create-event-time-block-end-time-field'),
-    ).toBeInTheDocument();
-  });
-
-  it('shows date+time inputs in the Add slot dialog for a multi-day event', async () => {
+  it('shows time-only fields (no date field) in the Add time block dialog for a single-day event', async () => {
     mockSingleAndMultiDayCycle();
 
     render();
@@ -879,11 +868,38 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     const user = userEvent.setup();
     await user.click(
       within(table).getByRole('button', {
-        name: 'Add slot to Retreat Weekend',
+        name: 'Add time block to Sunday Service',
       }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: 'Add slot' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Add time block',
+    });
+    expect(
+      within(dialog).getByTestId('create-event-time-block-start-time-field'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('create-event-time-block-end-time-field'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows date+time inputs in the Add time block dialog for a multi-day event', async () => {
+    mockSingleAndMultiDayCycle();
+
+    render();
+    await selectTheOnlyCycle();
+    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+
+    const user = userEvent.setup();
+    await user.click(
+      within(table).getByRole('button', {
+        name: 'Add time block to Retreat Weekend',
+      }),
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Add time block',
+    });
     expect(
       within(dialog).getByTestId('create-event-time-block-start-date'),
     ).toBeInTheDocument();
@@ -901,7 +917,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows time-only fields in the Edit slot dialog for a single-day event slot', async () => {
+  it('shows time-only fields in the Edit time block dialog for a single-day event time block', async () => {
     mockSingleAndMultiDayCycle();
 
     render();
@@ -913,10 +929,12 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Edit slot Worship' }),
+      within(table).getByRole('button', { name: 'Edit time block Worship' }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit time block',
+    });
     expect(
       within(dialog).getByTestId('edit-event-time-block-start-time-field'),
     ).toBeInTheDocument();
@@ -925,7 +943,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows date+time inputs in the Edit slot dialog for a multi-day event slot', async () => {
+  it('shows date+time inputs in the Edit time block dialog for a multi-day event time block', async () => {
     mockSingleAndMultiDayCycle();
 
     render();
@@ -937,10 +955,12 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
       within(table).getByRole('button', { name: 'Expand Retreat Weekend' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Edit slot Check-in' }),
+      within(table).getByRole('button', { name: 'Edit time block Check-in' }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit time block',
+    });
     expect(
       within(dialog).getByTestId('edit-event-time-block-start-date'),
     ).toBeInTheDocument();
@@ -1025,7 +1045,7 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
 });
 
 describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
-  it('"Expand all" reveals every day row\'s slots; "Collapse all" hides them all', async () => {
+  it('"Expand all" reveals every day row\'s time blocks; "Collapse all" hides them all', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -1043,20 +1063,20 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
     await selectTheOnlyCycle();
     const table = await screen.findByRole('grid', { name: 'Calendar review' });
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).queryByText('Slot')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Time block')).not.toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Expand all' }));
     expect(within(table).getByText('Worship')).toBeInTheDocument();
     expect(within(table).getByText('Message')).toBeInTheDocument();
-    expect(within(table).getByText('Slot')).toBeInTheDocument();
+    expect(within(table).getByText('Time block')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Collapse all' }));
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).queryByText('Slot')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Time block')).not.toBeInTheDocument();
   });
 
-  it('does not leak expanded slot rows into the mobile card list', async () => {
+  it('does not leak expanded time block rows into the mobile card list', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -1080,9 +1100,9 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Expand all' }));
 
-    // Expanding on desktop must not add slot rows to the mobile list, which
+    // Expanding on desktop must not add time block rows to the mobile list, which
     // has no card representation for them (`renderMobileCard` renders
-    // nothing for a slot row) and would otherwise leak empty placeholder
+    // nothing for a time block row) and would otherwise leak empty placeholder
     // elements into the mobile listbox.
     expect(
       within(mobileList).getAllByTestId('planning-event-card'),
@@ -1114,10 +1134,10 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
       within(table).getByRole('button', { name: 'Collapse Sunday Service' }),
     );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).getByText('Slot')).toBeInTheDocument();
+    expect(within(table).getByText('Time block')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Collapse all' }));
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).queryByText('Slot')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Time block')).not.toBeInTheDocument();
   });
 });

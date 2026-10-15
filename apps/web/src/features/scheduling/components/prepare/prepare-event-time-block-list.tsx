@@ -115,9 +115,12 @@ function buildFlatDayGroups({
   const rows: FlatEventTimeBlockRow[] = [];
 
   for (const eventView of events) {
-    for (const eventTimeBlockView of eventView.slots) {
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
       rows.push({
-        dayKey: dayOf({ value: eventTimeBlockView.slot.startTime, timeZone }),
+        dayKey: dayOf({
+          value: eventTimeBlockView.eventTimeBlock.startTime,
+          timeZone,
+        }),
         eventView,
         eventTimeBlockView,
       });
@@ -126,8 +129,12 @@ function buildFlatDayGroups({
 
   rows.sort((left, right) =>
     compareInstants({
-      left: parseInstant({ value: left.eventTimeBlockView.slot.startTime }),
-      right: parseInstant({ value: right.eventTimeBlockView.slot.startTime }),
+      left: parseInstant({
+        value: left.eventTimeBlockView.eventTimeBlock.startTime,
+      }),
+      right: parseInstant({
+        value: right.eventTimeBlockView.eventTimeBlock.startTime,
+      }),
     }),
   );
 
@@ -240,9 +247,9 @@ function summarizeEventTimeBlock(
   return `${eventTimeBlockView.shifts.length} ${shiftLabel} · ${totalHeadcount} ${headcountLabel} requested`;
 }
 
-/** Flat, day-grouped slot list — fully supersedes `ParticipationEventCard`'s
+/** Flat, day-grouped time block list — fully supersedes `ParticipationEventCard`'s
  * old nested-card rendering role (research.md R2): a day header row, then
- * inset event/slot rows, no card-in-card. Inclusion checkbox persists
+ * inset event/time block rows, no card-in-card. Inclusion checkbox persists
  * immediately via `setParticipationInclusions` (T026); shift-split and
  * headcount editing wire the existing `splitParticipationShifts` and
  * headcount-upsert mutations unchanged (T027). */
@@ -267,7 +274,7 @@ export function PrepareEventTimeBlockList({
   const { churchTimezone } = useTimezone();
   const uniqueEventIds = [...new Set(events.map((e) => e.event.id))];
 
-  /** Collapsed by default (T-layout: wall-of-forms fix) — a slot only
+  /** Collapsed by default (T-layout: wall-of-forms fix) — a time block only
    * expands when the leader explicitly opens it, or the instant they check
    * it in for the first time this session, since that's exactly when they
    * mean to configure its split/headcount next. */
@@ -322,7 +329,8 @@ export function PrepareEventTimeBlockList({
         className="text-muted-foreground text-sm"
         data-testid="prepare-event-time-block-list-empty-state"
       >
-        No slots match your filters. Try a different day, name, or time range.
+        No time blocks match your filters. Try a different day, name, or time
+        range.
       </p>
     );
   }
@@ -335,7 +343,7 @@ export function PrepareEventTimeBlockList({
           data-testid="prepare-event-time-block-list-column-header"
         >
           <span aria-hidden="true" />
-          <span>Slot</span>
+          <span>Time block</span>
           <span>Time</span>
           <span>Cycle status</span>
           <span aria-hidden="true" />
@@ -354,7 +362,7 @@ export function PrepareEventTimeBlockList({
               <div className="space-y-2">
                 {rows.map(({ eventView, eventTimeBlockView }) => (
                   <EventTimeBlockRow
-                    key={eventTimeBlockView.slot.id}
+                    key={eventTimeBlockView.eventTimeBlock.id}
                     eventView={eventView}
                     eventTimeBlockView={eventTimeBlockView}
                     ministryId={ministryId}
@@ -368,14 +376,14 @@ export function PrepareEventTimeBlockList({
                     onRetryRoleCatalog={
                       retryRoleCatalogByEventId[eventView.event.id]
                     }
-                    splitForm={splitForms[eventTimeBlockView.slot.id]}
+                    splitForm={splitForms[eventTimeBlockView.eventTimeBlock.id]}
                     headcountDrafts={headcountDrafts}
                     savedHeadcountDrafts={savedHeadcountDrafts}
                     isSplitDirty={splitDirtyEventTimeBlockIds.has(
-                      eventTimeBlockView.slot.id,
+                      eventTimeBlockView.eventTimeBlock.id,
                     )}
                     isHeadcountDirty={headcountDirtyEventTimeBlockIds.has(
-                      eventTimeBlockView.slot.id,
+                      eventTimeBlockView.eventTimeBlock.id,
                     )}
                     pendingHeadcountEventTimeBlockId={
                       pendingHeadcountEventTimeBlockId
@@ -385,13 +393,13 @@ export function PrepareEventTimeBlockList({
                       pendingInclusionEventTimeBlockId
                     }
                     expanded={expandedEventTimeBlockIds.has(
-                      eventTimeBlockView.slot.id,
+                      eventTimeBlockView.eventTimeBlock.id,
                     )}
                     onToggleExpanded={() =>
                       setEventTimeBlockExpanded(
-                        eventTimeBlockView.slot.id,
+                        eventTimeBlockView.eventTimeBlock.id,
                         !expandedEventTimeBlockIds.has(
-                          eventTimeBlockView.slot.id,
+                          eventTimeBlockView.eventTimeBlock.id,
                         ),
                       )
                     }
@@ -466,11 +474,11 @@ function EventTimeBlockRow({
   const { churchTimezone } = useTimezone();
   const included = eventTimeBlockView.included;
   const isSavingSplit =
-    pendingSplitEventTimeBlockId === eventTimeBlockView.slot.id;
+    pendingSplitEventTimeBlockId === eventTimeBlockView.eventTimeBlock.id;
   const isSavingInclusion =
-    pendingInclusionEventTimeBlockId === eventTimeBlockView.slot.id;
+    pendingInclusionEventTimeBlockId === eventTimeBlockView.eventTimeBlock.id;
   const isSavingHeadcounts =
-    pendingHeadcountEventTimeBlockId === eventTimeBlockView.slot.id;
+    pendingHeadcountEventTimeBlockId === eventTimeBlockView.eventTimeBlock.id;
   /** Unlike `touchedParticipationIds` (only set on a successful save),
    * `isSplitDirty`/`isHeadcountDirty` reflect drafts typed but never saved —
    * collapsing the row must not hide that, since the collapsed summary line
@@ -481,7 +489,7 @@ function EventTimeBlockRow({
   return (
     <div
       className="surface-subtle workspace-panel space-y-3"
-      data-testid={`prepare-event-time-block-row-${eventTimeBlockView.slot.id}`}
+      data-testid={`prepare-event-time-block-row-${eventTimeBlockView.eventTimeBlock.id}`}
     >
       <Collapsible open={included && expanded} onOpenChange={onToggleExpanded}>
         <div className="flex items-start gap-3 lg:grid lg:grid-cols-[24px_minmax(0,1fr)_170px_130px_28px] lg:items-center lg:gap-4">
@@ -489,7 +497,7 @@ function EventTimeBlockRow({
             <div className="relative flex items-center">
               <Checkbox
                 className="mt-0.5 lg:mt-0"
-                data-testid={`serving-toggle-${eventTimeBlockView.slot.id}`}
+                data-testid={`serving-toggle-${eventTimeBlockView.eventTimeBlock.id}`}
                 checked={included}
                 disabled={isSavingInclusion}
                 aria-label={included ? 'Serving' : 'Not serving'}
@@ -497,7 +505,7 @@ function EventTimeBlockRow({
                 onCheckedChange={(checked) =>
                   onToggleInclusion({
                     participationId: eventView.participation.id,
-                    eventTimeBlockId: eventTimeBlockView.slot.id,
+                    eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
                     checked: checked === true,
                   })
                 }
@@ -505,7 +513,7 @@ function EventTimeBlockRow({
               {isSavingInclusion ? (
                 <Loader2Icon
                   aria-hidden="true"
-                  data-testid={`serving-toggle-saving-${eventTimeBlockView.slot.id}`}
+                  data-testid={`serving-toggle-saving-${eventTimeBlockView.eventTimeBlock.id}`}
                   className="absolute size-4 animate-spin text-muted-foreground motion-reduce:hidden"
                 />
               ) : null}
@@ -513,14 +521,14 @@ function EventTimeBlockRow({
             <div className="space-y-1 lg:contents">
               <div className="font-medium">
                 {eventView.event.title}
-                {eventTimeBlockView.slot.label
-                  ? ` · ${eventTimeBlockView.slot.label}`
+                {eventTimeBlockView.eventTimeBlock.label
+                  ? ` · ${eventTimeBlockView.eventTimeBlock.label}`
                   : ''}
               </div>
               <div className="text-muted-foreground text-xs">
                 {formatTimeRange({
-                  start: eventTimeBlockView.slot.startTime,
-                  end: eventTimeBlockView.slot.endTime,
+                  start: eventTimeBlockView.eventTimeBlock.startTime,
+                  end: eventTimeBlockView.eventTimeBlock.endTime,
                   timeZone: churchTimezone,
                 })}
               </div>
@@ -539,13 +547,13 @@ function EventTimeBlockRow({
           {included ? (
             <CollapsibleTrigger
               className="radius-control relative inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:bg-muted hover:text-foreground lg:justify-self-end"
-              data-testid={`toggle-event-time-block-expand-${eventTimeBlockView.slot.id}`}
+              data-testid={`toggle-event-time-block-expand-${eventTimeBlockView.eventTimeBlock.id}`}
               aria-label={
                 expanded
-                  ? 'Collapse slot details'
+                  ? 'Collapse time block details'
                   : hasUnsavedDraft
-                    ? 'Expand slot details — unsaved changes'
-                    : 'Expand slot details'
+                    ? 'Expand time block details — unsaved changes'
+                    : 'Expand time block details'
               }
             >
               <ChevronDownIcon
@@ -557,7 +565,7 @@ function EventTimeBlockRow({
               {hasUnsavedDraft && !expanded ? (
                 <span
                   aria-hidden="true"
-                  data-testid={`prepare-event-time-block-unsaved-dot-${eventTimeBlockView.slot.id}`}
+                  data-testid={`prepare-event-time-block-unsaved-dot-${eventTimeBlockView.eventTimeBlock.id}`}
                   className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
                 />
               ) : null}
@@ -573,7 +581,7 @@ function EventTimeBlockRow({
                 ? 'font-medium text-foreground'
                 : 'text-muted-foreground',
             )}
-            data-testid={`prepare-event-time-block-summary-${eventTimeBlockView.slot.id}`}
+            data-testid={`prepare-event-time-block-summary-${eventTimeBlockView.eventTimeBlock.id}`}
           >
             {hasUnsavedDraft
               ? 'Unsaved changes — expand to save.'
@@ -583,7 +591,7 @@ function EventTimeBlockRow({
 
         {included ? (
           <CollapsibleContent
-            data-testid={`prepare-event-time-block-editor-${eventTimeBlockView.slot.id}`}
+            data-testid={`prepare-event-time-block-editor-${eventTimeBlockView.eventTimeBlock.id}`}
             className="overflow-hidden [transition:height_200ms_cubic-bezier(0.22,1,0.36,1)] data-ending-style:h-0 data-starting-style:h-0 motion-reduce:transition-none"
             style={{ height: 'var(--collapsible-panel-height)' }}
           >
@@ -646,7 +654,7 @@ interface SplitPanelProps {
   onSplitShifts: PrepareEventTimeBlockListProps['onSplitShifts'];
 }
 
-/** Left column of an expanded slot row: the shift-split editor and its own
+/** Left column of an expanded time block row: the shift-split editor and its own
  * dirty-gated "Save split" action, independent of headcount state (R12). */
 function SplitPanel({
   eventTimeBlockView,
@@ -662,12 +670,12 @@ function SplitPanel({
       {splitForm ? (
         <ManualSplitEditor
           eventTimeBlockIndex={0}
-          eventTimeBlockId={eventTimeBlockView.slot.id}
+          eventTimeBlockId={eventTimeBlockView.eventTimeBlock.id}
           eventTimeBlockView={eventTimeBlockView}
           splitForm={splitForm}
           onSplitFormChange={(nextForm) =>
             onSplitFormChange({
-              eventTimeBlockId: eventTimeBlockView.slot.id,
+              eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
               nextForm,
             })
           }
@@ -677,7 +685,7 @@ function SplitPanel({
       <Button
         type="button"
         variant="outline"
-        data-testid={`save-split-button-${eventTimeBlockView.slot.id}`}
+        data-testid={`save-split-button-${eventTimeBlockView.eventTimeBlock.id}`}
         disabled={isSavingSplit || !isSplitDirty}
         onClick={() => onSplitShifts({ participationId, eventTimeBlockView })}
       >
@@ -702,8 +710,8 @@ interface HeadcountPanelProps {
   onSaveHeadcounts: PrepareEventTimeBlockListProps['onSaveHeadcounts'];
 }
 
-/** Right column of an expanded slot row: per-shift role/headcount inputs and
- * the single "Save headcounts" action spanning every shift in the slot
+/** Right column of an expanded time block row: per-shift role/headcount inputs and
+ * the single "Save headcounts" action spanning every shift in the time block
  * (R12/FR-021a), independent of split state. Also surfaces the sibling
  * split panel's own unsaved indicator (`isSplitDirty`) since both live in
  * the same visual column group but persist independently. */
@@ -756,7 +764,7 @@ function HeadcountPanel({
       {isSplitDirty ? (
         <p
           className="text-muted-foreground text-xs"
-          data-testid={`split-unsaved-indicator-${eventTimeBlockView.slot.id}`}
+          data-testid={`split-unsaved-indicator-${eventTimeBlockView.eventTimeBlock.id}`}
         >
           Split changes not saved.
         </p>
@@ -764,14 +772,14 @@ function HeadcountPanel({
       {isHeadcountDirty ? (
         <p
           className="text-muted-foreground text-xs"
-          data-testid={`headcount-unsaved-indicator-${eventTimeBlockView.slot.id}`}
+          data-testid={`headcount-unsaved-indicator-${eventTimeBlockView.eventTimeBlock.id}`}
         >
           Headcount changes not saved.
         </p>
       ) : null}
       {eventTimeBlockView.shifts.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          Save a split first so this slot has shifts to staff.
+          Save a split first so this time block has shifts to staff.
         </p>
       ) : (
         eventTimeBlockView.shifts.map((shift, shiftIndex) => (
@@ -856,7 +864,7 @@ function HeadcountPanel({
           <Button
             type="button"
             variant="outline"
-            data-testid={`save-headcounts-button-${eventTimeBlockView.slot.id}`}
+            data-testid={`save-headcounts-button-${eventTimeBlockView.eventTimeBlock.id}`}
             disabled={
               isSavingHeadcounts ||
               !isHeadcountDirty ||
@@ -866,7 +874,7 @@ function HeadcountPanel({
             onClick={() =>
               onSaveHeadcounts({
                 participationId,
-                eventTimeBlockId: eventTimeBlockView.slot.id,
+                eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
                 headcountSavesByShift: changedHeadcountSavesByShift,
               })
             }
@@ -876,7 +884,7 @@ function HeadcountPanel({
           {hasUnsetHeadcount ? (
             <p
               className="text-muted-foreground text-xs"
-              data-testid={`headcount-save-explanation-${eventTimeBlockView.slot.id}`}
+              data-testid={`headcount-save-explanation-${eventTimeBlockView.eventTimeBlock.id}`}
             >
               Enter a whole-number headcount for every role before saving.
             </p>

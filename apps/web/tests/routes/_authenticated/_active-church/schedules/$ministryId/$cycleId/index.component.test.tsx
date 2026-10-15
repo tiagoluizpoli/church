@@ -118,9 +118,9 @@ const PARTICIPATION_RESPONSE = {
         createdAt: '2026-07-01T00:00:00',
         updatedAt: '2026-07-01T00:00:00',
       },
-      slots: [
+      eventTimeBlocks: [
         {
-          slot: {
+          eventTimeBlock: {
             id: 'event-time-block-1',
             churchId: 'church-1',
             eventId: 'event-1',
@@ -155,9 +155,9 @@ const PARTICIPATION_RESPONSE = {
         createdAt: '2026-07-01T00:00:00',
         updatedAt: '2026-07-01T00:00:00',
       },
-      slots: [
+      eventTimeBlocks: [
         {
-          slot: {
+          eventTimeBlock: {
             id: 'event-time-block-2',
             churchId: 'church-1',
             eventId: 'event-2',
@@ -184,9 +184,9 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       events: [
         {
           ...PARTICIPATION_RESPONSE.events[0],
-          slots: [
+          eventTimeBlocks: [
             {
-              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
               included: true,
               shifts: [
                 {
@@ -237,7 +237,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     );
   });
 
-  it('stacks day strip, horizontal filters, then slot list in workspace order (T042)', async () => {
+  it('stacks day strip, horizontal filters, then time block list in workspace order (T042)', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -271,7 +271,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it('renders the ministry+cycle header, calendar, filters, and slot list together', async () => {
+  it('renders the ministry+cycle header, calendar, filters, and time block list together', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -305,7 +305,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     );
   });
 
-  it('operates fully at a mobile viewport width — calendar, filters, and slot list all reachable (T023a)', async () => {
+  it('operates fully at a mobile viewport width — calendar, filters, and time block list all reachable (T023a)', async () => {
     window.innerWidth = 375;
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
@@ -345,7 +345,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     });
   });
 
-  it('filters the slot list to a clicked calendar day with no network request', async () => {
+  it('filters the time block list to a clicked calendar day with no network request', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -388,9 +388,9 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
       events: [
         {
           ...PARTICIPATION_RESPONSE.events[0],
-          slots: [
+          eventTimeBlocks: [
             {
-              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
               included: true,
               shifts: [
                 {
@@ -453,7 +453,7 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
     );
 
     // The succeeded role-2 value must not remain flagged unsaved; the failed
-    // role-1 value must — so the slot's single per-slot indicator stays on.
+    // role-1 value must — so the time block's single per-time-block indicator stays on.
     await waitFor(() => {
       expect(
         screen.getByTestId('headcount-unsaved-indicator-event-time-block-1'),
@@ -496,9 +496,9 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
         events: [
           {
             ...PARTICIPATION_RESPONSE.events[0],
-            slots: [
+            eventTimeBlocks: [
               {
-                ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+                ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
                 included:
                   includedEventTimeBlockIds.includes('event-time-block-1'),
                 shifts: includedEventTimeBlockIds.includes('event-time-block-1')
@@ -591,7 +591,7 @@ describe('Prepare workspace route — network failure (US3/T023d)', () => {
 });
 
 describe('Prepare workspace batched save (US4/T029)', () => {
-  it('calls askAvailability exactly once call per touched participation, not per slot/shift', async () => {
+  it('calls askAvailability exactly once call per touched participation, not per time block/shift', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -755,9 +755,9 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       events: [
         {
           ...PARTICIPATION_RESPONSE.events[0],
-          slots: [
+          eventTimeBlocks: [
             {
-              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
               included: true,
               shifts: [
                 {

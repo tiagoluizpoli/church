@@ -14,7 +14,7 @@ const creatingEventTimeBlock: CreatingEventTimeBlockState = {
 };
 
 describe('CreateEventTimeBlockDialog', () => {
-  it('renders Cancel/Add slot via the footer prop, and Add slot calls onSubmit', async () => {
+  it('renders Cancel/Add time block via the footer prop, and Add time block calls onSubmit', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
@@ -29,13 +29,13 @@ describe('CreateEventTimeBlockDialog', () => {
       />,
     );
 
-    const addButton = screen.getByRole('button', { name: 'Add slot' });
+    const addButton = screen.getByRole('button', { name: 'Add time block' });
     expect(addButton).toBeEnabled();
     await user.click(addButton);
     expect(onSubmit).toHaveBeenCalledOnce();
   });
 
-  it('disables Add slot and shows an inline error when start is at or after end', () => {
+  it('disables Add time block and shows an inline error when start is at or after end', () => {
     render(
       <CreateEventTimeBlockDialog
         creatingEventTimeBlock={{
@@ -51,7 +51,9 @@ describe('CreateEventTimeBlockDialog', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Add slot' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Add time block' }),
+    ).toBeDisabled();
     expect(screen.getByText('End must be after start.')).toBeInTheDocument();
   });
 });

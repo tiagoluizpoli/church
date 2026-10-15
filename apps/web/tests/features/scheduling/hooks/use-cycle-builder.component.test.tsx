@@ -71,9 +71,9 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
           createdAt: '2026-07-01T09:00:00.000Z',
           updatedAt: '2026-07-01T09:00:00.000Z',
         },
-        slots: [
+        eventTimeBlocks: [
           {
-            slot: {
+            eventTimeBlock: {
               id: 'event-time-block-1',
               churchId: 'church-1',
               eventId: 'event-1',

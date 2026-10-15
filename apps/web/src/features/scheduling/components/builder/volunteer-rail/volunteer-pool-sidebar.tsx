@@ -63,7 +63,7 @@ interface VolunteerPoolSidebarProps {
    * Everyone the leader may commit to the focused shift×role, mapped to the
    * fit tier that pick would land in — computed upstream, since the rail cannot
    * see the board's assignment state. While it and the handler below are set,
-   * each listed card's "Select slot" action becomes "Pick me", and the tier is
+   * each listed card's "Select shift" action becomes "Pick me", and the tier is
    * what lets that button warn when the pick will demand an override reason.
    */
   assignableVolunteerFits?: Map<string, AssignableFitTier>;
@@ -99,7 +99,7 @@ export function VolunteerPoolSidebar({
     null,
   );
   const [groupMode, setGroupMode] = useState<GroupMode>('all');
-  // Any listed person the leader may pick for the focused slot — the leader is
+  // Any listed person the leader may pick for the focused shift — the leader is
   // free to overrule the recommendation, so this reaches past the ranked
   // candidates to everyone this shift could take, each with what that pick
   // would cost.

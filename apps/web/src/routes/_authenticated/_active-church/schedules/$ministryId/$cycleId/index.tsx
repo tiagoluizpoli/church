@@ -131,7 +131,7 @@ function getHeadcountDirtyEventTimeBlockIds({
   const dirtyEventTimeBlockIds = new Set<string>();
 
   for (const eventView of events) {
-    for (const eventTimeBlockView of eventView.slots) {
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
       const shiftIds = new Set(
         eventTimeBlockView.shifts.map((shift) => shift.id),
       );
@@ -147,7 +147,8 @@ function getHeadcountDirtyEventTimeBlockIds({
         );
       });
 
-      if (hasDirtyDraft) dirtyEventTimeBlockIds.add(eventTimeBlockView.slot.id);
+      if (hasDirtyDraft)
+        dirtyEventTimeBlockIds.add(eventTimeBlockView.eventTimeBlock.id);
     }
   }
 
@@ -201,7 +202,7 @@ type EditSessionAction =
   | { type: 'availability-sent' };
 
 /** These five pieces of state all change together across the same
- * save/dirty lifecycle (draft edits → per-slot save → touched-for-batch),
+ * save/dirty lifecycle (draft edits → per-time-block save → touched-for-batch),
  * so they're modeled as one reducer instead of five independent `useState`
  * calls whose updates would otherwise need to stay manually in sync across
  * every mutation's `onSuccess`. `selectedDate`/`nameQuery`/`timeWindowFilter`/
@@ -384,7 +385,7 @@ function PrepareWorkspaceRoute() {
       participationId,
       eventTimeBlockView,
     }: SplitShiftsParams) => {
-      const form = splitForms[eventTimeBlockView.slot.id];
+      const form = splitForms[eventTimeBlockView.eventTimeBlock.id];
       if (!form) throw new Error('Split form is missing.');
 
       if (form.mode === 'equal') {
@@ -395,12 +396,12 @@ function PrepareWorkspaceRoute() {
 
         await adminApi.splitParticipationShifts(
           participationId,
-          eventTimeBlockView.slot.id,
+          eventTimeBlockView.eventTimeBlock.id,
           { strategy: { kind: 'equal-n', n: count } },
         );
         return {
           participationId,
-          eventTimeBlockId: eventTimeBlockView.slot.id,
+          eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
         };
       }
 
@@ -412,7 +413,7 @@ function PrepareWorkspaceRoute() {
 
       await adminApi.splitParticipationShifts(
         participationId,
-        eventTimeBlockView.slot.id,
+        eventTimeBlockView.eventTimeBlock.id,
         {
           strategy: {
             kind: 'manual',
@@ -424,7 +425,10 @@ function PrepareWorkspaceRoute() {
           },
         },
       );
-      return { participationId, eventTimeBlockId: eventTimeBlockView.slot.id };
+      return {
+        participationId,
+        eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
+      };
     },
     onSuccess: async ({ participationId, eventTimeBlockId }) => {
       toast.success('Shifts updated.');
@@ -534,15 +538,15 @@ function PrepareWorkspaceRoute() {
     ? events
         .map((eventView) => ({
           ...eventView,
-          slots: eventView.slots.filter(
+          eventTimeBlocks: eventView.eventTimeBlocks.filter(
             (eventTimeBlockView) =>
               dayOf({
-                value: eventTimeBlockView.slot.startTime,
+                value: eventTimeBlockView.eventTimeBlock.startTime,
                 timeZone: churchTimezone,
               }) === selectedDate,
           ),
         }))
-        .filter((eventView) => eventView.slots.length > 0)
+        .filter((eventView) => eventView.eventTimeBlocks.length > 0)
     : events;
   const nameFiltered = filterEventTimeBlocksByName({
     events: dayFiltered,
@@ -594,8 +598,8 @@ function PrepareWorkspaceRoute() {
         }
         description={
           cycleDateSpan
-            ? `${cycleDateSpan} · Filter to a day, confirm slots, split shifts, and set headcounts.`
-            : 'Filter to a day, confirm slots, split shifts, and set headcounts.'
+            ? `${cycleDateSpan} · Filter to a day, confirm time blocks, split shifts, and set headcounts.`
+            : 'Filter to a day, confirm time blocks, split shifts, and set headcounts.'
         }
         autoFocusTitle
         aside={
@@ -608,7 +612,7 @@ function PrepareWorkspaceRoute() {
                   testId="prepare-event-count"
                 />
                 <StatChip
-                  label="Slots"
+                  label="Time blocks"
                   value={includedEventTimeBlockCount}
                   testId="prepare-included-count"
                 />
@@ -728,7 +732,8 @@ function PrepareWorkspaceRoute() {
             }
             pendingSplitEventTimeBlockId={
               splitShifts.isPending
-                ? (splitShifts.variables?.eventTimeBlockView.slot.id ?? null)
+                ? (splitShifts.variables?.eventTimeBlockView.eventTimeBlock
+                    .id ?? null)
                 : null
             }
             pendingInclusionEventTimeBlockId={
@@ -744,9 +749,13 @@ function PrepareWorkspaceRoute() {
               const participationEvents = events.find(
                 (eventView) => eventView.participation.id === participationId,
               );
-              const currentIncluded = (participationEvents?.slots ?? [])
+              const currentIncluded = (
+                participationEvents?.eventTimeBlocks ?? []
+              )
                 .filter((eventTimeBlockView) => eventTimeBlockView.included)
-                .map((eventTimeBlockView) => eventTimeBlockView.slot.id);
+                .map(
+                  (eventTimeBlockView) => eventTimeBlockView.eventTimeBlock.id,
+                );
               const nextIncluded = checked
                 ? [...new Set([...currentIncluded, eventTimeBlockId])]
                 : currentIncluded.filter((id) => id !== eventTimeBlockId);
@@ -796,7 +805,7 @@ function PrepareWorkspaceRoute() {
             <AlertDialogDescription>
               {hasUnsavedDraftEdits
                 ? 'You have unsaved shift-split or headcount changes. Leaving now will discard them.'
-                : "You've touched slots or shifts in this session but haven't sent availability requests yet. Leaving now won't notify volunteers of these changes."}
+                : "You've touched time blocks or shifts in this session but haven't sent availability requests yet. Leaving now won't notify volunteers of these changes."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

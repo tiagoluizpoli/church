@@ -8,12 +8,12 @@ export interface CreateEventTimeBlockDialogProps {
   creatingEventTimeBlock: CreatingEventTimeBlockState | null;
   createEventTimeBlockPending: boolean;
   timeZone: string;
-  onChange: (slot: CreatingEventTimeBlockState) => void;
+  onChange: (eventTimeBlock: CreatingEventTimeBlockState) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
 }
 
-/** The "Add slot" dialog — label/start/end for a brand-new slot on an
+/** The "Add time block" dialog — label/start/end for a brand-new time block on an
  * existing day/event (FR-009a). */
 export function CreateEventTimeBlockDialog({
   creatingEventTimeBlock,
@@ -27,7 +27,7 @@ export function CreateEventTimeBlockDialog({
     <ResponsiveFormSurface
       open={creatingEventTimeBlock !== null}
       onOpenChange={onOpenChange}
-      title="Add slot"
+      title="Add time block"
       footer={
         <>
           <Button
@@ -49,7 +49,7 @@ export function CreateEventTimeBlockDialog({
             }
             onClick={onSubmit}
           >
-            {createEventTimeBlockPending ? 'Adding…' : 'Add slot'}
+            {createEventTimeBlockPending ? 'Adding…' : 'Add time block'}
           </Button>
         </>
       }

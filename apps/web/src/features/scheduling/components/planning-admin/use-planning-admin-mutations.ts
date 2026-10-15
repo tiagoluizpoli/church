@@ -241,7 +241,7 @@ export function usePlanningAdminMutations({
       }),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: (result) =>
-      `Generated ${result.generatedEventCount} events and ${result.generatedEventTimeBlockCount} slots`,
+      `Generated ${result.generatedEventCount} events and ${result.generatedEventTimeBlockCount} time blocks`,
     queryClient,
   });
 
@@ -283,7 +283,7 @@ export function usePlanningAdminMutations({
         body,
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Slot added',
+    successMessage: 'Time block added',
     queryClient,
   });
 
@@ -300,7 +300,7 @@ export function usePlanningAdminMutations({
         body,
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Slot updated',
+    successMessage: 'Time block updated',
     queryClient,
   });
 
@@ -312,7 +312,7 @@ export function usePlanningAdminMutations({
         eventTimeBlockId,
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Slot deleted',
+    successMessage: 'Time block deleted',
     queryClient,
   });
 

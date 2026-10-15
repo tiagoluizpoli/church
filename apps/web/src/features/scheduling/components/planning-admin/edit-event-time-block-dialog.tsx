@@ -8,12 +8,12 @@ export interface EditEventTimeBlockDialogProps {
   editingEventTimeBlock: EditingEventTimeBlockState | null;
   updateEventTimeBlockPending: boolean;
   timeZone: string;
-  onChange: (slot: EditingEventTimeBlockState) => void;
+  onChange: (eventTimeBlock: EditingEventTimeBlockState) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
 }
 
-/** The "Edit slot" dialog — label/start/end for an existing slot within a
+/** The "Edit time block" dialog — label/start/end for an existing time block within a
  * day/event (FR-009). */
 export function EditEventTimeBlockDialog({
   editingEventTimeBlock,
@@ -27,7 +27,7 @@ export function EditEventTimeBlockDialog({
     <ResponsiveFormSurface
       open={editingEventTimeBlock !== null}
       onOpenChange={onOpenChange}
-      title="Edit slot"
+      title="Edit time block"
       footer={
         <>
           <Button

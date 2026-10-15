@@ -48,7 +48,7 @@ describe('Volunteer dashboard offline + refresh UI', () => {
             start: '2099-01-05T09:00:00.000Z',
             end: '2099-01-05T11:00:00.000Z',
           }}
-          slots={[
+          eventTimeBlocks={[
             {
               eventTimeBlockId: 'event-time-block-1',
               label: '8:00 AM Service',

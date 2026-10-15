@@ -1,6 +1,6 @@
 import type {
+  AvailabilityEventTimeBlockViewModel,
   AvailabilityEventViewModel,
-  AvailabilitySlotViewModel,
 } from '../components/availability-form';
 import type { AvailabilityTaskViewModel } from '../components/availability-needed-section';
 import { formatInstantOf } from '@/shared/utils/church-time';
@@ -120,12 +120,12 @@ export function mapAvailabilityEvent(
   };
 }
 
-export function mapAvailabilitySlots(
+export function mapAvailabilityEventTimeBlocks(
   data:
     | {
-        slots: AvailabilitySlotViewModel[];
+        eventTimeBlocks: AvailabilityEventTimeBlockViewModel[];
       }
     | undefined,
-): AvailabilitySlotViewModel[] {
-  return data?.slots ?? [];
+): AvailabilityEventTimeBlockViewModel[] {
+  return data?.eventTimeBlocks ?? [];
 }

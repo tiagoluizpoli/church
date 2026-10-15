@@ -188,7 +188,7 @@ function PrepareScheduleListRoute() {
                 testId="prepare-cycle-event-total"
               />
               <StatPill
-                label="Slots"
+                label="Time blocks"
                 value={eventTimeBlockTotal}
                 testId="prepare-cycle-event-time-block-total"
               />

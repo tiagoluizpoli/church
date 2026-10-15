@@ -20,7 +20,7 @@ import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 export const CALENDAR_TABLE_COLUMNS: DataTableColumn[] = [
   { id: 'event', name: 'Event', isRowHeader: true },
   { id: 'window', name: 'Date / Time' },
-  { id: 'slots', name: 'Slots' },
+  { id: 'eventTimeBlocks', name: 'Time blocks' },
   { id: 'status', name: 'Status' },
   { id: 'actions', name: 'Actions' },
 ];
@@ -28,7 +28,7 @@ export const CALENDAR_TABLE_COLUMNS: DataTableColumn[] = [
 export type CalendarVisibleRow =
   | { kind: 'parent'; row: CycleCalendarTableRow }
   | {
-      kind: 'slot';
+      kind: 'event-time-block';
       parentId: string;
       eventTimeBlockId: string;
       label: string;
@@ -55,15 +55,16 @@ export function buildVisibleCalendarRows({
 
     return [
       parentRow,
-      ...row.slots.map(
-        (slot): CalendarVisibleRow => ({
-          kind: 'slot',
+      ...row.eventTimeBlocks.map(
+        (eventTimeBlock): CalendarVisibleRow => ({
+          kind: 'event-time-block',
           parentId: row.eventId,
-          eventTimeBlockId: slot.eventTimeBlockId,
-          label: slot.label,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          isOnlyEventTimeBlockInEvent: slot.isOnlyEventTimeBlockInEvent,
+          eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
+          label: eventTimeBlock.label,
+          startTime: eventTimeBlock.startTime,
+          endTime: eventTimeBlock.endTime,
+          isOnlyEventTimeBlockInEvent:
+            eventTimeBlock.isOnlyEventTimeBlockInEvent,
         }),
       ),
     ];
@@ -120,7 +121,7 @@ export function calendarRowKey({
   const id = visibleRowId({ visibleRow });
   const dataFingerprint =
     visibleRow.kind === 'parent'
-      ? `${visibleRow.row.title}-${visibleRow.row.start}-${visibleRow.row.status}-${visibleRow.row.slots.length}`
+      ? `${visibleRow.row.title}-${visibleRow.row.start}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
       : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
 
   return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
@@ -225,7 +226,7 @@ export interface RenderCalendarCellInput {
 }
 
 /** Cell content for one calendar `DataTable` row: either a day/event parent
- * row or (when its parent is expanded) one of its slot rows. `DataTable`
+ * row or (when its parent is expanded) one of its time block rows. `DataTable`
  * owns the `TableRow`/`TableCell` wrapper; this only renders what goes
  * inside a given column's cell. */
 export function renderCalendarCell({
@@ -327,8 +328,8 @@ function ParentRowCell({
       {column.id === 'window'
         ? formatDayOf({ value: row.start, timeZone })
         : null}
-      {column.id === 'slots'
-        ? `${row.slots.length} slot${row.slots.length === 1 ? '' : 's'}`
+      {column.id === 'eventTimeBlocks'
+        ? `${row.eventTimeBlocks.length} time block${row.eventTimeBlocks.length === 1 ? '' : 's'}`
         : null}
       {column.id === 'status' ? (
         <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
@@ -341,7 +342,7 @@ function ParentRowCell({
             type="button"
             size="icon-xs"
             variant="ghost"
-            aria-label={`Add slot to ${row.title}`}
+            aria-label={`Add time block to ${row.title}`}
             onClick={() => onAddEventTimeBlockRequest({ row })}
           >
             <Plus className="size-3.5" />
@@ -375,7 +376,7 @@ function ParentRowCell({
             />
             <ConfirmDeleteDialogContent
               title="Delete this day?"
-              description={`This removes "${row.title}" and its slots from the cycle.`}
+              description={`This removes "${row.title}" and its time blocks from the cycle.`}
               actionLabel={deletePending ? 'Deleting…' : 'Delete event'}
               disabled={deletePending}
               onConfirm={() => onDeleteConfirm({ eventId: row.eventId })}
@@ -389,7 +390,7 @@ function ParentRowCell({
 
 interface EventTimeBlockRowCellProps {
   column: DataTableColumn;
-  visibleRow: Extract<CalendarVisibleRow, { kind: 'slot' }>;
+  visibleRow: Extract<CalendarVisibleRow, { kind: 'event-time-block' }>;
   isReadOnly: boolean;
   isConfirmingDelete: boolean;
   deletePending: boolean;
@@ -432,7 +433,7 @@ function EventTimeBlockRowCell({
             type="button"
             size="icon-xs"
             variant="ghost"
-            aria-label={`Edit slot ${visibleRow.label}`}
+            aria-label={`Edit time block ${visibleRow.label}`}
             onClick={() =>
               onEditEventTimeBlockRequest({
                 parentId: visibleRow.parentId,
@@ -451,7 +452,7 @@ function EventTimeBlockRowCell({
               size="icon-xs"
               variant="destructive"
               disabled
-              aria-label={`Delete slot ${visibleRow.label}`}
+              aria-label={`Delete time block ${visibleRow.label}`}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -471,16 +472,16 @@ function EventTimeBlockRowCell({
                     type="button"
                     size="icon-xs"
                     variant="destructive"
-                    aria-label={`Delete slot ${visibleRow.label}`}
+                    aria-label={`Delete time block ${visibleRow.label}`}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                 }
               />
               <ConfirmDeleteDialogContent
-                title="Delete this slot?"
+                title="Delete this time block?"
                 description={`This removes "${visibleRow.label}" from the day.`}
-                actionLabel={deletePending ? 'Deleting…' : 'Delete slot'}
+                actionLabel={deletePending ? 'Deleting…' : 'Delete time block'}
                 disabled={deletePending}
                 onConfirm={() =>
                   onDeleteConfirm({

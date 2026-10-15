@@ -61,17 +61,17 @@ function makeEvent(
     peopleNeeded: 1,
     assignedCount: 0,
     eventTimeBlockCount: 1,
-    slots: [makeEventTimeBlock()],
+    eventTimeBlocks: [makeEventTimeBlock()],
     ...overrides,
   };
 }
 
 describe('summarizeCycleStaffing (B-4)', () => {
-  it('counts filled, required and shifts below target across included slots', () => {
+  it('counts filled, required and shifts below target across included time blocks', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({
               shifts: [
                 makeShift({
@@ -101,11 +101,11 @@ describe('summarizeCycleStaffing (B-4)', () => {
     });
   });
 
-  it('ignores slots this ministry is not serving, so the denominator cannot lie', () => {
+  it('ignores time blocks this ministry is not serving, so the denominator cannot lie', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({
               eventTimeBlockId: 'event-time-block-included',
               shifts: [makeShift({ peopleNeeded: 2, assignedCount: 1 })],
@@ -140,7 +140,7 @@ describe('summarizeCycleStaffing (B-4)', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({ shifts: [makeShift({ peopleNeeded: 0 })] }),
           ],
         }),
@@ -159,12 +159,12 @@ describe('summarizeCycleStaffing (B-4)', () => {
 });
 
 describe('summarizeCycleCounts', () => {
-  it('counts events, included slots, and shifts, passing assignedCount through unchanged', () => {
+  it('counts events, included time blocks, and shifts, passing assignedCount through unchanged', () => {
     const data = {
       events: [
         makeEvent({
           eventId: 'event-1',
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({
               eventTimeBlockId: 'event-time-block-1',
               shifts: [
@@ -176,7 +176,7 @@ describe('summarizeCycleCounts', () => {
         }),
         makeEvent({
           eventId: 'event-2',
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({
               eventTimeBlockId: 'event-time-block-2',
               shifts: [makeShift({ shiftId: 'shift-3', assignedCount: 0 })],
@@ -196,11 +196,11 @@ describe('summarizeCycleCounts', () => {
     });
   });
 
-  it('excludes slots this ministry is not serving from every count but the event total', () => {
+  it('excludes time blocks this ministry is not serving from every count but the event total', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [
+          eventTimeBlocks: [
             makeEventTimeBlock({
               eventTimeBlockId: 'event-time-block-included',
               shifts: [makeShift({ shiftId: 'shift-1', assignedCount: 1 })],

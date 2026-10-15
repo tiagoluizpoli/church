@@ -49,7 +49,7 @@ export interface PlanningEventCardProps {
 type ConfirmState =
   | { kind: 'none' }
   | { kind: 'event' }
-  | { kind: 'slot'; eventTimeBlockId: string };
+  | { kind: 'event-time-block'; eventTimeBlockId: string };
 
 export function PlanningEventCard({
   row,
@@ -90,7 +90,7 @@ export function PlanningEventCard({
       !deleteEventTimeBlockPending
     ) {
       setConfirmState((current) =>
-        current.kind === 'slot' ? { kind: 'none' } : current,
+        current.kind === 'event-time-block' ? { kind: 'none' } : current,
       );
     }
     prevDeleteEventTimeBlockPendingRef.current = deleteEventTimeBlockPending;
@@ -113,8 +113,8 @@ export function PlanningEventCard({
               end: row.end,
               timeZone: churchTimezone,
             })}{' '}
-            · {row.slots.length} slot
-            {row.slots.length === 1 ? '' : 's'}
+            · {row.eventTimeBlocks.length} time block
+            {row.eventTimeBlocks.length === 1 ? '' : 's'}
           </div>
         </div>
         <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
@@ -128,10 +128,10 @@ export function PlanningEventCard({
             type="button"
             size="touch"
             variant="ghost"
-            aria-label={`Add slot to ${row.title}`}
+            aria-label={`Add time block to ${row.title}`}
             onClick={() => onAddEventTimeBlockRequest({ row })}
           >
-            <Plus className="size-3.5" /> Add slot
+            <Plus className="size-3.5" /> Add time block
           </Button>
           <Button
             type="button"
@@ -164,7 +164,7 @@ export function PlanningEventCard({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this day?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This removes "{row.title}" and its slots from the cycle.
+                  This removes "{row.title}" and its time blocks from the cycle.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -184,20 +184,20 @@ export function PlanningEventCard({
         </div>
       ) : null}
 
-      {row.slots.length > 0 ? (
+      {row.eventTimeBlocks.length > 0 ? (
         <ul className="mt-3 space-y-2 text-muted-foreground text-xs">
-          {row.slots.map((slot) => (
+          {row.eventTimeBlocks.map((eventTimeBlock) => (
             <li
-              key={slot.eventTimeBlockId}
+              key={eventTimeBlock.eventTimeBlockId}
               data-testid="planning-event-time-block-item"
               className="flex items-center justify-between gap-2"
             >
               <span>
-                <span>{slot.label}</span> ·{' '}
+                <span>{eventTimeBlock.label}</span> ·{' '}
                 <span>
                   {formatInstantRangeOf({
-                    start: slot.startTime,
-                    end: slot.endTime,
+                    start: eventTimeBlock.startTime,
+                    end: eventTimeBlock.endTime,
                     timeZone: churchTimezone,
                   })}
                 </span>
@@ -208,41 +208,43 @@ export function PlanningEventCard({
                     type="button"
                     size="icon-touch"
                     variant="ghost"
-                    aria-label={`Edit slot ${slot.label}`}
+                    aria-label={`Edit time block ${eventTimeBlock.label}`}
                     onClick={() =>
                       onEditEventTimeBlockRequest({
                         parentId: row.eventId,
-                        eventTimeBlockId: slot.eventTimeBlockId,
-                        label: slot.label,
-                        startTime: slot.startTime,
-                        endTime: slot.endTime,
+                        eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
+                        label: eventTimeBlock.label,
+                        startTime: eventTimeBlock.startTime,
+                        endTime: eventTimeBlock.endTime,
                       })
                     }
                   >
                     <Pencil className="size-3.5" />
                   </Button>
-                  {slot.isOnlyEventTimeBlockInEvent ? (
+                  {eventTimeBlock.isOnlyEventTimeBlockInEvent ? (
                     <Button
                       type="button"
                       size="icon-touch"
                       variant="destructive"
                       disabled
-                      aria-label={`Delete slot ${slot.label}`}
+                      aria-label={`Delete time block ${eventTimeBlock.label}`}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
                   ) : (
                     <AlertDialog
                       open={
-                        confirmState.kind === 'slot' &&
-                        confirmState.eventTimeBlockId === slot.eventTimeBlockId
+                        confirmState.kind === 'event-time-block' &&
+                        confirmState.eventTimeBlockId ===
+                          eventTimeBlock.eventTimeBlockId
                       }
                       onOpenChange={(open) =>
                         setConfirmState(
                           open
                             ? {
-                                kind: 'slot',
-                                eventTimeBlockId: slot.eventTimeBlockId,
+                                kind: 'event-time-block',
+                                eventTimeBlockId:
+                                  eventTimeBlock.eventTimeBlockId,
                               }
                             : { kind: 'none' },
                         )
@@ -254,7 +256,7 @@ export function PlanningEventCard({
                             type="button"
                             size="icon-touch"
                             variant="destructive"
-                            aria-label={`Delete slot ${slot.label}`}
+                            aria-label={`Delete time block ${eventTimeBlock.label}`}
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
@@ -262,9 +264,11 @@ export function PlanningEventCard({
                       />
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete this slot?</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            Delete this time block?
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
-                            This removes "{slot.label}" from the day.
+                            This removes "{eventTimeBlock.label}" from the day.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -279,13 +283,14 @@ export function PlanningEventCard({
                             onClick={() =>
                               onDeleteEventTimeBlockConfirm({
                                 eventId: row.eventId,
-                                eventTimeBlockId: slot.eventTimeBlockId,
+                                eventTimeBlockId:
+                                  eventTimeBlock.eventTimeBlockId,
                               })
                             }
                           >
                             {deleteEventTimeBlockPending
                               ? 'Deleting…'
-                              : 'Delete slot'}
+                              : 'Delete time block'}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

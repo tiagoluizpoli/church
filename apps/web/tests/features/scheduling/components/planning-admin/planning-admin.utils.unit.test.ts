@@ -47,15 +47,18 @@ function makeEventGroup(eventTimeBlockCount: number): CycleEventGroup {
       createdAt: '2027-01-01T00:00:00.000Z',
       updatedAt: '2027-01-01T00:00:00.000Z',
     },
-    slots: Array.from({ length: eventTimeBlockCount }, (_unused, index) => ({
-      id: `event-time-block-${index}`,
-      churchId: 'church-1',
-      eventId: 'event-1',
-      startTime: '2027-01-03T09:00:00.000Z',
-      endTime: '2027-01-03T09:30:00.000Z',
-      status: 'active',
-      requirements: [],
-    })),
+    eventTimeBlocks: Array.from(
+      { length: eventTimeBlockCount },
+      (_unused, index) => ({
+        id: `event-time-block-${index}`,
+        churchId: 'church-1',
+        eventId: 'event-1',
+        startTime: '2027-01-03T09:00:00.000Z',
+        endTime: '2027-01-03T09:30:00.000Z',
+        status: 'active',
+        requirements: [],
+      }),
+    ),
   };
 }
 
@@ -290,7 +293,7 @@ describe('describeTemplateTimeBlockSpan', () => {
 });
 
 describe('calculateTotalEventTimeBlocks', () => {
-  it('sums slot counts across every event group', () => {
+  it('sums time block counts across every event group', () => {
     const events = [makeEventGroup(2), makeEventGroup(1)];
 
     expect(calculateTotalEventTimeBlocks({ events })).toBe(3);

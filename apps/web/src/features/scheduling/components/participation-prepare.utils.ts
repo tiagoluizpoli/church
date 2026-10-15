@@ -51,8 +51,8 @@ export interface ManualSpanDraft {
 
 /** Calendar day of a date-only value, such as a cycle bound.
  *
- * Only for values that name a day rather than a moment. Slot and shift
- * timestamps are real church-local wall-clock instants (a 9am slot is stored as
+ * Only for values that name a day rather than a moment. Time block and shift
+ * timestamps are real church-local wall-clock instants (a 9am time block is stored as
  * `12:00Z` in UTC-3), so slicing their UTC prefix reports the wrong day for
  * anything served late enough to cross UTC midnight — use `dayOf` (church
  * timezone) for those. */
@@ -81,9 +81,9 @@ export function createInitialInclusions(
   return Object.fromEntries(
     events.map((eventView) => [
       eventView.participation.id,
-      eventView.slots
+      eventView.eventTimeBlocks
         .filter((eventTimeBlockView) => eventTimeBlockView.included)
-        .map((eventTimeBlockView) => eventTimeBlockView.slot.id),
+        .map((eventTimeBlockView) => eventTimeBlockView.eventTimeBlock.id),
     ]),
   );
 }
@@ -94,8 +94,8 @@ export function createInitialSplitForms(
   const entries: Record<string, SplitFormState> = {};
 
   for (const eventView of events) {
-    for (const eventTimeBlockView of eventView.slots) {
-      entries[eventTimeBlockView.slot.id] = {
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
+      entries[eventTimeBlockView.eventTimeBlock.id] = {
         mode: 'equal',
         equalCount: String(Math.max(1, eventTimeBlockView.shifts.length)),
         manualSpans:
@@ -108,12 +108,12 @@ export function createInitialSplitForms(
             : [
                 {
                   startTime: parseInstant({
-                    value: eventTimeBlockView.slot.startTime,
+                    value: eventTimeBlockView.eventTimeBlock.startTime,
                   }),
                   endTime: parseInstant({
-                    value: eventTimeBlockView.slot.endTime,
+                    value: eventTimeBlockView.eventTimeBlock.endTime,
                   }),
-                  label: eventTimeBlockView.slot.label ?? '',
+                  label: eventTimeBlockView.eventTimeBlock.label ?? '',
                 },
               ],
       };
@@ -129,7 +129,7 @@ export function createInitialHeadcountDrafts(
   const entries: Record<string, string> = {};
 
   for (const eventView of events) {
-    for (const eventTimeBlockView of eventView.slots) {
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
       for (const requirement of eventTimeBlockView.requirements) {
         entries[toHeadcountKey(requirement.shiftId, requirement.roleId)] =
           String(requirement.peopleNeeded);
@@ -167,10 +167,10 @@ export function validateManualSpans({
   spans: ManualSpanDraft[];
 }): string | null {
   const eventTimeBlockStart = parseInstant({
-    value: eventTimeBlockView.slot.startTime,
+    value: eventTimeBlockView.eventTimeBlock.startTime,
   });
   const eventTimeBlockEnd = parseInstant({
-    value: eventTimeBlockView.slot.endTime,
+    value: eventTimeBlockView.eventTimeBlock.endTime,
   });
 
   if (
@@ -191,7 +191,7 @@ export function validateManualSpans({
         compareInstants({ left: span.endTime, right: eventTimeBlockEnd }) === 1,
     )
   ) {
-    return 'Manual shifts must stay within the parent slot bounds.';
+    return 'Manual shifts must stay within the parent time block bounds.';
   }
 
   const ordered = [...spans].sort((left, right) =>
@@ -220,7 +220,7 @@ export function countIncludedEventTimeBlocks(
   return events.reduce(
     (total, eventView) =>
       total +
-      eventView.slots.filter(
+      eventView.eventTimeBlocks.filter(
         (eventTimeBlockView) => eventTimeBlockView.included,
       ).length,
     0,
@@ -256,7 +256,7 @@ export function countShifts(
   return events.reduce(
     (total, eventView) =>
       total +
-      eventView.slots.reduce(
+      eventView.eventTimeBlocks.reduce(
         (eventTimeBlockTotal, eventTimeBlockView) =>
           eventTimeBlockTotal + eventTimeBlockView.shifts.length,
         0,
@@ -282,7 +282,7 @@ export interface MinistryPrepareSummaryRow {
   eventTimeBlockCount: number;
 }
 
-/** Aggregates per-ministry event/slot counts for the ministry-list landing
+/** Aggregates per-ministry event/time block counts for the ministry-list landing
  * page. Pure function over already-fetched data — the fetch orchestration
  * (listMinistries + listCycles({state:'sent'}) + per-ministry
  * listEvents + per-(ministry, sent cycle) getCycleParticipation) lives in
@@ -329,9 +329,9 @@ export function buildMinistryPrepareSummary({
 
 export type IsoDateString = string;
 
-/** Derives the set of calendar days with at least one visible prepare slot.
+/** Derives the set of calendar days with at least one visible prepare time block.
  * The strip dot is a "there is something to work on this day" marker, so it
- * should come from actual slot timestamps, not a parent event's full span. */
+ * should come from actual time block timestamps, not a parent event's full span. */
 export interface BuildEventTimeBlockDayMarkersInput {
   events: GetCycleParticipation200EventsItem[];
   timeZone: string;
@@ -344,9 +344,9 @@ export function buildEventTimeBlockDayMarkers({
   const markers = new Set<IsoDateString>();
 
   for (const eventView of events) {
-    for (const eventTimeBlockView of eventView.slots) {
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
       markers.add(
-        dayOf({ value: eventTimeBlockView.slot.startTime, timeZone }),
+        dayOf({ value: eventTimeBlockView.eventTimeBlock.startTime, timeZone }),
       );
     }
   }
@@ -354,9 +354,9 @@ export function buildEventTimeBlockDayMarkers({
   return markers;
 }
 
-/** Client-side, already-fetched-data-only slot filters (FR-010) — never
+/** Client-side, already-fetched-data-only time block filters (FR-010) — never
  * issue network requests. Both drop an event entirely once it has zero
- * matching slots, so the day-grouped slot list only shows groups with
+ * matching time blocks, so the day-grouped time block list only shows groups with
  * visible content. */
 export function filterEventTimeBlocksByName({
   events,
@@ -371,21 +371,25 @@ export function filterEventTimeBlocksByName({
   return events
     .map((eventView) => ({
       ...eventView,
-      slots: eventView.slots.filter((eventTimeBlockView) => {
-        const label = (eventTimeBlockView.slot.label ?? '').toLowerCase();
-        const eventTitle = eventView.event.title.toLowerCase();
-        return label.includes(needle) || eventTitle.includes(needle);
-      }),
+      eventTimeBlocks: eventView.eventTimeBlocks.filter(
+        (eventTimeBlockView) => {
+          const label = (
+            eventTimeBlockView.eventTimeBlock.label ?? ''
+          ).toLowerCase();
+          const eventTitle = eventView.event.title.toLowerCase();
+          return label.includes(needle) || eventTitle.includes(needle);
+        },
+      ),
     }))
-    .filter((eventView) => eventView.slots.length > 0);
+    .filter((eventView) => eventView.eventTimeBlocks.length > 0);
 }
 
 export type TimeWindowMode = 'starts' | 'ends' | 'within';
 
 /** A single [start, end] local-time-of-day window (`HH:mm` strings),
- * applied per `mode`: `'starts'` keeps slots whose start time falls in the
- * window, `'ends'` keeps slots whose end time falls in the window, and
- * `'within'` keeps slots whose entire span (start AND end) falls inside the
+ * applied per `mode`: `'starts'` keeps time blocks whose start time falls in the
+ * window, `'ends'` keeps time blocks whose end time falls in the window, and
+ * `'within'` keeps time blocks whose entire span (start AND end) falls inside the
  * window. Either bound may be omitted to leave that side open-ended. */
 export interface TimeWindowFilter {
   mode: TimeWindowMode;
@@ -446,27 +450,29 @@ export function filterEventTimeBlocksByTimeOfDay({
   return events
     .map((eventView) => ({
       ...eventView,
-      slots: eventView.slots.filter((eventTimeBlockView) => {
-        const startMinutes = churchTimeOfDayInMinutes({
-          isoValue: eventTimeBlockView.slot.startTime,
-          timeZone,
-        });
-        const endMinutes = churchTimeOfDayInMinutes({
-          isoValue: eventTimeBlockView.slot.endTime,
-          timeZone,
-        });
+      eventTimeBlocks: eventView.eventTimeBlocks.filter(
+        (eventTimeBlockView) => {
+          const startMinutes = churchTimeOfDayInMinutes({
+            isoValue: eventTimeBlockView.eventTimeBlock.startTime,
+            timeZone,
+          });
+          const endMinutes = churchTimeOfDayInMinutes({
+            isoValue: eventTimeBlockView.eventTimeBlock.endTime,
+            timeZone,
+          });
 
-        if (filter.mode === 'starts') {
-          return isWithinWindow({ minutes: startMinutes, filter });
-        }
-        if (filter.mode === 'ends') {
-          return isWithinWindow({ minutes: endMinutes, filter });
-        }
-        return (
-          isWithinWindow({ minutes: startMinutes, filter }) &&
-          isWithinWindow({ minutes: endMinutes, filter })
-        );
-      }),
+          if (filter.mode === 'starts') {
+            return isWithinWindow({ minutes: startMinutes, filter });
+          }
+          if (filter.mode === 'ends') {
+            return isWithinWindow({ minutes: endMinutes, filter });
+          }
+          return (
+            isWithinWindow({ minutes: startMinutes, filter }) &&
+            isWithinWindow({ minutes: endMinutes, filter })
+          );
+        },
+      ),
     }))
-    .filter((eventView) => eventView.slots.length > 0);
+    .filter((eventView) => eventView.eventTimeBlocks.length > 0);
 }

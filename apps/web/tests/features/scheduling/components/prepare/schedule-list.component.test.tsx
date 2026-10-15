@@ -78,7 +78,7 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
     expect(table.closest('.surface-panel')).not.toBeNull();
   });
 
-  it('shows real Events and Slots counts per cycle, not the events total (T067)', () => {
+  it('shows real Events and Time blocks counts per cycle, not the events total (T067)', () => {
     renderCycleList(
       <ScheduleList
         ministryId="ministry-1"

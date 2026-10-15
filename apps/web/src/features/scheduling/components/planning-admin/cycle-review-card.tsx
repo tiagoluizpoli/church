@@ -46,22 +46,37 @@ const DEFAULT_EVENT_TIME_BLOCK_END_TIME = parseTimeOfDay({ value: '10:00' });
 type DialogState =
   | { kind: 'none' }
   | { kind: 'edit-event'; event: EditingEventState }
-  | { kind: 'edit-event-time-block'; slot: EditingEventTimeBlockState }
-  | { kind: 'create-event-time-block'; slot: CreatingEventTimeBlockState }
+  | {
+      kind: 'edit-event-time-block';
+      eventTimeBlock: EditingEventTimeBlockState;
+    }
+  | {
+      kind: 'create-event-time-block';
+      eventTimeBlock: CreatingEventTimeBlockState;
+    }
   | { kind: 'confirm-delete-event'; eventId: string }
   | { kind: 'confirm-delete-event-time-block'; eventTimeBlockId: string };
 
 type DialogAction =
   | { type: 'edit-event'; event: EditingEventState }
-  | { type: 'edit-event-time-block'; slot: EditingEventTimeBlockState }
-  | { type: 'create-event-time-block'; slot: CreatingEventTimeBlockState }
+  | {
+      type: 'edit-event-time-block';
+      eventTimeBlock: EditingEventTimeBlockState;
+    }
+  | {
+      type: 'create-event-time-block';
+      eventTimeBlock: CreatingEventTimeBlockState;
+    }
   | { type: 'confirm-delete-event'; eventId: string }
   | { type: 'confirm-delete-event-time-block'; eventTimeBlockId: string }
   | { type: 'update-edit-event'; event: EditingEventState }
-  | { type: 'update-edit-event-time-block'; slot: EditingEventTimeBlockState }
+  | {
+      type: 'update-edit-event-time-block';
+      eventTimeBlock: EditingEventTimeBlockState;
+    }
   | {
       type: 'update-create-event-time-block';
-      slot: CreatingEventTimeBlockState;
+      eventTimeBlock: CreatingEventTimeBlockState;
     }
   | { type: 'close' };
 
@@ -75,9 +90,15 @@ function dialogReducer(state: DialogState, action: DialogAction): DialogState {
     case 'edit-event':
       return { kind: 'edit-event', event: action.event };
     case 'edit-event-time-block':
-      return { kind: 'edit-event-time-block', slot: action.slot };
+      return {
+        kind: 'edit-event-time-block',
+        eventTimeBlock: action.eventTimeBlock,
+      };
     case 'create-event-time-block':
-      return { kind: 'create-event-time-block', slot: action.slot };
+      return {
+        kind: 'create-event-time-block',
+        eventTimeBlock: action.eventTimeBlock,
+      };
     case 'confirm-delete-event':
       return { kind: 'confirm-delete-event', eventId: action.eventId };
     case 'confirm-delete-event-time-block':
@@ -91,11 +112,17 @@ function dialogReducer(state: DialogState, action: DialogAction): DialogState {
         : state;
     case 'update-edit-event-time-block':
       return state.kind === 'edit-event-time-block'
-        ? { kind: 'edit-event-time-block', slot: action.slot }
+        ? {
+            kind: 'edit-event-time-block',
+            eventTimeBlock: action.eventTimeBlock,
+          }
         : state;
     case 'update-create-event-time-block':
       return state.kind === 'create-event-time-block'
-        ? { kind: 'create-event-time-block', slot: action.slot }
+        ? {
+            kind: 'create-event-time-block',
+            eventTimeBlock: action.eventTimeBlock,
+          }
         : state;
     case 'close':
       return { kind: 'none' };
@@ -242,9 +269,13 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
   const editingEvent =
     dialogState.kind === 'edit-event' ? dialogState.event : null;
   const editingEventTimeBlock =
-    dialogState.kind === 'edit-event-time-block' ? dialogState.slot : null;
+    dialogState.kind === 'edit-event-time-block'
+      ? dialogState.eventTimeBlock
+      : null;
   const creatingEventTimeBlock =
-    dialogState.kind === 'create-event-time-block' ? dialogState.slot : null;
+    dialogState.kind === 'create-event-time-block'
+      ? dialogState.eventTimeBlock
+      : null;
 
   function toggleEventExpanded({ eventId }: ToggleEventExpandedInput): void {
     setCalendarRowsState((current) => {
@@ -326,7 +357,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
 
     dispatchDialog({
       type: 'edit-event-time-block',
-      slot: {
+      eventTimeBlock: {
         eventId: parentId,
         eventTimeBlockId,
         label,
@@ -342,14 +373,14 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
 
   function submitEditEventTimeBlock(): void {
     if (dialogState.kind !== 'edit-event-time-block') return;
-    const { slot } = dialogState;
+    const { eventTimeBlock } = dialogState;
 
     handleUpdateEventTimeBlock({
-      eventId: slot.eventId,
-      eventTimeBlockId: slot.eventTimeBlockId,
-      label: slot.label,
-      startTime: slot.start,
-      endTime: slot.end,
+      eventId: eventTimeBlock.eventId,
+      eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
+      label: eventTimeBlock.label,
+      startTime: eventTimeBlock.start,
+      endTime: eventTimeBlock.end,
     });
   }
 
@@ -369,7 +400,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
 
     dispatchDialog({
       type: 'create-event-time-block',
-      slot: {
+      eventTimeBlock: {
         eventId: row.eventId,
         label: '',
         start: toInstant({
@@ -392,13 +423,13 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
 
   function submitCreateEventTimeBlock(): void {
     if (dialogState.kind !== 'create-event-time-block') return;
-    const { slot } = dialogState;
+    const { eventTimeBlock } = dialogState;
 
     handleCreateEventTimeBlock({
-      eventId: slot.eventId,
-      label: slot.label || undefined,
-      startTime: slot.start,
-      endTime: slot.end,
+      eventId: eventTimeBlock.eventId,
+      label: eventTimeBlock.label || undefined,
+      startTime: eventTimeBlock.start,
+      endTime: eventTimeBlock.end,
     });
   }
 
@@ -430,8 +461,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                 <div>
                   <div className="font-medium text-sm">Calendar review</div>
                   <div className="text-muted-foreground text-xs">
-                    Confirm dates, slots, and event types before sending the
-                    package.
+                    Confirm dates, eventTimeBlocks, and event types before
+                    sending the package.
                   </div>
                 </div>
                 <Button
@@ -494,7 +525,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                         eventId: calendarRowEventId({ visibleRow: item }),
                       }),
                       isConfirmingDeleteEventTimeBlock:
-                        item.kind === 'slot' &&
+                        item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
                           dialogState,
                           eventTimeBlockId: item.eventTimeBlockId,
@@ -516,7 +547,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                         eventId: calendarRowEventId({ visibleRow: item }),
                       }),
                       isConfirmingDeleteEventTimeBlock:
-                        item.kind === 'slot' &&
+                        item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
                           dialogState,
                           eventTimeBlockId: item.eventTimeBlockId,
@@ -610,8 +641,11 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         editingEventTimeBlock={editingEventTimeBlock}
         updateEventTimeBlockPending={updateEventTimeBlockPending}
         timeZone={churchTimezone}
-        onChange={(slot) =>
-          dispatchDialog({ type: 'update-edit-event-time-block', slot })
+        onChange={(eventTimeBlock) =>
+          dispatchDialog({
+            type: 'update-edit-event-time-block',
+            eventTimeBlock,
+          })
         }
         onOpenChange={(open) => {
           if (!open) dispatchDialog({ type: 'close' });
@@ -623,8 +657,11 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         creatingEventTimeBlock={creatingEventTimeBlock}
         createEventTimeBlockPending={createEventTimeBlockPending}
         timeZone={churchTimezone}
-        onChange={(slot) =>
-          dispatchDialog({ type: 'update-create-event-time-block', slot })
+        onChange={(eventTimeBlock) =>
+          dispatchDialog({
+            type: 'update-create-event-time-block',
+            eventTimeBlock,
+          })
         }
         onOpenChange={(open) => {
           if (!open) dispatchDialog({ type: 'close' });

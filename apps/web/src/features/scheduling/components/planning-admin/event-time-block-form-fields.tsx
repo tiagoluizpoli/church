@@ -36,9 +36,9 @@ interface UpdateTimeInput {
 }
 
 /**
- * Label/Start/End fields shared by the Edit-slot and Add-slot dialogs,
+ * Label/Start/End fields shared by the Edit time block and Add time block dialogs,
  * including the InstantField-vs-TimeOfDayField branching that depends on
- * whether the slot's parent event spans a single calendar day or several
+ * whether the time block's parent event spans a single calendar day or several
  * (`isMultiDayEvent`, see `planning-admin.utils.ts`). Both branches combine
  * through the Church Timezone (`toInstant`/`toTimeOfDay`), so no reading here
  * depends on the browser's ambient zone (ADR-0003).

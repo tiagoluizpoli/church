@@ -26,7 +26,7 @@ function twoEventTimeBlockRow(): CycleCalendarTableRow {
     start: '2026-08-02T09:00:00Z',
     end: '2026-08-02T11:00:00Z',
     status: 'scheduled',
-    slots: [
+    eventTimeBlocks: [
       {
         eventTimeBlockId: 'event-time-block-1',
         label: 'Worship',
@@ -52,7 +52,7 @@ function oneEventTimeBlockRow(): CycleCalendarTableRow {
     start: '2026-08-05T19:00:00Z',
     end: '2026-08-05T21:00:00Z',
     status: 'scheduled',
-    slots: [
+    eventTimeBlocks: [
       {
         eventTimeBlockId: 'event-time-block-3',
         label: 'Midweek',
@@ -77,7 +77,7 @@ function baseProps() {
 }
 
 describe('PlanningEventCard affordances (US1)', () => {
-  it('renders add/edit/delete affordances for a day-event and its slots when not read-only', () => {
+  it('renders add/edit/delete affordances for a day-event and its time blocks when not read-only', () => {
     render(
       <PlanningEventCard
         row={twoEventTimeBlockRow()}
@@ -87,7 +87,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Add slot to Sunday Service' }),
+      screen.getByRole('button', { name: 'Add time block to Sunday Service' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Edit day Sunday Service' }),
@@ -96,14 +96,14 @@ describe('PlanningEventCard affordances (US1)', () => {
       screen.getByRole('button', { name: 'Delete day Sunday Service' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Edit slot Worship' }),
+      screen.getByRole('button', { name: 'Edit time block Worship' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Delete slot Worship' }),
+      screen.getByRole('button', { name: 'Delete time block Worship' }),
     ).toBeEnabled();
   });
 
-  it("disables a slot's delete affordance when it is the only slot in the event", () => {
+  it("disables a time block's delete affordance when it is the only time block in the event", () => {
     render(
       <PlanningEventCard
         row={oneEventTimeBlockRow()}
@@ -113,7 +113,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Delete slot Midweek' }),
+      screen.getByRole('button', { name: 'Delete time block Midweek' }),
     ).toBeDisabled();
   });
 
@@ -127,7 +127,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.queryByRole('button', { name: /^Add slot/ }),
+      screen.queryByRole('button', { name: /^Add eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Edit day/ }),
@@ -136,10 +136,10 @@ describe('PlanningEventCard affordances (US1)', () => {
       screen.queryByRole('button', { name: /^Delete day/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Edit slot/ }),
+      screen.queryByRole('button', { name: /^Edit eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Delete slot/ }),
+      screen.queryByRole('button', { name: /^Delete eventTimeBlock/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -179,11 +179,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete slot Worship' }),
+      screen.getByRole('button', { name: 'Delete time block Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete slot' }),
+      within(dialog).getByRole('button', { name: 'Delete time block' }),
     );
 
     expect(props.onDeleteEventTimeBlockConfirm).toHaveBeenCalledWith({
@@ -192,7 +192,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     });
   });
 
-  it('gives the day-delete trigger the same destructive visual weight as its slot-level sibling', () => {
+  it('gives the day-delete trigger the same destructive visual weight as its time-block-level sibling', () => {
     render(
       <PlanningEventCard
         row={twoEventTimeBlockRow()}
@@ -205,7 +205,7 @@ describe('PlanningEventCard affordances (US1)', () => {
       name: 'Delete day Sunday Service',
     });
     const eventTimeBlockDelete = screen.getByRole('button', {
-      name: 'Delete slot Worship',
+      name: 'Delete time block Worship',
     });
 
     expect(dayDelete.className).toContain('bg-destructive/10');
@@ -274,11 +274,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete slot Worship' }),
+      screen.getByRole('button', { name: 'Delete time block Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete slot' }),
+      within(dialog).getByRole('button', { name: 'Delete time block' }),
     );
 
     rerender(
@@ -314,7 +314,7 @@ function isDateOnlyText(content: string): boolean {
 }
 
 /** `dd/MM/yyyy HH:mm – HH:mm`, or `dd/MM/yyyy HH:mm – dd/MM/yyyy HH:mm` when
- * the slot's range crosses a church-local day boundary. */
+ * the time block's range crosses a church-local day boundary. */
 function isTimeRangeText(content: string): boolean {
   return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}\s?[–-]\s?(\d{2}\/\d{2}\/\d{4}\s)?\d{2}:\d{2}$/.test(
     content,
@@ -322,7 +322,7 @@ function isTimeRangeText(content: string): boolean {
 }
 
 describe('PlanningEventCard timezone-aware formatting (US2)', () => {
-  it("renders a day's date date-only and a slot's time as a dated instant range, with no raw ISO or arrow", () => {
+  it("renders a day's date date-only and a time block's time as a dated instant range, with no raw ISO or arrow", () => {
     render(
       <PlanningEventCard
         row={twoEventTimeBlockRow()}

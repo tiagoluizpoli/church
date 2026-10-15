@@ -160,7 +160,7 @@ export interface CycleBuilderEventSummary {
   peopleNeeded: number;
   assignedCount: number;
   eventTimeBlockCount: number;
-  slots: CycleBuilderEventTimeBlockSummary[];
+  eventTimeBlocks: CycleBuilderEventTimeBlockSummary[];
 }
 
 export interface CycleBuilderData {
@@ -176,12 +176,14 @@ export interface CycleBuilderRoleOption {
 
 const CYCLE_BUILDER_QUERY_KEY = ['cycle-builder'] as const;
 
-function sumRequiredCount(slots: RequiredCountEventTimeBlock[]): number {
-  return slots.reduce((total, slot) => {
-    if (!slot.included) return total;
+function sumRequiredCount(
+  eventTimeBlocks: RequiredCountEventTimeBlock[],
+): number {
+  return eventTimeBlocks.reduce((total, eventTimeBlock) => {
+    if (!eventTimeBlock.included) return total;
     return (
       total +
-      slot.shifts.reduce(
+      eventTimeBlock.shifts.reduce(
         (eventTimeBlockTotal, shift) =>
           eventTimeBlockTotal +
           shift.requirements.reduce(
@@ -194,12 +196,14 @@ function sumRequiredCount(slots: RequiredCountEventTimeBlock[]): number {
   }, 0);
 }
 
-function sumAssignedCount(slots: AssignedCountEventTimeBlock[]): number {
-  return slots.reduce((total, slot) => {
-    if (!slot.included) return total;
+function sumAssignedCount(
+  eventTimeBlocks: AssignedCountEventTimeBlock[],
+): number {
+  return eventTimeBlocks.reduce((total, eventTimeBlock) => {
+    if (!eventTimeBlock.included) return total;
     return (
       total +
-      slot.shifts.reduce(
+      eventTimeBlock.shifts.reduce(
         (eventTimeBlockTotal, shift) =>
           eventTimeBlockTotal +
           shift.assignments.filter(
@@ -219,7 +223,7 @@ function mapCycleBuilderData(
   const volunteerNames = new Map<string, string>();
   const volunteerMemberships = new Map<string, AssigneeMembership>();
   for (const item of data.events) {
-    for (const eventTimeBlockItem of item.slots) {
+    for (const eventTimeBlockItem of item.eventTimeBlocks) {
       for (const shiftItem of eventTimeBlockItem.shifts) {
         for (const volunteer of shiftItem.eligibleVolunteers) {
           volunteerNames.set(volunteer.volunteerId, volunteer.volunteerName);
@@ -233,7 +237,7 @@ function mapCycleBuilderData(
   }
 
   const assignments = data.events.flatMap((item) =>
-    item.slots.flatMap((eventTimeBlockItem) =>
+    item.eventTimeBlocks.flatMap((eventTimeBlockItem) =>
       eventTimeBlockItem.shifts.flatMap((shiftItem) =>
         shiftItem.assignments.map((assignment) => ({
           ...assignment,
@@ -244,7 +248,7 @@ function mapCycleBuilderData(
     ),
   );
   const events = data.events.map((item) => {
-    const slots = item.slots.map((eventTimeBlockItem) => {
+    const eventTimeBlocks = item.eventTimeBlocks.map((eventTimeBlockItem) => {
       const shifts = eventTimeBlockItem.shifts.map((shiftItem) => {
         const peopleNeeded = shiftItem.requirements.reduce(
           (total, requirement) => total + requirement.peopleNeeded,
@@ -258,7 +262,7 @@ function mapCycleBuilderData(
 
         return {
           shiftId: shiftItem.shift.id,
-          eventTimeBlockId: eventTimeBlockItem.slot.id,
+          eventTimeBlockId: eventTimeBlockItem.eventTimeBlock.id,
           label: shiftItem.shift.label,
           startTime: shiftItem.shift.startTime,
           endTime: shiftItem.shift.endTime,
@@ -285,10 +289,10 @@ function mapCycleBuilderData(
       );
 
       return {
-        eventTimeBlockId: eventTimeBlockItem.slot.id,
-        label: eventTimeBlockItem.slot.label,
-        startTime: eventTimeBlockItem.slot.startTime,
-        endTime: eventTimeBlockItem.slot.endTime,
+        eventTimeBlockId: eventTimeBlockItem.eventTimeBlock.id,
+        label: eventTimeBlockItem.eventTimeBlock.label,
+        startTime: eventTimeBlockItem.eventTimeBlock.startTime,
+        endTime: eventTimeBlockItem.eventTimeBlock.endTime,
         included: eventTimeBlockItem.included,
         peopleNeeded,
         assignedCount,
@@ -297,8 +301,8 @@ function mapCycleBuilderData(
       };
     });
 
-    const peopleNeeded = sumRequiredCount(item.slots);
-    const assignedCount = sumAssignedCount(item.slots);
+    const peopleNeeded = sumRequiredCount(item.eventTimeBlocks);
+    const assignedCount = sumAssignedCount(item.eventTimeBlocks);
 
     return {
       participationId: item.participation.id,
@@ -311,8 +315,10 @@ function mapCycleBuilderData(
       fillRatio: peopleNeeded === 0 ? 0 : assignedCount / peopleNeeded,
       peopleNeeded,
       assignedCount,
-      eventTimeBlockCount: slots.filter((slot) => slot.included).length,
-      slots,
+      eventTimeBlockCount: eventTimeBlocks.filter(
+        (eventTimeBlock) => eventTimeBlock.included,
+      ).length,
+      eventTimeBlocks,
     };
   });
 

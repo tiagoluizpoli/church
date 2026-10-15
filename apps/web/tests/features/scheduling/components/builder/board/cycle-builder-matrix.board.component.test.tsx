@@ -26,7 +26,7 @@ const boardData: CycleBuilderData = {
       peopleNeeded: 2,
       assignedCount: 0,
       eventTimeBlockCount: 1,
-      slots: [
+      eventTimeBlocks: [
         {
           eventTimeBlockId: 'event-time-block-1',
           label: 'Morning service',
@@ -80,10 +80,10 @@ const sameShiftAssignment: CycleBuilderAssignment = {
 
 function boardDataWithShiftAssignments(): CycleBuilderData {
   const event = boardData.events[0];
-  const slot = event?.slots[0];
-  const morningShift = slot?.shifts[0];
+  const eventTimeBlock = event?.eventTimeBlocks[0];
+  const morningShift = eventTimeBlock?.shifts[0];
 
-  if (!(event && slot && morningShift)) {
+  if (!(event && eventTimeBlock && morningShift)) {
     throw new Error('Board fixture is incomplete');
   }
 
@@ -123,9 +123,9 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
         ...event,
         peopleNeeded: 3,
         assignedCount: 1,
-        slots: [
+        eventTimeBlocks: [
           {
-            ...slot,
+            ...eventTimeBlock,
             peopleNeeded: 3,
             assignedCount: 1,
             shiftCount: 2,
@@ -200,7 +200,7 @@ describe('CycleBuilderMatrix', () => {
     ).toBe(true);
   });
 
-  it('renders each date as a compact event, slot, shift, and role column', () => {
+  it('renders each date as a compact event, time block, shift, and role column', () => {
     renderWithProviders(
       <CycleBuilderMatrix
         data={boardData}
@@ -241,7 +241,7 @@ describe('CycleBuilderMatrix', () => {
               title: 'Midweek Gathering',
               start: '2026-08-05T19:00:00.000Z',
               end: '2026-08-05T21:00:00.000Z',
-              slots: [],
+              eventTimeBlocks: [],
             },
           ],
         }}
@@ -940,11 +940,11 @@ describe('CycleBuilderMatrix', () => {
         end: '2026-08-09T11:00:00.000Z',
         peopleNeeded: 2,
         assignedCount: 1,
-        // Slots would otherwise still carry boardData's Aug 2 startTime,
+        // Time blocks would otherwise still carry boardData's Aug 2 startTime,
         // so `eventOccursOnDay` (start-day-only, not a raw bounds check)
         // would never place the event under its own Aug 9 column.
         eventTimeBlockCount: 0,
-        slots: [],
+        eventTimeBlocks: [],
       };
       const emptyEvent: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
@@ -956,7 +956,7 @@ describe('CycleBuilderMatrix', () => {
         peopleNeeded: 2,
         assignedCount: 0,
         eventTimeBlockCount: 0,
-        slots: [],
+        eventTimeBlocks: [],
       };
 
       renderWithProviders(
@@ -1001,10 +1001,10 @@ describe('CycleBuilderMatrix', () => {
         peopleNeeded: 0,
         assignedCount: 0,
         // See the partial/empty fixtures above: without this, the stale
-        // Aug 2 slot would keep `eventOccursOnDay` from placing the event
+        // Aug 2 time block would keep `eventOccursOnDay` from placing the event
         // under its own Aug 23 column.
         eventTimeBlockCount: 0,
-        slots: [],
+        eventTimeBlocks: [],
       };
 
       renderWithProviders(

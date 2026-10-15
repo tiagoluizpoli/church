@@ -92,7 +92,7 @@ interface CycleBuilderBoardGridProps {
 
 /**
  * The board's own scroll surface: a grid of date columns, each holding its
- * events → included slots → shifts → role cells. Drag-to-scroll comes from
+ * events → included time blocks → shifts → role cells. Drag-to-scroll comes from
  * `useBoardDragScroll` (see that hook's doc comment for why it isn't shared
  * with the date strip's). Rendered inside the parent's `DndContext` — cells
  * register their own droppables via `useDroppable`, which works anywhere in
@@ -191,17 +191,17 @@ export function CycleBuilderBoardGrid({
                           </Badge>
                         </div>
                         {eventTimeBlocksOnDay({ event, day: date, timeZone })
-                          .filter((slot) => slot.included)
-                          .map((slot) => (
+                          .filter((eventTimeBlock) => eventTimeBlock.included)
+                          .map((eventTimeBlock) => (
                             <section
-                              key={slot.eventTimeBlockId}
+                              key={eventTimeBlock.eventTimeBlockId}
                               className="space-y-2 rounded-md border border-dashed p-2"
                             >
                               <h3 className="font-medium text-foreground text-xs">
-                                {slot.label ?? 'Slot'}
+                                {eventTimeBlock.label ?? 'Time block'}
                               </h3>
                               <div className="space-y-2">
-                                {slot.shifts.map((shift) => (
+                                {eventTimeBlock.shifts.map((shift) => (
                                   <section
                                     key={shift.shiftId}
                                     className="space-y-2 border-t pt-2 first:border-t-0 first:pt-0"
@@ -248,7 +248,8 @@ export function CycleBuilderBoardGrid({
                                             label: buildFocusLabel({
                                               roleLabel,
                                               eventTimeBlockLabel:
-                                                slot.label ?? 'this shift',
+                                                eventTimeBlock.label ??
+                                                'this shift',
                                               eventTitle: event.title,
                                               dateText: dateLabel({
                                                 day: date,
@@ -258,7 +259,8 @@ export function CycleBuilderBoardGrid({
                                             roleId: requirement.roleId,
                                             roleLabel,
                                             eventTimeBlockLabel:
-                                              slot.label ?? 'this shift',
+                                              eventTimeBlock.label ??
+                                              'this shift',
                                             ...rankVolunteersForShiftRole({
                                               shift,
                                               roleId: requirement.roleId,
@@ -283,7 +285,8 @@ export function CycleBuilderBoardGrid({
                                               suggestionGroups.needsResponse
                                             }
                                             eventTimeBlockLabel={
-                                              slot.label ?? 'this shift'
+                                              eventTimeBlock.label ??
+                                              'this shift'
                                             }
                                             selectedVolunteerId={
                                               selectedVolunteerId

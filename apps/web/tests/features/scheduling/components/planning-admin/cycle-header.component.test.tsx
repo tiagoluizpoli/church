@@ -120,7 +120,7 @@ describe('CycleHeader (T058)', () => {
             end: '2026-08-02T11:00:00Z',
             status: 'scheduled',
           },
-          slots: [
+          eventTimeBlocks: [
             {
               id: 'event-time-block-1',
               label: 'Worship',
@@ -143,7 +143,7 @@ describe('CycleHeader (T058)', () => {
             end: '2026-08-05T20:00:00Z',
             status: 'scheduled',
           },
-          slots: [
+          eventTimeBlocks: [
             {
               id: 'event-time-block-3',
               label: null,

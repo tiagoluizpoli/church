@@ -62,7 +62,7 @@ function makeEvent(
     peopleNeeded: 1,
     assignedCount: 0,
     eventTimeBlockCount: 1,
-    slots: [makeEventTimeBlock()],
+    eventTimeBlocks: [makeEventTimeBlock()],
     ...overrides,
   };
 }
@@ -129,10 +129,12 @@ describe('roleHasRoom', () => {
 });
 
 describe('findShiftById', () => {
-  it('finds a shift nested in any event slot, or returns undefined', () => {
+  it('finds a shift nested in any event time block, or returns undefined', () => {
     const data = {
       events: [
-        makeEvent({ slots: [makeEventTimeBlock({ shifts: [makeShift()] })] }),
+        makeEvent({
+          eventTimeBlocks: [makeEventTimeBlock({ shifts: [makeShift()] })],
+        }),
       ],
       assignments: [],
       roles: [],

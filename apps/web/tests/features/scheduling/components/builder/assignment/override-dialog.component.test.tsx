@@ -62,7 +62,7 @@ describe('OverrideDialog (T104)', () => {
     expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
   });
 
-  it("renders a role badge next to the title when the volunteer is a ministry Leader or a Team Leader of the conflicted slot's team (FR-013)", () => {
+  it("renders a role badge next to the title when the volunteer is a ministry Leader or a Team Leader of the conflicted shift's team (FR-013)", () => {
     render(
       <OverrideDialog
         {...baseProps}
@@ -92,7 +92,7 @@ describe('OverrideDialog (T104)', () => {
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 
-  it('renders no Team Leader badge when the conflicted slot is outside the team this volunteer leads (regression guard)', () => {
+  it('renders no Team Leader badge when the conflicted shift is outside the team this volunteer leads (regression guard)', () => {
     render(
       <OverrideDialog
         {...baseProps}

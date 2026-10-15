@@ -195,9 +195,9 @@ describe('ManualSplitEditor manual spans (T001/T023)', () => {
 });
 
 describe('createManualSplitSchema regression-equivalence with validateManualSpans (Iteration 2/T048a/FR-027)', () => {
-  const EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['slots'][number] =
+  const EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['eventTimeBlocks'][number] =
     {
-      slot: {
+      eventTimeBlock: {
         id: 'event-time-block-1',
         churchId: 'church-1',
         eventId: 'event-1',
@@ -222,7 +222,7 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     });
   }
 
-  it('accepts spans fully within slot bounds, in order, non-overlapping — same as validateManualSpans', () => {
+  it('accepts spans fully within time block bounds, in order, non-overlapping — same as validateManualSpans', () => {
     expect(
       parseManual([
         {
@@ -263,7 +263,7 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     ).toBe(false);
   });
 
-  it('rejects a span starting before the parent slot bounds — same as validateManualSpans', () => {
+  it('rejects a span starting before the parent time block bounds — same as validateManualSpans', () => {
     expect(
       parseManual([
         {
@@ -275,7 +275,7 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     ).toBe(false);
   });
 
-  it('rejects a span ending after the parent slot bounds — same as validateManualSpans', () => {
+  it('rejects a span ending after the parent time block bounds — same as validateManualSpans', () => {
     expect(
       parseManual([
         {
@@ -338,11 +338,11 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
   });
 
   it('accepts a manual span within a parent EventTimeBlock whose own bounds cross midnight', () => {
-    const overnightEventTimeBlockView: GetCycleParticipation200EventsItem['slots'][number] =
+    const overnightEventTimeBlockView: GetCycleParticipation200EventsItem['eventTimeBlocks'][number] =
       {
         ...EVENT_TIME_BLOCK_VIEW,
-        slot: {
-          ...EVENT_TIME_BLOCK_VIEW.slot,
+        eventTimeBlock: {
+          ...EVENT_TIME_BLOCK_VIEW.eventTimeBlock,
           startTime: '2026-07-12T22:00:00Z',
           endTime: '2026-07-13T02:00:00Z',
         },

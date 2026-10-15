@@ -61,7 +61,7 @@ describe('Prepare ministry list route (US1/T013)', () => {
       events: [{ id: 'event-1', cycleId: 'cycle-1' }],
     });
     getCycleParticipation.mockResolvedValue({
-      events: [{ slots: [{}, {}] }],
+      events: [{ eventTimeBlocks: [{}, {}] }],
     });
 
     renderPrepareIndex();
@@ -71,7 +71,7 @@ describe('Prepare ministry list route (US1/T013)', () => {
     expect(table).toHaveTextContent('2');
   });
 
-  it('renders header stat pills for ministry/event/slot totals', async () => {
+  it('renders header stat pills for ministry/event/time block totals', async () => {
     listMinistries.mockResolvedValue({
       ministries: [
         { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
@@ -84,7 +84,7 @@ describe('Prepare ministry list route (US1/T013)', () => {
       events: [{ id: 'event-1', cycleId: 'cycle-1' }],
     });
     getCycleParticipation.mockResolvedValue({
-      events: [{ slots: [{}, {}] }],
+      events: [{ eventTimeBlocks: [{}, {}] }],
     });
 
     renderPrepareIndex();

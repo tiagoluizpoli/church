@@ -156,8 +156,8 @@ export function ManualSplitEditor({
         </Select>
         {modePreset === 'manual' ? (
           <p className="text-muted-foreground text-xs">
-            Each span must stay within the slot's time range and can't overlap
-            another span.
+            Each span must stay within the time block's time range and can't
+            overlap another span.
           </p>
         ) : null}
       </div>
@@ -298,11 +298,13 @@ export function ManualSplitEditor({
                   {
                     startTime: eventTimeBlockView
                       ? parseInstant({
-                          value: eventTimeBlockView.slot.startTime,
+                          value: eventTimeBlockView.eventTimeBlock.startTime,
                         })
                       : now(),
                     endTime: eventTimeBlockView
-                      ? parseInstant({ value: eventTimeBlockView.slot.endTime })
+                      ? parseInstant({
+                          value: eventTimeBlockView.eventTimeBlock.endTime,
+                        })
                       : now(),
                     label: '',
                   },

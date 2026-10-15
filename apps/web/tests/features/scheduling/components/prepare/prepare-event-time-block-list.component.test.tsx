@@ -21,7 +21,7 @@ function makeEventTimeBlockView(
   overrides: Partial<GetCycleParticipation200EventsItemEventTimeBlocksItem> = {},
 ): GetCycleParticipation200EventsItemEventTimeBlocksItem {
   return {
-    slot: {
+    eventTimeBlock: {
       id: 'event-time-block-1',
       churchId: 'church-1',
       eventId: 'event-1',
@@ -63,7 +63,7 @@ function makeEventView(
       createdAt: '2026-07-01T00:00:00',
       updatedAt: '2026-07-01T00:00:00',
     },
-    slots: eventTimeBlockOverrides.map((eventTimeBlockOverride) =>
+    eventTimeBlocks: eventTimeBlockOverrides.map((eventTimeBlockOverride) =>
       makeEventTimeBlockView(eventTimeBlockOverride),
     ),
     ...overrides,
@@ -88,7 +88,7 @@ const NO_OP_PROPS = {
 };
 
 describe('PrepareEventTimeBlockList day-grouping (US3/T026)', () => {
-  it('groups slots under a day header, flat — no card-in-card', async () => {
+  it('groups time blocks under a day header, flat — no card-in-card', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [],
       events: [],
@@ -109,7 +109,7 @@ describe('PrepareEventTimeBlockList day-grouping (US3/T026)', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders an empty-state message when there are zero slots', () => {
+  it('renders an empty-state message when there are zero time blocks', () => {
     renderWithProviders(
       <PrepareEventTimeBlockList {...NO_OP_PROPS} events={[]} />,
     );
@@ -121,7 +121,7 @@ describe('PrepareEventTimeBlockList day-grouping (US3/T026)', () => {
 });
 
 describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
-  it('hides shift/headcount controls for an unincluded slot', () => {
+  it('hides shift/headcount controls for an unincluded time block', () => {
     renderWithProviders(
       <PrepareEventTimeBlockList {...NO_OP_PROPS} events={[makeEventView()]} />,
     );
@@ -206,7 +206,7 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
     expect(onSaveHeadcounts).not.toHaveBeenCalled();
   });
 
-  it('shows shift/headcount controls once a slot is included and expanded', async () => {
+  it('shows shift/headcount controls once a time block is included and expanded', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [{ id: 'role-1', name: 'Greeter' }],
       events: [],
@@ -255,7 +255,7 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
 });
 
 describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a/FR-013)', () => {
-  it('renders exactly one shift row spanning the slot full duration when just-included with 0 prior splits', async () => {
+  it('renders exactly one shift row spanning the time block full duration when just-included with 0 prior splits', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [{ id: 'role-1', name: 'Greeter' }],
       events: [],
@@ -370,7 +370,7 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
     });
   });
 
-  it('saves changed headcounts for every shift through one slot action (T045)', async () => {
+  it('saves changed headcounts for every shift through one time block action (T045)', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [{ id: 'role-1', name: 'Greeter' }],
       events: [],
@@ -519,7 +519,7 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
     ).toBeInTheDocument();
   });
 
-  it('blocks the slot save when one role is invalid, even if another is valid (T045a)', async () => {
+  it('blocks the time block save when one role is invalid, even if another is valid (T045a)', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [
         { id: 'role-1', name: 'Greeter' },
@@ -723,7 +723,7 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
   });
 });
 
-describe('PrepareEventTimeBlockList independent per-slot unsaved indicators (Iteration 2/T047/FR-023)', () => {
+describe('PrepareEventTimeBlockList independent per-time-block unsaved indicators (Iteration 2/T047/FR-023)', () => {
   const includedEvents = [
     makeEventView({}, [
       {
@@ -872,8 +872,8 @@ describe('PrepareEventTimeBlockList exact-string display under a non-UTC ambient
                   id: 'shift-1',
                   participationId: 'participation-1',
                   eventTimeBlockId: 'event-time-block-1',
-                  // A sub-range of the slot's own 09:00–11:00Z window, so the
-                  // shift's rendered range is distinct from the slot's own.
+                  // A sub-range of the time block's own 09:00–11:00Z window, so the
+                  // shift's rendered range is distinct from the time block's own.
                   startTime: '2026-07-12T09:00:00.000Z',
                   endTime: '2026-07-12T10:00:00.000Z',
                 },

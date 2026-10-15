@@ -23,7 +23,7 @@ function createVolunteerDashboardHookResult(
 ): ReturnType<typeof useVolunteerDashboard> {
   return {
     assignmentGroups: [],
-    availabilitySlots: [],
+    availabilityEventTimeBlocks: [],
     availabilityTasks: [],
     cancelAssignment: {
       isPending: false,

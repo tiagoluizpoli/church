@@ -40,7 +40,7 @@ const CYCLE_TABLE_COLUMNS: DataTableColumn[] = [
   { id: 'name', name: 'Name', allowsSorting: true, isRowHeader: true },
   { id: 'window', name: 'Window', allowsSorting: true },
   { id: 'events', name: 'Events', allowsSorting: true },
-  { id: 'slots', name: 'Slots', allowsSorting: true },
+  { id: 'eventTimeBlocks', name: 'Time blocks', allowsSorting: true },
   { id: 'status', name: 'Status', allowsSorting: true },
   { id: 'actions', name: 'Actions', allowsSorting: false },
 ];
@@ -68,7 +68,7 @@ function compareCycles({
       return left.name.localeCompare(right.name) * direction;
     case 'events':
       return (left.eventCount - right.eventCount) * direction;
-    case 'slots':
+    case 'eventTimeBlocks':
       return (left.eventTimeBlockCount - right.eventTimeBlockCount) * direction;
     case 'status':
       return left.status.localeCompare(right.status) * direction;
@@ -130,7 +130,7 @@ export function ScheduleList({
           // instead of a floating block sitting above it.
           <div
             className="workspace-panel-lg border-border/70 border-b"
-            data-testid="schedule-list-filters-slot"
+            data-testid="schedule-list-filters"
           >
             {filters}
           </div>
@@ -165,7 +165,9 @@ export function ScheduleList({
                   {column.id === 'name' ? item.name : null}
                   {column.id === 'window' ? item.window : null}
                   {column.id === 'events' ? item.eventCount : null}
-                  {column.id === 'slots' ? item.eventTimeBlockCount : null}
+                  {column.id === 'eventTimeBlocks'
+                    ? item.eventTimeBlockCount
+                    : null}
                   {column.id === 'status' ? (
                     <Badge
                       variant={cyclePrepareStatusBadgeVariant({
@@ -197,7 +199,7 @@ export function ScheduleList({
                       </div>
                       <div className="text-muted-foreground text-xs">
                         {item.eventCount} events · {item.eventTimeBlockCount}{' '}
-                        slots
+                        time blocks
                       </div>
                     </div>
                     <Badge

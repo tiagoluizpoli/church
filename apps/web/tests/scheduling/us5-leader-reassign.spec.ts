@@ -16,13 +16,13 @@ interface CycleResponse {
   id: string;
 }
 
-interface EventTemplateBlockResponse {
+interface EventTemplateBsendResponse {
   id: string;
 }
 
 interface EventTemplateResponse {
   id: string;
-  blocks: EventTemplateBlockResponse[];
+  blocks: EventTemplateBsendResponse[];
 }
 
 interface ParticipationSummaryResponse {
@@ -159,10 +159,10 @@ async function setUpLiveChanges({
   );
   expect(applyResponse.ok()).toBeTruthy();
 
-  const lockResponse = await page.request.post(
+  const sendResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/send`,
   );
-  expect(lockResponse.ok()).toBeTruthy();
+  expect(sendResponse.ok()).toBeTruthy();
 
   const participationResponse = await page.request.get(
     `${SERVER_URL}/api/v1/prepare/cycles/${cycle.id}/participation`,

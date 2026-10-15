@@ -82,7 +82,7 @@ test.describe('#67 — Active Church selection and switching', () => {
 
     // Prove Church A's real values are actually on the page before the
     // switch — otherwise their later absence would prove nothing.
-    await page.goto('/scheduling/planning-cycles');
+    await page.goto('/cycles');
     await expect(page.getByTestId('planning-admin-page')).toBeVisible();
     await expect(cycleRow({ page, cycleId: firstCycle.id })).toContainText(
       firstCycle.name,

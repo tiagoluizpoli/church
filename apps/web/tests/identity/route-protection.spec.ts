@@ -18,7 +18,7 @@ import {
 // signs in as the suite's shared, read-only ChurchAdmin (global setup's
 // `shared-personas` recipe) and asserts only the page shell, never
 // scheduling rows.
-const DEEP_LINK_PATH = '/scheduling/planning-cycles';
+const DEEP_LINK_PATH = '/cycles';
 
 test.describe('#66 — route protection and deep-link return', () => {
   test.describe('signed out', () => {

@@ -66,7 +66,7 @@ async function createCycleWithSundayTemplateApplied({
     templateIds: [template.id],
   });
 
-  await page.goto(`/scheduling/planning-cycles/${cycle.id}`);
+  await page.goto(`/cycles/${cycle.id}`);
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
   await expect(page.getByTestId('planning-event-card').first()).toBeAttached();
 
@@ -82,7 +82,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       testInfo,
     });
 
-    await page.goto('/scheduling/planning-cycles');
+    await page.goto('/cycles');
     const cyclesTable = page.getByRole('grid', { name: 'Existing cycles' });
     await expect(cyclesTable).toBeVisible();
     await expect(
@@ -222,7 +222,7 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
 
-    await page.goto('/scheduling/planning-cycles');
+    await page.goto('/cycles');
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('cycle-option').first()).toBeVisible();
   });
@@ -238,7 +238,7 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
     const templateName = 'US3 Template';
     const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
 
-    await page.goto('/scheduling/planning-cycles');
+    await page.goto('/cycles');
     await page.getByTestId('open-create-cycle-dialog-button').click();
     const createCycleDialog = page.getByRole('dialog', {
       name: 'Create cycle',
@@ -393,7 +393,7 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
       .poll(() => page.getByTestId('cycle-event-count-chip').textContent())
       .not.toBe(eventCountChipBefore);
 
-    // Lock the cycle: no edit/delete controls should render anywhere.
+    // Send the cycle: no edit/delete controls should render anywhere.
     await page.getByTestId('send-cycle-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
     await expect(
@@ -500,7 +500,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       templatedCard.getByRole('button', { name: 'Delete slot Worship' }),
     ).toBeDisabled();
 
-    // Lock the cycle: no mobile add/edit/delete affordance may remain.
+    // Send the cycle: no mobile add/edit/delete affordance may remain.
     await page.getByTestId('send-cycle-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
     await expect(
@@ -520,7 +520,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     ).toHaveCount(0);
   });
 
-  test('a lock that races a mobile edit fails the save with a visible error and applies no change (FR-010)', async ({
+  test('a send that races a mobile edit fails the save with a visible error and applies no change (FR-010)', async ({
     page,
     browser,
   }, testInfo) => {
@@ -539,8 +539,8 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await expect(editDayDialog).toBeVisible();
     await editDayDialog.getByLabel('Title').fill('Raced edit');
 
-    // A second session locks the cycle while the first session's mobile
-    // drawer is still open — the "lock that occurs between page load and
+    // A second session sends the cycle while the first session's mobile
+    // drawer is still open — the "send that occurs between page load and
     // the action" race from spec 020's FR-013, verified here specifically
     // on the mobile ResponsiveFormSurface.
     const secondContext = await newPersonaContext({
@@ -570,7 +570,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await expect(page.getByText('Raced edit')).toHaveCount(0);
     // Every week the Sunday template generated shares this exact title, so
     // this locator legitimately matches all of them (not just the one that
-    // raced the lock) — asserting `.first()` is enough to confirm the
+    // raced the send) — asserting `.first()` is enough to confirm the
     // original title survived, without over-claiming which specific day.
     await expect(
       page.getByTestId('planning-events-list').getByText(templateName).first(),

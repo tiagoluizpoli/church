@@ -146,6 +146,14 @@ const AVAILABILITY_STATUS_SPEC_PATHS = [
 // CRITICAL_SMOKE_SPEC_PATHS. Sub-issues #213-#219 classify the remaining
 // journeys and extend this map; under-mapping is safe (it just widens the
 // fallback), so entries are added only once verified against a real spec.
+const PREPARE_ROUTE_FILES = [
+  'schedules.tsx',
+  'schedules/index.tsx',
+  'schedules/$ministryId.tsx',
+  'schedules/$ministryId/index.tsx',
+  'schedules/$ministryId/$cycleId/index.tsx',
+].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
+
 export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix: 'apps/web/src/routes/invitations/',
@@ -264,7 +272,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // planning-admin feature components. The generic prefixes above only
     // select smoke/us4, which never touch this dialog-driven flow.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/scheduling/planning-cycles',
+      'apps/web/src/routes/_authenticated/_active-church/_planning-admin',
     specPaths: [
       'tests/scheduling/overnight-time-block.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
@@ -284,7 +292,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     // #289 — added planning-role-guard-matrix.spec.ts: verified via its
-    // page.goto('/scheduling/planning-cycles'), which renders this
+    // page.goto('/cycles'), which renders this
     // directory's components, matching the route-level entry above.
     sourcePathPrefix:
       'apps/web/src/features/scheduling/components/planning-admin/',
@@ -307,20 +315,21 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
   },
-  {
+  // Listed per file so the sibling `$cycleId/assign.tsx` board is not swept in
+  // by a bare `schedules` prefix.
+  ...PREPARE_ROUTE_FILES.map((sourcePathPrefix) => ({
     // Leader-prepare journey (#215): prepare participation, split
     // shifts, headcounts, and firing Availability — proven end to end by
     // us2-leader-prepare.spec.ts, the only spec that drives the prepare
     // routes, feature components, and its dedicated API client.
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring',
+    sourcePathPrefix,
     specPaths: [
       'tests/scheduling/us2-leader-prepare.spec.ts',
       // #217 — the matrix's Volunteer-denial case and the merged-in Leader
       // positive control both load this bare index route directly.
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
-  },
+  })),
   {
     // #289 — added smoke.spec.ts and us4-schedule-publish.spec.ts, verified
     // via their page.goto to a prepare route, which renders this
@@ -566,7 +575,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // the Playwright layer instead of moving down like #219's other six specs.
   {
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/scheduling/rostering',
+      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign',
     specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
   },
   {

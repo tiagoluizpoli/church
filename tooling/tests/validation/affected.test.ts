@@ -265,16 +265,16 @@ describe('classifyChanges', () => {
   it('selects the admin-plan journey for a cycles route change', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/scheduling/planning-cycles/new.tsx',
+        'apps/web/src/routes/_authenticated/_active-church/_planning-admin/cycles/new.tsx',
       ],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/a11y-planning-nav.spec.ts',
       'tests/scheduling/cross-cutting.spec.ts',
+      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
-      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
@@ -295,9 +295,9 @@ describe('classifyChanges', () => {
     // prefix (13 specs); none of those navigate a cycles route.
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/cross-cutting.spec.ts',
+      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
-      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
@@ -315,9 +315,9 @@ describe('classifyChanges', () => {
 
       expect(plan.e2eSpecPaths).toEqual([
         'tests/scheduling/cross-cutting.spec.ts',
+        'tests/scheduling/cycles-table-view.spec.ts',
         'tests/scheduling/overnight-time-block.spec.ts',
         'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
-        'tests/scheduling/cycles-table-view.spec.ts',
         'tests/scheduling/planning-nav-restructure.spec.ts',
         'tests/scheduling/planning-role-guard-matrix.spec.ts',
         'tests/scheduling/single-create-event-ui.spec.ts',
@@ -330,7 +330,7 @@ describe('classifyChanges', () => {
   it('selects the leader-prepare journey for a prepare route change', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId.tsx',
+        'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
       ],
     });
 
@@ -379,9 +379,9 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/cross-cutting.spec.ts',
+      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
-      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
@@ -555,7 +555,7 @@ describe('classifyChanges', () => {
   it('selects the Church-isolation and lock-edge-case journeys for the cycles route', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/scheduling/planning-cycles.tsx',
+        'apps/web/src/routes/_authenticated/_active-church/_planning-admin.tsx',
       ],
     });
 
@@ -577,7 +577,7 @@ describe('classifyChanges', () => {
   it('selects the guard-matrix journey for the prepare route, and only the capability-index journey for the scheduling index route', () => {
     const preparePlan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring.tsx',
+        'apps/web/src/routes/_authenticated/_active-church/schedules.tsx',
       ],
     });
     expect(preparePlan.e2eSpecPaths).toContain(
@@ -704,9 +704,9 @@ describe('classifyChanges', () => {
       'tests/scheduling/builder-slot-focus.spec.ts',
       'tests/scheduling/capability-index.spec.ts',
       'tests/scheduling/cross-cutting.spec.ts',
+      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
-      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/qualification.spec.ts',
@@ -876,7 +876,7 @@ describe('classifyChanges', () => {
   it('selects only the a11y-builder journey for a assign route change', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId.tsx',
+        'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign.tsx',
       ],
     });
 

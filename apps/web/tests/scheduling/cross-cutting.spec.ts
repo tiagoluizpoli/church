@@ -55,13 +55,13 @@ test.describe('DL4-X1 church isolation', () => {
     );
     expect(detailResponse.status()).toBe(404);
 
-    const lockResponse = await page.request.post(
+    const sendResponse = await page.request.post(
       `${SERVER_URL}/api/v1/admin/cycles/${churchA.cycle.id}/send`,
     );
-    expect(lockResponse.status()).toBe(404);
+    expect(sendResponse.status()).toBe(404);
 
     // Same check from the UI: the cycle list never renders churchA's cycle.
-    await page.goto('/scheduling/planning-cycles');
+    await page.goto('/cycles');
     await expect(
       page.getByTestId('cycle-option').filter({ hasText: churchB.cycle.name }),
     ).toBeVisible();
@@ -94,10 +94,10 @@ test.describe('DL4-X1 church isolation (reverse)', () => {
   });
 });
 
-test.describe('DL4-X2 network failure on lock', () => {
+test.describe('DL4-X2 network failure on send', () => {
   test.use({ viewport: { width: 767, height: 1200 } });
 
-  test('a network failure on lock shows an error and leaves the cycle in draft', async ({
+  test('a network failure on send shows an error and leaves the cycle in draft', async ({
     page,
   }, testInfo) => {
     const journey = loadPlanningAdminJourney({ testInfo });
@@ -121,7 +121,7 @@ test.describe('DL4-X2 network failure on lock', () => {
 
     await page.route('**/cycles/*/send', (route) => route.abort('failed'));
 
-    await page.goto('/scheduling/planning-cycles');
+    await page.goto('/cycles');
     await page
       .getByTestId('cycle-option')
       .filter({ hasText: month.cycleName })
@@ -155,7 +155,7 @@ test.describe('DL4-X2 network failure on lock', () => {
 test.describe('DL4-X3 double-submit has no duplicate side effect', () => {
   test.use({ viewport: { width: 767, height: 1200 } });
 
-  test('two concurrent lock requests for the same cycle produce exactly one success', async ({
+  test('two concurrent send requests for the same cycle produce exactly one success', async ({
     page,
   }, testInfo) => {
     const journey = loadPlanningAdminJourney({ testInfo });
@@ -185,7 +185,7 @@ test.describe('DL4-X3 double-submit has no duplicate side effect', () => {
     const statuses = [first.status(), second.status()].sort();
     // One request wins the transition (204); the other observes it has
     // already happened (409 illegal state transition) — never a second
-    // successful lock.
+    // successful send.
     expect(statuses).toEqual([204, 409]);
 
     const detailResponse = await page.request.get(

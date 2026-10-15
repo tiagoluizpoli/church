@@ -12,7 +12,7 @@ test('church admin can create a template with an overnight time block', async ({
   await signInPersonaPage({ page, persona: journey.personas.admin });
   const templateName = 'Overnight Watch';
 
-  await page.goto('/scheduling/planning-cycles/templates');
+  await page.goto('/event-templates');
 
   await page.getByTestId('open-create-template-dialog-button').click();
   const createTemplateDialog = page.getByRole('dialog', {

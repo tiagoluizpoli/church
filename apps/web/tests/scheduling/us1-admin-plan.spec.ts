@@ -164,7 +164,7 @@ function createPlanningMonth({
 
 test.use({ viewport: { width: 767, height: 1200 } });
 
-test('church admin can plan, review, and lock a cycle while volunteers stay hidden from it', async ({
+test('church admin can plan, review, and send a cycle while volunteers stay hidden from it', async ({
   browser,
   page,
 }, testInfo) => {
@@ -175,7 +175,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   const wednesdayTemplateName = `Wednesday Service ${month.cycleName}`;
   const sundayGatheringName = `Sunday Gathering ${month.cycleName}`;
 
-  await page.goto('/scheduling/planning-cycles');
+  await page.goto('/cycles');
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
@@ -378,8 +378,8 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   // desktop breakpoint per `specs/019-planning-cycles-table-view`), so this
   // spec — now run at a narrow viewport to keep exercising the card/list
   // presentation — navigates directly instead.
-  await page.goto('/scheduling/planning-cycles');
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
+  await page.goto('/cycles');
+  await expect(page).toHaveURL(/\/cycles\/?$/);
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const overlapDialog = page.getByRole('dialog', { name: 'Create cycle' });
   await overlapDialog
@@ -403,8 +403,8 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await overlapDialog.getByRole('button', { name: 'Close' }).click();
 
   // Closing the failed overlap attempt returns to the cycles list (the
-  // dialog's own URL is /new); re-select the original cycle to lock it.
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
+  // dialog's own URL is /new); re-select the original cycle to send it.
+  await expect(page).toHaveURL(/\/cycles\/?$/);
   await page
     .getByTestId('cycle-option')
     .filter({ hasText: month.cycleName })
@@ -431,7 +431,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     persona: journey.personas.admin,
   });
   const leaderPage = await leaderContext.newPage();
-  await leaderPage.goto('/scheduling/planning-cycles');
+  await leaderPage.goto('/cycles');
   await leaderPage
     .getByTestId('cycle-option')
     .filter({ hasText: month.cycleName })
@@ -446,11 +446,11 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     persona: journey.personas.volunteer,
   });
   const volunteerPage = await volunteerContext.newPage();
-  await volunteerPage.goto('/scheduling/planning-cycles');
+  await volunteerPage.goto('/cycles');
   // Phase 8: a route-level `beforeLoad` guard now redirects non-ChurchAdmin
   // callers away before the page ever renders (FR-015), superseding the old
   // in-component "planning-access-denied" card for this route.
-  await expect(volunteerPage).not.toHaveURL(/\/scheduling\/planning-cycles/);
+  await expect(volunteerPage).not.toHaveURL(/\/cycles/);
   await expect(volunteerPage.getByTestId('planning-admin-page')).toHaveCount(0);
   await volunteerContext.close();
 });

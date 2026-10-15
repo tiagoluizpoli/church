@@ -197,9 +197,10 @@ export function assignBuilderPath({
   cycleId,
   teamId,
 }: AssignBuilderPathInput): string {
-  const path = [`/scheduling/rostering/${ministryId}`, cycleId]
-    .filter((segment) => segment !== undefined)
-    .join('/');
+  const path =
+    cycleId === undefined
+      ? `/scheduling/teams/${ministryId}`
+      : `/schedules/${ministryId}/${cycleId}/assign`;
   return teamId === undefined ? path : `${path}?teamId=${teamId}`;
 }
 
@@ -239,7 +240,7 @@ export function assignPreparePath({
   ministryId,
   cycleId,
 }: MinistryCyclePathInput): string {
-  return `/scheduling/tailoring/${ministryId}/${cycleId}`;
+  return `/schedules/${ministryId}/${cycleId}`;
 }
 
 export interface RequirementCellInput {

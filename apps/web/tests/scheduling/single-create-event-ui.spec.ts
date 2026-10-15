@@ -50,7 +50,7 @@ async function createOpenCycle({
     startDate,
     endDate,
   });
-  await page.goto(`/scheduling/planning-cycles/${cycle.id}`);
+  await page.goto(`/cycles/${cycle.id}`);
   await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
 }
 
@@ -68,7 +68,7 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
     page.getByRole('link', { name: 'Open church planning' }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Open church planning' }).click();
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles/);
+  await expect(page).toHaveURL(/\/cycles/);
 
   // Entry point 2: the cycle itself — the one canonical form.
   await createOpenCycle({

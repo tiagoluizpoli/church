@@ -109,6 +109,7 @@ const SEED_IMPACT_RULES: SeedImpactRule[] = [
       // Manager families, so a new manager of a family is covered too.
       'apps/server/src/application/db-assignment',
       'apps/server/src/application/db-availability',
+      'apps/server/src/application/db-cycle',
       'apps/server/src/application/db-event',
       'apps/server/src/application/db-ministry',
       'apps/server/src/application/db-participation',

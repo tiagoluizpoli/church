@@ -78,7 +78,7 @@ test('prepare lets a leader reach the cycle builder', async ({
   await signInPersonaPage({ page, persona: journey.personas.leader });
 
   // Deep-link to the journey's own cycle rather than picking a row on
-  // /scheduling/tailoring.
+  // /schedules.
   await page.goto(
     assignPreparePath({
       ministryId: journey.ministries.worship.id,

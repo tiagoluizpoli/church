@@ -12,7 +12,7 @@ test('cycle breadcrumb has no critical or serious WCAG violations', async ({
 }, testInfo) => {
   const journey = loadCycleAccessJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.admin });
-  await page.goto(`/scheduling/planning-cycles/${journey.cycle.id}`);
+  await page.goto(`/cycles/${journey.cycle.id}`);
   await expect(page.getByTestId('breadcrumbs')).toBeVisible();
   await page.waitForLoadState('networkidle');
 
@@ -32,9 +32,9 @@ test('breadcrumb marks the exact-match page as current, not every ancestor link'
 }, testInfo) => {
   const journey = loadCycleAccessJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.admin });
-  // On /scheduling/planning-cycles exactly, that crumb *is* the current
+  // On /cycles exactly, that crumb *is* the current
   // page (BreadcrumbPage swap, isLast: true).
-  await page.goto('/scheduling/planning-cycles');
+  await page.goto('/cycles');
   const nav = page.getByRole('navigation', { name: 'breadcrumb' });
   await expect(nav).toBeVisible();
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
@@ -46,14 +46,14 @@ test('breadcrumb never marks an ancestor link as the current page (regression: T
 }, testInfo) => {
   const journey = loadCycleAccessJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.admin });
-  // On /scheduling/planning-cycles/:cycleId, the real current "page" is the
+  // On /cycles/:cycleId, the real current "page" is the
   // opaque cycle id, which is intentionally hidden from the breadcrumb
   // (T061). Before the fix, TanStack Router's own prefix-match Link
   // behavior falsely marked *both* ancestor links ("Scheduling",
   // "Cycles") as aria-current="page" — never zero, never the
   // single correct one. `activeOptions={{ exact: true }}` closes that gap:
   // an ancestor breadcrumb link should never claim to be the current page.
-  await page.goto(`/scheduling/planning-cycles/${journey.cycle.id}`);
+  await page.goto(`/cycles/${journey.cycle.id}`);
   const nav = page.getByRole('navigation', { name: 'breadcrumb' });
   await expect(nav).toBeVisible();
   await expect(nav.locator('a[aria-current="page"]')).toHaveCount(0);

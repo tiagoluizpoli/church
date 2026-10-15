@@ -13,12 +13,12 @@ interface IdResponse {
   id: string;
 }
 
-interface TemplateBlockResponse {
+interface TemplateBsendResponse {
   id: string;
 }
 
 interface TemplateResponse extends IdResponse {
-  blocks: TemplateBlockResponse[];
+  blocks: TemplateBsendResponse[];
 }
 
 interface ParticipationSummaryResponse {
@@ -129,10 +129,10 @@ test('leader prepares participation, splits shifts, sets headcounts, and fires a
   );
   expect(applyResponse.ok()).toBeTruthy();
 
-  const lockResponse = await page.request.post(
+  const sendResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/cycles/${cycleBody.id}/send`,
   );
-  expect(lockResponse.ok()).toBeTruthy();
+  expect(sendResponse.ok()).toBeTruthy();
 
   await page.goto(assignPreparePath({ ministryId, cycleId: cycleBody.id }));
 

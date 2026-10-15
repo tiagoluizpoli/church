@@ -18,6 +18,7 @@ export const LIVE_CHANGES_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     worship: assignMinistrySchema({
       roles: ['usher'],
       teams: ['alpha'],
+      sectors: ['stage'],
     }),
   }),
   personas: z.object({

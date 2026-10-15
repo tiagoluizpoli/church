@@ -154,6 +154,7 @@ async function setUpTwoMinistryOverlapCycle({
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
               {
+                sectorId: journey.ministries.worship.sectors.stage.id,
                 roleId: journey.ministries.worship.roles.usher.id,
                 peopleNeeded: 1,
               },
@@ -176,6 +177,7 @@ async function setUpTwoMinistryOverlapCycle({
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
               {
+                sectorId: journey.ministries.care.sectors.lobby.id,
                 roleId: journey.ministries.care.roles.careHost.id,
                 peopleNeeded: 1,
               },

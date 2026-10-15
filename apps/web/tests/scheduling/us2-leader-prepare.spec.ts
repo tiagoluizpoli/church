@@ -53,6 +53,7 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
   await signInPersonaPage({ page, persona: journey.personas.leader });
   const ministryId = journey.ministries.worship.id;
   const roleId = journey.ministries.worship.roles.usher.id;
+  const sectorId = journey.ministries.worship.sectors.stage.id;
 
   const defaultDirectionResponse = await page.request.patch(
     `${SERVER_URL}/api/v1/admin/ministries/${ministryId}/default-direction`,
@@ -101,13 +102,13 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
             sourceTemplateTimeBlockId: templateBody.blocks[0]?.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId, peopleNeeded: 1 }],
+            headcounts: [{ sectorId, roleId, peopleNeeded: 1 }],
           },
           {
             sourceTemplateTimeBlockId: templateBody.blocks[1]?.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId, peopleNeeded: 1 }],
+            headcounts: [{ sectorId, roleId, peopleNeeded: 1 }],
           },
           {
             sourceTemplateTimeBlockId: templateBody.blocks[2]?.id,

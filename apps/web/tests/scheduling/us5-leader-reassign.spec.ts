@@ -92,6 +92,7 @@ async function setUpLiveChanges({
 }: SetUpLiveChangesParams): Promise<LiveChangesFixture> {
   const worshipMinistryId = journey.ministries.worship.id;
   const usherRoleId = journey.ministries.worship.roles.usher.id;
+  const stageSectorId = journey.ministries.worship.sectors.stage.id;
 
   const directionResponse = await page.request.patch(
     `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/default-direction`,
@@ -145,7 +146,9 @@ async function setUpLiveChanges({
             sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 2 },
-            headcounts: [{ roleId: usherRoleId, peopleNeeded: 1 }],
+            headcounts: [
+              { sectorId: stageSectorId, roleId: usherRoleId, peopleNeeded: 1 },
+            ],
           },
         ],
       },

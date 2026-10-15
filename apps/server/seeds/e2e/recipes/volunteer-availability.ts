@@ -31,11 +31,13 @@ const PLAN = {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
       teams: { alpha: 'Equipe Alpha' },
+      sectors: { stage: 'Palco' },
     },
     care: {
       name: 'Cuidado',
       roles: { careHost: 'Anfitriao de Cuidado' },
       teams: { care: 'Equipe Cuidado' },
+      sectors: { lobby: 'Recepção' },
     },
   },
   personas: {

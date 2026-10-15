@@ -559,8 +559,8 @@ export type GetUsualSetup200EntriesItemShiftSplit = {
 };
 
 export type GetUsualSetup200EntriesItemHeadcountsItem = {
+  sectorId?: string;
   roleId: string;
-  teamId?: string;
   /**
      * @minimum 1
      * @maximum 9007199254740991
@@ -600,8 +600,8 @@ export type UpsertUsualSetupBodyEntriesItemShiftSplit = {
 };
 
 export type UpsertUsualSetupBodyEntriesItemHeadcountsItem = {
+  sectorId: string;
   roleId: string;
-  teamId?: string;
   /**
      * @minimum 1
      * @maximum 9007199254740991
@@ -639,8 +639,8 @@ export type UpsertUsualSetup200EntriesItemShiftSplit = {
 };
 
 export type UpsertUsualSetup200EntriesItemHeadcountsItem = {
+  sectorId?: string;
   roleId: string;
-  teamId?: string;
   /**
      * @minimum 1
      * @maximum 9007199254740991
@@ -829,12 +829,18 @@ export type GetScheduleBuilderData200RolesItem = {
   name: string;
 };
 
+export type GetScheduleBuilderData200SectorsItem = {
+  id: string;
+  name: string;
+};
+
 export type GetScheduleBuilderData200 = {
   events: GetScheduleBuilderData200EventsItem[];
   assignments: GetScheduleBuilderData200AssignmentsItem[];
   unavailableShifts: GetScheduleBuilderData200UnavailableShiftsItem[];
   volunteers: GetScheduleBuilderData200VolunteersItem[];
   roles: GetScheduleBuilderData200RolesItem[];
+  sectors: GetScheduleBuilderData200SectorsItem[];
   /** @nullable */
   callerTeamIds: string[] | null;
 };
@@ -1118,6 +1124,8 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsIte
   participationId: string;
   roleId: string;
   teamId?: string;
+  sectorId?: string;
+  sectorName?: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -1239,8 +1247,8 @@ export type UpdateShift200 = {
 };
 
 export type UpsertShiftRequirementBody = {
+  sectorId: string;
   roleId: string;
-  teamId?: string;
   /**
      * @minimum 1
      * @maximum 9007199254740991
@@ -1255,6 +1263,8 @@ export type UpsertShiftRequirement200 = {
   participationId: string;
   roleId: string;
   teamId?: string;
+  sectorId?: string;
+  sectorName?: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -1431,6 +1441,8 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemRequire
   participationId: string;
   roleId: string;
   teamId?: string;
+  sectorId?: string;
+  sectorName?: string;
   peopleNeeded: number;
   notes?: string;
   canMutateAssignments: boolean;

@@ -124,19 +124,28 @@ function namedRowsSchema<const TKey extends string>({
 export interface AssignMinistrySchemaInput<
   TRoleKey extends string,
   TTeamKey extends string,
+  TSectorKey extends string,
 > {
   roles: readonly TRoleKey[];
   teams: readonly TTeamKey[];
+  /** Sector keys of the server plan; optional until every recipe names Sectors (#497). */
+  sectors?: readonly TSectorKey[];
 }
 
-/** A Ministry with the Role and Team keys its server plan gives it. */
+/** A Ministry with the Role, Team and Sector keys its server plan gives it. */
 export function assignMinistrySchema<
   const TRoleKey extends string,
   const TTeamKey extends string,
->({ roles, teams }: AssignMinistrySchemaInput<TRoleKey, TTeamKey>) {
+  const TSectorKey extends string = never,
+>({
+  roles,
+  teams,
+  sectors = [],
+}: AssignMinistrySchemaInput<TRoleKey, TTeamKey, TSectorKey>) {
   return ASSIGN_NAMED_ROW_SCHEMA.extend({
     roles: namedRowsSchema({ keys: roles }),
     teams: namedRowsSchema({ keys: teams }),
+    sectors: namedRowsSchema({ keys: sectors }),
   });
 }
 

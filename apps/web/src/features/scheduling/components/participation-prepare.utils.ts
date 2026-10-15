@@ -10,6 +10,7 @@ import type {
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemEventTimeBlocksItem,
   GetScheduleBuilderData200RolesItem,
+  GetScheduleBuilderData200SectorsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import {
   churchTimeOfDay,
@@ -131,8 +132,13 @@ export function createInitialHeadcountDrafts(
   for (const eventView of events) {
     for (const eventTimeBlockView of eventView.eventTimeBlocks) {
       for (const requirement of eventTimeBlockView.requirements) {
-        entries[toHeadcountKey(requirement.shiftId, requirement.roleId)] =
-          String(requirement.peopleNeeded);
+        entries[
+          toHeadcountKey({
+            shiftId: requirement.shiftId,
+            sectorId: requirement.sectorId ?? '',
+            roleId: requirement.roleId,
+          })
+        ] = String(requirement.peopleNeeded);
       }
     }
   }
@@ -140,23 +146,59 @@ export function createInitialHeadcountDrafts(
   return entries;
 }
 
-export function toHeadcountKey(shiftId: string, roleId: string): string {
-  return `${shiftId}:${roleId}`;
+export interface HeadcountKeyInput {
+  shiftId: string;
+  sectorId: string;
+  roleId: string;
 }
 
-export function getEventTimeBlockRoleOptions({
-  roles,
-  eventTimeBlockView,
-}: {
+export function toHeadcountKey({
+  shiftId,
+  sectorId,
+  roleId,
+}: HeadcountKeyInput): string {
+  return `${shiftId}:${sectorId}:${roleId}`;
+}
+
+/** One Prepare grid row: a Sector × Role pair, labelled *Sector · Role*. */
+export interface HeadcountRow {
+  sectorId: string;
+  roleId: string;
+  label: string;
+}
+
+export interface GetEventTimeBlockHeadcountRowsInput {
+  sectors: GetScheduleBuilderData200SectorsItem[];
   roles: GetScheduleBuilderData200RolesItem[];
   eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
-}): GetScheduleBuilderData200RolesItem[] {
-  if (roles.length > 0) return roles;
+}
 
-  return eventTimeBlockView.requirements.map((requirement) => ({
-    id: requirement.roleId,
-    name: requirement.roleId,
-  }));
+export function getEventTimeBlockHeadcountRows({
+  sectors,
+  roles,
+  eventTimeBlockView,
+}: GetEventTimeBlockHeadcountRowsInput): HeadcountRow[] {
+  if (roles.length > 0) {
+    return sectors.flatMap((sector) =>
+      roles.map((role) => ({
+        sectorId: sector.id,
+        roleId: role.id,
+        label: `${sector.name} · ${role.name}`,
+      })),
+    );
+  }
+
+  return eventTimeBlockView.requirements.flatMap((requirement) =>
+    requirement.sectorId
+      ? [
+          {
+            sectorId: requirement.sectorId,
+            roleId: requirement.roleId,
+            label: `${requirement.sectorName ?? requirement.sectorId} · ${requirement.roleId}`,
+          },
+        ]
+      : [],
+  );
 }
 
 export function validateManualSpans({

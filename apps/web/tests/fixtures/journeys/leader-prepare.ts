@@ -18,6 +18,7 @@ export const LEADER_PREPARE_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     worship: assignMinistrySchema({
       roles: ['usher'],
       teams: [],
+      sectors: ['stage'],
     }),
   }),
   personas: z.object({ leader: ASSIGN_PERSONA_SCHEMA }),

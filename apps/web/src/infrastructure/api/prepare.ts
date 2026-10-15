@@ -112,7 +112,7 @@ const deleteShift = (
       );
     }
   /**
- * Set the ShiftRequirement headcount for a Role (and optional Team) within a Shift.
+ * Set the ShiftRequirement headcount for a Sector and Role within a Shift.
  * @summary Set a Shift staffing requirement
  */
 const upsertShiftRequirement = (

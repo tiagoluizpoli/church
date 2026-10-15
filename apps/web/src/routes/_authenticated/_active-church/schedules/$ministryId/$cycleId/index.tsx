@@ -455,8 +455,8 @@ function PrepareWorkspaceRoute() {
       const results = await Promise.allSettled(
         attempts.map(({ shiftId, headcount }) =>
           adminApi.upsertShiftRequirement(shiftId, {
+            sectorId: headcount.sectorId,
             roleId: headcount.roleId,
-            teamId: headcount.teamId,
             peopleNeeded: headcount.peopleNeeded,
           }),
         ),
@@ -476,7 +476,11 @@ function PrepareWorkspaceRoute() {
         type: 'headcounts-saved',
         participationId,
         savedHeadcounts: savedHeadcounts.map(({ shiftId, headcount }) => ({
-          key: toHeadcountKey(shiftId, headcount.roleId),
+          key: toHeadcountKey({
+            shiftId,
+            sectorId: headcount.sectorId,
+            roleId: headcount.roleId,
+          }),
           value: String(headcount.peopleNeeded),
         })),
       });
@@ -776,10 +780,10 @@ function PrepareWorkspaceRoute() {
             onSplitShifts={({ participationId, eventTimeBlockView }) =>
               splitShifts.mutate({ participationId, eventTimeBlockView })
             }
-            onHeadcountChange={({ shiftId, roleId, value }) =>
+            onHeadcountChange={({ shiftId, sectorId, roleId, value }) =>
               dispatchEditSession({
                 type: 'headcount-draft-changed',
-                key: toHeadcountKey(shiftId, roleId),
+                key: toHeadcountKey({ shiftId, sectorId, roleId }),
                 value,
               })
             }

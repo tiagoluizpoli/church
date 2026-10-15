@@ -16,7 +16,12 @@ import {
   redeemChurchInvitation,
 } from '../../builders/church';
 import { buildAuthenticatableUser } from '../../builders/identity';
-import { buildMinistry, buildRole, buildTeam } from '../../builders/ministry';
+import {
+  buildMinistry,
+  buildRole,
+  buildSector,
+  buildTeam,
+} from '../../builders/ministry';
 import {
   buildMinistryMembership,
   buildVolunteer,
@@ -60,6 +65,8 @@ export interface AssignMinistryPlan {
   roles: AssignNames;
   /** Team key → Team name. */
   teams: AssignNames;
+  /** Sector key → Sector name; optional until every recipe names Sectors (#497). */
+  sectors?: AssignNames;
 }
 
 export interface AssignTeamMembershipPlan {
@@ -118,6 +125,7 @@ export interface AssignMinistry<TMinistry extends AssignMinistryPlan> {
   name: string;
   roles: KeyedBy<TMinistry['roles'], AssignNamedRow>;
   teams: KeyedBy<TMinistry['teams'], AssignNamedRow>;
+  sectors: KeyedBy<NonNullable<TMinistry['sectors']>, AssignNamedRow>;
 }
 
 export type AssignMinistries<TPlan extends AssignChurchPlan> = {
@@ -334,6 +342,7 @@ interface BuiltMinistry {
   name: string;
   roles: Record<string, AssignNamedRow>;
   teams: Record<string, AssignNamedRow>;
+  sectors: Record<string, AssignNamedRow>;
 }
 
 interface BuildPlanMinistryInput {
@@ -379,7 +388,18 @@ async function buildPlanMinistry({
     });
     teams[teamKey] = { id: team.id, name: team.name };
   }
-  return { id: ministry.id, name: ministry.name, roles, teams };
+  const sectors: Record<string, AssignNamedRow> = {};
+  for (const [sectorKey, name] of Object.entries(plan.sectors ?? {})) {
+    const sector = await buildSector({
+      db,
+      churchId,
+      ministryId: ministry.id,
+      id: idOf({ kind: `sector:${key}:${sectorKey}` }),
+      name,
+    });
+    sectors[sectorKey] = { id: sector.id, name: sector.name };
+  }
+  return { id: ministry.id, name: ministry.name, roles, teams, sectors };
 }
 
 interface BuildPlanMembershipsInput {

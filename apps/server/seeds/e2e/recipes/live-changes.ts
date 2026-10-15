@@ -31,6 +31,7 @@ const PLAN = {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
       teams: { alpha: 'Equipe Alpha' },
+      sectors: { stage: 'Palco' },
     },
   },
   personas: {

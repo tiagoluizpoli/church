@@ -13,7 +13,8 @@ import { useEffect, useState } from 'react';
 import z from 'zod';
 import {
   formatTimeRange,
-  getEventTimeBlockRoleOptions,
+  getEventTimeBlockHeadcountRows,
+  type HeadcountRow,
   participationStateLabel,
   type SplitFormState,
   toHeadcountKey,
@@ -38,6 +39,7 @@ import type {
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemEventTimeBlocksItem,
   GetScheduleBuilderData200RolesItem,
+  GetScheduleBuilderData200SectorsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -45,9 +47,9 @@ import { dayOf } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 export interface HeadcountSave {
+  sectorId: string;
   roleId: string;
   peopleNeeded: number;
-  teamId?: string;
 }
 
 export interface HeadcountSavesForShift {
@@ -87,6 +89,7 @@ export interface PrepareEventTimeBlockListProps {
   }) => void;
   onHeadcountChange: (input: {
     shiftId: string;
+    sectorId: string;
     roleId: string;
     value: string;
   }) => void;
@@ -151,48 +154,44 @@ function buildFlatDayGroups({
   return groups;
 }
 
+interface ParseValidHeadcountsInput {
+  shiftId: string;
+  headcountRows: HeadcountRow[];
+  headcountDrafts: Record<string, string>;
+}
+
 function parseValidHeadcounts({
   shiftId,
-  roleOptions,
+  headcountRows,
   headcountDrafts,
-  requirements,
-}: {
-  shiftId: string;
-  roleOptions: GetScheduleBuilderData200RolesItem[];
-  headcountDrafts: Record<string, string>;
-  requirements: GetCycleParticipation200EventsItemEventTimeBlocksItem['requirements'];
-}): HeadcountSave[] {
-  return roleOptions.reduce<HeadcountSave[]>((valid, role) => {
-    const raw = headcountDrafts[toHeadcountKey(shiftId, role.id)] ?? '';
+}: ParseValidHeadcountsInput): HeadcountSave[] {
+  return headcountRows.reduce<HeadcountSave[]>((valid, row) => {
+    const raw =
+      headcountDrafts[
+        toHeadcountKey({ shiftId, sectorId: row.sectorId, roleId: row.roleId })
+      ] ?? '';
     if (!headcountValueSchema.safeParse(raw.trim()).success) {
       return valid;
     }
-    const count = Number.parseInt(raw, 10);
-
-    const existingRequirement = requirements.find(
-      (requirement) =>
-        requirement.shiftId === shiftId && requirement.roleId === role.id,
-    );
 
     valid.push({
-      roleId: role.id,
-      peopleNeeded: count,
-      teamId: existingRequirement?.teamId,
+      sectorId: row.sectorId,
+      roleId: row.roleId,
+      peopleNeeded: Number.parseInt(raw, 10),
     });
     return valid;
   }, []);
 }
 
 interface HeadcountInputProps {
-  shiftId: string;
-  roleId: string;
+  /** Unique per Shift × Sector × Role; names the input's id and test id. */
+  inputKey: string;
   value: string;
   onValueChange: (value: string) => void;
 }
 
 function HeadcountInput({
-  shiftId,
-  roleId,
+  inputKey,
   value,
   onValueChange,
 }: HeadcountInputProps) {
@@ -209,8 +208,8 @@ function HeadcountInput({
     <form.Field name="value">
       {(field) => (
         <Input
-          id={`headcount-${shiftId}-${roleId}`}
-          data-testid={`headcount-input-${shiftId}-${roleId}`}
+          id={`headcount-${inputKey}`}
+          data-testid={`headcount-input-${inputKey}`}
           type="number"
           min="1"
           step="1"
@@ -304,11 +303,16 @@ export function PrepareEventTimeBlockList({
 
   const rolesByEventId: Record<string, GetScheduleBuilderData200RolesItem[]> =
     {};
+  const sectorsByEventId: Record<
+    string,
+    GetScheduleBuilderData200SectorsItem[]
+  > = {};
   const roleCatalogStatusByEventId: Record<string, RoleCatalogStatus> = {};
   const retryRoleCatalogByEventId: Record<string, () => void> = {};
   uniqueEventIds.forEach((eventId, index) => {
     const query = roleQueries[index];
     rolesByEventId[eventId] = query?.data?.roles ?? [];
+    sectorsByEventId[eventId] = query?.data?.sectors ?? [];
     roleCatalogStatusByEventId[eventId] = query?.isError
       ? 'error'
       : query?.isLoading
@@ -365,10 +369,14 @@ export function PrepareEventTimeBlockList({
                     eventView={eventView}
                     eventTimeBlockView={eventTimeBlockView}
                     ministryId={ministryId}
-                    roleOptions={getEventTimeBlockRoleOptions({
+                    headcountRows={getEventTimeBlockHeadcountRows({
+                      sectors: sectorsByEventId[eventView.event.id] ?? [],
                       roles: rolesByEventId[eventView.event.id] ?? [],
                       eventTimeBlockView,
                     })}
+                    hasSectors={
+                      (sectorsByEventId[eventView.event.id] ?? []).length > 0
+                    }
                     roleCatalogStatus={
                       roleCatalogStatusByEventId[eventView.event.id] ?? 'ready'
                     }
@@ -427,7 +435,8 @@ interface EventTimeBlockRowProps {
   eventView: GetCycleParticipation200EventsItem;
   eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
   ministryId: string;
-  roleOptions: GetScheduleBuilderData200RolesItem[];
+  headcountRows: HeadcountRow[];
+  hasSectors: boolean;
   roleCatalogStatus: RoleCatalogStatus;
   onRetryRoleCatalog: (() => void) | undefined;
   splitForm: SplitFormState | undefined;
@@ -450,7 +459,8 @@ interface EventTimeBlockRowProps {
 function EventTimeBlockRow({
   eventView,
   eventTimeBlockView,
-  roleOptions,
+  headcountRows,
+  hasSectors,
   roleCatalogStatus,
   onRetryRoleCatalog,
   splitForm,
@@ -607,7 +617,8 @@ function EventTimeBlockRow({
               <HeadcountPanel
                 eventTimeBlockView={eventTimeBlockView}
                 participationId={eventView.participation.id}
-                roleOptions={roleOptions}
+                headcountRows={headcountRows}
+                hasSectors={hasSectors}
                 roleCatalogStatus={roleCatalogStatus}
                 onRetryRoleCatalog={onRetryRoleCatalog}
                 headcountDrafts={headcountDrafts}
@@ -697,7 +708,8 @@ function SplitPanel({
 interface HeadcountPanelProps {
   eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
   participationId: string;
-  roleOptions: GetScheduleBuilderData200RolesItem[];
+  headcountRows: HeadcountRow[];
+  hasSectors: boolean;
   roleCatalogStatus: RoleCatalogStatus;
   onRetryRoleCatalog: (() => void) | undefined;
   headcountDrafts: Record<string, string>;
@@ -717,7 +729,8 @@ interface HeadcountPanelProps {
 function HeadcountPanel({
   eventTimeBlockView,
   participationId,
-  roleOptions,
+  headcountRows,
+  hasSectors,
   roleCatalogStatus,
   onRetryRoleCatalog,
   headcountDrafts,
@@ -734,25 +747,28 @@ function HeadcountPanel({
     shiftId: shift.id,
     validHeadcounts: parseValidHeadcounts({
       shiftId: shift.id,
-      roleOptions,
+      headcountRows,
       headcountDrafts,
-      requirements: eventTimeBlockView.requirements,
     }),
   }));
   const changedHeadcountSavesByShift = headcountSavesByShift
     .map((shiftSaves) => ({
       ...shiftSaves,
       validHeadcounts: shiftSaves.validHeadcounts.filter((headcount) => {
-        const key = toHeadcountKey(shiftSaves.shiftId, headcount.roleId);
+        const key = toHeadcountKey({
+          shiftId: shiftSaves.shiftId,
+          sectorId: headcount.sectorId,
+          roleId: headcount.roleId,
+        });
         return savedHeadcountDrafts[key] !== String(headcount.peopleNeeded);
       }),
     }))
     .filter((shiftSaves) => shiftSaves.validHeadcounts.length > 0);
   const hasUnsetHeadcount =
     roleCatalogStatus === 'ready' &&
-    roleOptions.length > 0 &&
+    headcountRows.length > 0 &&
     headcountSavesByShift.some(
-      (shiftSaves) => shiftSaves.validHeadcounts.length < roleOptions.length,
+      (shiftSaves) => shiftSaves.validHeadcounts.length < headcountRows.length,
     );
 
   return (
@@ -800,14 +816,14 @@ function HeadcountPanel({
               </div>
             </div>
 
-            {roleOptions.length === 0 && roleCatalogStatus === 'loading' ? (
+            {headcountRows.length === 0 && roleCatalogStatus === 'loading' ? (
               <p
                 className="text-muted-foreground text-sm"
                 data-testid={`role-catalog-loading-${shift.id}`}
               >
                 Loading roles…
               </p>
-            ) : roleOptions.length === 0 && roleCatalogStatus === 'error' ? (
+            ) : headcountRows.length === 0 && roleCatalogStatus === 'error' ? (
               <div
                 className="flex items-center gap-3 text-destructive text-sm"
                 data-testid={`role-catalog-error-${shift.id}`}
@@ -822,7 +838,14 @@ function HeadcountPanel({
                   Retry
                 </Button>
               </div>
-            ) : roleOptions.length === 0 ? (
+            ) : headcountRows.length === 0 && !hasSectors ? (
+              <p
+                className="text-muted-foreground text-sm"
+                data-testid={`sector-catalog-empty-${shift.id}`}
+              >
+                No Sectors yet. Headcounts need at least one Sector.
+              </p>
+            ) : headcountRows.length === 0 ? (
               <p
                 className="text-muted-foreground text-sm"
                 data-testid={`role-catalog-empty-${shift.id}`}
@@ -832,27 +855,36 @@ function HeadcountPanel({
               </p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {roleOptions.map((role) => (
-                  <div key={role.id} className="space-y-1">
-                    <Label htmlFor={`headcount-${shift.id}-${role.id}`}>
-                      {role.name}
-                    </Label>
-                    <HeadcountInput
-                      shiftId={shift.id}
-                      roleId={role.id}
-                      value={
-                        headcountDrafts[toHeadcountKey(shift.id, role.id)] ?? ''
-                      }
-                      onValueChange={(value) =>
-                        onHeadcountChange({
-                          shiftId: shift.id,
-                          roleId: role.id,
-                          value,
-                        })
-                      }
-                    />
-                  </div>
-                ))}
+                {headcountRows.map((row) => {
+                  const inputKey = `${shift.id}-${row.sectorId}-${row.roleId}`;
+                  return (
+                    <div key={inputKey} className="space-y-1">
+                      <Label htmlFor={`headcount-${inputKey}`}>
+                        {row.label}
+                      </Label>
+                      <HeadcountInput
+                        inputKey={inputKey}
+                        value={
+                          headcountDrafts[
+                            toHeadcountKey({
+                              shiftId: shift.id,
+                              sectorId: row.sectorId,
+                              roleId: row.roleId,
+                            })
+                          ] ?? ''
+                        }
+                        onValueChange={(value) =>
+                          onHeadcountChange({
+                            shiftId: shift.id,
+                            sectorId: row.sectorId,
+                            roleId: row.roleId,
+                            value,
+                          })
+                        }
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

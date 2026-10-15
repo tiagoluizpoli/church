@@ -9,7 +9,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
-import { role, team } from './core';
+import { role, sector, team } from './core';
 import { eventStatusEnum } from './enums';
 import { ministryParticipation } from './participation';
 import { cycle, eventTemplate, templateTimeBlock } from './planning';
@@ -140,6 +140,9 @@ export const shiftRequirement = pgTable(
       .notNull()
       .references(() => role.id, { onDelete: 'cascade' }),
     teamId: uuid('team_id').references(() => team.id, { onDelete: 'set null' }),
+    sectorId: uuid('sector_id').references(() => sector.id, {
+      onDelete: 'cascade',
+    }),
     peopleNeeded: integer('people_needed').default(1).notNull(),
     notes: text('notes'),
   },

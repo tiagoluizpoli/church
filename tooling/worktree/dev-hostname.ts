@@ -1,4 +1,4 @@
-import { MAX_IDENTITY_LENGTH } from './worktree-identity';
+import { MAX_IDENTITY_LENGTH } from './worktree-identity.ts';
 
 /**
  * Private hostnames for manual development (ADR-0005). Each machine names its

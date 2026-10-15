@@ -3,10 +3,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   assignment,
   assignmentAudit,
+  cycle,
   event,
   ministry,
   ministryParticipation,
-  planningCycle,
   role,
   shift,
   timeSlot,
@@ -84,8 +84,8 @@ describe('Assignments and Audit Schema', () => {
     if (!newRole) throw new Error('Failed to create role');
     roleId = newRole.id;
 
-    const [cycle] = await testDb
-      .insert(planningCycle)
+    const [cycleRow] = await testDb
+      .insert(cycle)
       .values({
         churchId,
         name: 'Assignment cycle',
@@ -93,13 +93,13 @@ describe('Assignments and Audit Schema', () => {
         endDate: new Date(Date.now() + 86_400_000),
       })
       .returning();
-    if (!cycle) throw new Error('Failed to create cycle');
+    if (!cycleRow) throw new Error('Failed to create cycle');
 
     const [newEvent] = await testDb
       .insert(event)
       .values({
         churchId: churchId,
-        planningCycleId: cycle.id,
+        cycleId: cycleRow.id,
         title: 'Test Event',
         start: new Date(),
         end: new Date(Date.now() + 3600000),

@@ -12,7 +12,7 @@ import { church } from './church';
 import { role, team } from './core';
 import { eventStatusEnum } from './enums';
 import { ministryParticipation } from './participation';
-import { eventTemplate, planningCycle, timeBlock } from './planning';
+import { cycle, eventTemplate, timeBlock } from './planning';
 
 export const event = pgTable(
   'event',
@@ -21,9 +21,9 @@ export const event = pgTable(
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    planningCycleId: uuid('planning_cycle_id')
+    cycleId: uuid('cycle_id')
       .notNull()
-      .references(() => planningCycle.id, { onDelete: 'cascade' }),
+      .references(() => cycle.id, { onDelete: 'cascade' }),
     sourceTemplateId: uuid('source_template_id').references(
       () => eventTemplate.id,
       { onDelete: 'set null' },

@@ -4,6 +4,7 @@ import {
   assignment,
   availability,
   availabilityCheck,
+  cycle,
   event,
   eventTemplate,
   member,
@@ -11,7 +12,6 @@ import {
   ministryParticipation,
   ministryVolunteer,
   participationSlotInclusion,
-  planningCycle,
   role,
   shift,
   slotRequirement,
@@ -117,8 +117,8 @@ interface PlanningSeed {
 }
 
 async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
-  const [cycle] = await testDb
-    .insert(planningCycle)
+  const [cycleRow] = await testDb
+    .insert(cycle)
     .values({
       churchId: seed.churchAId,
       name: 'August Plan',
@@ -126,7 +126,7 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
       endDate: new Date('2026-09-01T00:00:00Z'),
     })
     .returning();
-  if (!cycle) throw new Error('Cycle seed failed');
+  if (!cycleRow) throw new Error('Cycle seed failed');
 
   const [template] = await testDb
     .insert(eventTemplate)
@@ -150,7 +150,7 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
     .insert(event)
     .values({
       churchId: seed.churchAId,
-      planningCycleId: cycle.id,
+      cycleId: cycleRow.id,
       sourceTemplateId: template.id,
       title: 'Sunday Service',
       start: new Date('2026-08-09T12:00:00Z'),
@@ -195,7 +195,7 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
   if (!insertedShift) throw new Error('Shift seed failed');
 
   return {
-    cycleId: cycle.id,
+    cycleId: cycleRow.id,
     eventId: insertedEvent.id,
     participationId: participation.id,
     shiftId: insertedShift.id,
@@ -206,10 +206,10 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
 describe('Scheduling reshape schema', () => {
   beforeEach(clearDatabase, 120_000);
 
-  it('stores planning cycle boundaries as dates', async () => {
+  it('stores cycle boundaries as dates', async () => {
     const seed = await seedSchedulingBase();
     const [inserted] = await testDb
-      .insert(planningCycle)
+      .insert(cycle)
       .values({
         churchId: seed.churchAId,
         name: 'Date-only cycle',
@@ -219,18 +219,18 @@ describe('Scheduling reshape schema', () => {
       .returning();
     if (!inserted) throw new Error('Cycle seed failed');
 
-    const [cycle] = await testDb
+    const [cycleRow] = await testDb
       .select()
-      .from(planningCycle)
-      .where(eq(planningCycle.id, inserted.id));
+      .from(cycle)
+      .where(eq(cycle.id, inserted.id));
 
-    expect(cycle?.startDate.toISOString()).toBe('2026-08-01T00:00:00.000Z');
-    expect(cycle?.endDate.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+    expect(cycleRow?.startDate.toISOString()).toBe('2026-08-01T00:00:00.000Z');
+    expect(cycleRow?.endDate.toISOString()).toBe('2026-09-01T00:00:00.000Z');
   });
 
   it('prevents overlapping cycles per church but allows another church', async () => {
     const seed = await seedSchedulingBase();
-    await testDb.insert(planningCycle).values({
+    await testDb.insert(cycle).values({
       churchId: seed.churchAId,
       name: 'A',
       startDate: new Date('2026-08-01T00:00:00Z'),
@@ -238,7 +238,7 @@ describe('Scheduling reshape schema', () => {
     });
 
     await expect(
-      testDb.insert(planningCycle).values({
+      testDb.insert(cycle).values({
         churchId: seed.churchAId,
         name: 'Overlap',
         startDate: new Date('2026-08-15T00:00:00Z'),
@@ -246,7 +246,7 @@ describe('Scheduling reshape schema', () => {
       }),
     ).rejects.toThrow();
     await expect(
-      testDb.insert(planningCycle).values({
+      testDb.insert(cycle).values({
         churchId: seed.churchBId,
         name: 'Other church',
         startDate: new Date('2026-08-15T00:00:00Z'),
@@ -277,7 +277,7 @@ describe('Scheduling reshape schema', () => {
       .insert(availabilityCheck)
       .values({
         churchId: seed.churchAId,
-        planningCycleId: graph.cycleId,
+        cycleId: graph.cycleId,
         ministryVolunteerId: seed.membershipId,
       })
       .returning();
@@ -305,7 +305,7 @@ describe('Scheduling reshape schema', () => {
     await testDb.insert(volunteerNotification).values({
       churchId: seed.churchAId,
       volunteerId: seed.volunteerId,
-      planningCycleId: graph.cycleId,
+      cycleId: graph.cycleId,
       type: 'availability_reminder',
       title: 'Availability requested',
       body: 'Please respond',

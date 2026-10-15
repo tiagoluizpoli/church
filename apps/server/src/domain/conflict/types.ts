@@ -56,11 +56,11 @@ export type ValidationRequest = {
   volunteerId: string;
   ministryId: string;
   roleId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   eventStartTime: Instant;
   now: Instant;
   availabilityResult: AvailabilityResult;
-  existingSlotIds: string[];
+  existingEventTimeBlockIds: string[];
   serviceCount: number;
   fairnessThreshold: number;
   volunteerQualifiedRoleIds: string[];

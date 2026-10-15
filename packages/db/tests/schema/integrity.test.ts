@@ -145,15 +145,15 @@ describe('Relational Integrity', () => {
     });
   });
 
-  describe('MinistryVolunteer (Junction) Constraints', () => {
+  describe('MinistryMembership (Junction) Constraints', () => {
     it('should require all FKs (Church, Volunteer, Ministry)', async () => {
       try {
-        await testDb.insert(schema.ministryVolunteer).values({
+        await testDb.insert(schema.ministryMembership).values({
           churchId: sql`NULL`,
           volunteerId: sql`NULL`,
           ministryId: sql`NULL`,
         });
-        expect.fail('Should have failed: MinistryVolunteer without FKs');
+        expect.fail('Should have failed: MinistryMembership without FKs');
       } catch (error) {
         const err = error as Error;
         if (err.name === 'AssertionError') throw err;

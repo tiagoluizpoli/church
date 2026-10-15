@@ -19,12 +19,12 @@ import type {
 } from '../domain/contracts/application/assignment-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
-import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
+import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
@@ -62,7 +62,7 @@ interface DbAssignmentManagerDependencies {
   shiftRepository: ShiftRepository;
   participationRepository: MinistryParticipationRepository;
   volunteerRepository: VolunteerRepository;
-  availabilityRepository: AvailabilityRepository;
+  unavailableShiftRepository: UnavailableShiftRepository;
   planningEventRepository: PlanningEventRepository;
   notificationService: NotificationService;
   unitOfWork: UnitOfWork;
@@ -74,7 +74,7 @@ export class DbAssignmentManager implements IAssignmentManager {
   private readonly shiftRepository: ShiftRepository;
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly volunteerRepository: VolunteerRepository;
-  private readonly availabilityRepository: AvailabilityRepository;
+  private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly planningEventRepository: PlanningEventRepository;
   private readonly notificationService: NotificationService;
   private readonly unitOfWork: UnitOfWork;
@@ -85,7 +85,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     shiftRepository,
     participationRepository,
     volunteerRepository,
-    availabilityRepository,
+    unavailableShiftRepository,
     planningEventRepository,
     notificationService,
     unitOfWork,
@@ -95,7 +95,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.shiftRepository = shiftRepository;
     this.participationRepository = participationRepository;
     this.volunteerRepository = volunteerRepository;
-    this.availabilityRepository = availabilityRepository;
+    this.unavailableShiftRepository = unavailableShiftRepository;
     this.planningEventRepository = planningEventRepository;
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
@@ -315,8 +315,8 @@ export class DbAssignmentManager implements IAssignmentManager {
       );
     }
 
-    const availabilityMarks =
-      await this.availabilityRepository.listByVolunteers(
+    const unavailableShifts =
+      await this.unavailableShiftRepository.listByVolunteers(
         input.churchId,
         [input.volunteerId],
         tx,
@@ -331,8 +331,9 @@ export class DbAssignmentManager implements IAssignmentManager {
       );
 
     if (
-      availabilityMarks.some(
-        (mark) => (mark.shiftId as string) === (shift.id as string),
+      unavailableShifts.some(
+        (unavailableShift) =>
+          (unavailableShift.shiftId as string) === (shift.id as string),
       )
     ) {
       warnings.push({
@@ -357,7 +358,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     const assignment = await this.assignmentRepo.create(
       input.churchId,
       {
-        slotId: shift.timeSlotId,
+        eventTimeBlockId: shift.eventTimeBlockId,
         participationId: participation.id,
         shiftId: shift.id,
         volunteerId: input.volunteerId,

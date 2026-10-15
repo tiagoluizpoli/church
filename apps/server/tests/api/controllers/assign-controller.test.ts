@@ -28,7 +28,7 @@ const mockGetSession = vi.mocked(
 );
 
 const participationManager = {
-  listMinistryCycleSummaries: vi.fn(),
+  listScheduleSummaries: vi.fn(),
   listEligibleVolunteers: vi.fn(),
   getCompletion: vi.fn(),
   getCycleBuilderData: vi.fn(),
@@ -166,7 +166,7 @@ describe('Assign routes', () => {
       assignment: new Assignment(
         {
           churchId: '11111111-1111-1111-1111-111111111111',
-          slotId: '77777777-7777-7777-8777-777777777777',
+          eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
           participationId: '22222222-2222-2222-8222-222222222222',
           shiftId: '66666666-6666-6666-8666-666666666666',
           volunteerId: 'vol-1',
@@ -197,7 +197,7 @@ describe('Assign routes', () => {
       assignment: {
         id: 'assign-1',
         churchId: '11111111-1111-1111-1111-111111111111',
-        slotId: '77777777-7777-7777-8777-777777777777',
+        eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
         participationId: '22222222-2222-2222-8222-222222222222',
         shiftId: '66666666-6666-6666-8666-666666666666',
         volunteerId: 'vol-1',
@@ -221,7 +221,7 @@ describe('Assign routes', () => {
       assignment: new Assignment(
         {
           churchId: '11111111-1111-1111-1111-111111111111',
-          slotId: '77777777-7777-7777-8777-777777777777',
+          eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
           participationId: '22222222-2222-2222-8222-222222222222',
           shiftId: '66666666-6666-6666-8666-666666666666',
           volunteerId: 'vol-1',
@@ -362,7 +362,7 @@ describe('Assign routes', () => {
       new Assignment(
         {
           churchId: '11111111-1111-1111-1111-111111111111',
-          slotId: '77777777-7777-7777-8777-777777777777',
+          eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
           participationId: '22222222-2222-2222-8222-222222222222',
           shiftId: '66666666-6666-6666-8666-666666666666',
           volunteerId: 'vol-2',
@@ -385,7 +385,7 @@ describe('Assign routes', () => {
     expect(response.json()).toEqual({
       id: 'assign-2',
       churchId: '11111111-1111-1111-1111-111111111111',
-      slotId: '77777777-7777-7777-8777-777777777777',
+      eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
       participationId: '22222222-2222-2222-8222-222222222222',
       shiftId: '66666666-6666-6666-8666-666666666666',
       volunteerId: 'vol-2',
@@ -512,14 +512,12 @@ describe('Assign routes', () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(
-      participationManager.listMinistryCycleSummaries,
-    ).not.toHaveBeenCalled();
+    expect(participationManager.listScheduleSummaries).not.toHaveBeenCalled();
   });
 
   it('GET /api/v1/assign/teams/:id/cycles-summary lists only that Team’s cycles', async () => {
     authorityGuard.canManageTeam.mockResolvedValue(true);
-    participationManager.listMinistryCycleSummaries.mockResolvedValue([]);
+    participationManager.listScheduleSummaries.mockResolvedValue([]);
 
     const response = await app.inject({
       method: 'GET',
@@ -528,9 +526,7 @@ describe('Assign routes', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ cycles: [] });
-    expect(
-      participationManager.listMinistryCycleSummaries,
-    ).toHaveBeenCalledWith({
+    expect(participationManager.listScheduleSummaries).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
       ministryId: '22222222-2222-2222-8222-222222222222',
       teamId: '33333333-3333-4333-8333-333333333333',

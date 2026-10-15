@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type {
   CycleBuilderEventSummary,
+  CycleBuilderEventTimeBlockSummary,
   CycleBuilderShiftSummary,
-  CycleBuilderSlotSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
   staffingStatusClasses,
@@ -15,11 +15,11 @@ function makeShift(
 ): CycleBuilderShiftSummary {
   return {
     shiftId: 'shift-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     requirements: [],
     assignments: [],
@@ -29,16 +29,16 @@ function makeShift(
   };
 }
 
-function makeSlot(
-  overrides: Partial<CycleBuilderSlotSummary> = {},
-): CycleBuilderSlotSummary {
+function makeEventTimeBlock(
+  overrides: Partial<CycleBuilderEventTimeBlockSummary> = {},
+): CycleBuilderEventTimeBlockSummary {
   return {
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
     included: true,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     shiftCount: 1,
     shifts: [makeShift()],
@@ -58,30 +58,30 @@ function makeEvent(
     end: '2027-01-05T02:59:59.999Z',
     status: 'draft',
     fillRatio: 0,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
-    slotCount: 1,
-    slots: [makeSlot()],
+    eventTimeBlockCount: 1,
+    eventTimeBlocks: [makeEventTimeBlock()],
     ...overrides,
   };
 }
 
 describe('summarizeCycleStaffing (B-4)', () => {
-  it('counts filled, required and shifts below target across included slots', () => {
+  it('counts filled, required and shifts below target across included time blocks', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [
-            makeSlot({
+          eventTimeBlocks: [
+            makeEventTimeBlock({
               shifts: [
                 makeShift({
                   shiftId: 'shift-1',
-                  requiredCount: 2,
+                  peopleNeeded: 2,
                   assignedCount: 2,
                 }),
                 makeShift({
                   shiftId: 'shift-2',
-                  requiredCount: 3,
+                  peopleNeeded: 3,
                   assignedCount: 1,
                 }),
               ],
@@ -101,22 +101,22 @@ describe('summarizeCycleStaffing (B-4)', () => {
     });
   });
 
-  it('ignores slots this ministry is not serving, so the denominator cannot lie', () => {
+  it('ignores time blocks this ministry is not serving, so the denominator cannot lie', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [
-            makeSlot({
-              slotId: 'slot-included',
-              shifts: [makeShift({ requiredCount: 2, assignedCount: 1 })],
+          eventTimeBlocks: [
+            makeEventTimeBlock({
+              eventTimeBlockId: 'event-time-block-included',
+              shifts: [makeShift({ peopleNeeded: 2, assignedCount: 1 })],
             }),
-            makeSlot({
-              slotId: 'slot-excluded',
+            makeEventTimeBlock({
+              eventTimeBlockId: 'event-time-block-excluded',
               included: false,
               shifts: [
                 makeShift({
                   shiftId: 'shift-x',
-                  requiredCount: 9,
+                  peopleNeeded: 9,
                   assignedCount: 0,
                 }),
               ],
@@ -140,7 +140,9 @@ describe('summarizeCycleStaffing (B-4)', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [makeSlot({ shifts: [makeShift({ requiredCount: 0 })] })],
+          eventTimeBlocks: [
+            makeEventTimeBlock({ shifts: [makeShift({ peopleNeeded: 0 })] }),
+          ],
         }),
       ],
       assignments: [],
@@ -157,14 +159,14 @@ describe('summarizeCycleStaffing (B-4)', () => {
 });
 
 describe('summarizeCycleCounts', () => {
-  it('counts events, included slots, and shifts, passing assignedCount through unchanged', () => {
+  it('counts events, included time blocks, and shifts, passing assignedCount through unchanged', () => {
     const data = {
       events: [
         makeEvent({
           eventId: 'event-1',
-          slots: [
-            makeSlot({
-              slotId: 'slot-1',
+          eventTimeBlocks: [
+            makeEventTimeBlock({
+              eventTimeBlockId: 'event-time-block-1',
               shifts: [
                 makeShift({ shiftId: 'shift-1', assignedCount: 2 }),
                 makeShift({ shiftId: 'shift-2', assignedCount: 1 }),
@@ -174,9 +176,9 @@ describe('summarizeCycleCounts', () => {
         }),
         makeEvent({
           eventId: 'event-2',
-          slots: [
-            makeSlot({
-              slotId: 'slot-2',
+          eventTimeBlocks: [
+            makeEventTimeBlock({
+              eventTimeBlockId: 'event-time-block-2',
               shifts: [makeShift({ shiftId: 'shift-3', assignedCount: 0 })],
             }),
           ],
@@ -188,23 +190,23 @@ describe('summarizeCycleCounts', () => {
 
     expect(summarizeCycleCounts({ data, assignedCount: 3 })).toEqual({
       eventCount: 2,
-      slotCount: 2,
+      eventTimeBlockCount: 2,
       shiftCount: 3,
       assignedCount: 3,
     });
   });
 
-  it('excludes slots this ministry is not serving from every count but the event total', () => {
+  it('excludes time blocks this ministry is not serving from every count but the event total', () => {
     const data = {
       events: [
         makeEvent({
-          slots: [
-            makeSlot({
-              slotId: 'slot-included',
+          eventTimeBlocks: [
+            makeEventTimeBlock({
+              eventTimeBlockId: 'event-time-block-included',
               shifts: [makeShift({ shiftId: 'shift-1', assignedCount: 1 })],
             }),
-            makeSlot({
-              slotId: 'slot-excluded',
+            makeEventTimeBlock({
+              eventTimeBlockId: 'event-time-block-excluded',
               included: false,
               shifts: [makeShift({ shiftId: 'shift-x', assignedCount: 9 })],
             }),
@@ -217,7 +219,7 @@ describe('summarizeCycleCounts', () => {
 
     expect(summarizeCycleCounts({ data, assignedCount: 1 })).toEqual({
       eventCount: 1,
-      slotCount: 1,
+      eventTimeBlockCount: 1,
       shiftCount: 1,
       assignedCount: 1,
     });

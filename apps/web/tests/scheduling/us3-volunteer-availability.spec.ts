@@ -143,43 +143,49 @@ async function setUpTwoMinistryOverlapCycle({
     throw new Error('Expected the overlap template to have one block.');
   }
 
-  const worshipProfileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/serving-profile`,
+  const worshipUsualSetupResponse = await page.request.put(
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/usual-setup`,
     {
       data: {
         entries: [
           {
-            sourceTemplateBlockId: block.id,
+            sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
-              { roleId: journey.ministries.worship.roles.usher.id, count: 1 },
+              {
+                roleId: journey.ministries.worship.roles.usher.id,
+                peopleNeeded: 1,
+              },
             ],
           },
         ],
       },
     },
   );
-  expect(worshipProfileResponse.ok()).toBeTruthy();
+  expect(worshipUsualSetupResponse.ok()).toBeTruthy();
 
-  const careProfileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${careMinistryId}/serving-profile`,
+  const careUsualSetupResponse = await page.request.put(
+    `${SERVER_URL}/api/v1/admin/ministries/${careMinistryId}/usual-setup`,
     {
       data: {
         entries: [
           {
-            sourceTemplateBlockId: block.id,
+            sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
-              { roleId: journey.ministries.care.roles.careHost.id, count: 1 },
+              {
+                roleId: journey.ministries.care.roles.careHost.id,
+                peopleNeeded: 1,
+              },
             ],
           },
         ],
       },
     },
   );
-  expect(careProfileResponse.ok()).toBeTruthy();
+  expect(careUsualSetupResponse.ok()).toBeTruthy();
 
   const applyResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/apply-templates`,
@@ -238,16 +244,16 @@ async function openWorshipCheckAndMarkOneShiftUnavailable({
   const shiftRows = page.getByTestId('shift-availability-row');
   expect(await shiftRows.count()).toBeGreaterThanOrEqual(2);
 
-  const marksResponsePromise = page.waitForResponse(
+  const unavailableShiftsResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes('/availability-checks/') &&
-      response.url().endsWith('/marks') &&
+      response.url().endsWith('/unavailable-shifts') &&
       response.request().method() === 'PUT',
   );
   await shiftRows.first().getByTestId('mark-unavailable-toggle').click();
-  await page.getByTestId('save-marks-button').click();
-  const marksResponse = await marksResponsePromise;
-  expect(marksResponse.ok()).toBeTruthy();
+  await page.getByTestId('save-unavailable-shifts-button').click();
+  const unavailableShiftsResponse = await unavailableShiftsResponsePromise;
+  expect(unavailableShiftsResponse.ok()).toBeTruthy();
 }
 
 test('volunteer in two ministries confirms despite a cross-ministry overlap', async ({

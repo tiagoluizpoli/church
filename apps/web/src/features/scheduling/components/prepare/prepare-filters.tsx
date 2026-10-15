@@ -26,11 +26,11 @@ export interface PrepareFiltersProps {
 }
 
 /** Client-side name + time-window filter controls (FR-010) — narrows the
- * already-fetched slot list with zero network requests. The time filter is
+ * already-fetched time block list with zero network requests. The time filter is
  * one mode selector ("Starts" / "Ends" / "Between") paired with a single
  * shared start+end time range, applied per the selected mode. Promotes its
  * own controls to touch sizing below `md` (self-contained, matching
- * `PrepareSlotList`'s own responsiveness, since this bar isn't wrapped by
+ * `PrepareEventTimeBlockList`'s own responsiveness, since this bar isn't wrapped by
  * that component's `FormControlSizeProvider`); the time-range pair wraps to
  * its own line under the mode select instead of overflowing on narrow
  * phones, where three inline controls plus a fixed-width select don't fit. */
@@ -50,7 +50,7 @@ export function PrepareFilters({
           <Input
             id="prepare-name-filter"
             data-testid="prepare-name-filter"
-            placeholder="Slot or event name"
+            placeholder="Time block or event name"
             value={nameQuery}
             onChange={(event) => onNameQueryChange(event.target.value)}
           />

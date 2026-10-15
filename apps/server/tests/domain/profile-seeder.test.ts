@@ -1,6 +1,10 @@
 import { fromTimeColumn, parseInstant, parseTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import type { RoleId, TimeBlockId, TimeSlotId } from '@/domain/branded-ids';
+import type {
+  EventTimeBlockId,
+  RoleId,
+  TemplateTimeBlockId,
+} from '@/domain/branded-ids';
 import {
   ProfileSeeder,
   type ProfileSeederEntry,
@@ -8,20 +12,21 @@ import {
 } from '@/domain/services/profile-seeder';
 
 const timeZone = 'America/Sao_Paulo';
-const blockId = '88888888-8888-4888-8888-888888888888' as TimeBlockId;
-const otherBlockId = '88888888-8888-4888-8888-888888888889' as TimeBlockId;
+const blockId = '88888888-8888-4888-8888-888888888888' as TemplateTimeBlockId;
+const otherBlockId =
+  '88888888-8888-4888-8888-888888888889' as TemplateTimeBlockId;
 const roleId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as RoleId;
 
 // 09:00–12:00 church time (UTC-3) → 12:00–15:00 UTC
-const templatedSlot = {
-  timeSlotId: '66666666-6666-4666-8666-666666666666' as TimeSlotId,
-  sourceTemplateBlockId: blockId,
+const templatedEventTimeBlock = {
+  eventTimeBlockId: '66666666-6666-4666-8666-666666666666' as EventTimeBlockId,
+  sourceTemplateTimeBlockId: blockId,
   startTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
   endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
 };
 
-const dynamicSlot = {
-  timeSlotId: '66666666-6666-4666-8666-666666666667' as TimeSlotId,
+const dynamicEventTimeBlock = {
+  eventTimeBlockId: '66666666-6666-4666-8666-666666666667' as EventTimeBlockId,
   startTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
   endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
 };
@@ -30,7 +35,7 @@ const seeder = new ProfileSeeder();
 
 function plan(input: Partial<SeedParticipationPlanInput>) {
   return seeder.plan({
-    slot: templatedSlot,
+    eventTimeBlock: templatedEventTimeBlock,
     profileEntries: [],
     globalDefaultAllIn: false,
     timeZone,
@@ -41,25 +46,27 @@ function plan(input: Partial<SeedParticipationPlanInput>) {
 describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
   it('DL1-PS-01 profile entry with serves=true seeds inclusion, split shifts, and requirements', () => {
     const entry: ProfileSeederEntry = {
-      sourceTemplateBlockId: blockId,
+      sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ roleId, count: 3 }],
+      headcounts: [{ roleId, peopleNeeded: 3 }],
     };
 
     const result = plan({ profileEntries: [entry] });
 
     expect(result.include).toBe(true);
     expect(result.shifts).toHaveLength(2);
-    expect(result.shifts[0]?.startTime).toEqual(templatedSlot.startTime);
-    expect(result.shifts[1]?.endTime).toEqual(templatedSlot.endTime);
-    expect(result.shifts[0]?.headcounts).toEqual([{ roleId, count: 3 }]);
-    expect(result.shifts[1]?.headcounts).toEqual([{ roleId, count: 3 }]);
+    expect(result.shifts[0]?.startTime).toEqual(
+      templatedEventTimeBlock.startTime,
+    );
+    expect(result.shifts[1]?.endTime).toEqual(templatedEventTimeBlock.endTime);
+    expect(result.shifts[0]?.headcounts).toEqual([{ roleId, peopleNeeded: 3 }]);
+    expect(result.shifts[1]?.headcounts).toEqual([{ roleId, peopleNeeded: 3 }]);
   });
 
-  it('maps manual profile spans onto the slot date in church timezone', () => {
+  it('maps manual profile spans onto the event time block date in church timezone', () => {
     const entry: ProfileSeederEntry = {
-      sourceTemplateBlockId: blockId,
+      sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: {
         kind: 'manual',
@@ -96,7 +103,7 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
 
   it('accepts manual span times that already include seconds', () => {
     const entry: ProfileSeederEntry = {
-      sourceTemplateBlockId: blockId,
+      sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: {
         kind: 'manual',
@@ -126,8 +133,10 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     const allIn = plan({ ministryDefaultDirection: 'all_in' });
     expect(allIn.include).toBe(true);
     expect(allIn.shifts).toHaveLength(1);
-    expect(allIn.shifts[0]?.startTime).toEqual(templatedSlot.startTime);
-    expect(allIn.shifts[0]?.endTime).toEqual(templatedSlot.endTime);
+    expect(allIn.shifts[0]?.startTime).toEqual(
+      templatedEventTimeBlock.startTime,
+    );
+    expect(allIn.shifts[0]?.endTime).toEqual(templatedEventTimeBlock.endTime);
     expect(allIn.shifts[0]?.headcounts).toEqual([]);
 
     const allOut = plan({ ministryDefaultDirection: 'all_out' });
@@ -146,7 +155,7 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
 
   it('DL1-PS-04 narrower tier wins: entry over ministry, ministry over global', () => {
     const optedOutEntry: ProfileSeederEntry = {
-      sourceTemplateBlockId: blockId,
+      sourceTemplateTimeBlockId: blockId,
       serves: false,
       shiftSplit: { kind: 'equal', count: 1 },
       headcounts: [],
@@ -166,7 +175,7 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     expect(ministryOverGlobal.include).toBe(false);
 
     const optedInEntry: ProfileSeederEntry = {
-      sourceTemplateBlockId: blockId,
+      sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 1 },
       headcounts: [],
@@ -181,7 +190,7 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
 
   it('ignores profile entries for other template blocks', () => {
     const unrelatedEntry: ProfileSeederEntry = {
-      sourceTemplateBlockId: otherBlockId,
+      sourceTemplateTimeBlockId: otherBlockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
       headcounts: [],
@@ -195,9 +204,9 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     expect(result.include).toBe(false);
   });
 
-  it('DL1-PS-05 dynamic slots (no template block) are never auto-seeded', () => {
+  it('DL1-PS-05 dynamic event time blocks (no template block) are never auto-seeded', () => {
     const result = plan({
-      slot: dynamicSlot,
+      eventTimeBlock: dynamicEventTimeBlock,
       ministryDefaultDirection: 'all_in',
       globalDefaultAllIn: true,
     });

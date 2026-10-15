@@ -20,7 +20,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const ORIGINAL_TZ = process.env.TZ;
 const CHURCH_TIMEZONE = 'America/Sao_Paulo';
 
-/** Mirrors the real `Janeiro` cycle: two Mondays, the first with two slots. */
+/** Mirrors the real `Janeiro` cycle: two Mondays, the first with two time blocks. */
 const janeiroData: CycleBuilderData = {
   assignments: [],
   roles: [{ id: 'role-1', name: 'Coordinator' }],
@@ -35,28 +35,28 @@ const janeiroData: CycleBuilderData = {
       end: '2027-01-05T02:59:59.999Z',
       status: 'scheduled',
       fillRatio: 0,
-      requiredCount: 2,
+      peopleNeeded: 2,
       assignedCount: 0,
-      slotCount: 2,
-      slots: [
+      eventTimeBlockCount: 2,
+      eventTimeBlocks: [
         {
-          slotId: 'slot-manha',
+          eventTimeBlockId: 'event-time-block-manha',
           label: 'manhã',
           startTime: '2027-01-04T12:00:00.000Z',
           endTime: '2027-01-04T13:00:00.000Z',
           included: true,
-          requiredCount: 1,
+          peopleNeeded: 1,
           assignedCount: 0,
           shiftCount: 1,
           shifts: [
             {
               shiftId: 'shift-manha',
-              slotId: 'slot-manha',
+              eventTimeBlockId: 'event-time-block-manha',
               startTime: '2027-01-04T12:00:00.000Z',
               endTime: '2027-01-04T13:00:00.000Z',
-              requiredCount: 1,
+              peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
               assignments: [],
               eligibleVolunteerCount: 0,
               eligibleVolunteers: [],
@@ -64,23 +64,23 @@ const janeiroData: CycleBuilderData = {
           ],
         },
         {
-          slotId: 'slot-tarde',
+          eventTimeBlockId: 'event-time-block-tarde',
           label: 'tarde',
           startTime: '2027-01-04T19:00:00.000Z',
           endTime: '2027-01-04T21:00:00.000Z',
           included: true,
-          requiredCount: 1,
+          peopleNeeded: 1,
           assignedCount: 0,
           shiftCount: 1,
           shifts: [
             {
               shiftId: 'shift-tarde',
-              slotId: 'slot-tarde',
+              eventTimeBlockId: 'event-time-block-tarde',
               startTime: '2027-01-04T19:00:00.000Z',
               endTime: '2027-01-04T21:00:00.000Z',
-              requiredCount: 1,
+              peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
               assignments: [],
               eligibleVolunteerCount: 0,
               eligibleVolunteers: [],
@@ -99,28 +99,28 @@ const janeiroData: CycleBuilderData = {
       end: '2027-01-12T02:59:59.999Z',
       status: 'scheduled',
       fillRatio: 0,
-      requiredCount: 1,
+      peopleNeeded: 1,
       assignedCount: 0,
-      slotCount: 1,
-      slots: [
+      eventTimeBlockCount: 1,
+      eventTimeBlocks: [
         {
-          slotId: 'slot-manha-2',
+          eventTimeBlockId: 'event-time-block-manha-2',
           label: 'manhã',
           startTime: '2027-01-11T12:00:00.000Z',
           endTime: '2027-01-11T15:00:00.000Z',
           included: true,
-          requiredCount: 1,
+          peopleNeeded: 1,
           assignedCount: 0,
           shiftCount: 1,
           shifts: [
             {
               shiftId: 'shift-manha-2',
-              slotId: 'slot-manha-2',
+              eventTimeBlockId: 'event-time-block-manha-2',
               startTime: '2027-01-11T12:00:00.000Z',
               endTime: '2027-01-11T15:00:00.000Z',
-              requiredCount: 1,
+              peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
               assignments: [],
               eligibleVolunteerCount: 0,
               eligibleVolunteers: [],
@@ -181,11 +181,11 @@ describe.each([
     }
   });
 
-  it('keeps both of the first Monday slots on that one day', async () => {
+  it('keeps both of the first Monday time blocks on that one day', async () => {
     renderBoard();
 
     // manhã and tarde belong to the same event on the same local day: one
-    // column, both slots.
+    // column, both time blocks.
     expect(await screen.findAllByText('manhã')).toHaveLength(2); // Jan 4 + Jan 11
     expect(screen.getAllByText('tarde')).toHaveLength(1);
   });
@@ -208,28 +208,28 @@ describe.each([
           end: '2027-01-09T04:00:00.000Z',
           status: 'scheduled',
           fillRatio: 0,
-          requiredCount: 1,
+          peopleNeeded: 1,
           assignedCount: 0,
-          slotCount: 1,
-          slots: [
+          eventTimeBlockCount: 1,
+          eventTimeBlocks: [
             {
-              slotId: 'slot-vigilia',
+              eventTimeBlockId: 'event-time-block-vigilia',
               label: 'vigília',
               startTime: '2027-01-09T01:00:00.000Z',
               endTime: '2027-01-09T04:00:00.000Z',
               included: true,
-              requiredCount: 1,
+              peopleNeeded: 1,
               assignedCount: 0,
               shiftCount: 1,
               shifts: [
                 {
                   shiftId: 'shift-vigilia',
-                  slotId: 'slot-vigilia',
+                  eventTimeBlockId: 'event-time-block-vigilia',
                   startTime: '2027-01-09T01:00:00.000Z',
                   endTime: '2027-01-09T04:00:00.000Z',
-                  requiredCount: 1,
+                  peopleNeeded: 1,
                   assignedCount: 0,
-                  requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+                  requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
                   assignments: [],
                   eligibleVolunteerCount: 0,
                   eligibleVolunteers: [],

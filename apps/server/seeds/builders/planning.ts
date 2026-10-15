@@ -1,9 +1,9 @@
 import {
   eventTemplate,
-  ministryServingProfile,
-  type ServingProfileHeadcount,
   type ShiftSplitSpec,
-  timeBlock,
+  templateTimeBlock,
+  type UsualSetupHeadcount,
+  usualSetup,
 } from '@church/db';
 import type { TimeOfDay } from '@church/time';
 import type { SeedWriter } from '../recipe';
@@ -11,16 +11,15 @@ import { requireInsertedRow } from './require-inserted-row';
 
 /**
  * Direct-state builders for the standing planning rules a ChurchAdmin and
- * Ministry leaders configure once: EventTemplates with their TimeBlocks, and
- * MinistryServingProfiles bound to those blocks.
+ * Ministry leaders configure once: EventTemplates with their TemplateTimeBlocks, and
+ * UsualSetups bound to those blocks.
  */
 
 export type SeededEventTemplate = typeof eventTemplate.$inferSelect;
-export type SeededTimeBlock = typeof timeBlock.$inferSelect;
-export type SeededMinistryServingProfile =
-  typeof ministryServingProfile.$inferSelect;
+export type SeededTemplateTimeBlock = typeof templateTimeBlock.$inferSelect;
+export type SeededUsualSetup = typeof usualSetup.$inferSelect;
 
-export interface SeedTimeBlock {
+export interface SeedTemplateTimeBlock {
   id?: string;
   label: string;
   startTime: TimeOfDay;
@@ -37,12 +36,12 @@ export interface BuildEventTemplateInput {
   /** 0 (Sunday) … 6 (Saturday). */
   weekday: number;
   /** In order; a block without an explicit `order` takes its position. */
-  blocks: readonly SeedTimeBlock[];
+  blocks: readonly SeedTemplateTimeBlock[];
 }
 
 export interface SeededEventTemplateWithBlocks {
   template: SeededEventTemplate;
-  blocks: SeededTimeBlock[];
+  blocks: SeededTemplateTimeBlock[];
 }
 
 export async function buildEventTemplate({
@@ -65,7 +64,7 @@ export async function buildEventTemplate({
     blocks.length === 0
       ? []
       : await db
-          .insert(timeBlock)
+          .insert(templateTimeBlock)
           .values(
             blocks.map((block, index) => ({
               id: block.id,
@@ -82,41 +81,41 @@ export async function buildEventTemplate({
   return { template, blocks: seededBlocks };
 }
 
-export interface BuildMinistryServingProfileInput {
+export interface BuildUsualSetupInput {
   db: SeedWriter;
   churchId: string;
   ministryId: string;
-  sourceTemplateBlockId: string;
+  sourceTemplateTimeBlockId: string;
   id: string;
   serves: boolean;
   shiftSplit: ShiftSplitSpec;
-  headcounts: ServingProfileHeadcount[];
+  headcounts: UsualSetupHeadcount[];
 }
 
-/** One Ministry's standing rule for one TimeBlock. */
-export async function buildMinistryServingProfile({
+/** One Ministry's standing rule for one TemplateTimeBlock. */
+export async function buildUsualSetup({
   db,
   churchId,
   ministryId,
-  sourceTemplateBlockId,
+  sourceTemplateTimeBlockId,
   id,
   serves,
   shiftSplit,
   headcounts,
-}: BuildMinistryServingProfileInput): Promise<SeededMinistryServingProfile> {
+}: BuildUsualSetupInput): Promise<SeededUsualSetup> {
   return requireInsertedRow({
     rows: await db
-      .insert(ministryServingProfile)
+      .insert(usualSetup)
       .values({
         id,
         churchId,
         ministryId,
-        sourceTemplateBlockId,
+        sourceTemplateTimeBlockId,
         serves,
         shiftSplit,
         headcounts,
       })
       .returning(),
-    description: `Ministry Serving Profile ${id}`,
+    description: `Usual Setup ${id}`,
   });
 }

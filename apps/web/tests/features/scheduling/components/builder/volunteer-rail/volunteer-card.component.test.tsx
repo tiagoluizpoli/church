@@ -29,7 +29,7 @@ function membership(
 }
 
 function noop() {
-  // Presence of onSelect is what mounts the Select-slot button; the click
+  // Presence of onSelect is what mounts the Select-shift button; the click
   // target itself is exercised by the sidebar tests.
 }
 
@@ -142,12 +142,12 @@ describe('VolunteerCard (T048)', () => {
       </div>,
     );
 
-    const actions = screen.getAllByTestId('volunteer-select-slot');
+    const actions = screen.getAllByTestId('volunteer-select-shift');
     expect(actions[0]).toHaveAccessibleName(
-      'Select Local Leader, Leader to place on a slot',
+      'Select Local Leader, Leader to place on a shift',
     );
     expect(actions[1]).toHaveAccessibleName(
-      'Select Local Team Leader, Team Leader to place on a slot',
+      'Select Local Team Leader, Team Leader to place on a shift',
     );
   });
 
@@ -162,8 +162,8 @@ describe('VolunteerCard (T048)', () => {
       />,
     );
 
-    expect(screen.getByTestId('volunteer-select-slot')).toHaveAccessibleName(
-      'Select John Doe to place on a slot',
+    expect(screen.getByTestId('volunteer-select-shift')).toHaveAccessibleName(
+      'Select John Doe to place on a shift',
     );
   });
 
@@ -204,7 +204,7 @@ describe('VolunteerCard (T048)', () => {
     expect(screen.getAllByTestId('volunteer-ideal-badge')).toHaveLength(1);
   });
 
-  it('exposes the Select-slot button as a pressed toggle when selected', () => {
+  it('exposes the Select-shift button as a pressed toggle when selected', () => {
     renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({})}
@@ -213,7 +213,7 @@ describe('VolunteerCard (T048)', () => {
       />,
     );
 
-    const button = screen.getByTestId('volunteer-select-slot');
+    const button = screen.getByTestId('volunteer-select-shift');
     expect(button).toHaveTextContent('Selected');
     expect(button).toHaveAttribute('aria-pressed', 'true');
   });
@@ -226,7 +226,7 @@ describe('VolunteerCard (T048)', () => {
     expect(screen.queryByTestId('volunteer-card-grip')).not.toBeInTheDocument();
   });
 
-  it('swaps Select slot for Pick me while a slot is focused and this card is assignable', async () => {
+  it('swaps Select shift for Pick me while a shift is focused and this card is assignable', async () => {
     const onAssignToFocused = vi.fn();
     const onSelect = vi.fn();
     renderWithProviders(
@@ -239,7 +239,7 @@ describe('VolunteerCard (T048)', () => {
     );
 
     expect(
-      screen.queryByTestId('volunteer-select-slot'),
+      screen.queryByTestId('volunteer-select-shift'),
     ).not.toBeInTheDocument();
     const pickMe = screen.getByTestId('volunteer-pick-me');
     expect(pickMe).toHaveTextContent('Pick me');
@@ -268,7 +268,7 @@ describe('VolunteerCard (T048)', () => {
     );
   });
 
-  it('keeps Select slot when the card is not assignable to the focused slot', () => {
+  it('keeps Select shift when the card is not assignable to the focused shift', () => {
     renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({})}
@@ -277,7 +277,7 @@ describe('VolunteerCard (T048)', () => {
       />,
     );
 
-    expect(screen.getByTestId('volunteer-select-slot')).toBeVisible();
+    expect(screen.getByTestId('volunteer-select-shift')).toBeVisible();
     expect(screen.queryByTestId('volunteer-pick-me')).not.toBeInTheDocument();
   });
 });

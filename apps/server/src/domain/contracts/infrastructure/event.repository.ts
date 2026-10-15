@@ -5,7 +5,11 @@ import type {
   EventTemplateId,
   MinistryId,
 } from '../../branded-ids';
-import type { Event, EventStatus, EventWithSlots } from '../../entities/event';
+import type {
+  Event,
+  EventStatus,
+  EventWithEventTimeBlocks,
+} from '../../entities/event';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateEventInput {
@@ -42,11 +46,11 @@ export interface EventRepository {
     tx?: TransactionContext,
   ): Promise<Event>;
 
-  getWithSlots(
+  getWithEventTimeBlocks(
     churchId: ChurchId,
     id: EventId,
     tx?: TransactionContext,
-  ): Promise<EventWithSlots>;
+  ): Promise<EventWithEventTimeBlocks>;
 
   listByMinistry(
     churchId: ChurchId,

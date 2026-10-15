@@ -7,10 +7,10 @@ import {
   removeOptimisticAssignment,
   replaceOptimisticAssignmentVolunteer,
 } from '@/features/scheduling/hooks/use-cycle-builder.optimistic';
-import type { GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type { GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem } from '@/infrastructure/api/churchAPI.schemas';
 
 type RawAssignment =
-  GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem;
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem;
 
 interface MakeDataInput {
   assignments: RawAssignment[];
@@ -19,7 +19,7 @@ interface MakeDataInput {
 const EXISTING_ASSIGNMENT: RawAssignment = {
   id: 'assignment-1',
   churchId: 'church-1',
-  slotId: 'slot-1',
+  eventTimeBlockId: 'event-time-block-1',
   participationId: 'participation-1',
   shiftId: 'shift-1',
   volunteerId: 'ana',
@@ -51,10 +51,10 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
           createdAt: '2026-07-01T09:00:00.000Z',
           updatedAt: '2026-07-01T09:00:00.000Z',
         },
-        slots: [
+        eventTimeBlocks: [
           {
-            slot: {
-              id: 'slot-1',
+            eventTimeBlock: {
+              id: 'event-time-block-1',
               churchId: 'church-1',
               eventId: 'event-1',
               startTime: '2026-07-05T09:00:00.000Z',
@@ -68,7 +68,7 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
                 shift: {
                   id: 'shift-1',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-05T09:00:00.000Z',
                   endTime: '2026-07-05T11:00:00.000Z',
                 },
@@ -80,7 +80,7 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
                 shift: {
                   id: 'shift-2',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-05T09:00:00.000Z',
                   endTime: '2026-07-05T11:00:00.000Z',
                 },
@@ -108,13 +108,13 @@ describe('addOptimisticAssignment', () => {
       assignedAt: '2026-07-02T10:00:00.000Z',
     });
 
-    const shifts = next.events[0].slots[0].shifts;
+    const shifts = next.events[0].eventTimeBlocks[0].shifts;
     expect(shifts[0].assignments).toEqual([
       EXISTING_ASSIGNMENT,
       {
         id: 'optimistic:1',
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         participationId: 'participation-1',
         shiftId: 'shift-1',
         volunteerId: 'bruno',
@@ -137,7 +137,7 @@ describe('addOptimisticAssignment', () => {
       assignedAt: '2026-07-02T10:00:00.000Z',
     });
 
-    expect(data.events[0].slots[0].shifts[0].assignments).toEqual([
+    expect(data.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([
       EXISTING_ASSIGNMENT,
     ]);
   });
@@ -153,7 +153,7 @@ describe('addOptimisticAssignment', () => {
       assignedAt: '2026-07-02T10:00:00.000Z',
     });
 
-    expect(next.events[0].slots[0].shifts[0].assignments).toEqual([
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([
       EXISTING_ASSIGNMENT,
     ]);
   });
@@ -168,7 +168,7 @@ describe('removeOptimisticAssignment', () => {
       assignmentId: 'assignment-1',
     });
 
-    expect(next.events[0].slots[0].shifts[0].assignments).toEqual([]);
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([]);
   });
 
   it('is a no-op for an unknown assignment id', () => {
@@ -179,7 +179,7 @@ describe('removeOptimisticAssignment', () => {
       assignmentId: 'assignment-missing',
     });
 
-    expect(next.events[0].slots[0].shifts[0].assignments).toEqual([
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([
       EXISTING_ASSIGNMENT,
     ]);
   });
@@ -195,13 +195,13 @@ describe('replaceOptimisticAssignmentVolunteer', () => {
       volunteerId: 'bruno',
     });
 
-    expect(next.events[0].slots[0].shifts[0].assignments[0]).toEqual({
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments[0]).toEqual({
       ...EXISTING_ASSIGNMENT,
       volunteerId: 'bruno',
     });
-    expect(data.events[0].slots[0].shifts[0].assignments[0].volunteerId).toBe(
-      'ana',
-    );
+    expect(
+      data.events[0].eventTimeBlocks[0].shifts[0].assignments[0].volunteerId,
+    ).toBe('ana');
   });
 });
 

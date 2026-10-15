@@ -2,14 +2,14 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for type tests
 
 import { describe, it } from 'vitest';
-import type { AssignmentId, AvailabilityId, EventId, MinistryId, RoleId, TimeSlotId, VolunteerId } from '@/domain/branded-ids';
+import type { AssignmentId, EventId, EventTimeBlockId, MinistryId, RoleId, UnavailableShiftId, VolunteerId } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
-import type { AvailabilityRepository } from '@/domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
-import type { TimeSlotRepository } from '@/domain/contracts/infrastructure/time-slot.repository';
+import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 
@@ -50,16 +50,16 @@ describe('User Story 3: Church Isolation Type Safety', () => {
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       volunteerRepo.hasMembershipInMinistry('plain-string', 'volunteer-1' as VolunteerId, 'ministry-1' as MinistryId);
 
-      // 4. AvailabilityRepository
-      const availabilityRepo = {} as AvailabilityRepository;
+      // 4. UnavailableShiftRepository
+      const unavailableShiftRepo = {} as UnavailableShiftRepository;
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      availabilityRepo.listByVolunteerInRange('plain-string', 'volunteer-1' as VolunteerId, new Date(), new Date());
+      unavailableShiftRepo.listByVolunteerInRange('plain-string', 'volunteer-1' as VolunteerId, new Date(), new Date());
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      availabilityRepo.create('plain-string', {} as any);
+      unavailableShiftRepo.create('plain-string', {} as any);
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      availabilityRepo.update('plain-string', 'availability-1' as AvailabilityId, {} as any);
+      unavailableShiftRepo.update('plain-string', 'availability-1' as UnavailableShiftId, {} as any);
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      availabilityRepo.delete('plain-string', 'availability-1' as AvailabilityId);
+      unavailableShiftRepo.delete('plain-string', 'availability-1' as UnavailableShiftId);
 
       // 5. EventRepository
       const eventRepo = {} as EventRepository;
@@ -72,16 +72,16 @@ describe('User Story 3: Church Isolation Type Safety', () => {
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       eventRepo.updateStatus('plain-string', 'event-1' as EventId, { status: 'published' });
 
-      // 6. TimeSlotRepository
-      const timeSlotRepo = {} as TimeSlotRepository;
+      // 6. EventTimeBlockRepository
+      const eventTimeBlockRepo = {} as EventTimeBlockRepository;
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      timeSlotRepo.getById('plain-string', 'slot-1' as TimeSlotId);
+      eventTimeBlockRepo.getById('plain-string', 'event-time-block-1' as EventTimeBlockId);
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      timeSlotRepo.listByEvent('plain-string', 'event-1' as EventId);
+      eventTimeBlockRepo.listByEvent('plain-string', 'event-1' as EventId);
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      timeSlotRepo.create('plain-string', {} as any);
+      eventTimeBlockRepo.create('plain-string', {} as any);
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      timeSlotRepo.deleteByEvent('plain-string', 'event-1' as EventId);
+      eventTimeBlockRepo.deleteByEvent('plain-string', 'event-1' as EventId);
 
       // 7. AssignmentRepository
       const assignmentRepo = {} as AssignmentRepository;

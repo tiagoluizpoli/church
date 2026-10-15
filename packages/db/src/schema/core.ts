@@ -40,7 +40,7 @@ export const ministry = pgTable('ministry', {
 
 /**
  * A retired profile (`leftAt` set) keeps its original `churchId` forever, so
- * every assignment, membership and availability record hanging off it stays
+ * every assignment, membership and unavailable-shift record hanging off it stays
  * attributed to the Church that actually received the service — the row is
  * never moved or deleted, only superseded. `successorVolunteerId` makes the
  * chain walkable without an audit query. Retirement is an axis independent of
@@ -92,22 +92,22 @@ export const team = pgTable('team', {
 /**
  * Junction table linking Volunteers to Ministries.
  *
- * Team membership hangs off `ministry_volunteer_team` (many-to-many, no primary
- * team) and role qualification off `ministry_volunteer_role`.
+ * Team membership hangs off `ministry_membership_team` (many-to-many, no primary
+ * team) and role qualification off `ministry_membership_role`.
  *
  * **Access Level Model**: Leadership is NOT stored as a column on `team` or
  * `ministry`. Instead, `ministry_access_level` on this join table designates
- * ministry-wide leadership, and `ministry_volunteer_team.access_level`
+ * ministry-wide leadership, and `ministry_membership_team.access_level`
  * designates leadership scoped to a specific team.
  *
  * - `leader`     → Ministry Leader (full ministry authority)
  * - `volunteer`   → Regular member
  *
- * TeamLeader is no longer a value here: it is a `ministry_volunteer_team`
+ * TeamLeader is no longer a value here: it is a `ministry_membership_team`
  * row with `access_level: 'leader'`, scoped only to the teams that row
  * points at — not a ministry-wide deputy.
  */
-export const ministryVolunteer = pgTable('ministry_volunteer', {
+export const ministryMembership = pgTable('ministry_membership', {
   id: uuid('id').primaryKey().defaultRandom(),
   churchId: uuid('church_id')
     .notNull()
@@ -128,7 +128,7 @@ export const ministryVolunteer = pgTable('ministry_volunteer', {
     .notNull(),
   /**
    * Set when a Volunteer Transfer retires this membership (spec §8.2). The
-   * `ministry_volunteer_role` and `ministry_volunteer_team` rows are left in
+   * `ministry_membership_role` and `ministry_membership_team` rows are left in
    * place — they record *why* a past Assignment was possible.
    */
   leftAt: timestamp('left_at', { withTimezone: true, mode: 'date' }),
@@ -156,16 +156,16 @@ export const role = pgTable('role', {
  * "qualified for the role AND (requirement has no team OR the volunteer
  * belongs to that team)". There are deliberately no `(role, team)` rows.
  */
-export const ministryVolunteerRole = pgTable(
-  'ministry_volunteer_role',
+export const ministryMembershipRole = pgTable(
+  'ministry_membership_role',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    ministryVolunteerId: uuid('ministry_volunteer_id')
+    ministryMembershipId: uuid('ministry_membership_id')
       .notNull()
-      .references(() => ministryVolunteer.id, { onDelete: 'cascade' }),
+      .references(() => ministryMembership.id, { onDelete: 'cascade' }),
     roleId: uuid('role_id')
       .notNull()
       .references(() => role.id, { onDelete: 'cascade' }),
@@ -174,8 +174,8 @@ export const ministryVolunteerRole = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex('ministry_volunteer_role_membership_role_idx').on(
-      table.ministryVolunteerId,
+    uniqueIndex('ministry_membership_role_membership_role_idx').on(
+      table.ministryMembershipId,
       table.roleId,
     ),
   ],
@@ -184,19 +184,19 @@ export const ministryVolunteerRole = pgTable(
 /**
  * Team membership for a ministry member — flat many-to-many, no primary team.
  *
- * Replaces the single `ministry_volunteer.team_id` column: a member of Kids can
+ * Replaces the single `ministry_membership.team_id` column: a member of Kids can
  * belong to both "2-4 yrs" and "5-14 yrs".
  */
-export const ministryVolunteerTeam = pgTable(
-  'ministry_volunteer_team',
+export const ministryMembershipTeam = pgTable(
+  'ministry_membership_team',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    ministryVolunteerId: uuid('ministry_volunteer_id')
+    ministryMembershipId: uuid('ministry_membership_id')
       .notNull()
-      .references(() => ministryVolunteer.id, { onDelete: 'cascade' }),
+      .references(() => ministryMembership.id, { onDelete: 'cascade' }),
     teamId: uuid('team_id')
       .notNull()
       .references(() => team.id, { onDelete: 'cascade' }),
@@ -209,8 +209,8 @@ export const ministryVolunteerTeam = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex('ministry_volunteer_team_membership_team_idx').on(
-      table.ministryVolunteerId,
+    uniqueIndex('ministry_membership_team_membership_team_idx').on(
+      table.ministryMembershipId,
       table.teamId,
     ),
   ],

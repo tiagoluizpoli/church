@@ -13,9 +13,9 @@ import { ChurchAdminController } from '@/api/controllers/church-admin-controller
 import { RoleId } from '@/domain/branded-ids';
 import { Event } from '@/domain/entities/event';
 import { Ministry } from '@/domain/entities/ministry';
-import { MinistryServingProfile } from '@/domain/entities/ministry-serving-profile';
+import { UsualSetup } from '@/domain/entities/usual-setup';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
-import { LastRemainingSlotError } from '@/domain/errors/last-remaining-slot-error';
+import { LastRemainingEventTimeBlockError } from '@/domain/errors/last-remaining-event-time-block-error';
 import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -52,14 +52,14 @@ const planningEventManager = {
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
   cancelEvent: vi.fn(),
-  createSlot: vi.fn(),
-  updateSlot: vi.fn(),
-  deleteSlot: vi.fn(),
+  createEventTimeBlock: vi.fn(),
+  updateEventTimeBlock: vi.fn(),
+  deleteEventTimeBlock: vi.fn(),
 };
 
 const participationManager = {
-  getServingProfile: vi.fn(),
-  upsertServingProfile: vi.fn(),
+  getUsualSetup: vi.fn(),
+  upsertUsualSetup: vi.fn(),
 };
 
 const ministryManager = {
@@ -85,19 +85,19 @@ function createActiveChurchResolution() {
   };
 }
 
-function createServingProfile(): MinistryServingProfile {
-  return new MinistryServingProfile({
+function createUsualSetup(): UsualSetup {
+  return new UsualSetup({
     id: '55555555-5555-5555-8555-555555555555',
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       ministryId: '33333333-3333-3333-3333-333333333333',
-      sourceTemplateBlockId: '77777777-7777-7777-8777-777777777777',
+      sourceTemplateTimeBlockId: '77777777-7777-7777-8777-777777777777',
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
       headcounts: [
         {
           roleId: RoleId.from('88888888-8888-8888-8888-888888888888'),
-          count: 3,
+          peopleNeeded: 3,
         },
       ],
     },
@@ -237,7 +237,7 @@ describe('Church admin planning routes', () => {
   it('POST /api/v1/admin/cycles/:id/apply-templates returns 201 and 422 for invalid bodies', async () => {
     planningEventManager.generateFromTemplates.mockResolvedValue({
       generatedEventCount: 5,
-      generatedSlotCount: 9,
+      generatedEventTimeBlockCount: 9,
     });
 
     const success = await app.inject({
@@ -251,7 +251,7 @@ describe('Church admin planning routes', () => {
     expect(success.statusCode).toBe(201);
     expect(success.json()).toEqual({
       generatedEventCount: 5,
-      generatedSlotCount: 9,
+      generatedEventTimeBlockCount: 9,
     });
 
     const invalid = await app.inject({
@@ -313,18 +313,16 @@ describe('Church admin planning routes', () => {
   });
 
   it('serves ministry profile routes and returns updated default direction', async () => {
-    const servingProfile = createServingProfile();
-    participationManager.getServingProfile.mockResolvedValue([servingProfile]);
-    participationManager.upsertServingProfile.mockResolvedValue([
-      servingProfile,
-    ]);
+    const usualSetup = createUsualSetup();
+    participationManager.getUsualSetup.mockResolvedValue([usualSetup]);
+    participationManager.upsertUsualSetup.mockResolvedValue([usualSetup]);
     ministryManager.setDefaultDirection.mockResolvedValue(
       createMinistry('all_in'),
     );
 
     const getResponse = await app.inject({
       method: 'GET',
-      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/serving-profile',
+      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/usual-setup',
     });
 
     expect(getResponse.statusCode).toBe(200);
@@ -333,13 +331,13 @@ describe('Church admin planning routes', () => {
         {
           id: '55555555-5555-5555-8555-555555555555',
           ministryId: '33333333-3333-3333-3333-333333333333',
-          sourceTemplateBlockId: '77777777-7777-7777-8777-777777777777',
+          sourceTemplateTimeBlockId: '77777777-7777-7777-8777-777777777777',
           serves: true,
           shiftSplit: { kind: 'equal', count: 2 },
           headcounts: [
             {
               roleId: '88888888-8888-8888-8888-888888888888',
-              count: 3,
+              peopleNeeded: 3,
             },
           ],
         },
@@ -348,17 +346,17 @@ describe('Church admin planning routes', () => {
 
     const putResponse = await app.inject({
       method: 'PUT',
-      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/serving-profile',
+      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/usual-setup',
       payload: {
         entries: [
           {
-            sourceTemplateBlockId: '77777777-7777-7777-8777-777777777777',
+            sourceTemplateTimeBlockId: '77777777-7777-7777-8777-777777777777',
             serves: true,
             shiftSplit: { kind: 'equal', count: 2 },
             headcounts: [
               {
                 roleId: '88888888-8888-8888-8888-888888888888',
-                count: 3,
+                peopleNeeded: 3,
               },
             ],
           },
@@ -381,12 +379,12 @@ describe('Church admin planning routes', () => {
     });
   });
 
-  it('POST .../slots: creates a slot and returns 201, and returns 409 for a sent cycle', async () => {
+  it('POST .../event-time-blocks: creates an event time block and returns 201, and returns 409 for a sent cycle', async () => {
     const cycleId = '22222222-2222-2222-2222-222222222222';
     const eventId = '66666666-6666-6666-6666-666666666666';
-    const slotsUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots`;
+    const eventTimeBlocksUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks`;
 
-    planningEventManager.createSlot.mockResolvedValue({
+    planningEventManager.createEventTimeBlock.mockResolvedValue({
       id: '99999999-9999-9999-9999-999999999999',
       churchId: '11111111-1111-1111-1111-111111111111',
       eventId,
@@ -399,7 +397,7 @@ describe('Church admin planning routes', () => {
 
     const success = await app.inject({
       method: 'POST',
-      url: slotsUrl,
+      url: eventTimeBlocksUrl,
       payload: {
         startTime: '2026-08-02T09:00:00.000Z',
         endTime: '2026-08-02T10:00:00.000Z',
@@ -409,12 +407,12 @@ describe('Church admin planning routes', () => {
     expect(success.statusCode).toBe(201);
     expect(success.json()).toMatchObject({ label: 'Worship' });
 
-    planningEventManager.createSlot.mockRejectedValueOnce(
+    planningEventManager.createEventTimeBlock.mockRejectedValueOnce(
       new IllegalStateTransitionError('scheduled', 'update'),
     );
     const locked = await app.inject({
       method: 'POST',
-      url: slotsUrl,
+      url: eventTimeBlocksUrl,
       payload: {
         startTime: '2026-08-02T09:00:00.000Z',
         endTime: '2026-08-02T10:00:00.000Z',
@@ -423,14 +421,14 @@ describe('Church admin planning routes', () => {
     expect(locked.statusCode).toBe(409);
   });
 
-  it('PATCH/DELETE .../slots/:slotId: happy paths, 404, 409 locked, 409 last remaining slot', async () => {
+  it('PATCH/DELETE .../event-time-blocks/:eventTimeBlockId: happy paths, 404, 409 locked, 409 last remaining event time block', async () => {
     const cycleId = '22222222-2222-2222-2222-222222222222';
     const eventId = '66666666-6666-6666-6666-666666666666';
-    const slotId = '99999999-9999-9999-9999-999999999999';
-    const slotUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots/${slotId}`;
+    const eventTimeBlockId = '99999999-9999-9999-9999-999999999999';
+    const eventTimeBlockUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}`;
 
-    planningEventManager.updateSlot.mockResolvedValue({
-      id: slotId,
+    planningEventManager.updateEventTimeBlock.mockResolvedValue({
+      id: eventTimeBlockId,
       churchId: '11111111-1111-1111-1111-111111111111',
       eventId,
       startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
@@ -442,40 +440,49 @@ describe('Church admin planning routes', () => {
 
     const updateOk = await app.inject({
       method: 'PATCH',
-      url: slotUrl,
+      url: eventTimeBlockUrl,
       payload: { label: 'Worship' },
     });
     expect(updateOk.statusCode).toBe(200);
-    expect(updateOk.json()).toMatchObject({ id: slotId, label: 'Worship' });
+    expect(updateOk.json()).toMatchObject({
+      id: eventTimeBlockId,
+      label: 'Worship',
+    });
 
-    planningEventManager.deleteSlot.mockResolvedValue(undefined);
-    const deleteOk = await app.inject({ method: 'DELETE', url: slotUrl });
+    planningEventManager.deleteEventTimeBlock.mockResolvedValue(undefined);
+    const deleteOk = await app.inject({
+      method: 'DELETE',
+      url: eventTimeBlockUrl,
+    });
     expect(deleteOk.statusCode).toBe(204);
 
-    planningEventManager.updateSlot.mockRejectedValueOnce(
-      new NotFoundError(`TimeSlot not found: ${slotId}`),
+    planningEventManager.updateEventTimeBlock.mockRejectedValueOnce(
+      new NotFoundError(`EventTimeBlock not found: ${eventTimeBlockId}`),
     );
     const notFound = await app.inject({
       method: 'PATCH',
-      url: slotUrl,
+      url: eventTimeBlockUrl,
       payload: { label: 'Mismatched' },
     });
     expect(notFound.statusCode).toBe(404);
 
-    planningEventManager.updateSlot.mockRejectedValueOnce(
+    planningEventManager.updateEventTimeBlock.mockRejectedValueOnce(
       new IllegalStateTransitionError('scheduled', 'update'),
     );
     const locked = await app.inject({
       method: 'PATCH',
-      url: slotUrl,
+      url: eventTimeBlockUrl,
       payload: { label: 'Too late' },
     });
     expect(locked.statusCode).toBe(409);
 
-    planningEventManager.deleteSlot.mockRejectedValueOnce(
-      new LastRemainingSlotError(),
+    planningEventManager.deleteEventTimeBlock.mockRejectedValueOnce(
+      new LastRemainingEventTimeBlockError(),
     );
-    const lastSlot = await app.inject({ method: 'DELETE', url: slotUrl });
-    expect(lastSlot.statusCode).toBe(409);
+    const lastEventTimeBlock = await app.inject({
+      method: 'DELETE',
+      url: eventTimeBlockUrl,
+    });
+    expect(lastEventTimeBlock.statusCode).toBe(409);
   });
 });

@@ -15,10 +15,10 @@ import {
   buildAssignment,
   buildCycle,
   buildEvent,
+  buildEventTimeBlock,
   buildMinistryParticipation,
   buildShift,
-  buildSlotRequirement,
-  buildTimeSlot,
+  buildShiftRequirement,
 } from '../../builders/scheduling';
 import {
   buildMinistryMembership,
@@ -180,11 +180,11 @@ export function createVolunteerAssignmentsRecipe({
       end: endsAt,
       status: 'scheduled',
     });
-    const timeSlot = await buildTimeSlot({
+    const eventTimeBlock = await buildEventTimeBlock({
       db,
       churchId: church.id,
       eventId: event.id,
-      id: idOf({ kind: 'time-slot' }),
+      id: idOf({ kind: 'event-time-block' }),
       start: startsAt,
       end: endsAt,
     });
@@ -195,25 +195,25 @@ export function createVolunteerAssignmentsRecipe({
       eventId: event.id,
       id: idOf({ kind: 'participation' }),
       state: 'published',
-      timeSlotIds: [timeSlot.id],
+      eventTimeBlockIds: [eventTimeBlock.id],
     });
     const shift = await buildShift({
       db,
       churchId: church.id,
       participationId: participation.id,
-      timeSlotId: timeSlot.id,
+      eventTimeBlockId: eventTimeBlock.id,
       id: idOf({ kind: 'shift' }),
       start: startsAt,
       end: endsAt,
     });
-    await buildSlotRequirement({
+    await buildShiftRequirement({
       db,
       churchId: church.id,
       participationId: participation.id,
       shiftId: shift.id,
       roleId: role.id,
-      id: idOf({ kind: 'slot-requirement' }),
-      requiredCount: 1,
+      id: idOf({ kind: 'shift-requirement' }),
+      peopleNeeded: 1,
     });
     const assignment = await buildAssignment({
       db,

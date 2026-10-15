@@ -25,18 +25,17 @@ import type {
   AssignmentRepository,
   AuthorityActorRepository,
   AvailabilityCheckRepository,
-  AvailabilityRepository,
   ChurchMembershipRepository,
   ChurchRepository,
   CycleRepository,
   EmailSender,
   EventRepository,
   EventTemplateRepository,
+  EventTimeBlockRepository,
   InvitationVerificationCodeRepository,
   MinistryInvitationRepository,
   MinistryParticipationRepository,
   MinistryRepository,
-  MinistryServingProfileRepository,
   NotificationService,
   OutboxRepository,
   PlanningEventRepository,
@@ -47,8 +46,9 @@ import type {
   SecurityLogRepository,
   ShiftRepository,
   TeamRepository,
-  TimeSlotRepository,
+  UnavailableShiftRepository,
   UnitOfWork,
+  UsualSetupRepository,
   VerificationCodeInspector,
   VolunteerNotificationRepository,
   VolunteerRepository,
@@ -66,7 +66,7 @@ export interface CompositionRootDependencies {
   volunteerRepository: VolunteerRepository;
   assignmentRepository: AssignmentRepository;
   assignmentAuditRepository: AssignmentAuditRepository;
-  availabilityRepository: AvailabilityRepository;
+  unavailableShiftRepository: UnavailableShiftRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
   churchRepository: ChurchRepository;
   ministryRepository: MinistryRepository;
@@ -77,11 +77,11 @@ export interface CompositionRootDependencies {
   securityLogRepository: SecurityLogRepository;
   outboxRepository: OutboxRepository;
   ministryParticipationRepository: MinistryParticipationRepository;
-  ministryServingProfileRepository: MinistryServingProfileRepository;
+  usualSetupRepository: UsualSetupRepository;
   shiftRepository: ShiftRepository;
   roleRepository: RoleRepository;
   teamRepository: TeamRepository;
-  timeSlotRepository: TimeSlotRepository;
+  eventTimeBlockRepository: EventTimeBlockRepository;
   volunteerNotificationRepository: VolunteerNotificationRepository;
   unitOfWork: UnitOfWork;
   // Services

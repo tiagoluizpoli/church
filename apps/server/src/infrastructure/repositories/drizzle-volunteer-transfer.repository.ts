@@ -3,16 +3,16 @@ import {
   assignment,
   assignmentAudit,
   event,
+  eventTimeBlock,
   identityAudit,
   ministry,
   ministryInvitation,
   ministryInvitationRole,
+  ministryMembership,
   ministryParticipation,
-  ministryVolunteer,
   outboxMessage,
   role,
   shift,
-  timeSlot,
   user,
   volunteer,
   volunteerTransfer,
@@ -34,8 +34,8 @@ import type {
 } from '../../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { getClient, withChurchIsolation } from './helpers';
 import {
-  grantMinistryVolunteerRoles,
-  insertMinistryVolunteerMembership,
+  grantMinistryMembershipRoles,
+  insertMinistryMembership,
 } from './ministry-grant';
 import type { AnyDrizzleDb } from './types';
 
@@ -48,8 +48,8 @@ interface DrizzleVolunteerTransferRepositoryInput {
 /**
  * Every step of spec §8.5, inside the caller's transaction. The old
  * `volunteer` row is retired (never moved), the destination is born fresh, and
- * only assignments whose **time slot** starts strictly after the commit are
- * cancelled — a slot already under way is protected even inside a still-running
+ * only assignments whose **event time block** starts strictly after the commit are
+ * cancelled — an event time block already under way is protected even inside a still-running
  * event. The `volunteer_transfer` row is the idempotency key: a replay returns
  * the original result and writes nothing (the outbox enqueue is skipped on
  * replay too, for the same reason). One `outbox_message` row is written per
@@ -88,13 +88,13 @@ export class DrizzleVolunteerTransferRepository
 
     const endedMemberships = await db
       .select({ ministryName: ministry.name })
-      .from(ministryVolunteer)
-      .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
+      .from(ministryMembership)
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, activeProfile.id),
-          eq(ministryVolunteer.churchId, sourceChurchId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.volunteerId, activeProfile.id),
+          eq(ministryMembership.churchId, sourceChurchId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .orderBy(asc(ministry.name));
@@ -102,22 +102,22 @@ export class DrizzleVolunteerTransferRepository
     const withdrawnAssignments = await db
       .select({
         eventName: event.title,
-        timeSlotStart: timeSlot.startTime,
+        eventTimeBlockStart: eventTimeBlock.startTime,
         roleName: role.name,
       })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
-      .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId))
-      .innerJoin(event, eq(event.id, timeSlot.eventId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
       .innerJoin(role, eq(role.id, assignment.roleId))
       .where(
         and(
           eq(assignment.volunteerId, activeProfile.id),
           inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
-          gt(timeSlot.startTime, now),
+          gt(eventTimeBlock.startTime, now),
         ),
       )
-      .orderBy(asc(timeSlot.startTime));
+      .orderBy(asc(eventTimeBlock.startTime));
 
     return { endedMemberships, withdrawnAssignments };
   }
@@ -174,16 +174,16 @@ export class DrizzleVolunteerTransferRepository
     }
     const sourceMemberships = await db
       .select({
-        id: ministryVolunteer.id,
-        ministryId: ministryVolunteer.ministryId,
-        ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
+        id: ministryMembership.id,
+        ministryId: ministryMembership.ministryId,
+        ministryAccessLevel: ministryMembership.ministryAccessLevel,
       })
-      .from(ministryVolunteer)
+      .from(ministryMembership)
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, activeProfile.id),
-          eq(ministryVolunteer.churchId, sourceChurchId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.volunteerId, activeProfile.id),
+          eq(ministryMembership.churchId, sourceChurchId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .for('update');
@@ -219,17 +219,17 @@ export class DrizzleVolunteerTransferRepository
       .where(eq(volunteer.id, activeProfile.id));
 
     // 5. Former-Church Ministry Memberships go inactive; Role / Team
-    //    qualification rows and Availability records are left untouched.
+    //    qualification rows and UnavailableShift records are left untouched.
     const membershipIds = sourceMemberships.map(({ id }) => id);
     if (membershipIds.length > 0) {
       await db
-        .update(ministryVolunteer)
+        .update(ministryMembership)
         .set({ status: 'inactive', leftAt: confirmedAt })
-        .where(inArray(ministryVolunteer.id, membershipIds));
+        .where(inArray(ministryMembership.id, membershipIds));
     }
 
-    // 6. Cancel assignments whose time slot starts strictly after the commit
-    //    (§8.4: the cut is the slot start, not the shift or the event date).
+    // 6. Cancel assignments whose event time block starts strictly after the commit
+    //    (§8.4: the cut is the event time block start, not the shift or the event date).
     const reason = `Volunteer Transfer ${correlationId}`;
     const futureAssignments = await db
       .select({
@@ -238,7 +238,7 @@ export class DrizzleVolunteerTransferRepository
       })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
-      .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .innerJoin(
         ministryParticipation,
         eq(ministryParticipation.id, shift.participationId),
@@ -247,7 +247,7 @@ export class DrizzleVolunteerTransferRepository
         and(
           eq(assignment.volunteerId, activeProfile.id),
           inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
-          gt(timeSlot.startTime, confirmedAt),
+          gt(eventTimeBlock.startTime, confirmedAt),
         ),
       );
     const withdrawnAssignmentIds = futureAssignments.map(({ id }) => id);
@@ -291,14 +291,14 @@ export class DrizzleVolunteerTransferRepository
         'transfer.ministry-digest';
       if (wasLeaderByMinistryId.get(affectedMinistryId)) {
         const [remainingLeader] = await db
-          .select({ id: ministryVolunteer.id })
-          .from(ministryVolunteer)
+          .select({ id: ministryMembership.id })
+          .from(ministryMembership)
           .where(
             and(
-              eq(ministryVolunteer.ministryId, affectedMinistryId),
-              eq(ministryVolunteer.churchId, sourceChurchId),
-              eq(ministryVolunteer.status, 'active'),
-              eq(ministryVolunteer.ministryAccessLevel, 'leader'),
+              eq(ministryMembership.ministryId, affectedMinistryId),
+              eq(ministryMembership.churchId, sourceChurchId),
+              eq(ministryMembership.status, 'active'),
+              eq(ministryMembership.ministryAccessLevel, 'leader'),
             ),
           )
           .limit(1);
@@ -322,7 +322,7 @@ export class DrizzleVolunteerTransferRepository
       .values({ churchId: destinationChurchId, userId, status: 'active' })
       .returning({ id: volunteer.id });
     if (!newProfile) throw new Error('Destination Volunteer insert failed');
-    const newMembershipId = await insertMinistryVolunteerMembership({
+    const newMembershipId = await insertMinistryMembership({
       db,
       churchId: destinationChurchId,
       ministryId: invitationRow.ministryId,
@@ -338,10 +338,10 @@ export class DrizzleVolunteerTransferRepository
           eq(ministryInvitationRole.ministryInvitationId, ministryInvitationId),
         ),
       );
-    await grantMinistryVolunteerRoles({
+    await grantMinistryMembershipRoles({
       db,
       churchId: destinationChurchId,
-      ministryVolunteerId: newMembershipId,
+      ministryMembershipId: newMembershipId,
       roleIds: invitedRoles.map(({ roleId }) => roleId),
     });
 
@@ -441,7 +441,7 @@ export class DrizzleVolunteerTransferRepository
     const withdrawnAssignments = await db
       .select({
         eventName: event.title,
-        timeSlotStart: timeSlot.startTime,
+        eventTimeBlockStart: eventTimeBlock.startTime,
         roleName: role.name,
       })
       .from(assignmentAudit)
@@ -451,8 +451,8 @@ export class DrizzleVolunteerTransferRepository
         ministryParticipation,
         eq(ministryParticipation.id, shift.participationId),
       )
-      .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId))
-      .innerJoin(event, eq(event.id, timeSlot.eventId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
       .innerJoin(role, eq(role.id, assignment.roleId))
       .where(
         and(
@@ -461,7 +461,7 @@ export class DrizzleVolunteerTransferRepository
           eq(ministryParticipation.ministryId, ministryId),
         ),
       )
-      .orderBy(asc(timeSlot.startTime));
+      .orderBy(asc(eventTimeBlock.startTime));
 
     return {
       ministryName: ministryRow.name,

@@ -100,7 +100,7 @@ describe('Event controller authorization wiring', () => {
     eventManager.getScheduleBuilderData.mockResolvedValue({
       events: [],
       assignments: [],
-      availability: [],
+      unavailableShifts: [],
       volunteers: [],
       roles: [],
       callerTeamIds: null,

@@ -1,6 +1,6 @@
 import type {
+  AvailabilityEventTimeBlockViewModel,
   AvailabilityEventViewModel,
-  AvailabilitySlotViewModel,
 } from '../components/availability-form';
 import type { AvailabilityTaskViewModel } from '../components/availability-needed-section';
 import { formatInstantOf } from '@/shared/utils/church-time';
@@ -17,7 +17,7 @@ export interface DashboardAvailabilityTask {
 
 export interface DashboardAssignmentItem {
   assignmentId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   shiftId: string;
   participationId: string;
   roleId: string;
@@ -57,8 +57,8 @@ export interface DashboardMinistryOption {
 }
 
 export interface DashboardMinistryScheduleRow {
-  slotId: string;
-  slotLabel: string;
+  eventTimeBlockId: string;
+  eventTimeBlockLabel: string;
   roleName: string;
   teamName?: string;
   volunteerDisplayName?: string;
@@ -120,12 +120,12 @@ export function mapAvailabilityEvent(
   };
 }
 
-export function mapAvailabilitySlots(
+export function mapAvailabilityEventTimeBlocks(
   data:
     | {
-        slots: AvailabilitySlotViewModel[];
+        eventTimeBlocks: AvailabilityEventTimeBlockViewModel[];
       }
     | undefined,
-): AvailabilitySlotViewModel[] {
-  return data?.slots ?? [];
+): AvailabilityEventTimeBlockViewModel[] {
+  return data?.eventTimeBlocks ?? [];
 }

@@ -1,6 +1,6 @@
 import type { ChurchId, CycleId, EventId } from '../../branded-ids';
 import type { Cycle, CycleState } from '../../entities/cycle';
-import type { EventWithSlots } from '../../entities/event';
+import type { EventWithEventTimeBlocks } from '../../entities/event';
 
 export interface CreateCycleManagerInput {
   churchId: ChurchId;
@@ -32,7 +32,7 @@ export interface ReopenPlanningEventManagerInput {
 
 export interface CycleDetails {
   cycle: Cycle;
-  events: EventWithSlots[];
+  events: EventWithEventTimeBlocks[];
 }
 
 export interface ICycleManager {

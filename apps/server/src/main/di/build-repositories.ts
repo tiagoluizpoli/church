@@ -2,16 +2,15 @@ import {
   DrizzleAssignmentAuditRepository,
   DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
-  DrizzleAvailabilityRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
   DrizzleEventRepository,
   DrizzleEventTemplateRepository,
+  DrizzleEventTimeBlockRepository,
   DrizzleInvitationVerificationCodeRepository,
   DrizzleMinistryInvitationRepository,
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
-  DrizzleMinistryServingProfileRepository,
   DrizzleOutboxRepository,
   DrizzlePlanningEventRepository,
   DrizzleRedemptionRepository,
@@ -19,8 +18,9 @@ import {
   DrizzleSecurityLogRepository,
   DrizzleShiftRepository,
   DrizzleTeamRepository,
-  DrizzleTimeSlotRepository,
+  DrizzleUnavailableShiftRepository,
   DrizzleUnitOfWork,
+  DrizzleUsualSetupRepository,
   DrizzleVolunteerNotificationRepository,
   DrizzleVolunteerRepository,
   DrizzleVolunteerTransferRepository,
@@ -36,10 +36,10 @@ export type Repositories = Pick<
   | 'volunteerRepository'
   | 'assignmentRepository'
   | 'assignmentAuditRepository'
-  | 'availabilityRepository'
+  | 'unavailableShiftRepository'
   | 'availabilityCheckRepository'
   | 'ministryParticipationRepository'
-  | 'ministryServingProfileRepository'
+  | 'usualSetupRepository'
   | 'shiftRepository'
   | 'churchRepository'
   | 'ministryRepository'
@@ -51,7 +51,7 @@ export type Repositories = Pick<
   | 'outboxRepository'
   | 'roleRepository'
   | 'teamRepository'
-  | 'timeSlotRepository'
+  | 'eventTimeBlockRepository'
   | 'volunteerNotificationRepository'
   | 'unitOfWork'
 >;
@@ -86,18 +86,18 @@ export function buildRepositories({
   const assignmentAuditRepository =
     overrides.assignmentAuditRepository ??
     new DrizzleAssignmentAuditRepository({ db: database });
-  const availabilityRepository =
-    overrides.availabilityRepository ??
-    new DrizzleAvailabilityRepository({ db: database });
+  const unavailableShiftRepository =
+    overrides.unavailableShiftRepository ??
+    new DrizzleUnavailableShiftRepository({ db: database });
   const availabilityCheckRepository =
     overrides.availabilityCheckRepository ??
     new DrizzleAvailabilityCheckRepository({ db: database });
   const ministryParticipationRepository =
     overrides.ministryParticipationRepository ??
     new DrizzleMinistryParticipationRepository({ db: database });
-  const ministryServingProfileRepository =
-    overrides.ministryServingProfileRepository ??
-    new DrizzleMinistryServingProfileRepository({ db: database });
+  const usualSetupRepository =
+    overrides.usualSetupRepository ??
+    new DrizzleUsualSetupRepository({ db: database });
   const shiftRepository =
     overrides.shiftRepository ?? new DrizzleShiftRepository({ db: database });
   const churchRepository =
@@ -126,9 +126,9 @@ export function buildRepositories({
     overrides.roleRepository ?? new DrizzleRoleRepository({ db: database });
   const teamRepository =
     overrides.teamRepository ?? new DrizzleTeamRepository({ db: database });
-  const timeSlotRepository =
-    overrides.timeSlotRepository ??
-    new DrizzleTimeSlotRepository({ db: database });
+  const eventTimeBlockRepository =
+    overrides.eventTimeBlockRepository ??
+    new DrizzleEventTimeBlockRepository({ db: database });
   const volunteerNotificationRepository =
     overrides.volunteerNotificationRepository ??
     new DrizzleVolunteerNotificationRepository({ db: database });
@@ -143,10 +143,10 @@ export function buildRepositories({
     volunteerRepository,
     assignmentRepository,
     assignmentAuditRepository,
-    availabilityRepository,
+    unavailableShiftRepository,
     availabilityCheckRepository,
     ministryParticipationRepository,
-    ministryServingProfileRepository,
+    usualSetupRepository,
     shiftRepository,
     churchRepository,
     ministryRepository,
@@ -158,7 +158,7 @@ export function buildRepositories({
     outboxRepository,
     roleRepository,
     teamRepository,
-    timeSlotRepository,
+    eventTimeBlockRepository,
     volunteerNotificationRepository,
     unitOfWork,
   };

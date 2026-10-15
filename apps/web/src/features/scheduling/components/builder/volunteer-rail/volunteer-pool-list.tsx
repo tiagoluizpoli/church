@@ -53,7 +53,7 @@ interface VolunteerPoolListProps {
 
 /**
  * The rail body. Focus and grouping are independent: focused people keep their
- * slot ranking wherever they land, so a grouped rail still shows the best
+ * shift ranking wherever they land, so a grouped rail still shows the best
  * candidate first inside each group (both group helpers preserve input order).
  *
  * The tree is flattened to a single row list so it can be windowed — an

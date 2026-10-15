@@ -33,7 +33,7 @@ interface AssignmentChipProps {
   syncState?: AssignmentSyncState;
   onClick?: () => void;
   /**
-   * The team this chip's slot belongs to, if any. The badge only reads "Team
+   * The team this chip's shift belongs to, if any. The badge only reads "Team
    * Leader" when the volunteer leads this specific team (FR-013).
    */
   contextTeamId?: string;

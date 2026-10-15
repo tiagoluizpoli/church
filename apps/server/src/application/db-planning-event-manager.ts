@@ -12,45 +12,45 @@ import {
 import type {
   ChurchId,
   EventId,
-  TimeBlockId,
-  TimeSlotId,
+  EventTimeBlockId,
+  TemplateTimeBlockId,
 } from '../domain/branded-ids';
 import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
-  CreatePlanningEventSlotManagerInput,
-  DeletePlanningEventSlotManagerInput,
+  CreatePlanningEventTimeBlockManagerInput,
+  DeletePlanningEventTimeBlockManagerInput,
   GeneratedPlanningCounts,
   GeneratePlanningTemplatesInput,
   IPlanningEventManager,
   UpdatePlanningEventManagerInput,
-  UpdatePlanningEventSlotManagerInput,
+  UpdatePlanningEventTimeBlockManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
+import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
-import type { MinistryServingProfileRepository } from '../domain/contracts/infrastructure/ministry-serving-profile.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
-import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { Church } from '../domain/entities/church';
 import type { Cycle } from '../domain/entities/cycle';
 import type { Event } from '../domain/entities/event';
+import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import type { DefaultDirection } from '../domain/entities/ministry';
 import { Shift } from '../domain/entities/shift';
-import type { TimeSlot } from '../domain/entities/time-slot';
 import {
   EventOutsideCycleError,
   IllegalStateTransitionError,
-  LastRemainingSlotError,
+  LastRemainingEventTimeBlockError,
 } from '../domain/errors';
 import {
   CycleEventGenerator,
-  type ExistingGeneratedSlotFingerprint,
+  type ExistingGeneratedEventTimeBlockFingerprint,
 } from '../domain/services/cycle-event-generator';
 import {
   ProfileSeeder,
@@ -63,7 +63,7 @@ interface EnsureCycleWritableInput {
 }
 
 /**
- * Actions that can be attempted against an event/slot while checking
+ * Actions that can be attempted against an event/event time block while checking
  * whether the owning cycle still allows writes. Local to
  * `DbPlanningEventManager` — the shared `IPlanningEventManager` contract has
  * no concept of this distinction.
@@ -72,18 +72,18 @@ type WritableEntityAction = 'update' | 'delete';
 
 interface EnsureWritableEventInput {
   input:
-    | CreatePlanningEventSlotManagerInput
-    | UpdatePlanningEventSlotManagerInput
-    | DeletePlanningEventSlotManagerInput;
+    | CreatePlanningEventTimeBlockManagerInput
+    | UpdatePlanningEventTimeBlockManagerInput
+    | DeletePlanningEventTimeBlockManagerInput;
   church: Church;
   action: WritableEntityAction;
   tx: TransactionContext;
 }
 
-interface LoadWritableEventSlotInput {
+interface LoadWritableEventTimeBlockInput {
   input:
-    | UpdatePlanningEventSlotManagerInput
-    | DeletePlanningEventSlotManagerInput;
+    | UpdatePlanningEventTimeBlockManagerInput
+    | DeletePlanningEventTimeBlockManagerInput;
   church: Church;
   action: WritableEntityAction;
   tx: TransactionContext;
@@ -96,17 +96,17 @@ interface PlanningSeedContext {
   timeZone: string;
 }
 
-interface GeneratedSlotSeedInput {
-  timeSlotId: TimeSlotId;
-  sourceTemplateBlockId: TimeBlockId;
+interface GeneratedEventTimeBlockSeedInput {
+  eventTimeBlockId: EventTimeBlockId;
+  sourceTemplateTimeBlockId: TemplateTimeBlockId;
   startTime: Instant;
   endTime: Instant;
 }
 
-interface SeedGeneratedSlotsInput {
+interface SeedGeneratedEventTimeBlocksInput {
   churchId: ChurchId;
   eventId: EventId;
-  slots: GeneratedSlotSeedInput[];
+  eventTimeBlocks: GeneratedEventTimeBlockSeedInput[];
   seedContext: PlanningSeedContext;
   tx: TransactionContext;
 }
@@ -125,9 +125,9 @@ interface DbPlanningEventManagerDependencies {
   unitOfWork: UnitOfWork;
   participationRepository: MinistryParticipationRepository;
   shiftRepository: ShiftRepository;
-  servingProfileRepository: MinistryServingProfileRepository;
+  usualSetupRepository: UsualSetupRepository;
   ministryRepository: MinistryRepository;
-  timeSlotRepository: TimeSlotRepository;
+  eventTimeBlockRepository: EventTimeBlockRepository;
 }
 
 export class DbPlanningEventManager implements IPlanningEventManager {
@@ -141,9 +141,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly unitOfWork: UnitOfWork;
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly shiftRepository: ShiftRepository;
-  private readonly servingProfileRepository: MinistryServingProfileRepository;
+  private readonly usualSetupRepository: UsualSetupRepository;
   private readonly ministryRepository: MinistryRepository;
-  private readonly timeSlotRepository: TimeSlotRepository;
+  private readonly eventTimeBlockRepository: EventTimeBlockRepository;
 
   constructor({
     cycleRepository,
@@ -153,9 +153,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     unitOfWork,
     participationRepository,
     shiftRepository,
-    servingProfileRepository,
+    usualSetupRepository,
     ministryRepository,
-    timeSlotRepository,
+    eventTimeBlockRepository,
   }: DbPlanningEventManagerDependencies) {
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
@@ -164,9 +164,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.unitOfWork = unitOfWork;
     this.participationRepository = participationRepository;
     this.shiftRepository = shiftRepository;
-    this.servingProfileRepository = servingProfileRepository;
+    this.usualSetupRepository = usualSetupRepository;
     this.ministryRepository = ministryRepository;
-    this.timeSlotRepository = timeSlotRepository;
+    this.eventTimeBlockRepository = eventTimeBlockRepository;
   }
 
   async generateFromTemplates(
@@ -201,10 +201,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           sourceTemplateId: eventGroup.event.sourceTemplateId,
         })),
         existingFingerprints: existingEvents.flatMap((eventGroup) => {
-          const fingerprints: ExistingGeneratedSlotFingerprint[] = [];
+          const fingerprints: ExistingGeneratedEventTimeBlockFingerprint[] = [];
 
-          for (const slot of eventGroup.slots) {
-            if (!slot.sourceTemplateBlockId) {
+          for (const eventTimeBlock of eventGroup.eventTimeBlocks) {
+            if (!eventTimeBlock.sourceTemplateTimeBlockId) {
               continue;
             }
 
@@ -213,7 +213,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
                 instant: eventGroup.event.start,
                 timeZone: church.timezone,
               }),
-              sourceTemplateBlockId: slot.sourceTemplateBlockId,
+              sourceTemplateTimeBlockId:
+                eventTimeBlock.sourceTemplateTimeBlockId,
             });
           }
 
@@ -229,7 +230,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       });
 
       let generatedEventCount = 0;
-      let generatedSlotCount = 0;
+      let generatedEventTimeBlockCount = 0;
 
       for (const plan of plans) {
         const targetEventId =
@@ -257,31 +258,33 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           generatedEventCount += 1;
         }
 
-        const createdSlots: GeneratedSlotSeedInput[] = [];
+        const createdEventTimeBlocks: GeneratedEventTimeBlockSeedInput[] = [];
 
-        for (const slot of plan.slots) {
-          const timeSlotId = await this.eventRepository.createTimeSlot({
-            churchId: input.churchId,
-            eventId: targetEventId,
-            sourceTemplateBlockId: slot.sourceTemplateBlockId,
-            startTime: toDate({ instant: slot.startTime }),
-            endTime: toDate({ instant: slot.endTime }),
-            label: slot.label,
-            tx,
+        for (const eventTimeBlock of plan.eventTimeBlocks) {
+          const eventTimeBlockId =
+            await this.eventRepository.createEventTimeBlock({
+              churchId: input.churchId,
+              eventId: targetEventId,
+              sourceTemplateTimeBlockId:
+                eventTimeBlock.sourceTemplateTimeBlockId,
+              startTime: toDate({ instant: eventTimeBlock.startTime }),
+              endTime: toDate({ instant: eventTimeBlock.endTime }),
+              label: eventTimeBlock.label,
+              tx,
+            });
+          createdEventTimeBlocks.push({
+            eventTimeBlockId,
+            sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
+            startTime: eventTimeBlock.startTime,
+            endTime: eventTimeBlock.endTime,
           });
-          createdSlots.push({
-            timeSlotId,
-            sourceTemplateBlockId: slot.sourceTemplateBlockId,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-          });
-          generatedSlotCount += 1;
+          generatedEventTimeBlockCount += 1;
         }
 
-        await this.seedGeneratedSlots({
+        await this.seedGeneratedEventTimeBlocks({
           churchId: input.churchId,
           eventId: targetEventId,
-          slots: createdSlots,
+          eventTimeBlocks: createdEventTimeBlocks,
           seedContext,
           tx,
         });
@@ -289,7 +292,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
       return {
         generatedEventCount,
-        generatedSlotCount,
+        generatedEventTimeBlockCount,
       };
     });
   }
@@ -301,7 +304,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   }: BuildSeedContextInput): Promise<PlanningSeedContext> {
     // Sequential awaits are required here: calling repository queries concurrently via
     // Promise.all on a single transaction connection (tx) triggers pg deprecation warnings.
-    const profiles = await this.servingProfileRepository.listByChurch({
+    const profiles = await this.usualSetupRepository.listByChurch({
       churchId,
       tx,
     });
@@ -312,7 +315,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const entries =
         profilesByMinistry.get(profile.ministryId as string) ?? [];
       entries.push({
-        sourceTemplateBlockId: profile.sourceTemplateBlockId,
+        sourceTemplateTimeBlockId: profile.sourceTemplateTimeBlockId,
         serves: profile.serves,
         shiftSplit: profile.shiftSplit,
         headcounts: profile.headcounts,
@@ -333,14 +336,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     };
   }
 
-  private async seedGeneratedSlots({
+  private async seedGeneratedEventTimeBlocks({
     churchId,
     eventId,
-    slots,
+    eventTimeBlocks,
     seedContext,
     tx,
-  }: SeedGeneratedSlotsInput): Promise<void> {
-    if (slots.length === 0) {
+  }: SeedGeneratedEventTimeBlocksInput): Promise<void> {
+    if (eventTimeBlocks.length === 0) {
       return;
     }
 
@@ -350,14 +353,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       tx,
     });
 
-    for (const slot of slots) {
+    for (const eventTimeBlock of eventTimeBlocks) {
       for (const participation of participations) {
         const seedPlan = this.profileSeeder.plan({
-          slot: {
-            timeSlotId: slot.timeSlotId,
-            sourceTemplateBlockId: slot.sourceTemplateBlockId,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
+          eventTimeBlock: {
+            eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
+            sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
+            startTime: eventTimeBlock.startTime,
+            endTime: eventTimeBlock.endTime,
           },
           profileEntries:
             seedContext.profilesByMinistry.get(
@@ -377,7 +380,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         await this.participationRepository.addInclusion({
           churchId,
           participationId: participation.id,
-          timeSlotId: slot.timeSlotId,
+          eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
           tx,
         });
 
@@ -387,14 +390,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               props: {
                 churchId,
                 participationId: participation.id,
-                timeSlotId: slot.timeSlotId,
+                eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
                 startTime: shiftPlan.startTime,
                 endTime: shiftPlan.endTime,
                 label: shiftPlan.label,
               },
-              slotBounds: {
-                startTime: slot.startTime,
-                endTime: slot.endTime,
+              eventTimeBlockBounds: {
+                startTime: eventTimeBlock.startTime,
+                endTime: eventTimeBlock.endTime,
               },
             }),
         );
@@ -419,7 +422,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               participationId: participation.id,
               roleId: headcount.roleId,
               teamId: headcount.teamId,
-              requiredCount: headcount.count,
+              peopleNeeded: headcount.peopleNeeded,
               tx,
             });
           }
@@ -512,7 +515,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           start: currentEvent.start,
           end: newStart,
         });
-        const slots = await this.timeSlotRepository.listByEvent(
+        const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent(
           input.churchId,
           input.eventId,
           tx,
@@ -523,20 +526,20 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         // on a single transaction connection (tx). Although each update targets
         // a distinct row, we must process them sequentially to preserve the
         // single-connection model used by the transaction client.
-        for (const slot of slots) {
-          await this.timeSlotRepository.update(
+        for (const eventTimeBlock of eventTimeBlocks) {
+          await this.eventTimeBlockRepository.update(
             input.churchId,
-            slot.id,
+            eventTimeBlock.id,
             {
               startTime: toDate({
                 instant: addMilliseconds({
-                  instant: slot.startTime,
+                  instant: eventTimeBlock.startTime,
                   milliseconds: delta,
                 }),
               }),
               endTime: toDate({
                 instant: addMilliseconds({
-                  instant: slot.endTime,
+                  instant: eventTimeBlock.endTime,
                   milliseconds: delta,
                 }),
               }),
@@ -550,15 +553,15 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
-  async createSlot(
-    input: CreatePlanningEventSlotManagerInput,
-  ): Promise<TimeSlot> {
+  async createEventTimeBlock(
+    input: CreatePlanningEventTimeBlockManagerInput,
+  ): Promise<EventTimeBlock> {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
       await this.ensureWritableEvent({ input, church, action: 'update', tx });
 
-      return this.timeSlotRepository.create(
+      return this.eventTimeBlockRepository.create(
         input.churchId,
         {
           eventId: input.eventId,
@@ -571,17 +574,22 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
-  async updateSlot(
-    input: UpdatePlanningEventSlotManagerInput,
-  ): Promise<TimeSlot> {
+  async updateEventTimeBlock(
+    input: UpdatePlanningEventTimeBlockManagerInput,
+  ): Promise<EventTimeBlock> {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
-      await this.loadWritableEventSlot({ input, church, action: 'update', tx });
+      await this.loadWritableEventTimeBlock({
+        input,
+        church,
+        action: 'update',
+        tx,
+      });
 
-      return this.timeSlotRepository.update(
+      return this.eventTimeBlockRepository.update(
         input.churchId,
-        input.slotId,
+        input.eventTimeBlockId,
         {
           startTime: input.startTime,
           endTime: input.endTime,
@@ -592,25 +600,32 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
-  async deleteSlot(input: DeletePlanningEventSlotManagerInput): Promise<void> {
+  async deleteEventTimeBlock(
+    input: DeletePlanningEventTimeBlockManagerInput,
+  ): Promise<void> {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
-      await this.loadWritableEventSlot({ input, church, action: 'delete', tx });
+      await this.loadWritableEventTimeBlock({
+        input,
+        church,
+        action: 'delete',
+        tx,
+      });
 
-      const eventSlots = await this.timeSlotRepository.listByEvent(
+      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent(
         input.churchId,
         input.eventId,
         tx,
       );
 
-      if (eventSlots.length <= 1) {
-        throw new LastRemainingSlotError();
+      if (eventTimeBlocks.length <= 1) {
+        throw new LastRemainingEventTimeBlockError();
       }
 
-      await this.timeSlotRepository.deleteById(
+      await this.eventTimeBlockRepository.deleteById(
         input.churchId,
-        input.slotId,
+        input.eventTimeBlockId,
         tx,
       );
     });
@@ -639,25 +654,27 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     return event;
   }
 
-  private async loadWritableEventSlot({
+  private async loadWritableEventTimeBlock({
     input,
     church,
     action,
     tx,
-  }: LoadWritableEventSlotInput): Promise<TimeSlot> {
+  }: LoadWritableEventTimeBlockInput): Promise<EventTimeBlock> {
     await this.ensureWritableEvent({ input, church, action, tx });
 
-    const slot = await this.timeSlotRepository.getById(
+    const eventTimeBlock = await this.eventTimeBlockRepository.getById(
       input.churchId,
-      input.slotId,
+      input.eventTimeBlockId,
       tx,
     );
 
-    if (slot.eventId !== input.eventId) {
-      throw new NotFoundError(`TimeSlot not found: ${input.slotId}`);
+    if (eventTimeBlock.eventId !== input.eventId) {
+      throw new NotFoundError(
+        `EventTimeBlock not found: ${input.eventTimeBlockId}`,
+      );
     }
 
-    return slot;
+    return eventTimeBlock;
   }
 
   async cancelEvent(input: CancelPlanningEventManagerInput): Promise<void> {
@@ -682,7 +699,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // lifecycle status (BL-020 / issue #12). A `draft` event has never
       // reached `scheduled`: its assignments are still `draft` and no
       // volunteer has seen it, so removing it destroys nothing anyone saw —
-      // hard-delete it (slots/shifts/draft assignments/audits cascade). Any
+      // hard-delete it (event time blocks/shifts/draft assignments/audits cascade). Any
       // later status is a silent soft cancel, byte-for-byte the prior
       // behaviour.
       if (currentEvent.status === 'draft') {

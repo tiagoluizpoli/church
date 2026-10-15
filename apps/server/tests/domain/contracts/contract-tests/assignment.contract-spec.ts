@@ -4,8 +4,8 @@ import type {
   AssignmentId,
   ChurchId,
   EventId,
+  EventTimeBlockId,
   RoleId,
-  TimeSlotId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
@@ -29,7 +29,8 @@ export function runAssignmentRepositoryContractTests(
       const created = await repo.create(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         {
-          slotId: '77777777-7777-7777-7777-777777777772' as TimeSlotId,
+          eventTimeBlockId:
+            '77777777-7777-7777-7777-777777777772' as EventTimeBlockId,
           volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
           roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         },
@@ -58,10 +59,10 @@ export function runAssignmentRepositoryContractTests(
       ).rejects.toThrow(NotFoundError);
     });
 
-    it('should find assignment by slot and volunteer', async () => {
-      const found = await repo.findBySlotAndVolunteer(
+    it('should find assignment by event time block and volunteer', async () => {
+      const found = await repo.findByEventTimeBlockAndVolunteer(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
         '44444444-4444-4444-4444-444444444441' as VolunteerId,
       );
       expect(found).not.toBeNull();
@@ -69,10 +70,10 @@ export function runAssignmentRepositoryContractTests(
       expect(found?.volunteerId).toBe('44444444-4444-4444-4444-444444444441');
     });
 
-    it('should list assignments by slot', async () => {
-      const list = await repo.listBySlot(
+    it('should list assignments by event time block', async () => {
+      const list = await repo.listByEventTimeBlock(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
       );
       // contains assignment-1 and assignment-2
       expect(list.length).toBeGreaterThanOrEqual(2);
@@ -138,7 +139,7 @@ export function runAssignmentRepositoryContractTests(
     });
 
     it('should count assignments in range', async () => {
-      // startTime and endTime of slot-1
+      // startTime and endTime of event-time-block-1
       const count = await repo.countByVolunteerInRange(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '44444444-4444-4444-4444-444444444441' as VolunteerId,
@@ -149,10 +150,10 @@ export function runAssignmentRepositoryContractTests(
       expect(count).toBeGreaterThanOrEqual(1);
     });
 
-    it('should list declined assignments by slot', async () => {
-      const list = await repo.listDeclinedBySlot(
+    it('should list declined assignments by event time block', async () => {
+      const list = await repo.listDeclinedByEventTimeBlock(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
       );
       expect(list.length).toBe(1);
       expect(list[0]?.id).toBe('99999999-9999-9999-9999-999999999992');

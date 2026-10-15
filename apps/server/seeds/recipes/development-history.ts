@@ -23,10 +23,6 @@ import type {
   HistoryBlueprint,
   ServicePost,
 } from '../blueprints/history';
-import {
-  buildConfirmedAvailabilityCheck,
-  buildUnavailabilityMark,
-} from '../builders/availability';
 import { deriveSeedId } from '../builders/derived-id';
 import {
   buildVolunteerNotification,
@@ -38,11 +34,15 @@ import {
   buildAssignmentAudit,
   buildCycle,
   buildEvent,
+  buildEventTimeBlock,
   buildMinistryParticipation,
   buildShift,
-  buildSlotRequirement,
-  buildTimeSlot,
+  buildShiftRequirement,
 } from '../builders/scheduling';
+import {
+  buildConfirmedAvailabilityCheck,
+  buildUnavailableShift,
+} from '../builders/unavailable-shift';
 import { historicalCycleWindow } from '../development/history-window';
 import type { SeedWriter } from '../recipe';
 import {
@@ -123,9 +123,9 @@ interface PlannedServer {
   needs: readonly StaffingNeed[];
 }
 
-interface PlannedSlot {
+interface PlannedEventTimeBlock {
   key: string;
-  /** How the history blueprint names this slot's gathering. */
+  /** How the history blueprint names this event time block's gathering. */
   gatheringKey: string;
   blockId?: string;
   label: string;
@@ -142,7 +142,7 @@ interface PlannedEvent {
   /** Which matching weekday of the month this day is, 1-based. */
   week: number;
   sourceTemplateId?: string;
-  slots: PlannedSlot[];
+  eventTimeBlocks: PlannedEventTimeBlock[];
 }
 
 interface GatheringKeyInput {
@@ -192,12 +192,12 @@ function planEvents({
 
     for (const template of gatherings.templates) {
       if (template.weekday !== weekday) continue;
-      const slots = template.blocks.map((block) => {
+      const eventTimeBlocks = template.blocks.map((block) => {
         const seededBlock = seededGatherings.blocks.find(
           (candidate) => candidate.key === block.key,
         );
         if (!seededBlock) {
-          throw new Error(`TimeBlock ${block.key} was not seeded.`);
+          throw new Error(`TemplateTimeBlock ${block.key} was not seeded.`);
         }
         return {
           key: block.key,
@@ -214,18 +214,18 @@ function planEvents({
           }),
         };
       });
-      const [firstSlot] = slots;
-      if (!firstSlot) continue;
+      const [firstEventTimeBlock] = eventTimeBlocks;
+      if (!firstEventTimeBlock) continue;
       events.push({
         key: template.name,
         title: template.name,
         day,
-        start: firstSlot.start,
+        start: firstEventTimeBlock.start,
         week,
         sourceTemplateId: seededGatherings.blocks.find(
           (block) => block.templateName === template.name,
         )?.templateId,
-        slots,
+        eventTimeBlocks,
       });
     }
 
@@ -243,7 +243,7 @@ function planEvents({
         day,
         start,
         week,
-        slots: [
+        eventTimeBlocks: [
           {
             key: dynamicEvent.title,
             gatheringKey: dynamicEvent.title,
@@ -275,9 +275,9 @@ interface MaterializeEventInput {
 }
 
 /**
- * One Event as the cycle's generation and its leaders left it: a TimeSlot
+ * One Event as the cycle's generation and its leaders left it: a EventTimeBlock
  * per block, one published MinistryParticipation per serving Ministry with a
- * whole-slot Shift for each slot it serves, and that Shift's requirements.
+ * whole-event-time-block Shift for each event time block it serves, and that Shift's requirements.
  */
 async function materializeEvent({
   db,
@@ -287,9 +287,9 @@ async function materializeEvent({
   ministries,
   ministryOrder,
 }: MaterializeEventInput): Promise<PlannedShift[]> {
-  const [firstSlot] = plannedEvent.slots;
-  const lastSlot = plannedEvent.slots.at(-1);
-  if (!firstSlot || !lastSlot) return [];
+  const [firstEventTimeBlock] = plannedEvent.eventTimeBlocks;
+  const lastEventTimeBlock = plannedEvent.eventTimeBlocks.at(-1);
+  if (!firstEventTimeBlock || !lastEventTimeBlock) return [];
 
   const eventId = deriveSeedId({
     kind: 'event',
@@ -301,41 +301,45 @@ async function materializeEvent({
     cycleId: cycleId,
     id: eventId,
     title: plannedEvent.title,
-    start: firstSlot.start,
-    end: lastSlot.end,
+    start: firstEventTimeBlock.start,
+    end: lastEventTimeBlock.end,
     status: 'past',
     sourceTemplateId: plannedEvent.sourceTemplateId,
   });
 
-  const slotIdByKey = new Map<string, string>();
-  for (const slot of plannedEvent.slots) {
-    const timeSlotId = deriveSeedId({
-      kind: 'time-slot',
-      parentIds: [eventId, slot.key],
+  const eventTimeBlockIdByKey = new Map<string, string>();
+  for (const eventTimeBlock of plannedEvent.eventTimeBlocks) {
+    const eventTimeBlockId = deriveSeedId({
+      kind: 'event-time-block',
+      parentIds: [eventId, eventTimeBlock.key],
     });
-    await buildTimeSlot({
+    await buildEventTimeBlock({
       db,
       churchId,
       eventId,
-      id: timeSlotId,
-      start: slot.start,
-      end: slot.end,
-      label: slot.label,
-      sourceTemplateBlockId: slot.blockId,
+      id: eventTimeBlockId,
+      start: eventTimeBlock.start,
+      end: eventTimeBlock.end,
+      label: eventTimeBlock.label,
+      sourceTemplateTimeBlockId: eventTimeBlock.blockId,
     });
-    slotIdByKey.set(slot.key, timeSlotId);
+    eventTimeBlockIdByKey.set(eventTimeBlock.key, eventTimeBlockId);
   }
 
   const shifts: PlannedShift[] = [];
   for (const ministryName of ministryOrder) {
-    const servedSlots = plannedEvent.slots.flatMap((slot) => {
-      const server = slot.servers.find(
-        (candidate) => candidate.ministryName === ministryName,
-      );
-      const timeSlotId = slotIdByKey.get(slot.key);
-      return server && timeSlotId ? [{ slot, server, timeSlotId }] : [];
-    });
-    if (servedSlots.length === 0) continue;
+    const servedEventTimeBlocks = plannedEvent.eventTimeBlocks.flatMap(
+      (eventTimeBlock) => {
+        const server = eventTimeBlock.servers.find(
+          (candidate) => candidate.ministryName === ministryName,
+        );
+        const eventTimeBlockId = eventTimeBlockIdByKey.get(eventTimeBlock.key);
+        return server && eventTimeBlockId
+          ? [{ eventTimeBlock, server, eventTimeBlockId }]
+          : [];
+      },
+    );
+    if (servedEventTimeBlocks.length === 0) continue;
 
     const ministry = requireMinistry({ ministries, name: ministryName });
     const participationId = deriveSeedId({
@@ -349,22 +353,28 @@ async function materializeEvent({
       eventId,
       id: participationId,
       state: 'published',
-      timeSlotIds: servedSlots.map(({ timeSlotId }) => timeSlotId),
+      eventTimeBlockIds: servedEventTimeBlocks.map(
+        ({ eventTimeBlockId }) => eventTimeBlockId,
+      ),
     });
 
-    for (const { slot, server, timeSlotId } of servedSlots) {
+    for (const {
+      eventTimeBlock,
+      server,
+      eventTimeBlockId,
+    } of servedEventTimeBlocks) {
       const shiftId = deriveSeedId({
         kind: 'shift',
-        parentIds: [participationId, timeSlotId],
+        parentIds: [participationId, eventTimeBlockId],
       });
       await buildShift({
         db,
         churchId,
         participationId,
-        timeSlotId,
+        eventTimeBlockId,
         id: shiftId,
-        start: slot.start,
-        end: slot.end,
+        start: eventTimeBlock.start,
+        end: eventTimeBlock.end,
       });
 
       const requirements: PlannedRequirement[] = [];
@@ -375,10 +385,10 @@ async function materializeEvent({
           need,
         });
         const requirementId = deriveSeedId({
-          kind: 'slot-requirement',
+          kind: 'shift-requirement',
           parentIds: [shiftId, roleId, teamId ?? ''],
         });
-        await buildSlotRequirement({
+        await buildShiftRequirement({
           db,
           churchId,
           participationId,
@@ -386,7 +396,7 @@ async function materializeEvent({
           roleId,
           teamId,
           id: requirementId,
-          requiredCount: need.count,
+          peopleNeeded: need.peopleNeeded,
           notes: need.notes,
         });
         requirements.push({
@@ -394,7 +404,7 @@ async function materializeEvent({
           roleName: need.role,
           teamName: need.team,
           roleId,
-          required: need.count,
+          required: need.peopleNeeded,
         });
       }
 
@@ -405,10 +415,10 @@ async function materializeEvent({
         ministryName,
         eventId,
         eventTitle: plannedEvent.title,
-        gatheringKey: slot.gatheringKey,
+        gatheringKey: eventTimeBlock.gatheringKey,
         day: plannedEvent.day,
-        start: slot.start,
-        end: slot.end,
+        start: eventTimeBlock.start,
+        end: eventTimeBlock.end,
         requirements,
       });
     }
@@ -527,7 +537,7 @@ interface StaffingLedgerInput {
  */
 class StaffingLedger {
   private readonly busy = new Map<string, TimeRange[]>();
-  /** Marks are per Shift, as the product's UNAVAILABLE check reads them. */
+  /** Unavailable shifts are per Shift, as the product's UNAVAILABLE check reads them. */
   private readonly unavailableShiftIds = new Map<string, Set<string>>();
   private readonly excludedByShift = new Map<string, Set<string>>();
   private readonly filled = new Map<string, number>();
@@ -835,7 +845,7 @@ interface AskAvailabilityRoundInput {
 
 /**
  * Availability was requested for every Ministry Membership and every check
- * answered; only the blueprint's people left unavailability marks.
+ * answered; only the blueprint's people left unavailable shifts.
  */
 async function askAvailabilityRound({
   db,
@@ -875,7 +885,7 @@ async function askAvailabilityRound({
         db,
         churchId,
         cycleId: cycle.id,
-        ministryVolunteerId: membershipId,
+        ministryMembershipId: membershipId,
         id: checkId,
         confirmedAt,
       });
@@ -895,7 +905,7 @@ async function askAvailabilityRound({
       ids: checkIdByMembership,
       key: `${ministryName}|${email}`,
     });
-    await buildUnavailabilityMark({
+    await buildUnavailableShift({
       db,
       churchId,
       availabilityCheckId: checkId,

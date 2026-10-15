@@ -9,11 +9,11 @@ import { TeamScheduleMutationPolicy } from '../domain/authority/team-schedule-mu
 import { type ChurchId, TeamId } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
 import type {
+  CycleBuilderEventTimeBlockView,
   CycleBuilderEventView,
   CycleBuilderRequirementView,
   CycleBuilderRoleOption,
   CycleBuilderShiftView,
-  CycleBuilderSlotView,
   CycleBuilderView,
   CycleParticipationView,
   DeleteShiftManagerInput,
@@ -21,47 +21,47 @@ import type {
   GetCycleBuilderDataInput,
   GetCycleParticipationInput,
   GetParticipationCompletionInput,
-  GetServingProfileInput,
+  GetUsualSetupInput,
   IParticipationManager,
   ListEligibleVolunteersInput,
-  ListMinistryCycleSummariesInput,
-  MinistryCycleSummaryView,
+  ListScheduleSummariesInput,
   ParticipationCompletionView,
+  ParticipationEventTimeBlockView,
   ParticipationEventView,
-  ParticipationSlotView,
   PublishCycleInput,
   PublishCycleParticipationOutcome,
   PublishCycleView,
+  ScheduleSummaryView,
   SetInclusionsInput,
   SplitShiftsManagerInput,
   UpdateShiftManagerInput,
   UpsertRequirementManagerInput,
-  UpsertServingProfileInput,
+  UpsertUsualSetupInput,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
+import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
-import type { MinistryServingProfileRepository } from '../domain/contracts/infrastructure/ministry-serving-profile.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
-import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
+import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
-import type { EventWithSlots } from '../domain/entities/event';
+import type { EventWithEventTimeBlocks } from '../domain/entities/event';
+import type { EventTimeBlock } from '../domain/entities/event-time-block';
+import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import {
   calculateCompletionPercent,
   type MinistryParticipation,
 } from '../domain/entities/ministry-participation';
-import { MinistryServingProfile } from '../domain/entities/ministry-serving-profile';
-import type { MinistryAccessLevel } from '../domain/entities/ministry-volunteer';
 import { Shift } from '../domain/entities/shift';
-import type { SlotRequirement } from '../domain/entities/slot-requirement';
-import type { TimeSlot } from '../domain/entities/time-slot';
+import type { ShiftRequirement } from '../domain/entities/shift-requirement';
+import { UsualSetup } from '../domain/entities/usual-setup';
 import {
   CrossMinistryScopeError,
   IllegalStateTransitionError,
@@ -74,19 +74,19 @@ interface EnsurePrepareInput {
   action: string;
 }
 
-interface ResolveParticipationSlotInput {
+interface ResolveParticipationEventTimeBlockInput {
   churchId: GetCycleParticipationInput['churchId'];
   participation: MinistryParticipation;
-  timeSlotId: SetInclusionsInput['timeSlotIds'][number];
+  eventTimeBlockId: SetInclusionsInput['eventTimeBlockIds'][number];
   tx?: TransactionContext;
 }
 
 interface BuildEventViewInput {
-  eventGroup: EventWithSlots;
+  eventGroup: EventWithEventTimeBlocks;
   participation: MinistryParticipation;
-  includedSlotIds: Set<string>;
+  includedEventTimeBlockIds: Set<string>;
   shifts: Shift[];
-  requirements: SlotRequirement[];
+  requirements: ShiftRequirement[];
 }
 
 interface GetParticipationCompletionInternalInput {
@@ -129,7 +129,7 @@ interface BuildEligibleForVolunteerInput {
   activeAssignments: Assignment[];
   fairnessAssignments: Assignment[];
   assignmentShiftsById: Map<string, Shift>;
-  unavailableMarkKeys: Set<string>;
+  unavailableShiftKeys: Set<string>;
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
   teamId?: TeamId;
 }
@@ -144,19 +144,19 @@ interface ListEligibleForShiftsInput {
   churchId: ChurchId;
   participation: MinistryParticipation;
   shifts: Shift[];
-  requirements: SlotRequirement[];
+  requirements: ShiftRequirement[];
   teamId?: TeamId;
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
   tx?: TransactionContext;
 }
 
 interface BuildBuilderEventViewInput {
-  eventGroup: EventWithSlots;
+  eventGroup: EventWithEventTimeBlocks;
   participation: MinistryParticipation;
-  includedSlotIds: Set<string>;
+  includedEventTimeBlockIds: Set<string>;
   shifts: Shift[];
-  requirements: SlotRequirement[];
-  allRequirements: SlotRequirement[];
+  requirements: ShiftRequirement[];
+  allRequirements: ShiftRequirement[];
   assignments: Assignment[];
   eligibleByShift: Map<string, EligibleVolunteerView[]>;
   teamId?: TeamId;
@@ -179,11 +179,11 @@ interface DbParticipationManagerDependencies {
   shiftRepository: ShiftRepository;
   eventRepository: PlanningEventRepository;
   assignmentRepository: AssignmentRepository;
-  availabilityRepository: AvailabilityRepository;
-  timeSlotRepository: TimeSlotRepository;
+  unavailableShiftRepository: UnavailableShiftRepository;
+  eventTimeBlockRepository: EventTimeBlockRepository;
   volunteerRepository: VolunteerRepository;
   ministryRepository: MinistryRepository;
-  servingProfileRepository: MinistryServingProfileRepository;
+  usualSetupRepository: UsualSetupRepository;
   roleRepository: RoleRepository;
   notificationService: NotificationService;
   unitOfWork: UnitOfWork;
@@ -196,11 +196,11 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly shiftRepository: ShiftRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly assignmentRepository: AssignmentRepository;
-  private readonly availabilityRepository: AvailabilityRepository;
-  private readonly timeSlotRepository: TimeSlotRepository;
+  private readonly unavailableShiftRepository: UnavailableShiftRepository;
+  private readonly eventTimeBlockRepository: EventTimeBlockRepository;
   private readonly volunteerRepository: VolunteerRepository;
   private readonly ministryRepository: MinistryRepository;
-  private readonly servingProfileRepository: MinistryServingProfileRepository;
+  private readonly usualSetupRepository: UsualSetupRepository;
   private readonly roleRepository: RoleRepository;
   private readonly notificationService: NotificationService;
   private readonly unitOfWork: UnitOfWork;
@@ -210,11 +210,11 @@ export class DbParticipationManager implements IParticipationManager {
     shiftRepository,
     eventRepository,
     assignmentRepository,
-    availabilityRepository,
-    timeSlotRepository,
+    unavailableShiftRepository,
+    eventTimeBlockRepository,
     volunteerRepository,
     ministryRepository,
-    servingProfileRepository,
+    usualSetupRepository,
     roleRepository,
     notificationService,
     unitOfWork,
@@ -223,11 +223,11 @@ export class DbParticipationManager implements IParticipationManager {
     this.shiftRepository = shiftRepository;
     this.eventRepository = eventRepository;
     this.assignmentRepository = assignmentRepository;
-    this.availabilityRepository = availabilityRepository;
-    this.timeSlotRepository = timeSlotRepository;
+    this.unavailableShiftRepository = unavailableShiftRepository;
+    this.eventTimeBlockRepository = eventTimeBlockRepository;
     this.volunteerRepository = volunteerRepository;
     this.ministryRepository = ministryRepository;
-    this.servingProfileRepository = servingProfileRepository;
+    this.usualSetupRepository = usualSetupRepository;
     this.roleRepository = roleRepository;
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
@@ -274,8 +274,10 @@ export class DbParticipationManager implements IParticipationManager {
           buildEventView({
             eventGroup,
             participation,
-            includedSlotIds: new Set(
-              inclusions.map((inclusion) => inclusion.timeSlotId as string),
+            includedEventTimeBlockIds: new Set(
+              inclusions.map(
+                (inclusion) => inclusion.eventTimeBlockId as string,
+              ),
             ),
             shifts,
             requirements,
@@ -365,14 +367,15 @@ export class DbParticipationManager implements IParticipationManager {
           ? shifts.filter((shift) => visibleShiftIds.has(shift.id))
           : shifts;
         if (teamId && visibleShifts.length === 0) continue;
-        const visibleSlotIds = new Set(
-          visibleShifts.map((shift) => shift.timeSlotId),
+        const visibleEventTimeBlockIds = new Set(
+          visibleShifts.map((shift) => shift.eventTimeBlockId),
         );
         const visibleEventGroup = teamId
           ? {
               ...eventGroup,
-              slots: eventGroup.slots.filter((slot) =>
-                visibleSlotIds.has(slot.id),
+              eventTimeBlocks: eventGroup.eventTimeBlocks.filter(
+                (eventTimeBlock) =>
+                  visibleEventTimeBlockIds.has(eventTimeBlock.id),
               ),
             }
           : eventGroup;
@@ -404,8 +407,10 @@ export class DbParticipationManager implements IParticipationManager {
           buildBuilderEventView({
             eventGroup: visibleEventGroup,
             participation,
-            includedSlotIds: new Set(
-              inclusions.map((inclusion) => inclusion.timeSlotId as string),
+            includedEventTimeBlockIds: new Set(
+              inclusions.map(
+                (inclusion) => inclusion.eventTimeBlockId as string,
+              ),
             ),
             shifts: visibleShifts,
             requirements: visibleRequirements,
@@ -420,8 +425,8 @@ export class DbParticipationManager implements IParticipationManager {
 
       const visibleRoleIds = new Set(
         events.flatMap((event) =>
-          event.slots.flatMap((slot) =>
-            slot.shifts.flatMap((shift) =>
+          event.eventTimeBlocks.flatMap((eventTimeBlock) =>
+            eventTimeBlock.shifts.flatMap((shift) =>
               shift.requirements.map(
                 (requirement) => requirement.requirement.roleId,
               ),
@@ -455,38 +460,43 @@ export class DbParticipationManager implements IParticipationManager {
           participationId: input.participationId,
           tx,
         });
-      const nextSlotIds = new Set(input.timeSlotIds as string[]);
-      const removedSlotIds = previousInclusions
-        .map((inclusion) => inclusion.timeSlotId)
-        .filter((timeSlotId) => !nextSlotIds.has(timeSlotId as string));
+      const nextEventTimeBlockIds = new Set(
+        input.eventTimeBlockIds as string[],
+      );
+      const removedEventTimeBlockIds = previousInclusions
+        .map((inclusion) => inclusion.eventTimeBlockId)
+        .filter(
+          (eventTimeBlockId) =>
+            !nextEventTimeBlockIds.has(eventTimeBlockId as string),
+        );
 
       await this.participationRepository.replaceInclusions({
         churchId: input.churchId,
         participationId: input.participationId,
-        timeSlotIds: input.timeSlotIds,
+        eventTimeBlockIds: input.eventTimeBlockIds,
         tx,
       });
 
-      for (const timeSlotId of removedSlotIds) {
-        await this.shiftRepository.deleteBySlot({
+      for (const eventTimeBlockId of removedEventTimeBlockIds) {
+        await this.shiftRepository.deleteByEventTimeBlock({
           churchId: input.churchId,
           participationId: input.participationId,
-          timeSlotId,
+          eventTimeBlockId,
           tx,
         });
       }
 
-      for (const timeSlotId of input.timeSlotIds) {
-        const slot = await this.resolveParticipationSlot({
+      for (const eventTimeBlockId of input.eventTimeBlockIds) {
+        const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
           churchId: input.churchId,
           participation,
-          timeSlotId,
+          eventTimeBlockId,
           tx,
         });
-        const existingShifts = await this.shiftRepository.listBySlot({
+        const existingShifts = await this.shiftRepository.listByEventTimeBlock({
           churchId: input.churchId,
           participationId: input.participationId,
-          timeSlotId,
+          eventTimeBlockId,
           tx,
         });
 
@@ -498,13 +508,13 @@ export class DbParticipationManager implements IParticipationManager {
                 props: {
                   churchId: input.churchId,
                   participationId: input.participationId,
-                  timeSlotId,
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
+                  eventTimeBlockId,
+                  startTime: eventTimeBlock.startTime,
+                  endTime: eventTimeBlock.endTime,
                 },
-                slotBounds: {
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
+                eventTimeBlockBounds: {
+                  startTime: eventTimeBlock.startTime,
+                  endTime: eventTimeBlock.endTime,
                 },
               }),
             ],
@@ -531,28 +541,28 @@ export class DbParticipationManager implements IParticipationManager {
       });
       ensurePrepare({ participation, action: 'split_shifts' });
 
-      const slot = await this.resolveParticipationSlot({
+      const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
         churchId: input.churchId,
         participation,
-        timeSlotId: input.timeSlotId,
+        eventTimeBlockId: input.eventTimeBlockId,
         tx,
       });
 
       const shifts = this.splitter.split({
         churchId: input.churchId,
         participationId: input.participationId,
-        timeSlot: {
-          id: slot.id,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+        eventTimeBlock: {
+          id: eventTimeBlock.id,
+          startTime: eventTimeBlock.startTime,
+          endTime: eventTimeBlock.endTime,
         },
         strategy: input.strategy,
       });
 
-      await this.shiftRepository.deleteBySlot({
+      await this.shiftRepository.deleteByEventTimeBlock({
         churchId: input.churchId,
         participationId: input.participationId,
-        timeSlotId: input.timeSlotId,
+        eventTimeBlockId: input.eventTimeBlockId,
         tx,
       });
       const created = await this.shiftRepository.createMany({
@@ -563,7 +573,7 @@ export class DbParticipationManager implements IParticipationManager {
       await this.participationRepository.addInclusion({
         churchId: input.churchId,
         participationId: input.participationId,
-        timeSlotId: input.timeSlotId,
+        eventTimeBlockId: input.eventTimeBlockId,
         tx,
       });
 
@@ -592,9 +602,9 @@ export class DbParticipationManager implements IParticipationManager {
       });
       ensurePrepare({ participation, action: 'update_shift' });
 
-      const slot = await this.timeSlotRepository.getById(
+      const eventTimeBlock = await this.eventTimeBlockRepository.getById(
         input.churchId,
-        shift.timeSlotId,
+        shift.eventTimeBlockId,
         tx,
       );
 
@@ -605,7 +615,10 @@ export class DbParticipationManager implements IParticipationManager {
         endTime: input.endTime
           ? fromDate({ date: input.endTime })
           : shift.endTime,
-        slotBounds: { startTime: slot.startTime, endTime: slot.endTime },
+        eventTimeBlockBounds: {
+          startTime: eventTimeBlock.startTime,
+          endTime: eventTimeBlock.endTime,
+        },
       });
 
       return this.shiftRepository.update({
@@ -643,8 +656,8 @@ export class DbParticipationManager implements IParticipationManager {
 
   async upsertRequirement(
     input: UpsertRequirementManagerInput,
-  ): Promise<SlotRequirement> {
-    if (input.requiredCount < 1) {
+  ): Promise<ShiftRequirement> {
+    if (input.peopleNeeded < 1) {
       throw new InvalidRequiredCountError();
     }
 
@@ -667,7 +680,7 @@ export class DbParticipationManager implements IParticipationManager {
         participationId: shift.participationId,
         roleId: input.roleId,
         teamId: input.teamId,
-        requiredCount: input.requiredCount,
+        peopleNeeded: input.peopleNeeded,
         notes: input.notes,
         tx,
       });
@@ -683,22 +696,18 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  async getServingProfile(
-    input: GetServingProfileInput,
-  ): Promise<MinistryServingProfile[]> {
-    return this.servingProfileRepository.listByMinistry(input);
+  async getUsualSetup(input: GetUsualSetupInput): Promise<UsualSetup[]> {
+    return this.usualSetupRepository.listByMinistry(input);
   }
 
-  async upsertServingProfile(
-    input: UpsertServingProfileInput,
-  ): Promise<MinistryServingProfile[]> {
+  async upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]> {
     // Validate every entry through the domain entity before persisting.
     for (const entry of input.entries) {
-      void new MinistryServingProfile({
+      void new UsualSetup({
         props: {
           churchId: input.churchId,
           ministryId: input.ministryId,
-          sourceTemplateBlockId: entry.sourceTemplateBlockId,
+          sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
           serves: entry.serves,
           shiftSplit: entry.shiftSplit,
           headcounts: entry.headcounts,
@@ -706,7 +715,7 @@ export class DbParticipationManager implements IParticipationManager {
       });
     }
 
-    return this.servingProfileRepository.replaceForMinistry(input);
+    return this.usualSetupRepository.replaceForMinistry(input);
   }
 
   async listEligibleVolunteers(
@@ -752,8 +761,8 @@ export class DbParticipationManager implements IParticipationManager {
           tx,
         });
       const volunteerIds = qualifiedVolunteers.map((volunteer) => volunteer.id);
-      const [marks, assignments] = await Promise.all([
-        this.availabilityRepository.listByVolunteers(
+      const [unavailableShifts, assignments] = await Promise.all([
+        this.unavailableShiftRepository.listByVolunteers(
           input.churchId,
           volunteerIds,
           tx,
@@ -789,9 +798,10 @@ export class DbParticipationManager implements IParticipationManager {
           assignmentShift,
         ]),
       );
-      const unavailableMarkKeys = new Set(
-        marks.map(
-          (mark) => `${mark.volunteerId as string}:${mark.shiftId as string}`,
+      const unavailableShiftKeys = new Set(
+        unavailableShifts.map(
+          (unavailableShift) =>
+            `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
         ),
       );
 
@@ -802,7 +812,7 @@ export class DbParticipationManager implements IParticipationManager {
           activeAssignments,
           fairnessAssignments: activeAssignments,
           assignmentShiftsById,
-          unavailableMarkKeys,
+          unavailableShiftKeys,
           membershipInfoByVolunteerId,
         }),
       );
@@ -950,25 +960,25 @@ export class DbParticipationManager implements IParticipationManager {
     }
   }
 
-  async listMinistryCycleSummaries(
-    input: ListMinistryCycleSummariesInput,
-  ): Promise<MinistryCycleSummaryView[]> {
+  async listScheduleSummaries(
+    input: ListScheduleSummariesInput,
+  ): Promise<ScheduleSummaryView[]> {
     await this.ministryRepository.getById(input.churchId, input.ministryId);
 
-    const rows = await this.participationRepository.listMinistryCycleSummaries({
+    const rows = await this.participationRepository.listScheduleSummaries({
       churchId: input.churchId,
       ministryId: input.ministryId,
       teamId: input.teamId,
     });
 
     return rows.map((row) => ({
-      cycleId: row.cycleId as MinistryCycleSummaryView['cycleId'],
+      cycleId: row.cycleId as ScheduleSummaryView['cycleId'],
       name: row.name,
       startDate: row.startDate,
       endDate: row.endDate,
       isPartOf: row.isPartOf,
       eventCount: row.eventCount,
-      slotCount: row.slotCount,
+      eventTimeBlockCount: row.eventTimeBlockCount,
       status: row.status,
       availabilityRequestedForAll: row.availabilityRequestedForAll,
       availabilityRequestedForAny: row.availabilityRequestedForAny,
@@ -977,7 +987,7 @@ export class DbParticipationManager implements IParticipationManager {
 
   private async getOrCreateParticipation(
     input: GetCycleParticipationInput & {
-      eventId: EventWithSlots['event']['id'];
+      eventId: EventWithEventTimeBlocks['event']['id'];
       tx?: TransactionContext;
     },
   ): Promise<MinistryParticipation> {
@@ -1000,23 +1010,23 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  private async resolveParticipationSlot({
+  private async resolveParticipationEventTimeBlock({
     churchId,
     participation,
-    timeSlotId,
+    eventTimeBlockId,
     tx,
-  }: ResolveParticipationSlotInput): Promise<TimeSlot> {
-    const slot = await this.timeSlotRepository.getById(
+  }: ResolveParticipationEventTimeBlockInput): Promise<EventTimeBlock> {
+    const eventTimeBlock = await this.eventTimeBlockRepository.getById(
       churchId,
-      timeSlotId,
+      eventTimeBlockId,
       tx,
     );
 
-    if (slot.eventId !== participation.eventId) {
+    if (eventTimeBlock.eventId !== participation.eventId) {
       throw new CrossMinistryScopeError();
     }
 
-    return slot;
+    return eventTimeBlock;
   }
 
   private async getCompletionInternal({
@@ -1036,8 +1046,8 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       ),
     ]);
-    const requiredCount = requirements.reduce(
-      (sum, requirement) => sum + requirement.requiredCount,
+    const peopleNeeded = requirements.reduce(
+      (sum, requirement) => sum + requirement.peopleNeeded,
       0,
     );
     const assignedCount = assignments.filter((assignment) =>
@@ -1046,11 +1056,11 @@ export class DbParticipationManager implements IParticipationManager {
 
     return {
       participationId,
-      requiredCount,
+      peopleNeeded,
       assignedCount,
       completionPercent: calculateCompletionPercent({
         assignedCount,
-        requiredCount,
+        peopleNeeded,
       }),
     };
   }
@@ -1097,7 +1107,7 @@ export class DbParticipationManager implements IParticipationManager {
   }: {
     churchId: ListEligibleVolunteersInput['churchId'];
     participation: MinistryParticipation;
-    requirements: SlotRequirement[];
+    requirements: ShiftRequirement[];
     tx?: TransactionContext;
   }) {
     const volunteersById = new Map<
@@ -1136,7 +1146,7 @@ export class DbParticipationManager implements IParticipationManager {
       return eligibleByShift;
     }
 
-    const requirementsByShift = new Map<string, SlotRequirement[]>();
+    const requirementsByShift = new Map<string, ShiftRequirement[]>();
     for (const requirement of requirements) {
       const key = (requirement.shiftId ?? '') as string;
       const shiftRequirements = requirementsByShift.get(key) ?? [];
@@ -1166,7 +1176,7 @@ export class DbParticipationManager implements IParticipationManager {
       (shift) =>
         (requirementsByShift.get(shift.id as string) ?? []).length === 0,
     );
-    const ministryVolunteers = needsMinistryWide
+    const volunteersInMinistry = needsMinistryWide
       ? await this.volunteerRepository.listByMinistry(
           churchId,
           participation.ministryId,
@@ -1174,22 +1184,26 @@ export class DbParticipationManager implements IParticipationManager {
         )
       : [];
 
-    // Union of everyone who could appear so marks/assignments load once.
+    // Union of everyone who could appear so unavailable shifts/assignments load once.
     const volunteersById = new Map<string, QualifiedVolunteerRef>();
     for (const volunteers of volunteersByRole.values()) {
       for (const volunteer of volunteers) {
         volunteersById.set(volunteer.id as string, volunteer);
       }
     }
-    for (const volunteer of ministryVolunteers) {
+    for (const volunteer of volunteersInMinistry) {
       volunteersById.set(volunteer.id as string, volunteer);
     }
     const volunteerIds = [...volunteersById.values()].map(
       (volunteer) => volunteer.id,
     );
 
-    const [marks, assignments] = await Promise.all([
-      this.availabilityRepository.listByVolunteers(churchId, volunteerIds, tx),
+    const [unavailableShifts, assignments] = await Promise.all([
+      this.unavailableShiftRepository.listByVolunteers(
+        churchId,
+        volunteerIds,
+        tx,
+      ),
       this.assignmentRepository.listByVolunteers(churchId, volunteerIds, tx),
     ]);
     const activeAssignments = assignments.filter((assignment) =>
@@ -1217,9 +1231,10 @@ export class DbParticipationManager implements IParticipationManager {
         assignmentShift,
       ]),
     );
-    const unavailableMarkKeys = new Set(
-      marks.map(
-        (mark) => `${mark.volunteerId as string}:${mark.shiftId as string}`,
+    const unavailableShiftKeys = new Set(
+      unavailableShifts.map(
+        (unavailableShift) =>
+          `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
       ),
     );
 
@@ -1228,7 +1243,7 @@ export class DbParticipationManager implements IParticipationManager {
         requirementsByShift.get(shift.id as string) ?? [];
       const qualified: QualifiedVolunteerRef[] =
         shiftRequirements.length === 0
-          ? ministryVolunteers
+          ? volunteersInMinistry
           : dedupeVolunteersById(
               shiftRequirements.flatMap(
                 (requirement) =>
@@ -1250,7 +1265,7 @@ export class DbParticipationManager implements IParticipationManager {
             activeAssignments: visibleActiveAssignments,
             fairnessAssignments: visibleActiveAssignments,
             assignmentShiftsById,
-            unavailableMarkKeys,
+            unavailableShiftKeys,
             membershipInfoByVolunteerId,
             teamId,
           }),
@@ -1275,7 +1290,7 @@ function dedupeVolunteersById(
 function buildBuilderEventView({
   eventGroup,
   participation,
-  includedSlotIds,
+  includedEventTimeBlockIds,
   shifts,
   requirements,
   allRequirements,
@@ -1284,11 +1299,15 @@ function buildBuilderEventView({
   teamId,
   membershipInfoByVolunteerId,
 }: BuildBuilderEventViewInput): CycleBuilderEventView {
-  const shiftsBySlot = new Map<string, Shift[]>();
+  const shiftsByEventTimeBlock = new Map<string, Shift[]>();
   for (const shift of shifts) {
-    const slotShifts = shiftsBySlot.get(shift.timeSlotId as string) ?? [];
-    slotShifts.push(shift);
-    shiftsBySlot.set(shift.timeSlotId as string, slotShifts);
+    const eventTimeBlockShifts =
+      shiftsByEventTimeBlock.get(shift.eventTimeBlockId as string) ?? [];
+    eventTimeBlockShifts.push(shift);
+    shiftsByEventTimeBlock.set(
+      shift.eventTimeBlockId as string,
+      eventTimeBlockShifts,
+    );
   }
 
   const requirementsByShift = new Map<string, CycleBuilderRequirementView[]>();
@@ -1320,33 +1339,37 @@ function buildBuilderEventView({
     assignmentsByShift.set(key, shiftAssignments);
   }
 
-  const slots: CycleBuilderSlotView[] = eventGroup.slots.map((slot) => {
-    const slotShifts = shiftsBySlot.get(slot.id as string) ?? [];
-    const shiftViews: CycleBuilderShiftView[] = slotShifts.map((shift) => ({
-      shift,
-      requirements: requirementsByShift.get(shift.id as string) ?? [],
-      assignments: assignmentsByShift.get(shift.id as string) ?? [],
-      eligibleVolunteers: eligibleByShift.get(shift.id as string) ?? [],
-    }));
+  const eventTimeBlocks: CycleBuilderEventTimeBlockView[] =
+    eventGroup.eventTimeBlocks.map((eventTimeBlock) => {
+      const eventTimeBlockShifts =
+        shiftsByEventTimeBlock.get(eventTimeBlock.id as string) ?? [];
+      const shiftViews: CycleBuilderShiftView[] = eventTimeBlockShifts.map(
+        (shift) => ({
+          shift,
+          requirements: requirementsByShift.get(shift.id as string) ?? [],
+          assignments: assignmentsByShift.get(shift.id as string) ?? [],
+          eligibleVolunteers: eligibleByShift.get(shift.id as string) ?? [],
+        }),
+      );
 
-    return {
-      slot,
-      included: includedSlotIds.has(slot.id as string),
-      shifts: shiftViews,
-    };
-  });
+      return {
+        eventTimeBlock,
+        included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        shifts: shiftViews,
+      };
+    });
 
   return {
     participation,
     event: eventGroup.event,
-    slots,
+    eventTimeBlocks,
   };
 }
 
 interface CanMutateCycleBuilderRequirementInput {
-  requirement: SlotRequirement;
-  allRequirements: SlotRequirement[];
-  eventGroup: EventWithSlots;
+  requirement: ShiftRequirement;
+  allRequirements: ShiftRequirement[];
+  eventGroup: EventWithEventTimeBlocks;
   participation: MinistryParticipation;
   teamId?: TeamId;
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
@@ -1392,7 +1415,7 @@ function buildEligibleForVolunteer({
   activeAssignments,
   fairnessAssignments,
   assignmentShiftsById,
-  unavailableMarkKeys,
+  unavailableShiftKeys,
   membershipInfoByVolunteerId,
   teamId,
 }: BuildEligibleForVolunteerInput): EligibleVolunteerView {
@@ -1441,7 +1464,7 @@ function buildEligibleForVolunteer({
   return buildEligibleVolunteerView({
     volunteerId: volunteer.id as string,
     volunteerName: volunteer.name ?? 'Unknown volunteer',
-    isUnavailable: unavailableMarkKeys.has(
+    isUnavailable: unavailableShiftKeys.has(
       `${volunteer.id as string}:${shift.id as string}`,
     ),
     activeAssignmentWarnings: warnings,
@@ -1462,7 +1485,7 @@ function toPublishCycleOutcome(
   return {
     participationId: candidate.participation.id,
     state: candidate.participation.state,
-    requiredCount: candidate.completion.requiredCount,
+    peopleNeeded: candidate.completion.peopleNeeded,
     assignedCount: candidate.completion.assignedCount,
   };
 }
@@ -1498,18 +1521,22 @@ function ensurePrepare({ participation, action }: EnsurePrepareInput): void {
 function buildEventView({
   eventGroup,
   participation,
-  includedSlotIds,
+  includedEventTimeBlockIds,
   shifts,
   requirements,
 }: BuildEventViewInput): ParticipationEventView {
-  const shiftsBySlot = new Map<string, Shift[]>();
+  const shiftsByEventTimeBlock = new Map<string, Shift[]>();
   for (const shift of shifts) {
-    const slotShifts = shiftsBySlot.get(shift.timeSlotId as string) ?? [];
-    slotShifts.push(shift);
-    shiftsBySlot.set(shift.timeSlotId as string, slotShifts);
+    const eventTimeBlockShifts =
+      shiftsByEventTimeBlock.get(shift.eventTimeBlockId as string) ?? [];
+    eventTimeBlockShifts.push(shift);
+    shiftsByEventTimeBlock.set(
+      shift.eventTimeBlockId as string,
+      eventTimeBlockShifts,
+    );
   }
 
-  const requirementsByShift = new Map<string, SlotRequirement[]>();
+  const requirementsByShift = new Map<string, ShiftRequirement[]>();
   for (const requirement of requirements) {
     const key = (requirement.shiftId ?? '') as string;
     const shiftRequirements = requirementsByShift.get(key) ?? [];
@@ -1517,24 +1544,26 @@ function buildEventView({
     requirementsByShift.set(key, shiftRequirements);
   }
 
-  const slots: ParticipationSlotView[] = eventGroup.slots.map((slot) => {
-    const slotShifts = shiftsBySlot.get(slot.id as string) ?? [];
-    const slotRequirements = slotShifts.flatMap(
-      (shift) => requirementsByShift.get(shift.id as string) ?? [],
-    );
+  const eventTimeBlocks: ParticipationEventTimeBlockView[] =
+    eventGroup.eventTimeBlocks.map((eventTimeBlock) => {
+      const eventTimeBlockShifts =
+        shiftsByEventTimeBlock.get(eventTimeBlock.id as string) ?? [];
+      const shiftRequirements = eventTimeBlockShifts.flatMap(
+        (shift) => requirementsByShift.get(shift.id as string) ?? [],
+      );
 
-    return {
-      slot,
-      included: includedSlotIds.has(slot.id as string),
-      shifts: slotShifts,
-      requirements: slotRequirements,
-    };
-  });
+      return {
+        eventTimeBlock,
+        included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        shifts: eventTimeBlockShifts,
+        requirements: shiftRequirements,
+      };
+    });
 
   return {
     participation,
     event: eventGroup.event,
-    slots,
+    eventTimeBlocks,
   };
 }
 
@@ -1605,7 +1634,7 @@ function isUnambiguouslyTeamScopedAssignment({
   membershipInfoByVolunteerId,
 }: {
   assignment: Assignment;
-  requirements: SlotRequirement[];
+  requirements: ShiftRequirement[];
   teamId: TeamId;
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
 }): boolean {

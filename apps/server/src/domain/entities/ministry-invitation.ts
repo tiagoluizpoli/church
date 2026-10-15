@@ -7,7 +7,7 @@ import type {
   RoleId,
   UserId,
 } from '../branded-ids';
-import type { MinistryAccessLevel } from './ministry-volunteer';
+import type { MinistryAccessLevel } from './ministry-membership';
 
 export const MINISTRY_INVITATION_STATUS_OPTIONS = [
   'pending',

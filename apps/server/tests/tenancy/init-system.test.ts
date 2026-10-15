@@ -57,7 +57,7 @@ describe('runInitSystem', () => {
     expect(members[0]?.organizationId).toBe(organizations[0]?.id);
     expect(members[0]?.role).toBe('admin');
 
-    const links = await testDb.select().from(schema.ministryVolunteer);
+    const links = await testDb.select().from(schema.ministryMembership);
     expect(links).toHaveLength(1);
     expect(links[0]?.ministryAccessLevel).toBe('leader');
 

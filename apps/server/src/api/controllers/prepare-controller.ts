@@ -4,12 +4,12 @@ import { z } from 'zod';
 import {
   ChurchId,
   CycleId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
   TeamId,
-  TimeSlotId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -24,8 +24,8 @@ import {
   askAvailabilityResponseSchema,
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
-  ministryCycleSummaryListResponseSchema,
   participationMapper,
+  scheduleSummaryListResponseSchema,
   setInclusionsBodySchema,
   shiftListResponseSchema,
   shiftRequirementBodySchema,
@@ -40,7 +40,7 @@ interface CycleParticipationRouteParams {
   cycleId: string;
 }
 
-interface MinistryCycleSummaryRouteParams {
+interface ScheduleSummaryRouteParams {
   ministryId: string;
 }
 
@@ -52,9 +52,9 @@ interface ParticipationRouteParams {
   participationId: string;
 }
 
-interface ParticipationSlotRouteParams {
+interface ParticipationEventTimeBlockRouteParams {
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
 }
 
 interface ShiftRouteParams {
@@ -169,19 +169,18 @@ export class PrepareController implements FastifyController {
       {
         schema: {
           tags: ['prepare'],
-          operationId: 'listMinistryCycleSummaries',
+          operationId: 'listScheduleSummaries',
           summary: "List a Ministry's cycle prepare summaries",
           description:
             "List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.",
           response: {
-            200: ministryCycleSummaryListResponseSchema,
+            200: scheduleSummaryListResponseSchema,
             403: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { ministryId } =
-          request.params as MinistryCycleSummaryRouteParams;
+        const { ministryId } = request.params as ScheduleSummaryRouteParams;
 
         const allowed = await this.authorityGuard.canManageMinistry({
           churchId: ChurchId.from(request.churchId),
@@ -195,13 +194,12 @@ export class PrepareController implements FastifyController {
           });
         }
 
-        const views =
-          await this.participationManager.listMinistryCycleSummaries({
-            churchId: ChurchId.from(request.churchId),
-            ministryId: MinistryId.from(ministryId),
-          });
+        const views = await this.participationManager.listScheduleSummaries({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+        });
         return reply.send(
-          participationMapper.ministryCycleSummaryListToResponse(views),
+          participationMapper.scheduleSummaryListToResponse(views),
         );
       },
     );
@@ -212,9 +210,9 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'setParticipationInclusions',
-          summary: "Set a MinistryParticipation's included TimeSlots",
+          summary: "Set a MinistryParticipation's included EventTimeBlocks",
           description:
-            'Replace the set of TimeSlots a Ministry is opted into for a MinistryParticipation.',
+            'Replace the set of EventTimeBlocks a Ministry is opted into for a MinistryParticipation.',
           body: setInclusionsBodySchema,
         },
       },
@@ -231,28 +229,28 @@ export class PrepareController implements FastifyController {
         await this.participationManager.setInclusions({
           churchId: ChurchId.from(request.churchId),
           participationId: MinistryParticipationId.from(participationId),
-          timeSlotIds: body.timeSlotIds.map(TimeSlotId.from),
+          eventTimeBlockIds: body.eventTimeBlockIds.map(EventTimeBlockId.from),
         });
         return reply.status(204).send();
       },
     );
 
     app.post(
-      '/participations/:participationId/slots/:timeSlotId/shifts',
+      '/participations/:participationId/event-time-blocks/:eventTimeBlockId/shifts',
       {
         schema: {
           tags: ['prepare'],
           operationId: 'splitParticipationShifts',
-          summary: 'Split a TimeSlot into Shifts',
+          summary: 'Split a EventTimeBlock into Shifts',
           description:
-            "Split a MinistryParticipation's TimeSlot into Shifts, either into equal parts or by manually-set spans.",
+            "Split a MinistryParticipation's EventTimeBlock into Shifts, either into equal parts or by manually-set spans.",
           body: splitShiftsBodySchema,
           response: { 201: shiftListResponseSchema },
         },
       },
       async (request, reply) => {
-        const { participationId, timeSlotId } =
-          request.params as ParticipationSlotRouteParams;
+        const { participationId, eventTimeBlockId } =
+          request.params as ParticipationEventTimeBlockRouteParams;
         const denied = await this.denyParticipationScope({
           request,
           reply,
@@ -264,7 +262,7 @@ export class PrepareController implements FastifyController {
         const shifts = await this.participationManager.splitShifts({
           churchId: ChurchId.from(request.churchId),
           participationId: MinistryParticipationId.from(participationId),
-          timeSlotId: TimeSlotId.from(timeSlotId),
+          eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
           strategy: toSplitStrategy({ body }),
         });
         return reply
@@ -333,7 +331,7 @@ export class PrepareController implements FastifyController {
           operationId: 'upsertShiftRequirement',
           summary: 'Set a Shift staffing requirement',
           description:
-            'Set the SlotRequirement headcount for a Role (and optional Team) within a Shift.',
+            'Set the ShiftRequirement headcount for a Role (and optional Team) within a Shift.',
           body: shiftRequirementBodySchema,
           response: { 200: shiftRequirementResponseSchema },
         },
@@ -349,7 +347,7 @@ export class PrepareController implements FastifyController {
           shiftId: ShiftId.from(shiftId),
           roleId: RoleId.from(body.roleId),
           teamId: body.teamId ? TeamId.from(body.teamId) : undefined,
-          requiredCount: body.requiredCount,
+          peopleNeeded: body.peopleNeeded,
           notes: body.notes,
         });
         return reply.send(

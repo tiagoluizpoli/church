@@ -2,7 +2,7 @@ import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTemplate } from '../../domain/entities/event-template';
 
-export const eventTemplateBlockBodySchema = z.object({
+export const eventTemplateTimeBlockBodySchema = z.object({
   label: z.string().min(1),
   startTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   endTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
@@ -12,14 +12,14 @@ export const eventTemplateBlockBodySchema = z.object({
 export const createEventTemplateBodySchema = z.object({
   name: z.string().min(1),
   weekday: z.number().int().min(0).max(6),
-  blocks: z.array(eventTemplateBlockBodySchema),
+  blocks: z.array(eventTemplateTimeBlockBodySchema),
 });
 
 export const applyTemplatesBodySchema = z.object({
   templateIds: z.array(z.string()).min(1),
 });
 
-export const eventTemplateBlockResponseSchema = z.object({
+export const eventTemplateTimeBlockResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
   templateId: z.string(),
@@ -34,7 +34,7 @@ export const eventTemplateResponseSchema = z.object({
   churchId: z.string(),
   name: z.string(),
   weekday: z.number(),
-  blocks: z.array(eventTemplateBlockResponseSchema),
+  blocks: z.array(eventTemplateTimeBlockResponseSchema),
   createdAt: instantSchema,
   updatedAt: instantSchema,
 });
@@ -45,7 +45,7 @@ export const eventTemplateListResponseSchema = z.object({
 
 export const generatedPlanningCountsResponseSchema = z.object({
   generatedEventCount: z.number(),
-  generatedSlotCount: z.number(),
+  generatedEventTimeBlockCount: z.number(),
 });
 
 function toEventTemplateResponse(template: EventTemplate) {

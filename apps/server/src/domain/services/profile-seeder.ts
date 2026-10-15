@@ -1,28 +1,28 @@
 import { type Instant, today, toInstant } from '@church/time';
-import type { TimeBlockId, TimeSlotId } from '../branded-ids';
+import type { EventTimeBlockId, TemplateTimeBlockId } from '../branded-ids';
 import type { DefaultDirection } from '../entities/ministry';
 import type {
-  ServingProfileHeadcount,
-  ServingProfileShiftSplit,
-} from '../entities/ministry-serving-profile';
+  UsualSetupHeadcount,
+  UsualSetupShiftSplit,
+} from '../entities/usual-setup';
 import { computeEqualSpans } from './shift-splitter';
 
-export interface ProfileSeederSlot {
-  timeSlotId: TimeSlotId;
-  sourceTemplateBlockId?: TimeBlockId;
+export interface ProfileSeederEventTimeBlock {
+  eventTimeBlockId: EventTimeBlockId;
+  sourceTemplateTimeBlockId?: TemplateTimeBlockId;
   startTime: Instant;
   endTime: Instant;
 }
 
 export interface ProfileSeederEntry {
-  sourceTemplateBlockId: TimeBlockId;
+  sourceTemplateTimeBlockId: TemplateTimeBlockId;
   serves: boolean;
-  shiftSplit: ServingProfileShiftSplit;
-  headcounts: ServingProfileHeadcount[];
+  shiftSplit: UsualSetupShiftSplit;
+  headcounts: UsualSetupHeadcount[];
 }
 
 export interface SeedParticipationPlanInput {
-  slot: ProfileSeederSlot;
+  eventTimeBlock: ProfileSeederEventTimeBlock;
   profileEntries: ProfileSeederEntry[];
   /** Three-tier default: profile entry > ministry direction > global flag (R10). */
   ministryDefaultDirection?: DefaultDirection;
@@ -34,7 +34,7 @@ export interface SeededShiftPlan {
   startTime: Instant;
   endTime: Instant;
   label?: string;
-  headcounts: ServingProfileHeadcount[];
+  headcounts: UsualSetupHeadcount[];
 }
 
 export interface ParticipationSeedPlan {
@@ -46,20 +46,21 @@ const EXCLUDED_PLAN: ParticipationSeedPlan = { include: false, shifts: [] };
 
 export class ProfileSeeder {
   plan({
-    slot,
+    eventTimeBlock,
     profileEntries,
     ministryDefaultDirection,
     globalDefaultAllIn,
     timeZone,
   }: SeedParticipationPlanInput): ParticipationSeedPlan {
     // Dynamic events (no template block) are never auto-seeded (DL1-PS-05).
-    if (!slot.sourceTemplateBlockId) {
+    if (!eventTimeBlock.sourceTemplateTimeBlockId) {
       return EXCLUDED_PLAN;
     }
 
     const entry = profileEntries.find(
       (candidate) =>
-        candidate.sourceTemplateBlockId === slot.sourceTemplateBlockId,
+        candidate.sourceTemplateTimeBlockId ===
+        eventTimeBlock.sourceTemplateTimeBlockId,
     );
 
     if (entry) {
@@ -69,7 +70,7 @@ export class ProfileSeeder {
 
       return {
         include: true,
-        shifts: buildProfileShifts({ slot, entry, timeZone }),
+        shifts: buildProfileShifts({ eventTimeBlock, entry, timeZone }),
       };
     }
 
@@ -84,8 +85,8 @@ export class ProfileSeeder {
       include: true,
       shifts: [
         {
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+          startTime: eventTimeBlock.startTime,
+          endTime: eventTimeBlock.endTime,
           headcounts: [],
         },
       ],
@@ -94,20 +95,20 @@ export class ProfileSeeder {
 }
 
 interface BuildProfileShiftsInput {
-  slot: ProfileSeederSlot;
+  eventTimeBlock: ProfileSeederEventTimeBlock;
   entry: ProfileSeederEntry;
   timeZone: string;
 }
 
 function buildProfileShifts({
-  slot,
+  eventTimeBlock,
   entry,
   timeZone,
 }: BuildProfileShiftsInput): SeededShiftPlan[] {
   if (entry.shiftSplit.kind === 'equal') {
     return computeEqualSpans({
-      startTime: slot.startTime,
-      endTime: slot.endTime,
+      startTime: eventTimeBlock.startTime,
+      endTime: eventTimeBlock.endTime,
       n: entry.shiftSplit.count,
     }).map((span) => ({
       startTime: span.startTime,
@@ -116,11 +117,22 @@ function buildProfileShifts({
     }));
   }
 
-  const slotDate = today({ instant: slot.startTime, timeZone });
+  const eventTimeBlockDate = today({
+    instant: eventTimeBlock.startTime,
+    timeZone,
+  });
 
   return entry.shiftSplit.spans.map((span) => ({
-    startTime: toInstant({ day: slotDate, time: span.startTime, timeZone }),
-    endTime: toInstant({ day: slotDate, time: span.endTime, timeZone }),
+    startTime: toInstant({
+      day: eventTimeBlockDate,
+      time: span.startTime,
+      timeZone,
+    }),
+    endTime: toInstant({
+      day: eventTimeBlockDate,
+      time: span.endTime,
+      timeZone,
+    }),
     label: span.label,
     headcounts: entry.headcounts,
   }));

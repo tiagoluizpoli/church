@@ -1,8 +1,8 @@
 import { type CalendarDay, formatCalendarDay } from '@church/time';
 import {
-  type AvailabilityMarkDraft,
   getShiftDate,
-} from '../lib/availability-marks';
+  type UnavailableShiftDraft,
+} from '../lib/unavailable-shifts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,12 +21,12 @@ import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface AvailabilityCheckDetailProps {
   check: GetAvailabilityCheck200;
-  markDraft: AvailabilityMarkDraft;
+  unavailableShiftDraft: UnavailableShiftDraft;
   onToggleShift: (shiftId: string) => void;
   onToggleWholeDay: (date: CalendarDay) => void;
-  onSaveMarks: () => void;
+  onSaveUnavailableShifts: () => void;
   onConfirm: () => void;
-  isSavingMarks: boolean;
+  isSavingUnavailableShifts: boolean;
   isConfirming: boolean;
 }
 
@@ -97,12 +97,12 @@ function ShiftAvailabilityRow({
 
 export function AvailabilityCheckDetail({
   check,
-  markDraft,
+  unavailableShiftDraft,
   onToggleShift,
   onToggleWholeDay,
-  onSaveMarks,
+  onSaveUnavailableShifts,
   onConfirm,
-  isSavingMarks,
+  isSavingUnavailableShifts,
   isConfirming,
 }: AvailabilityCheckDetailProps) {
   const { churchTimezone } = useTimezone();
@@ -127,8 +127,10 @@ export function AvailabilityCheckDetail({
             <ShiftAvailabilityRow
               key={shift.shiftId}
               shift={shift}
-              isMarkedUnavailable={markDraft.markedShiftIds.has(shift.shiftId)}
-              isWholeDayMarked={markDraft.wholeDayDates.has(
+              isMarkedUnavailable={unavailableShiftDraft.markedShiftIds.has(
+                shift.shiftId,
+              )}
+              isWholeDayMarked={unavailableShiftDraft.wholeDayDates.has(
                 getShiftDate({ shift, timeZone: churchTimezone }),
               )}
               isEditable={isEditable}
@@ -142,11 +144,13 @@ export function AvailabilityCheckDetail({
           <div className="flex flex-wrap items-center gap-3">
             <Button
               type="button"
-              data-testid="save-marks-button"
-              disabled={isSavingMarks}
-              onClick={onSaveMarks}
+              data-testid="save-unavailable-shifts-button"
+              disabled={isSavingUnavailableShifts}
+              onClick={onSaveUnavailableShifts}
             >
-              {isSavingMarks ? 'Saving…' : 'Save marks'}
+              {isSavingUnavailableShifts
+                ? 'Saving…'
+                : 'Save unavailable shifts'}
             </Button>
             <Button
               type="button"

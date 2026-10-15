@@ -21,7 +21,7 @@ interface FormatCycleDateRangeInput {
 /**
  * The cycle's own window, read as dates rather than instants — a cycle
  * boundary is a CalendarDay, never a time of day, so no timezone conversion
- * applies here (unlike Event/slot/shift bounds, which do need the Church
+ * applies here (unlike Event/time block/shift bounds, which do need the Church
  * Timezone). Formatted through the seam's own CalendarDay formatters, never a
  * raw `Date` or the browser locale.
  */
@@ -113,9 +113,9 @@ export function CycleBuilderHeader({
                 value={counts.eventCount}
               />
               <HeaderStatChip
-                testId="cycle-builder-slot-count"
-                label="Slots"
-                value={counts.slotCount}
+                testId="cycle-builder-event-time-block-count"
+                label="Time blocks"
+                value={counts.eventTimeBlockCount}
               />
               <HeaderStatChip
                 testId="cycle-builder-shift-count"

@@ -13,10 +13,10 @@ import type {
   CreateEventTemplateBody,
   CreatePlanningEvent201,
   CreatePlanningEventBody,
-  CreatePlanningEventSlot201,
-  CreatePlanningEventSlotBody,
+  CreatePlanningEventTimeBlock201,
+  CreatePlanningEventTimeBlockBody,
   GetCycle200,
-  GetMinistryServingProfile200,
+  GetUsualSetup200,
   ListCycles200,
   ListCyclesParams,
   ListEventTemplates200,
@@ -26,10 +26,10 @@ import type {
   UpdateEventTemplateBody,
   UpdatePlanningEvent200,
   UpdatePlanningEventBody,
-  UpdatePlanningEventSlot200,
-  UpdatePlanningEventSlotBody,
-  UpsertMinistryServingProfile200,
-  UpsertMinistryServingProfileBody
+  UpdatePlanningEventTimeBlock200,
+  UpdatePlanningEventTimeBlockBody,
+  UpsertUsualSetup200,
+  UpsertUsualSetupBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -103,7 +103,7 @@ const reopenPlanningEvent = (
       );
     }
   /**
- * Create a church-owned EventTemplate with its ordered TimeBlocks for a given weekday.
+ * Create a church-owned EventTemplate with its ordered TemplateTimeBlocks for a given weekday.
  * @summary Create an EventTemplate
  */
 const createEventTemplate = (
@@ -129,7 +129,7 @@ const listEventTemplates = (
       );
     }
   /**
- * Replace an EventTemplate's name, weekday, and TimeBlocks.
+ * Replace an EventTemplate's name, weekday, and TemplateTimeBlocks.
  * @summary Update an EventTemplate
  */
 const updateEventTemplate = (
@@ -156,7 +156,7 @@ const deleteEventTemplate = (
       );
     }
   /**
- * Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one TimeSlot per TimeBlock.
+ * Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock.
  * @summary Apply EventTemplates to a Cycle
  */
 const applyPlanningTemplates = (
@@ -215,81 +215,81 @@ const cancelPlanningEvent = (
       );
     }
   /**
- * Create a church-level TimeSlot within an Event.
- * @summary Create a TimeSlot on an Event
+ * Create a church-level EventTimeBlock within an Event.
+ * @summary Create a EventTimeBlock on an Event
  */
-const createPlanningEventSlot = (
+const createPlanningEventTimeBlock = (
     cycleId: string,
     eventId: string,
-    createPlanningEventSlotBody: CreatePlanningEventSlotBody,
+    createPlanningEventTimeBlockBody: CreatePlanningEventTimeBlockBody,
  ) => {
-      return apiClient<CreatePlanningEventSlot201>(
-      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots`, method: 'POST',
+      return apiClient<CreatePlanningEventTimeBlock201>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
-      data: createPlanningEventSlotBody
+      data: createPlanningEventTimeBlockBody
     },
       );
     }
   /**
- * Update a TimeSlot's bounds or label.
- * @summary Update a TimeSlot
+ * Update a EventTimeBlock's bounds or label.
+ * @summary Update a EventTimeBlock
  */
-const updatePlanningEventSlot = (
+const updatePlanningEventTimeBlock = (
     cycleId: string,
     eventId: string,
-    slotId: string,
-    updatePlanningEventSlotBody: UpdatePlanningEventSlotBody,
+    eventTimeBlockId: string,
+    updatePlanningEventTimeBlockBody: UpdatePlanningEventTimeBlockBody,
  ) => {
-      return apiClient<UpdatePlanningEventSlot200>(
-      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots/${slotId}`, method: 'PATCH',
+      return apiClient<UpdatePlanningEventTimeBlock200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
-      data: updatePlanningEventSlotBody
+      data: updatePlanningEventTimeBlockBody
     },
       );
     }
   /**
- * Delete a TimeSlot from an Event.
- * @summary Delete a TimeSlot
+ * Delete a EventTimeBlock from an Event.
+ * @summary Delete a EventTimeBlock
  */
-const deletePlanningEventSlot = (
+const deletePlanningEventTimeBlock = (
     cycleId: string,
     eventId: string,
-    slotId: string,
+    eventTimeBlockId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots/${slotId}`, method: 'DELETE'
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}`, method: 'DELETE'
     },
       );
     }
   /**
- * Get a Ministry's MinistryServingProfile, the standing rule declaring which EventTemplate TimeBlocks it always serves.
- * @summary Get a Ministry's serving profile
+ * Get a Ministry's UsualSetup, the standing rule declaring which EventTemplate TemplateTimeBlocks it always serves.
+ * @summary Get a Ministry's usual setup
  */
-const getMinistryServingProfile = (
+const getUsualSetup = (
     ministryId: string,
  ) => {
-      return apiClient<GetMinistryServingProfile200>(
-      {url: `/api/v1/admin/ministries/${ministryId}/serving-profile`, method: 'GET'
+      return apiClient<GetUsualSetup200>(
+      {url: `/api/v1/admin/ministries/${ministryId}/usual-setup`, method: 'GET'
     },
       );
     }
   /**
- * Replace a Ministry's MinistryServingProfile entries, including which TimeBlocks it serves, its Shift split, and headcounts.
- * @summary Set a Ministry's serving profile
+ * Replace a Ministry's UsualSetup entries, including which TemplateTimeBlocks it serves, its Shift split, and headcounts.
+ * @summary Set a Ministry's usual setup
  */
-const upsertMinistryServingProfile = (
+const upsertUsualSetup = (
     ministryId: string,
-    upsertMinistryServingProfileBody: UpsertMinistryServingProfileBody,
+    upsertUsualSetupBody: UpsertUsualSetupBody,
  ) => {
-      return apiClient<UpsertMinistryServingProfile200>(
-      {url: `/api/v1/admin/ministries/${ministryId}/serving-profile`, method: 'PUT',
+      return apiClient<UpsertUsualSetup200>(
+      {url: `/api/v1/admin/ministries/${ministryId}/usual-setup`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
-      data: upsertMinistryServingProfileBody
+      data: upsertUsualSetupBody
     },
       );
     }
   /**
- * Set a Ministry's defaultDirection (all-in or all-out), deciding whether it starts opted into every TimeSlot of a cycle by default.
+ * Set a Ministry's defaultDirection (all-in or all-out), deciding whether it starts opted into every EventTimeBlock of a cycle by default.
  * @summary Set a Ministry's default direction
  */
 const setMinistryDefaultDirection = (
@@ -303,7 +303,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventSlot,updatePlanningEventSlot,deletePlanningEventSlot,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,getUsualSetup,upsertUsualSetup,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
@@ -317,9 +317,9 @@ export type ApplyPlanningTemplatesResult = NonNullable<Awaited<ReturnType<Return
 export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEvent']>>>
 export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEvent']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['cancelPlanningEvent']>>>
-export type CreatePlanningEventSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEventSlot']>>>
-export type UpdatePlanningEventSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventSlot']>>>
-export type DeletePlanningEventSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEventSlot']>>>
-export type GetMinistryServingProfileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getMinistryServingProfile']>>>
-export type UpsertMinistryServingProfileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['upsertMinistryServingProfile']>>>
+export type CreatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEventTimeBlock']>>>
+export type UpdatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventTimeBlock']>>>
+export type DeletePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEventTimeBlock']>>>
+export type GetUsualSetupResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getUsualSetup']>>>
+export type UpsertUsualSetupResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['upsertUsualSetup']>>>
 export type SetMinistryDefaultDirectionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['setMinistryDefaultDirection']>>>

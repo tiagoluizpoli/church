@@ -71,10 +71,10 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/volunteer-transfer-journey.spec.ts',
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/a11y-planning-nav.spec.ts',
-  'tests/scheduling/builder-slot-focus.spec.ts',
+  'tests/scheduling/builder-event-time-block-focus.spec.ts',
   'tests/scheduling/capability-index.spec.ts',
   'tests/scheduling/cross-cutting.spec.ts',
-  'tests/scheduling/overnight-time-block.spec.ts',
+  'tests/scheduling/overnight-template-time-block.spec.ts',
   'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
   'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
@@ -105,7 +105,7 @@ const CYCLE_EDGE_SPEC_PATHS = [
 
 // #289 — verified via each spec's page.goto target. smoke.spec.ts navigates
 // both the assign builder and the prepare route; qualification.spec.ts
-// and builder-slot-focus.spec.ts navigate only the assign builder;
+// and builder-event-time-block-focus.spec.ts navigate only the assign builder;
 // us4-schedule-publish.spec.ts navigates only the prepare route;
 // planning-role-guard-matrix.spec.ts navigates all three scheduling routes
 // (cycles, prepare, and the assign builder — asserting
@@ -113,7 +113,7 @@ const CYCLE_EDGE_SPEC_PATHS = [
 // three journeys' maps. None of these navigate /volunteer/availability, so
 // that journey stays out.
 const PLANNING_ADMIN_SPEC_PATHS = [
-  'tests/scheduling/overnight-time-block.spec.ts',
+  'tests/scheduling/overnight-template-time-block.spec.ts',
   'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -130,7 +130,7 @@ const PREPARE_SPEC_PATHS = [
 
 const BUILDER_SPEC_PATHS = [
   'tests/scheduling/a11y-builder.spec.ts',
-  'tests/scheduling/builder-slot-focus.spec.ts',
+  'tests/scheduling/builder-event-time-block-focus.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
   'tests/scheduling/qualification.spec.ts',
   'tests/scheduling/smoke.spec.ts',
@@ -198,7 +198,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // page.goto target; see PLANNING_ADMIN_SPEC_PATHS/PREPARE_SPEC_PATHS/
   // BUILDER_SPEC_PATHS/AVAILABILITY_STATUS_SPEC_PATHS above. The removed
   // blanket `apps/web/src/features/scheduling/` prefix used to pull
-  // smoke/us3/us4/qualification/builder-slot-focus/guard-matrix into every
+  // smoke/us3/us4/qualification/builder-event-time-block-focus/guard-matrix into every
   // change under this tree regardless of which journey it belonged to.
   {
     sourcePathPrefix:
@@ -224,7 +224,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     // Shared by every prepare component and route (manual-split-editor,
-    // ministry-prepare-list, prepare-slot-list, prepare-filters,
+    // ministry-prepare-list, prepare-event-time-block-list, prepare-filters,
     // prepare-calendar, cycle-list.utils).
     sourcePathPrefix:
       'apps/web/src/features/scheduling/components/participation-prepare.utils.ts',
@@ -274,7 +274,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/_planning-admin',
     specPaths: [
-      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/overnight-template-time-block.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
@@ -306,7 +306,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // instead of falling back to CRITICAL_SMOKE_SPEC_PATHS.
     sourcePathPrefix: 'apps/web/src/components/ui/data-table.tsx',
     specPaths: [
-      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/overnight-template-time-block.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
@@ -343,12 +343,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     // Generated client shared by both the planning-admin (cycle/template/
-    // event CRUD) and prepare (serving-profile, default-direction)
+    // event CRUD) and prepare (usual-setup, default-direction)
     // endpoints — verified by grepping both endpoint families into this one
     // file.
     sourcePathPrefix: 'apps/web/src/infrastructure/api/planning.ts',
     specPaths: [
-      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/overnight-template-time-block.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
@@ -559,11 +559,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us4-schedule-publish.spec.ts',
       // #217 — team-scoped assignment/removal (qualification), the focused
-      // pick-me commit (builder-slot-focus), and the volunteer-notify/leader-
+      // pick-me commit (builder-event-time-block-focus), and the volunteer-notify/leader-
       // reassign flow (us5-leader-reassign) all call this client's assignment
       // endpoints.
       'tests/scheduling/qualification.spec.ts',
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
       'tests/scheduling/us5-leader-reassign.spec.ts',
     ],
   },
@@ -579,7 +579,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
   },
   {
-    // #289 — added smoke/builder-slot-focus/qualification, verified via
+    // #289 — added smoke/builder-event-time-block-focus/qualification, verified via
     // their page.goto to the assign builder URL this directory renders;
     // matches BUILDER_SPEC_PATHS used above for the hooks/utils it owns.
     sourcePathPrefix: 'apps/web/src/features/scheduling/components/builder/',
@@ -596,13 +596,13 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: CYCLE_EDGE_SPEC_PATHS,
   },
   // #217 — the assign controller owns shift assignment, unassignment, and
-  // reassignment: qualification's team-boundary 403, builder-slot-focus's
+  // reassignment: qualification's team-boundary 403, builder-event-time-block-focus's
   // focused commit, and us5-leader-reassign's mid-cycle reassign.
   {
     sourcePathPrefix: 'apps/server/src/api/controllers/assign-controller.ts',
     specPaths: [
       'tests/scheduling/qualification.spec.ts',
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
       'tests/scheduling/us5-leader-reassign.spec.ts',
     ],
   },

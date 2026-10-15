@@ -4,11 +4,11 @@ import type { AuthorityActor } from '@/domain/authority/types';
 import type {
   ChurchId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   ShiftId,
   TeamId,
-  TimeSlotId,
   UserId,
 } from '@/domain/branded-ids';
 
@@ -81,7 +81,7 @@ const scopeRepository = {
   resolveShiftMinistry: vi.fn(),
 };
 const eventRepository = { getMinistryId: vi.fn() };
-const timeSlotRepository = { getById: vi.fn() };
+const eventTimeBlockRepository = { getById: vi.fn() };
 const ministryRepository = { getById: vi.fn() };
 const teamRepository = { listByIds: vi.fn() };
 
@@ -90,7 +90,7 @@ function createManager(): DbAuthorityManager {
     actorRepository: actorRepository as never,
     scopeRepository: scopeRepository as never,
     eventRepository: eventRepository as never,
-    timeSlotRepository: timeSlotRepository as never,
+    eventTimeBlockRepository: eventTimeBlockRepository as never,
     ministryRepository: ministryRepository as never,
     teamRepository: teamRepository as never,
   });
@@ -243,18 +243,21 @@ describe('DbAuthorityManager', () => {
     ).resolves.toBe(false);
   });
 
-  it('canManageEventSlot resolves the owning Event via TimeSlotRepository then delegates', async () => {
+  it('canManageEventTimeBlock resolves the owning Event via EventTimeBlockRepository then delegates', async () => {
     const manager = createManager();
-    const slotId = 'slot_1' as TimeSlotId;
+    const eventTimeBlockId = 'event_time_block_1' as EventTimeBlockId;
     const eventId = 'evt_1' as EventId;
 
-    timeSlotRepository.getById.mockResolvedValueOnce({ eventId });
+    eventTimeBlockRepository.getById.mockResolvedValueOnce({ eventId });
     eventRepository.getMinistryId.mockResolvedValueOnce(ministryId);
     actorRepository.resolveActor.mockResolvedValueOnce(ministryLeaderActor());
     await expect(
-      manager.canManageEventSlot({ churchId, slotId, userId }),
+      manager.canManageEventTimeBlock({ churchId, eventTimeBlockId, userId }),
     ).resolves.toBe(true);
-    expect(timeSlotRepository.getById).toHaveBeenCalledWith(churchId, slotId);
+    expect(eventTimeBlockRepository.getById).toHaveBeenCalledWith(
+      churchId,
+      eventTimeBlockId,
+    );
     expect(eventRepository.getMinistryId).toHaveBeenCalledWith(
       churchId,
       eventId,

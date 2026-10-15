@@ -41,7 +41,7 @@ const ERROR_MAP: Record<string, ErrorMapEntry> = {
   OVERLAPPING_CYCLE: { status: 409 },
   ILLEGAL_STATE_TRANSITION: { status: 409 },
   EVENT_OUTSIDE_CYCLE: { status: 409 },
-  LAST_REMAINING_SLOT: { status: 409 },
+  LAST_REMAINING_EVENT_TIME_BLOCK: { status: 409 },
   SHIFT_OUT_OF_BOUNDS: { status: 409 },
   HARD_CONSTRAINT_VIOLATION: { status: 409 },
   BELOW_FULL_PUBLISH: { status: 409 },
@@ -90,7 +90,10 @@ export async function createFastify() {
       info: { title: 'Church API', version: '1.0.0' },
       tags: [
         { name: 'events', description: 'Event management endpoints' },
-        { name: 'time-slots', description: 'Event TimeSlot endpoints' },
+        {
+          name: 'event-time-blocks',
+          description: 'Event EventTimeBlock endpoints',
+        },
         { name: 'assignments', description: 'Assignment endpoints' },
         {
           name: 'ministries',

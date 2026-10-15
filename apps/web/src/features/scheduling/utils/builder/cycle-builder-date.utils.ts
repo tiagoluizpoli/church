@@ -15,7 +15,7 @@ import {
 } from '@church/time';
 import type {
   CycleBuilderEventSummary,
-  CycleBuilderSlotSummary,
+  CycleBuilderEventTimeBlockSummary,
 } from '../../hooks/use-cycle-builder';
 import { churchTimeOfDay } from '@/shared/utils/church-time';
 
@@ -88,8 +88,8 @@ interface EventDayKeysInput {
  * church-local midnight → church-local 23:59, so measuring it in UTC days
  * stretches it across two dates west of UTC (and pulls it a day early east of
  * UTC) and grows a phantom column for the neighbouring day. A 22:00 Friday →
- * 01:00 Saturday Event still starts on Friday (US4, #151); its *own* slots
- * are placed under their start day by `eventSlotsOnDay` below, never dragged
+ * 01:00 Saturday Event still starts on Friday (US4, #151); its *own* time blocks
+ * are placed under their start day by `eventTimeBlocksOnDay` below, never dragged
  * onto the wrong column by a UTC/browser-timezone read.
  */
 export function eventDayKeys({
@@ -117,26 +117,27 @@ export function deriveEventDates({
   return [...result].sort();
 }
 
-interface EventSlotsOnDayInput {
+interface EventTimeBlocksOnDayInput {
   event: CycleBuilderEventSummary;
   day: string;
   timeZone: string;
 }
 
 /**
- * The event's slots served on one day. A multi-day event legitimately appears
- * in several columns, so each column must narrow to its own day's slots —
- * rendering the event's whole slot list in every column would put one shift on
+ * The event's time blocks served on one day. A multi-day event legitimately appears
+ * in several columns, so each column must narrow to its own day's time blocks —
+ * rendering the event's whole time block list in every column would put one shift on
  * several days, and an assignment made against it would look like it had landed
  * on all of them.
  */
-export function eventSlotsOnDay({
+export function eventTimeBlocksOnDay({
   event,
   day,
   timeZone,
-}: EventSlotsOnDayInput): CycleBuilderSlotSummary[] {
-  return event.slots.filter(
-    (slot) => churchDayOf({ value: slot.startTime, timeZone }) === day,
+}: EventTimeBlocksOnDayInput): CycleBuilderEventTimeBlockSummary[] {
+  return event.eventTimeBlocks.filter(
+    (eventTimeBlock) =>
+      churchDayOf({ value: eventTimeBlock.startTime, timeZone }) === day,
   );
 }
 
@@ -147,26 +148,26 @@ interface EventOccursOnDayInput {
 }
 
 /**
- * Whether the event has real content to place under this day: a slot
- * starting there, or — for an event with no slots yet — its own start day,
+ * Whether the event has real content to place under this day: a time block
+ * starting there, or — for an event with no time blocks yet — its own start day,
  * so it still has somewhere to build.
  *
  * This is deliberately narrower than a raw `[start, end]` bounds check: an
  * Event's own bounds can cross church-local midnight (a 22:00 Friday → 01:00
  * Saturday session) without the Event earning a second, empty card on the far
  * side — it renders only under its start CalendarDay (US4, #151). A genuinely
- * multi-day event still earns a card on every day it has a slot on, via
- * `eventSlotsOnDay`.
+ * multi-day event still earns a card on every day it has a time block on, via
+ * `eventTimeBlocksOnDay`.
  */
 export function eventOccursOnDay({
   event,
   day,
   timeZone,
 }: EventOccursOnDayInput): boolean {
-  if (event.slots.length === 0) {
+  if (event.eventTimeBlocks.length === 0) {
     return churchDayOf({ value: event.start, timeZone }) === day;
   }
-  return eventSlotsOnDay({ event, day, timeZone }).length > 0;
+  return eventTimeBlocksOnDay({ event, day, timeZone }).length > 0;
 }
 
 interface EnumerateDatesInput {

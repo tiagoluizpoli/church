@@ -3,35 +3,35 @@ import {
   addChurchMember,
   assignment,
   assignmentAudit,
-  availability,
   availabilityCheck,
   createChurch,
   cycle,
   event,
   eventTemplate,
+  eventTimeBlock,
   identityAudit,
   invitation,
   invitationVerificationCode,
   ministry,
   ministryInvitation,
   ministryInvitationRole,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   ministryParticipation,
-  ministryServingProfile,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
   outboxMessage,
-  participationSlotInclusion,
+  participationEventTimeBlockInclusion,
   role,
   securityLog,
   session,
   shift,
-  slotRequirement,
+  shiftRequirement,
   team,
-  timeBlock,
-  timeSlot,
+  templateTimeBlock,
   todo,
+  unavailableShift,
   user,
+  usualSetup,
   verification,
   volunteer,
   volunteerNotification,
@@ -64,9 +64,9 @@ const IDS = {
   membership: 'aaaaaaa1-0000-4000-8000-000000000006',
   cycle: 'aaaaaaa1-0000-4000-8000-000000000007',
   eventTemplate: 'aaaaaaa1-0000-4000-8000-000000000008',
-  timeBlock: 'aaaaaaa1-0000-4000-8000-000000000009',
+  templateTimeBlock: 'aaaaaaa1-0000-4000-8000-000000000009',
   event: 'aaaaaaa1-0000-4000-8000-00000000000a',
-  timeSlot: 'aaaaaaa1-0000-4000-8000-00000000000b',
+  eventTimeBlock: 'aaaaaaa1-0000-4000-8000-00000000000b',
   participation: 'aaaaaaa1-0000-4000-8000-00000000000c',
   shift: 'aaaaaaa1-0000-4000-8000-00000000000d',
   assignment: 'aaaaaaa1-0000-4000-8000-00000000000e',
@@ -195,22 +195,22 @@ async function seedEveryTenantedTable(): Promise<void> {
     status: 'active',
   });
 
-  await testDb.insert(ministryVolunteer).values({
+  await testDb.insert(ministryMembership).values({
     id: IDS.membership,
     churchId: IDS.church,
     ministryId: IDS.ministry,
     volunteerId: IDS.volunteer,
   });
 
-  await testDb.insert(ministryVolunteerRole).values({
+  await testDb.insert(ministryMembershipRole).values({
     churchId: IDS.church,
-    ministryVolunteerId: IDS.membership,
+    ministryMembershipId: IDS.membership,
     roleId: IDS.role,
   });
 
-  await testDb.insert(ministryVolunteerTeam).values({
+  await testDb.insert(ministryMembershipTeam).values({
     churchId: IDS.church,
-    ministryVolunteerId: IDS.membership,
+    ministryMembershipId: IDS.membership,
     teamId: IDS.team,
   });
 
@@ -261,8 +261,8 @@ async function seedEveryTenantedTable(): Promise<void> {
     weekday: 0,
   });
 
-  await testDb.insert(timeBlock).values({
-    id: IDS.timeBlock,
+  await testDb.insert(templateTimeBlock).values({
+    id: IDS.templateTimeBlock,
     churchId: IDS.church,
     templateId: IDS.eventTemplate,
     label: 'Morning',
@@ -271,10 +271,10 @@ async function seedEveryTenantedTable(): Promise<void> {
     order: 0,
   });
 
-  await testDb.insert(ministryServingProfile).values({
+  await testDb.insert(usualSetup).values({
     churchId: IDS.church,
     ministryId: IDS.ministry,
-    sourceTemplateBlockId: IDS.timeBlock,
+    sourceTemplateTimeBlockId: IDS.templateTimeBlock,
     shiftSplit: { kind: 'equal', count: 1 },
   });
 
@@ -287,8 +287,8 @@ async function seedEveryTenantedTable(): Promise<void> {
     end: new Date('2026-06-07T11:00:00Z'),
   });
 
-  await testDb.insert(timeSlot).values({
-    id: IDS.timeSlot,
+  await testDb.insert(eventTimeBlock).values({
+    id: IDS.eventTimeBlock,
     churchId: IDS.church,
     eventId: IDS.event,
     startTime: new Date('2026-06-07T09:00:00Z'),
@@ -302,27 +302,27 @@ async function seedEveryTenantedTable(): Promise<void> {
     eventId: IDS.event,
   });
 
-  await testDb.insert(participationSlotInclusion).values({
+  await testDb.insert(participationEventTimeBlockInclusion).values({
     churchId: IDS.church,
     participationId: IDS.participation,
-    timeSlotId: IDS.timeSlot,
+    eventTimeBlockId: IDS.eventTimeBlock,
   });
 
   await testDb.insert(shift).values({
     id: IDS.shift,
     churchId: IDS.church,
     participationId: IDS.participation,
-    timeSlotId: IDS.timeSlot,
+    eventTimeBlockId: IDS.eventTimeBlock,
     startTime: new Date('2026-06-07T09:00:00Z'),
     endTime: new Date('2026-06-07T11:00:00Z'),
   });
 
-  await testDb.insert(slotRequirement).values({
+  await testDb.insert(shiftRequirement).values({
     churchId: IDS.church,
     participationId: IDS.participation,
     shiftId: IDS.shift,
     roleId: IDS.role,
-    requiredCount: 1,
+    peopleNeeded: 1,
   });
 
   await testDb.insert(assignment).values({
@@ -347,10 +347,10 @@ async function seedEveryTenantedTable(): Promise<void> {
     id: IDS.availabilityCheck,
     churchId: IDS.church,
     cycleId: IDS.cycle,
-    ministryVolunteerId: IDS.membership,
+    ministryMembershipId: IDS.membership,
   });
 
-  await testDb.insert(availability).values({
+  await testDb.insert(unavailableShift).values({
     churchId: IDS.church,
     availabilityCheckId: IDS.availabilityCheck,
     shiftId: IDS.shift,

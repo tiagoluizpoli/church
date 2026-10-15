@@ -21,7 +21,7 @@ interface SubstitutionPickerProps {
   volunteers: PickerVolunteer[];
   onSelect: (newVolunteerId: string) => void;
   /**
-   * The team this picker is filling a slot for, if any. Candidates only badge
+   * The team this picker is filling a shift for, if any. Candidates only badge
    * as "Team Leader" when they lead this specific team — a team they lead
    * elsewhere in the ministry does not qualify (FR-013).
    */

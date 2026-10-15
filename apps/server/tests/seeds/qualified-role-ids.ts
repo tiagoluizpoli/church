@@ -1,4 +1,4 @@
-import { ministryVolunteer, ministryVolunteerRole } from '@church/db';
+import { ministryMembership, ministryMembershipRole } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { testDb } from '@/tests/integration/repositories/setup';
 
@@ -11,12 +11,12 @@ export async function qualifiedRoleIds({
   volunteerId,
 }: VolunteerIdInput): Promise<string[]> {
   const rows = await testDb
-    .select({ roleId: ministryVolunteerRole.roleId })
-    .from(ministryVolunteerRole)
+    .select({ roleId: ministryMembershipRole.roleId })
+    .from(ministryMembershipRole)
     .innerJoin(
-      ministryVolunteer,
-      eq(ministryVolunteer.id, ministryVolunteerRole.ministryVolunteerId),
+      ministryMembership,
+      eq(ministryMembership.id, ministryMembershipRole.ministryMembershipId),
     )
-    .where(eq(ministryVolunteer.volunteerId, volunteerId));
+    .where(eq(ministryMembership.volunteerId, volunteerId));
   return rows.map((row) => row.roleId).sort();
 }

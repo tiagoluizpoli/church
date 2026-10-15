@@ -42,16 +42,18 @@ export function runEventRepositoryContractTests(
       ).rejects.toThrow(NotFoundError);
     });
 
-    it('should retrieve event with slots', async () => {
-      const result = await repo.getWithSlots(
+    it('should retrieve event with event time blocks', async () => {
+      const result = await repo.getWithEventTimeBlocks(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '66666666-6666-6666-6666-666666666661' as EventId,
       );
       expect(result).toBeDefined();
       expect(result.event.id).toBe('66666666-6666-6666-6666-666666666661');
-      expect(result.slots.length).toBe(1);
-      expect(result.slots[0]?.id).toBe('77777777-7777-7777-7777-777777777771');
-      expect(result.slots[0]?.requirements.length).toBe(1);
+      expect(result.eventTimeBlocks.length).toBe(1);
+      expect(result.eventTimeBlocks[0]?.id).toBe(
+        '77777777-7777-7777-7777-777777777771',
+      );
+      expect(result.eventTimeBlocks[0]?.requirements.length).toBe(1);
     });
 
     it('should list events by ministry chronologically ascending', async () => {

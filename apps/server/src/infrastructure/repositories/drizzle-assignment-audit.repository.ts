@@ -2,10 +2,10 @@ import {
   assignment,
   assignmentAudit,
   event,
+  eventTimeBlock,
   ministryParticipation,
   role,
   shift,
-  timeSlot,
   user,
   volunteer,
 } from '@church/db';
@@ -142,9 +142,9 @@ export class DrizzleAssignmentAuditRepository
         assignmentId: assignmentAudit.assignmentId,
         volunteerId: assignment.volunteerId,
         volunteerName: volunteerUser.name,
-        slotId: timeSlot.id,
-        slotLabel: timeSlot.label,
-        slotStart: timeSlot.startTime,
+        eventTimeBlockId: eventTimeBlock.id,
+        eventTimeBlockLabel: eventTimeBlock.label,
+        eventTimeBlockStart: eventTimeBlock.startTime,
         roleId: role.id,
         roleName: role.name,
         action: assignmentAudit.action,
@@ -156,7 +156,7 @@ export class DrizzleAssignmentAuditRepository
       .from(assignmentAudit)
       .innerJoin(assignment, eq(assignmentAudit.assignmentId, assignment.id))
       .innerJoin(shift, eq(assignment.shiftId, shift.id))
-      .innerJoin(timeSlot, eq(shift.timeSlotId, timeSlot.id))
+      .innerJoin(eventTimeBlock, eq(shift.eventTimeBlockId, eventTimeBlock.id))
       .innerJoin(role, eq(assignment.roleId, role.id))
       .innerJoin(volunteer, eq(assignment.volunteerId, volunteer.id))
       .leftJoin(volunteerUser, eq(volunteer.userId, volunteerUser.id))
@@ -164,7 +164,7 @@ export class DrizzleAssignmentAuditRepository
       .where(
         and(
           withChurchIsolation(assignmentAudit, churchId),
-          eq(timeSlot.eventId, eventId),
+          eq(eventTimeBlock.eventId, eventId),
         ),
       )
       .orderBy(desc(assignmentAudit.timestamp));
@@ -174,8 +174,9 @@ export class DrizzleAssignmentAuditRepository
       assignmentId: r.assignmentId,
       volunteerId: r.volunteerId,
       volunteerName: r.volunteerName ?? r.volunteerId,
-      slotId: r.slotId,
-      slotLabel: r.slotLabel ?? fromDate({ date: r.slotStart }),
+      eventTimeBlockId: r.eventTimeBlockId,
+      eventTimeBlockLabel:
+        r.eventTimeBlockLabel ?? fromDate({ date: r.eventTimeBlockStart }),
       roleId: r.roleId,
       roleName: r.roleName,
       action: r.action as AssignmentAuditLogEntry['action'],

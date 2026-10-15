@@ -1,16 +1,16 @@
 import type {
   ChurchId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   TeamId,
-  TimeSlotId,
 } from '../../branded-ids';
 import type {
   MinistryParticipation,
   ParticipationState,
 } from '../../entities/ministry-participation';
-import type { ParticipationSlotInclusion } from '../../entities/participation-slot-inclusion';
+import type { ParticipationEventTimeBlockInclusion } from '../../entities/participation-event-time-block-inclusion';
 import type { TransactionContext } from './transaction-context';
 
 export interface GetParticipationInput {
@@ -68,14 +68,14 @@ export interface ListInclusionsInput {
 export interface ReplaceInclusionsInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlotIds: TimeSlotId[];
+  eventTimeBlockIds: EventTimeBlockId[];
   tx?: TransactionContext;
 }
 
 export interface AddInclusionInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   tx?: TransactionContext;
 }
 
@@ -85,7 +85,7 @@ export interface TouchParticipationInput {
   tx?: TransactionContext;
 }
 
-export interface ListMinistryCycleSummariesInput {
+export interface ListScheduleSummariesInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   teamId?: TeamId;
@@ -95,14 +95,14 @@ export interface ListMinistryCycleSummariesInput {
 /** Iteration 3 (research.md R15/R16): one row per sent `Cycle`
  * church-wide, annotated with this ministry's participation data. A cycle
  * the ministry has zero events in still appears, with `isPartOf: false`. */
-export interface MinistryCycleSummaryRow {
+export interface ScheduleSummaryRow {
   cycleId: string;
   name: string;
   startDate: Date;
   endDate: Date;
   isPartOf: boolean;
   eventCount: number;
-  slotCount: number;
+  eventTimeBlockCount: number;
   status: 'not_started' | 'in_progress' | 'published';
   availabilityRequestedForAll: boolean;
   availabilityRequestedForAny: boolean;
@@ -128,11 +128,11 @@ export interface MinistryParticipationRepository {
   ): Promise<MinistryParticipation>;
   listInclusions(
     input: ListInclusionsInput,
-  ): Promise<ParticipationSlotInclusion[]>;
+  ): Promise<ParticipationEventTimeBlockInclusion[]>;
   replaceInclusions(input: ReplaceInclusionsInput): Promise<void>;
   addInclusion(input: AddInclusionInput): Promise<void>;
   touch(input: TouchParticipationInput): Promise<void>;
-  listMinistryCycleSummaries(
-    input: ListMinistryCycleSummariesInput,
-  ): Promise<MinistryCycleSummaryRow[]>;
+  listScheduleSummaries(
+    input: ListScheduleSummariesInput,
+  ): Promise<ScheduleSummaryRow[]>;
 }

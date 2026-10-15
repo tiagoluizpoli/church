@@ -38,14 +38,14 @@ interface ShiftSummaryResponse {
   id: string;
 }
 
-interface SlotSummaryResponse {
+interface EventTimeBlockSummaryResponse {
   shifts: ShiftSummaryResponse[];
 }
 
 interface ParticipationEventViewResponse {
   participation: ParticipationSummaryResponse;
   event: EventSummaryResponse;
-  slots: SlotSummaryResponse[];
+  eventTimeBlocks: EventTimeBlockSummaryResponse[];
 }
 
 interface CycleParticipationResponse {
@@ -136,22 +136,22 @@ async function setUpLiveChanges({
     throw new Error('Expected the live-changes template to have one block.');
   }
 
-  const profileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/serving-profile`,
+  const usualSetupResponse = await page.request.put(
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/usual-setup`,
     {
       data: {
         entries: [
           {
-            sourceTemplateBlockId: block.id,
+            sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 2 },
-            headcounts: [{ roleId: usherRoleId, count: 1 }],
+            headcounts: [{ roleId: usherRoleId, peopleNeeded: 1 }],
           },
         ],
       },
     },
   );
-  expect(profileResponse.ok()).toBeTruthy();
+  expect(usualSetupResponse.ok()).toBeTruthy();
 
   const applyResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/apply-templates`,
@@ -181,7 +181,7 @@ async function setUpLiveChanges({
   );
   expect(requestResponse.ok()).toBeTruthy();
 
-  const shifts = eventView.slots[0]?.shifts ?? [];
+  const shifts = eventView.eventTimeBlocks[0]?.shifts ?? [];
   const [firstShift, secondShift] = shifts;
   if (!firstShift || !secondShift) {
     throw new Error(

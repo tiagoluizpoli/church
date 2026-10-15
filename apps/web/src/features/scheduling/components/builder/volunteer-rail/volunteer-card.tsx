@@ -172,8 +172,8 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
       />
       <TooltipContent>
         {workloadCount === 1
-          ? 'Already serving 1 slot in this cycle'
-          : `Already serving ${workloadCount} slots in this cycle`}
+          ? 'Already serving 1 shift in this cycle'
+          : `Already serving ${workloadCount} shifts in this cycle`}
       </TooltipContent>
     </Tooltip>
   );
@@ -199,8 +199,8 @@ interface VolunteerCardProps {
   /**
    * Set while a shift×role is focused and this volunteer may be committed to
    * it, to the tier that pick would land in. The card's action swaps from
-   * "Select slot" to "Pick me": focus-then-pick is the builder's primary assign
-   * path (B-2), so it is the filled primary button here while "Select slot"
+   * "Select shift" to "Pick me": focus-then-pick is the builder's primary assign
+   * path (B-2), so it is the filled primary button here while "Select shift"
    * stays quiet. `override` and `unqualified` render it as a warning instead —
    * a pick that will demand a reason must not look like a free one.
    */
@@ -259,7 +259,7 @@ export function VolunteerCard({
   const statusLine = (
     <span className={cn('shrink-0 text-xs', status.tone)}>{status.label}</span>
   );
-  // Shared by both bottom-right actions (Select slot / Pick me). The
+  // Shared by both bottom-right actions (Select shift / Pick me). The
   // negative inline-end margin cancels the button's own inline padding so its
   // *label* shares the status's right edge, and -mb-1.5 cancels the leftover
   // box space below the label so it sits on the last text line rather than
@@ -310,7 +310,7 @@ export function VolunteerCard({
             here made the accessibility layer itself announce "press the space
             bar to pick up" for a gesture that never fires. It is hidden from
             assistive tech instead; the card's own label carries the FR-013
-            name+role disambiguation the grip used to, and Select slot / Pick me
+            name+role disambiguation the grip used to, and Select shift / Pick me
             are the real keyboard paths (B-3). The negative margin cancels the
             button's own box so the icon — not the hit area — sits on the card's
             12px padding corner, matching the other three. */}
@@ -376,7 +376,7 @@ export function VolunteerCard({
 
         {/* Two separate facts, never side by side: the clock pins to the first
             line and `mt-auto` bottom-anchors the block so it lines up with the
-            grip and the Select-slot button. */}
+            grip and the Select-shift button. */}
         <span className="mt-auto flex items-start gap-1.5 pt-1.5 text-muted-foreground text-xs">
           <ClockIcon className="mt-0.5 size-3 shrink-0" />
           <span className="flex min-w-0 flex-col">
@@ -417,7 +417,7 @@ export function VolunteerCard({
           statusLine
         )}
         {assignFit && onAssignToFocused ? (
-          // While a slot is focused the select affordance is redundant — the
+          // While a shift is focused the select affordance is redundant — the
           // rail is already scoped to one place — so the same corner commits
           // the pick instead. Conflict capture happens downstream, identical
           // to a board assignment; what the tier changes here is only whether
@@ -456,15 +456,15 @@ export function VolunteerCard({
             size={isTouch ? 'touch' : 'sm'}
             variant={isSelected ? 'secondary' : 'ghost'}
             aria-pressed={isSelected}
-            // "Select slot" is one of the two keyboard paths that replace the
-            // grip's phantom keyboard drag, so it has to say whose slot it
+            // "Select shift" is one of the two keyboard paths that replace the
+            // grip's phantom keyboard drag, so it has to say whose shift it
             // selects — 200 identically-named buttons name nobody (B-3).
-            aria-label={`Select ${accessibleName} to place on a slot`}
-            data-testid="volunteer-select-slot"
+            aria-label={`Select ${accessibleName} to place on a shift`}
+            data-testid="volunteer-select-shift"
             className={cornerActionClassName}
             onClick={() => onSelect(volunteer.volunteerId)}
           >
-            {isSelected ? 'Selected' : 'Select slot'}
+            {isSelected ? 'Selected' : 'Select shift'}
           </Button>
         ) : null}
       </div>

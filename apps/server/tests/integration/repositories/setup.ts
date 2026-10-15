@@ -11,10 +11,10 @@ import {
   buildAssignmentAudit,
   buildCycle,
   buildEvent,
+  buildEventTimeBlock,
   buildMinistryParticipation,
   buildShift,
-  buildSlotRequirement,
-  buildTimeSlot,
+  buildShiftRequirement,
 } from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
@@ -32,8 +32,8 @@ export const volunteerDashboardSeed = {
   ministryId: '33333333-3333-3333-3333-333333333331',
   hourlyEventId: '66666666-6666-6666-6666-666666666661',
   publishedEventId: '66666666-6666-6666-6666-666666666662',
-  hourlySlotId: '77777777-7777-7777-7777-777777777771',
-  publishedSlotId: '77777777-7777-7777-7777-777777777772',
+  hourlyEventTimeBlockId: '77777777-7777-7777-7777-777777777771',
+  publishedEventTimeBlockId: '77777777-7777-7777-7777-777777777772',
   confirmedAssignmentId: '99999999-9999-9999-9999-999999999991',
 } as const;
 
@@ -74,8 +74,8 @@ export async function seed(): Promise<void> {
   const volunteerTwoId = '44444444-4444-4444-4444-444444444442';
   const youthGatheringId = '66666666-6666-6666-6666-666666666661';
   const adultServiceId = '66666666-6666-6666-6666-666666666662';
-  const morningSlotId = '77777777-7777-7777-7777-777777777771';
-  const afternoonSlotId = '77777777-7777-7777-7777-777777777772';
+  const morningEventTimeBlockId = '77777777-7777-7777-7777-777777777771';
+  const afternoonEventTimeBlockId = '77777777-7777-7777-7777-777777777772';
   const youthParticipationId = '61616161-6161-6161-6161-616161616161';
   const adultParticipationId = '61616161-6161-6161-6161-616161616162';
   const morningShiftId = '71717171-7171-7171-7171-717171717171';
@@ -239,21 +239,21 @@ export async function seed(): Promise<void> {
     status: 'scheduled',
   });
 
-  // Time slots (slot-1 for event-1 with 1 slot requirement)
-  await buildTimeSlot({
+  // Event time blocks (event-time-block-1 for event-1 with 1 shift requirement)
+  await buildEventTimeBlock({
     db: testDb,
     churchId,
     eventId: youthGatheringId,
-    id: morningSlotId,
+    id: morningEventTimeBlockId,
     start: jun5At09,
     end: jun5At11,
     label: 'Morning Service',
   });
-  await buildTimeSlot({
+  await buildEventTimeBlock({
     db: testDb,
     churchId,
     eventId: adultServiceId,
-    id: afternoonSlotId,
+    id: afternoonEventTimeBlockId,
     start: jun5At11,
     end: jun5At13,
     label: 'Afternoon Service',
@@ -266,7 +266,7 @@ export async function seed(): Promise<void> {
     eventId: youthGatheringId,
     id: youthParticipationId,
     state: 'preparing',
-    timeSlotIds: [],
+    eventTimeBlockIds: [],
   });
   await buildMinistryParticipation({
     db: testDb,
@@ -275,14 +275,14 @@ export async function seed(): Promise<void> {
     eventId: adultServiceId,
     id: adultParticipationId,
     state: 'published',
-    timeSlotIds: [],
+    eventTimeBlockIds: [],
   });
 
   await buildShift({
     db: testDb,
     churchId,
     participationId: youthParticipationId,
-    timeSlotId: morningSlotId,
+    eventTimeBlockId: morningEventTimeBlockId,
     id: morningShiftId,
     start: jun5At09,
     end: jun5At11,
@@ -291,23 +291,23 @@ export async function seed(): Promise<void> {
     db: testDb,
     churchId,
     participationId: adultParticipationId,
-    timeSlotId: afternoonSlotId,
+    eventTimeBlockId: afternoonEventTimeBlockId,
     id: afternoonShiftId,
     start: jun5At11,
     end: jun5At13,
   });
 
-  await buildSlotRequirement({
+  await buildShiftRequirement({
     db: testDb,
     churchId,
     participationId: youthParticipationId,
     shiftId: morningShiftId,
     roleId: usherRoleId,
     id: '88888888-8888-8888-8888-888888888881',
-    requiredCount: 2,
+    peopleNeeded: 2,
   });
 
-  // Assignments (assignment-1 confirmed, assignment-2 declined for slot-1)
+  // Assignments (assignment-1 confirmed, assignment-2 declined for event-time-block-1)
   await buildAssignment({
     db: testDb,
     churchId,

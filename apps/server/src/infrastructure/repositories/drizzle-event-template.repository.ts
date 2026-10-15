@@ -1,5 +1,5 @@
 import { NotFoundError } from '@church/core';
-import { eventTemplate, timeBlock } from '@church/db';
+import { eventTemplate, templateTimeBlock } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { EventTemplateId } from '../../domain/branded-ids';
@@ -19,7 +19,7 @@ import type { AnyDrizzleDb } from './types';
 
 interface EventTemplateGraphRow {
   template: typeof eventTemplate.$inferSelect;
-  blocks: Array<typeof timeBlock.$inferSelect>;
+  blocks: Array<typeof templateTimeBlock.$inferSelect>;
 }
 
 interface DrizzleEventTemplateRepositoryInput {
@@ -49,7 +49,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     }
 
     if (input.blocks.length > 0) {
-      await db.insert(timeBlock).values(
+      await db.insert(templateTimeBlock).values(
         input.blocks.map((block) => ({
           churchId: input.churchId,
           templateId: templateRow.id,
@@ -90,11 +90,11 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     }
 
     await db
-      .delete(timeBlock)
-      .where(eq(timeBlock.templateId, input.templateId));
+      .delete(templateTimeBlock)
+      .where(eq(templateTimeBlock.templateId, input.templateId));
 
     if (input.blocks.length > 0) {
-      await db.insert(timeBlock).values(
+      await db.insert(templateTimeBlock).values(
         input.blocks.map((block) => ({
           churchId: input.churchId,
           templateId: input.templateId,
@@ -202,9 +202,9 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     const db = getClient(this.db, input.tx);
     const blocks = await db
       .select()
-      .from(timeBlock)
-      .where(eq(timeBlock.templateId, input.template.id))
-      .orderBy(asc(timeBlock.order));
+      .from(templateTimeBlock)
+      .where(eq(templateTimeBlock.templateId, input.template.id))
+      .orderBy(asc(templateTimeBlock.order));
 
     const graph: EventTemplateGraphRow = {
       template: input.template,

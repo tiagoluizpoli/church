@@ -141,9 +141,9 @@ export type TemplateEditorModel = Pick<
   | 'handleResetTemplateEditor'
   | 'handleTemplateNameChange'
   | 'handleTemplateWeekdayChange'
-  | 'handleTemplateBlockChange'
-  | 'handleRemoveTemplateBlock'
-  | 'handleAddTemplateBlock'
+  | 'handleTemplateTimeBlockChange'
+  | 'handleRemoveTemplateTimeBlock'
+  | 'handleAddTemplateTimeBlock'
   | 'handleSaveTemplate'
 >;
 
@@ -160,9 +160,9 @@ export function useTemplateEditor(): TemplateEditorModel {
     handleResetTemplateEditor: context.handleResetTemplateEditor,
     handleTemplateNameChange: context.handleTemplateNameChange,
     handleTemplateWeekdayChange: context.handleTemplateWeekdayChange,
-    handleTemplateBlockChange: context.handleTemplateBlockChange,
-    handleRemoveTemplateBlock: context.handleRemoveTemplateBlock,
-    handleAddTemplateBlock: context.handleAddTemplateBlock,
+    handleTemplateTimeBlockChange: context.handleTemplateTimeBlockChange,
+    handleRemoveTemplateTimeBlock: context.handleRemoveTemplateTimeBlock,
+    handleAddTemplateTimeBlock: context.handleAddTemplateTimeBlock,
     handleSaveTemplate: context.handleSaveTemplate,
   };
 }
@@ -220,7 +220,7 @@ export function useCycleSelection(): CycleSelectionModel {
 
 export interface CycleHeaderCounts {
   eventCount: number;
-  slotCount: number;
+  eventTimeBlockCount: number;
 }
 
 export interface CycleHeaderNameAndStatus {
@@ -245,7 +245,8 @@ export interface CycleHeaderModel {
  * other component should render `selectedCycle.state` as a badge.
  */
 export function useCycleHeader(): CycleHeaderModel {
-  const { selectedCycle, cycleEvents, totalSlots } = usePlanningAdminContext();
+  const { selectedCycle, cycleEvents, totalEventTimeBlocks } =
+    usePlanningAdminContext();
 
   if (!selectedCycle) {
     return { nameAndStatus: null, period: null, counts: null };
@@ -257,7 +258,10 @@ export function useCycleHeader(): CycleHeaderModel {
       startDate: selectedCycle.startDate,
       endDate: selectedCycle.endDate,
     },
-    counts: { eventCount: cycleEvents.length, slotCount: totalSlots },
+    counts: {
+      eventCount: cycleEvents.length,
+      eventTimeBlockCount: totalEventTimeBlocks,
+    },
   };
 }
 
@@ -307,14 +311,14 @@ export type CycleReviewCardModel = Pick<
   | 'handleSendCycle'
   | 'updateEventPending'
   | 'deleteEventPending'
-  | 'createSlotPending'
-  | 'updateSlotPending'
-  | 'deleteSlotPending'
+  | 'createEventTimeBlockPending'
+  | 'updateEventTimeBlockPending'
+  | 'deleteEventTimeBlockPending'
   | 'handleUpdateEvent'
   | 'handleDeleteEvent'
-  | 'handleCreateSlot'
-  | 'handleUpdateSlot'
-  | 'handleDeleteSlot'
+  | 'handleCreateEventTimeBlock'
+  | 'handleUpdateEventTimeBlock'
+  | 'handleDeleteEventTimeBlock'
 >;
 
 export function useCycleReviewCard(): CycleReviewCardModel {
@@ -327,14 +331,14 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     cycleEvents: context.cycleEvents,
     updateEventPending: context.updateEventPending,
     deleteEventPending: context.deleteEventPending,
-    createSlotPending: context.createSlotPending,
-    updateSlotPending: context.updateSlotPending,
-    deleteSlotPending: context.deleteSlotPending,
+    createEventTimeBlockPending: context.createEventTimeBlockPending,
+    updateEventTimeBlockPending: context.updateEventTimeBlockPending,
+    deleteEventTimeBlockPending: context.deleteEventTimeBlockPending,
     handleUpdateEvent: context.handleUpdateEvent,
     handleDeleteEvent: context.handleDeleteEvent,
-    handleCreateSlot: context.handleCreateSlot,
-    handleUpdateSlot: context.handleUpdateSlot,
-    handleDeleteSlot: context.handleDeleteSlot,
+    handleCreateEventTimeBlock: context.handleCreateEventTimeBlock,
+    handleUpdateEventTimeBlock: context.handleUpdateEventTimeBlock,
+    handleDeleteEventTimeBlock: context.handleDeleteEventTimeBlock,
     sendCyclePending: context.sendCyclePending,
     handleSendCycle: context.handleSendCycle,
   };

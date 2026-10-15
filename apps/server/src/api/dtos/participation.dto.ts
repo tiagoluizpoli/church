@@ -7,15 +7,18 @@ import {
 import { z } from 'zod';
 import type {
   CycleParticipationView,
-  MinistryCycleSummaryView,
+  ParticipationEventTimeBlockView,
   ParticipationEventView,
-  ParticipationSlotView,
+  ScheduleSummaryView,
 } from '../../domain/contracts/application/participation-manager';
 import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
 import type { Shift } from '../../domain/entities/shift';
-import type { SlotRequirement } from '../../domain/entities/slot-requirement';
+import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
 import { eventMapper, eventResponseSchema } from './event.dto';
-import { timeSlotMapper, timeSlotResponseSchema } from './time-slot.dto';
+import {
+  eventTimeBlockMapper,
+  eventTimeBlockResponseSchema,
+} from './event-time-block.dto';
 
 export const participationResponseSchema = z.object({
   id: z.string(),
@@ -34,7 +37,7 @@ export type ParticipationResponse = z.infer<typeof participationResponseSchema>;
 export const shiftResponseSchema = z.object({
   id: z.string(),
   participationId: z.string(),
-  timeSlotId: z.string(),
+  eventTimeBlockId: z.string(),
   startTime: instantSchema,
   endTime: instantSchema,
   label: z.string().optional(),
@@ -47,15 +50,15 @@ export const shiftRequirementResponseSchema = z.object({
   participationId: z.string(),
   roleId: z.string(),
   teamId: z.string().optional(),
-  requiredCount: z.number(),
+  peopleNeeded: z.number(),
   notes: z.string().optional(),
 });
 export type ShiftRequirementResponse = z.infer<
   typeof shiftRequirementResponseSchema
 >;
 
-export const participationSlotViewSchema = z.object({
-  slot: timeSlotResponseSchema,
+export const participationEventTimeBlockViewSchema = z.object({
+  eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
   shifts: z.array(shiftResponseSchema),
   requirements: z.array(shiftRequirementResponseSchema),
@@ -64,7 +67,7 @@ export const participationSlotViewSchema = z.object({
 export const participationEventViewSchema = z.object({
   participation: participationResponseSchema,
   event: eventResponseSchema,
-  slots: z.array(participationSlotViewSchema),
+  eventTimeBlocks: z.array(participationEventTimeBlockViewSchema),
 });
 
 export const cycleParticipationResponseSchema = z.object({
@@ -75,7 +78,7 @@ export type CycleParticipationResponse = z.infer<
 >;
 
 export const setInclusionsBodySchema = z.object({
-  timeSlotIds: z.array(z.string()),
+  eventTimeBlockIds: z.array(z.string()),
 });
 
 const manualSplitSpanSchema = z.object({
@@ -108,7 +111,7 @@ export type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
 export const shiftRequirementBodySchema = z.object({
   roleId: z.string(),
   teamId: z.string().optional(),
-  requiredCount: z.number().int().min(1),
+  peopleNeeded: z.number().int().min(1),
   notes: z.string().optional(),
 });
 export type ShiftRequirementBody = z.infer<typeof shiftRequirementBodySchema>;
@@ -122,27 +125,27 @@ export const askAvailabilityResponseSchema = z.object({
   notifiedVolunteerCount: z.number(),
 });
 
-export const ministryCycleSummaryResponseSchema = z.object({
+export const scheduleSummaryResponseSchema = z.object({
   cycleId: z.string(),
   name: z.string(),
   startDate: calendarDaySchema,
   endDate: calendarDaySchema,
   isPartOf: z.boolean(),
   eventCount: z.number(),
-  slotCount: z.number(),
+  eventTimeBlockCount: z.number(),
   status: z.enum(['not_started', 'in_progress', 'published']),
   availabilityRequestedForAll: z.boolean(),
   availabilityRequestedForAny: z.boolean(),
 });
-export type MinistryCycleSummaryResponse = z.infer<
-  typeof ministryCycleSummaryResponseSchema
+export type ScheduleSummaryResponse = z.infer<
+  typeof scheduleSummaryResponseSchema
 >;
 
-export const ministryCycleSummaryListResponseSchema = z.object({
-  cycles: z.array(ministryCycleSummaryResponseSchema),
+export const scheduleSummaryListResponseSchema = z.object({
+  cycles: z.array(scheduleSummaryResponseSchema),
 });
-export type MinistryCycleSummaryListResponse = z.infer<
-  typeof ministryCycleSummaryListResponseSchema
+export type ScheduleSummaryListResponse = z.infer<
+  typeof scheduleSummaryListResponseSchema
 >;
 
 export const availabilityStatusResponseSchema = z.object({
@@ -172,7 +175,7 @@ function toShiftResponse(shift: Shift): ShiftResponse {
   return {
     id: shift.id as string,
     participationId: shift.participationId as string,
-    timeSlotId: shift.timeSlotId as string,
+    eventTimeBlockId: shift.eventTimeBlockId as string,
     startTime: shift.startTime,
     endTime: shift.endTime,
     label: shift.label,
@@ -180,7 +183,7 @@ function toShiftResponse(shift: Shift): ShiftResponse {
 }
 
 function toShiftRequirementResponse(
-  requirement: SlotRequirement,
+  requirement: ShiftRequirement,
 ): ShiftRequirementResponse {
   return {
     id: requirement.id as string,
@@ -188,14 +191,14 @@ function toShiftRequirementResponse(
     participationId: (requirement.participationId ?? '') as string,
     roleId: requirement.roleId as string,
     teamId: requirement.teamId as string | undefined,
-    requiredCount: requirement.requiredCount,
+    peopleNeeded: requirement.peopleNeeded,
     notes: requirement.notes,
   };
 }
 
-function toSlotView(view: ParticipationSlotView) {
+function toEventTimeBlockView(view: ParticipationEventTimeBlockView) {
   return {
-    slot: timeSlotMapper.toResponse(view.slot),
+    eventTimeBlock: eventTimeBlockMapper.toResponse(view.eventTimeBlock),
     included: view.included,
     shifts: view.shifts.map(toShiftResponse),
     requirements: view.requirements.map(toShiftRequirementResponse),
@@ -203,7 +206,7 @@ function toSlotView(view: ParticipationSlotView) {
 }
 
 /**
- * `MinistryCycleSummaryView.startDate/endDate` are still raw `Date` (a
+ * `ScheduleSummaryView.startDate/endDate` are still raw `Date` (a
  * pre-seam application-layer gap this DTO can't close — the Cycle
  * entity they originate from is already `CalendarDay`). `timeZone: 'UTC'`
  * only recovers the label as-stored; it is not a Church Timezone read and
@@ -217,9 +220,9 @@ function toCycleDay({ date }: ToCycleDayInput) {
   return today({ instant: fromDate({ date }), timeZone: 'UTC' });
 }
 
-function toMinistryCycleSummaryResponse(
-  view: MinistryCycleSummaryView,
-): MinistryCycleSummaryResponse {
+function toScheduleSummaryResponse(
+  view: ScheduleSummaryView,
+): ScheduleSummaryResponse {
   return {
     cycleId: view.cycleId as string,
     name: view.name,
@@ -227,7 +230,7 @@ function toMinistryCycleSummaryResponse(
     endDate: toCycleDay({ date: view.endDate }),
     isPartOf: view.isPartOf,
     eventCount: view.eventCount,
-    slotCount: view.slotCount,
+    eventTimeBlockCount: view.eventTimeBlockCount,
     status: view.status,
     availabilityRequestedForAll: view.availabilityRequestedForAll,
     availabilityRequestedForAny: view.availabilityRequestedForAny,
@@ -238,7 +241,7 @@ function toEventView(view: ParticipationEventView) {
   return {
     participation: toParticipationResponse(view.participation),
     event: eventMapper.toResponse(view.event),
-    slots: view.slots.map(toSlotView),
+    eventTimeBlocks: view.eventTimeBlocks.map(toEventTimeBlockView),
   };
 }
 
@@ -254,9 +257,9 @@ export const participationMapper = {
   ): CycleParticipationResponse {
     return { events: view.events.map(toEventView) };
   },
-  ministryCycleSummaryListToResponse(
-    views: MinistryCycleSummaryView[],
-  ): MinistryCycleSummaryListResponse {
-    return { cycles: views.map(toMinistryCycleSummaryResponse) };
+  scheduleSummaryListToResponse(
+    views: ScheduleSummaryView[],
+  ): ScheduleSummaryListResponse {
+    return { cycles: views.map(toScheduleSummaryResponse) };
   },
 };

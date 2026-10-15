@@ -4,9 +4,9 @@ import {
   invitation,
   member,
   ministry,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   organization,
   role,
   team,
@@ -59,7 +59,7 @@ interface CountRowsInput {
     | typeof account
     | typeof volunteer
     | typeof ministry
-    | typeof ministryVolunteer;
+    | typeof ministryMembership;
 }
 
 async function countRows({ table }: CountRowsInput): Promise<number> {
@@ -167,10 +167,10 @@ describe('minimal Church seed recipe', () => {
 
     const memberships = await testDb
       .select()
-      .from(ministryVolunteer)
+      .from(ministryMembership)
       .where(
         eq(
-          ministryVolunteer.volunteerId,
+          ministryMembership.volunteerId,
           seeded.personas.volunteer.volunteerId,
         ),
       );
@@ -186,13 +186,13 @@ describe('minimal Church seed recipe', () => {
 
     const qualifications = await testDb
       .select({
-        churchId: ministryVolunteerRole.churchId,
-        roleId: ministryVolunteerRole.roleId,
+        churchId: ministryMembershipRole.churchId,
+        roleId: ministryMembershipRole.roleId,
       })
-      .from(ministryVolunteerRole)
+      .from(ministryMembershipRole)
       .where(
         eq(
-          ministryVolunteerRole.ministryVolunteerId,
+          ministryMembershipRole.ministryMembershipId,
           seeded.personas.volunteer.ministryMembershipId,
         ),
       );
@@ -202,14 +202,14 @@ describe('minimal Church seed recipe', () => {
 
     const teamMemberships = await testDb
       .select({
-        churchId: ministryVolunteerTeam.churchId,
-        teamId: ministryVolunteerTeam.teamId,
-        accessLevel: ministryVolunteerTeam.accessLevel,
+        churchId: ministryMembershipTeam.churchId,
+        teamId: ministryMembershipTeam.teamId,
+        accessLevel: ministryMembershipTeam.accessLevel,
       })
-      .from(ministryVolunteerTeam)
+      .from(ministryMembershipTeam)
       .where(
         eq(
-          ministryVolunteerTeam.ministryVolunteerId,
+          ministryMembershipTeam.ministryMembershipId,
           seeded.personas.volunteer.ministryMembershipId,
         ),
       );
@@ -254,7 +254,7 @@ describe('minimal Church seed recipe', () => {
       account,
       volunteer,
       ministry,
-      ministryVolunteer,
+      ministryMembership,
     ]) {
       expect(await countRows({ table })).toBe(0);
     }

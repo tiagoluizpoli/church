@@ -31,7 +31,7 @@ const volunteerManager = {
   getMinistrySchedule: vi.fn(),
   listAvailabilityChecks: vi.fn(),
   getAvailabilityCheck: vi.fn(),
-  setUnavailability: vi.fn(),
+  setUnavailableShifts: vi.fn(),
   confirmAvailabilityCheck: vi.fn(),
   respondToAssignment: vi.fn(),
   cancelOwnAssignment: vi.fn(),

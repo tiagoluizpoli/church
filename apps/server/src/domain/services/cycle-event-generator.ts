@@ -8,13 +8,17 @@ import {
   toInstant,
   weekdayIndex,
 } from '@church/time';
-import type { EventId, EventTemplateId, TimeBlockId } from '../branded-ids';
+import type {
+  EventId,
+  EventTemplateId,
+  TemplateTimeBlockId,
+} from '../branded-ids';
 import type { Cycle } from '../entities/cycle';
 import type { EventTemplate } from '../entities/event-template';
 
-export interface ExistingGeneratedSlotFingerprint {
+export interface ExistingGeneratedEventTimeBlockFingerprint {
   eventDate: CalendarDay;
-  sourceTemplateBlockId: TimeBlockId;
+  sourceTemplateTimeBlockId: TemplateTimeBlockId;
 }
 
 export interface ExistingGeneratedEvent {
@@ -27,12 +31,12 @@ export interface GenerateCycleEventsInput {
   cycle: Cycle;
   templates: EventTemplate[];
   existingEvents: ExistingGeneratedEvent[];
-  existingFingerprints: ExistingGeneratedSlotFingerprint[];
+  existingFingerprints: ExistingGeneratedEventTimeBlockFingerprint[];
   timeZone: string;
 }
 
-export interface GeneratedCycleSlotPlan {
-  sourceTemplateBlockId: TimeBlockId;
+export interface GeneratedCycleEventTimeBlockPlan {
+  sourceTemplateTimeBlockId: TemplateTimeBlockId;
   label: string;
   startTime: Instant;
   endTime: Instant;
@@ -44,27 +48,27 @@ export interface GeneratedCycleCreateEventPlan {
   title: string;
   start: Instant;
   end: Instant;
-  slots: GeneratedCycleSlotPlan[];
+  eventTimeBlocks: GeneratedCycleEventTimeBlockPlan[];
 }
 
-export interface GeneratedCycleAppendSlotPlan {
-  kind: 'append_slots';
+export interface GeneratedCycleAppendEventTimeBlockPlan {
+  kind: 'append_event_time_blocks';
   eventId: EventId;
-  slots: GeneratedCycleSlotPlan[];
+  eventTimeBlocks: GeneratedCycleEventTimeBlockPlan[];
 }
 
 export type GeneratedCycleEventPlan =
   | GeneratedCycleCreateEventPlan
-  | GeneratedCycleAppendSlotPlan;
+  | GeneratedCycleAppendEventTimeBlockPlan;
 
-interface BuildSlotBoundsInput {
+interface BuildEventTimeBlockBoundsInput {
   date: CalendarDay;
   startTime: TimeOfDay;
   endTime: TimeOfDay;
   timeZone: string;
 }
 
-interface SlotBounds {
+interface EventTimeBlockBounds {
   startTime: Instant;
   endTime: Instant;
 }
@@ -85,7 +89,7 @@ export class CycleEventGenerator {
     const existingFingerprintSet = new Set(
       existingFingerprints.map(
         (fingerprint) =>
-          `${fingerprint.eventDate}::${fingerprint.sourceTemplateBlockId}`,
+          `${fingerprint.eventDate}::${fingerprint.sourceTemplateTimeBlockId}`,
       ),
     );
     const existingEventMap = new Map(
@@ -105,15 +109,15 @@ export class CycleEventGenerator {
       });
 
       for (const eventDate of matchingDates) {
-        const slots = template.blocks
+        const eventTimeBlocks = template.blocks
           .filter((block) => {
-            const fingerprint = `${eventDate}::${block.id as TimeBlockId}`;
+            const fingerprint = `${eventDate}::${block.id as TemplateTimeBlockId}`;
             return !existingFingerprintSet.has(fingerprint);
           })
           .map((block) => ({
-            sourceTemplateBlockId: block.id as TimeBlockId,
+            sourceTemplateTimeBlockId: block.id as TemplateTimeBlockId,
             label: block.label,
-            ...buildSlotBounds({
+            ...buildEventTimeBlockBounds({
               date: eventDate,
               startTime: block.startTime,
               endTime: block.endTime,
@@ -121,9 +125,10 @@ export class CycleEventGenerator {
             }),
           }));
 
-        const [firstSlot, ...restSlots] = slots;
-        const lastSlot = restSlots.at(-1) ?? firstSlot;
-        if (!firstSlot || !lastSlot) {
+        const [firstEventTimeBlock, ...restEventTimeBlocks] = eventTimeBlocks;
+        const lastEventTimeBlock =
+          restEventTimeBlocks.at(-1) ?? firstEventTimeBlock;
+        if (!firstEventTimeBlock || !lastEventTimeBlock) {
           continue;
         }
 
@@ -133,9 +138,9 @@ export class CycleEventGenerator {
 
         if (existingEvent) {
           plans.push({
-            kind: 'append_slots',
+            kind: 'append_event_time_blocks',
             eventId: existingEvent.eventId,
-            slots,
+            eventTimeBlocks,
           });
           continue;
         }
@@ -144,9 +149,9 @@ export class CycleEventGenerator {
           kind: 'create_event',
           sourceTemplateId: template.id as EventTemplateId,
           title: template.name,
-          start: firstSlot.startTime,
-          end: lastSlot.endTime,
-          slots,
+          start: firstEventTimeBlock.startTime,
+          end: lastEventTimeBlock.endTime,
+          eventTimeBlocks,
         });
       }
     }
@@ -177,12 +182,12 @@ function listMatchingCycleDates({
  * A block's end earlier than its start crosses midnight (ADR-0003), so its
  * end resolves against the following day.
  */
-function buildSlotBounds({
+function buildEventTimeBlockBounds({
   date,
   startTime,
   endTime,
   timeZone,
-}: BuildSlotBoundsInput): SlotBounds {
+}: BuildEventTimeBlockBoundsInput): EventTimeBlockBounds {
   const { crossesToNextDay } = timeOfDaySpan({
     start: startTime,
     end: endTime,

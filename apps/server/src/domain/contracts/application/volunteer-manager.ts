@@ -24,7 +24,7 @@ export interface DashboardAvailabilityTask {
 
 export interface DashboardAssignmentItem {
   assignmentId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   shiftId: string;
   participationId: string;
   roleId: string;
@@ -73,8 +73,8 @@ export interface VolunteerDashboard {
 }
 
 export interface MinistryScheduleRow {
-  slotId: string;
-  slotLabel: string;
+  eventTimeBlockId: string;
+  eventTimeBlockLabel: string;
   roleName: string;
   teamName?: string;
   volunteerDisplayName?: string;
@@ -140,12 +140,12 @@ export interface GetAvailabilityCheckInput {
   churchId: ChurchId;
 }
 
-export interface SetUnavailabilityInput {
+export interface SetUnavailableShiftsInput {
   checkId: AvailabilityCheckId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
   shiftIds: ShiftId[];
-  /** Church-local dates (`yyyy-MM-dd`); each expands to one mark per shift on that date. */
+  /** Church-local dates (`yyyy-MM-dd`); each expands to one unavailable shift per shift on that date. */
   wholeDayDates?: string[];
 }
 
@@ -233,8 +233,8 @@ export interface IVolunteerManager {
   getAvailabilityCheck(
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
-  setUnavailability(
-    input: SetUnavailabilityInput,
+  setUnavailableShifts(
+    input: SetUnavailableShiftsInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
   confirmAvailabilityCheck(
     input: ConfirmAvailabilityCheckInput,

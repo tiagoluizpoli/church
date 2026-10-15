@@ -12,7 +12,7 @@ export interface CycleFormState {
   endDate: string;
 }
 
-export interface TemplateBlockDraft {
+export interface TemplateTimeBlockDraft {
   id: string;
   label: string;
   startTime: TimeOfDay | null;
@@ -22,7 +22,7 @@ export interface TemplateBlockDraft {
 export interface TemplateFormState {
   name: string;
   weekday: string;
-  blocks: TemplateBlockDraft[];
+  blocks: TemplateTimeBlockDraft[];
 }
 
 export type CycleSummary = ListCycles200CyclesItem;
@@ -45,12 +45,12 @@ export interface TemplateLibraryTableRow {
   description: string;
 }
 
-export interface CycleCalendarSlotRow {
-  slotId: string;
+export interface CycleCalendarEventTimeBlockRow {
+  eventTimeBlockId: string;
   label: string;
   startTime: string;
   endTime: string;
-  isOnlySlotInEvent: boolean;
+  isOnlyEventTimeBlockInEvent: boolean;
 }
 
 export interface CycleCalendarTableRow {
@@ -59,7 +59,7 @@ export interface CycleCalendarTableRow {
   start: string;
   end: string;
   status: CycleEventGroup['event']['status'];
-  slots: CycleCalendarSlotRow[];
+  eventTimeBlocks: CycleCalendarEventTimeBlockRow[];
 }
 
 export interface ExpandedCalendarRowsState {
@@ -76,16 +76,16 @@ export interface EditingEventState {
   originalEnd: string;
 }
 
-export interface EditingSlotState {
+export interface EditingEventTimeBlockState {
   eventId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   label: string;
   start: Instant;
   end: Instant;
   isMultiDayEvent: boolean;
 }
 
-export interface CreatingSlotState {
+export interface CreatingEventTimeBlockState {
   eventId: string;
   label: string;
   start: Instant;

@@ -1,22 +1,18 @@
 import {
   assignment,
   assignmentAudit,
-  availability,
   church,
   member,
-  ministryVolunteerRole,
+  ministryMembershipRole,
   organization,
-  participationSlotInclusion,
+  participationEventTimeBlockInclusion,
+  unavailableShift,
   volunteer,
 } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { parseCalendarDay, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  buildAvailabilityCheck,
-  buildUnavailabilityMark,
-} from '@/seeds/builders/availability';
 import {
   buildChurch,
   buildChurchMembership,
@@ -31,11 +27,15 @@ import {
   buildAssignmentAudit,
   buildCycle,
   buildEvent,
+  buildEventTimeBlock,
   buildMinistryParticipation,
   buildShift,
-  buildSlotRequirement,
-  buildTimeSlot,
+  buildShiftRequirement,
 } from '@/seeds/builders/scheduling';
+import {
+  buildAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
   buildVolunteer,
@@ -229,8 +229,8 @@ describe('integration composition of the shared seed builders', () => {
 
     const grants = await testDb
       .select()
-      .from(ministryVolunteerRole)
-      .where(eq(ministryVolunteerRole.ministryVolunteerId, membership.id));
+      .from(ministryMembershipRole)
+      .where(eq(ministryMembershipRole.ministryMembershipId, membership.id));
     expect(grants.map((grant) => grant.roleId)).toEqual([usher.id]);
   });
 
@@ -324,7 +324,7 @@ describe('integration composition of the shared seed builders', () => {
       end,
       status: 'draft',
     });
-    const slot = await buildTimeSlot({
+    const eventTimeBlock = await buildEventTimeBlock({
       db: testDb,
       churchId: CHURCH_ID,
       eventId: planned.id,
@@ -338,23 +338,23 @@ describe('integration composition of the shared seed builders', () => {
       ministryId: ministry.id,
       eventId: planned.id,
       state: 'preparing',
-      timeSlotIds: [slot.id],
+      eventTimeBlockIds: [eventTimeBlock.id],
     });
     const shiftRow = await buildShift({
       db: testDb,
       churchId: CHURCH_ID,
       participationId: participation.id,
-      timeSlotId: slot.id,
+      eventTimeBlockId: eventTimeBlock.id,
       start,
       end,
     });
-    await buildSlotRequirement({
+    await buildShiftRequirement({
       db: testDb,
       churchId: CHURCH_ID,
       participationId: participation.id,
       shiftId: shiftRow.id,
       roleId: usher.id,
-      requiredCount: 2,
+      peopleNeeded: 2,
     });
     const assigned = await buildAssignment({
       db: testDb,
@@ -390,9 +390,9 @@ describe('integration composition of the shared seed builders', () => {
       db: testDb,
       churchId: CHURCH_ID,
       cycleId: cycle.id,
-      ministryVolunteerId: membership.id,
+      ministryMembershipId: membership.id,
     });
-    await buildUnavailabilityMark({
+    await buildUnavailableShift({
       db: testDb,
       churchId: CHURCH_ID,
       availabilityCheckId: check.id,
@@ -400,11 +400,13 @@ describe('integration composition of the shared seed builders', () => {
     });
 
     expect(check.state).toBe('pending');
-    const marks = await testDb
+    const unavailableShifts = await testDb
       .select()
-      .from(availability)
-      .where(eq(availability.availabilityCheckId, check.id));
-    expect(marks.map((mark) => mark.shiftId)).toEqual([shiftRow.id]);
+      .from(unavailableShift)
+      .where(eq(unavailableShift.availabilityCheckId, check.id));
+    expect(
+      unavailableShifts.map((unavailableShift) => unavailableShift.shiftId),
+    ).toEqual([shiftRow.id]);
     expect(cycle.startDate).toEqual(new Date('2024-06-01T00:00:00Z'));
     const [storedAssignment] = await testDb
       .select()
@@ -422,12 +424,17 @@ describe('integration composition of the shared seed builders', () => {
     expect(audits).toHaveLength(1);
     const inclusions = await testDb
       .select()
-      .from(participationSlotInclusion)
-      .where(eq(participationSlotInclusion.participationId, participation.id));
+      .from(participationEventTimeBlockInclusion)
+      .where(
+        eq(
+          participationEventTimeBlockInclusion.participationId,
+          participation.id,
+        ),
+      );
     expect(inclusions).toHaveLength(1);
   });
 
-  it('builds a Time Slot, Shift and Assignment for a Volunteer in one step', async () => {
+  it('builds an Event Time Block, Shift and Assignment for a Volunteer in one step', async () => {
     await buildUser({
       db: testDb,
       id: ADMIN_USER_ID,
@@ -482,7 +489,7 @@ describe('integration composition of the shared seed builders', () => {
       ministryId: ministry.id,
       eventId: planned.id,
       state: 'published',
-      timeSlotIds: [],
+      eventTimeBlockIds: [],
     });
 
     const assigned = await buildAssignedShift({
@@ -497,9 +504,9 @@ describe('integration composition of the shared seed builders', () => {
       status: 'confirmed',
     });
 
-    expect(assigned.timeSlot.eventId).toBe(planned.id);
+    expect(assigned.eventTimeBlock.eventId).toBe(planned.id);
     expect(assigned.shift).toMatchObject({
-      timeSlotId: assigned.timeSlot.id,
+      eventTimeBlockId: assigned.eventTimeBlock.id,
       participationId: participation.id,
     });
     expect(assigned.assignment).toMatchObject({

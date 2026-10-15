@@ -317,7 +317,9 @@ export function CycleBuilder({
         conflictType={actions.override?.input.conflictType ?? 'unavailable'}
         volunteerName={actions.override?.volunteerName ?? ''}
         volunteerMembership={actions.override?.volunteerMembership}
-        slotLabel={actions.override?.input.slotLabel ?? 'this shift'}
+        eventTimeBlockLabel={
+          actions.override?.input.eventTimeBlockLabel ?? 'this shift'
+        }
         roleLabel={
           actions.override
             ? roleLabelFor({ input: actions.override.input, data })

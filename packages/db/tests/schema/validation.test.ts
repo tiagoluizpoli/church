@@ -3,12 +3,12 @@ import {
   assignment,
   cycle,
   event,
+  eventTimeBlock,
   ministry,
   ministryParticipation,
   role,
   shift,
-  slotRequirement,
-  timeSlot,
+  shiftRequirement,
   user,
   volunteer,
 } from '../../src/schema';
@@ -76,8 +76,8 @@ describe('Database Level Constraints (T035)', () => {
     if (!participation) throw new Error('Participation insert failed');
     participationId = participation.id;
 
-    const [slot] = await testDb
-      .insert(timeSlot)
+    const [eventTimeBlockRow] = await testDb
+      .insert(eventTimeBlock)
       .values({
         churchId,
         eventId,
@@ -85,15 +85,15 @@ describe('Database Level Constraints (T035)', () => {
         endTime: new Date('2026-05-10T10:00:00Z'),
       })
       .returning();
-    if (!slot) throw new Error('Slot insert failed');
+    if (!eventTimeBlockRow) throw new Error('Event time block insert failed');
     const [insertedShift] = await testDb
       .insert(shift)
       .values({
         churchId,
         participationId,
-        timeSlotId: slot.id,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
+        eventTimeBlockId: eventTimeBlockRow.id,
+        startTime: eventTimeBlockRow.startTime,
+        endTime: eventTimeBlockRow.endTime,
       })
       .returning();
     if (!insertedShift) throw new Error('Shift insert failed');
@@ -127,11 +127,11 @@ describe('Database Level Constraints (T035)', () => {
     volunteerId = insertedVolunteer.id;
   });
 
-  describe('TimeSlot Constraints', () => {
-    it('should prevent TimeSlot with negative duration', async () => {
+  describe('EventTimeBlock Constraints', () => {
+    it('should prevent EventTimeBlock with negative duration', async () => {
       let failed = false;
       try {
-        await testDb.insert(timeSlot).values({
+        await testDb.insert(eventTimeBlock).values({
           churchId,
           eventId,
           startTime: new Date('2026-05-10T10:00:00Z'),
@@ -143,10 +143,10 @@ describe('Database Level Constraints (T035)', () => {
       expect(failed, 'Should have failed with duration check').toBe(true);
     });
 
-    it('should prevent TimeSlot with zero duration', async () => {
+    it('should prevent EventTimeBlock with zero duration', async () => {
       let failed = false;
       try {
-        await testDb.insert(timeSlot).values({
+        await testDb.insert(eventTimeBlock).values({
           churchId,
           eventId,
           startTime: new Date('2026-05-10T09:00:00Z'),
@@ -159,21 +159,23 @@ describe('Database Level Constraints (T035)', () => {
     });
   });
 
-  describe('SlotRequirement Constraints', () => {
-    it('should prevent SlotRequirement with requiredCount < 1', async () => {
+  describe('ShiftRequirement Constraints', () => {
+    it('should prevent ShiftRequirement with peopleNeeded < 1', async () => {
       let failed = false;
       try {
-        await testDb.insert(slotRequirement).values({
+        await testDb.insert(shiftRequirement).values({
           churchId,
           participationId,
           shiftId,
           roleId,
-          requiredCount: 0,
+          peopleNeeded: 0,
         });
       } catch (_error: unknown) {
         failed = true;
       }
-      expect(failed, 'Should have failed with min count check').toBe(true);
+      expect(failed, 'Should have failed with min people needed check').toBe(
+        true,
+      );
     });
   });
 

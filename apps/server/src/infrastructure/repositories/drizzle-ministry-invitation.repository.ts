@@ -6,7 +6,7 @@ import {
   ministry,
   ministryInvitation,
   ministryInvitationRole,
-  ministryVolunteer,
+  ministryMembership,
   organization,
   outboxMessage,
   role,
@@ -338,15 +338,15 @@ export class DrizzleMinistryInvitationRepository
     const { churchId, ministryId, userId, tx } = input;
     const db = getClient(this.db, tx);
     const [row] = await db
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
-      .innerJoin(volunteer, eq(volunteer.id, ministryVolunteer.volunteerId))
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
       .where(
         and(
           eq(volunteer.userId, userId),
           eq(volunteer.churchId, churchId),
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .limit(1);

@@ -5,11 +5,11 @@ import {
   assignmentAudit,
   cycle,
   event,
+  eventTimeBlock,
   ministry,
   ministryParticipation,
   role,
   shift,
-  timeSlot,
   user,
   volunteer,
 } from '../../src/schema';
@@ -22,7 +22,7 @@ describe('Assignments and Audit Schema', () => {
   let volunteerId: string;
   let userId: string;
   let eventId: string;
-  let slotId: string;
+  let eventTimeBlockId: string;
   let participationId: string;
   let shiftId: string;
   let roleId: string;
@@ -115,9 +115,9 @@ describe('Assignments and Audit Schema', () => {
     if (!participation) throw new Error('Failed to create participation');
     participationId = participation.id;
 
-    // Create a time slot
-    const [newSlot] = await testDb
-      .insert(timeSlot)
+    // Create an event time block
+    const [newEventTimeBlock] = await testDb
+      .insert(eventTimeBlock)
       .values({
         churchId: churchId,
         eventId: eventId,
@@ -125,17 +125,18 @@ describe('Assignments and Audit Schema', () => {
         endTime: new Date(Date.now() + 3600000),
       })
       .returning();
-    if (!newSlot) throw new Error('Failed to create slot');
-    slotId = newSlot.id;
+    if (!newEventTimeBlock)
+      throw new Error('Failed to create event time block');
+    eventTimeBlockId = newEventTimeBlock.id;
 
     const [newShift] = await testDb
       .insert(shift)
       .values({
         churchId,
         participationId,
-        timeSlotId: slotId,
-        startTime: newSlot.startTime,
-        endTime: newSlot.endTime,
+        eventTimeBlockId: eventTimeBlockId,
+        startTime: newEventTimeBlock.startTime,
+        endTime: newEventTimeBlock.endTime,
       })
       .returning();
     if (!newShift) throw new Error('Failed to create shift');
@@ -165,8 +166,8 @@ describe('Assignments and Audit Schema', () => {
     expect(newAssignment.assignedBy).toBe(userId);
   });
 
-  it('should enforce unique volunteer per slot', async () => {
-    // Second assignment for same slot and volunteer should fail
+  it('should enforce unique volunteer per shift', async () => {
+    // Second assignment for same shift and volunteer should fail
     try {
       await testDb.insert(assignment).values({
         churchId,

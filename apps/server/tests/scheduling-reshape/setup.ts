@@ -10,8 +10,8 @@ import { buildEventTemplate } from '@/seeds/builders/planning';
 import {
   buildCycle,
   buildEvent,
+  buildEventTimeBlock,
   buildMinistryParticipation,
-  buildTimeSlot,
 } from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
@@ -53,7 +53,7 @@ export interface CreatePhase3EventGraphInput {
   start: Date;
   end: Date;
   status?: 'draft' | 'scheduled' | 'cancelled' | 'past';
-  sourceTemplateBlockId?: string;
+  sourceTemplateTimeBlockId?: string;
 }
 
 export interface CreatePhase3TemplateInput {
@@ -198,22 +198,22 @@ export async function createSchedulingPhase3EventGraph(
     ministryId: input.ministryId,
     eventId: planningEvent.id,
     state: 'preparing',
-    timeSlotIds: [],
+    eventTimeBlockIds: [],
   });
 
-  const slot = await buildTimeSlot({
+  const eventTimeBlock = await buildEventTimeBlock({
     db: schedulingTestDb,
     churchId: input.churchId,
     eventId: planningEvent.id,
-    sourceTemplateBlockId: input.sourceTemplateBlockId,
+    sourceTemplateTimeBlockId: input.sourceTemplateTimeBlockId,
     start,
     end,
-    label: 'Generated Slot',
+    label: 'Generated Event time block',
   });
 
   return {
     event: planningEvent,
     participation,
-    slot,
+    eventTimeBlock,
   };
 }

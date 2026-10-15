@@ -22,7 +22,7 @@ export const ISOLATED_SPECS = [
   'scheduling/a11y-planning-nav.spec.ts',
   'scheduling/capability-index.spec.ts',
   'scheduling/cross-cutting.spec.ts',
-  'scheduling/overnight-time-block.spec.ts',
+  'scheduling/overnight-template-time-block.spec.ts',
   'scheduling/planning-cross-tenant-isolation.spec.ts',
   'scheduling/cycles-table-view.spec.ts',
   'scheduling/planning-nav-restructure.spec.ts',
@@ -32,7 +32,7 @@ export const ISOLATED_SPECS = [
   // Journey recipes (#327, #329): each test loads its own Church, personas
   // and schedule.
   'scheduling/a11y-builder.spec.ts',
-  'scheduling/builder-slot-focus.spec.ts',
+  'scheduling/builder-event-time-block-focus.spec.ts',
   'scheduling/qualification.spec.ts',
   'scheduling/smoke.spec.ts',
   'scheduling/us2-leader-prepare.spec.ts',

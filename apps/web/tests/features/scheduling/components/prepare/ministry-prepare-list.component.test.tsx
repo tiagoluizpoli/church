@@ -10,18 +10,18 @@ const ROWS: MinistryPrepareSummaryRow[] = [
     ministryId: 'ministry-1',
     ministryName: 'Greeters',
     eventCount: 3,
-    slotCount: 9,
+    eventTimeBlockCount: 9,
   },
   {
     ministryId: 'ministry-2',
     ministryName: 'Untouched Ministry',
     eventCount: 0,
-    slotCount: 0,
+    eventTimeBlockCount: 0,
   },
 ];
 
 describe('MinistryPrepareList desktop table (US1/T010)', () => {
-  it('renders per-ministry event/slot counts as table rows, including 0/0', async () => {
+  it('renders per-ministry event/time block counts as table rows, including 0/0', async () => {
     renderWithProviders(
       <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
@@ -108,10 +108,10 @@ describe('MinistryPrepareList mobile card list (US1/T011)', () => {
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveTextContent('Greeters');
     expect(cards[0]).toHaveTextContent('3 events');
-    expect(cards[0]).toHaveTextContent('9 slots');
+    expect(cards[0]).toHaveTextContent('9 time blocks');
     expect(cards[1]).toHaveTextContent('Untouched Ministry');
     expect(cards[1]).toHaveTextContent('0 events');
-    expect(cards[1]).toHaveTextContent('0 slots');
+    expect(cards[1]).toHaveTextContent('0 time blocks');
   });
 
   it("calls onSelectMinistry when a card's Prepare button is activated", async () => {

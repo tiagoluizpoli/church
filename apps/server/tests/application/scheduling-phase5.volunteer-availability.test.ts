@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
 import {
   availabilityCheck as availabilityCheckTable,
-  availability as availabilityTable,
   ministryParticipation,
+  unavailableShift as unavailableShiftTable,
   volunteerNotification,
 } from '@church/db';
 import { fromDate } from '@church/time';
@@ -21,7 +21,6 @@ import {
 import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
@@ -29,16 +28,17 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
+import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { buildAvailabilityCheck } from '@/seeds/builders/availability';
 import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildMinistryParticipation,
   buildShift,
 } from '@/seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
   buildVolunteerWithMembership,
@@ -63,7 +63,7 @@ function createPhase5Manager(): Phase5Manager {
   const volunteerManager = new DbVolunteerManager({
     volunteerRepo: new DrizzleVolunteerRepository({ db: schedulingTestDb }),
     assignmentRepo: new DrizzleAssignmentRepository({ db: schedulingTestDb }),
-    availabilityRepo: new DrizzleAvailabilityRepository({
+    unavailableShiftRepo: new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     }),
     notificationRepo: new DrizzleVolunteerNotificationRepository({
@@ -91,7 +91,7 @@ function createPhase5Manager(): Phase5Manager {
 interface SeedShiftInput {
   churchId: string;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   startTime: Date;
   endTime: Date;
   label?: string;
@@ -102,7 +102,7 @@ async function seedShift(input: SeedShiftInput) {
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
-    timeSlotId: input.timeSlotId,
+    eventTimeBlockId: input.eventTimeBlockId,
     start: fromDate({ date: input.startTime }),
     end: fromDate({ date: input.endTime }),
     label: input.label,
@@ -112,7 +112,7 @@ async function seedShift(input: SeedShiftInput) {
 interface SeedCheckInput {
   churchId: string;
   cycleId: string;
-  ministryVolunteerId: string;
+  ministryMembershipId: string;
   state?: 'pending' | 'confirmed';
 }
 
@@ -121,7 +121,7 @@ async function seedCheck(input: SeedCheckInput) {
     db: schedulingTestDb,
     churchId: input.churchId,
     cycleId: input.cycleId,
-    ministryVolunteerId: input.ministryVolunteerId,
+    ministryMembershipId: input.ministryMembershipId,
     state: input.state ?? 'pending',
   });
 }
@@ -131,7 +131,7 @@ interface Phase5Fixture {
   cycleId: string;
   eventId: string;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   shiftMorning: SeededShift;
   shiftEvening: SeededShift;
   volunteerId: string;
@@ -171,7 +171,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   const shiftMorning = await seedShift({
     churchId: seed.churchAId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
     startTime: new Date('2026-08-02T12:00:00.000Z'),
     endTime: new Date('2026-08-02T15:00:00.000Z'),
     label: 'Morning',
@@ -179,7 +179,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   const shiftEvening = await seedShift({
     churchId: seed.churchAId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
     startTime: new Date('2026-08-02T18:00:00.000Z'),
     endTime: new Date('2026-08-02T22:00:00.000Z'),
     label: 'Evening',
@@ -197,7 +197,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   const check = await seedCheck({
     churchId: seed.churchAId,
     cycleId: cycle.id,
-    ministryVolunteerId: membership.id,
+    ministryMembershipId: membership.id,
   });
 
   return {
@@ -205,7 +205,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
     cycleId: cycle.id,
     eventId: graph.event.id,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
     shiftMorning,
     shiftEvening,
     volunteerId: VOLUNTEER_ID,
@@ -256,14 +256,14 @@ async function seedSecondMinistryBranch({
     ministryId: secondMinistry.id,
     eventId: fixture.eventId,
     state: 'preparing',
-    timeSlotIds: [],
+    eventTimeBlockIds: [],
   });
 
   // Overlapping: intersects the Morning shift (12:00-15:00). Otherwise disjoint (15:00-17:00 touches edges only).
   await seedShift({
     churchId: fixture.seed.churchAId,
     participationId: secondParticipation.id,
-    timeSlotId: fixture.timeSlotId,
+    eventTimeBlockId: fixture.eventTimeBlockId,
     startTime: overlapping
       ? new Date('2026-08-02T14:00:00.000Z')
       : new Date('2026-08-02T15:00:00.000Z'),
@@ -286,7 +286,7 @@ async function seedSecondMinistryBranch({
   const check = await seedCheck({
     churchId: fixture.seed.churchAId,
     cycleId: fixture.cycleId,
-    ministryVolunteerId: membership.id,
+    ministryMembershipId: membership.id,
   });
 
   return {
@@ -298,11 +298,11 @@ async function seedSecondMinistryBranch({
   };
 }
 
-async function listMarks(checkId: string) {
+async function listUnavailableShifts(checkId: string) {
   return schedulingTestDb
     .select()
-    .from(availabilityTable)
-    .where(eq(availabilityTable.availabilityCheckId, checkId));
+    .from(unavailableShiftTable)
+    .where(eq(unavailableShiftTable.availabilityCheckId, checkId));
 }
 
 describe('Phase 5 volunteer availability (DL2-VA)', () => {
@@ -310,20 +310,20 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('DL2-VA-01 setUnavailability writes only the marked shifts; unmarked remain available', async () => {
+  it('DL2-VA-01 setUnavailableShifts writes only the marked shifts; unmarked remain available', async () => {
     const fixture = await seedPhase5Fixture();
     const { volunteerManager } = createPhase5Manager();
 
-    const detail = await volunteerManager.setUnavailability({
+    const detail = await volunteerManager.setUnavailableShifts({
       checkId: AvailabilityCheckId.from(fixture.checkId),
       volunteerId: VolunteerId.from(fixture.volunteerId),
       churchId: ChurchId.from(fixture.seed.churchAId),
       shiftIds: [ShiftId.from(fixture.shiftEvening.id)],
     });
 
-    const marks = await listMarks(fixture.checkId);
-    expect(marks).toHaveLength(1);
-    expect(marks[0]?.shiftId).toBe(fixture.shiftEvening.id);
+    const unavailableShifts = await listUnavailableShifts(fixture.checkId);
+    expect(unavailableShifts).toHaveLength(1);
+    expect(unavailableShifts[0]?.shiftId).toBe(fixture.shiftEvening.id);
 
     const morning = detail.shifts.find(
       (shift) => shift.shiftId === fixture.shiftMorning.id,
@@ -339,7 +339,7 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     const fixture = await seedPhase5Fixture();
     const { volunteerManager } = createPhase5Manager();
 
-    await volunteerManager.setUnavailability({
+    await volunteerManager.setUnavailableShifts({
       checkId: AvailabilityCheckId.from(fixture.checkId),
       volunteerId: VolunteerId.from(fixture.volunteerId),
       churchId: ChurchId.from(fixture.seed.churchAId),
@@ -347,14 +347,16 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
       wholeDayDates: ['2026-08-02'],
     });
 
-    const marks = await listMarks(fixture.checkId);
-    const markedShiftIds = marks.map((mark) => mark.shiftId).sort();
-    expect(markedShiftIds).toEqual(
+    const unavailableShifts = await listUnavailableShifts(fixture.checkId);
+    const unavailableShiftIds = unavailableShifts
+      .map((unavailableShift) => unavailableShift.shiftId)
+      .sort();
+    expect(unavailableShiftIds).toEqual(
       [fixture.shiftMorning.id, fixture.shiftEvening.id].sort(),
     );
   });
 
-  it('DL2-VA-03 confirm with zero marks transitions to confirmed and sets confirmedAt', async () => {
+  it('DL2-VA-03 confirm with zero unavailable shifts transitions to confirmed and sets confirmedAt', async () => {
     const fixture = await seedPhase5Fixture();
     const { volunteerManager } = createPhase5Manager();
 
@@ -390,7 +392,7 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     });
 
     await expect(
-      volunteerManager.setUnavailability({
+      volunteerManager.setUnavailableShifts({
         checkId: AvailabilityCheckId.from(fixture.checkId),
         volunteerId: intruderId,
         churchId: ChurchId.from(fixture.seed.churchAId),
@@ -505,7 +507,7 @@ async function seedPublishedAssignment(input: SeedPublishedAssignmentInput) {
   const shift = await seedShift({
     churchId: input.churchId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
     startTime: input.eventStart,
     endTime: input.eventEnd,
     label: 'Dashboard shift',
@@ -589,7 +591,7 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
     });
 
     // Both the fixture event and the freshly seeded "published" event are
-    // still in the future with no availability marks recorded, so each
+    // still in the future with no unavailable shifts recorded, so each
     // surfaces as its own (missing) availability task.
     expect(dashboard.availabilityTasks).toHaveLength(2);
     const fixtureTask = dashboard.availabilityTasks.find(

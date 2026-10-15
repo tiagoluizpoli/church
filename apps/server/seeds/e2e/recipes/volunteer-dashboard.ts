@@ -152,7 +152,7 @@ export function createVolunteerDashboardRecipe({
       requirements: {
         careHost: {
           roleId: care.roles.careHost.id,
-          requiredCount: 1,
+          peopleNeeded: 1,
           teamId: care.teams.care.id,
         },
       },
@@ -184,12 +184,12 @@ export function createVolunteerDashboardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, requiredCount: 1 },
+        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
       },
     });
 
     // The product removes an Assignment by deleting its row (reassignment
-    // and own-cancellation alike), so the removed one leaves an open slot and
+    // and own-cancellation alike), so the removed one leaves an open shift and
     // a notification whose payload still names the deleted id. The event is
     // past, which keeps it off the upcoming list and the availability tasks.
     const removedEvent = await buildAssignEvent({
@@ -206,7 +206,7 @@ export function createVolunteerDashboardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, requiredCount: 1 },
+        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
       },
     });
 

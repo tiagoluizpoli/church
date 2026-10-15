@@ -1,9 +1,9 @@
 import type {
   CreateParticipationAssignmentBody,
   GetCycleBuilderData200,
-  GetCycleBuilderData200EventsItemSlotsItemShiftsItem,
-  GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem,
-  GetCycleBuilderData200EventsItemSlotsItemSlot,
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlock,
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItem,
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { randomId } from '@/shared/utils/id';
 
@@ -15,10 +15,12 @@ import { randomId } from '@/shared/utils/id';
  */
 export type CycleBuilderQueryData = GetCycleBuilderData200;
 
-type CycleBuilderRawShift = GetCycleBuilderData200EventsItemSlotsItemShiftsItem;
-type CycleBuilderRawSlot = GetCycleBuilderData200EventsItemSlotsItemSlot;
+type CycleBuilderRawShift =
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItem;
+type CycleBuilderRawEventTimeBlock =
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlock;
 type CycleBuilderRawAssignment =
-  GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem;
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem;
 
 /**
  * Marks a row the client invented while a create is in flight. The server owns
@@ -43,7 +45,7 @@ export function createOptimisticAssignmentId(): string {
 
 interface MapShiftInput {
   shift: CycleBuilderRawShift;
-  slot: CycleBuilderRawSlot;
+  eventTimeBlock: CycleBuilderRawEventTimeBlock;
 }
 
 interface MapCycleBuilderShiftsInput {
@@ -59,10 +61,13 @@ function mapCycleBuilderShifts({
     ...data,
     events: data.events.map((event) => ({
       ...event,
-      slots: event.slots.map((slotItem) => ({
-        ...slotItem,
-        shifts: slotItem.shifts.map((shift) =>
-          mapShift({ shift, slot: slotItem.slot }),
+      eventTimeBlocks: event.eventTimeBlocks.map((eventTimeBlockItem) => ({
+        ...eventTimeBlockItem,
+        shifts: eventTimeBlockItem.shifts.map((shift) =>
+          mapShift({
+            shift,
+            eventTimeBlock: eventTimeBlockItem.eventTimeBlock,
+          }),
         ),
       })),
     })),
@@ -86,12 +91,12 @@ export function addOptimisticAssignment({
 }: AddOptimisticAssignmentInput): CycleBuilderQueryData {
   return mapCycleBuilderShifts({
     data,
-    mapShift: ({ shift, slot }) => {
+    mapShift: ({ shift, eventTimeBlock }) => {
       if (shift.shift.id !== shiftId) return shift;
       const optimistic: CycleBuilderRawAssignment = {
         id: assignmentId,
-        churchId: slot.churchId,
-        slotId: shift.shift.timeSlotId,
+        churchId: eventTimeBlock.churchId,
+        eventTimeBlockId: shift.shift.eventTimeBlockId,
         participationId: shift.shift.participationId,
         shiftId: shift.shift.id,
         volunteerId: body.volunteerId,

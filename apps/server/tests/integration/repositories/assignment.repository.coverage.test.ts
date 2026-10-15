@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ChurchId,
   EventId,
+  EventTimeBlockId,
   RoleId,
   ShiftId,
-  TimeSlotId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
@@ -42,7 +42,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('create() throws when neither shiftId nor slotId is provided', async () => {
+  it('create() throws when neither shiftId nor eventTimeBlockId is provided', async () => {
     const seed = await seedSchedulingPhase3Base();
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
@@ -58,10 +58,12 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
         volunteerId: VolunteerId.from(seed.adminVolunteerId),
         roleId: RoleId.from(roleRow.id),
       }),
-    ).rejects.toThrow('Assignment creation requires either shiftId or slotId');
+    ).rejects.toThrow(
+      'Assignment creation requires either shiftId or eventTimeBlockId',
+    );
   });
 
-  it('create() throws NotFoundError when the slotId has no shift, and resolves via a real shiftId', async () => {
+  it('create() throws NotFoundError when the eventTimeBlockId has no shift, and resolves via a real shiftId', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
@@ -74,22 +76,22 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     });
     const roleId = RoleId.from(roleRow.id);
 
-    // No shift exists for this slot yet.
+    // No shift exists for this event time block yet.
     await expect(
       repo.create(churchId, {
-        slotId: TimeSlotId.from(graph.slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
         volunteerId: VolunteerId.from(seed.adminVolunteerId),
         roleId,
       }),
-    ).rejects.toThrow('Shift not found for slot');
+    ).rejects.toThrow('Shift not found for event time block');
 
     const shiftRow = await buildShift({
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
-      start: fromDate({ date: graph.slot.startTime }),
-      end: fromDate({ date: graph.slot.endTime }),
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      start: fromDate({ date: graph.eventTimeBlock.startTime }),
+      end: fromDate({ date: graph.eventTimeBlock.endTime }),
     });
 
     const createdViaShiftId = await repo.create(churchId, {
@@ -101,15 +103,15 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     expect(createdViaShiftId.participationId).toBe(graph.participation.id);
   });
 
-  it('findBySlotAndVolunteer returns null when there is no match', async () => {
+  it('findByEventTimeBlockAndVolunteer returns null when there is no match', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
-    const found = await repo.findBySlotAndVolunteer(
+    const found = await repo.findByEventTimeBlockAndVolunteer(
       churchId,
-      TimeSlotId.from(graph.slot.id),
+      EventTimeBlockId.from(graph.eventTimeBlock.id),
       VolunteerId.from(seed.adminVolunteerId),
     );
     expect(found).toBeNull();
@@ -141,9 +143,9 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
-      start: fromDate({ date: graph.slot.startTime }),
-      end: fromDate({ date: graph.slot.endTime }),
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      start: fromDate({ date: graph.eventTimeBlock.startTime }),
+      end: fromDate({ date: graph.eventTimeBlock.endTime }),
     });
 
     const created = await repo.create(churchId, {

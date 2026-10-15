@@ -393,7 +393,7 @@ describe('the chained-invitation redemption route', () => {
       withdrawnAssignments: [
         {
           eventName: 'Transfer Sunday',
-          timeSlotStart: '2099-02-01T09:00:00.000Z',
+          eventTimeBlockStart: '2099-02-01T09:00:00.000Z',
           roleName: 'Greeter',
         },
       ],

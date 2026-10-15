@@ -5,11 +5,11 @@ import {
   CycleId,
   EventId,
   EventTemplateId,
+  EventTimeBlockId,
   MinistryId,
   RoleId,
   TeamId,
-  TimeBlockId,
-  TimeSlotId,
+  TemplateTimeBlockId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -43,21 +43,21 @@ import {
   eventTemplateResponseSchema,
   generatedPlanningCountsResponseSchema,
 } from '../dtos/event-template.dto';
+import {
+  createEventTimeBlockBodySchema,
+  eventTimeBlockMapper,
+  eventTimeBlockResponseSchema,
+  updateEventTimeBlockBodySchema,
+} from '../dtos/event-time-block.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
   type SetDefaultDirectionBody,
-  servingProfileMapper,
-  servingProfileResponseSchema,
   setDefaultDirectionBodySchema,
-  type UpsertServingProfileBody,
-  upsertServingProfileBodySchema,
-} from '../dtos/serving-profile.dto';
-import {
-  createSlotBodySchema,
-  timeSlotMapper,
-  timeSlotResponseSchema,
-  updateSlotBodySchema,
-} from '../dtos/time-slot.dto';
+  type UpsertUsualSetupBody,
+  upsertUsualSetupBodySchema,
+  usualSetupMapper,
+  usualSetupResponseSchema,
+} from '../dtos/usual-setup.dto';
 import {
   dateFromCalendarDayString,
   dateFromInstantString,
@@ -77,10 +77,10 @@ interface PlanningEventRouteParams {
   eventId: string;
 }
 
-interface PlanningEventSlotRouteParams {
+interface PlanningEventTimeBlockRouteParams {
   cycleId: string;
   eventId: string;
-  slotId: string;
+  eventTimeBlockId: string;
 }
 
 interface MinistryRouteParams {
@@ -276,7 +276,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'createEventTemplate',
           summary: 'Create an EventTemplate',
           description:
-            'Create a church-owned EventTemplate with its ordered TimeBlocks for a given weekday.',
+            'Create a church-owned EventTemplate with its ordered TemplateTimeBlocks for a given weekday.',
           body: createEventTemplateBodySchema,
           response: { 201: eventTemplateResponseSchema },
         },
@@ -322,7 +322,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'updateEventTemplate',
           summary: 'Update an EventTemplate',
           description:
-            "Replace an EventTemplate's name, weekday, and TimeBlocks.",
+            "Replace an EventTemplate's name, weekday, and TemplateTimeBlocks.",
           body: createEventTemplateBodySchema,
           response: { 200: eventTemplateResponseSchema },
         },
@@ -371,7 +371,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'applyPlanningTemplates',
           summary: 'Apply EventTemplates to a Cycle',
           description:
-            'Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one TimeSlot per TimeBlock.',
+            'Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock.',
           body: applyTemplatesBodySchema,
           response: { 201: generatedPlanningCountsResponseSchema },
         },
@@ -469,128 +469,136 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
-      '/cycles/:cycleId/events/:eventId/slots',
+      '/cycles/:cycleId/events/:eventId/event-time-blocks',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'createPlanningEventSlot',
-          summary: 'Create a TimeSlot on an Event',
-          description: 'Create a church-level TimeSlot within an Event.',
-          body: createSlotBodySchema,
-          response: { 201: timeSlotResponseSchema },
+          operationId: 'createPlanningEventTimeBlock',
+          summary: 'Create a EventTimeBlock on an Event',
+          description: 'Create a church-level EventTimeBlock within an Event.',
+          body: createEventTimeBlockBodySchema,
+          response: { 201: eventTimeBlockResponseSchema },
         },
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
-        const body = request.body as z.infer<typeof createSlotBodySchema>;
-        const slot = await this.planningEventManager.createSlot({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: CycleId.from(cycleId),
-          eventId: EventId.from(eventId),
-          startTime: dateFromInstantString({ value: body.startTime }),
-          endTime: dateFromInstantString({ value: body.endTime }),
-          label: body.label,
-        });
-        return reply.status(201).send(timeSlotMapper.toResponse(slot));
+        const body = request.body as z.infer<
+          typeof createEventTimeBlockBodySchema
+        >;
+        const eventTimeBlock =
+          await this.planningEventManager.createEventTimeBlock({
+            churchId: ChurchId.from(request.churchId),
+            cycleId: CycleId.from(cycleId),
+            eventId: EventId.from(eventId),
+            startTime: dateFromInstantString({ value: body.startTime }),
+            endTime: dateFromInstantString({ value: body.endTime }),
+            label: body.label,
+          });
+        return reply
+          .status(201)
+          .send(eventTimeBlockMapper.toResponse(eventTimeBlock));
       },
     );
 
     app.patch(
-      '/cycles/:cycleId/events/:eventId/slots/:slotId',
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'updatePlanningEventSlot',
-          summary: 'Update a TimeSlot',
-          description: "Update a TimeSlot's bounds or label.",
-          body: updateSlotBodySchema,
-          response: { 200: timeSlotResponseSchema },
+          operationId: 'updatePlanningEventTimeBlock',
+          summary: 'Update a EventTimeBlock',
+          description: "Update a EventTimeBlock's bounds or label.",
+          body: updateEventTimeBlockBodySchema,
+          response: { 200: eventTimeBlockResponseSchema },
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, slotId } =
-          request.params as PlanningEventSlotRouteParams;
-        const body = request.body as z.infer<typeof updateSlotBodySchema>;
-        const slot = await this.planningEventManager.updateSlot({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: CycleId.from(cycleId),
-          eventId: EventId.from(eventId),
-          slotId: TimeSlotId.from(slotId),
-          startTime: optionalDateFromInstantString({ value: body.startTime }),
-          endTime: optionalDateFromInstantString({ value: body.endTime }),
-          label: body.label,
-        });
-        return reply.send(timeSlotMapper.toResponse(slot));
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        const body = request.body as z.infer<
+          typeof updateEventTimeBlockBodySchema
+        >;
+        const eventTimeBlock =
+          await this.planningEventManager.updateEventTimeBlock({
+            churchId: ChurchId.from(request.churchId),
+            cycleId: CycleId.from(cycleId),
+            eventId: EventId.from(eventId),
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+            startTime: optionalDateFromInstantString({ value: body.startTime }),
+            endTime: optionalDateFromInstantString({ value: body.endTime }),
+            label: body.label,
+          });
+        return reply.send(eventTimeBlockMapper.toResponse(eventTimeBlock));
       },
     );
 
     app.delete(
-      '/cycles/:cycleId/events/:eventId/slots/:slotId',
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'deletePlanningEventSlot',
-          summary: 'Delete a TimeSlot',
-          description: 'Delete a TimeSlot from an Event.',
+          operationId: 'deletePlanningEventTimeBlock',
+          summary: 'Delete a EventTimeBlock',
+          description: 'Delete a EventTimeBlock from an Event.',
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, slotId } =
-          request.params as PlanningEventSlotRouteParams;
-        await this.planningEventManager.deleteSlot({
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        await this.planningEventManager.deleteEventTimeBlock({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          slotId: TimeSlotId.from(slotId),
+          eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
         });
         return reply.status(204).send();
       },
     );
 
     app.get(
-      '/ministries/:ministryId/serving-profile',
+      '/ministries/:ministryId/usual-setup',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'getMinistryServingProfile',
-          summary: "Get a Ministry's serving profile",
+          operationId: 'getUsualSetup',
+          summary: "Get a Ministry's usual setup",
           description:
-            "Get a Ministry's MinistryServingProfile, the standing rule declaring which EventTemplate TimeBlocks it always serves.",
-          response: { 200: servingProfileResponseSchema },
+            "Get a Ministry's UsualSetup, the standing rule declaring which EventTemplate TemplateTimeBlocks it always serves.",
+          response: { 200: usualSetupResponseSchema },
         },
       },
       async (request, reply) => {
         const { ministryId } = request.params as MinistryRouteParams;
-        const profiles = await this.participationManager.getServingProfile({
+        const profiles = await this.participationManager.getUsualSetup({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
         });
-        return reply.send(servingProfileMapper.toResponse(profiles));
+        return reply.send(usualSetupMapper.toResponse(profiles));
       },
     );
 
     app.put(
-      '/ministries/:ministryId/serving-profile',
+      '/ministries/:ministryId/usual-setup',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'upsertMinistryServingProfile',
-          summary: "Set a Ministry's serving profile",
+          operationId: 'upsertUsualSetup',
+          summary: "Set a Ministry's usual setup",
           description:
-            "Replace a Ministry's MinistryServingProfile entries, including which TimeBlocks it serves, its Shift split, and headcounts.",
-          body: upsertServingProfileBodySchema,
-          response: { 200: servingProfileResponseSchema },
+            "Replace a Ministry's UsualSetup entries, including which TemplateTimeBlocks it serves, its Shift split, and headcounts.",
+          body: upsertUsualSetupBodySchema,
+          response: { 200: usualSetupResponseSchema },
         },
       },
       async (request, reply) => {
         const { ministryId } = request.params as MinistryRouteParams;
-        const body = request.body as UpsertServingProfileBody;
-        const profiles = await this.participationManager.upsertServingProfile({
+        const body = request.body as UpsertUsualSetupBody;
+        const profiles = await this.participationManager.upsertUsualSetup({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           entries: body.entries.map((entry) => ({
-            sourceTemplateBlockId: TimeBlockId.from(
-              entry.sourceTemplateBlockId,
+            sourceTemplateTimeBlockId: TemplateTimeBlockId.from(
+              entry.sourceTemplateTimeBlockId,
             ),
             serves: entry.serves,
             shiftSplit:
@@ -609,11 +617,11 @@ export class ChurchAdminController implements FastifyController {
               teamId: headcount.teamId
                 ? TeamId.from(headcount.teamId)
                 : undefined,
-              count: headcount.count,
+              peopleNeeded: headcount.peopleNeeded,
             })),
           })),
         });
-        return reply.send(servingProfileMapper.toResponse(profiles));
+        return reply.send(usualSetupMapper.toResponse(profiles));
       },
     );
 
@@ -625,7 +633,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'setMinistryDefaultDirection',
           summary: "Set a Ministry's default direction",
           description:
-            "Set a Ministry's defaultDirection (all-in or all-out), deciding whether it starts opted into every TimeSlot of a cycle by default.",
+            "Set a Ministry's defaultDirection (all-in or all-out), deciding whether it starts opted into every EventTimeBlock of a cycle by default.",
           body: setDefaultDirectionBodySchema,
           response: { 200: ministryResponseSchema },
         },

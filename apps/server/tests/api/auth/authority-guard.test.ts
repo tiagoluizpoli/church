@@ -7,7 +7,7 @@ const manager = {
   canManageParticipation: vi.fn(),
   canManageShift: vi.fn(),
   canManageEvent: vi.fn(),
-  canManageEventSlot: vi.fn(),
+  canManageEventTimeBlock: vi.fn(),
   hasSchedulingAccess: vi.fn(),
 };
 
@@ -25,7 +25,7 @@ describe('AuthorityGuard', () => {
     guard.canManageParticipation(input);
     guard.canManageShift(input);
     guard.canManageEvent(input);
-    guard.canManageEventSlot(input);
+    guard.canManageEventTimeBlock(input);
     guard.hasSchedulingAccess(input);
 
     expect(manager.canManageChurch).toHaveBeenCalledWith(input);
@@ -33,7 +33,7 @@ describe('AuthorityGuard', () => {
     expect(manager.canManageParticipation).toHaveBeenCalledWith(input);
     expect(manager.canManageShift).toHaveBeenCalledWith(input);
     expect(manager.canManageEvent).toHaveBeenCalledWith(input);
-    expect(manager.canManageEventSlot).toHaveBeenCalledWith(input);
+    expect(manager.canManageEventTimeBlock).toHaveBeenCalledWith(input);
     expect(manager.hasSchedulingAccess).toHaveBeenCalledWith(input);
   });
 });

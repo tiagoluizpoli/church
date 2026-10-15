@@ -10,7 +10,7 @@ import {
 import {
   buildMinistryPrepareSummary,
   classifyPrepareFetchError,
-  toMinistryCycleKey,
+  toScheduleKey,
 } from '@/features/scheduling/components/participation-prepare.utils';
 import { MinistryPrepareList } from '@/features/scheduling/components/prepare/ministry-prepare-list';
 import { StatPill } from '@/features/scheduling/components/prepare/stat-pill';
@@ -84,11 +84,15 @@ function PrepareMinistryListRoute() {
     })),
   });
 
-  const slotCountByMinistryAndCycle: Record<string, number> = {};
+  const eventTimeBlockCountByMinistryAndCycle: Record<string, number> = {};
   relevantPairs.forEach(({ ministryId, cycleId }, index) => {
     const events = participationQueries[index]?.data?.events ?? [];
-    slotCountByMinistryAndCycle[toMinistryCycleKey({ ministryId, cycleId })] =
-      events.reduce((total, eventView) => total + eventView.slots.length, 0);
+    eventTimeBlockCountByMinistryAndCycle[
+      toScheduleKey({ ministryId, cycleId })
+    ] = events.reduce(
+      (total, eventView) => total + eventView.eventTimeBlocks.length,
+      0,
+    );
   });
 
   const isLoading =
@@ -119,10 +123,13 @@ function PrepareMinistryListRoute() {
     ministries,
     sentCycleIds,
     eventsByMinistryId,
-    slotCountByMinistryAndCycle,
+    eventTimeBlockCountByMinistryAndCycle,
   });
   const eventTotal = rows.reduce((total, row) => total + row.eventCount, 0);
-  const slotTotal = rows.reduce((total, row) => total + row.slotCount, 0);
+  const eventTimeBlockTotal = rows.reduce(
+    (total, row) => total + row.eventTimeBlockCount,
+    0,
+  );
   const showList = !isLoading && !errorKind;
 
   return (
@@ -145,9 +152,9 @@ function PrepareMinistryListRoute() {
                 testId="prepare-ministry-event-total"
               />
               <StatPill
-                label="Slots"
-                value={slotTotal}
-                testId="prepare-ministry-slot-total"
+                label="Time blocks"
+                value={eventTimeBlockTotal}
+                testId="prepare-ministry-event-time-block-total"
               />
             </div>
           ) : null

@@ -6,7 +6,7 @@ import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
 export const assignmentResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
-  slotId: z.string(),
+  eventTimeBlockId: z.string(),
   participationId: z.string().optional(),
   shiftId: z.string().optional(),
   volunteerId: z.string(),
@@ -45,7 +45,7 @@ function toAssignmentResponse(a: Assignment): AssignmentResponse {
   return {
     id: a.id as string,
     churchId: a.churchId as string,
-    slotId: a.slotId as string,
+    eventTimeBlockId: a.eventTimeBlockId as string,
     participationId: a.participationId as string | undefined,
     shiftId: a.shiftId as string | undefined,
     volunteerId: a.volunteerId as string,

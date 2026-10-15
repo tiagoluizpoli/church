@@ -48,7 +48,7 @@ export async function createCycleViaApi({
   return (await response.json()) as CreatedCycle;
 }
 
-export interface EventTemplateBlockInput {
+export interface EventTemplateTimeBlockInput {
   label: string;
   startTime: string;
   endTime: string;
@@ -59,7 +59,7 @@ interface CreateEventTemplateViaApiParams {
   page: Page;
   name: string;
   weekday: number;
-  blocks: EventTemplateBlockInput[];
+  blocks: EventTemplateTimeBlockInput[];
 }
 
 interface CreatedEventTemplate {

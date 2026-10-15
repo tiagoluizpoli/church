@@ -437,7 +437,7 @@ describe('Cycle header visibility (chip-leak fix)', () => {
       screen.queryByTestId('cycle-event-count-chip'),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('cycle-slot-count-chip'),
+      screen.queryByTestId('cycle-event-time-block-count-chip'),
     ).not.toBeInTheDocument();
   });
 

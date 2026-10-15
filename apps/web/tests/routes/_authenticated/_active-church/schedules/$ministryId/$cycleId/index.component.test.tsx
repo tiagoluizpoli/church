@@ -118,10 +118,10 @@ const PARTICIPATION_RESPONSE = {
         createdAt: '2026-07-01T00:00:00',
         updatedAt: '2026-07-01T00:00:00',
       },
-      slots: [
+      eventTimeBlocks: [
         {
-          slot: {
-            id: 'slot-1',
+          eventTimeBlock: {
+            id: 'event-time-block-1',
             churchId: 'church-1',
             eventId: 'event-1',
             startTime: '2026-07-11T09:00:00.000Z',
@@ -155,10 +155,10 @@ const PARTICIPATION_RESPONSE = {
         createdAt: '2026-07-01T00:00:00',
         updatedAt: '2026-07-01T00:00:00',
       },
-      slots: [
+      eventTimeBlocks: [
         {
-          slot: {
-            id: 'slot-2',
+          eventTimeBlock: {
+            id: 'event-time-block-2',
             churchId: 'church-1',
             eventId: 'event-2',
             startTime: '2026-07-10T09:00:00.000Z',
@@ -184,15 +184,15 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       events: [
         {
           ...PARTICIPATION_RESPONSE.events[0],
-          slots: [
+          eventTimeBlocks: [
             {
-              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
               included: true,
               shifts: [
                 {
                   id: 'shift-1',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-11T09:00:00.000Z',
                   endTime: '2026-07-11T11:00:00.000Z',
                 },
@@ -214,8 +214,14 @@ describe('Prepare workspace route composition (US3/T028)', () => {
 
     renderWorkspace();
 
-    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
-    const saveSplitButton = screen.getByTestId('save-split-button-slot-1');
+    await user.click(
+      await screen.findByTestId(
+        'toggle-event-time-block-expand-event-time-block-1',
+      ),
+    );
+    const saveSplitButton = screen.getByTestId(
+      'save-split-button-event-time-block-1',
+    );
     expect(saveSplitButton).toBeDisabled();
 
     await user.click(screen.getByTestId('shift-mode-select-0'));
@@ -226,12 +232,12 @@ describe('Prepare workspace route composition (US3/T028)', () => {
 
     expect(splitParticipationShifts).toHaveBeenCalledWith(
       'participation-1',
-      'slot-1',
+      'event-time-block-1',
       { strategy: { kind: 'equal-n', n: 2 } },
     );
   });
 
-  it('stacks day strip, horizontal filters, then slot list in workspace order (T042)', async () => {
+  it('stacks day strip, horizontal filters, then time block list in workspace order (T042)', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -248,22 +254,24 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     const workspaceStack = await screen.findByTestId('prepare-workspace-stack');
     const dayStrip = screen.getByTestId('prepare-calendar-strip');
     const nameFilter = screen.getByTestId('prepare-name-filter');
-    const slotList = screen.getByTestId('prepare-slot-list');
+    const eventTimeBlockList = screen.getByTestId(
+      'prepare-event-time-block-list',
+    );
 
     expect(workspaceStack).toContainElement(dayStrip);
     expect(workspaceStack).toContainElement(nameFilter);
-    expect(workspaceStack).toContainElement(slotList);
+    expect(workspaceStack).toContainElement(eventTimeBlockList);
     expect(
       dayStrip.compareDocumentPosition(nameFilter) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(
-      nameFilter.compareDocumentPosition(slotList) &
+      nameFilter.compareDocumentPosition(eventTimeBlockList) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it('renders the ministry+cycle header, calendar, filters, and slot list together', async () => {
+  it('renders the ministry+cycle header, calendar, filters, and time block list together', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -282,7 +290,9 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('prepare-calendar')).toBeInTheDocument();
     expect(screen.getByTestId('prepare-name-filter')).toBeInTheDocument();
-    expect(screen.getByTestId('prepare-slot-row-slot-1')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('prepare-event-time-block-row-event-time-block-1'),
+    ).toBeInTheDocument();
 
     const browseLink = screen.getByTestId('browse-all-cycles-link');
     expect(browseLink).toHaveAttribute(
@@ -295,7 +305,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     );
   });
 
-  it('operates fully at a mobile viewport width — calendar, filters, and slot list all reachable (T023a)', async () => {
+  it('operates fully at a mobile viewport width — calendar, filters, and time block list all reachable (T023a)', async () => {
     window.innerWidth = 375;
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
@@ -311,7 +321,9 @@ describe('Prepare workspace route composition (US3/T028)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
     expect(screen.getByTestId('prepare-calendar')).toBeInTheDocument();
     expect(
       screen.getByTestId('prepare-calendar-day-2026-07-10'),
@@ -327,13 +339,13 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     expect(screen.getByTestId('prepare-time-start-filter')).toBeInTheDocument();
 
     setParticipationInclusions.mockResolvedValue(undefined);
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     expect(setParticipationInclusions).toHaveBeenCalledWith('participation-1', {
-      timeSlotIds: ['slot-1'],
+      eventTimeBlockIds: ['event-time-block-1'],
     });
   });
 
-  it('filters the slot list to a clicked calendar day with no network request', async () => {
+  it('filters the time block list to a clicked calendar day with no network request', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -348,16 +360,22 @@ describe('Prepare workspace route composition (US3/T028)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    expect(screen.getByTestId('prepare-slot-row-slot-2')).toBeInTheDocument();
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    expect(
+      screen.getByTestId('prepare-event-time-block-row-event-time-block-2'),
+    ).toBeInTheDocument();
     const callCountBeforeFilter = getCycleParticipation.mock.calls.length;
 
     await user.click(screen.getByTestId('prepare-calendar-day-2026-07-10'));
 
     expect(
-      screen.queryByTestId('prepare-slot-row-slot-1'),
+      screen.queryByTestId('prepare-event-time-block-row-event-time-block-1'),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('prepare-slot-row-slot-2')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('prepare-event-time-block-row-event-time-block-2'),
+    ).toBeInTheDocument();
     expect(getCycleParticipation.mock.calls.length).toBe(callCountBeforeFilter);
   });
 });
@@ -370,15 +388,15 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
       events: [
         {
           ...PARTICIPATION_RESPONSE.events[0],
-          slots: [
+          eventTimeBlocks: [
             {
-              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
               included: true,
               shifts: [
                 {
                   id: 'shift-1',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-11T09:00:00.000Z',
                   endTime: '2026-07-11T11:00:00.000Z',
                 },
@@ -408,11 +426,17 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
 
     renderWorkspace();
 
-    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
+    await user.click(
+      await screen.findByTestId(
+        'toggle-event-time-block-expand-event-time-block-1',
+      ),
+    );
     await user.type(screen.getByTestId('headcount-input-shift-1-role-1'), '3');
     await user.type(screen.getByTestId('headcount-input-shift-1-role-2'), '4');
 
-    const saveButton = screen.getByTestId('save-headcounts-button-slot-1');
+    const saveButton = screen.getByTestId(
+      'save-headcounts-button-event-time-block-1',
+    );
     expect(saveButton).toBeEnabled();
     await user.click(saveButton);
 
@@ -421,24 +445,26 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
     });
     expect(upsertShiftRequirement).toHaveBeenCalledWith(
       'shift-1',
-      expect.objectContaining({ roleId: 'role-1', requiredCount: 3 }),
+      expect.objectContaining({ roleId: 'role-1', peopleNeeded: 3 }),
     );
     expect(upsertShiftRequirement).toHaveBeenCalledWith(
       'shift-1',
-      expect.objectContaining({ roleId: 'role-2', requiredCount: 4 }),
+      expect.objectContaining({ roleId: 'role-2', peopleNeeded: 4 }),
     );
 
     // The succeeded role-2 value must not remain flagged unsaved; the failed
-    // role-1 value must — so the slot's single per-slot indicator stays on.
+    // role-1 value must — so the time block's single per-time-block indicator stays on.
     await waitFor(() => {
       expect(
-        screen.getByTestId('headcount-unsaved-indicator-slot-1'),
+        screen.getByTestId('headcount-unsaved-indicator-event-time-block-1'),
       ).toBeInTheDocument();
     });
 
     // Retry: only the still-failed role-1 value should be resent — the
     // already-succeeded role-2 value must not be re-sent or re-flagged.
-    await user.click(screen.getByTestId('save-headcounts-button-slot-1'));
+    await user.click(
+      screen.getByTestId('save-headcounts-button-event-time-block-1'),
+    );
 
     await waitFor(() => {
       expect(upsertShiftRequirement).toHaveBeenCalledTimes(3);
@@ -464,22 +490,23 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
     });
     setParticipationInclusions.mockResolvedValue(undefined);
 
-    let includedSlotIds = ['slot-1'];
+    let includedEventTimeBlockIds = ['event-time-block-1'];
     getCycleParticipation.mockImplementation(() =>
       Promise.resolve({
         events: [
           {
             ...PARTICIPATION_RESPONSE.events[0],
-            slots: [
+            eventTimeBlocks: [
               {
-                ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
-                included: includedSlotIds.includes('slot-1'),
-                shifts: includedSlotIds.includes('slot-1')
+                ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
+                included:
+                  includedEventTimeBlockIds.includes('event-time-block-1'),
+                shifts: includedEventTimeBlockIds.includes('event-time-block-1')
                   ? [
                       {
                         id: 'shift-1',
                         participationId: 'participation-1',
-                        timeSlotId: 'slot-1',
+                        eventTimeBlockId: 'event-time-block-1',
                         startTime: '2026-07-11T09:00:00.000Z',
                         endTime: '2026-07-11T11:00:00.000Z',
                       },
@@ -495,7 +522,11 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
 
     renderWorkspace();
 
-    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
+    await user.click(
+      await screen.findByTestId(
+        'toggle-event-time-block-expand-event-time-block-1',
+      ),
+    );
     await user.type(
       await screen.findByTestId('headcount-input-shift-1-role-1'),
       '5',
@@ -503,8 +534,8 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
     expect(screen.getByTestId('headcount-input-shift-1-role-1')).toHaveValue(5);
 
     // Flip Serving off — server round-trips to included:false, shifts drop.
-    includedSlotIds = [];
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    includedEventTimeBlockIds = [];
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await waitFor(() => {
       expect(
         screen.queryByTestId('headcount-input-shift-1-role-1'),
@@ -513,8 +544,8 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
 
     // Flip Serving back on within the same visit — the prior draft must
     // still be there, not reset to blank/default (FR-025).
-    includedSlotIds = ['slot-1'];
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    includedEventTimeBlockIds = ['event-time-block-1'];
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
 
     await waitFor(() => {
       expect(screen.getByTestId('headcount-input-shift-1-role-1')).toHaveValue(
@@ -560,7 +591,7 @@ describe('Prepare workspace route — network failure (US3/T023d)', () => {
 });
 
 describe('Prepare workspace batched save (US4/T029)', () => {
-  it('calls askAvailability exactly once call per touched participation, not per slot/shift', async () => {
+  it('calls askAvailability exactly once call per touched participation, not per time block/shift', async () => {
     getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
@@ -580,10 +611,12 @@ describe('Prepare workspace batched save (US4/T029)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await screen.findByTestId('prepare-touched-count');
-    await user.click(screen.getByTestId('serving-toggle-slot-2'));
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-2'));
 
     const saveButton = screen.getByTestId('save-and-ask-availability-button');
     await user.click(saveButton);
@@ -613,8 +646,10 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
 
     renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await screen.findByTestId('prepare-touched-count');
     await user.click(screen.getByTestId('save-and-ask-availability-button'));
 
@@ -650,8 +685,10 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
 
     renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await screen.findByTestId('prepare-touched-count');
     await user.click(screen.getByTestId('save-and-ask-availability-button'));
 
@@ -694,8 +731,10 @@ describe('Prepare workspace remains editable post-release (US4/T030/FR-017)', ()
 
     renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await screen.findByTestId('prepare-touched-count');
 
     const saveButton = screen.getByTestId('save-and-ask-availability-button');
@@ -716,15 +755,15 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       events: [
         {
           ...PARTICIPATION_RESPONSE.events[0],
-          slots: [
+          eventTimeBlocks: [
             {
-              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              ...PARTICIPATION_RESPONSE.events[0]?.eventTimeBlocks[0],
               included: true,
               shifts: [
                 {
                   id: 'shift-1',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-11T09:00:00.000Z',
                   endTime: '2026-07-11T11:00:00.000Z',
                 },
@@ -745,7 +784,11 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
 
     const { router } = renderWorkspace();
 
-    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
+    await user.click(
+      await screen.findByTestId(
+        'toggle-event-time-block-expand-event-time-block-1',
+      ),
+    );
     await user.click(screen.getByTestId('shift-mode-select-0'));
     await user.click(await screen.findByText('Equal split'));
 
@@ -772,8 +815,10 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
 
     const { router } = renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await screen.findByTestId('prepare-touched-count');
 
     router.navigate({ to: '/schedules' });
@@ -803,7 +848,9 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
 
     const { router } = renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
     router.navigate({ to: '/schedules' });
 
     expect(
@@ -837,8 +884,10 @@ describe('Prepare workspace double-submit guard (US4/T030b)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await screen.findByTestId('prepare-touched-count');
 
     const saveButton = screen.getByTestId('save-and-ask-availability-button');
@@ -848,7 +897,9 @@ describe('Prepare workspace double-submit guard (US4/T030b)', () => {
     await user.click(saveButton);
 
     resolveFire?.();
-    await screen.findByTestId('prepare-slot-row-slot-1');
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
 
     expect(askAvailability).toHaveBeenCalledTimes(1);
   });
@@ -880,8 +931,10 @@ describe('Prepare workspace mid-flight save unmount (US4/T030c)', () => {
 
     const { router, unmount } = renderWorkspace();
 
-    await screen.findByTestId('prepare-slot-row-slot-1');
-    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId(
+      'prepare-event-time-block-row-event-time-block-1',
+    );
+    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await screen.findByTestId('prepare-touched-count');
     await user.click(screen.getByTestId('save-and-ask-availability-button'));
     await user.click(await screen.findByTestId('prepare-send-confirm'));

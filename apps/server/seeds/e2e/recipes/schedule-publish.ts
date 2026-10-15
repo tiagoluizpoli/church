@@ -2,10 +2,10 @@ import { addCalendarDays, type CalendarDay, type Instant } from '@church/time';
 import {
   buildCycle,
   buildEvent,
+  buildEventTimeBlock,
   buildMinistryParticipation,
   buildShift,
-  buildSlotRequirement,
-  buildTimeSlot,
+  buildShiftRequirement,
 } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
@@ -34,8 +34,8 @@ import type { AssignCycleSummary } from './assign-event';
  * candidates, so assigning "by name" is a real choice.
  */
 
-/* Own Event/TimeSlot builder, not `buildAssignEvent`: both Ministries take
- * part in ONE Event and TimeSlot (publish is cycle-wide, so the sibling must
+/* Own Event/EventTimeBlock builder, not `buildAssignEvent`: both Ministries take
+ * part in ONE Event and EventTimeBlock (publish is cycle-wide, so the sibling must
  * share the cycle and event), which that builder's one-Participation-per-Event
  * shape cannot express without a signature change. */
 const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.schedulePublish;
@@ -108,14 +108,14 @@ export interface SchedulePublishEvent {
 
 export interface SchedulePublishWorshipParticipation
   extends SchedulePublishParticipation {
-  requiredCount: number;
+  peopleNeeded: number;
 }
 
 export interface SchedulePublishJourney extends SchedulePublishChurch {
   anchor: CalendarDay;
   cycle: AssignCycleSummary;
   event: SchedulePublishEvent;
-  /** Worship starts with `requiredCount` Ushers open; care stays unpublished. */
+  /** Worship starts with `peopleNeeded` Ushers open; care stays unpublished. */
   worship: SchedulePublishWorshipParticipation;
   care: SchedulePublishParticipation;
 }
@@ -124,7 +124,7 @@ interface MinistryScheduleInput {
   key: string;
   ministryId: string;
   roleId: string;
-  requiredCount: number;
+  peopleNeeded: number;
   teamId?: string;
 }
 
@@ -173,11 +173,11 @@ export function createSchedulePublishRecipe({
       end: endsAt,
       status: 'draft',
     });
-    const timeSlot = await buildTimeSlot({
+    const eventTimeBlock = await buildEventTimeBlock({
       db,
       churchId,
       eventId: event.id,
-      id: idOf({ kind: 'time-slot' }),
+      id: idOf({ kind: 'event-time-block' }),
       start: startsAt,
       end: endsAt,
     });
@@ -186,7 +186,7 @@ export function createSchedulePublishRecipe({
       key,
       ministryId,
       roleId,
-      requiredCount,
+      peopleNeeded,
       teamId,
     }: MinistryScheduleInput): Promise<SchedulePublishParticipation> {
       const participation = await buildMinistryParticipation({
@@ -196,25 +196,25 @@ export function createSchedulePublishRecipe({
         eventId: event.id,
         id: idOf({ kind: `participation:${key}` }),
         state: 'availability_requested',
-        timeSlotIds: [timeSlot.id],
+        eventTimeBlockIds: [eventTimeBlock.id],
       });
       const shift = await buildShift({
         db,
         churchId,
         participationId: participation.id,
-        timeSlotId: timeSlot.id,
+        eventTimeBlockId: eventTimeBlock.id,
         id: idOf({ kind: `shift:${key}` }),
         start: startsAt,
         end: endsAt,
       });
-      await buildSlotRequirement({
+      await buildShiftRequirement({
         db,
         churchId,
         participationId: participation.id,
         shiftId: shift.id,
         roleId,
-        id: idOf({ kind: `slot-requirement:${key}` }),
-        requiredCount,
+        id: idOf({ kind: `shift-requirement:${key}` }),
+        peopleNeeded,
         teamId,
       });
       return { id: participation.id, shiftId: shift.id };
@@ -230,15 +230,15 @@ export function createSchedulePublishRecipe({
           key: 'worship',
           ministryId: worship.id,
           roleId: worship.roles.usher.id,
-          requiredCount: USHERS_REQUIRED,
+          peopleNeeded: USHERS_REQUIRED,
         })),
-        requiredCount: USHERS_REQUIRED,
+        peopleNeeded: USHERS_REQUIRED,
       },
       care: await buildMinistrySchedule({
         key: 'care',
         ministryId: care.id,
         roleId: care.roles.careHost.id,
-        requiredCount: 1,
+        peopleNeeded: 1,
         teamId: care.teams.care.id,
       }),
     };

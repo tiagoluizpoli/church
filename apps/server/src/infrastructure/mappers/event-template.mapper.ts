@@ -1,26 +1,28 @@
-import type { eventTemplate, timeBlock } from '@church/db';
+import type { eventTemplate, templateTimeBlock } from '@church/db';
 import { fromTimeColumn } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   EventTemplateId,
-  TimeBlockId,
+  TemplateTimeBlockId,
 } from '../../domain/branded-ids';
 import type { EventTemplateProps } from '../../domain/entities/event-template';
 import { EventTemplate } from '../../domain/entities/event-template';
-import type { TimeBlockProps } from '../../domain/entities/time-block';
-import { TimeBlock } from '../../domain/entities/time-block';
+import type { TemplateTimeBlockProps } from '../../domain/entities/template-time-block';
+import { TemplateTimeBlock } from '../../domain/entities/template-time-block';
 
 type EventTemplateRow = InferSelectModel<typeof eventTemplate>;
-type TimeBlockRow = InferSelectModel<typeof timeBlock>;
+type TemplateTimeBlockRow = InferSelectModel<typeof templateTimeBlock>;
 
 interface MapEventTemplateInput {
   template: EventTemplateRow;
-  blocks: TimeBlockRow[];
+  blocks: TemplateTimeBlockRow[];
 }
 
-export function mapTimeBlock(row: TimeBlockRow): TimeBlock {
-  const props: TimeBlockProps = {
+export function mapTemplateTimeBlock(
+  row: TemplateTimeBlockRow,
+): TemplateTimeBlock {
+  const props: TemplateTimeBlockProps = {
     churchId: row.churchId as ChurchId,
     templateId: row.templateId as EventTemplateId,
     label: row.label,
@@ -29,9 +31,9 @@ export function mapTimeBlock(row: TimeBlockRow): TimeBlock {
     order: row.order,
   };
 
-  return new TimeBlock({
+  return new TemplateTimeBlock({
     props,
-    id: row.id as TimeBlockId,
+    id: row.id as TemplateTimeBlockId,
   });
 }
 
@@ -43,7 +45,7 @@ export function mapEventTemplate({
     churchId: template.churchId as ChurchId,
     name: template.name,
     weekday: template.weekday,
-    blocks: blocks.map(mapTimeBlock),
+    blocks: blocks.map(mapTemplateTimeBlock),
   };
 
   return new EventTemplate({

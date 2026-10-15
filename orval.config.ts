@@ -8,7 +8,7 @@ export default defineConfig({
         mode: 'include',
         tags: [
           'events',
-          'time-slots',
+          'event-time-blocks',
           'assignments',
           'ministries',
           'planning',

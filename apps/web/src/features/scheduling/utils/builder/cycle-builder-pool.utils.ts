@@ -5,8 +5,8 @@ export function pool(data: CycleBuilderData): PoolVolunteer[] {
   const result = new Map<string, PoolVolunteer>();
   const roleNameById = new Map(data.roles.map((role) => [role.id, role.name]));
   for (const event of data.events)
-    for (const slot of event.slots)
-      for (const shift of slot.shifts)
+    for (const eventTimeBlock of event.eventTimeBlocks)
+      for (const shift of eventTimeBlock.shifts)
         for (const volunteer of shift.eligibleVolunteers) {
           result.set(volunteer.volunteerId, {
             volunteerId: volunteer.volunteerId,

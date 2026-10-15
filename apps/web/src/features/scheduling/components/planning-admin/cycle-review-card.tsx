@@ -8,20 +8,20 @@ import {
   calendarRowEventId,
   calendarRowKey,
   renderCalendarCell,
-  type StartCreateSlotInput,
+  type StartCreateEventTimeBlockInput,
   type StartEditEventInput,
-  type StartEditSlotInput,
+  type StartEditEventTimeBlockInput,
   type ToggleEventExpandedInput,
   visibleRowId,
 } from './calendar-row';
-import { CreateSlotDialog } from './create-slot-dialog';
+import { CreateEventTimeBlockDialog } from './create-event-time-block-dialog';
 import { EditEventDialog } from './edit-event-dialog';
-import { EditSlotDialog } from './edit-slot-dialog';
+import { EditEventTimeBlockDialog } from './edit-event-time-block-dialog';
 import type {
-  CreatingSlotState,
+  CreatingEventTimeBlockState,
   CycleCalendarTableRow,
   EditingEventState,
-  EditingSlotState,
+  EditingEventTimeBlockState,
   ExpandedCalendarRowsState,
 } from './planning-admin.types';
 import {
@@ -40,56 +40,89 @@ interface CycleReviewCardProps {
   isReadOnly: boolean;
 }
 
-const DEFAULT_SLOT_START_TIME = parseTimeOfDay({ value: '09:00' });
-const DEFAULT_SLOT_END_TIME = parseTimeOfDay({ value: '10:00' });
+const DEFAULT_EVENT_TIME_BLOCK_START_TIME = parseTimeOfDay({ value: '09:00' });
+const DEFAULT_EVENT_TIME_BLOCK_END_TIME = parseTimeOfDay({ value: '10:00' });
 
 type DialogState =
   | { kind: 'none' }
   | { kind: 'edit-event'; event: EditingEventState }
-  | { kind: 'edit-slot'; slot: EditingSlotState }
-  | { kind: 'create-slot'; slot: CreatingSlotState }
+  | {
+      kind: 'edit-event-time-block';
+      eventTimeBlock: EditingEventTimeBlockState;
+    }
+  | {
+      kind: 'create-event-time-block';
+      eventTimeBlock: CreatingEventTimeBlockState;
+    }
   | { kind: 'confirm-delete-event'; eventId: string }
-  | { kind: 'confirm-delete-slot'; slotId: string };
+  | { kind: 'confirm-delete-event-time-block'; eventTimeBlockId: string };
 
 type DialogAction =
   | { type: 'edit-event'; event: EditingEventState }
-  | { type: 'edit-slot'; slot: EditingSlotState }
-  | { type: 'create-slot'; slot: CreatingSlotState }
+  | {
+      type: 'edit-event-time-block';
+      eventTimeBlock: EditingEventTimeBlockState;
+    }
+  | {
+      type: 'create-event-time-block';
+      eventTimeBlock: CreatingEventTimeBlockState;
+    }
   | { type: 'confirm-delete-event'; eventId: string }
-  | { type: 'confirm-delete-slot'; slotId: string }
+  | { type: 'confirm-delete-event-time-block'; eventTimeBlockId: string }
   | { type: 'update-edit-event'; event: EditingEventState }
-  | { type: 'update-edit-slot'; slot: EditingSlotState }
-  | { type: 'update-create-slot'; slot: CreatingSlotState }
+  | {
+      type: 'update-edit-event-time-block';
+      eventTimeBlock: EditingEventTimeBlockState;
+    }
+  | {
+      type: 'update-create-event-time-block';
+      eventTimeBlock: CreatingEventTimeBlockState;
+    }
   | { type: 'close' };
 
 /** The five dialog/confirmation `useState` calls this card used to carry
- * (`editingEvent`/`editingSlot`/`creatingSlot`/`confirmDeleteEventId`/
- * `confirmDeleteSlotId`) modeled one mutually-exclusive "which dialog is
+ * (`editingEvent`/`editingEventTimeBlock`/`creatingEventTimeBlock`/`confirmDeleteEventId`/
+ * `confirmDeleteEventTimeBlockId`) modeled one mutually-exclusive "which dialog is
  * open" concept — nothing stopped two being non-null at once. This
  * discriminated-union reducer makes that exclusivity structural. */
 function dialogReducer(state: DialogState, action: DialogAction): DialogState {
   switch (action.type) {
     case 'edit-event':
       return { kind: 'edit-event', event: action.event };
-    case 'edit-slot':
-      return { kind: 'edit-slot', slot: action.slot };
-    case 'create-slot':
-      return { kind: 'create-slot', slot: action.slot };
+    case 'edit-event-time-block':
+      return {
+        kind: 'edit-event-time-block',
+        eventTimeBlock: action.eventTimeBlock,
+      };
+    case 'create-event-time-block':
+      return {
+        kind: 'create-event-time-block',
+        eventTimeBlock: action.eventTimeBlock,
+      };
     case 'confirm-delete-event':
       return { kind: 'confirm-delete-event', eventId: action.eventId };
-    case 'confirm-delete-slot':
-      return { kind: 'confirm-delete-slot', slotId: action.slotId };
+    case 'confirm-delete-event-time-block':
+      return {
+        kind: 'confirm-delete-event-time-block',
+        eventTimeBlockId: action.eventTimeBlockId,
+      };
     case 'update-edit-event':
       return state.kind === 'edit-event'
         ? { kind: 'edit-event', event: action.event }
         : state;
-    case 'update-edit-slot':
-      return state.kind === 'edit-slot'
-        ? { kind: 'edit-slot', slot: action.slot }
+    case 'update-edit-event-time-block':
+      return state.kind === 'edit-event-time-block'
+        ? {
+            kind: 'edit-event-time-block',
+            eventTimeBlock: action.eventTimeBlock,
+          }
         : state;
-    case 'update-create-slot':
-      return state.kind === 'create-slot'
-        ? { kind: 'create-slot', slot: action.slot }
+    case 'update-create-event-time-block':
+      return state.kind === 'create-event-time-block'
+        ? {
+            kind: 'create-event-time-block',
+            eventTimeBlock: action.eventTimeBlock,
+          }
         : state;
     case 'close':
       return { kind: 'none' };
@@ -113,17 +146,18 @@ function isConfirmingDeleteEvent({
   );
 }
 
-interface IsConfirmingDeleteSlotInput {
+interface IsConfirmingDeleteEventTimeBlockInput {
   dialogState: DialogState;
-  slotId: string;
+  eventTimeBlockId: string;
 }
 
-function isConfirmingDeleteSlot({
+function isConfirmingDeleteEventTimeBlock({
   dialogState,
-  slotId,
-}: IsConfirmingDeleteSlotInput): boolean {
+  eventTimeBlockId,
+}: IsConfirmingDeleteEventTimeBlockInput): boolean {
   return (
-    dialogState.kind === 'confirm-delete-slot' && dialogState.slotId === slotId
+    dialogState.kind === 'confirm-delete-event-time-block' &&
+    dialogState.eventTimeBlockId === eventTimeBlockId
   );
 }
 
@@ -139,12 +173,12 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     deleteEventPending,
     handleUpdateEvent,
     handleDeleteEvent,
-    createSlotPending,
-    updateSlotPending,
-    deleteSlotPending,
-    handleCreateSlot,
-    handleUpdateSlot,
-    handleDeleteSlot,
+    createEventTimeBlockPending,
+    updateEventTimeBlockPending,
+    deleteEventTimeBlockPending,
+    handleCreateEventTimeBlock,
+    handleUpdateEventTimeBlock,
+    handleDeleteEventTimeBlock,
   } = useCycleReviewCard();
   const { churchTimezone } = useTimezone();
   const [calendarRowsState, setCalendarRowsState] =
@@ -157,7 +191,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
   /** Auto-close the confirm-delete dialog on the falling edge of pending
    * (mutation settled) instead of synchronously in the confirm handler —
    * otherwise the dialog disappears before `deleteEventPending`/
-   * `deleteSlotPending` ever gets a chance to render, leaving no visible
+   * `deleteEventTimeBlockPending` ever gets a chance to render, leaving no visible
    * feedback during the delete (mirrors the same fix in PlanningEventCard,
    * the mobile fork of this same delete flow). */
   const prevDeleteEventPendingRef = useRef(deleteEventPending);
@@ -172,17 +206,19 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     prevDeleteEventPendingRef.current = deleteEventPending;
   }, [deleteEventPending, dialogState]);
 
-  const prevDeleteSlotPendingRef = useRef(deleteSlotPending);
+  const prevDeleteEventTimeBlockPendingRef = useRef(
+    deleteEventTimeBlockPending,
+  );
   useEffect(() => {
     if (
-      prevDeleteSlotPendingRef.current &&
-      !deleteSlotPending &&
-      dialogState.kind === 'confirm-delete-slot'
+      prevDeleteEventTimeBlockPendingRef.current &&
+      !deleteEventTimeBlockPending &&
+      dialogState.kind === 'confirm-delete-event-time-block'
     ) {
       dispatchDialog({ type: 'close' });
     }
-    prevDeleteSlotPendingRef.current = deleteSlotPending;
-  }, [deleteSlotPending, dialogState]);
+    prevDeleteEventTimeBlockPendingRef.current = deleteEventTimeBlockPending;
+  }, [deleteEventTimeBlockPending, dialogState]);
 
   /** Same falling-edge-of-pending close as the delete dialogs above, applied
    * to edit/create — closing synchronously in the submit handler let the
@@ -202,36 +238,44 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     prevUpdateEventPendingRef.current = updateEventPending;
   }, [updateEventPending, dialogState]);
 
-  const prevUpdateSlotPendingRef = useRef(updateSlotPending);
+  const prevUpdateEventTimeBlockPendingRef = useRef(
+    updateEventTimeBlockPending,
+  );
   useEffect(() => {
     if (
-      prevUpdateSlotPendingRef.current &&
-      !updateSlotPending &&
-      dialogState.kind === 'edit-slot'
+      prevUpdateEventTimeBlockPendingRef.current &&
+      !updateEventTimeBlockPending &&
+      dialogState.kind === 'edit-event-time-block'
     ) {
       dispatchDialog({ type: 'close' });
     }
-    prevUpdateSlotPendingRef.current = updateSlotPending;
-  }, [updateSlotPending, dialogState]);
+    prevUpdateEventTimeBlockPendingRef.current = updateEventTimeBlockPending;
+  }, [updateEventTimeBlockPending, dialogState]);
 
-  const prevCreateSlotPendingRef = useRef(createSlotPending);
+  const prevCreateEventTimeBlockPendingRef = useRef(
+    createEventTimeBlockPending,
+  );
   useEffect(() => {
     if (
-      prevCreateSlotPendingRef.current &&
-      !createSlotPending &&
-      dialogState.kind === 'create-slot'
+      prevCreateEventTimeBlockPendingRef.current &&
+      !createEventTimeBlockPending &&
+      dialogState.kind === 'create-event-time-block'
     ) {
       dispatchDialog({ type: 'close' });
     }
-    prevCreateSlotPendingRef.current = createSlotPending;
-  }, [createSlotPending, dialogState]);
+    prevCreateEventTimeBlockPendingRef.current = createEventTimeBlockPending;
+  }, [createEventTimeBlockPending, dialogState]);
 
   const editingEvent =
     dialogState.kind === 'edit-event' ? dialogState.event : null;
-  const editingSlot =
-    dialogState.kind === 'edit-slot' ? dialogState.slot : null;
-  const creatingSlot =
-    dialogState.kind === 'create-slot' ? dialogState.slot : null;
+  const editingEventTimeBlock =
+    dialogState.kind === 'edit-event-time-block'
+      ? dialogState.eventTimeBlock
+      : null;
+  const creatingEventTimeBlock =
+    dialogState.kind === 'create-event-time-block'
+      ? dialogState.eventTimeBlock
+      : null;
 
   function toggleEventExpanded({ eventId }: ToggleEventExpandedInput): void {
     setCalendarRowsState((current) => {
@@ -298,13 +342,13 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     });
   }
 
-  function startEditSlot({
+  function startEditEventTimeBlock({
     parentId,
-    slotId,
+    eventTimeBlockId,
     label,
     startTime,
     endTime,
-  }: StartEditSlotInput): void {
+  }: StartEditEventTimeBlockInput): void {
     const source = cycleEvents.find(
       (eventGroup) => eventGroup.event.id === parentId,
     );
@@ -312,10 +356,10 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     if (!source) return;
 
     dispatchDialog({
-      type: 'edit-slot',
-      slot: {
+      type: 'edit-event-time-block',
+      eventTimeBlock: {
         eventId: parentId,
-        slotId,
+        eventTimeBlockId,
         label,
         start: parseInstant({ value: startTime }),
         end: parseInstant({ value: endTime }),
@@ -327,20 +371,22 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     });
   }
 
-  function submitEditSlot(): void {
-    if (dialogState.kind !== 'edit-slot') return;
-    const { slot } = dialogState;
+  function submitEditEventTimeBlock(): void {
+    if (dialogState.kind !== 'edit-event-time-block') return;
+    const { eventTimeBlock } = dialogState;
 
-    handleUpdateSlot({
-      eventId: slot.eventId,
-      slotId: slot.slotId,
-      label: slot.label,
-      startTime: slot.start,
-      endTime: slot.end,
+    handleUpdateEventTimeBlock({
+      eventId: eventTimeBlock.eventId,
+      eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
+      label: eventTimeBlock.label,
+      startTime: eventTimeBlock.start,
+      endTime: eventTimeBlock.end,
     });
   }
 
-  function startCreateSlot({ row }: StartCreateSlotInput): void {
+  function startCreateEventTimeBlock({
+    row,
+  }: StartCreateEventTimeBlockInput): void {
     const source = cycleEvents.find(
       (eventGroup) => eventGroup.event.id === row.eventId,
     );
@@ -353,18 +399,18 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     });
 
     dispatchDialog({
-      type: 'create-slot',
-      slot: {
+      type: 'create-event-time-block',
+      eventTimeBlock: {
         eventId: row.eventId,
         label: '',
         start: toInstant({
           day,
-          time: DEFAULT_SLOT_START_TIME,
+          time: DEFAULT_EVENT_TIME_BLOCK_START_TIME,
           timeZone: churchTimezone,
         }),
         end: toInstant({
           day,
-          time: DEFAULT_SLOT_END_TIME,
+          time: DEFAULT_EVENT_TIME_BLOCK_END_TIME,
           timeZone: churchTimezone,
         }),
         isMultiDayEvent: isMultiDayEvent({
@@ -375,15 +421,15 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     });
   }
 
-  function submitCreateSlot(): void {
-    if (dialogState.kind !== 'create-slot') return;
-    const { slot } = dialogState;
+  function submitCreateEventTimeBlock(): void {
+    if (dialogState.kind !== 'create-event-time-block') return;
+    const { eventTimeBlock } = dialogState;
 
-    handleCreateSlot({
-      eventId: slot.eventId,
-      label: slot.label || undefined,
-      startTime: slot.start,
-      endTime: slot.end,
+    handleCreateEventTimeBlock({
+      eventId: eventTimeBlock.eventId,
+      label: eventTimeBlock.label || undefined,
+      startTime: eventTimeBlock.start,
+      endTime: eventTimeBlock.end,
     });
   }
 
@@ -415,8 +461,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                 <div>
                   <div className="font-medium text-sm">Calendar review</div>
                   <div className="text-muted-foreground text-xs">
-                    Confirm dates, slots, and event types before sending the
-                    package.
+                    Confirm dates, eventTimeBlocks, and event types before
+                    sending the package.
                   </div>
                 </div>
                 <Button
@@ -478,14 +524,14 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                         dialogState,
                         eventId: calendarRowEventId({ visibleRow: item }),
                       }),
-                      isConfirmingDeleteSlot:
-                        item.kind === 'slot' &&
-                        isConfirmingDeleteSlot({
+                      isConfirmingDeleteEventTimeBlock:
+                        item.kind === 'event-time-block' &&
+                        isConfirmingDeleteEventTimeBlock({
                           dialogState,
-                          slotId: item.slotId,
+                          eventTimeBlockId: item.eventTimeBlockId,
                         }),
                       deleteEventPending,
-                      deleteSlotPending,
+                      deleteEventTimeBlockPending,
                     })
                   }
                   renderCell={({ item, column }) =>
@@ -500,17 +546,17 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                         dialogState,
                         eventId: calendarRowEventId({ visibleRow: item }),
                       }),
-                      isConfirmingDeleteSlot:
-                        item.kind === 'slot' &&
-                        isConfirmingDeleteSlot({
+                      isConfirmingDeleteEventTimeBlock:
+                        item.kind === 'event-time-block' &&
+                        isConfirmingDeleteEventTimeBlock({
                           dialogState,
-                          slotId: item.slotId,
+                          eventTimeBlockId: item.eventTimeBlockId,
                         }),
                       deleteEventPending,
-                      deleteSlotPending,
+                      deleteEventTimeBlockPending,
                       timeZone: churchTimezone,
                       onToggleExpand: toggleEventExpanded,
-                      onAddSlotRequest: startCreateSlot,
+                      onAddEventTimeBlockRequest: startCreateEventTimeBlock,
                       onEditEventRequest: startEditEvent,
                       onDeleteEventOpenChange: ({ eventId, open }) =>
                         dispatchDialog(
@@ -520,15 +566,27 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                         ),
                       onDeleteEventConfirm: ({ eventId }) =>
                         handleDeleteEvent({ eventId }),
-                      onEditSlotRequest: startEditSlot,
-                      onDeleteSlotOpenChange: ({ slotId, open }) =>
+                      onEditEventTimeBlockRequest: startEditEventTimeBlock,
+                      onDeleteEventTimeBlockOpenChange: ({
+                        eventTimeBlockId,
+                        open,
+                      }) =>
                         dispatchDialog(
                           open
-                            ? { type: 'confirm-delete-slot', slotId }
+                            ? {
+                                type: 'confirm-delete-event-time-block',
+                                eventTimeBlockId,
+                              }
                             : { type: 'close' },
                         ),
-                      onDeleteSlotConfirm: ({ eventId, slotId }) =>
-                        handleDeleteSlot({ eventId, slotId }),
+                      onDeleteEventTimeBlockConfirm: ({
+                        eventId,
+                        eventTimeBlockId,
+                      }) =>
+                        handleDeleteEventTimeBlock({
+                          eventId,
+                          eventTimeBlockId,
+                        }),
                     })
                   }
                   renderMobileCard={({ item }) =>
@@ -537,12 +595,16 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                         row={item.row}
                         isReadOnly={isReadOnly}
                         deleteEventPending={deleteEventPending}
-                        deleteSlotPending={deleteSlotPending}
-                        onAddSlotRequest={startCreateSlot}
+                        deleteEventTimeBlockPending={
+                          deleteEventTimeBlockPending
+                        }
+                        onAddEventTimeBlockRequest={startCreateEventTimeBlock}
                         onEditEventRequest={startEditEvent}
                         onDeleteEventConfirm={handleDeleteEvent}
-                        onEditSlotRequest={startEditSlot}
-                        onDeleteSlotConfirm={handleDeleteSlot}
+                        onEditEventTimeBlockRequest={startEditEventTimeBlock}
+                        onDeleteEventTimeBlockConfirm={
+                          handleDeleteEventTimeBlock
+                        }
                       />
                     ) : null
                   }
@@ -575,28 +637,36 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         onSubmit={submitEditEvent}
       />
 
-      <EditSlotDialog
-        editingSlot={editingSlot}
-        updateSlotPending={updateSlotPending}
+      <EditEventTimeBlockDialog
+        editingEventTimeBlock={editingEventTimeBlock}
+        updateEventTimeBlockPending={updateEventTimeBlockPending}
         timeZone={churchTimezone}
-        onChange={(slot) => dispatchDialog({ type: 'update-edit-slot', slot })}
-        onOpenChange={(open) => {
-          if (!open) dispatchDialog({ type: 'close' });
-        }}
-        onSubmit={submitEditSlot}
-      />
-
-      <CreateSlotDialog
-        creatingSlot={creatingSlot}
-        createSlotPending={createSlotPending}
-        timeZone={churchTimezone}
-        onChange={(slot) =>
-          dispatchDialog({ type: 'update-create-slot', slot })
+        onChange={(eventTimeBlock) =>
+          dispatchDialog({
+            type: 'update-edit-event-time-block',
+            eventTimeBlock,
+          })
         }
         onOpenChange={(open) => {
           if (!open) dispatchDialog({ type: 'close' });
         }}
-        onSubmit={submitCreateSlot}
+        onSubmit={submitEditEventTimeBlock}
+      />
+
+      <CreateEventTimeBlockDialog
+        creatingEventTimeBlock={creatingEventTimeBlock}
+        createEventTimeBlockPending={createEventTimeBlockPending}
+        timeZone={churchTimezone}
+        onChange={(eventTimeBlock) =>
+          dispatchDialog({
+            type: 'update-create-event-time-block',
+            eventTimeBlock,
+          })
+        }
+        onOpenChange={(open) => {
+          if (!open) dispatchDialog({ type: 'close' });
+        }}
+        onSubmit={submitCreateEventTimeBlock}
       />
 
       {selectedCycleId ? (

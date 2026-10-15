@@ -1,7 +1,7 @@
 import { appConfig } from '@church/app-config';
 import {
   ministryInvitation,
-  ministryVolunteer,
+  ministryMembership,
   outboxMessage,
 } from '@church/db';
 import { fromDate, parseCalendarDay } from '@church/time';
@@ -126,7 +126,7 @@ describe('DbOutboxDrainer (integration)', () => {
 describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integration)', () => {
   // Deliberately in the past relative to the drainer's real-clock claim
   // filter (`scheduledFor <= now()`) — the transfer's own business rules
-  // (invitation expiry, slot-start cutoff) only compare against this
+  // (invitation expiry, event time block-start cutoff) only compare against this
   // fixture's own timestamps, never the real wall clock.
   const COMMIT = new Date('2024-01-15T12:00:00.000Z');
   const CORRELATION_ID = 'drain-transfer-corr-0001';
@@ -161,7 +161,7 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
       ministryId: fixture.ministryInB,
       eventId: transferEvent.id,
       state: 'preparing',
-      timeSlotIds: [],
+      eventTimeBlockIds: [],
     });
     const start = fromDate({ date: new Date(COMMIT.getTime() + 3_600_000) });
     const end = fromDate({ date: new Date(COMMIT.getTime() + 2 * 3_600_000) });
@@ -252,9 +252,9 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
 
   it("escalates to ChurchAdmins when the departing Volunteer was themselves the Ministry's last active leader", async () => {
     await testDb
-      .update(ministryVolunteer)
+      .update(ministryMembership)
       .set({ ministryAccessLevel: 'leader' })
-      .where(eq(ministryVolunteer.id, fixture.dualMemberABMembershipInB));
+      .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
 
     const emailSender = new CaptureEmailSender();
     await runTransferAndDrain(emailSender);

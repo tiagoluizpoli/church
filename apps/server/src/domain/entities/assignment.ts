@@ -3,10 +3,10 @@ import { type Instant, now, toDate } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
+  EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
-  TimeSlotId,
   UserId,
   VolunteerId,
 } from '../branded-ids';
@@ -22,7 +22,7 @@ export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];
 
 export interface AssignmentProps {
   churchId: ChurchId;
-  slotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   participationId?: MinistryParticipationId;
   shiftId?: ShiftId;
   volunteerId: VolunteerId;
@@ -57,8 +57,8 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
     return this._props.churchId;
   }
 
-  get slotId(): TimeSlotId {
-    return this._props.slotId;
+  get eventTimeBlockId(): EventTimeBlockId {
+    return this._props.eventTimeBlockId;
   }
 
   get participationId(): MinistryParticipationId | undefined {

@@ -5,11 +5,11 @@ import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-trans
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const cycleId = '22222222-2222-4222-8222-222222222222' as CycleId;
-const ministryVolunteerId = '33333333-3333-4333-8333-333333333333';
+const ministryMembershipId = '33333333-3333-4333-8333-333333333333';
 
 function buildCheck(): AvailabilityCheck {
   return new AvailabilityCheck({
-    props: { churchId, cycleId, ministryVolunteerId },
+    props: { churchId, cycleId, ministryMembershipId },
   });
 }
 
@@ -21,7 +21,7 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
     expect(check.confirmedAt).toBeUndefined();
     expect(check.churchId).toBe(churchId);
     expect(check.cycleId).toBe(cycleId);
-    expect(check.ministryVolunteerId).toBe(ministryVolunteerId);
+    expect(check.ministryMembershipId).toBe(ministryMembershipId);
   });
 
   it('accepts an explicit initial state', () => {
@@ -29,7 +29,7 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
       props: {
         churchId,
         cycleId,
-        ministryVolunteerId,
+        ministryMembershipId,
         state: 'confirmed',
       },
     });
@@ -37,7 +37,7 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
     expect(check.state).toBe('confirmed');
   });
 
-  it('DL1-AC-02 confirm() transitions pending → confirmed and sets confirmedAt even with zero marks', () => {
+  it('DL1-AC-02 confirm() transitions pending → confirmed and sets confirmedAt even with zero unavailable shifts', () => {
     const check = buildCheck();
 
     check.confirm();

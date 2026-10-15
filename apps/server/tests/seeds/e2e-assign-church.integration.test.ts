@@ -2,8 +2,8 @@ import {
   account,
   invitation,
   member,
-  ministryVolunteer,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipTeam,
   organization,
   user,
   volunteer,
@@ -255,24 +255,24 @@ describe('Assign Church base for E2E journey recipes', () => {
     ).toEqual([]);
 
     const [leaderMembership] = await testDb
-      .select({ accessLevel: ministryVolunteer.ministryAccessLevel })
-      .from(ministryVolunteer)
+      .select({ accessLevel: ministryMembership.ministryAccessLevel })
+      .from(ministryMembership)
       .where(
-        eq(ministryVolunteer.volunteerId, graph.personas.leader.volunteerId),
+        eq(ministryMembership.volunteerId, graph.personas.leader.volunteerId),
       );
     expect(leaderMembership?.accessLevel).toBe('leader');
 
     const alphaTeam = await testDb
       .select({
-        volunteerId: ministryVolunteer.volunteerId,
-        accessLevel: ministryVolunteerTeam.accessLevel,
+        volunteerId: ministryMembership.volunteerId,
+        accessLevel: ministryMembershipTeam.accessLevel,
       })
-      .from(ministryVolunteerTeam)
+      .from(ministryMembershipTeam)
       .innerJoin(
-        ministryVolunteer,
-        eq(ministryVolunteer.id, ministryVolunteerTeam.ministryVolunteerId),
+        ministryMembership,
+        eq(ministryMembership.id, ministryMembershipTeam.ministryMembershipId),
       )
-      .where(eq(ministryVolunteerTeam.teamId, worship.teams.alpha.id));
+      .where(eq(ministryMembershipTeam.teamId, worship.teams.alpha.id));
     expect(alphaTeam).toEqual(
       expect.arrayContaining([
         {

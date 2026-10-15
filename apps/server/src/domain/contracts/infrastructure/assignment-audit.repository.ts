@@ -27,8 +27,8 @@ export interface AssignmentAuditLogEntry {
   assignmentId: string;
   volunteerId: string;
   volunteerName: string;
-  slotId: string;
-  slotLabel: string;
+  eventTimeBlockId: string;
+  eventTimeBlockLabel: string;
   roleId: string;
   roleName: string;
   action: AssignmentAuditAction;
@@ -70,7 +70,7 @@ export interface AssignmentAuditRepository {
 
   /**
    * List enriched audit entries for all assignments within an event,
-   * joined with volunteer / slot / role / actor display fields.
+   * joined with volunteer / event time block / role / actor display fields.
    */
   listByEvent(
     churchId: ChurchId,

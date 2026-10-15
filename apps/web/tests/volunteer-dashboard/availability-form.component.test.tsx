@@ -12,22 +12,22 @@ const eventFixture = {
 };
 
 describe('AvailabilityForm', () => {
-  it('saves the selected slot answers', async () => {
+  it('saves the selected time block answers', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
 
     renderWithProviders(
       <AvailabilityForm
         event={eventFixture}
-        slots={[
+        eventTimeBlocks={[
           {
-            slotId: 'slot-1',
+            eventTimeBlockId: 'event-time-block-1',
             label: '8:00 AM Service',
             startTime: '2099-01-05T08:00:00.000Z',
             endTime: '2099-01-05T09:30:00.000Z',
           },
           {
-            slotId: 'slot-2',
+            eventTimeBlockId: 'event-time-block-2',
             label: '10:30 AM Service',
             startTime: '2099-01-05T10:30:00.000Z',
             endTime: '2099-01-05T12:00:00.000Z',
@@ -54,7 +54,7 @@ describe('AvailabilityForm', () => {
     expect(secondUnavailableButton).toBeDefined();
 
     if (!firstAvailableButton || !secondUnavailableButton) {
-      throw new Error('Expected both slot response buttons to exist');
+      throw new Error('Expected both time block response buttons to exist');
     }
 
     await user.click(firstAvailableButton);
@@ -64,11 +64,11 @@ describe('AvailabilityForm', () => {
     expect(onSave).toHaveBeenCalledWith({
       answers: [
         {
-          slotId: 'slot-1',
+          eventTimeBlockId: 'event-time-block-1',
           response: 'available',
         },
         {
-          slotId: 'slot-2',
+          eventTimeBlockId: 'event-time-block-2',
           response: 'unavailable',
         },
       ],
@@ -82,9 +82,9 @@ describe('AvailabilityForm', () => {
     renderWithProviders(
       <AvailabilityForm
         event={eventFixture}
-        slots={[
+        eventTimeBlocks={[
           {
-            slotId: 'slot-1',
+            eventTimeBlockId: 'event-time-block-1',
             label: '8:00 AM Service',
             startTime: '2099-01-05T08:00:00.000Z',
             endTime: '2099-01-05T09:30:00.000Z',

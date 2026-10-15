@@ -1,10 +1,10 @@
 import { NotFoundError } from '@church/core';
 import {
   event,
+  eventTimeBlock,
   ministryParticipation,
   shift,
-  slotRequirement,
-  timeSlot,
+  shiftRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, eq } from 'drizzle-orm';
@@ -19,10 +19,11 @@ import type { TransactionContext } from '../../domain/contracts/infrastructure/t
 import type {
   Event,
   EventStatus,
-  EventWithSlots,
+  EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
 import { mapEvent } from '../mappers/event.mapper';
-import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
+import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
+import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
@@ -73,36 +74,39 @@ export class DrizzleEventRepository implements EventRepository {
     return mapEvent(row);
   }
 
-  async getWithSlots(
+  async getWithEventTimeBlocks(
     churchId: ChurchId,
     id: EventId,
     tx?: TransactionContext,
-  ): Promise<EventWithSlots> {
+  ): Promise<EventWithEventTimeBlocks> {
     const db = getClient(this.db, tx);
     const ev = await this.getById(churchId, id, tx);
 
-    const slotRows = await db
+    const eventTimeBlockRows = await db
       .select()
-      .from(timeSlot)
+      .from(eventTimeBlock)
       .where(
-        and(eq(timeSlot.eventId, id), withChurchIsolation(timeSlot, churchId)),
+        and(
+          eq(eventTimeBlock.eventId, id),
+          withChurchIsolation(eventTimeBlock, churchId),
+        ),
       );
 
-    const slots = await Promise.all(
-      slotRows.map(async (slotRow) => {
+    const eventTimeBlocks = await Promise.all(
+      eventTimeBlockRows.map(async (eventTimeBlockRow) => {
         const reqRows = await db
-          .select({ requirement: slotRequirement })
-          .from(slotRequirement)
-          .innerJoin(shift, eq(shift.id, slotRequirement.shiftId))
-          .where(eq(shift.timeSlotId, slotRow.id));
+          .select({ requirement: shiftRequirement })
+          .from(shiftRequirement)
+          .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+          .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
         const requirements = reqRows.map(({ requirement }) =>
-          mapSlotRequirement(requirement, slotRow.id),
+          mapShiftRequirement(requirement, eventTimeBlockRow.id),
         );
-        return mapTimeSlot(slotRow, requirements);
+        return mapEventTimeBlock(eventTimeBlockRow, requirements);
       }),
     );
 
-    return { event: ev, slots };
+    return { event: ev, eventTimeBlocks };
   }
 
   async listByMinistry(

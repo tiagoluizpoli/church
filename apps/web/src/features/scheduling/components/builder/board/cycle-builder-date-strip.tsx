@@ -95,7 +95,7 @@ export function CycleBuilderDateStrip({
               0,
             );
             const required = dayEvents.reduce(
-              (total, event) => total + event.requiredCount,
+              (total, event) => total + event.peopleNeeded,
               0,
             );
             const percent = required

@@ -95,7 +95,7 @@ export class EventController implements FastifyController {
           operationId: 'getScheduleBuilderData',
           summary: 'Get schedule builder data for an Event',
           description:
-            'Get the TimeSlots, Shifts, and eligible Volunteers needed to build a schedule for an Event.',
+            'Get the EventTimeBlocks, Shifts, and eligible Volunteers needed to build a schedule for an Event.',
           query: z.object({
             eventId: z.string(),
             ministryId: z.string().optional(),

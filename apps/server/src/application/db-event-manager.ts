@@ -5,43 +5,43 @@ import type {
   ScheduleBuilderData,
 } from '../domain/contracts/application/event-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
-import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
+import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Event } from '../domain/entities/event';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 
 interface DbEventManagerDependencies {
   eventRepo: EventRepository;
-  slotRepo: TimeSlotRepository;
+  eventTimeBlockRepo: EventTimeBlockRepository;
   assignmentRepo: AssignmentRepository;
-  availabilityRepo: AvailabilityRepository;
+  unavailableShiftRepo: UnavailableShiftRepository;
   volunteerRepo: VolunteerRepository;
   roleRepo: RoleRepository;
 }
 
 export class DbEventManager implements IEventManager {
   private readonly eventRepo: EventRepository;
-  private readonly slotRepo: TimeSlotRepository;
+  private readonly eventTimeBlockRepo: EventTimeBlockRepository;
   private readonly assignmentRepo: AssignmentRepository;
-  private readonly availabilityRepo: AvailabilityRepository;
+  private readonly unavailableShiftRepo: UnavailableShiftRepository;
   private readonly volunteerRepo: VolunteerRepository;
   private readonly roleRepo: RoleRepository;
 
   constructor({
     eventRepo,
-    slotRepo,
+    eventTimeBlockRepo,
     assignmentRepo,
-    availabilityRepo,
+    unavailableShiftRepo,
     volunteerRepo,
     roleRepo,
   }: DbEventManagerDependencies) {
     this.eventRepo = eventRepo;
-    this.slotRepo = slotRepo;
+    this.eventTimeBlockRepo = eventTimeBlockRepo;
     this.assignmentRepo = assignmentRepo;
-    this.availabilityRepo = availabilityRepo;
+    this.unavailableShiftRepo = unavailableShiftRepo;
     this.volunteerRepo = volunteerRepo;
     this.roleRepo = roleRepo;
   }
@@ -80,7 +80,7 @@ export class DbEventManager implements IEventManager {
       );
     }
     /**
-     * TeamLeader-ness is per-team (`ministry_volunteer_team.access_level =
+     * TeamLeader-ness is per-team (`ministry_membership_team.access_level =
      * 'leader'`), orthogonal to the ministry-wide `ministryAccessLevel` — a
      * caller can be an ordinary Ministry Member and still lead one or more
      * Teams (CONTEXT.md's TeamLeader, the direct replacement for the old
@@ -91,9 +91,9 @@ export class DbEventManager implements IEventManager {
      */
     const callerTeamIds = isCallerMinistryLeader ? null : callerLedTeamIds;
 
-    const [slots, rawAssignments, ministryVolunteers, roles] =
+    const [eventTimeBlocks, rawAssignments, volunteersInMinistry, roles] =
       await Promise.all([
-        this.slotRepo.listByEvent(churchId, eventId),
+        this.eventTimeBlockRepo.listByEvent(churchId, eventId),
         this.assignmentRepo.listByEvent(churchId, eventId),
         this.volunteerRepo.listByMinistry(churchId, ministryId),
         this.roleRepo.listByMinistry(churchId, ministryId),
@@ -109,7 +109,7 @@ export class DbEventManager implements IEventManager {
         )
         .map((membership) => membership.volunteerId),
     );
-    const rawVolunteers = ministryVolunteers.filter((volunteer) =>
+    const rawVolunteers = volunteersInMinistry.filter((volunteer) =>
       allowedVolunteerIds.has(volunteer.id),
     );
     const membershipByVolunteerId = new Map(
@@ -117,18 +117,18 @@ export class DbEventManager implements IEventManager {
     );
 
     const allVolunteerIds = rawVolunteers.map((v) => v.id);
-    const rawAvailability =
+    const rawUnavailableShifts =
       allVolunteerIds.length > 0
-        ? await this.availabilityRepo.listByVolunteers(
+        ? await this.unavailableShiftRepo.listByVolunteers(
             churchId,
             allVolunteerIds,
           )
         : [];
 
     return {
-      events: [{ event, slots }],
+      events: [{ event, eventTimeBlocks }],
       assignments: rawAssignments,
-      availability: rawAvailability,
+      unavailableShifts: rawUnavailableShifts,
       volunteers: rawVolunteers.map((v) => {
         const membership = membershipByVolunteerId.get(v.id);
         /**

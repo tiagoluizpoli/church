@@ -153,8 +153,8 @@ export function useCycleBuilderActions({
     )?.volunteerName;
     if (assigned) return assigned;
     for (const event of data.events) {
-      for (const slot of event.slots) {
-        for (const shift of slot.shifts) {
+      for (const eventTimeBlock of event.eventTimeBlocks) {
+        for (const shift of eventTimeBlock.shifts) {
           const eligible = shift.eligibleVolunteers.find(
             (volunteer) => volunteer.volunteerId === input.volunteerId,
           );
@@ -177,8 +177,8 @@ export function useCycleBuilderActions({
     )?.membership;
     if (assigned) return assigned;
     for (const event of data.events) {
-      for (const slot of event.slots) {
-        for (const shift of slot.shifts) {
+      for (const eventTimeBlock of event.eventTimeBlocks) {
+        for (const shift of eventTimeBlock.shifts) {
           const eligible = shift.eligibleVolunteers.find(
             (volunteer) => volunteer.volunteerId === input.volunteerId,
           );
@@ -199,7 +199,7 @@ export function useCycleBuilderActions({
     mode,
   }: ApplyAssignmentInput): Promise<boolean> => {
     const volunteerName = volunteerNameFor(input);
-    const slotLabel = input.slotLabel ?? 'this shift';
+    const eventTimeBlockLabel = input.eventTimeBlockLabel ?? 'this shift';
     const shouldCreate = mode === 'create' || (!mode && !input.assignmentId);
     try {
       if (!shouldCreate && input.assignmentId) {
@@ -226,7 +226,7 @@ export function useCycleBuilderActions({
       );
       onAssignmentApplied?.();
       report({
-        message: `Assigned ${volunteerName} to ${slotLabel}`,
+        message: `Assigned ${volunteerName} to ${eventTimeBlockLabel}`,
         tone: 'success',
       });
       return true;
@@ -247,7 +247,7 @@ export function useCycleBuilderActions({
         },
       ]);
       report({
-        message: `Could not assign ${volunteerName} to ${slotLabel}: ${message}`,
+        message: `Could not assign ${volunteerName} to ${eventTimeBlockLabel}: ${message}`,
         tone: 'error',
       });
       return false;
@@ -332,7 +332,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Could not move ${targetName} into ${sourceName}'s slot. Nothing was changed: ${errorMessage(error, 'reassignment failed')}`,
+        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage(error, 'reassignment failed')}`,
         tone: 'error',
       });
       return;
@@ -345,7 +345,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s slot, but ${sourceName} could not take ${targetName}'s — ${errorMessage(error, 'reassignment failed')}. Reassign ${sourceName} by hand.`,
+        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage(error, 'reassignment failed')}. Reassign ${sourceName} by hand.`,
         tone: 'error',
       });
       return;

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type {
   CycleBuilderAssignment,
   CycleBuilderEventSummary,
+  CycleBuilderEventTimeBlockSummary,
   CycleBuilderShiftSummary,
-  CycleBuilderSlotSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
   findShiftById,
@@ -16,11 +16,11 @@ function makeShift(
 ): CycleBuilderShiftSummary {
   return {
     shiftId: 'shift-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     requirements: [],
     assignments: [],
@@ -30,16 +30,16 @@ function makeShift(
   };
 }
 
-function makeSlot(
-  overrides: Partial<CycleBuilderSlotSummary> = {},
-): CycleBuilderSlotSummary {
+function makeEventTimeBlock(
+  overrides: Partial<CycleBuilderEventTimeBlockSummary> = {},
+): CycleBuilderEventTimeBlockSummary {
   return {
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
     included: true,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     shiftCount: 1,
     shifts: [makeShift()],
@@ -59,10 +59,10 @@ function makeEvent(
     end: '2027-01-05T02:59:59.999Z',
     status: 'draft',
     fillRatio: 0,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
-    slotCount: 1,
-    slots: [makeSlot()],
+    eventTimeBlockCount: 1,
+    eventTimeBlocks: [makeEventTimeBlock()],
     ...overrides,
   };
 }
@@ -73,7 +73,7 @@ function makeAssignment(
 ): CycleBuilderAssignment {
   return {
     churchId: 'church-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     roleId: 'role-1',
     status: 'confirmed',
@@ -93,7 +93,7 @@ describe('focusKey', () => {
 describe('roleHasRoom', () => {
   it('has room while active assignments sit below the required headcount', () => {
     const shift = makeShift({
-      requirements: [{ roleId: 'role-1', requiredCount: 2 }],
+      requirements: [{ roleId: 'role-1', peopleNeeded: 2 }],
       assignments: [makeAssignment({ id: 'a-1', volunteerId: 'ana' })],
     });
 
@@ -102,7 +102,7 @@ describe('roleHasRoom', () => {
 
   it('is full once active assignments reach the headcount', () => {
     const shift = makeShift({
-      requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+      requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
       assignments: [makeAssignment({ id: 'a-1', volunteerId: 'ana' })],
     });
 
@@ -111,7 +111,7 @@ describe('roleHasRoom', () => {
 
   it('ignores cancelled and declined assignments against the ceiling', () => {
     const shift = makeShift({
-      requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+      requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
       assignments: [
         makeAssignment({ id: 'a-1', volunteerId: 'ana', status: 'cancelled' }),
         makeAssignment({ id: 'a-2', volunteerId: 'bruno', status: 'declined' }),
@@ -129,9 +129,13 @@ describe('roleHasRoom', () => {
 });
 
 describe('findShiftById', () => {
-  it('finds a shift nested in any event slot, or returns undefined', () => {
+  it('finds a shift nested in any event time block, or returns undefined', () => {
     const data = {
-      events: [makeEvent({ slots: [makeSlot({ shifts: [makeShift()] })] })],
+      events: [
+        makeEvent({
+          eventTimeBlocks: [makeEventTimeBlock({ shifts: [makeShift()] })],
+        }),
+      ],
       assignments: [],
       roles: [],
     };

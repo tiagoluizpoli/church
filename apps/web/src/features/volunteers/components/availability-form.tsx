@@ -17,7 +17,7 @@ import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface AvailabilityFormProps {
   event: AvailabilityEventViewModel;
-  slots: AvailabilitySlotViewModel[];
+  eventTimeBlocks: AvailabilityEventTimeBlockViewModel[];
   isEditable: boolean;
   isOnline: boolean;
   onSave: (input: AvailabilitySaveInput) => void;
@@ -31,8 +31,8 @@ export interface AvailabilityEventViewModel {
   end: string;
 }
 
-export interface AvailabilitySlotViewModel {
-  slotId: string;
+export interface AvailabilityEventTimeBlockViewModel {
+  eventTimeBlockId: string;
   label: string;
   startTime: string;
   endTime: string;
@@ -40,12 +40,12 @@ export interface AvailabilitySlotViewModel {
 }
 
 export interface AvailabilitySaveInput {
-  answers: AvailabilitySlotAnswerInput[];
+  answers: AvailabilityEventTimeBlockAnswerInput[];
   confirmOverlap?: boolean;
 }
 
-export interface AvailabilitySlotAnswerInput {
-  slotId: string;
+export interface AvailabilityEventTimeBlockAnswerInput {
+  eventTimeBlockId: string;
   response: 'available' | 'unavailable';
 }
 
@@ -57,45 +57,53 @@ export const AVAILABILITY_SAVE_STATES = [
 ] as const;
 export type AvailabilitySaveState = (typeof AVAILABILITY_SAVE_STATES)[number];
 
-type SlotResponseMap = Record<string, 'available' | 'unavailable' | undefined>;
+type EventTimeBlockResponseMap = Record<
+  string,
+  'available' | 'unavailable' | undefined
+>;
 
 function buildInitialResponses(
-  slots: AvailabilitySlotViewModel[],
-): SlotResponseMap {
+  eventTimeBlocks: AvailabilityEventTimeBlockViewModel[],
+): EventTimeBlockResponseMap {
   return Object.fromEntries(
-    slots.map((slot) => [slot.slotId, slot.response]),
-  ) as SlotResponseMap;
+    eventTimeBlocks.map((eventTimeBlock) => [
+      eventTimeBlock.eventTimeBlockId,
+      eventTimeBlock.response,
+    ]),
+  ) as EventTimeBlockResponseMap;
 }
 
-function hasAnsweredEverySlot(
-  slots: AvailabilitySlotViewModel[],
-  responses: SlotResponseMap,
+function hasAnsweredEveryEventTimeBlock(
+  eventTimeBlocks: AvailabilityEventTimeBlockViewModel[],
+  responses: EventTimeBlockResponseMap,
 ): boolean {
-  return slots.every((slot) => responses[slot.slotId] != null);
+  return eventTimeBlocks.every(
+    (eventTimeBlock) => responses[eventTimeBlock.eventTimeBlockId] != null,
+  );
 }
 
 export function AvailabilityForm({
   event,
-  slots,
+  eventTimeBlocks,
   isEditable,
   isOnline,
   onSave,
   saveState,
 }: AvailabilityFormProps) {
   const { churchTimezone } = useTimezone();
-  const [responses, setResponses] = useState<SlotResponseMap>(() =>
-    buildInitialResponses(slots),
+  const [responses, setResponses] = useState<EventTimeBlockResponseMap>(() =>
+    buildInitialResponses(eventTimeBlocks),
   );
 
   useEffect(() => {
-    setResponses(buildInitialResponses(slots));
-  }, [slots]);
+    setResponses(buildInitialResponses(eventTimeBlocks));
+  }, [eventTimeBlocks]);
 
   const canSave =
     isEditable &&
     isOnline &&
-    slots.length > 0 &&
-    hasAnsweredEverySlot(slots, responses) &&
+    eventTimeBlocks.length > 0 &&
+    hasAnsweredEveryEventTimeBlock(eventTimeBlocks, responses) &&
     saveState !== 'saving';
 
   const handleSave = () => {
@@ -104,15 +112,15 @@ export function AvailabilityForm({
     }
 
     onSave({
-      answers: slots.flatMap((slot) => {
-        const response = responses[slot.slotId];
+      answers: eventTimeBlocks.flatMap((eventTimeBlock) => {
+        const response = responses[eventTimeBlock.eventTimeBlockId];
         if (!response) {
           return [];
         }
 
         return [
           {
-            slotId: slot.slotId,
+            eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
             response,
           },
         ];
@@ -125,7 +133,7 @@ export function AvailabilityForm({
       <CardHeader>
         <CardTitle>{event.title}</CardTitle>
         <CardDescription>
-          Confirm whether you can serve in each leader-defined service slot.
+          Confirm whether you can serve in each leader-defined time block.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -139,30 +147,33 @@ export function AvailabilityForm({
           </Alert>
         ) : null}
 
-        {slots.length === 0 ? (
+        {eventTimeBlocks.length === 0 ? (
           <Alert>
             <TriangleAlert className="size-4" />
-            <AlertTitle>No slots available yet</AlertTitle>
+            <AlertTitle>No time blocks available yet</AlertTitle>
             <AlertDescription>
               Your leader still needs to publish service blocks for this event.
             </AlertDescription>
           </Alert>
         ) : (
           <div className="space-y-3">
-            {slots.map((slot) => {
-              const response = responses[slot.slotId];
+            {eventTimeBlocks.map((eventTimeBlock) => {
+              const response = responses[eventTimeBlock.eventTimeBlockId];
 
               return (
-                <div key={slot.slotId} className="rounded-lg border p-4">
+                <div
+                  key={eventTimeBlock.eventTimeBlockId}
+                  className="rounded-lg border p-4"
+                >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
                       <Label className="font-medium text-base">
-                        {slot.label}
+                        {eventTimeBlock.label}
                       </Label>
                       <p className="text-muted-foreground text-sm">
                         {formatInstantRangeOf({
-                          start: slot.startTime,
-                          end: slot.endTime,
+                          start: eventTimeBlock.startTime,
+                          end: eventTimeBlock.endTime,
                           timeZone: churchTimezone,
                         })}
                       </p>
@@ -188,7 +199,7 @@ export function AvailabilityForm({
                       onClick={() =>
                         setResponses((current) => ({
                           ...current,
-                          [slot.slotId]: 'available',
+                          [eventTimeBlock.eventTimeBlockId]: 'available',
                         }))
                       }
                     >
@@ -203,7 +214,7 @@ export function AvailabilityForm({
                       onClick={() =>
                         setResponses((current) => ({
                           ...current,
-                          [slot.slotId]: 'unavailable',
+                          [eventTimeBlock.eventTimeBlockId]: 'unavailable',
                         }))
                       }
                     >

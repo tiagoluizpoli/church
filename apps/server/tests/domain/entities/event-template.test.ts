@@ -1,17 +1,23 @@
 import { parseTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { EventTemplate } from '@/domain/entities/event-template';
-import { TimeBlock, type TimeBlockProps } from '@/domain/entities/time-block';
+import {
+  TemplateTimeBlock,
+  type TemplateTimeBlockProps,
+} from '@/domain/entities/template-time-block';
 import { InvalidTimeRangeError } from '@/domain/errors/invalid-time-range';
 import { InvalidWeekdayError } from '@/domain/errors/invalid-weekday';
 
-interface CreateTimeBlockInput {
-  props?: Partial<TimeBlockProps>;
+interface CreateTemplateTimeBlockInput {
+  props?: Partial<TemplateTimeBlockProps>;
   id?: string;
 }
 
-function createTimeBlock({ props, id }: CreateTimeBlockInput = {}) {
-  return new TimeBlock({
+function createTemplateTimeBlock({
+  props,
+  id,
+}: CreateTemplateTimeBlockInput = {}) {
+  return new TemplateTimeBlock({
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       templateId: '22222222-2222-2222-2222-222222222222',
@@ -25,7 +31,7 @@ function createTimeBlock({ props, id }: CreateTimeBlockInput = {}) {
   });
 }
 
-describe('EventTemplate and TimeBlock', () => {
+describe('EventTemplate and TemplateTimeBlock', () => {
   it('keeps blocks ordered for a valid weekday template', () => {
     const template = new EventTemplate({
       props: {
@@ -33,8 +39,8 @@ describe('EventTemplate and TimeBlock', () => {
         name: 'Sunday Service',
         weekday: 0,
         blocks: [
-          createTimeBlock(),
-          createTimeBlock({
+          createTemplateTimeBlock(),
+          createTemplateTimeBlock({
             props: {
               label: 'Gathering',
               startTime: parseTimeOfDay({ value: '08:30' }),
@@ -56,7 +62,7 @@ describe('EventTemplate and TimeBlock', () => {
 
   it('rejects zero-length time blocks (equal start and end)', () => {
     expect(() =>
-      createTimeBlock({
+      createTemplateTimeBlock({
         props: {
           startTime: parseTimeOfDay({ value: '10:00' }),
           endTime: parseTimeOfDay({ value: '10:00' }),
@@ -66,7 +72,7 @@ describe('EventTemplate and TimeBlock', () => {
   });
 
   it('accepts an overnight time block whose end is before its start', () => {
-    const block = createTimeBlock({
+    const block = createTemplateTimeBlock({
       props: {
         startTime: parseTimeOfDay({ value: '22:00' }),
         endTime: parseTimeOfDay({ value: '02:00' }),
@@ -78,7 +84,7 @@ describe('EventTemplate and TimeBlock', () => {
   });
 
   it('supports a single time block template', () => {
-    const block = createTimeBlock({
+    const block = createTemplateTimeBlock({
       props: {
         order: 1,
       },
@@ -124,8 +130,8 @@ describe('EventTemplate and TimeBlock', () => {
     ).toThrow(InvalidWeekdayError);
   });
 
-  it('preserves stable block ids for later slot generation', () => {
-    const block = createTimeBlock({
+  it('preserves stable block ids for later event time block generation', () => {
+    const block = createTemplateTimeBlock({
       props: {
         order: 1,
       },
@@ -135,8 +141,8 @@ describe('EventTemplate and TimeBlock', () => {
     expect(block.id).toBe('33333333-3333-3333-3333-333333333333');
   });
 
-  it('exposes every TimeBlock property', () => {
-    const block = createTimeBlock({
+  it('exposes every TemplateTimeBlock property', () => {
+    const block = createTemplateTimeBlock({
       props: {
         label: 'Gathering',
         startTime: parseTimeOfDay({ value: '08:30' }),

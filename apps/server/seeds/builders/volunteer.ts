@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import {
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   volunteer,
 } from '@church/db';
 import { type Instant, toDate } from '@church/time';
@@ -12,11 +12,11 @@ import { buildUser, type SeededUser } from './identity';
 import { requireInsertedRow } from './require-inserted-row';
 
 export type SeededVolunteer = typeof volunteer.$inferSelect;
-export type SeededMinistryMembership = typeof ministryVolunteer.$inferSelect;
+export type SeededMinistryMembership = typeof ministryMembership.$inferSelect;
 export type MinistryAccessLevel =
   SeededMinistryMembership['ministryAccessLevel'];
 export type TeamAccessLevel =
-  (typeof ministryVolunteerTeam.$inferSelect)['accessLevel'];
+  (typeof ministryMembershipTeam.$inferSelect)['accessLevel'];
 
 export interface BuildVolunteerInput {
   db: SeedWriter;
@@ -83,7 +83,7 @@ export async function buildMinistryMembership({
 }: BuildMinistryMembershipInput): Promise<SeededMinistryMembership> {
   const membership = requireInsertedRow({
     rows: await db
-      .insert(ministryVolunteer)
+      .insert(ministryMembership)
       .values({
         id,
         churchId,
@@ -97,28 +97,28 @@ export async function buildMinistryMembership({
   });
 
   if (roleIds.length > 0) {
-    await db.insert(ministryVolunteerRole).values(
+    await db.insert(ministryMembershipRole).values(
       roleIds.map((roleId) => ({
         id: deriveSeedId({
-          kind: 'ministry-volunteer-role',
+          kind: 'ministry-membership-role',
           parentIds: [membership.id, roleId],
         }),
         churchId,
-        ministryVolunteerId: membership.id,
+        ministryMembershipId: membership.id,
         roleId,
       })),
     );
   }
 
   if (teams.length > 0) {
-    await db.insert(ministryVolunteerTeam).values(
+    await db.insert(ministryMembershipTeam).values(
       teams.map((teamMembership) => ({
         id: deriveSeedId({
-          kind: 'ministry-volunteer-team',
+          kind: 'ministry-membership-team',
           parentIds: [membership.id, teamMembership.teamId],
         }),
         churchId,
-        ministryVolunteerId: membership.id,
+        ministryMembershipId: membership.id,
         teamId: teamMembership.teamId,
         accessLevel: teamMembership.accessLevel,
       })),
@@ -190,13 +190,14 @@ export async function buildVolunteerWithMembership({
   return { user: seededUser, volunteer: seededVolunteer, membership };
 }
 
-export type SeededRoleQualification = typeof ministryVolunteerRole.$inferSelect;
-export type SeededTeamMembership = typeof ministryVolunteerTeam.$inferSelect;
+export type SeededRoleQualification =
+  typeof ministryMembershipRole.$inferSelect;
+export type SeededTeamMembership = typeof ministryMembershipTeam.$inferSelect;
 
 export interface BuildRoleQualificationInput {
   db: SeedWriter;
   churchId: string;
-  ministryVolunteerId: string;
+  ministryMembershipId: string;
   roleId: string;
 }
 
@@ -204,19 +205,19 @@ export interface BuildRoleQualificationInput {
 export async function buildRoleQualification({
   db,
   churchId,
-  ministryVolunteerId,
+  ministryMembershipId,
   roleId,
 }: BuildRoleQualificationInput): Promise<SeededRoleQualification> {
   return requireInsertedRow({
     rows: await db
-      .insert(ministryVolunteerRole)
+      .insert(ministryMembershipRole)
       .values({
         id: deriveSeedId({
-          kind: 'ministry-volunteer-role',
-          parentIds: [ministryVolunteerId, roleId],
+          kind: 'ministry-membership-role',
+          parentIds: [ministryMembershipId, roleId],
         }),
         churchId,
-        ministryVolunteerId,
+        ministryMembershipId,
         roleId,
       })
       .returning(),
@@ -227,7 +228,7 @@ export async function buildRoleQualification({
 export interface BuildTeamMembershipInput {
   db: SeedWriter;
   churchId: string;
-  ministryVolunteerId: string;
+  ministryMembershipId: string;
   teamId: string;
   accessLevel: TeamAccessLevel;
 }
@@ -236,20 +237,20 @@ export interface BuildTeamMembershipInput {
 export async function buildTeamMembership({
   db,
   churchId,
-  ministryVolunteerId,
+  ministryMembershipId,
   teamId,
   accessLevel,
 }: BuildTeamMembershipInput): Promise<SeededTeamMembership> {
   return requireInsertedRow({
     rows: await db
-      .insert(ministryVolunteerTeam)
+      .insert(ministryMembershipTeam)
       .values({
         id: deriveSeedId({
-          kind: 'ministry-volunteer-team',
-          parentIds: [ministryVolunteerId, teamId],
+          kind: 'ministry-membership-team',
+          parentIds: [ministryMembershipId, teamId],
         }),
         churchId,
-        ministryVolunteerId,
+        ministryMembershipId,
         teamId,
         accessLevel,
       })

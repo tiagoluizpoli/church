@@ -18,13 +18,13 @@ interface OverrideDialogProps {
   conflictType: AssignmentOverrideKind;
   volunteerName: string;
   volunteerMembership?: AssigneeMembership;
-  slotLabel: string;
+  eventTimeBlockLabel: string;
   /** The role being filled — named in the `not_qualified` variant's copy. */
   roleLabel?: string;
   isPending: boolean;
   onConfirm: () => void;
   /**
-   * The team the conflicted slot belongs to, if any. The badge only reads
+   * The team the conflicted shift belongs to, if any. The badge only reads
    * "Team Leader" when the volunteer leads this specific team (FR-013).
    */
   contextTeamId?: string;
@@ -36,7 +36,7 @@ export function OverrideDialog({
   conflictType,
   volunteerName,
   volunteerMembership,
-  slotLabel,
+  eventTimeBlockLabel,
   roleLabel,
   isPending,
   onConfirm,
@@ -64,7 +64,7 @@ export function OverrideDialog({
             />
           </DialogTitle>
           <DialogDescription>
-            {conflictText} for {slotLabel}.
+            {conflictText} for {eventTimeBlockLabel}.
           </DialogDescription>
         </DialogHeader>
 

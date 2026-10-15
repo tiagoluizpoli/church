@@ -6,7 +6,7 @@ import type {
   UserId,
 } from '../../branded-ids';
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
-import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 
 /**
  * The minting API's own delivery-status vocabulary (spec #56 §6.4) — kept

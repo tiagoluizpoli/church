@@ -19,46 +19,46 @@ function render(
   );
 }
 
-function twoSlotRow(): CycleCalendarTableRow {
+function rowWithTwoEventTimeBlocks(): CycleCalendarTableRow {
   return {
     eventId: 'event-1',
     title: 'Sunday Service',
     start: '2026-08-02T09:00:00Z',
     end: '2026-08-02T11:00:00Z',
     status: 'scheduled',
-    slots: [
+    eventTimeBlocks: [
       {
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         label: 'Worship',
         startTime: '2026-08-02T09:00:00Z',
         endTime: '2026-08-02T10:00:00Z',
-        isOnlySlotInEvent: false,
+        isOnlyEventTimeBlockInEvent: false,
       },
       {
-        slotId: 'slot-2',
+        eventTimeBlockId: 'event-time-block-2',
         label: 'Message',
         startTime: '2026-08-02T10:00:00Z',
         endTime: '2026-08-02T11:00:00Z',
-        isOnlySlotInEvent: false,
+        isOnlyEventTimeBlockInEvent: false,
       },
     ],
   };
 }
 
-function oneSlotRow(): CycleCalendarTableRow {
+function oneEventTimeBlockRow(): CycleCalendarTableRow {
   return {
     eventId: 'event-2',
     title: 'Wednesday Service',
     start: '2026-08-05T19:00:00Z',
     end: '2026-08-05T21:00:00Z',
     status: 'scheduled',
-    slots: [
+    eventTimeBlocks: [
       {
-        slotId: 'slot-3',
+        eventTimeBlockId: 'event-time-block-3',
         label: 'Midweek',
         startTime: '2026-08-05T19:00:00Z',
         endTime: '2026-08-05T20:00:00Z',
-        isOnlySlotInEvent: true,
+        isOnlyEventTimeBlockInEvent: true,
       },
     ],
   };
@@ -67,27 +67,27 @@ function oneSlotRow(): CycleCalendarTableRow {
 function baseProps() {
   return {
     deleteEventPending: false,
-    deleteSlotPending: false,
-    onAddSlotRequest: vi.fn(),
+    deleteEventTimeBlockPending: false,
+    onAddEventTimeBlockRequest: vi.fn(),
     onEditEventRequest: vi.fn(),
     onDeleteEventConfirm: vi.fn(),
-    onEditSlotRequest: vi.fn(),
-    onDeleteSlotConfirm: vi.fn(),
+    onEditEventTimeBlockRequest: vi.fn(),
+    onDeleteEventTimeBlockConfirm: vi.fn(),
   };
 }
 
 describe('PlanningEventCard affordances (US1)', () => {
-  it('renders add/edit/delete affordances for a day-event and its slots when not read-only', () => {
+  it('renders add/edit/delete affordances for a day-event and its time blocks when not read-only', () => {
     render(
       <PlanningEventCard
-        row={twoSlotRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
     );
 
     expect(
-      screen.getByRole('button', { name: 'Add slot to Sunday Service' }),
+      screen.getByRole('button', { name: 'Add time block to Sunday Service' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Edit day Sunday Service' }),
@@ -96,34 +96,38 @@ describe('PlanningEventCard affordances (US1)', () => {
       screen.getByRole('button', { name: 'Delete day Sunday Service' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Edit slot Worship' }),
+      screen.getByRole('button', { name: 'Edit time block Worship' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Delete slot Worship' }),
+      screen.getByRole('button', { name: 'Delete time block Worship' }),
     ).toBeEnabled();
   });
 
-  it("disables a slot's delete affordance when it is the only slot in the event", () => {
+  it("disables a time block's delete affordance when it is the only time block in the event", () => {
     render(
       <PlanningEventCard
-        row={oneSlotRow()}
+        row={oneEventTimeBlockRow()}
         isReadOnly={false}
         {...baseProps()}
       />,
     );
 
     expect(
-      screen.getByRole('button', { name: 'Delete slot Midweek' }),
+      screen.getByRole('button', { name: 'Delete time block Midweek' }),
     ).toBeDisabled();
   });
 
   it('renders none of the add/edit/delete affordances when read-only', () => {
     render(
-      <PlanningEventCard row={twoSlotRow()} isReadOnly {...baseProps()} />,
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly
+        {...baseProps()}
+      />,
     );
 
     expect(
-      screen.queryByRole('button', { name: /^Add slot/ }),
+      screen.queryByRole('button', { name: /^Add eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Edit day/ }),
@@ -132,17 +136,21 @@ describe('PlanningEventCard affordances (US1)', () => {
       screen.queryByRole('button', { name: /^Delete day/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Edit slot/ }),
+      screen.queryByRole('button', { name: /^Edit eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Delete slot/ }),
+      screen.queryByRole('button', { name: /^Delete eventTimeBlock/ }),
     ).not.toBeInTheDocument();
   });
 
   it('calls onDeleteEventConfirm after confirming the delete-day dialog', async () => {
     const props = baseProps();
     render(
-      <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />,
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly={false}
+        {...props}
+      />,
     );
 
     const user = userEvent.setup();
@@ -159,31 +167,35 @@ describe('PlanningEventCard affordances (US1)', () => {
     });
   });
 
-  it('calls onDeleteSlotConfirm after confirming the delete-slot dialog', async () => {
+  it('calls onDeleteEventTimeBlockConfirm after confirming the delete-event-time-block dialog', async () => {
     const props = baseProps();
     render(
-      <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />,
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly={false}
+        {...props}
+      />,
     );
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete slot Worship' }),
+      screen.getByRole('button', { name: 'Delete time block Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete slot' }),
+      within(dialog).getByRole('button', { name: 'Delete time block' }),
     );
 
-    expect(props.onDeleteSlotConfirm).toHaveBeenCalledWith({
+    expect(props.onDeleteEventTimeBlockConfirm).toHaveBeenCalledWith({
       eventId: 'event-1',
-      slotId: 'slot-1',
+      eventTimeBlockId: 'event-time-block-1',
     });
   });
 
-  it('gives the day-delete trigger the same destructive visual weight as its slot-level sibling', () => {
+  it('gives the day-delete trigger the same destructive visual weight as its time-block-level sibling', () => {
     render(
       <PlanningEventCard
-        row={twoSlotRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
@@ -192,18 +204,22 @@ describe('PlanningEventCard affordances (US1)', () => {
     const dayDelete = screen.getByRole('button', {
       name: 'Delete day Sunday Service',
     });
-    const slotDelete = screen.getByRole('button', {
-      name: 'Delete slot Worship',
+    const eventTimeBlockDelete = screen.getByRole('button', {
+      name: 'Delete time block Worship',
     });
 
     expect(dayDelete.className).toContain('bg-destructive/10');
-    expect(slotDelete.className).toContain('bg-destructive');
+    expect(eventTimeBlockDelete.className).toContain('bg-destructive');
   });
 
   it('keeps the delete-day confirm dialog open with a "Deleting…" label while the mutation is pending', async () => {
     const props = baseProps();
     const { rerender } = render(
-      <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />,
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly={false}
+        {...props}
+      />,
     );
 
     const user = userEvent.setup();
@@ -220,7 +236,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     rerender(
       <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
-          row={twoSlotRow()}
+          row={rowWithTwoEventTimeBlocks()}
           isReadOnly={false}
           {...props}
           deleteEventPending
@@ -235,35 +251,43 @@ describe('PlanningEventCard affordances (US1)', () => {
     // Mutation settles: dialog auto-closes.
     rerender(
       <TimezoneProvider churchTimezone="UTC">
-        <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />
+        <PlanningEventCard
+          row={rowWithTwoEventTimeBlocks()}
+          isReadOnly={false}
+          {...props}
+        />
       </TimezoneProvider>,
     );
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
-  it('keeps the delete-slot confirm dialog open with a "Deleting…" label while the mutation is pending', async () => {
+  it('keeps the delete-event-time-block confirm dialog open with a "Deleting…" label while the mutation is pending', async () => {
     const props = baseProps();
     const { rerender } = render(
-      <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />,
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly={false}
+        {...props}
+      />,
     );
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete slot Worship' }),
+      screen.getByRole('button', { name: 'Delete time block Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete slot' }),
+      within(dialog).getByRole('button', { name: 'Delete time block' }),
     );
 
     rerender(
       <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
-          row={twoSlotRow()}
+          row={rowWithTwoEventTimeBlocks()}
           isReadOnly={false}
           {...props}
-          deleteSlotPending
+          deleteEventTimeBlockPending
         />
       </TimezoneProvider>,
     );
@@ -273,7 +297,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     rerender(
       <TimezoneProvider churchTimezone="UTC">
-        <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />
+        <PlanningEventCard
+          row={rowWithTwoEventTimeBlocks()}
+          isReadOnly={false}
+          {...props}
+        />
       </TimezoneProvider>,
     );
 
@@ -286,7 +314,7 @@ function isDateOnlyText(content: string): boolean {
 }
 
 /** `dd/MM/yyyy HH:mm – HH:mm`, or `dd/MM/yyyy HH:mm – dd/MM/yyyy HH:mm` when
- * the slot's range crosses a church-local day boundary. */
+ * the time block's range crosses a church-local day boundary. */
 function isTimeRangeText(content: string): boolean {
   return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}\s?[–-]\s?(\d{2}\/\d{2}\/\d{4}\s)?\d{2}:\d{2}$/.test(
     content,
@@ -294,10 +322,10 @@ function isTimeRangeText(content: string): boolean {
 }
 
 describe('PlanningEventCard timezone-aware formatting (US2)', () => {
-  it("renders a day's date date-only and a slot's time as a dated instant range, with no raw ISO or arrow", () => {
+  it("renders a day's date date-only and a time block's time as a dated instant range, with no raw ISO or arrow", () => {
     render(
       <PlanningEventCard
-        row={twoSlotRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
@@ -316,30 +344,30 @@ describe('PlanningEventCard timezone-aware formatting (US2)', () => {
   it('changes the displayed date/time with the Church Timezone', () => {
     render(
       <PlanningEventCard
-        row={twoSlotRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
       { churchTimezone: 'UTC' },
     );
-    const utcSlotTime = within(
+    const utcTimeRange = within(
       screen.getByTestId('planning-event-card'),
     ).getAllByText(isTimeRangeText)[0].textContent;
 
     render(
       <PlanningEventCard
-        row={twoSlotRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,
       { churchTimezone: 'Pacific/Kiritimati' },
     );
     const cards = screen.getAllByTestId('planning-event-card');
-    const kiritimatiSlotTime = within(cards[cards.length - 1]).getAllByText(
+    const kiritimatiTimeRange = within(cards[cards.length - 1]).getAllByText(
       isTimeRangeText,
     )[0].textContent;
 
-    expect(kiritimatiSlotTime).not.toBe(utcSlotTime);
+    expect(kiritimatiTimeRange).not.toBe(utcTimeRange);
   });
 });
 
@@ -354,10 +382,10 @@ describe('PlanningEventCard exact-string display under a non-UTC ambient TZ (#15
     process.env.TZ = ORIGINAL_TZ;
   });
 
-  it('renders the Event day and each Shift/TimeSlot range as exact dd/MM/yyyy / HH:mm strings, driven by the Church Timezone param rather than the ambient TZ', () => {
+  it('renders the Event day and each Shift/EventTimeBlock range as exact dd/MM/yyyy / HH:mm strings, driven by the Church Timezone param rather than the ambient TZ', () => {
     render(
       <PlanningEventCard
-        row={twoSlotRow()}
+        row={rowWithTwoEventTimeBlocks()}
         isReadOnly={false}
         {...baseProps()}
       />,

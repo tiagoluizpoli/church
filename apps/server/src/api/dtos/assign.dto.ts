@@ -4,7 +4,7 @@ import type {
   EligibleVolunteerView,
   ParticipationCompletionView,
 } from '../../domain/contracts/application/participation-manager';
-import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-volunteer';
+import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 
 interface AssignmentWarningResponseInput {
@@ -57,7 +57,7 @@ export const createParticipationAssignmentResponseSchema = z.object({
 
 export const participationCompletionResponseSchema = z.object({
   participationId: z.string(),
-  requiredCount: z.number(),
+  peopleNeeded: z.number(),
   assignedCount: z.number(),
   completionPercent: z.number(),
 });
@@ -95,7 +95,7 @@ export const assignMapper = {
   completionToResponse(completion: ParticipationCompletionView) {
     return {
       participationId: completion.participationId as string,
-      requiredCount: completion.requiredCount,
+      peopleNeeded: completion.peopleNeeded,
       assignedCount: completion.assignedCount,
       completionPercent: completion.completionPercent,
     };

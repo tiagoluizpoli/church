@@ -18,7 +18,7 @@ const staffing: CycleStaffingSummary = {
 
 const counts: CycleCountsSummary = {
   eventCount: 5,
-  slotCount: 5,
+  eventTimeBlockCount: 5,
   shiftCount: 8,
   assignedCount: 42,
 };
@@ -124,7 +124,7 @@ describe('CycleBuilderHeader (B-4)', () => {
         staffing={{ filled: 0, required: 0, percent: 0, shiftsBelowTarget: 0 }}
         counts={{
           eventCount: 0,
-          slotCount: 0,
+          eventTimeBlockCount: 0,
           shiftCount: 0,
           assignedCount: 0,
         }}
@@ -162,9 +162,9 @@ describe('CycleBuilderHeader (B-4)', () => {
     expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
       '5',
     );
-    expect(screen.getByTestId('cycle-builder-slot-count')).toHaveTextContent(
-      '5',
-    );
+    expect(
+      screen.getByTestId('cycle-builder-event-time-block-count'),
+    ).toHaveTextContent('5');
     expect(screen.getByTestId('cycle-builder-shift-count')).toHaveTextContent(
       '8',
     );

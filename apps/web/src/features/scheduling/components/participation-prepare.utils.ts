@@ -8,7 +8,7 @@ import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
   GetCycleParticipation200EventsItem,
-  GetCycleParticipation200EventsItemSlotsItem,
+  GetCycleParticipation200EventsItemEventTimeBlocksItem,
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import {
@@ -51,8 +51,8 @@ export interface ManualSpanDraft {
 
 /** Calendar day of a date-only value, such as a cycle bound.
  *
- * Only for values that name a day rather than a moment. Slot and shift
- * timestamps are real church-local wall-clock instants (a 9am slot is stored as
+ * Only for values that name a day rather than a moment. Time block and shift
+ * timestamps are real church-local wall-clock instants (a 9am time block is stored as
  * `12:00Z` in UTC-3), so slicing their UTC prefix reports the wrong day for
  * anything served late enough to cross UTC midnight — use `dayOf` (church
  * timezone) for those. */
@@ -81,9 +81,9 @@ export function createInitialInclusions(
   return Object.fromEntries(
     events.map((eventView) => [
       eventView.participation.id,
-      eventView.slots
-        .filter((slotView) => slotView.included)
-        .map((slotView) => slotView.slot.id),
+      eventView.eventTimeBlocks
+        .filter((eventTimeBlockView) => eventTimeBlockView.included)
+        .map((eventTimeBlockView) => eventTimeBlockView.eventTimeBlock.id),
     ]),
   );
 }
@@ -94,22 +94,26 @@ export function createInitialSplitForms(
   const entries: Record<string, SplitFormState> = {};
 
   for (const eventView of events) {
-    for (const slotView of eventView.slots) {
-      entries[slotView.slot.id] = {
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
+      entries[eventTimeBlockView.eventTimeBlock.id] = {
         mode: 'equal',
-        equalCount: String(Math.max(1, slotView.shifts.length)),
+        equalCount: String(Math.max(1, eventTimeBlockView.shifts.length)),
         manualSpans:
-          slotView.shifts.length > 0
-            ? slotView.shifts.map((shift) => ({
+          eventTimeBlockView.shifts.length > 0
+            ? eventTimeBlockView.shifts.map((shift) => ({
                 startTime: parseInstant({ value: shift.startTime }),
                 endTime: parseInstant({ value: shift.endTime }),
                 label: shift.label ?? '',
               }))
             : [
                 {
-                  startTime: parseInstant({ value: slotView.slot.startTime }),
-                  endTime: parseInstant({ value: slotView.slot.endTime }),
-                  label: slotView.slot.label ?? '',
+                  startTime: parseInstant({
+                    value: eventTimeBlockView.eventTimeBlock.startTime,
+                  }),
+                  endTime: parseInstant({
+                    value: eventTimeBlockView.eventTimeBlock.endTime,
+                  }),
+                  label: eventTimeBlockView.eventTimeBlock.label ?? '',
                 },
               ],
       };
@@ -125,10 +129,10 @@ export function createInitialHeadcountDrafts(
   const entries: Record<string, string> = {};
 
   for (const eventView of events) {
-    for (const slotView of eventView.slots) {
-      for (const requirement of slotView.requirements) {
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
+      for (const requirement of eventTimeBlockView.requirements) {
         entries[toHeadcountKey(requirement.shiftId, requirement.roleId)] =
-          String(requirement.requiredCount);
+          String(requirement.peopleNeeded);
       }
     }
   }
@@ -140,30 +144,34 @@ export function toHeadcountKey(shiftId: string, roleId: string): string {
   return `${shiftId}:${roleId}`;
 }
 
-export function getSlotRoleOptions({
+export function getEventTimeBlockRoleOptions({
   roles,
-  slotView,
+  eventTimeBlockView,
 }: {
   roles: GetScheduleBuilderData200RolesItem[];
-  slotView: GetCycleParticipation200EventsItemSlotsItem;
+  eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
 }): GetScheduleBuilderData200RolesItem[] {
   if (roles.length > 0) return roles;
 
-  return slotView.requirements.map((requirement) => ({
+  return eventTimeBlockView.requirements.map((requirement) => ({
     id: requirement.roleId,
     name: requirement.roleId,
   }));
 }
 
 export function validateManualSpans({
-  slotView,
+  eventTimeBlockView,
   spans,
 }: {
-  slotView: GetCycleParticipation200EventsItemSlotsItem;
+  eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
   spans: ManualSpanDraft[];
 }): string | null {
-  const slotStart = parseInstant({ value: slotView.slot.startTime });
-  const slotEnd = parseInstant({ value: slotView.slot.endTime });
+  const eventTimeBlockStart = parseInstant({
+    value: eventTimeBlockView.eventTimeBlock.startTime,
+  });
+  const eventTimeBlockEnd = parseInstant({
+    value: eventTimeBlockView.eventTimeBlock.endTime,
+  });
 
   if (
     spans.some((span) =>
@@ -176,11 +184,14 @@ export function validateManualSpans({
   if (
     spans.some(
       (span) =>
-        compareInstants({ left: span.startTime, right: slotStart }) === -1 ||
-        compareInstants({ left: span.endTime, right: slotEnd }) === 1,
+        compareInstants({
+          left: span.startTime,
+          right: eventTimeBlockStart,
+        }) === -1 ||
+        compareInstants({ left: span.endTime, right: eventTimeBlockEnd }) === 1,
     )
   ) {
-    return 'Manual shifts must stay within the parent slot bounds.';
+    return 'Manual shifts must stay within the parent time block bounds.';
   }
 
   const ordered = [...spans].sort((left, right) =>
@@ -203,12 +214,15 @@ export function validateManualSpans({
   return null;
 }
 
-export function countIncludedSlots(
+export function countIncludedEventTimeBlocks(
   events: GetCycleParticipation200EventsItem[],
 ): number {
   return events.reduce(
     (total, eventView) =>
-      total + eventView.slots.filter((slotView) => slotView.included).length,
+      total +
+      eventView.eventTimeBlocks.filter(
+        (eventTimeBlockView) => eventTimeBlockView.included,
+      ).length,
     0,
   );
 }
@@ -242,15 +256,16 @@ export function countShifts(
   return events.reduce(
     (total, eventView) =>
       total +
-      eventView.slots.reduce(
-        (slotTotal, slotView) => slotTotal + slotView.shifts.length,
+      eventView.eventTimeBlocks.reduce(
+        (eventTimeBlockTotal, eventTimeBlockView) =>
+          eventTimeBlockTotal + eventTimeBlockView.shifts.length,
         0,
       ),
     0,
   );
 }
 
-export function toMinistryCycleKey({
+export function toScheduleKey({
   ministryId,
   cycleId,
 }: {
@@ -264,10 +279,10 @@ export interface MinistryPrepareSummaryRow {
   ministryId: string;
   ministryName: string;
   eventCount: number;
-  slotCount: number;
+  eventTimeBlockCount: number;
 }
 
-/** Aggregates per-ministry event/slot counts for the ministry-list landing
+/** Aggregates per-ministry event/time block counts for the ministry-list landing
  * page. Pure function over already-fetched data — the fetch orchestration
  * (listMinistries + listCycles({state:'sent'}) + per-ministry
  * listEvents + per-(ministry, sent cycle) getCycleParticipation) lives in
@@ -277,12 +292,12 @@ export function buildMinistryPrepareSummary({
   ministries,
   sentCycleIds,
   eventsByMinistryId,
-  slotCountByMinistryAndCycle,
+  eventTimeBlockCountByMinistryAndCycle,
 }: {
   ministries: { id: string; name: string }[];
   sentCycleIds: string[];
   eventsByMinistryId: Record<string, { cycleId: string }[] | undefined>;
-  slotCountByMinistryAndCycle: Record<string, number>;
+  eventTimeBlockCountByMinistryAndCycle: Record<string, number>;
 }): MinistryPrepareSummaryRow[] {
   const sentCycleIdSet = new Set(sentCycleIds);
 
@@ -294,11 +309,11 @@ export function buildMinistryPrepareSummary({
       relevantEvents.map((event) => event.cycleId),
     );
 
-    const slotCount = [...relevantCycleIds].reduce(
+    const eventTimeBlockCount = [...relevantCycleIds].reduce(
       (total, cycleId) =>
         total +
-        (slotCountByMinistryAndCycle[
-          toMinistryCycleKey({ ministryId: ministry.id, cycleId })
+        (eventTimeBlockCountByMinistryAndCycle[
+          toScheduleKey({ ministryId: ministry.id, cycleId })
         ] ?? 0),
       0,
     );
@@ -307,41 +322,43 @@ export function buildMinistryPrepareSummary({
       ministryId: ministry.id,
       ministryName: ministry.name,
       eventCount: relevantEvents.length,
-      slotCount,
+      eventTimeBlockCount,
     };
   });
 }
 
 export type IsoDateString = string;
 
-/** Derives the set of calendar days with at least one visible prepare slot.
+/** Derives the set of calendar days with at least one visible prepare time block.
  * The strip dot is a "there is something to work on this day" marker, so it
- * should come from actual slot timestamps, not a parent event's full span. */
-export interface BuildSlotDayMarkersInput {
+ * should come from actual time block timestamps, not a parent event's full span. */
+export interface BuildEventTimeBlockDayMarkersInput {
   events: GetCycleParticipation200EventsItem[];
   timeZone: string;
 }
 
-export function buildSlotDayMarkers({
+export function buildEventTimeBlockDayMarkers({
   events,
   timeZone,
-}: BuildSlotDayMarkersInput): Set<IsoDateString> {
+}: BuildEventTimeBlockDayMarkersInput): Set<IsoDateString> {
   const markers = new Set<IsoDateString>();
 
   for (const eventView of events) {
-    for (const slotView of eventView.slots) {
-      markers.add(dayOf({ value: slotView.slot.startTime, timeZone }));
+    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
+      markers.add(
+        dayOf({ value: eventTimeBlockView.eventTimeBlock.startTime, timeZone }),
+      );
     }
   }
 
   return markers;
 }
 
-/** Client-side, already-fetched-data-only slot filters (FR-010) — never
+/** Client-side, already-fetched-data-only time block filters (FR-010) — never
  * issue network requests. Both drop an event entirely once it has zero
- * matching slots, so the day-grouped slot list only shows groups with
+ * matching time blocks, so the day-grouped time block list only shows groups with
  * visible content. */
-export function filterSlotsByName({
+export function filterEventTimeBlocksByName({
   events,
   query,
 }: {
@@ -354,21 +371,25 @@ export function filterSlotsByName({
   return events
     .map((eventView) => ({
       ...eventView,
-      slots: eventView.slots.filter((slotView) => {
-        const label = (slotView.slot.label ?? '').toLowerCase();
-        const eventTitle = eventView.event.title.toLowerCase();
-        return label.includes(needle) || eventTitle.includes(needle);
-      }),
+      eventTimeBlocks: eventView.eventTimeBlocks.filter(
+        (eventTimeBlockView) => {
+          const label = (
+            eventTimeBlockView.eventTimeBlock.label ?? ''
+          ).toLowerCase();
+          const eventTitle = eventView.event.title.toLowerCase();
+          return label.includes(needle) || eventTitle.includes(needle);
+        },
+      ),
     }))
-    .filter((eventView) => eventView.slots.length > 0);
+    .filter((eventView) => eventView.eventTimeBlocks.length > 0);
 }
 
 export type TimeWindowMode = 'starts' | 'ends' | 'within';
 
 /** A single [start, end] local-time-of-day window (`HH:mm` strings),
- * applied per `mode`: `'starts'` keeps slots whose start time falls in the
- * window, `'ends'` keeps slots whose end time falls in the window, and
- * `'within'` keeps slots whose entire span (start AND end) falls inside the
+ * applied per `mode`: `'starts'` keeps time blocks whose start time falls in the
+ * window, `'ends'` keeps time blocks whose end time falls in the window, and
+ * `'within'` keeps time blocks whose entire span (start AND end) falls inside the
  * window. Either bound may be omitted to leave that side open-ended. */
 export interface TimeWindowFilter {
   mode: TimeWindowMode;
@@ -413,43 +434,45 @@ function isWithinWindow({
   return true;
 }
 
-export interface FilterSlotsByTimeOfDayInput {
+export interface FilterEventTimeBlocksByTimeOfDayInput {
   events: GetCycleParticipation200EventsItem[];
   filter: TimeWindowFilter;
   timeZone: string;
 }
 
-export function filterSlotsByTimeOfDay({
+export function filterEventTimeBlocksByTimeOfDay({
   events,
   filter,
   timeZone,
-}: FilterSlotsByTimeOfDayInput): GetCycleParticipation200EventsItem[] {
+}: FilterEventTimeBlocksByTimeOfDayInput): GetCycleParticipation200EventsItem[] {
   if (isTimeWindowFilterEmpty(filter)) return events;
 
   return events
     .map((eventView) => ({
       ...eventView,
-      slots: eventView.slots.filter((slotView) => {
-        const startMinutes = churchTimeOfDayInMinutes({
-          isoValue: slotView.slot.startTime,
-          timeZone,
-        });
-        const endMinutes = churchTimeOfDayInMinutes({
-          isoValue: slotView.slot.endTime,
-          timeZone,
-        });
+      eventTimeBlocks: eventView.eventTimeBlocks.filter(
+        (eventTimeBlockView) => {
+          const startMinutes = churchTimeOfDayInMinutes({
+            isoValue: eventTimeBlockView.eventTimeBlock.startTime,
+            timeZone,
+          });
+          const endMinutes = churchTimeOfDayInMinutes({
+            isoValue: eventTimeBlockView.eventTimeBlock.endTime,
+            timeZone,
+          });
 
-        if (filter.mode === 'starts') {
-          return isWithinWindow({ minutes: startMinutes, filter });
-        }
-        if (filter.mode === 'ends') {
-          return isWithinWindow({ minutes: endMinutes, filter });
-        }
-        return (
-          isWithinWindow({ minutes: startMinutes, filter }) &&
-          isWithinWindow({ minutes: endMinutes, filter })
-        );
-      }),
+          if (filter.mode === 'starts') {
+            return isWithinWindow({ minutes: startMinutes, filter });
+          }
+          if (filter.mode === 'ends') {
+            return isWithinWindow({ minutes: endMinutes, filter });
+          }
+          return (
+            isWithinWindow({ minutes: startMinutes, filter }) &&
+            isWithinWindow({ minutes: endMinutes, filter })
+          );
+        },
+      ),
     }))
-    .filter((eventView) => eventView.slots.length > 0);
+    .filter((eventView) => eventView.eventTimeBlocks.length > 0);
 }

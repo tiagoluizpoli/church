@@ -14,11 +14,11 @@ function makeShift(
 ): CycleBuilderShiftSummary {
   return {
     shiftId: 'shift-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     requirements: [],
     assignments: [],
@@ -48,7 +48,7 @@ function makeAssignment(
 ): CycleBuilderAssignment {
   return {
     churchId: 'church-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     roleId: 'role-1',
     status: 'confirmed',

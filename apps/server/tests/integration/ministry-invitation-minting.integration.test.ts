@@ -13,11 +13,11 @@ import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-aut
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
   DrizzleEventRepository,
+  DrizzleEventTimeBlockRepository,
   DrizzleMinistryInvitationRepository,
   DrizzleMinistryRepository,
   DrizzleOutboxRepository,
   DrizzleRoleRepository,
-  DrizzleTimeSlotRepository,
   DrizzleUnitOfWork,
 } from '@/infrastructure/repositories';
 import {
@@ -35,7 +35,7 @@ const authorityManager = new DbAuthorityManager({
   actorRepository: new DrizzleAuthorityActorResolver({ db: testDb }),
   scopeRepository: new DrizzleSchedulingScopeResolver({ db: testDb }),
   eventRepository: new DrizzleEventRepository({ db: testDb }),
-  timeSlotRepository: new DrizzleTimeSlotRepository({ db: testDb }),
+  eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db: testDb }),
   ministryRepository: ministryRepository,
 });
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });

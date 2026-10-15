@@ -65,14 +65,14 @@ export type AvailabilityCheckDetailResponse = z.infer<
   typeof availabilityCheckDetailResponseSchema
 >;
 
-export const setUnavailabilityMarksBodySchema = z.object({
+export const setUnavailableShiftsBodySchema = z.object({
   shiftIds: z.array(z.string()),
   wholeDayDates: z.array(calendarDaySchema).optional(),
 });
 
 const dashboardAssignmentItemSchema = z.object({
   assignmentId: z.string(),
-  slotId: z.string(),
+  eventTimeBlockId: z.string(),
   shiftId: z.string(),
   participationId: z.string(),
   roleId: z.string(),
@@ -155,8 +155,8 @@ const ministryScheduleEventResponseSchema = z.object({
   assignmentCount: z.number(),
   rows: z.array(
     z.object({
-      slotId: z.string(),
-      slotLabel: z.string(),
+      eventTimeBlockId: z.string(),
+      eventTimeBlockLabel: z.string(),
       roleName: z.string(),
       teamName: z.string().optional(),
       volunteerDisplayName: z.string().optional(),
@@ -242,7 +242,7 @@ function dashboardAssignmentItemToResponse(
 ): DashboardAssignmentItemResponse {
   return {
     assignmentId: item.assignmentId,
-    slotId: item.slotId,
+    eventTimeBlockId: item.eventTimeBlockId,
     shiftId: item.shiftId,
     participationId: item.participationId,
     roleId: item.roleId,

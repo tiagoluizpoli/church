@@ -11,7 +11,7 @@ import type { TransactionContext } from './transaction-context';
 export interface GetTransferImpactInput {
   userId: UserId;
   sourceChurchId: ChurchId;
-  /** Assignments whose time slot starts at or before this instant are already service performed and are left alone. */
+  /** Assignments whose event time block starts at or before this instant are already service performed and are left alone. */
   now: Date;
 }
 
@@ -21,7 +21,7 @@ export interface AffectedMinistryMembership {
 
 export interface WithdrawnAssignmentPreview {
   eventName: string;
-  timeSlotStart: Date;
+  eventTimeBlockStart: Date;
   roleName: string;
 }
 

@@ -5,8 +5,8 @@ import {
   cycle,
   event,
   ministry,
+  ministryMembership,
   ministryParticipation,
-  ministryVolunteer,
   shift,
   user,
   volunteer,
@@ -58,23 +58,23 @@ export class DrizzleAvailabilityCheckRepository
     const db = getClient(this.db, input.tx);
     const rows = await db
       .select({
-        ministryVolunteerId: ministryVolunteer.id,
-        volunteerId: ministryVolunteer.volunteerId,
+        ministryMembershipId: ministryMembership.id,
+        volunteerId: ministryMembership.volunteerId,
         volunteerName: user.name,
       })
-      .from(ministryVolunteer)
-      .innerJoin(volunteer, eq(volunteer.id, ministryVolunteer.volunteerId))
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
       .innerJoin(user, eq(user.id, volunteer.userId))
       .where(
         and(
-          eq(ministryVolunteer.ministryId, input.ministryId),
-          eq(ministryVolunteer.status, 'active'),
-          withChurchIsolation(ministryVolunteer, input.churchId),
+          eq(ministryMembership.ministryId, input.ministryId),
+          eq(ministryMembership.status, 'active'),
+          withChurchIsolation(ministryMembership, input.churchId),
         ),
       );
 
     return rows.map((row) => ({
-      ministryVolunteerId: row.ministryVolunteerId,
+      ministryMembershipId: row.ministryMembershipId,
       volunteerId: row.volunteerId as VolunteerId,
       volunteerName: row.volunteerName,
     }));
@@ -89,11 +89,11 @@ export class DrizzleAvailabilityCheckRepository
       withChurchIsolation(availabilityCheck, input.churchId),
     ];
 
-    if (input.ministryVolunteerIds && input.ministryVolunteerIds.length > 0) {
+    if (input.ministryMembershipIds && input.ministryMembershipIds.length > 0) {
       conditions.push(
         inArray(
-          availabilityCheck.ministryVolunteerId,
-          input.ministryVolunteerIds,
+          availabilityCheck.ministryMembershipId,
+          input.ministryMembershipIds,
         ),
       );
     }
@@ -118,7 +118,7 @@ export class DrizzleAvailabilityCheckRepository
         input.checks.map((check) => ({
           churchId: input.churchId,
           cycleId: check.cycleId,
-          ministryVolunteerId: check.ministryVolunteerId,
+          ministryMembershipId: check.ministryMembershipId,
         })),
       )
       .onConflictDoNothing()
@@ -130,8 +130,8 @@ export class DrizzleAvailabilityCheckRepository
   private contextSelection() {
     return {
       check: availabilityCheck,
-      volunteerId: ministryVolunteer.volunteerId,
-      ministryId: ministryVolunteer.ministryId,
+      volunteerId: ministryMembership.volunteerId,
+      ministryId: ministryMembership.ministryId,
       ministryName: ministry.name,
       cycleName: cycle.name,
       timeZone: church.timezone,
@@ -144,10 +144,10 @@ export class DrizzleAvailabilityCheckRepository
       .select(this.contextSelection())
       .from(availabilityCheck)
       .innerJoin(
-        ministryVolunteer,
-        eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
       )
-      .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
       .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .innerJoin(church, eq(church.id, availabilityCheck.churchId))
       .where(
@@ -180,15 +180,15 @@ export class DrizzleAvailabilityCheckRepository
       .select(this.contextSelection())
       .from(availabilityCheck)
       .innerJoin(
-        ministryVolunteer,
-        eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
       )
-      .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
       .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .innerJoin(church, eq(church.id, availabilityCheck.churchId))
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, input.volunteerId),
+          eq(ministryMembership.volunteerId, input.volunteerId),
           withChurchIsolation(availabilityCheck, input.churchId),
         ),
       );
@@ -216,12 +216,12 @@ export class DrizzleAvailabilityCheckRepository
       })
       .from(availabilityCheck)
       .innerJoin(
-        ministryVolunteer,
-        eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
       )
       .innerJoin(
         ministryParticipation,
-        eq(ministryParticipation.ministryId, ministryVolunteer.ministryId),
+        eq(ministryParticipation.ministryId, ministryMembership.ministryId),
       )
       .innerJoin(
         event,
@@ -257,16 +257,16 @@ export class DrizzleAvailabilityCheckRepository
     const db = getClient(this.db, input.tx);
     const rows = await db
       .select({
-        ministryId: ministryVolunteer.ministryId,
-        volunteerId: ministryVolunteer.volunteerId,
+        ministryId: ministryMembership.ministryId,
+        volunteerId: ministryMembership.volunteerId,
       })
-      .from(ministryVolunteer)
+      .from(ministryMembership)
       .where(
         and(
-          inArray(ministryVolunteer.ministryId, input.ministryIds),
-          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
-          eq(ministryVolunteer.status, 'active'),
-          withChurchIsolation(ministryVolunteer, input.churchId),
+          inArray(ministryMembership.ministryId, input.ministryIds),
+          eq(ministryMembership.ministryAccessLevel, 'leader'),
+          eq(ministryMembership.status, 'active'),
+          withChurchIsolation(ministryMembership, input.churchId),
         ),
       );
 

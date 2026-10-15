@@ -15,7 +15,7 @@ export * from './invalid-time-range';
 export * from './invalid-weekday';
 export * from './invitee-already-ministry-member';
 export * from './isolation-breach-error';
-export * from './last-remaining-slot-error';
+export * from './last-remaining-event-time-block-error';
 export * from './ministry-invitation-not-found';
 export * from './overlapping-cycle';
 export * from './shift-out-of-bounds';

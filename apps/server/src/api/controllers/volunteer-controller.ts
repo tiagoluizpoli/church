@@ -27,7 +27,7 @@ import {
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
   respondToAssignmentBodySchema,
-  setUnavailabilityMarksBodySchema,
+  setUnavailableShiftsBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 
@@ -205,24 +205,24 @@ export class VolunteerController implements FastifyController {
     );
 
     app.put(
-      '/availability-checks/:checkId/marks',
+      '/availability-checks/:checkId/unavailable-shifts',
       {
         schema: {
           tags: ['volunteer'],
-          operationId: 'setUnavailabilityMarks',
-          summary: 'Set unavailability marks on an AvailabilityCheck',
+          operationId: 'setUnavailableShifts',
+          summary: 'Set unavailable shifts on an AvailabilityCheck',
           description:
-            "Record the current Volunteer's unavailability marks — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
-          body: setUnavailabilityMarksBodySchema,
+            "Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
+          body: setUnavailableShiftsBodySchema,
           response: { 200: availabilityCheckDetailResponseSchema },
         },
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
         const body = request.body as z.infer<
-          typeof setUnavailabilityMarksBodySchema
+          typeof setUnavailableShiftsBodySchema
         >;
-        const detail = await this.volunteerManager.setUnavailability({
+        const detail = await this.volunteerManager.setUnavailableShifts({
           checkId: AvailabilityCheckId.from(checkId),
           volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
@@ -243,7 +243,7 @@ export class VolunteerController implements FastifyController {
           operationId: 'confirmAvailabilityCheck',
           summary: 'Confirm an AvailabilityCheck',
           description:
-            "Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no marks were left.",
+            "Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no unavailable shifts were left.",
         },
       },
       async (request, reply) => {

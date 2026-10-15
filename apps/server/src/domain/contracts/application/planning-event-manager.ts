@@ -3,10 +3,10 @@ import type {
   CycleId,
   EventId,
   EventTemplateId,
-  TimeSlotId,
+  EventTimeBlockId,
 } from '../../branded-ids';
 import type { Event } from '../../entities/event';
-import type { TimeSlot } from '../../entities/time-slot';
+import type { EventTimeBlock } from '../../entities/event-time-block';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
@@ -16,7 +16,7 @@ export interface GeneratePlanningTemplatesInput {
 
 export interface GeneratedPlanningCounts {
   generatedEventCount: number;
-  generatedSlotCount: number;
+  generatedEventTimeBlockCount: number;
 }
 
 export interface CreatePlanningEventManagerInput {
@@ -46,7 +46,7 @@ export interface CancelPlanningEventManagerInput {
   eventId: EventId;
 }
 
-export interface CreatePlanningEventSlotManagerInput {
+export interface CreatePlanningEventTimeBlockManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   eventId: EventId;
@@ -55,21 +55,21 @@ export interface CreatePlanningEventSlotManagerInput {
   label?: string;
 }
 
-export interface UpdatePlanningEventSlotManagerInput {
+export interface UpdatePlanningEventTimeBlockManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   eventId: EventId;
-  slotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   startTime?: Date;
   endTime?: Date;
   label?: string;
 }
 
-export interface DeletePlanningEventSlotManagerInput {
+export interface DeletePlanningEventTimeBlockManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   eventId: EventId;
-  slotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
 }
 
 export interface IPlanningEventManager {
@@ -79,7 +79,13 @@ export interface IPlanningEventManager {
   createEvent(input: CreatePlanningEventManagerInput): Promise<Event>;
   updateEvent(input: UpdatePlanningEventManagerInput): Promise<Event>;
   cancelEvent(input: CancelPlanningEventManagerInput): Promise<void>;
-  createSlot(input: CreatePlanningEventSlotManagerInput): Promise<TimeSlot>;
-  updateSlot(input: UpdatePlanningEventSlotManagerInput): Promise<TimeSlot>;
-  deleteSlot(input: DeletePlanningEventSlotManagerInput): Promise<void>;
+  createEventTimeBlock(
+    input: CreatePlanningEventTimeBlockManagerInput,
+  ): Promise<EventTimeBlock>;
+  updateEventTimeBlock(
+    input: UpdatePlanningEventTimeBlockManagerInput,
+  ): Promise<EventTimeBlock>;
+  deleteEventTimeBlock(
+    input: DeletePlanningEventTimeBlockManagerInput,
+  ): Promise<void>;
 }

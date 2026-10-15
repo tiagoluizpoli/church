@@ -1,7 +1,7 @@
 import type {
   CanManageChurchInput,
   CanManageEventInput,
-  CanManageEventSlotInput,
+  CanManageEventTimeBlockInput,
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
@@ -57,8 +57,10 @@ export class AuthorityGuard {
     return this.manager.canManageEvent(input);
   }
 
-  canManageEventSlot(input: CanManageEventSlotInput): Promise<boolean> {
-    return this.manager.canManageEventSlot(input);
+  canManageEventTimeBlock(
+    input: CanManageEventTimeBlockInput,
+  ): Promise<boolean> {
+    return this.manager.canManageEventTimeBlock(input);
   }
 
   resolveSchedulingCapability(

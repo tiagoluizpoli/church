@@ -15,7 +15,7 @@ describe('assignmentMapper', () => {
       const assignment = new Assignment(
         {
           churchId: 'c1',
-          slotId: 's1',
+          eventTimeBlockId: 's1',
           participationId: 'p1',
           shiftId: 'sh1',
           volunteerId: 'v1',
@@ -33,7 +33,7 @@ describe('assignmentMapper', () => {
       expect(response).toEqual({
         id: 'a1',
         churchId: 'c1',
-        slotId: 's1',
+        eventTimeBlockId: 's1',
         participationId: 'p1',
         shiftId: 'sh1',
         volunteerId: 'v1',
@@ -51,7 +51,7 @@ describe('assignmentMapper', () => {
       const assignment = new Assignment(
         {
           churchId: 'c1',
-          slotId: 's1',
+          eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
         },

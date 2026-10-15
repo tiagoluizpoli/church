@@ -47,9 +47,9 @@ export const assignment = pgTable(
     }),
   },
   (table) => [
-    // Partial: a volunteer may hold only one ACTIVE assignment per slot.
+    // Partial: a volunteer may hold only one ACTIVE assignment per Shift.
     // Declined/cancelled rows are excluded so a volunteer can be re-assigned
-    // (or substituted in) after declining the same slot.
+    // (or substituted in) after declining the same Shift.
     uniqueIndex('assignment_shift_volunteer_idx')
       .on(table.shiftId, table.volunteerId)
       .where(sql`${table.status} IN ('draft', 'pending', 'confirmed')`),
@@ -60,8 +60,8 @@ export const assignment = pgTable(
   ],
 );
 
-export const availability = pgTable(
-  'availability',
+export const unavailableShift = pgTable(
+  'unavailable_shift',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
@@ -78,7 +78,7 @@ export const availability = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex('availability_check_shift_idx').on(
+    uniqueIndex('unavailable_shift_check_shift_idx').on(
       table.availabilityCheckId,
       table.shiftId,
     ),

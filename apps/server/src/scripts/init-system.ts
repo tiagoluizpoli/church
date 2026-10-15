@@ -6,7 +6,7 @@ import {
   createDb,
   findChurchBySlug,
   ministry,
-  ministryVolunteer,
+  ministryMembership,
   user,
   volunteer,
 } from '@church/db';
@@ -139,16 +139,16 @@ export async function runInitSystem({
     }
 
     // 5. Link Volunteer to Ministry as LEADER
-    const link = await tx.query.ministryVolunteer.findFirst({
+    const link = await tx.query.ministryMembership.findFirst({
       where: and(
-        eq(ministryVolunteer.ministryId, adminMinistry.id),
-        eq(ministryVolunteer.volunteerId, userVolunteer.id),
+        eq(ministryMembership.ministryId, adminMinistry.id),
+        eq(ministryMembership.volunteerId, userVolunteer.id),
       ),
     });
 
     if (!link) {
       console.log('Promoting volunteer to LEADER of Administration');
-      await tx.insert(ministryVolunteer).values({
+      await tx.insert(ministryMembership).values({
         churchId: church.id,
         ministryId: adminMinistry.id,
         volunteerId: userVolunteer.id,

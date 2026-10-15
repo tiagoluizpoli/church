@@ -255,10 +255,10 @@ export function CycleBuilderMatrix(props: Props) {
   }, [props.failedWrites]);
   const volunteers = useMemo(() => pool(props.data), [props.data]);
   const canManageAnyRequirement = props.data.events.some((event) =>
-    event.slots.some(
-      (slot) =>
-        slot.included &&
-        slot.shifts.some((shift) =>
+    event.eventTimeBlocks.some(
+      (eventTimeBlock) =>
+        eventTimeBlock.included &&
+        eventTimeBlock.shifts.some((shift) =>
           shift.requirements.some(
             (requirement) => requirement.canMutateAssignments ?? true,
           ),
@@ -289,7 +289,7 @@ export function CycleBuilderMatrix(props: Props) {
   // same path the board's own assign uses — so conflict overrides and
   // already-assigned-elsewhere collisions are captured identically no matter
   // which surface started the assignment. Clearing focus afterwards returns the
-  // cards to their plain "Select slot" state.
+  // cards to their plain "Select shift" state.
   const focusedShiftContext =
     focused &&
     findShiftContextById({ data: props.data, shiftId: focused.shiftId });
@@ -310,7 +310,7 @@ export function CycleBuilderMatrix(props: Props) {
       focusedRequirementIsEditable &&
       roleHasRoom({ shift: focusedShift, roleId: focused.roleId }),
   );
-  // Everyone the leader may commit to the focused slot, each carrying the tier
+  // Everyone the leader may commit to the focused shift, each carrying the tier
   // that pick would land in — so the rail's own button can say what the pick
   // costs instead of presenting a conflict commit as frictionless (B-2).
   // Qualification, like availability and double-booking, is an override path,
@@ -350,7 +350,7 @@ export function CycleBuilderMatrix(props: Props) {
       volunteerName: volunteers.find(
         (volunteer) => volunteer.volunteerId === volunteerId,
       )?.volunteerName,
-      slotLabel: focused.slotLabel,
+      eventTimeBlockLabel: focused.eventTimeBlockLabel,
       roleLabel: focused.roleLabel,
       // Whatever this pick has to justify — unavailable or not qualified —
       // comes from the shared predicate, never from this call
@@ -422,7 +422,8 @@ export function CycleBuilderMatrix(props: Props) {
                 return;
               if (props.teamId && target.assignmentId) return;
               if (shiftContext && shift && roleLabel) {
-                const slotLabel = shiftContext.slot.label ?? 'this shift';
+                const eventTimeBlockLabel =
+                  shiftContext.eventTimeBlock.label ?? 'this shift';
                 setFocused({
                   key: focusKey({
                     shiftId: target.shiftId,
@@ -430,7 +431,7 @@ export function CycleBuilderMatrix(props: Props) {
                   }),
                   label: buildFocusLabel({
                     roleLabel,
-                    slotLabel,
+                    eventTimeBlockLabel,
                     eventTitle: shiftContext.event.title,
                     dateText: dateLabel({
                       day: churchDayOf({
@@ -442,7 +443,7 @@ export function CycleBuilderMatrix(props: Props) {
                   shiftId: target.shiftId,
                   roleId: target.roleId,
                   roleLabel,
-                  slotLabel,
+                  eventTimeBlockLabel,
                   ...rankVolunteersForShiftRole({
                     shift,
                     roleId: target.roleId,
@@ -450,7 +451,7 @@ export function CycleBuilderMatrix(props: Props) {
                   }),
                 });
               }
-              // Dropping onto a slot that needs an override is an override like
+              // Dropping onto a shift that needs an override is an override like
               // any other, and FR-016 does not care which gesture started it —
               // the reason dialog is gated on this field. The drop target is
               // disabled for tier `none`, so a drop that lands here is one the

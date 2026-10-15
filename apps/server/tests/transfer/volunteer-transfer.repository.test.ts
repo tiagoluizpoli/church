@@ -5,9 +5,9 @@ import {
   identityAudit,
   ministryInvitation,
   ministryInvitationRole,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   outboxMessage,
   volunteer,
   volunteerTransfer,
@@ -24,13 +24,13 @@ import {
 } from '@/domain/branded-ids';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories';
 import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
-import { buildAvailabilityCheck } from '@/seeds/builders/availability';
 import {
   buildAssignedShift,
   buildCycle,
   buildEvent,
   buildMinistryParticipation,
 } from '@/seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
   buildVolunteer,
@@ -65,7 +65,7 @@ interface SeedScheduleResult {
 
 /**
  * Church B schedule for `dualMemberAB`: four assignments across four time
- * slots, spanning the commit instant to the second.
+ * event time blocks, spanning the commit instant to the second.
  */
 async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
   const churchId = fixture.churchB.id;
@@ -93,10 +93,10 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
     ministryId: fixture.ministryInB,
     eventId: runningEvent.id,
     state: 'preparing',
-    timeSlotIds: [],
+    eventTimeBlockIds: [],
   });
 
-  const slotSpecs = [
+  const eventTimeBlockSpecs = [
     { key: 'untouchedBefore', start: new Date(COMMIT.getTime() - 1000) },
     { key: 'cancelledAfter', start: new Date(COMMIT.getTime() + 1000) },
     {
@@ -107,7 +107,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
   ] as const;
 
   const ids: Partial<ScheduleAssignmentIds> = {};
-  for (const spec of slotSpecs) {
+  for (const spec of eventTimeBlockSpecs) {
     const booked = await buildAssignedShift({
       db: testDb,
       churchId,
@@ -127,7 +127,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
     db: testDb,
     churchId,
     cycleId: cycle.id,
-    ministryVolunteerId: fixture.dualMemberABMembershipInB,
+    ministryMembershipId: fixture.dualMemberABMembershipInB,
   });
 
   return { assignmentIds, availabilityCheckId: check.id };
@@ -179,7 +179,7 @@ beforeEach(async () => {
 });
 
 describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
-  it('cancels assignments iff their time slot starts strictly after the commit — asserted to the second', async () => {
+  it('cancels assignments iff their event time block starts strictly after the commit — asserted to the second', async () => {
     const outcome = await runTransfer();
     expect(outcome.kind).toBe('transferred');
 
@@ -254,33 +254,33 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     });
   });
 
-  it('flips former Ministry Memberships inactive with left_at while keeping Role, Team and Availability rows', async () => {
+  it('flips former Ministry Memberships inactive with left_at while keeping Role, Team and UnavailableShift rows', async () => {
     const outcome = await runTransfer();
     if (outcome.kind !== 'transferred') throw new Error('unreachable');
     expect(outcome.result.endedMembershipCount).toBe(1);
 
     const [membership] = await testDb
       .select()
-      .from(ministryVolunteer)
-      .where(eq(ministryVolunteer.id, fixture.dualMemberABMembershipInB));
+      .from(ministryMembership)
+      .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
     expect(membership).toMatchObject({ status: 'inactive', leftAt: COMMIT });
 
     const roleRows = await testDb
       .select()
-      .from(ministryVolunteerRole)
+      .from(ministryMembershipRole)
       .where(
         eq(
-          ministryVolunteerRole.ministryVolunteerId,
+          ministryMembershipRole.ministryMembershipId,
           fixture.dualMemberABMembershipInB,
         ),
       );
     expect(roleRows).toHaveLength(1);
     const teamRows = await testDb
       .select()
-      .from(ministryVolunteerTeam)
+      .from(ministryMembershipTeam)
       .where(
         eq(
-          ministryVolunteerTeam.ministryVolunteerId,
+          ministryMembershipTeam.ministryMembershipId,
           fixture.dualMemberABMembershipInB,
         ),
       );
@@ -430,9 +430,9 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
     // Elevate the departing member to leader — and leave them the *only*
     // one — so the departure genuinely leaves the Ministry leaderless.
     await testDb
-      .update(ministryVolunteer)
+      .update(ministryMembership)
       .set({ ministryAccessLevel: 'leader' })
-      .where(eq(ministryVolunteer.id, fixture.dualMemberABMembershipInB));
+      .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
 
     const outcome = await runTransfer();
     expect(outcome.kind).toBe('transferred');
@@ -447,9 +447,9 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
 
   it('enqueues an ordinary digest, not an escalation, when the departing leader leaves a co-leader behind', async () => {
     await testDb
-      .update(ministryVolunteer)
+      .update(ministryMembership)
       .set({ ministryAccessLevel: 'leader' })
-      .where(eq(ministryVolunteer.id, fixture.dualMemberABMembershipInB));
+      .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
     const coLeaderVolunteer = await buildVolunteer({
       db: testDb,
       churchId: fixture.churchB.id,
@@ -541,7 +541,7 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
       ministryId: fixture.ministryInB,
       eventId: extraEvent.id,
       state: 'preparing',
-      timeSlotIds: [],
+      eventTimeBlockIds: [],
     });
     for (const offsetMs of [2_000, 3_000]) {
       const start = new Date(COMMIT.getTime() + offsetMs);

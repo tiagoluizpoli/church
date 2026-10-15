@@ -2,7 +2,7 @@ import {
   assignment,
   cycle,
   ministryParticipation,
-  slotRequirement,
+  shiftRequirement,
 } from '@church/db';
 import {
   addCalendarDays,
@@ -76,16 +76,16 @@ describe('schedule-publish E2E journey recipe', () => {
 
     const [requirement] = await testDb
       .select({
-        requiredCount: slotRequirement.requiredCount,
-        roleId: slotRequirement.roleId,
+        peopleNeeded: shiftRequirement.peopleNeeded,
+        roleId: shiftRequirement.roleId,
       })
-      .from(slotRequirement)
-      .where(eq(slotRequirement.participationId, journey.worship.id));
+      .from(shiftRequirement)
+      .where(eq(shiftRequirement.participationId, journey.worship.id));
     expect(requirement).toEqual({
-      requiredCount: journey.worship.requiredCount,
+      peopleNeeded: journey.worship.peopleNeeded,
       roleId: journey.ministries.worship.roles.usher.id,
     });
-    expect(journey.worship.requiredCount).toBe(2);
+    expect(journey.worship.peopleNeeded).toBe(2);
     expect(journey.personas.volunteer.name).not.toBe(journey.pool.other.name);
   });
 

@@ -131,7 +131,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
       withdrawnAssignments: [
         {
           eventName: 'Transfer Sunday',
-          timeSlotStart: new Date('2026-09-20T09:00:00Z'),
+          eventTimeBlockStart: new Date('2026-09-20T09:00:00Z'),
           roleName: 'Greeter',
         },
       ],
@@ -191,7 +191,7 @@ describe('DbVolunteerTransferManager', () => {
         withdrawnAssignments: [
           {
             eventName: 'Transfer Sunday',
-            timeSlotStart: new Date('2026-09-20T09:00:00Z'),
+            eventTimeBlockStart: new Date('2026-09-20T09:00:00Z'),
             roleName: 'Greeter',
           },
         ],

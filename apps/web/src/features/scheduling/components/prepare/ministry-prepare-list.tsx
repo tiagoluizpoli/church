@@ -14,7 +14,7 @@ export interface MinistryPrepareListProps {
 const MINISTRY_TABLE_COLUMNS: DataTableColumn[] = [
   { id: 'name', name: 'Ministry', allowsSorting: true, isRowHeader: true },
   { id: 'events', name: 'Events', allowsSorting: true },
-  { id: 'slots', name: 'Slots', allowsSorting: true },
+  { id: 'eventTimeBlocks', name: 'Time blocks', allowsSorting: true },
   { id: 'actions', name: 'Actions' },
 ];
 
@@ -37,15 +37,15 @@ function compareRows({
   switch (sortDescriptor.column) {
     case 'events':
       return (left.eventCount - right.eventCount) * direction;
-    case 'slots':
-      return (left.slotCount - right.slotCount) * direction;
+    case 'eventTimeBlocks':
+      return (left.eventTimeBlockCount - right.eventTimeBlockCount) * direction;
     default:
       return left.ministryName.localeCompare(right.ministryName) * direction;
   }
 }
 
 /** Story 1 landing page: desktop table (`hidden md:block`) + mobile card list
- * (`md:hidden`), matching `ministry-cycle-list.tsx`'s card/panel/sort
+ * (`md:hidden`), matching `schedule-list.tsx`'s card/panel/sort
  * conventions for a consistent look across both prepare list screens. No
  * filter toolbar — this list is small and unfiltered by design. Rows are
  * inert (no click-to-navigate); the explicit "View cycles" button in the
@@ -97,7 +97,9 @@ export function MinistryPrepareList({
             <>
               {column.id === 'name' ? item.ministryName : null}
               {column.id === 'events' ? item.eventCount : null}
-              {column.id === 'slots' ? item.slotCount : null}
+              {column.id === 'eventTimeBlocks'
+                ? item.eventTimeBlockCount
+                : null}
             </>
           )}
           rowActions={({ item }) => (
@@ -119,7 +121,8 @@ export function MinistryPrepareList({
               <div className="space-y-1">
                 <div className="font-medium">{item.ministryName}</div>
                 <div className="text-muted-foreground text-xs">
-                  {item.eventCount} events · {item.slotCount} slots
+                  {item.eventCount} events · {item.eventTimeBlockCount} time
+                  blocks
                 </div>
               </div>
             </div>

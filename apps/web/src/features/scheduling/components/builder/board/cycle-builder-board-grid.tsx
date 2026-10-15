@@ -8,7 +8,7 @@ import {
 import type { CellDerived } from '../../../utils/builder/cycle-builder-assignment-index.utils';
 import {
   dateLabel,
-  eventSlotsOnDay,
+  eventTimeBlocksOnDay,
   timeLabel,
 } from '../../../utils/builder/cycle-builder-date.utils';
 import { rankVolunteersForShiftRole } from '../../../utils/builder/cycle-builder-ranking.utils';
@@ -92,7 +92,7 @@ interface CycleBuilderBoardGridProps {
 
 /**
  * The board's own scroll surface: a grid of date columns, each holding its
- * events → included slots → shifts → role cells. Drag-to-scroll comes from
+ * events → included time blocks → shifts → role cells. Drag-to-scroll comes from
  * `useBoardDragScroll` (see that hook's doc comment for why it isn't shared
  * with the date strip's). Rendered inside the parent's `DndContext` — cells
  * register their own droppables via `useDroppable`, which works anywhere in
@@ -183,25 +183,25 @@ export function CycleBuilderBoardGrid({
                               'shrink-0',
                               staffingStatusClasses({
                                 percent: Math.round(event.fillRatio * 100),
-                                hasRequirement: event.requiredCount > 0,
+                                hasRequirement: event.peopleNeeded > 0,
                               }).text,
                             )}
                           >
                             {Math.round(event.fillRatio * 100)}%
                           </Badge>
                         </div>
-                        {eventSlotsOnDay({ event, day: date, timeZone })
-                          .filter((slot) => slot.included)
-                          .map((slot) => (
+                        {eventTimeBlocksOnDay({ event, day: date, timeZone })
+                          .filter((eventTimeBlock) => eventTimeBlock.included)
+                          .map((eventTimeBlock) => (
                             <section
-                              key={slot.slotId}
+                              key={eventTimeBlock.eventTimeBlockId}
                               className="space-y-2 rounded-md border border-dashed p-2"
                             >
                               <h3 className="font-medium text-foreground text-xs">
-                                {slot.label ?? 'Slot'}
+                                {eventTimeBlock.label ?? 'Time block'}
                               </h3>
                               <div className="space-y-2">
-                                {slot.shifts.map((shift) => (
+                                {eventTimeBlock.shifts.map((shift) => (
                                   <section
                                     key={shift.shiftId}
                                     className="space-y-2 border-t pt-2 first:border-t-0 first:pt-0"
@@ -247,8 +247,9 @@ export function CycleBuilderBoardGrid({
                                             key: requirementFocusKey,
                                             label: buildFocusLabel({
                                               roleLabel,
-                                              slotLabel:
-                                                slot.label ?? 'this shift',
+                                              eventTimeBlockLabel:
+                                                eventTimeBlock.label ??
+                                                'this shift',
                                               eventTitle: event.title,
                                               dateText: dateLabel({
                                                 day: date,
@@ -257,8 +258,9 @@ export function CycleBuilderBoardGrid({
                                             shiftId: shift.shiftId,
                                             roleId: requirement.roleId,
                                             roleLabel,
-                                            slotLabel:
-                                              slot.label ?? 'this shift',
+                                            eventTimeBlockLabel:
+                                              eventTimeBlock.label ??
+                                              'this shift',
                                             ...rankVolunteersForShiftRole({
                                               shift,
                                               roleId: requirement.roleId,
@@ -271,8 +273,8 @@ export function CycleBuilderBoardGrid({
                                             shift={shift}
                                             roleId={requirement.roleId}
                                             roleLabel={roleLabel}
-                                            requiredCount={
-                                              requirement.requiredCount
+                                            peopleNeeded={
+                                              requirement.peopleNeeded
                                             }
                                             assignments={assignments}
                                             pickerVolunteers={
@@ -282,8 +284,9 @@ export function CycleBuilderBoardGrid({
                                             needsResponseSuggestions={
                                               suggestionGroups.needsResponse
                                             }
-                                            slotLabel={
-                                              slot.label ?? 'this shift'
+                                            eventTimeBlockLabel={
+                                              eventTimeBlock.label ??
+                                              'this shift'
                                             }
                                             selectedVolunteerId={
                                               selectedVolunteerId

@@ -13,12 +13,12 @@ import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
   CycleId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
-  TimeBlockId,
-  TimeSlotId,
+  TemplateTimeBlockId,
   UserId,
 } from '@/domain/branded-ids';
 import type { NotificationService } from '@/domain/contracts/infrastructure/notification-service';
@@ -32,17 +32,17 @@ import {
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import { LocalNotificationService } from '@/infrastructure/services/local-notification-service';
@@ -79,10 +79,10 @@ function createPhase4Managers(
   const eventRepository = new DrizzlePlanningEventRepository({
     db: schedulingTestDb,
   });
-  const timeSlotRepository = new DrizzleTimeSlotRepository({
+  const eventTimeBlockRepository = new DrizzleEventTimeBlockRepository({
     db: schedulingTestDb,
   });
-  const servingProfileRepository = new DrizzleMinistryServingProfileRepository({
+  const usualSetupRepository = new DrizzleUsualSetupRepository({
     db: schedulingTestDb,
   });
   const availabilityCheckRepository = new DrizzleAvailabilityCheckRepository({
@@ -99,17 +99,17 @@ function createPhase4Managers(
       assignmentRepository: new DrizzleAssignmentRepository({
         db: schedulingTestDb,
       }),
-      availabilityRepository: new DrizzleAvailabilityRepository({
+      unavailableShiftRepository: new DrizzleUnavailableShiftRepository({
         db: schedulingTestDb,
       }),
-      timeSlotRepository,
+      eventTimeBlockRepository,
       volunteerRepository: new DrizzleVolunteerRepository({
         db: schedulingTestDb,
       }),
       ministryRepository: new DrizzleMinistryRepository({
         db: schedulingTestDb,
       }),
-      servingProfileRepository,
+      usualSetupRepository,
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
       notificationService: notificationService ?? notificationSpy,
       unitOfWork,
@@ -182,8 +182,8 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
     expect(view.events).toHaveLength(1);
     expect(view.events[0]?.participation.state).toBe('preparing');
-    expect(view.events[0]?.slots).toHaveLength(1);
-    expect(view.events[0]?.slots[0]?.included).toBe(false);
+    expect(view.events[0]?.eventTimeBlocks).toHaveLength(1);
+    expect(view.events[0]?.eventTimeBlocks[0]?.included).toBe(false);
 
     // second call reuses the lazily created participation
     const again = await participationManager.getCycleParticipation({
@@ -196,9 +196,11 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     );
   });
 
-  it('DL2-PT-02 setInclusions opts slots in (default whole-slot shift) and out', async () => {
+  it('DL2-PT-02 setInclusions opts event time blocks in (default whole-event-time-block shift) and out', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -206,7 +208,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     await participationManager.setInclusions({
       churchId,
       participationId,
-      timeSlotIds: [TimeSlotId.from(slot.id)],
+      eventTimeBlockIds: [EventTimeBlockId.from(eventTimeBlock.id)],
     });
 
     const shiftsAfterInclude = await schedulingTestDb
@@ -214,13 +216,13 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       .from(shiftTable)
       .where(eq(shiftTable.participationId, participation.id));
     expect(shiftsAfterInclude).toHaveLength(1);
-    expect(shiftsAfterInclude[0]?.startTime).toEqual(slot.startTime);
-    expect(shiftsAfterInclude[0]?.endTime).toEqual(slot.endTime);
+    expect(shiftsAfterInclude[0]?.startTime).toEqual(eventTimeBlock.startTime);
+    expect(shiftsAfterInclude[0]?.endTime).toEqual(eventTimeBlock.endTime);
 
     await participationManager.setInclusions({
       churchId,
       participationId,
-      timeSlotIds: [],
+      eventTimeBlockIds: [],
     });
 
     const shiftsAfterExclude = await schedulingTestDb
@@ -232,31 +234,39 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
   it('DL2-PT-03 splitShifts equal-N persists N shifts within bounds', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
 
     const created = await participationManager.splitShifts({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(participation.id),
-      timeSlotId: TimeSlotId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 3 },
     });
 
     expect(created).toHaveLength(3);
-    expect(created[0]?.startTime).toEqual(fromDate({ date: slot.startTime }));
-    expect(created[2]?.endTime).toEqual(fromDate({ date: slot.endTime }));
+    expect(created[0]?.startTime).toEqual(
+      fromDate({ date: eventTimeBlock.startTime }),
+    );
+    expect(created[2]?.endTime).toEqual(
+      fromDate({ date: eventTimeBlock.endTime }),
+    );
   });
 
   it('DL2-PT-04 manual out-of-bounds split is rejected with a conflict error', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
 
     await expect(
       participationManager.splitShifts({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(participation.id),
-        timeSlotId: TimeSlotId.from(slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
         strategy: {
           kind: 'manual',
           spans: [
@@ -278,7 +288,9 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
   it('DL2-PT-05 upserts per-shift requirements and rejects counts below one', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
@@ -292,7 +304,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     const [shiftEntity] = await participationManager.splitShifts({
       churchId,
       participationId: MinistryParticipationId.from(participation.id),
-      timeSlotId: TimeSlotId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     if (!shiftEntity) throw new Error('split failed');
@@ -301,17 +313,17 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       churchId,
       shiftId: ShiftId.from(shiftEntity.id),
       roleId: RoleId.from(roleRow.id),
-      requiredCount: 2,
+      peopleNeeded: 2,
     });
-    expect(created.requiredCount).toBe(2);
+    expect(created.peopleNeeded).toBe(2);
 
     const updated = await participationManager.upsertRequirement({
       churchId,
       shiftId: ShiftId.from(shiftEntity.id),
       roleId: RoleId.from(roleRow.id),
-      requiredCount: 4,
+      peopleNeeded: 4,
     });
-    expect(updated.requiredCount).toBe(4);
+    expect(updated.peopleNeeded).toBe(4);
     expect(updated.id).toBe(created.id);
 
     await expect(
@@ -319,7 +331,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
         churchId,
         shiftId: ShiftId.from(shiftEntity.id),
         roleId: RoleId.from(roleRow.id),
-        requiredCount: 0,
+        peopleNeeded: 0,
       }),
     ).rejects.toThrow(InvalidRequiredCountError);
   });
@@ -339,7 +351,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       participationManager.setInclusions({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(graphB.participation.id),
-        timeSlotIds: [],
+        eventTimeBlockIds: [],
       }),
     ).rejects.toThrow();
 
@@ -352,7 +364,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
         db: schedulingTestDb,
       }),
       eventRepository: new DrizzleEventRepository({ db: schedulingTestDb }),
-      timeSlotRepository: new DrizzleTimeSlotRepository({
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
         db: schedulingTestDb,
       }),
       ministryRepository: new DrizzleMinistryRepository({
@@ -375,9 +387,11 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     ).resolves.toBe(true);
   });
 
-  it('DL2-PT-07 two ministries split the same slot independently', async () => {
+  it('DL2-PT-07 two ministries split the same event time block independently', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot, event } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock, event } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
@@ -393,19 +407,19 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       ministryId: ministryC.id,
       eventId: event.id,
       state: 'preparing',
-      timeSlotIds: [],
+      eventTimeBlockIds: [],
     });
 
     await participationManager.splitShifts({
       churchId,
       participationId: MinistryParticipationId.from(participation.id),
-      timeSlotId: TimeSlotId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 2 },
     });
     await participationManager.splitShifts({
       churchId,
       participationId: MinistryParticipationId.from(participationC.id),
-      timeSlotId: TimeSlotId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 3 },
     });
 
@@ -424,7 +438,9 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
   it('DL2-PT-08 shift mutations are blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
@@ -436,7 +452,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       participationManager.splitShifts({
         churchId,
         participationId: MinistryParticipationId.from(participation.id),
-        timeSlotId: TimeSlotId.from(slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
         strategy: { kind: 'equal-n', n: 2 },
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
@@ -444,12 +460,12 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       participationManager.setInclusions({
         churchId,
         participationId: MinistryParticipationId.from(participation.id),
-        timeSlotIds: [],
+        eventTimeBlockIds: [],
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('rejects splitting a slot that belongs to another event', async () => {
+  it('rejects splitting an event time block that belongs to another event', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph1 = await seedCycleWithEvent({ seed });
     const seedB = graph1;
@@ -468,21 +484,23 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       participationManager.splitShifts({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(graph1.participation.id),
-        timeSlotId: TimeSlotId.from(otherGraph.slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(otherGraph.eventTimeBlock.id),
         strategy: { kind: 'equal-n', n: 2 },
       }),
     ).rejects.toThrow(CrossMinistryScopeError);
   });
 });
 
-describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycleSummaries', () => {
+describe('Phase 4 participation manager — Iteration 3 touch()/listScheduleSummaries', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
 
   it('setInclusions/splitShifts/upsertRequirement each touch the participation exactly once, guarded against re-touching', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -496,7 +514,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycl
     await participationManager.setInclusions({
       churchId,
       participationId,
-      timeSlotIds: [TimeSlotId.from(slot.id)],
+      eventTimeBlockIds: [EventTimeBlockId.from(eventTimeBlock.id)],
     });
 
     const [afterFirstTouch] = await schedulingTestDb
@@ -509,7 +527,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycl
     await participationManager.splitShifts({
       churchId,
       participationId,
-      timeSlotId: TimeSlotId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 2 },
     });
 
@@ -520,7 +538,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycl
     expect(afterSecondTouch?.touchedAt).toEqual(firstTouchedAt);
   });
 
-  it('listMinistryCycleSummaries delegates to the repository and includes zero-participation cycles', async () => {
+  it('listScheduleSummaries delegates to the repository and includes zero-participation cycles', async () => {
     const seed = await seedSchedulingPhase3Base();
     await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -531,7 +549,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycl
     });
     const { participationManager } = createPhase4Managers();
 
-    const rows = await participationManager.listMinistryCycleSummaries({
+    const rows = await participationManager.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -541,7 +559,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycl
       name: 'Untouched Cycle',
       isPartOf: false,
       eventCount: 0,
-      slotCount: 0,
+      eventTimeBlockCount: 0,
       status: 'not_started',
       availabilityRequestedForAll: false,
     });
@@ -743,14 +761,16 @@ async function seedRoleFor(input: SeedPhase4RoleInput) {
   });
 }
 
-describe('Phase 4 participation manager additional surfaces (shift lifecycle, serving profile, eligible-volunteer conflicts, publish edge states)', () => {
+describe('Phase 4 participation manager additional surfaces (shift lifecycle, usual setup, eligible-volunteer conflicts, publish edge states)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
 
   it('updateShift adjusts bounds/label within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -758,7 +778,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     const [createdShift] = await participationManager.splitShifts({
       churchId,
       participationId,
-      timeSlotId: TimeSlotId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     if (!createdShift) throw new Error('split failed');
@@ -769,12 +789,14 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       label: 'Relabeled shift',
     });
     expect(updated.label).toBe('Relabeled shift');
-    expect(updated.startTime).toEqual(fromDate({ date: slot.startTime }));
+    expect(updated.startTime).toEqual(
+      fromDate({ date: eventTimeBlock.startTime }),
+    );
 
     const boundsOnlyUpdate = await participationManager.updateShift({
       churchId,
       shiftId: ShiftId.from(createdShift.id),
-      startTime: slot.startTime,
+      startTime: eventTimeBlock.startTime,
     });
     expect(boundsOnlyUpdate.label).toBe('Relabeled shift');
 
@@ -793,7 +815,9 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
 
   it('deleteShift removes a shift within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -801,7 +825,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     const created = await participationManager.splitShifts({
       churchId,
       participationId,
-      timeSlotId: TimeSlotId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 2 },
     });
     expect(created).toHaveLength(2);
@@ -831,7 +855,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('getServingProfile/upsertServingProfile persists validated entries and rejects invalid shift-split/headcount input', async () => {
+  it('getUsualSetup/upsertUsualSetup persists validated entries and rejects invalid shift-split/headcount input', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
@@ -856,40 +880,40 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     const block = blocks[0];
     if (!block) throw new Error('template block seed failed');
 
-    const empty = await participationManager.getServingProfile({
+    const empty = await participationManager.getUsualSetup({
       churchId,
       ministryId,
     });
     expect(empty).toEqual([]);
 
-    const saved = await participationManager.upsertServingProfile({
+    const saved = await participationManager.upsertUsualSetup({
       churchId,
       ministryId,
       entries: [
         {
-          sourceTemplateBlockId: TimeBlockId.from(block.id),
+          sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
           serves: true,
           shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: [{ roleId: RoleId.from(roleRow.id), count: 1 }],
+          headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 1 }],
         },
       ],
     });
     expect(saved).toHaveLength(1);
     expect(saved[0]?.serves).toBe(true);
 
-    const fetched = await participationManager.getServingProfile({
+    const fetched = await participationManager.getUsualSetup({
       churchId,
       ministryId,
     });
     expect(fetched).toHaveLength(1);
 
     await expect(
-      participationManager.upsertServingProfile({
+      participationManager.upsertUsualSetup({
         churchId,
         ministryId,
         entries: [
           {
-            sourceTemplateBlockId: TimeBlockId.from(block.id),
+            sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
             serves: true,
             shiftSplit: { kind: 'equal', count: 0 },
             headcounts: [],
@@ -899,15 +923,15 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     ).rejects.toThrow(InvalidShiftSplitError);
 
     await expect(
-      participationManager.upsertServingProfile({
+      participationManager.upsertUsualSetup({
         churchId,
         ministryId,
         entries: [
           {
-            sourceTemplateBlockId: TimeBlockId.from(block.id),
+            sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId: RoleId.from(roleRow.id), count: 0 }],
+            headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 0 }],
           },
         ],
       }),
@@ -953,7 +977,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       participationId: MinistryParticipationId.from(
         targetGraph.participation.id,
       ),
-      timeSlotId: TimeSlotId.from(targetGraph.slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(targetGraph.eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     const [overlapShift] = await participationManager.splitShifts({
@@ -961,7 +985,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       participationId: MinistryParticipationId.from(
         overlapGraph.participation.id,
       ),
-      timeSlotId: TimeSlotId.from(overlapGraph.slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(overlapGraph.eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     if (!targetShift || !overlapShift) throw new Error('split failed');
@@ -1103,15 +1127,15 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
       .select()
       .from((await import('@church/db')).availabilityCheck)
       .innerJoin(
-        (await import('@church/db')).ministryVolunteer,
+        (await import('@church/db')).ministryMembership,
         eq(
-          (await import('@church/db')).availabilityCheck.ministryVolunteerId,
-          (await import('@church/db')).ministryVolunteer.id,
+          (await import('@church/db')).availabilityCheck.ministryMembershipId,
+          (await import('@church/db')).ministryMembership.id,
         ),
       )
       .where(
         eq(
-          (await import('@church/db')).ministryVolunteer.volunteerId,
+          (await import('@church/db')).ministryMembership.volunteerId,
           seed.adminVolunteerId,
         ),
       );

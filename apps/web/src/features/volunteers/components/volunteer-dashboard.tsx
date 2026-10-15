@@ -173,7 +173,7 @@ export function VolunteerDashboard({
           {dashboard.selectedTask ? (
             <AvailabilityForm
               event={mapAvailabilityEvent(dashboard.selectedTask)}
-              slots={dashboard.availabilitySlots}
+              eventTimeBlocks={dashboard.availabilityEventTimeBlocks}
               isEditable={true}
               isOnline={refresh.isOnline}
               onSave={dashboard.handleSaveAvailability}

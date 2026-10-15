@@ -266,7 +266,7 @@ Sourced from shadcn/ui, ported onto base-ui/react primitives (not Radix) with `c
 - **Breadcrumbs:** desktop-only, derived from the route path. Opaque IDs (UUIDs) are dropped from the trail automatically, unless the segment resolves to a real name via live data (e.g. a cycle ID renders as the cycle's name once fetched) — the crumb favors a human label over hiding the segment.
 
 ### Staffing Meter (signature component)
-A dedicated component with two renderings: a compact percentage `Badge` (per time-slot) and a full `Progress` bar (per event), both colored by the Status vocabulary — red under 50%, amber 50–99%, green at 100%. This is the one place in the system where the Traffic-Light Exception applies.
+A dedicated component with two renderings: a compact percentage `Badge` (per event-time-block) and a full `Progress` bar (per event), both colored by the Status vocabulary — red under 50%, amber 50–99%, green at 100%. This is the one place in the system where the Traffic-Light Exception applies.
 
 ## 6. Do's and Don'ts
 

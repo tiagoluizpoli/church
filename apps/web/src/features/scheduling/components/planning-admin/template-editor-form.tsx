@@ -1,6 +1,6 @@
 import { WEEKDAYS } from './planning-admin.utils';
 import { useTemplateEditor } from './planning-admin-context';
-import { TemplateBlockRow } from './template-block-row';
+import { TemplateTimeBlockRow } from './template-time-block-row';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,9 +26,9 @@ export function TemplateEditorForm({
     saveTemplatePending,
     handleTemplateNameChange,
     handleTemplateWeekdayChange,
-    handleTemplateBlockChange,
-    handleRemoveTemplateBlock,
-    handleAddTemplateBlock,
+    handleTemplateTimeBlockChange,
+    handleRemoveTemplateTimeBlock,
+    handleAddTemplateTimeBlock,
     handleSaveTemplate,
   } = useTemplateEditor();
   const selectedWeekdayLabel =
@@ -84,13 +84,13 @@ export function TemplateEditorForm({
 
       <div className="space-y-3">
         {templateForm.blocks.map((block, index) => (
-          <TemplateBlockRow
+          <TemplateTimeBlockRow
             key={block.id}
             block={block}
             index={index}
             totalBlocks={templateForm.blocks.length}
-            onBlockChange={handleTemplateBlockChange}
-            onRemoveBlock={handleRemoveTemplateBlock}
+            onBlockChange={handleTemplateTimeBlockChange}
+            onRemoveBlock={handleRemoveTemplateTimeBlock}
           />
         ))}
       </div>
@@ -100,8 +100,8 @@ export function TemplateEditorForm({
           type="button"
           variant="outline"
           size="sm"
-          data-testid="add-template-block-button"
-          onClick={handleAddTemplateBlock}
+          data-testid="add-template-time-block-button"
+          onClick={handleAddTemplateTimeBlock}
         >
           Add block
         </Button>

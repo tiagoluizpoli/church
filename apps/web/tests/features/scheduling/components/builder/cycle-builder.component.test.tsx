@@ -42,28 +42,28 @@ const builderData: CycleBuilderData = {
       end: '2026-08-02T11:00:00.000Z',
       status: 'scheduled',
       fillRatio: 0,
-      requiredCount: 1,
+      peopleNeeded: 1,
       assignedCount: 0,
-      slotCount: 1,
-      slots: [
+      eventTimeBlockCount: 1,
+      eventTimeBlocks: [
         {
-          slotId: 'slot-1',
+          eventTimeBlockId: 'event-time-block-1',
           label: 'Morning service',
           startTime: '2026-08-02T09:00:00.000Z',
           endTime: '2026-08-02T11:00:00.000Z',
           included: true,
-          requiredCount: 1,
+          peopleNeeded: 1,
           assignedCount: 0,
           shiftCount: 1,
           shifts: [
             {
               shiftId: 'shift-1',
-              slotId: 'slot-1',
+              eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
-              requiredCount: 1,
+              peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
               assignments: [],
               eligibleVolunteerCount: 1,
               eligibleVolunteers: [
@@ -88,7 +88,7 @@ const builderData: CycleBuilderData = {
 const existingAssignment = {
   id: 'assignment-1',
   churchId: 'church-1',
-  slotId: 'slot-1',
+  eventTimeBlockId: 'event-time-block-1',
   participationId: 'participation-1',
   shiftId: 'shift-1',
   volunteerId: 'volunteer-1',
@@ -112,8 +112,8 @@ function teamGuardData({
   canMutateAssignments,
 }: TeamGuardDataInput): CycleBuilderData {
   const event = builderData.events[0];
-  const slot = event.slots[0];
-  const shift = slot.shifts[0];
+  const eventTimeBlock = event.eventTimeBlocks[0];
+  const shift = eventTimeBlock.shifts[0];
   return {
     ...builderData,
     assignments: [existingAssignment],
@@ -123,19 +123,19 @@ function teamGuardData({
         start: start ?? event.start,
         state: state ?? event.state,
         assignedCount: 1,
-        slots: [
+        eventTimeBlocks: [
           {
-            ...slot,
+            ...eventTimeBlock,
             assignedCount: 1,
             shifts: [
               {
                 ...shift,
-                requiredCount: 2,
+                peopleNeeded: 2,
                 assignedCount: 1,
                 requirements: [
                   {
                     ...shift.requirements[0],
-                    requiredCount: 2,
+                    peopleNeeded: 2,
                     teamId: requirementTeamId,
                     canMutateAssignments:
                       canMutateAssignments ?? requirementTeamId === 'team-1',
@@ -214,13 +214,13 @@ describe('CycleBuilder rail selection wiring (#217)', () => {
     const cell = screen.getByTestId('cycle-requirement-shift-1-role-1');
     expect(cell).toHaveAttribute('data-selected-fit', 'none');
 
-    const selectSlot = screen.getAllByTestId('volunteer-select-slot')[0];
-    await user.click(selectSlot);
+    const selectShift = screen.getAllByTestId('volunteer-select-shift')[0];
+    await user.click(selectShift);
 
     expect(cell).toHaveAttribute('data-selected-fit', 'ready');
-    expect(selectSlot).toHaveAttribute('aria-pressed', 'true');
+    expect(selectShift).toHaveAttribute('aria-pressed', 'true');
 
-    await user.click(selectSlot);
+    await user.click(selectShift);
 
     expect(cell).toHaveAttribute('data-selected-fit', 'none');
   });
@@ -241,9 +241,9 @@ describe('CycleBuilder header (B-4)', () => {
     expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
       '1',
     );
-    expect(screen.getByTestId('cycle-builder-slot-count')).toHaveTextContent(
-      '1',
-    );
+    expect(
+      screen.getByTestId('cycle-builder-event-time-block-count'),
+    ).toHaveTextContent('1');
     expect(screen.getByTestId('cycle-builder-shift-count')).toHaveTextContent(
       '1',
     );
@@ -275,7 +275,7 @@ describe('CycleBuilder assignment announcements (B-3)', () => {
     );
   });
 
-  it('announces a rejected assignment, naming the person and the slot', async () => {
+  it('announces a rejected assignment, naming the person and the time block', async () => {
     renderBuilder({
       createAssignment: () => Promise.reject(new Error('Volunteer is booked')),
     });
@@ -296,9 +296,9 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
       ...builderData,
       events: builderData.events.map((event) => ({
         ...event,
-        slots: event.slots.map((slot) => ({
-          ...slot,
-          shifts: slot.shifts.map((shift) => ({
+        eventTimeBlocks: event.eventTimeBlocks.map((eventTimeBlock) => ({
+          ...eventTimeBlock,
+          shifts: eventTimeBlock.shifts.map((shift) => ({
             ...shift,
             requirements: shift.requirements.map((requirement) => ({
               ...requirement,
@@ -328,7 +328,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
   it('allows remove and reassign affordances in a future assign cell for the led Team', async () => {
     const user = userEvent.setup();
     const data = teamGuardData({ requirementTeamId: 'team-1' });
-    data.events[0].slots[0].shifts[0].eligibleVolunteers.push({
+    data.events[0].eventTimeBlocks[0].shifts[0].eligibleVolunteers.push({
       volunteerId: 'volunteer-2',
       volunteerName: 'Ada Lovelace',
       isAvailable: true,
@@ -369,7 +369,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
     await user.click(screen.getByTestId('assignment-chip'));
     expect(screen.queryByTestId('assignment-picker')).toBeNull();
 
-    expect(screen.queryByTestId('volunteer-select-slot')).toBeNull();
+    expect(screen.queryByTestId('volunteer-select-shift')).toBeNull();
     for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
       expect(grip).toBeDisabled();
     }
@@ -389,7 +389,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
       screen.getByTestId('cycle-requirement-shift-1-role-1'),
     ).not.toHaveAttribute('data-drop-target');
     expect(screen.queryByRole('button', { name: 'Add' })).toBeNull();
-    expect(screen.queryByTestId('volunteer-select-slot')).toBeNull();
+    expect(screen.queryByTestId('volunteer-select-shift')).toBeNull();
     for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
       expect(grip).toBeDisabled();
     }
@@ -409,7 +409,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
       screen.getByTestId('cycle-requirement-shift-1-role-1'),
     ).not.toHaveAttribute('data-drop-target');
     expect(screen.queryByRole('button', { name: 'Add' })).toBeNull();
-    expect(screen.queryByTestId('volunteer-select-slot')).toBeNull();
+    expect(screen.queryByTestId('volunteer-select-shift')).toBeNull();
     for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
       expect(grip).toBeDisabled();
     }
@@ -418,11 +418,11 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
   it('does not turn rail picks into writes when a readable unled-Team cell is focused', async () => {
     const user = userEvent.setup();
     const data = teamGuardData({ requirementTeamId: 'team-2' });
-    const shift = data.events[0].slots[0].shifts[0];
+    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
     shift.requirements.push({
       roleId: 'role-2',
       teamId: 'team-1',
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
     shift.eligibleVolunteers.push({
       volunteerId: 'volunteer-2',
@@ -444,7 +444,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
     );
 
     expect(screen.queryByTestId('volunteer-pick-me')).toBeNull();
-    expect(screen.getAllByTestId('volunteer-select-slot')).not.toHaveLength(0);
+    expect(screen.getAllByTestId('volunteer-select-shift')).not.toHaveLength(0);
 
     await user.click(
       screen.getByRole('button', { name: 'Show volunteers for Host first' }),
@@ -496,7 +496,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
       'data-drop-target',
       'replace',
     );
-    expect(screen.getAllByTestId('volunteer-select-slot')).not.toHaveLength(0);
+    expect(screen.getAllByTestId('volunteer-select-shift')).not.toHaveLength(0);
     for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
       expect(grip).not.toBeDisabled();
     }

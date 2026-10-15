@@ -12,12 +12,12 @@ import { renderWithProviders } from '@/tests/setup/render';
 
 const shift: CycleBuilderShiftSummary = {
   shiftId: 'shift-1',
-  slotId: 'slot-1',
+  eventTimeBlockId: 'event-time-block-1',
   startTime: '2026-08-02T09:00:00.000Z',
   endTime: '2026-08-02T10:00:00.000Z',
-  requiredCount: 2,
+  peopleNeeded: 2,
   assignedCount: 0,
-  requirements: [{ roleId: 'role-1', requiredCount: 2 }],
+  requirements: [{ roleId: 'role-1', peopleNeeded: 2 }],
   assignments: [],
   eligibleVolunteerCount: 2,
   eligibleVolunteers: [
@@ -46,7 +46,7 @@ const assignments: CycleBuilderAssignment[] = [
   {
     id: 'assignment-1',
     churchId: 'church-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     volunteerId: 'volunteer-1',
     roleId: 'role-1',
@@ -57,7 +57,7 @@ const assignments: CycleBuilderAssignment[] = [
   {
     id: 'assignment-2',
     churchId: 'church-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     volunteerId: 'volunteer-2',
     roleId: 'role-1',
@@ -76,7 +76,7 @@ function renderCell(
         shift={shift}
         roleId="role-1"
         roleLabel="Greeter"
-        requiredCount={2}
+        peopleNeeded={2}
         assignments={[]}
         pickerVolunteers={[
           {
@@ -95,7 +95,7 @@ function renderCell(
           },
         ]}
         needsResponseSuggestions={[]}
-        slotLabel="Morning service"
+        eventTimeBlockLabel="Morning service"
         isPublished={false}
         onFocus={vi.fn()}
         onToggleFocus={vi.fn()}

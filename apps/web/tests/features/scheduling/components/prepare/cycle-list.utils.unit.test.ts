@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildMinistryCycleSummaries,
+  buildScheduleSummaries,
   filterCycleSummaries,
 } from '@/features/scheduling/components/prepare/cycle-list.utils';
-import type { ListMinistryCycleSummaries200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
+import type { ListScheduleSummaries200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
 
 function makeCycleSummary(
-  overrides: Partial<ListMinistryCycleSummaries200CyclesItem> = {},
-): ListMinistryCycleSummaries200CyclesItem {
+  overrides: Partial<ListScheduleSummaries200CyclesItem> = {},
+): ListScheduleSummaries200CyclesItem {
   return {
     cycleId: 'cycle-1',
     name: 'Agosto 2026',
@@ -15,7 +15,7 @@ function makeCycleSummary(
     endDate: '2026-08-31',
     isPartOf: true,
     eventCount: 1,
-    slotCount: 2,
+    eventTimeBlockCount: 2,
     status: 'in_progress',
     availabilityRequestedForAll: false,
     availabilityRequestedForAny: false,
@@ -23,9 +23,9 @@ function makeCycleSummary(
   };
 }
 
-describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole data source)', () => {
+describe('buildScheduleSummaries (US2/Iteration 3 — real columns, sole data source)', () => {
   it("names each summary with the cycle's own name and window, and carries the aggregated Iteration 3 fields verbatim", () => {
-    const summaries = buildMinistryCycleSummaries({
+    const summaries = buildScheduleSummaries({
       cycles: [makeCycleSummary()],
     });
 
@@ -37,7 +37,7 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
         startDate: '2026-08-01',
         endDate: '2026-08-31',
         eventCount: 1,
-        slotCount: 2,
+        eventTimeBlockCount: 2,
         status: 'in_progress',
         isPartOf: true,
         availabilityRequestedForAll: false,
@@ -47,14 +47,14 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
   });
 
   it('includes cycles the ministry is not part of, unlike the old events-derived join', () => {
-    const summaries = buildMinistryCycleSummaries({
+    const summaries = buildScheduleSummaries({
       cycles: [
         makeCycleSummary({
           cycleId: 'cycle-not-part-of',
           name: 'No Events',
           isPartOf: false,
           eventCount: 0,
-          slotCount: 0,
+          eventTimeBlockCount: 0,
           status: 'not_started',
           availabilityRequestedForAll: false,
         }),
@@ -68,7 +68,7 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
   });
 
   it('sorts by parsed start date, not alphabetically by the formatted label', () => {
-    const summaries = buildMinistryCycleSummaries({
+    const summaries = buildScheduleSummaries({
       cycles: [
         // A "Sep 1, 2027" label alphabetically precedes "Sep 2, 2026" as a
         // string, even though 2026 comes first chronologically — this is
@@ -96,7 +96,7 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
 });
 
 describe('filterCycleSummaries (FR-033 — date range/involvement/status, AND semantics)', () => {
-  const summaries = buildMinistryCycleSummaries({
+  const summaries = buildScheduleSummaries({
     cycles: [
       makeCycleSummary({
         cycleId: 'aug-not-part-of',
@@ -105,7 +105,7 @@ describe('filterCycleSummaries (FR-033 — date range/involvement/status, AND se
         endDate: '2026-08-31',
         isPartOf: false,
         eventCount: 0,
-        slotCount: 0,
+        eventTimeBlockCount: 0,
         status: 'not_started',
       }),
       makeCycleSummary({

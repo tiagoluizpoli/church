@@ -2,9 +2,9 @@ import { Entity, type LooseProps } from '@church/core';
 import { compareInstants, type Instant, now, toDate } from '@church/time';
 import type {
   ChurchId,
+  EventTimeBlockId,
   MinistryParticipationId,
   ShiftId,
-  TimeSlotId,
 } from '../branded-ids';
 import { InvalidTimeRangeError } from '../errors/invalid-time-range';
 import { ShiftOutOfBoundsError } from '../errors/shift-out-of-bounds';
@@ -12,13 +12,13 @@ import { ShiftOutOfBoundsError } from '../errors/shift-out-of-bounds';
 export interface ShiftProps {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   startTime: Instant;
   endTime: Instant;
   label?: string;
 }
 
-export interface ShiftSlotBounds {
+export interface ShiftEventTimeBlockBounds {
   startTime: Instant;
   endTime: Instant;
 }
@@ -26,7 +26,7 @@ export interface ShiftSlotBounds {
 export interface ShiftInput {
   props: LooseProps<ShiftProps>;
   /** When provided (creation path), the shift must lie entirely within these bounds. */
-  slotBounds?: ShiftSlotBounds;
+  eventTimeBlockBounds?: ShiftEventTimeBlockBounds;
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -35,15 +35,21 @@ export interface ShiftInput {
 export interface ShiftUpdateBoundsInput {
   startTime: Instant;
   endTime: Instant;
-  slotBounds: ShiftSlotBounds;
+  eventTimeBlockBounds: ShiftEventTimeBlockBounds;
 }
 
 export class Shift extends Entity<ShiftProps, ShiftId> {
-  constructor({ props, slotBounds, id, createdAt, updatedAt }: ShiftInput) {
+  constructor({
+    props,
+    eventTimeBlockBounds,
+    id,
+    createdAt,
+    updatedAt,
+  }: ShiftInput) {
     assertShiftWithinBounds({
       startTime: props.startTime as Instant,
       endTime: props.endTime as Instant,
-      slotBounds,
+      eventTimeBlockBounds,
     });
 
     super(props as ShiftProps, id as ShiftId, createdAt, updatedAt);
@@ -57,8 +63,8 @@ export class Shift extends Entity<ShiftProps, ShiftId> {
     return this._props.participationId;
   }
 
-  get timeSlotId(): TimeSlotId {
-    return this._props.timeSlotId;
+  get eventTimeBlockId(): EventTimeBlockId {
+    return this._props.eventTimeBlockId;
   }
 
   get startTime(): Instant {
@@ -76,9 +82,9 @@ export class Shift extends Entity<ShiftProps, ShiftId> {
   updateBounds({
     startTime,
     endTime,
-    slotBounds,
+    eventTimeBlockBounds,
   }: ShiftUpdateBoundsInput): void {
-    assertShiftWithinBounds({ startTime, endTime, slotBounds });
+    assertShiftWithinBounds({ startTime, endTime, eventTimeBlockBounds });
     this._props.startTime = startTime;
     this._props.endTime = endTime;
     this._updatedAt = toDate({ instant: now() });
@@ -93,25 +99,28 @@ export class Shift extends Entity<ShiftProps, ShiftId> {
 interface AssertShiftWithinBoundsInput {
   startTime: Instant;
   endTime: Instant;
-  slotBounds?: ShiftSlotBounds;
+  eventTimeBlockBounds?: ShiftEventTimeBlockBounds;
 }
 
 function assertShiftWithinBounds({
   startTime,
   endTime,
-  slotBounds,
+  eventTimeBlockBounds,
 }: AssertShiftWithinBoundsInput): void {
   if (compareInstants({ left: startTime, right: endTime }) >= 0) {
     throw new InvalidTimeRangeError();
   }
 
-  if (!slotBounds) {
+  if (!eventTimeBlockBounds) {
     return;
   }
 
   if (
-    compareInstants({ left: startTime, right: slotBounds.startTime }) < 0 ||
-    compareInstants({ left: endTime, right: slotBounds.endTime }) > 0
+    compareInstants({
+      left: startTime,
+      right: eventTimeBlockBounds.startTime,
+    }) < 0 ||
+    compareInstants({ left: endTime, right: eventTimeBlockBounds.endTime }) > 0
   ) {
     throw new ShiftOutOfBoundsError();
   }

@@ -1,9 +1,9 @@
 import { NotFoundError } from '@church/core';
 import {
   ministry,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   user,
   volunteer,
 } from '@church/db';
@@ -24,7 +24,7 @@ import type {
   VolunteerLeadership,
   VolunteerRepository,
 } from '../../domain/contracts/infrastructure/volunteer.repository';
-import type { MinistryAccessLevel } from '../../domain/entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
 import type {
   Volunteer,
   VolunteerStatus,
@@ -106,11 +106,11 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       .select({ volunteer, userName: user.name })
       .from(volunteer)
       .innerJoin(
-        ministryVolunteer,
+        ministryMembership,
         and(
-          eq(ministryVolunteer.volunteerId, volunteer.id),
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.volunteerId, volunteer.id),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .innerJoin(user, eq(user.id, volunteer.userId))
@@ -126,14 +126,14 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   ): Promise<boolean> {
     const db = getClient(this.db, tx);
     const [row] = await db
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.volunteerId, volunteerId),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .for('share');
@@ -154,21 +154,24 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   ): Promise<boolean> {
     const db = getClient(this.db, tx);
     const [row] = await db
-      .select({ id: ministryVolunteerRole.id })
-      .from(ministryVolunteerRole)
+      .select({ id: ministryMembershipRole.id })
+      .from(ministryMembershipRole)
       .innerJoin(
-        ministryVolunteer,
+        ministryMembership,
         and(
-          eq(ministryVolunteer.id, ministryVolunteerRole.ministryVolunteerId),
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(
+            ministryMembership.id,
+            ministryMembershipRole.ministryMembershipId,
+          ),
+          eq(ministryMembership.volunteerId, volunteerId),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .where(
         and(
-          eq(ministryVolunteerRole.roleId, roleId),
-          withChurchIsolation(ministryVolunteerRole, churchId),
+          eq(ministryMembershipRole.roleId, roleId),
+          withChurchIsolation(ministryMembershipRole, churchId),
         ),
       )
       .limit(1);
@@ -191,18 +194,21 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       .select({ volunteer, userName: user.name })
       .from(volunteer)
       .innerJoin(
-        ministryVolunteer,
+        ministryMembership,
         and(
-          eq(ministryVolunteer.volunteerId, volunteer.id),
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.volunteerId, volunteer.id),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .innerJoin(
-        ministryVolunteerRole,
+        ministryMembershipRole,
         and(
-          eq(ministryVolunteerRole.ministryVolunteerId, ministryVolunteer.id),
-          eq(ministryVolunteerRole.roleId, roleId),
+          eq(
+            ministryMembershipRole.ministryMembershipId,
+            ministryMembership.id,
+          ),
+          eq(ministryMembershipRole.roleId, roleId),
         ),
       )
       .innerJoin(user, eq(user.id, volunteer.userId))
@@ -256,15 +262,15 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   ): Promise<boolean> {
     const db = getClient(this.db, tx);
     const [row] = await db
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
-          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
+          eq(ministryMembership.volunteerId, volunteerId),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
+          eq(ministryMembership.ministryAccessLevel, 'leader'),
         ),
       )
       .limit(1);
@@ -279,17 +285,17 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     const db = getClient(this.db, tx);
     const rows = await db
       .select({
-        ministryId: ministryVolunteer.ministryId,
+        ministryId: ministryMembership.ministryId,
         ministryName: ministry.name,
       })
-      .from(ministryVolunteer)
-      .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
+      .from(ministryMembership)
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
-          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
+          eq(ministryMembership.volunteerId, volunteerId),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
+          eq(ministryMembership.ministryAccessLevel, 'leader'),
         ),
       );
     return rows.map((r) => ({
@@ -325,13 +331,13 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   ): Promise<MinistryId[]> {
     const db = getClient(this.db, tx);
     const rows = await db
-      .select({ ministryId: ministryVolunteer.ministryId })
-      .from(ministryVolunteer)
+      .select({ ministryId: ministryMembership.ministryId })
+      .from(ministryMembership)
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.volunteerId, volunteerId),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
         ),
       );
     return rows.map((r) => r.ministryId as MinistryId);
@@ -344,41 +350,47 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   ): Promise<MinistryMembership[]> {
     const db = getClient(this.db, tx);
     const membershipScope = and(
-      eq(ministryVolunteer.ministryId, ministryId),
-      eq(ministryVolunteer.churchId, churchId),
-      eq(ministryVolunteer.status, 'active'),
+      eq(ministryMembership.ministryId, ministryId),
+      eq(ministryMembership.churchId, churchId),
+      eq(ministryMembership.status, 'active'),
     );
 
     const [rows, teamRows, roleRows] = await Promise.all([
       db
         .select({
-          id: ministryVolunteer.id,
-          volunteerId: ministryVolunteer.volunteerId,
-          ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
+          id: ministryMembership.id,
+          volunteerId: ministryMembership.volunteerId,
+          ministryAccessLevel: ministryMembership.ministryAccessLevel,
         })
-        .from(ministryVolunteer)
+        .from(ministryMembership)
         .where(membershipScope),
       db
         .select({
-          membershipId: ministryVolunteerTeam.ministryVolunteerId,
-          teamId: ministryVolunteerTeam.teamId,
-          accessLevel: ministryVolunteerTeam.accessLevel,
+          membershipId: ministryMembershipTeam.ministryMembershipId,
+          teamId: ministryMembershipTeam.teamId,
+          accessLevel: ministryMembershipTeam.accessLevel,
         })
-        .from(ministryVolunteerTeam)
+        .from(ministryMembershipTeam)
         .innerJoin(
-          ministryVolunteer,
-          eq(ministryVolunteer.id, ministryVolunteerTeam.ministryVolunteerId),
+          ministryMembership,
+          eq(
+            ministryMembership.id,
+            ministryMembershipTeam.ministryMembershipId,
+          ),
         )
         .where(membershipScope),
       db
         .select({
-          membershipId: ministryVolunteerRole.ministryVolunteerId,
-          roleId: ministryVolunteerRole.roleId,
+          membershipId: ministryMembershipRole.ministryMembershipId,
+          roleId: ministryMembershipRole.roleId,
         })
-        .from(ministryVolunteerRole)
+        .from(ministryMembershipRole)
         .innerJoin(
-          ministryVolunteer,
-          eq(ministryVolunteer.id, ministryVolunteerRole.ministryVolunteerId),
+          ministryMembership,
+          eq(
+            ministryMembership.id,
+            ministryMembershipRole.ministryMembershipId,
+          ),
         )
         .where(membershipScope),
     ]);
@@ -405,15 +417,15 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     const db = getClient(this.db, tx);
     const rows = await db
       .select({ email: user.email })
-      .from(ministryVolunteer)
-      .innerJoin(volunteer, eq(volunteer.id, ministryVolunteer.volunteerId))
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
       .innerJoin(user, eq(user.id, volunteer.userId))
       .where(
         and(
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
-          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
+          eq(ministryMembership.ministryAccessLevel, 'leader'),
         ),
       );
     return rows.map((r) => r.email);

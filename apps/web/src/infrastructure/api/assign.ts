@@ -45,7 +45,7 @@ const listTeamScheduleCycles = (
       );
     }
   /**
- * Get a Ministry's schedule-building view of a Cycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.
+ * Get a Ministry's schedule-building view of a Cycle: its MinistryParticipations, Shifts, ShiftRequirements, and Assignments.
  * @summary Get cycle builder data for a Ministry
  */
 const getCycleBuilderData = (
@@ -146,7 +146,7 @@ const reassignParticipationAssignment = (
       );
     }
   /**
- * Get how fully a MinistryParticipation is staffed against its SlotRequirements.
+ * Get how fully a MinistryParticipation is staffed against its ShiftRequirements.
  * @summary Get a MinistryParticipation's staffing completion
  */
 const getParticipationCompletion = (

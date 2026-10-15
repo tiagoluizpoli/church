@@ -1,7 +1,7 @@
 import {
   assignment as assignmentTable,
+  ministryMembership as ministryMembershipTable,
   ministryParticipation,
-  ministryVolunteer as ministryVolunteerTable,
 } from '@church/db';
 import { fromDate, parseInstant } from '@church/time';
 import { and, eq, sql } from 'drizzle-orm';
@@ -22,16 +22,16 @@ import { HardConstraintError } from '@/domain/conflict/errors/hard-constraint-er
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
+import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleTransactionContext } from '@/infrastructure/repositories/drizzle-transaction-context';
+import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
 import { buildRole } from '@/seeds/builders/ministry';
@@ -39,7 +39,7 @@ import {
   buildAssignment,
   buildAssignmentAudit,
   buildShift,
-  buildSlotRequirement,
+  buildShiftRequirement,
 } from '@/seeds/builders/scheduling';
 import {
   buildRoleQualification,
@@ -68,15 +68,17 @@ function createParticipationManager(): DbParticipationManager {
     assignmentRepository: new DrizzleAssignmentRepository({
       db: schedulingTestDb,
     }),
-    availabilityRepository: new DrizzleAvailabilityRepository({
+    unavailableShiftRepository: new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     }),
-    timeSlotRepository: new DrizzleTimeSlotRepository({ db: schedulingTestDb }),
+    eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
+      db: schedulingTestDb,
+    }),
     volunteerRepository: new DrizzleVolunteerRepository({
       db: schedulingTestDb,
     }),
     ministryRepository: new DrizzleMinistryRepository({ db: schedulingTestDb }),
-    servingProfileRepository: new DrizzleMinistryServingProfileRepository({
+    usualSetupRepository: new DrizzleUsualSetupRepository({
       db: schedulingTestDb,
     }),
     roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
@@ -99,7 +101,7 @@ function createAssignmentManager(input?: {
     volunteerRepository:
       input?.volunteerRepository ??
       new DrizzleVolunteerRepository({ db: schedulingTestDb }),
-    availabilityRepository: new DrizzleAvailabilityRepository({
+    unavailableShiftRepository: new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     }),
     planningEventRepository: new DrizzlePlanningEventRepository({
@@ -113,7 +115,7 @@ function createAssignmentManager(input?: {
 interface SeedShiftInput {
   churchId: string;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   startTime: Date;
   endTime: Date;
 }
@@ -123,7 +125,7 @@ async function seedShift(input: SeedShiftInput): Promise<string> {
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
-    timeSlotId: input.timeSlotId,
+    eventTimeBlockId: input.eventTimeBlockId,
     start: fromDate({ date: input.startTime }),
     end: fromDate({ date: input.endTime }),
   });
@@ -146,13 +148,13 @@ async function seedRoleRequirement(
     ministryId: input.ministryId,
     name: 'Greeter',
   });
-  await buildSlotRequirement({
+  await buildShiftRequirement({
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
     shiftId: input.shiftId,
     roleId: greeter.id,
-    requiredCount: 2,
+    peopleNeeded: 2,
   });
   return greeter.id;
 }
@@ -164,18 +166,18 @@ interface SeedQualificationInput {
   roleId: string;
 }
 
-/** Grants a real `ministry_volunteer_role` row for the member's membership. */
+/** Grants a real `ministry_membership_role` row for the member's membership. */
 async function seedRoleQualification(
   input: SeedQualificationInput,
 ): Promise<void> {
   const membership = await schedulingTestDb
-    .select({ id: ministryVolunteerTable.id })
-    .from(ministryVolunteerTable)
+    .select({ id: ministryMembershipTable.id })
+    .from(ministryMembershipTable)
     .where(
       and(
-        eq(ministryVolunteerTable.churchId, input.churchId),
-        eq(ministryVolunteerTable.ministryId, input.ministryId),
-        eq(ministryVolunteerTable.volunteerId, input.volunteerId),
+        eq(ministryMembershipTable.churchId, input.churchId),
+        eq(ministryMembershipTable.ministryId, input.ministryId),
+        eq(ministryMembershipTable.volunteerId, input.volunteerId),
       ),
     );
   const membershipId = membership[0]?.id;
@@ -185,7 +187,7 @@ async function seedRoleQualification(
   await buildRoleQualification({
     db: schedulingTestDb,
     churchId: input.churchId,
-    ministryVolunteerId: membershipId,
+    ministryMembershipId: membershipId,
     roleId: input.roleId,
   });
 }
@@ -202,7 +204,7 @@ interface SeedUnqualifiedMemberResult {
 }
 
 /**
- * Seeds an active ministry member who holds no `ministry_volunteer_role`
+ * Seeds an active ministry member who holds no `ministry_membership_role`
  * row at all — membership alone must not confer qualification for any role.
  */
 async function seedUnqualifiedMember(
@@ -302,7 +304,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('returns a uniform event→slot→shift shape with assignments [] for a zero-assignment shift', async () => {
+  it('returns a uniform event→event time block→shift shape with assignments [] for a zero-assignment shift', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -322,7 +324,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -344,8 +346,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     expect(view.events).toHaveLength(1);
     const [eventView] = view.events;
     expect(eventView?.event.id).toBe(graph.event.id);
-    const shiftView = eventView?.slots
-      .flatMap((slot) => slot.shifts)
+    const shiftView = eventView?.eventTimeBlocks
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     expect(shiftView).toBeDefined();
     expect(shiftView?.assignments).toEqual([]);
@@ -376,7 +378,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -402,8 +404,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     });
 
     const shiftView = view.events
-      .flatMap((eventView) => eventView.slots)
-      .flatMap((slot) => slot.shifts)
+      .flatMap((eventView) => eventView.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     const eligible = shiftView?.eligibleVolunteers.find(
       (volunteer) =>
@@ -442,7 +444,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -463,8 +465,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     });
 
     const shiftView = view.events
-      .flatMap((event) => event.slots)
-      .flatMap((slot) => slot.shifts)
+      .flatMap((event) => event.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     expect(Array.isArray(shiftView?.eligibleVolunteers)).toBe(true);
   });
@@ -524,7 +526,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -535,7 +537,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       shiftId,
     });
 
-    // Active ministry member with no `ministry_volunteer_role` row for
+    // Active ministry member with no `ministry_membership_role` row for
     // `roleId` — membership alone must not confer candidacy.
     const unqualified = await seedUnqualifiedMember({
       churchId: seed.churchAId,
@@ -553,8 +555,8 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
     });
 
     const shiftView = view.events
-      .flatMap((eventView) => eventView.slots)
-      .flatMap((slot) => slot.shifts)
+      .flatMap((eventView) => eventView.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     expect(shiftView).toBeDefined();
     expect(
@@ -609,7 +611,7 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -626,13 +628,13 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
       roleId,
     });
     const [membership] = await schedulingTestDb
-      .select({ id: ministryVolunteerTable.id })
-      .from(ministryVolunteerTable)
+      .select({ id: ministryMembershipTable.id })
+      .from(ministryMembershipTable)
       .where(
         and(
-          eq(ministryVolunteerTable.churchId, seed.churchAId),
-          eq(ministryVolunteerTable.ministryId, seed.ministryAId),
-          eq(ministryVolunteerTable.volunteerId, seed.adminVolunteerId),
+          eq(ministryMembershipTable.churchId, seed.churchAId),
+          eq(ministryMembershipTable.ministryId, seed.ministryAId),
+          eq(ministryMembershipTable.volunteerId, seed.adminVolunteerId),
         ),
       );
     if (!membership) {
@@ -658,9 +660,9 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
         );
         signalSweepBackendPid(readBackendPid(result));
         await tx
-          .update(ministryVolunteerTable)
+          .update(ministryMembershipTable)
           .set({ status: 'inactive' })
-          .where(eq(ministryVolunteerTable.id, membership.id));
+          .where(eq(ministryMembershipTable.id, membership.id));
         signalUpdateIssued();
         await sweepPaused;
       },
@@ -755,11 +757,11 @@ async function seedAssignCycleBelowFull(input: SeedPublishableInput) {
   const shiftId = await seedShift({
     churchId: input.churchId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
     startTime: EVENT_START,
     endTime: EVENT_END,
   });
-  // requiredCount 2, zero assignments -> below full.
+  // peopleNeeded 2, zero assignments -> below full.
   await seedRoleRequirement({
     churchId: input.churchId,
     ministryId: input.ministryId,
@@ -882,7 +884,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });

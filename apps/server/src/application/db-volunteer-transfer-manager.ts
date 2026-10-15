@@ -126,7 +126,7 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
       })),
       withdrawnAssignments: impact.withdrawnAssignments.map((assignment) => ({
         eventName: assignment.eventName,
-        timeSlotStart: assignment.timeSlotStart,
+        eventTimeBlockStart: assignment.eventTimeBlockStart,
         roleName: assignment.roleName,
       })),
     };

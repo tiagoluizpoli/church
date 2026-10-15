@@ -38,7 +38,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   const careParticipationId = journey.care.id;
   const eventTitle = journey.event.title;
   const volunteerName = journey.personas.volunteer.name;
-  const requiredCount = journey.worship.requiredCount;
+  const peopleNeeded = journey.worship.peopleNeeded;
   await signInPersonaPage({ page, persona: journey.personas.leader });
 
   await page.goto(
@@ -49,7 +49,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
 
   const eventRow = page
-    .locator('[data-testid^="prepare-slot-row-"]')
+    .locator('[data-testid^="prepare-event-time-block-row-"]')
     .filter({ hasText: eventTitle })
     .first();
   await expect(eventRow).toBeVisible();
@@ -71,7 +71,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
       roleId: journey.ministries.worship.roles.usher.id,
     }),
   );
-  await expect(requirement).toContainText(`0/${requiredCount}`);
+  await expect(requirement).toContainText(`0/${peopleNeeded}`);
 
   // Pick by name, not the first picker option — the dashboard asserts this
   // exact person, and picker order is availability/workload-driven.
@@ -79,13 +79,13 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   await volunteerPool
     .getByLabel('Search volunteers by name')
     .fill(volunteerName);
-  await volunteerPool.getByTestId('volunteer-select-slot').click();
+  await volunteerPool.getByTestId('volunteer-select-shift').click();
 
   await requirement.getByRole('button', { name: /^Assign / }).click();
   await expect(requirement.getByTestId('assignment-chip')).toContainText(
     volunteerName,
   );
-  await expect(requirement).toContainText(`1/${requiredCount}`);
+  await expect(requirement).toContainText(`1/${peopleNeeded}`);
 
   await page.getByRole('button', { name: 'Publish cycle' }).first().click();
   const publishDialog = page.getByRole('dialog', {

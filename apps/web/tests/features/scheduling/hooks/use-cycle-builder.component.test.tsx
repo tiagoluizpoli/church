@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
 import type {
   GetCycleBuilderData200,
-  GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem,
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 
 const adminApiMock = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ const adminApiMock = vi.hoisted(() => ({
 vi.mock('@/utils/api-instances', () => ({ adminApi: adminApiMock }));
 
 type RawAssignment =
-  GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem;
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem;
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -39,7 +39,7 @@ function defer<T>(): Deferred<T> {
 const ANA_ASSIGNMENT: RawAssignment = {
   id: 'assignment-1',
   churchId: 'church-1',
-  slotId: 'slot-1',
+  eventTimeBlockId: 'event-time-block-1',
   participationId: 'participation-1',
   shiftId: 'shift-1',
   volunteerId: 'ana',
@@ -71,10 +71,10 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
           createdAt: '2026-07-01T09:00:00.000Z',
           updatedAt: '2026-07-01T09:00:00.000Z',
         },
-        slots: [
+        eventTimeBlocks: [
           {
-            slot: {
-              id: 'slot-1',
+            eventTimeBlock: {
+              id: 'event-time-block-1',
               churchId: 'church-1',
               eventId: 'event-1',
               startTime: '2026-07-05T09:00:00.000Z',
@@ -88,7 +88,7 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                 shift: {
                   id: 'shift-1',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-05T09:00:00.000Z',
                   endTime: '2026-07-05T11:00:00.000Z',
                 },
@@ -98,7 +98,7 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     shiftId: 'shift-1',
                     participationId: 'participation-1',
                     roleId: 'role-1',
-                    requiredCount: 2,
+                    peopleNeeded: 2,
                     canMutateAssignments: false,
                   },
                 ],

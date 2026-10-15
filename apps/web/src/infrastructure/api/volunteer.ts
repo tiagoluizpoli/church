@@ -17,8 +17,8 @@ import type {
   MarkNotificationRead200,
   RespondToAssignment200,
   RespondToAssignmentBody,
-  SetUnavailabilityMarks200,
-  SetUnavailabilityMarksBody
+  SetUnavailableShifts200,
+  SetUnavailableShiftsBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -88,22 +88,22 @@ const getAvailabilityCheck = (
       );
     }
   /**
- * Record the current Volunteer's unavailability marks — by Shift or by whole CalendarDay — against an AvailabilityCheck.
- * @summary Set unavailability marks on an AvailabilityCheck
+ * Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.
+ * @summary Set unavailable shifts on an AvailabilityCheck
  */
-const setUnavailabilityMarks = (
+const setUnavailableShifts = (
     checkId: string,
-    setUnavailabilityMarksBody: SetUnavailabilityMarksBody,
+    setUnavailableShiftsBody: SetUnavailableShiftsBody,
  ) => {
-      return apiClient<SetUnavailabilityMarks200>(
-      {url: `/api/v1/volunteer/availability-checks/${checkId}/marks`, method: 'PUT',
+      return apiClient<SetUnavailableShifts200>(
+      {url: `/api/v1/volunteer/availability-checks/${checkId}/unavailable-shifts`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
-      data: setUnavailabilityMarksBody
+      data: setUnavailableShiftsBody
     },
       );
     }
   /**
- * Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no marks were left.
+ * Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no unavailable shifts were left.
  * @summary Confirm an AvailabilityCheck
  */
 const confirmAvailabilityCheck = (
@@ -190,13 +190,13 @@ const getPublishedVolunteerSchedule = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailabilityMarks,confirmAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getNotifications,markNotificationRead,markAllNotificationsRead,getPublishedVolunteerSchedule}};
+  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailableShifts,confirmAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getNotifications,markNotificationRead,markAllNotificationsRead,getPublishedVolunteerSchedule}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
 export type ListAvailabilityChecksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['listAvailabilityChecks']>>>
 export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAvailabilityCheck']>>>
-export type SetUnavailabilityMarksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['setUnavailabilityMarks']>>>
+export type SetUnavailableShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['setUnavailableShifts']>>>
 export type ConfirmAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['confirmAvailabilityCheck']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
 export type CancelOwnAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['cancelOwnAssignment']>>>

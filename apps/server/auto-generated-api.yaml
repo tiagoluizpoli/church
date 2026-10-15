@@ -494,7 +494,7 @@ paths:
                             - createdAt
                             - updatedAt
                           additionalProperties: false
-                        slots:
+                        eventTimeBlocks:
                           type: array
                           items:
                             type: object
@@ -527,21 +527,21 @@ paths:
                                   properties:
                                     id:
                                       type: string
-                                    slotId:
+                                    eventTimeBlockId:
                                       type: string
                                     roleId:
                                       type: string
                                     teamId:
                                       type: string
-                                    requiredCount:
+                                    peopleNeeded:
                                       type: number
                                     notes:
                                       type: string
                                   required:
                                     - id
-                                    - slotId
+                                    - eventTimeBlockId
                                     - roleId
-                                    - requiredCount
+                                    - peopleNeeded
                                   additionalProperties: false
                             required:
                               - id
@@ -554,7 +554,7 @@ paths:
                             additionalProperties: false
                       required:
                         - event
-                        - slots
+                        - eventTimeBlocks
                       additionalProperties: false
                 required:
                   - cycle
@@ -603,8 +603,8 @@ paths:
       summary: Create an EventTemplate
       tags:
         - planning
-      description: Create a church-owned EventTemplate with its ordered TimeBlocks for
-        a given weekday.
+      description: Create a church-owned EventTemplate with its ordered
+        TemplateTimeBlocks for a given weekday.
       requestBody:
         required: true
         content:
@@ -792,7 +792,7 @@ paths:
       summary: Update an EventTemplate
       tags:
         - planning
-      description: Replace an EventTemplate's name, weekday, and TimeBlocks.
+      description: Replace an EventTemplate's name, weekday, and TemplateTimeBlocks.
       requestBody:
         required: true
         content:
@@ -925,7 +925,7 @@ paths:
       tags:
         - planning
       description: Generate one Event per matching CalendarDay in the Cycle for each
-        selected EventTemplate, with one TimeSlot per TimeBlock.
+        selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock.
       requestBody:
         required: true
         content:
@@ -956,11 +956,11 @@ paths:
                 properties:
                   generatedEventCount:
                     type: number
-                  generatedSlotCount:
+                  generatedEventTimeBlockCount:
                     type: number
                 required:
                   - generatedEventCount
-                  - generatedSlotCount
+                  - generatedEventTimeBlockCount
                 additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events:
     post:
@@ -1174,13 +1174,13 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/admin/cycles/{cycleId}/events/{eventId}/slots:
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks:
     post:
-      operationId: createPlanningEventSlot
-      summary: Create a TimeSlot on an Event
+      operationId: createPlanningEventTimeBlock
+      summary: Create a EventTimeBlock on an Event
       tags:
         - planning
-      description: Create a church-level TimeSlot within an Event.
+      description: Create a church-level EventTimeBlock within an Event.
       requestBody:
         required: true
         content:
@@ -1248,21 +1248,21 @@ paths:
                       properties:
                         id:
                           type: string
-                        slotId:
+                        eventTimeBlockId:
                           type: string
                         roleId:
                           type: string
                         teamId:
                           type: string
-                        requiredCount:
+                        peopleNeeded:
                           type: number
                         notes:
                           type: string
                       required:
                         - id
-                        - slotId
+                        - eventTimeBlockId
                         - roleId
-                        - requiredCount
+                        - peopleNeeded
                       additionalProperties: false
                 required:
                   - id
@@ -1273,13 +1273,13 @@ paths:
                   - status
                   - requirements
                 additionalProperties: false
-  /api/v1/admin/cycles/{cycleId}/events/{eventId}/slots/{slotId}:
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks/{eventTimeBlockId}:
     patch:
-      operationId: updatePlanningEventSlot
-      summary: Update a TimeSlot
+      operationId: updatePlanningEventTimeBlock
+      summary: Update a EventTimeBlock
       tags:
         - planning
-      description: Update a TimeSlot's bounds or label.
+      description: Update a EventTimeBlock's bounds or label.
       requestBody:
         required: true
         content:
@@ -1311,7 +1311,7 @@ paths:
         - schema:
             type: string
           in: path
-          name: slotId
+          name: eventTimeBlockId
           required: true
       responses:
         "200":
@@ -1349,21 +1349,21 @@ paths:
                       properties:
                         id:
                           type: string
-                        slotId:
+                        eventTimeBlockId:
                           type: string
                         roleId:
                           type: string
                         teamId:
                           type: string
-                        requiredCount:
+                        peopleNeeded:
                           type: number
                         notes:
                           type: string
                       required:
                         - id
-                        - slotId
+                        - eventTimeBlockId
                         - roleId
-                        - requiredCount
+                        - peopleNeeded
                       additionalProperties: false
                 required:
                   - id
@@ -1375,11 +1375,11 @@ paths:
                   - requirements
                 additionalProperties: false
     delete:
-      operationId: deletePlanningEventSlot
-      summary: Delete a TimeSlot
+      operationId: deletePlanningEventTimeBlock
+      summary: Delete a EventTimeBlock
       tags:
         - planning
-      description: Delete a TimeSlot from an Event.
+      description: Delete a EventTimeBlock from an Event.
       parameters:
         - schema:
             type: string
@@ -1394,19 +1394,19 @@ paths:
         - schema:
             type: string
           in: path
-          name: slotId
+          name: eventTimeBlockId
           required: true
       responses:
         "200":
           description: Default Response
-  /api/v1/admin/ministries/{ministryId}/serving-profile:
+  /api/v1/admin/ministries/{ministryId}/usual-setup:
     get:
-      operationId: getMinistryServingProfile
-      summary: Get a Ministry's serving profile
+      operationId: getUsualSetup
+      summary: Get a Ministry's usual setup
       tags:
         - planning
-      description: Get a Ministry's MinistryServingProfile, the standing rule
-        declaring which EventTemplate TimeBlocks it always serves.
+      description: Get a Ministry's UsualSetup, the standing rule declaring which
+        EventTemplate TemplateTimeBlocks it always serves.
       parameters:
         - schema:
             type: string
@@ -1430,7 +1430,7 @@ paths:
                           type: string
                         ministryId:
                           type: string
-                        sourceTemplateBlockId:
+                        sourceTemplateTimeBlockId:
                           type: string
                         serves:
                           type: boolean
@@ -1486,18 +1486,18 @@ paths:
                                 type: string
                               teamId:
                                 type: string
-                              count:
+                              peopleNeeded:
                                 type: integer
                                 minimum: 1
                                 maximum: 9007199254740991
                             required:
                               - roleId
-                              - count
+                              - peopleNeeded
                             additionalProperties: false
                       required:
                         - id
                         - ministryId
-                        - sourceTemplateBlockId
+                        - sourceTemplateTimeBlockId
                         - serves
                         - shiftSplit
                         - headcounts
@@ -1506,12 +1506,12 @@ paths:
                   - entries
                 additionalProperties: false
     put:
-      operationId: upsertMinistryServingProfile
-      summary: Set a Ministry's serving profile
+      operationId: upsertUsualSetup
+      summary: Set a Ministry's usual setup
       tags:
         - planning
-      description: Replace a Ministry's MinistryServingProfile entries, including
-        which TimeBlocks it serves, its Shift split, and headcounts.
+      description: Replace a Ministry's UsualSetup entries, including which
+        TemplateTimeBlocks it serves, its Shift split, and headcounts.
       requestBody:
         required: true
         content:
@@ -1524,7 +1524,7 @@ paths:
                   items:
                     type: object
                     properties:
-                      sourceTemplateBlockId:
+                      sourceTemplateTimeBlockId:
                         type: string
                       serves:
                         type: boolean
@@ -1577,15 +1577,15 @@ paths:
                               type: string
                             teamId:
                               type: string
-                            count:
+                            peopleNeeded:
                               type: integer
                               minimum: 1
                               maximum: 9007199254740991
                           required:
                             - roleId
-                            - count
+                            - peopleNeeded
                     required:
-                      - sourceTemplateBlockId
+                      - sourceTemplateTimeBlockId
                       - serves
                       - shiftSplit
                       - headcounts
@@ -1614,7 +1614,7 @@ paths:
                           type: string
                         ministryId:
                           type: string
-                        sourceTemplateBlockId:
+                        sourceTemplateTimeBlockId:
                           type: string
                         serves:
                           type: boolean
@@ -1670,18 +1670,18 @@ paths:
                                 type: string
                               teamId:
                                 type: string
-                              count:
+                              peopleNeeded:
                                 type: integer
                                 minimum: 1
                                 maximum: 9007199254740991
                             required:
                               - roleId
-                              - count
+                              - peopleNeeded
                             additionalProperties: false
                       required:
                         - id
                         - ministryId
-                        - sourceTemplateBlockId
+                        - sourceTemplateTimeBlockId
                         - serves
                         - shiftSplit
                         - headcounts
@@ -1696,7 +1696,7 @@ paths:
       tags:
         - planning
       description: Set a Ministry's defaultDirection (all-in or all-out), deciding
-        whether it starts opted into every TimeSlot of a cycle by default.
+        whether it starts opted into every EventTimeBlock of a cycle by default.
       requestBody:
         required: true
         content:
@@ -1760,8 +1760,8 @@ paths:
       summary: Get schedule builder data for an Event
       tags:
         - events
-      description: Get the TimeSlots, Shifts, and eligible Volunteers needed to build
-        a schedule for an Event.
+      description: Get the EventTimeBlocks, Shifts, and eligible Volunteers needed to
+        build a schedule for an Event.
       parameters:
         - schema:
             type: string
@@ -1837,7 +1837,7 @@ paths:
                             - createdAt
                             - updatedAt
                           additionalProperties: false
-                        slots:
+                        eventTimeBlocks:
                           type: array
                           items:
                             type: object
@@ -1870,21 +1870,21 @@ paths:
                                   properties:
                                     id:
                                       type: string
-                                    slotId:
+                                    eventTimeBlockId:
                                       type: string
                                     roleId:
                                       type: string
                                     teamId:
                                       type: string
-                                    requiredCount:
+                                    peopleNeeded:
                                       type: number
                                     notes:
                                       type: string
                                   required:
                                     - id
-                                    - slotId
+                                    - eventTimeBlockId
                                     - roleId
-                                    - requiredCount
+                                    - peopleNeeded
                                   additionalProperties: false
                             required:
                               - id
@@ -1897,7 +1897,7 @@ paths:
                             additionalProperties: false
                       required:
                         - event
-                        - slots
+                        - eventTimeBlocks
                       additionalProperties: false
                   assignments:
                     type: array
@@ -1908,7 +1908,7 @@ paths:
                           type: string
                         churchId:
                           type: string
-                        slotId:
+                        eventTimeBlockId:
                           type: string
                         participationId:
                           type: string
@@ -1937,13 +1937,13 @@ paths:
                       required:
                         - id
                         - churchId
-                        - slotId
+                        - eventTimeBlockId
                         - volunteerId
                         - roleId
                         - status
                         - assignedAt
                       additionalProperties: false
-                  availability:
+                  unavailableShifts:
                     type: array
                     items:
                       type: object
@@ -2030,7 +2030,7 @@ paths:
                 required:
                   - events
                   - assignments
-                  - availability
+                  - unavailableShifts
                   - volunteers
                   - roles
                   - callerTeamIds
@@ -2482,12 +2482,12 @@ paths:
                             - createdAt
                             - updatedAt
                           additionalProperties: false
-                        slots:
+                        eventTimeBlocks:
                           type: array
                           items:
                             type: object
                             properties:
-                              slot:
+                              eventTimeBlock:
                                 type: object
                                 properties:
                                   id:
@@ -2518,21 +2518,21 @@ paths:
                                       properties:
                                         id:
                                           type: string
-                                        slotId:
+                                        eventTimeBlockId:
                                           type: string
                                         roleId:
                                           type: string
                                         teamId:
                                           type: string
-                                        requiredCount:
+                                        peopleNeeded:
                                           type: number
                                         notes:
                                           type: string
                                       required:
                                         - id
-                                        - slotId
+                                        - eventTimeBlockId
                                         - roleId
-                                        - requiredCount
+                                        - peopleNeeded
                                       additionalProperties: false
                                 required:
                                   - id
@@ -2554,7 +2554,7 @@ paths:
                                       type: string
                                     participationId:
                                       type: string
-                                    timeSlotId:
+                                    eventTimeBlockId:
                                       type: string
                                     startTime:
                                       type: string
@@ -2569,7 +2569,7 @@ paths:
                                   required:
                                     - id
                                     - participationId
-                                    - timeSlotId
+                                    - eventTimeBlockId
                                     - startTime
                                     - endTime
                                   additionalProperties: false
@@ -2588,7 +2588,7 @@ paths:
                                       type: string
                                     teamId:
                                       type: string
-                                    requiredCount:
+                                    peopleNeeded:
                                       type: number
                                     notes:
                                       type: string
@@ -2597,10 +2597,10 @@ paths:
                                     - shiftId
                                     - participationId
                                     - roleId
-                                    - requiredCount
+                                    - peopleNeeded
                                   additionalProperties: false
                             required:
-                              - slot
+                              - eventTimeBlock
                               - included
                               - shifts
                               - requirements
@@ -2608,7 +2608,7 @@ paths:
                       required:
                         - participation
                         - event
-                        - slots
+                        - eventTimeBlocks
                       additionalProperties: false
                 required:
                   - events
@@ -2630,7 +2630,7 @@ paths:
                 additionalProperties: false
   /api/v1/prepare/ministries/{ministryId}/cycles-summary:
     get:
-      operationId: listMinistryCycleSummaries
+      operationId: listScheduleSummaries
       summary: List a Ministry's cycle prepare summaries
       tags:
         - prepare
@@ -2671,7 +2671,7 @@ paths:
                           type: boolean
                         eventCount:
                           type: number
-                        slotCount:
+                        eventTimeBlockCount:
                           type: number
                         status:
                           type: string
@@ -2690,7 +2690,7 @@ paths:
                         - endDate
                         - isPartOf
                         - eventCount
-                        - slotCount
+                        - eventTimeBlockCount
                         - status
                         - availabilityRequestedForAll
                         - availabilityRequestedForAny
@@ -2716,10 +2716,10 @@ paths:
   /api/v1/prepare/participations/{participationId}/inclusions:
     put:
       operationId: setParticipationInclusions
-      summary: Set a MinistryParticipation's included TimeSlots
+      summary: Set a MinistryParticipation's included EventTimeBlocks
       tags:
         - prepare
-      description: Replace the set of TimeSlots a Ministry is opted into for a
+      description: Replace the set of EventTimeBlocks a Ministry is opted into for a
         MinistryParticipation.
       requestBody:
         required: true
@@ -2728,12 +2728,12 @@ paths:
             schema:
               type: object
               properties:
-                timeSlotIds:
+                eventTimeBlockIds:
                   type: array
                   items:
                     type: string
               required:
-                - timeSlotIds
+                - eventTimeBlockIds
       parameters:
         - schema:
             type: string
@@ -2743,14 +2743,14 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/prepare/participations/{participationId}/slots/{timeSlotId}/shifts:
+  /api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/shifts:
     post:
       operationId: splitParticipationShifts
-      summary: Split a TimeSlot into Shifts
+      summary: Split a EventTimeBlock into Shifts
       tags:
         - prepare
-      description: Split a MinistryParticipation's TimeSlot into Shifts, either into
-        equal parts or by manually-set spans.
+      description: Split a MinistryParticipation's EventTimeBlock into Shifts, either
+        into equal parts or by manually-set spans.
       requestBody:
         required: true
         content:
@@ -2812,7 +2812,7 @@ paths:
         - schema:
             type: string
           in: path
-          name: timeSlotId
+          name: eventTimeBlockId
           required: true
       responses:
         "201":
@@ -2831,7 +2831,7 @@ paths:
                           type: string
                         participationId:
                           type: string
-                        timeSlotId:
+                        eventTimeBlockId:
                           type: string
                         startTime:
                           type: string
@@ -2846,7 +2846,7 @@ paths:
                       required:
                         - id
                         - participationId
-                        - timeSlotId
+                        - eventTimeBlockId
                         - startTime
                         - endTime
                       additionalProperties: false
@@ -2895,7 +2895,7 @@ paths:
                     type: string
                   participationId:
                     type: string
-                  timeSlotId:
+                  eventTimeBlockId:
                     type: string
                   startTime:
                     type: string
@@ -2910,7 +2910,7 @@ paths:
                 required:
                   - id
                   - participationId
-                  - timeSlotId
+                  - eventTimeBlockId
                   - startTime
                   - endTime
                 additionalProperties: false
@@ -2935,7 +2935,7 @@ paths:
       summary: Set a Shift staffing requirement
       tags:
         - prepare
-      description: Set the SlotRequirement headcount for a Role (and optional Team)
+      description: Set the ShiftRequirement headcount for a Role (and optional Team)
         within a Shift.
       requestBody:
         required: true
@@ -2948,7 +2948,7 @@ paths:
                   type: string
                 teamId:
                   type: string
-                requiredCount:
+                peopleNeeded:
                   type: integer
                   minimum: 1
                   maximum: 9007199254740991
@@ -2956,7 +2956,7 @@ paths:
                   type: string
               required:
                 - roleId
-                - requiredCount
+                - peopleNeeded
       parameters:
         - schema:
             type: string
@@ -2981,7 +2981,7 @@ paths:
                     type: string
                   teamId:
                     type: string
-                  requiredCount:
+                  peopleNeeded:
                     type: number
                   notes:
                     type: string
@@ -2990,7 +2990,7 @@ paths:
                   - shiftId
                   - participationId
                   - roleId
-                  - requiredCount
+                  - peopleNeeded
                 additionalProperties: false
   /api/v1/prepare/participations/{participationId}/ask-availability:
     post:
@@ -3222,7 +3222,7 @@ paths:
       tags:
         - assign
       description: "Get a Ministry's schedule-building view of a Cycle: its
-        MinistryParticipations, Shifts, SlotRequirements, and Assignments."
+        MinistryParticipations, Shifts, ShiftRequirements, and Assignments."
       parameters:
         - schema:
             type: string
@@ -3328,12 +3328,12 @@ paths:
                             - createdAt
                             - updatedAt
                           additionalProperties: false
-                        slots:
+                        eventTimeBlocks:
                           type: array
                           items:
                             type: object
                             properties:
-                              slot:
+                              eventTimeBlock:
                                 type: object
                                 properties:
                                   id:
@@ -3364,21 +3364,21 @@ paths:
                                       properties:
                                         id:
                                           type: string
-                                        slotId:
+                                        eventTimeBlockId:
                                           type: string
                                         roleId:
                                           type: string
                                         teamId:
                                           type: string
-                                        requiredCount:
+                                        peopleNeeded:
                                           type: number
                                         notes:
                                           type: string
                                       required:
                                         - id
-                                        - slotId
+                                        - eventTimeBlockId
                                         - roleId
-                                        - requiredCount
+                                        - peopleNeeded
                                       additionalProperties: false
                                 required:
                                   - id
@@ -3403,7 +3403,7 @@ paths:
                                           type: string
                                         participationId:
                                           type: string
-                                        timeSlotId:
+                                        eventTimeBlockId:
                                           type: string
                                         startTime:
                                           type: string
@@ -3418,7 +3418,7 @@ paths:
                                       required:
                                         - id
                                         - participationId
-                                        - timeSlotId
+                                        - eventTimeBlockId
                                         - startTime
                                         - endTime
                                       additionalProperties: false
@@ -3437,7 +3437,7 @@ paths:
                                             type: string
                                           teamId:
                                             type: string
-                                          requiredCount:
+                                          peopleNeeded:
                                             type: number
                                           notes:
                                             type: string
@@ -3448,7 +3448,7 @@ paths:
                                           - shiftId
                                           - participationId
                                           - roleId
-                                          - requiredCount
+                                          - peopleNeeded
                                           - canMutateAssignments
                                         additionalProperties: false
                                     assignments:
@@ -3460,7 +3460,7 @@ paths:
                                             type: string
                                           churchId:
                                             type: string
-                                          slotId:
+                                          eventTimeBlockId:
                                             type: string
                                           participationId:
                                             type: string
@@ -3489,7 +3489,7 @@ paths:
                                         required:
                                           - id
                                           - churchId
-                                          - slotId
+                                          - eventTimeBlockId
                                           - volunteerId
                                           - roleId
                                           - status
@@ -3541,14 +3541,14 @@ paths:
                                     - eligibleVolunteers
                                   additionalProperties: false
                             required:
-                              - slot
+                              - eventTimeBlock
                               - included
                               - shifts
                             additionalProperties: false
                       required:
                         - participation
                         - event
-                        - slots
+                        - eventTimeBlocks
                       additionalProperties: false
                   roles:
                     type: array
@@ -3723,14 +3723,14 @@ paths:
                             - availability_requested
                             - assigning
                             - published
-                        requiredCount:
+                        peopleNeeded:
                           type: number
                         assignedCount:
                           type: number
                       required:
                         - participationId
                         - state
-                        - requiredCount
+                        - peopleNeeded
                         - assignedCount
                       additionalProperties: false
                 required:
@@ -3876,7 +3876,7 @@ paths:
                         type: string
                       churchId:
                         type: string
-                      slotId:
+                      eventTimeBlockId:
                         type: string
                       participationId:
                         type: string
@@ -3905,7 +3905,7 @@ paths:
                     required:
                       - id
                       - churchId
-                      - slotId
+                      - eventTimeBlockId
                       - volunteerId
                       - roleId
                       - status
@@ -4030,7 +4030,7 @@ paths:
                     type: string
                   churchId:
                     type: string
-                  slotId:
+                  eventTimeBlockId:
                     type: string
                   participationId:
                     type: string
@@ -4059,7 +4059,7 @@ paths:
                 required:
                   - id
                   - churchId
-                  - slotId
+                  - eventTimeBlockId
                   - volunteerId
                   - roleId
                   - status
@@ -4087,7 +4087,7 @@ paths:
       tags:
         - assign
       description: Get how fully a MinistryParticipation is staffed against its
-        SlotRequirements.
+        ShiftRequirements.
       parameters:
         - schema:
             type: string
@@ -4104,7 +4104,7 @@ paths:
                 properties:
                   participationId:
                     type: string
-                  requiredCount:
+                  peopleNeeded:
                     type: number
                   assignedCount:
                     type: number
@@ -4112,7 +4112,7 @@ paths:
                     type: number
                 required:
                   - participationId
-                  - requiredCount
+                  - peopleNeeded
                   - assignedCount
                   - completionPercent
                 additionalProperties: false
@@ -4921,7 +4921,7 @@ paths:
                           properties:
                             eventName:
                               type: string
-                            timeSlotStart:
+                            eventTimeBlockStart:
                               type: string
                               format: date-time
                               pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
@@ -4929,7 +4929,7 @@ paths:
                               type: string
                           required:
                             - eventName
-                            - timeSlotStart
+                            - eventTimeBlockStart
                             - roleName
                           additionalProperties: false
                     required:
@@ -5239,7 +5239,7 @@ paths:
                             properties:
                               assignmentId:
                                 type: string
-                              slotId:
+                              eventTimeBlockId:
                                 type: string
                               shiftId:
                                 type: string
@@ -5276,7 +5276,7 @@ paths:
                                 type: boolean
                             required:
                               - assignmentId
-                              - slotId
+                              - eventTimeBlockId
                               - shiftId
                               - participationId
                               - roleId
@@ -5373,7 +5373,7 @@ paths:
                           type: string
                         churchId:
                           type: string
-                        slotId:
+                        eventTimeBlockId:
                           type: string
                         participationId:
                           type: string
@@ -5402,7 +5402,7 @@ paths:
                       required:
                         - id
                         - churchId
-                        - slotId
+                        - eventTimeBlockId
                         - volunteerId
                         - roleId
                         - status
@@ -5460,9 +5460,9 @@ paths:
                           items:
                             type: object
                             properties:
-                              slotId:
+                              eventTimeBlockId:
                                 type: string
-                              slotLabel:
+                              eventTimeBlockLabel:
                                 type: string
                               roleName:
                                 type: string
@@ -5478,8 +5478,8 @@ paths:
                                   - declined
                                   - open
                             required:
-                              - slotId
-                              - slotLabel
+                              - eventTimeBlockId
+                              - eventTimeBlockLabel
                               - roleName
                               - confirmationState
                             additionalProperties: false
@@ -5633,14 +5633,14 @@ paths:
                   - state
                   - shifts
                 additionalProperties: false
-  /api/v1/volunteer/availability-checks/{checkId}/marks:
+  /api/v1/volunteer/availability-checks/{checkId}/unavailable-shifts:
     put:
-      operationId: setUnavailabilityMarks
-      summary: Set unavailability marks on an AvailabilityCheck
+      operationId: setUnavailableShifts
+      summary: Set unavailable shifts on an AvailabilityCheck
       tags:
         - volunteer
-      description: Record the current Volunteer's unavailability marks — by Shift or
-        by whole CalendarDay — against an AvailabilityCheck.
+      description: Record the current Volunteer's unavailable shifts — by Shift or by
+        whole CalendarDay — against an AvailabilityCheck.
       requestBody:
         required: true
         content:
@@ -5740,7 +5740,7 @@ paths:
       tags:
         - volunteer
       description: Confirm the current Volunteer's AvailabilityCheck, recording
-        confirmedAt even when no marks were left.
+        confirmedAt even when no unavailable shifts were left.
       parameters:
         - schema:
             type: string
@@ -5792,7 +5792,7 @@ paths:
                     type: string
                   churchId:
                     type: string
-                  slotId:
+                  eventTimeBlockId:
                     type: string
                   participationId:
                     type: string
@@ -5821,7 +5821,7 @@ paths:
                 required:
                   - id
                   - churchId
-                  - slotId
+                  - eventTimeBlockId
                   - volunteerId
                   - roleId
                   - status
@@ -5996,7 +5996,7 @@ paths:
                           type: string
                         churchId:
                           type: string
-                        slotId:
+                        eventTimeBlockId:
                           type: string
                         participationId:
                           type: string
@@ -6025,7 +6025,7 @@ paths:
                       required:
                         - id
                         - churchId
-                        - slotId
+                        - eventTimeBlockId
                         - volunteerId
                         - roleId
                         - status
@@ -6037,8 +6037,8 @@ paths:
 tags:
   - name: events
     description: Event management endpoints
-  - name: time-slots
-    description: Event TimeSlot endpoints
+  - name: event-time-blocks
+    description: Event EventTimeBlock endpoints
   - name: assignments
     description: Assignment endpoints
   - name: ministries

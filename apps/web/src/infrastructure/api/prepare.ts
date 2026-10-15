@@ -11,7 +11,7 @@ import type {
   GetCycleAvailabilityStatusParams,
   GetCycleParticipation200,
   GetCycleParticipationParams,
-  ListMinistryCycleSummaries200,
+  ListScheduleSummaries200,
   SetParticipationInclusionsBody,
   SplitParticipationShifts201,
   SplitParticipationShiftsBody,
@@ -45,17 +45,17 @@ const getCycleParticipation = (
  * List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.
  * @summary List a Ministry's cycle prepare summaries
  */
-const listMinistryCycleSummaries = (
+const listScheduleSummaries = (
     ministryId: string,
  ) => {
-      return apiClient<ListMinistryCycleSummaries200>(
+      return apiClient<ListScheduleSummaries200>(
       {url: `/api/v1/prepare/ministries/${ministryId}/cycles-summary`, method: 'GET'
     },
       );
     }
   /**
- * Replace the set of TimeSlots a Ministry is opted into for a MinistryParticipation.
- * @summary Set a MinistryParticipation's included TimeSlots
+ * Replace the set of EventTimeBlocks a Ministry is opted into for a MinistryParticipation.
+ * @summary Set a MinistryParticipation's included EventTimeBlocks
  */
 const setParticipationInclusions = (
     participationId: string,
@@ -69,16 +69,16 @@ const setParticipationInclusions = (
       );
     }
   /**
- * Split a MinistryParticipation's TimeSlot into Shifts, either into equal parts or by manually-set spans.
- * @summary Split a TimeSlot into Shifts
+ * Split a MinistryParticipation's EventTimeBlock into Shifts, either into equal parts or by manually-set spans.
+ * @summary Split a EventTimeBlock into Shifts
  */
 const splitParticipationShifts = (
     participationId: string,
-    timeSlotId: string,
+    eventTimeBlockId: string,
     splitParticipationShiftsBody: SplitParticipationShiftsBody,
  ) => {
       return apiClient<SplitParticipationShifts201>(
-      {url: `/api/v1/prepare/participations/${participationId}/slots/${timeSlotId}/shifts`, method: 'POST',
+      {url: `/api/v1/prepare/participations/${participationId}/event-time-blocks/${eventTimeBlockId}/shifts`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: splitParticipationShiftsBody
     },
@@ -112,7 +112,7 @@ const deleteShift = (
       );
     }
   /**
- * Set the SlotRequirement headcount for a Role (and optional Team) within a Shift.
+ * Set the ShiftRequirement headcount for a Role (and optional Team) within a Shift.
  * @summary Set a Shift staffing requirement
  */
 const upsertShiftRequirement = (
@@ -176,9 +176,9 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {getCycleParticipation,listMinistryCycleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {getCycleParticipation,listScheduleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
-export type ListMinistryCycleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listMinistryCycleSummaries']>>>
+export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['setParticipationInclusions']>>>
 export type SplitParticipationShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['splitParticipationShifts']>>>
 export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['updateShift']>>>

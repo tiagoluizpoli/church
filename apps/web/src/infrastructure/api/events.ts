@@ -18,7 +18,7 @@ import { apiClient } from '../../utils/api-client';
 
   export const getEvents = () => {
 /**
- * Get the TimeSlots, Shifts, and eligible Volunteers needed to build a schedule for an Event.
+ * Get the EventTimeBlocks, Shifts, and eligible Volunteers needed to build a schedule for an Event.
  * @summary Get schedule builder data for an Event
  */
 const getScheduleBuilderData = (

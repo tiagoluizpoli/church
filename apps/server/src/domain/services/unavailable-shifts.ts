@@ -14,7 +14,7 @@ export interface ExpandWholeDayShiftIdsInput {
   shifts: WholeDayCandidateShift[];
 }
 
-/** Whole-day marking is a helper: one mark per shift starting on that church-local date (FR-018). */
+/** Whole-day unavailability is a helper: one unavailable shift per shift starting on that church-local date (FR-018). */
 export function expandWholeDayShiftIds({
   churchDate,
   timeZone,
@@ -29,7 +29,7 @@ export function expandWholeDayShiftIds({
 
 export interface ResolveShiftAvailabilityInput {
   shiftIds: ShiftId[];
-  markedShiftIds: ShiftId[];
+  unavailableShiftIds: ShiftId[];
 }
 
 export interface ShiftAvailabilityResolution {
@@ -37,15 +37,15 @@ export interface ShiftAvailabilityResolution {
   available: boolean;
 }
 
-/** Absence of a mark ⇒ available (available-by-default, FR-018). */
+/** No unavailable shift ⇒ available (available-by-default, FR-018). */
 export function resolveShiftAvailability({
   shiftIds,
-  markedShiftIds,
+  unavailableShiftIds,
 }: ResolveShiftAvailabilityInput): ShiftAvailabilityResolution[] {
-  const marked = new Set<ShiftId>(markedShiftIds);
+  const unavailable = new Set<ShiftId>(unavailableShiftIds);
   return shiftIds.map((shiftId) => ({
     shiftId,
-    available: !marked.has(shiftId),
+    available: !unavailable.has(shiftId),
   }));
 }
 
@@ -54,7 +54,7 @@ export interface AssertUnavailableShiftsWithinScopeInput {
   requestedShiftIds: ShiftId[];
 }
 
-/** A mark may only target a shift inside the check's cycle + ministry membership (DL1-AV-04). */
+/** An unavailable shift may only target a shift inside the check's cycle + ministry membership (DL1-AV-04). */
 export function assertUnavailableShiftsWithinScope({
   candidateShiftIds,
   requestedShiftIds,

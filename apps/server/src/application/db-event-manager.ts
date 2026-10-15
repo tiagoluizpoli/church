@@ -91,7 +91,7 @@ export class DbEventManager implements IEventManager {
      */
     const callerTeamIds = isCallerMinistryLeader ? null : callerLedTeamIds;
 
-    const [slots, rawAssignments, ministryVolunteers, roles] =
+    const [eventTimeBlocks, rawAssignments, volunteersInMinistry, roles] =
       await Promise.all([
         this.eventTimeBlockRepo.listByEvent(churchId, eventId),
         this.assignmentRepo.listByEvent(churchId, eventId),
@@ -109,7 +109,7 @@ export class DbEventManager implements IEventManager {
         )
         .map((membership) => membership.volunteerId),
     );
-    const rawVolunteers = ministryVolunteers.filter((volunteer) =>
+    const rawVolunteers = volunteersInMinistry.filter((volunteer) =>
       allowedVolunteerIds.has(volunteer.id),
     );
     const membershipByVolunteerId = new Map(
@@ -117,7 +117,7 @@ export class DbEventManager implements IEventManager {
     );
 
     const allVolunteerIds = rawVolunteers.map((v) => v.id);
-    const rawAvailability =
+    const rawUnavailableShifts =
       allVolunteerIds.length > 0
         ? await this.unavailableShiftRepo.listByVolunteers(
             churchId,
@@ -126,9 +126,9 @@ export class DbEventManager implements IEventManager {
         : [];
 
     return {
-      events: [{ event, slots }],
+      events: [{ event, eventTimeBlocks }],
       assignments: rawAssignments,
-      availability: rawAvailability,
+      unavailableShifts: rawUnavailableShifts,
       volunteers: rawVolunteers.map((v) => {
         const membership = membershipByVolunteerId.get(v.id);
         /**

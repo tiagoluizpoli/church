@@ -1,12 +1,12 @@
 import {
   assignment,
   assignmentAudit,
-  availability,
   church,
   member,
   ministryMembershipRole,
   organization,
   participationEventTimeBlockInclusion,
+  unavailableShift,
   volunteer,
 } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
@@ -324,7 +324,7 @@ describe('integration composition of the shared seed builders', () => {
       end,
       status: 'draft',
     });
-    const slot = await buildEventTimeBlock({
+    const eventTimeBlock = await buildEventTimeBlock({
       db: testDb,
       churchId: CHURCH_ID,
       eventId: planned.id,
@@ -338,13 +338,13 @@ describe('integration composition of the shared seed builders', () => {
       ministryId: ministry.id,
       eventId: planned.id,
       state: 'preparing',
-      eventTimeBlockIds: [slot.id],
+      eventTimeBlockIds: [eventTimeBlock.id],
     });
     const shiftRow = await buildShift({
       db: testDb,
       churchId: CHURCH_ID,
       participationId: participation.id,
-      eventTimeBlockId: slot.id,
+      eventTimeBlockId: eventTimeBlock.id,
       start,
       end,
     });
@@ -400,11 +400,13 @@ describe('integration composition of the shared seed builders', () => {
     });
 
     expect(check.state).toBe('pending');
-    const marks = await testDb
+    const unavailableShifts = await testDb
       .select()
-      .from(availability)
-      .where(eq(availability.availabilityCheckId, check.id));
-    expect(marks.map((mark) => mark.shiftId)).toEqual([shiftRow.id]);
+      .from(unavailableShift)
+      .where(eq(unavailableShift.availabilityCheckId, check.id));
+    expect(
+      unavailableShifts.map((unavailableShift) => unavailableShift.shiftId),
+    ).toEqual([shiftRow.id]);
     expect(cycle.startDate).toEqual(new Date('2024-06-01T00:00:00Z'));
     const [storedAssignment] = await testDb
       .select()
@@ -432,7 +434,7 @@ describe('integration composition of the shared seed builders', () => {
     expect(inclusions).toHaveLength(1);
   });
 
-  it('builds a Time Slot, Shift and Assignment for a Volunteer in one step', async () => {
+  it('builds an Event Time Block, Shift and Assignment for a Volunteer in one step', async () => {
     await buildUser({
       db: testDb,
       id: ADMIN_USER_ID,

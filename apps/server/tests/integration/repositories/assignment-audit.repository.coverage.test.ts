@@ -40,10 +40,10 @@ async function seedAssignment(input: {
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: graph.participation.id,
-    eventTimeBlockId: graph.slot.id,
-    start: fromDate({ date: graph.slot.startTime }),
-    end: fromDate({ date: graph.slot.endTime }),
-    label: input.label === undefined ? 'Whole slot' : input.label,
+    eventTimeBlockId: graph.eventTimeBlock.id,
+    start: fromDate({ date: graph.eventTimeBlock.startTime }),
+    end: fromDate({ date: graph.eventTimeBlock.endTime }),
+    label: input.label === undefined ? 'Whole event time block' : input.label,
   });
 
   const roleRow = await buildRole({
@@ -65,7 +65,7 @@ async function seedAssignment(input: {
 
   return {
     event: graph.event,
-    slot: graph.slot,
+    eventTimeBlock: graph.eventTimeBlock,
     shift: shiftRow,
     assignment: assignmentRow,
   };
@@ -150,18 +150,18 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     expect(otherChurchAudits).toEqual([]);
   });
 
-  it('listByEvent returns enriched entries joined across assignment/shift/slot/role/volunteer/actor, falling back to slot start time when the slot has no label', async () => {
+  it('listByEvent returns enriched entries joined across assignment/shift/event time block/role/volunteer/actor, falling back to event time block start time when the event time block has no label', async () => {
     const seed = await seedSchedulingPhase3Base();
     const {
       event,
-      slot,
+      eventTimeBlock: auditedEventTimeBlock,
       assignment: assignmentRow,
     } = await seedAssignment({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       volunteerId: seed.adminVolunteerId,
     });
-    // Null out the time slot's label to exercise the ISO-start-time fallback.
+    // Null out the event time block's label to exercise the ISO-start-time fallback.
     await schedulingTestDb
       .update(eventTimeBlock)
       .set({ label: null })
@@ -187,8 +187,10 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     expect(entry?.volunteerId).toBe(seed.adminVolunteerId);
     expect(entry?.volunteerName).toBe('Scheduling Admin');
     expect(entry?.actorName).toBe('Scheduling Admin');
-    // Slot has no label, so eventTimeBlockLabel falls back to the ISO start time.
-    expect(entry?.eventTimeBlockLabel).toBe(slot.startTime.toISOString());
+    // Event time block has no label, so eventTimeBlockLabel falls back to the ISO start time.
+    expect(entry?.eventTimeBlockLabel).toBe(
+      auditedEventTimeBlock.startTime.toISOString(),
+    );
   });
 
   it('listByEvent defaults a missing reason to null', async () => {

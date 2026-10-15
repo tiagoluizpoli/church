@@ -171,7 +171,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           )
           .orderBy(asc(eventTimeBlock.startTime));
 
-        const slots = await Promise.all(
+        const eventTimeBlocks = await Promise.all(
           eventTimeBlockRows.map(async (eventTimeBlockRow) => {
             const requirementRows = await db
               .select({ requirement: shiftRequirement })
@@ -190,7 +190,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
 
         return {
           event: mapEvent(eventRow),
-          slots,
+          eventTimeBlocks,
         };
       }),
     );
@@ -213,7 +213,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .returning();
 
     if (!eventTimeBlockRow) {
-      throw new Error('Planning slot insert failed');
+      throw new Error('Planning event time block insert failed');
     }
 
     return eventTimeBlockRow.id as EventTimeBlockId;

@@ -5,7 +5,7 @@ import type { UsualSetup } from '../../domain/entities/usual-setup';
 const usualSetupHeadcountSchema = z.object({
   roleId: z.string(),
   teamId: z.string().optional(),
-  count: z.number().int().min(1),
+  peopleNeeded: z.number().int().min(1),
 });
 
 const usualSetupShiftSplitSchema = z.discriminatedUnion('kind', [
@@ -68,7 +68,7 @@ function toEntryResponse(profile: UsualSetup) {
     headcounts: profile.headcounts.map((headcount) => ({
       roleId: headcount.roleId as string,
       teamId: headcount.teamId as string | undefined,
-      count: headcount.count,
+      peopleNeeded: headcount.peopleNeeded,
     })),
   };
 }

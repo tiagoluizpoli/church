@@ -47,7 +47,7 @@ function assertExactTiling({ shifts }: AssertExactTilingInput): void {
 }
 
 describe('ShiftSplitter (DL1-SS)', () => {
-  it('DL1-SS-01 splits equally into N shifts covering the slot exactly', () => {
+  it('DL1-SS-01 splits equally into N shifts covering the event time block exactly', () => {
     const shifts = split({ kind: 'equal-n', n: 3 });
 
     expect(shifts).toHaveLength(3);
@@ -59,7 +59,7 @@ describe('ShiftSplitter (DL1-SS)', () => {
     expect(spanMs).toEqual([3_600_000, 3_600_000, 3_600_000]);
   });
 
-  it('DL1-SS-02 N=1 yields a single shift equal to the whole slot', () => {
+  it('DL1-SS-02 N=1 yields a single shift equal to the whole event time block', () => {
     const shifts = split({ kind: 'equal-n', n: 1 });
 
     expect(shifts).toHaveLength(1);
@@ -101,7 +101,7 @@ describe('ShiftSplitter (DL1-SS)', () => {
     );
   });
 
-  it('rejects a split count too high for the slot duration', () => {
+  it('rejects a split count too high for the event time block duration', () => {
     const shortEventTimeBlock = {
       id: eventTimeBlock.id,
       startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),

@@ -304,7 +304,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('returns a uniform event→slot→shift shape with assignments [] for a zero-assignment shift', async () => {
+  it('returns a uniform event→event time block→shift shape with assignments [] for a zero-assignment shift', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -324,7 +324,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -346,8 +346,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     expect(view.events).toHaveLength(1);
     const [eventView] = view.events;
     expect(eventView?.event.id).toBe(graph.event.id);
-    const shiftView = eventView?.slots
-      .flatMap((slot) => slot.shifts)
+    const shiftView = eventView?.eventTimeBlocks
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     expect(shiftView).toBeDefined();
     expect(shiftView?.assignments).toEqual([]);
@@ -378,7 +378,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -404,8 +404,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     });
 
     const shiftView = view.events
-      .flatMap((eventView) => eventView.slots)
-      .flatMap((slot) => slot.shifts)
+      .flatMap((eventView) => eventView.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     const eligible = shiftView?.eligibleVolunteers.find(
       (volunteer) =>
@@ -444,7 +444,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -465,8 +465,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     });
 
     const shiftView = view.events
-      .flatMap((event) => event.slots)
-      .flatMap((slot) => slot.shifts)
+      .flatMap((event) => event.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     expect(Array.isArray(shiftView?.eligibleVolunteers)).toBe(true);
   });
@@ -526,7 +526,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -555,8 +555,8 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
     });
 
     const shiftView = view.events
-      .flatMap((eventView) => eventView.slots)
-      .flatMap((slot) => slot.shifts)
+      .flatMap((eventView) => eventView.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
       .find((shift) => (shift.shift.id as string) === shiftId);
     expect(shiftView).toBeDefined();
     expect(
@@ -611,7 +611,7 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
@@ -757,7 +757,7 @@ async function seedAssignCycleBelowFull(input: SeedPublishableInput) {
   const shiftId = await seedShift({
     churchId: input.churchId,
     participationId: graph.participation.id,
-    eventTimeBlockId: graph.slot.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
     startTime: EVENT_START,
     endTime: EVENT_END,
   });
@@ -884,7 +884,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
     const shiftId = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: EVENT_START,
       endTime: EVENT_END,
     });

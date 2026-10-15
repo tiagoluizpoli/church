@@ -119,7 +119,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('deleteEvent removes the event and cascades its time slots and shifts', async () => {
+  it('deleteEvent removes the event and cascades its event time blocks and shifts', async () => {
     const seed = await seedSchedulingPhase3Base();
     const churchId = ChurchId.from(seed.churchAId);
     const cycle = await createSchedulingPhase3Cycle({
@@ -140,7 +140,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       start: fromDate({ date: new Date('2026-08-05T22:00:00.000Z') }),
       end: fromDate({ date: new Date('2026-08-06T00:00:00.000Z') }),
     });
@@ -162,7 +162,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
     const orphanShifts = await schedulingTestDb
       .select()
       .from(shift)
-      .where(eq(shift.eventTimeBlockId, graph.slot.id));
+      .where(eq(shift.eventTimeBlockId, graph.eventTimeBlock.id));
     expect(orphanShifts).toHaveLength(0);
   });
 

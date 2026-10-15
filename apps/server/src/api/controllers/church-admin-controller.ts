@@ -469,7 +469,7 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
-      '/cycles/:cycleId/events/:eventId/slots',
+      '/cycles/:cycleId/events/:eventId/event-time-blocks',
       {
         schema: {
           tags: ['planning'],
@@ -485,20 +485,23 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body as z.infer<
           typeof createEventTimeBlockBodySchema
         >;
-        const slot = await this.planningEventManager.createEventTimeBlock({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: CycleId.from(cycleId),
-          eventId: EventId.from(eventId),
-          startTime: dateFromInstantString({ value: body.startTime }),
-          endTime: dateFromInstantString({ value: body.endTime }),
-          label: body.label,
-        });
-        return reply.status(201).send(eventTimeBlockMapper.toResponse(slot));
+        const eventTimeBlock =
+          await this.planningEventManager.createEventTimeBlock({
+            churchId: ChurchId.from(request.churchId),
+            cycleId: CycleId.from(cycleId),
+            eventId: EventId.from(eventId),
+            startTime: dateFromInstantString({ value: body.startTime }),
+            endTime: dateFromInstantString({ value: body.endTime }),
+            label: body.label,
+          });
+        return reply
+          .status(201)
+          .send(eventTimeBlockMapper.toResponse(eventTimeBlock));
       },
     );
 
     app.patch(
-      '/cycles/:cycleId/events/:eventId/slots/:eventTimeBlockId',
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId',
       {
         schema: {
           tags: ['planning'],
@@ -515,21 +518,22 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body as z.infer<
           typeof updateEventTimeBlockBodySchema
         >;
-        const slot = await this.planningEventManager.updateEventTimeBlock({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: CycleId.from(cycleId),
-          eventId: EventId.from(eventId),
-          eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-          startTime: optionalDateFromInstantString({ value: body.startTime }),
-          endTime: optionalDateFromInstantString({ value: body.endTime }),
-          label: body.label,
-        });
-        return reply.send(eventTimeBlockMapper.toResponse(slot));
+        const eventTimeBlock =
+          await this.planningEventManager.updateEventTimeBlock({
+            churchId: ChurchId.from(request.churchId),
+            cycleId: CycleId.from(cycleId),
+            eventId: EventId.from(eventId),
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+            startTime: optionalDateFromInstantString({ value: body.startTime }),
+            endTime: optionalDateFromInstantString({ value: body.endTime }),
+            label: body.label,
+          });
+        return reply.send(eventTimeBlockMapper.toResponse(eventTimeBlock));
       },
     );
 
     app.delete(
-      '/cycles/:cycleId/events/:eventId/slots/:eventTimeBlockId',
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId',
       {
         schema: {
           tags: ['planning'],
@@ -613,7 +617,7 @@ export class ChurchAdminController implements FastifyController {
               teamId: headcount.teamId
                 ? TeamId.from(headcount.teamId)
                 : undefined,
-              count: headcount.count,
+              peopleNeeded: headcount.peopleNeeded,
             })),
           })),
         });

@@ -254,11 +254,11 @@ describe('DrizzleMinistryParticipationRepository.listScheduleSummaries (Iteratio
     });
   });
 
-  it("sums eventTimeBlockCount across every ParticipationEventTimeBlockInclusion row across every event the ministry participates in for the cycle, not the events' total slot count", async () => {
+  it("sums eventTimeBlockCount across every ParticipationEventTimeBlockInclusion row across every event the ministry participates in for the cycle, not the events' total event time block count", async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
-      name: 'Multi-Slot Cycle',
+      name: 'Multi-Block Cycle',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
       state: 'sent',
@@ -279,13 +279,13 @@ describe('DrizzleMinistryParticipationRepository.listScheduleSummaries (Iteratio
       start: new Date('2026-08-03T12:00:00.000Z'),
       end: new Date('2026-08-03T15:00:00.000Z'),
     });
-    // Event A's participation includes its one slot; Event B's participation
+    // Event A's participation includes its one event time block; Event B's participation
     // is untouched (no inclusion row) — eventTimeBlockCount must sum only included
-    // slots across both events (1), not the events' combined slot count (2).
+    // event time blocks across both events (1), not the events' combined event time block count (2).
     await schedulingTestDb.insert(participationEventTimeBlockInclusion).values({
       churchId: seed.churchAId,
       participationId: graphA.participation.id,
-      eventTimeBlockId: graphA.slot.id,
+      eventTimeBlockId: graphA.eventTimeBlock.id,
     });
     const repo = new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
@@ -299,11 +299,11 @@ describe('DrizzleMinistryParticipationRepository.listScheduleSummaries (Iteratio
     const row = rows.find((r) => r.cycleId === cycle.id);
     expect(row).toMatchObject({ eventCount: 2, eventTimeBlockCount: 1 });
 
-    // Now include Event B's slot too — eventTimeBlockCount must sum to 2.
+    // Now include Event B's event time block too — eventTimeBlockCount must sum to 2.
     await schedulingTestDb.insert(participationEventTimeBlockInclusion).values({
       churchId: seed.churchAId,
       participationId: graphB.participation.id,
-      eventTimeBlockId: graphB.slot.id,
+      eventTimeBlockId: graphB.eventTimeBlock.id,
     });
 
     const rowsAfter = await repo.listScheduleSummaries({

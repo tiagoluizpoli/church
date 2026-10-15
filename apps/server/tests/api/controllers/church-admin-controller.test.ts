@@ -97,7 +97,7 @@ function createUsualSetup(): UsualSetup {
       headcounts: [
         {
           roleId: RoleId.from('88888888-8888-8888-8888-888888888888'),
-          count: 3,
+          peopleNeeded: 3,
         },
       ],
     },
@@ -337,7 +337,7 @@ describe('Church admin planning routes', () => {
           headcounts: [
             {
               roleId: '88888888-8888-8888-8888-888888888888',
-              count: 3,
+              peopleNeeded: 3,
             },
           ],
         },
@@ -356,7 +356,7 @@ describe('Church admin planning routes', () => {
             headcounts: [
               {
                 roleId: '88888888-8888-8888-8888-888888888888',
-                count: 3,
+                peopleNeeded: 3,
               },
             ],
           },
@@ -379,10 +379,10 @@ describe('Church admin planning routes', () => {
     });
   });
 
-  it('POST .../slots: creates a slot and returns 201, and returns 409 for a sent cycle', async () => {
+  it('POST .../event-time-blocks: creates an event time block and returns 201, and returns 409 for a sent cycle', async () => {
     const cycleId = '22222222-2222-2222-2222-222222222222';
     const eventId = '66666666-6666-6666-6666-666666666666';
-    const eventTimeBlocksUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots`;
+    const eventTimeBlocksUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks`;
 
     planningEventManager.createEventTimeBlock.mockResolvedValue({
       id: '99999999-9999-9999-9999-999999999999',
@@ -421,11 +421,11 @@ describe('Church admin planning routes', () => {
     expect(locked.statusCode).toBe(409);
   });
 
-  it('PATCH/DELETE .../slots/:eventTimeBlockId: happy paths, 404, 409 locked, 409 last remaining slot', async () => {
+  it('PATCH/DELETE .../event-time-blocks/:eventTimeBlockId: happy paths, 404, 409 locked, 409 last remaining event time block', async () => {
     const cycleId = '22222222-2222-2222-2222-222222222222';
     const eventId = '66666666-6666-6666-6666-666666666666';
     const eventTimeBlockId = '99999999-9999-9999-9999-999999999999';
-    const eventTimeBlockUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/slots/${eventTimeBlockId}`;
+    const eventTimeBlockUrl = `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}`;
 
     planningEventManager.updateEventTimeBlock.mockResolvedValue({
       id: eventTimeBlockId,

@@ -14,13 +14,13 @@ describe('EventTimeBlock Entity', () => {
       sourceTemplateTimeBlockId: 'tb1',
       startTime,
       endTime,
-      label: 'Morning Slot',
+      label: 'Morning Event time block',
     });
 
     expect(eventTimeBlock.churchId).toBe('c1');
     expect(eventTimeBlock.eventId).toBe('e1');
     expect(eventTimeBlock.sourceTemplateTimeBlockId).toBe('tb1');
-    expect(eventTimeBlock.label).toBe('Morning Slot');
+    expect(eventTimeBlock.label).toBe('Morning Event time block');
     expect(eventTimeBlock.startTime).toBe(startTime);
     expect(eventTimeBlock.endTime).toBe(endTime);
     expect(eventTimeBlock.status).toBe('active');

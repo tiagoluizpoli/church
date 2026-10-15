@@ -182,8 +182,8 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
     expect(view.events).toHaveLength(1);
     expect(view.events[0]?.participation.state).toBe('preparing');
-    expect(view.events[0]?.slots).toHaveLength(1);
-    expect(view.events[0]?.slots[0]?.included).toBe(false);
+    expect(view.events[0]?.eventTimeBlocks).toHaveLength(1);
+    expect(view.events[0]?.eventTimeBlocks[0]?.included).toBe(false);
 
     // second call reuses the lazily created participation
     const again = await participationManager.getCycleParticipation({
@@ -196,9 +196,11 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     );
   });
 
-  it('DL2-PT-02 setInclusions opts slots in (default whole-event-time-block shift) and out', async () => {
+  it('DL2-PT-02 setInclusions opts event time blocks in (default whole-event-time-block shift) and out', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -206,7 +208,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     await participationManager.setInclusions({
       churchId,
       participationId,
-      eventTimeBlockIds: [EventTimeBlockId.from(slot.id)],
+      eventTimeBlockIds: [EventTimeBlockId.from(eventTimeBlock.id)],
     });
 
     const shiftsAfterInclude = await schedulingTestDb
@@ -214,8 +216,8 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       .from(shiftTable)
       .where(eq(shiftTable.participationId, participation.id));
     expect(shiftsAfterInclude).toHaveLength(1);
-    expect(shiftsAfterInclude[0]?.startTime).toEqual(slot.startTime);
-    expect(shiftsAfterInclude[0]?.endTime).toEqual(slot.endTime);
+    expect(shiftsAfterInclude[0]?.startTime).toEqual(eventTimeBlock.startTime);
+    expect(shiftsAfterInclude[0]?.endTime).toEqual(eventTimeBlock.endTime);
 
     await participationManager.setInclusions({
       churchId,
@@ -232,31 +234,39 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
   it('DL2-PT-03 splitShifts equal-N persists N shifts within bounds', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
 
     const created = await participationManager.splitShifts({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(participation.id),
-      eventTimeBlockId: EventTimeBlockId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 3 },
     });
 
     expect(created).toHaveLength(3);
-    expect(created[0]?.startTime).toEqual(fromDate({ date: slot.startTime }));
-    expect(created[2]?.endTime).toEqual(fromDate({ date: slot.endTime }));
+    expect(created[0]?.startTime).toEqual(
+      fromDate({ date: eventTimeBlock.startTime }),
+    );
+    expect(created[2]?.endTime).toEqual(
+      fromDate({ date: eventTimeBlock.endTime }),
+    );
   });
 
   it('DL2-PT-04 manual out-of-bounds split is rejected with a conflict error', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
 
     await expect(
       participationManager.splitShifts({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(participation.id),
-        eventTimeBlockId: EventTimeBlockId.from(slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
         strategy: {
           kind: 'manual',
           spans: [
@@ -278,7 +288,9 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
   it('DL2-PT-05 upserts per-shift requirements and rejects counts below one', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
@@ -292,7 +304,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     const [shiftEntity] = await participationManager.splitShifts({
       churchId,
       participationId: MinistryParticipationId.from(participation.id),
-      eventTimeBlockId: EventTimeBlockId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     if (!shiftEntity) throw new Error('split failed');
@@ -375,9 +387,11 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     ).resolves.toBe(true);
   });
 
-  it('DL2-PT-07 two ministries split the same slot independently', async () => {
+  it('DL2-PT-07 two ministries split the same event time block independently', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot, event } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock, event } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
@@ -399,13 +413,13 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     await participationManager.splitShifts({
       churchId,
       participationId: MinistryParticipationId.from(participation.id),
-      eventTimeBlockId: EventTimeBlockId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 2 },
     });
     await participationManager.splitShifts({
       churchId,
       participationId: MinistryParticipationId.from(participationC.id),
-      eventTimeBlockId: EventTimeBlockId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 3 },
     });
 
@@ -424,7 +438,9 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
   it('DL2-PT-08 shift mutations are blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
@@ -436,7 +452,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       participationManager.splitShifts({
         churchId,
         participationId: MinistryParticipationId.from(participation.id),
-        eventTimeBlockId: EventTimeBlockId.from(slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
         strategy: { kind: 'equal-n', n: 2 },
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
@@ -449,7 +465,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('rejects splitting a slot that belongs to another event', async () => {
+  it('rejects splitting an event time block that belongs to another event', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph1 = await seedCycleWithEvent({ seed });
     const seedB = graph1;
@@ -468,7 +484,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       participationManager.splitShifts({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(graph1.participation.id),
-        eventTimeBlockId: EventTimeBlockId.from(otherGraph.slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(otherGraph.eventTimeBlock.id),
         strategy: { kind: 'equal-n', n: 2 },
       }),
     ).rejects.toThrow(CrossMinistryScopeError);
@@ -482,7 +498,9 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listScheduleSumm
 
   it('setInclusions/splitShifts/upsertRequirement each touch the participation exactly once, guarded against re-touching', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -496,7 +514,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listScheduleSumm
     await participationManager.setInclusions({
       churchId,
       participationId,
-      eventTimeBlockIds: [EventTimeBlockId.from(slot.id)],
+      eventTimeBlockIds: [EventTimeBlockId.from(eventTimeBlock.id)],
     });
 
     const [afterFirstTouch] = await schedulingTestDb
@@ -509,7 +527,7 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listScheduleSumm
     await participationManager.splitShifts({
       churchId,
       participationId,
-      eventTimeBlockId: EventTimeBlockId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 2 },
     });
 
@@ -750,7 +768,9 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
 
   it('updateShift adjusts bounds/label within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -758,7 +778,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
     const [createdShift] = await participationManager.splitShifts({
       churchId,
       participationId,
-      eventTimeBlockId: EventTimeBlockId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     if (!createdShift) throw new Error('split failed');
@@ -769,12 +789,14 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
       label: 'Relabeled shift',
     });
     expect(updated.label).toBe('Relabeled shift');
-    expect(updated.startTime).toEqual(fromDate({ date: slot.startTime }));
+    expect(updated.startTime).toEqual(
+      fromDate({ date: eventTimeBlock.startTime }),
+    );
 
     const boundsOnlyUpdate = await participationManager.updateShift({
       churchId,
       shiftId: ShiftId.from(createdShift.id),
-      startTime: slot.startTime,
+      startTime: eventTimeBlock.startTime,
     });
     expect(boundsOnlyUpdate.label).toBe('Relabeled shift');
 
@@ -793,7 +815,9 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
 
   it('deleteShift removes a shift within prepare, and is blocked once availability is requested', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participation, eventTimeBlock } = await seedCycleWithEvent({
+      seed,
+    });
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
@@ -801,7 +825,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
     const created = await participationManager.splitShifts({
       churchId,
       participationId,
-      eventTimeBlockId: EventTimeBlockId.from(slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 2 },
     });
     expect(created).toHaveLength(2);
@@ -870,7 +894,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
           sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
           serves: true,
           shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: [{ roleId: RoleId.from(roleRow.id), count: 1 }],
+          headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 1 }],
         },
       ],
     });
@@ -907,7 +931,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
             sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId: RoleId.from(roleRow.id), count: 0 }],
+            headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 0 }],
           },
         ],
       }),
@@ -953,7 +977,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
       participationId: MinistryParticipationId.from(
         targetGraph.participation.id,
       ),
-      eventTimeBlockId: EventTimeBlockId.from(targetGraph.slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(targetGraph.eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     const [overlapShift] = await participationManager.splitShifts({
@@ -961,7 +985,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
       participationId: MinistryParticipationId.from(
         overlapGraph.participation.id,
       ),
-      eventTimeBlockId: EventTimeBlockId.from(overlapGraph.slot.id),
+      eventTimeBlockId: EventTimeBlockId.from(overlapGraph.eventTimeBlock.id),
       strategy: { kind: 'equal-n', n: 1 },
     });
     if (!targetShift || !overlapShift) throw new Error('split failed');

@@ -1,4 +1,4 @@
-import type { availability } from '@church/db';
+import type { unavailableShift } from '@church/db';
 import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
@@ -8,9 +8,9 @@ import type {
   VolunteerId,
 } from '../../domain/branded-ids';
 import type { UnavailableShiftProps } from '../../domain/entities/unavailable-shift';
-import { Availability } from '../../domain/entities/unavailable-shift';
+import { UnavailableShift } from '../../domain/entities/unavailable-shift';
 
-type AvailabilityRow = InferSelectModel<typeof availability>;
+type UnavailableShiftRow = InferSelectModel<typeof unavailableShift>;
 
 export interface AvailabilityJoinedRow {
   volunteerId: string;
@@ -19,9 +19,9 @@ export interface AvailabilityJoinedRow {
 }
 
 export function mapUnavailableShift(
-  row: AvailabilityRow,
+  row: UnavailableShiftRow,
   joined: AvailabilityJoinedRow,
-): Availability {
+): UnavailableShift {
   const props: UnavailableShiftProps = {
     churchId: row.churchId as ChurchId,
     availabilityCheckId: row.availabilityCheckId as AvailabilityCheckId,
@@ -31,7 +31,7 @@ export function mapUnavailableShift(
     shiftEndTime: fromDate({ date: joined.shiftEndTime }),
   };
 
-  return new Availability({
+  return new UnavailableShift({
     props,
     id: row.id,
     createdAt: row.createdAt,

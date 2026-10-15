@@ -31,7 +31,7 @@ function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
       sourceTemplateTimeBlockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ roleId, count: 1 }],
+      headcounts: [{ roleId, peopleNeeded: 1 }],
       ...props,
     },
   });
@@ -46,7 +46,7 @@ describe('UsualSetup entity', () => {
     expect(profile.sourceTemplateTimeBlockId).toBe(sourceTemplateTimeBlockId);
     expect(profile.serves).toBe(true);
     expect(profile.shiftSplit).toEqual({ kind: 'equal', count: 2 });
-    expect(profile.headcounts).toEqual([{ roleId, count: 1 }]);
+    expect(profile.headcounts).toEqual([{ roleId, peopleNeeded: 1 }]);
   });
 
   it('constructs with a valid manual split', () => {
@@ -99,13 +99,13 @@ describe('UsualSetup entity', () => {
 
   it('rejects a headcount with a non-integer count', () => {
     expect(() =>
-      buildProfile({ props: { headcounts: [{ roleId, count: 1.5 }] } }),
+      buildProfile({ props: { headcounts: [{ roleId, peopleNeeded: 1.5 }] } }),
     ).toThrow(InvalidRequiredCountError);
   });
 
   it('rejects a headcount with count less than 1', () => {
     expect(() =>
-      buildProfile({ props: { headcounts: [{ roleId, count: 0 }] } }),
+      buildProfile({ props: { headcounts: [{ roleId, peopleNeeded: 0 }] } }),
     ).toThrow(InvalidRequiredCountError);
   });
 });

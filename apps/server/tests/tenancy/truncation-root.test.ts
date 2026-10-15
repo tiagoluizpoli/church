@@ -3,7 +3,6 @@ import {
   addChurchMember,
   assignment,
   assignmentAudit,
-  availability,
   availabilityCheck,
   createChurch,
   cycle,
@@ -30,6 +29,7 @@ import {
   team,
   templateTimeBlock,
   todo,
+  unavailableShift,
   user,
   usualSetup,
   verification,
@@ -350,7 +350,7 @@ async function seedEveryTenantedTable(): Promise<void> {
     ministryMembershipId: IDS.membership,
   });
 
-  await testDb.insert(availability).values({
+  await testDb.insert(unavailableShift).values({
     churchId: IDS.church,
     availabilityCheckId: IDS.availabilityCheck,
     shiftId: IDS.shift,

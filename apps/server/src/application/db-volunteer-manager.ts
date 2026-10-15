@@ -31,7 +31,7 @@ import type {
   MinistrySchedule,
   NotificationListResult,
   RespondToAssignmentInput,
-  SetUnavailabilityInput,
+  SetUnavailableShiftsInput,
   VolunteerAvailabilityCheckDetail,
   VolunteerAvailabilityCheckSummary,
   VolunteerCheckShift,
@@ -60,7 +60,7 @@ import type {
 } from '../domain/entities/assignment';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
-import type { Availability } from '../domain/entities/unavailable-shift';
+import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
@@ -102,7 +102,7 @@ interface ClaimShiftCoverageInput {
 interface ShiftCoverageClaims {
   /** Assignment id -> the single team its assignment was claimed against (or null for a team-less requirement). */
   assignmentTeamId: Map<string, string | null>;
-  /** Requirement id -> how many of its peopleNeeded slots this shift's assignments actually filled. */
+  /** Requirement id -> how many of its peopleNeeded places this shift's assignments actually filled. */
   requirementFilledCount: Map<string, number>;
 }
 
@@ -170,10 +170,10 @@ function eventTimeBlockKey({
 }
 
 function availabilityCompletionState(
-  entries: Availability[],
-  slots: EventTimeBlock[],
+  entries: UnavailableShift[],
+  eventTimeBlocks: EventTimeBlock[],
 ): 'missing' | 'partial' | 'complete' {
-  if (slots.length === 0) return 'missing';
+  if (eventTimeBlocks.length === 0) return 'missing';
   const matchingKeys = new Set(
     entries.map((e) =>
       eventTimeBlockKey({
@@ -182,13 +182,13 @@ function availabilityCompletionState(
       }),
     ),
   );
-  const answered = slots.filter((s) =>
+  const answered = eventTimeBlocks.filter((s) =>
     matchingKeys.has(
       eventTimeBlockKey({ startTime: s.startTime, endTime: s.endTime }),
     ),
   ).length;
   if (answered === 0) return 'missing';
-  return answered >= slots.length ? 'complete' : 'partial';
+  return answered >= eventTimeBlocks.length ? 'complete' : 'partial';
 }
 
 function isPublishedStatus(
@@ -329,7 +329,8 @@ export class DbVolunteerManager implements IVolunteerManager {
                 return null;
               const eventWithEventTimeBlocks =
                 await this.eventRepo.getWithEventTimeBlocks(churchId, event.id);
-              if (eventWithEventTimeBlocks.slots.length === 0) return null;
+              if (eventWithEventTimeBlocks.eventTimeBlocks.length === 0)
+                return null;
               const entries =
                 await this.unavailableShiftRepo.listByVolunteerForEvent(
                   churchId,
@@ -338,7 +339,7 @@ export class DbVolunteerManager implements IVolunteerManager {
                 );
               const completionState = availabilityCompletionState(
                 entries,
-                eventWithEventTimeBlocks.slots,
+                eventWithEventTimeBlocks.eventTimeBlocks,
               );
               if (completionState === 'complete') return null;
               return {
@@ -766,7 +767,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     context: CheckContext,
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail> {
-    const [shifts, marks] = await Promise.all([
+    const [shifts, unavailableShifts] = await Promise.all([
       this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
         checkId: input.checkId,
@@ -779,7 +780,9 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     const resolutions = resolveShiftAvailability({
       shiftIds: shifts.map((shift) => shift.shiftId),
-      markedShiftIds: marks.map((mark) => mark.shiftId),
+      unavailableShiftIds: unavailableShifts.map(
+        (unavailableShift) => unavailableShift.shiftId,
+      ),
     });
     const availableByShiftId = new Map(
       resolutions.map((entry) => [entry.shiftId, entry.available]),
@@ -820,7 +823,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     return Promise.all(
       contexts.map(async (context) => {
         const checkId = context.check.id;
-        const [shifts, marks] = await Promise.all([
+        const [shifts, unavailableShifts] = await Promise.all([
           this.availabilityCheckRepo.listCheckShifts({
             churchId: input.churchId,
             checkId,
@@ -840,7 +843,7 @@ export class DbVolunteerManager implements IVolunteerManager {
           state: context.check.state,
           confirmedAt: context.check.confirmedAt,
           totalShiftCount: shifts.length,
-          unavailableShiftCount: marks.length,
+          unavailableShiftCount: unavailableShifts.length,
         };
       }),
     );
@@ -853,8 +856,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     return this.resolveCheckDetail(context, input);
   }
 
-  async setUnavailability(
-    input: SetUnavailabilityInput,
+  async setUnavailableShifts(
+    input: SetUnavailableShiftsInput,
   ): Promise<VolunteerAvailabilityCheckDetail> {
     const context = await this.getOwnedCheckContext(input);
     const shifts = await this.availabilityCheckRepo.listCheckShifts({
@@ -979,7 +982,7 @@ export class DbVolunteerManager implements IVolunteerManager {
           assignmentId: assignment.id,
           type: 'assignment_removed',
           title: 'Volunteer cancelled an assignment',
-          body: `A volunteer cancelled their assignment for ${event.title}. The slot is open again.`,
+          body: `A volunteer cancelled their assignment for ${event.title}. The shift is open again.`,
           payload: {
             assignmentId: assignment.id as string,
             eventId: event.id as string,

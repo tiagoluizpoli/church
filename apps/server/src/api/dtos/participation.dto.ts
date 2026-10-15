@@ -58,7 +58,7 @@ export type ShiftRequirementResponse = z.infer<
 >;
 
 export const participationEventTimeBlockViewSchema = z.object({
-  slot: eventTimeBlockResponseSchema,
+  eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
   shifts: z.array(shiftResponseSchema),
   requirements: z.array(shiftRequirementResponseSchema),
@@ -67,7 +67,7 @@ export const participationEventTimeBlockViewSchema = z.object({
 export const participationEventViewSchema = z.object({
   participation: participationResponseSchema,
   event: eventResponseSchema,
-  slots: z.array(participationEventTimeBlockViewSchema),
+  eventTimeBlocks: z.array(participationEventTimeBlockViewSchema),
 });
 
 export const cycleParticipationResponseSchema = z.object({
@@ -198,7 +198,7 @@ function toShiftRequirementResponse(
 
 function toEventTimeBlockView(view: ParticipationEventTimeBlockView) {
   return {
-    slot: eventTimeBlockMapper.toResponse(view.slot),
+    eventTimeBlock: eventTimeBlockMapper.toResponse(view.eventTimeBlock),
     included: view.included,
     shifts: view.shifts.map(toShiftResponse),
     requirements: view.requirements.map(toShiftRequirementResponse),
@@ -241,7 +241,7 @@ function toEventView(view: ParticipationEventView) {
   return {
     participation: toParticipationResponse(view.participation),
     event: eventMapper.toResponse(view.event),
-    slots: view.slots.map(toEventTimeBlockView),
+    eventTimeBlocks: view.eventTimeBlocks.map(toEventTimeBlockView),
   };
 }
 

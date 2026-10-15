@@ -201,19 +201,19 @@ export async function createSchedulingPhase3EventGraph(
     eventTimeBlockIds: [],
   });
 
-  const slot = await buildEventTimeBlock({
+  const eventTimeBlock = await buildEventTimeBlock({
     db: schedulingTestDb,
     churchId: input.churchId,
     eventId: planningEvent.id,
     sourceTemplateTimeBlockId: input.sourceTemplateTimeBlockId,
     start,
     end,
-    label: 'Generated Slot',
+    label: 'Generated Event time block',
   });
 
   return {
     event: planningEvent,
     participation,
-    slot,
+    eventTimeBlock,
   };
 }

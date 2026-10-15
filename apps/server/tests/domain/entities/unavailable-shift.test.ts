@@ -6,7 +6,7 @@ import type {
   ShiftId,
   VolunteerId,
 } from '@/domain/branded-ids';
-import { Availability } from '@/domain/entities/unavailable-shift';
+import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { InvalidTimeRangeError } from '@/domain/errors/invalid-time-range';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
@@ -15,9 +15,9 @@ const availabilityCheckId =
 const shiftId = '33333333-3333-4333-8333-333333333333' as ShiftId;
 const volunteerId = '44444444-4444-4444-8444-444444444444' as VolunteerId;
 
-describe('Availability entity — unavailability mark (DL1-AV)', () => {
-  it('DL1-AV-01 mark is keyed to availabilityCheckId + shiftId', () => {
-    const mark = new Availability({
+describe('UnavailableShift entity — unavailable shift (DL1-AV)', () => {
+  it('DL1-AV-01 unavailable shift is keyed to availabilityCheckId + shiftId', () => {
+    const unavailableShift = new UnavailableShift({
       props: {
         churchId,
         availabilityCheckId,
@@ -28,16 +28,16 @@ describe('Availability entity — unavailability mark (DL1-AV)', () => {
       },
     });
 
-    expect(mark.availabilityCheckId).toBe(availabilityCheckId);
-    expect(mark.shiftId).toBe(shiftId);
-    expect(mark.volunteerId).toBe(volunteerId);
-    expect(mark.churchId).toBe(churchId);
+    expect(unavailableShift.availabilityCheckId).toBe(availabilityCheckId);
+    expect(unavailableShift.shiftId).toBe(shiftId);
+    expect(unavailableShift.volunteerId).toBe(volunteerId);
+    expect(unavailableShift.churchId).toBe(churchId);
   });
 
   it('rejects an inverted shift time range', () => {
     expect(
       () =>
-        new Availability({
+        new UnavailableShift({
           props: {
             churchId,
             availabilityCheckId,

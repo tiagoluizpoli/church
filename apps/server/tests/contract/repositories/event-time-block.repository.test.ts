@@ -19,7 +19,7 @@ import {
 import { runEventTimeBlockRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/event-time-block.contract-spec';
 
 class MockEventTimeBlockRepository implements EventTimeBlockRepository {
-  private slots = new Map<string, EventTimeBlock>();
+  private eventTimeBlocks = new Map<string, EventTimeBlock>();
   private idCounter = 1;
 
   constructor() {
@@ -34,7 +34,7 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
       '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
     );
 
-    const slot = new EventTimeBlock(
+    const eventTimeBlock = new EventTimeBlock(
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: '66666666-6666-6666-6666-666666666661' as EventId,
@@ -46,33 +46,36 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
       '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
     );
 
-    this.slots.set(slot.id, slot);
+    this.eventTimeBlocks.set(eventTimeBlock.id, eventTimeBlock);
   }
 
   async getById(
     churchId: ChurchId,
     id: EventTimeBlockId,
   ): Promise<EventTimeBlock> {
-    const slot = this.slots.get(id);
-    if (!slot || slot.churchId !== churchId) {
-      throw new NotFoundError('Time slot not found');
+    const eventTimeBlock = this.eventTimeBlocks.get(id);
+    if (!eventTimeBlock || eventTimeBlock.churchId !== churchId) {
+      throw new NotFoundError('Event time block not found');
     }
-    return slot;
+    return eventTimeBlock;
   }
 
   async listByEvent(
     churchId: ChurchId,
     eventId: EventId,
   ): Promise<EventTimeBlock[]> {
-    return Array.from(this.slots.values()).filter(
+    return Array.from(this.eventTimeBlocks.values()).filter(
       (s) => s.churchId === churchId && s.eventId === eventId,
     );
   }
 
   async deleteByEvent(churchId: ChurchId, eventId: EventId): Promise<void> {
-    for (const slot of Array.from(this.slots.values())) {
-      if (slot.churchId === churchId && slot.eventId === eventId) {
-        this.slots.delete(slot.id);
+    for (const eventTimeBlock of Array.from(this.eventTimeBlocks.values())) {
+      if (
+        eventTimeBlock.churchId === churchId &&
+        eventTimeBlock.eventId === eventId
+      ) {
+        this.eventTimeBlocks.delete(eventTimeBlock.id);
       }
     }
   }
@@ -90,7 +93,7 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     input: CreateEventTimeBlockInput,
   ): Promise<EventTimeBlock> {
     const id = `event-time-block-gen-${this.idCounter++}` as EventTimeBlockId;
-    const slot = new EventTimeBlock(
+    const eventTimeBlock = new EventTimeBlock(
       {
         churchId,
         eventId: input.eventId,
@@ -102,8 +105,8 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
       },
       id,
     );
-    this.slots.set(slot.id, slot);
-    return slot;
+    this.eventTimeBlocks.set(eventTimeBlock.id, eventTimeBlock);
+    return eventTimeBlock;
   }
 
   async update(
@@ -128,14 +131,14 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
       },
       existing.id,
     );
-    this.slots.set(updated.id, updated);
+    this.eventTimeBlocks.set(updated.id, updated);
     return updated;
   }
 
   async deleteById(churchId: ChurchId, id: EventTimeBlockId): Promise<void> {
-    const slot = this.slots.get(id);
-    if (slot && slot.churchId === churchId) {
-      this.slots.delete(id);
+    const eventTimeBlock = this.eventTimeBlocks.get(id);
+    if (eventTimeBlock && eventTimeBlock.churchId === churchId) {
+      this.eventTimeBlocks.delete(id);
     }
   }
 
@@ -146,17 +149,17 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     endTime: Date,
     excludeEventTimeBlockId?: EventTimeBlockId,
   ): Promise<EventTimeBlock[]> {
-    return Array.from(this.slots.values()).filter(
-      (slot) =>
-        slot.churchId === churchId &&
-        slot.eventId === eventId &&
-        slot.id !== excludeEventTimeBlockId &&
+    return Array.from(this.eventTimeBlocks.values()).filter(
+      (eventTimeBlock) =>
+        eventTimeBlock.churchId === churchId &&
+        eventTimeBlock.eventId === eventId &&
+        eventTimeBlock.id !== excludeEventTimeBlockId &&
         compareInstants({
-          left: slot.startTime,
+          left: eventTimeBlock.startTime,
           right: fromDate({ date: endTime }),
         }) < 0 &&
         compareInstants({
-          left: slot.endTime,
+          left: eventTimeBlock.endTime,
           right: fromDate({ date: startTime }),
         }) > 0,
     );

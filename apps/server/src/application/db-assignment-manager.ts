@@ -332,7 +332,8 @@ export class DbAssignmentManager implements IAssignmentManager {
 
     if (
       unavailableShifts.some(
-        (mark) => (mark.shiftId as string) === (shift.id as string),
+        (unavailableShift) =>
+          (unavailableShift.shiftId as string) === (shift.id as string),
       )
     ) {
       warnings.push({

@@ -239,7 +239,7 @@ export async function seed(): Promise<void> {
     status: 'scheduled',
   });
 
-  // Time slots (event-time-block-1 for event-1 with 1 slot requirement)
+  // Event time blocks (event-time-block-1 for event-1 with 1 shift requirement)
   await buildEventTimeBlock({
     db: testDb,
     churchId,

@@ -9,7 +9,7 @@
  *   volunteer-1 (user-1, church-1), volunteer-2 (user-2, church-1)
  *   role-1 (Usher, ministry-1), role-2 (Greeter, ministry-1)
  *   event-1 (draft, June 5), event-2 (published, June 4)
- *   event-time-block-1 (event-1 slot), shift-requirement-1
+ *   event-time-block-1 (event-1 event time block), shift-requirement-1
  *   assignment-1 (confirmed, volunteer-1+event-time-block-1), assignment-2 (declined, volunteer-2+event-time-block-1)
  *   availability-1 (volunteer-1)
  *   audit-1, audit-2 (for assignment-1)

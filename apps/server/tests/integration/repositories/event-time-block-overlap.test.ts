@@ -17,7 +17,7 @@ describe('DrizzleEventTimeBlockRepository.findOverlapping (T091)', () => {
     await seed();
   });
 
-  it('returns [] when the range does not overlap any slot', async () => {
+  it('returns [] when the range does not overlap any event time block', async () => {
     const result = await repo.findOverlapping(
       CHURCH,
       EVENT,
@@ -27,7 +27,7 @@ describe('DrizzleEventTimeBlockRepository.findOverlapping (T091)', () => {
     expect(result).toEqual([]);
   });
 
-  it('returns the matching slot when ranges intersect', async () => {
+  it('returns the matching event time block when ranges intersect', async () => {
     const result = await repo.findOverlapping(
       CHURCH,
       EVENT,
@@ -47,7 +47,7 @@ describe('DrizzleEventTimeBlockRepository.findOverlapping (T091)', () => {
     expect(result).toEqual([]);
   });
 
-  it('excludes the slot identified by excludeEventTimeBlockId', async () => {
+  it('excludes the event time block identified by excludeEventTimeBlockId', async () => {
     const result = await repo.findOverlapping(
       CHURCH,
       EVENT,

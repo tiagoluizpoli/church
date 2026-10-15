@@ -127,7 +127,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const targetShift = await seedShift({
       churchId: seed.churchAId,
       participationId: upcoming.participation.id,
-      eventTimeBlockId: upcoming.slot.id,
+      eventTimeBlockId: upcoming.eventTimeBlock.id,
       startTime: new Date('2026-08-10T09:00:00.000Z'),
       endTime: new Date('2026-08-10T10:00:00.000Z'),
       label: 'Target shift',
@@ -135,7 +135,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const oldShift = await seedShift({
       churchId: seed.churchAId,
       participationId: history.participation.id,
-      eventTimeBlockId: history.slot.id,
+      eventTimeBlockId: history.eventTimeBlock.id,
       startTime: new Date('2026-08-03T09:00:00.000Z'),
       endTime: new Date('2026-08-03T10:00:00.000Z'),
       label: 'Older shift',
@@ -143,7 +143,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const recentShift = await seedShift({
       churchId: seed.churchAId,
       participationId: history.participation.id,
-      eventTimeBlockId: history.slot.id,
+      eventTimeBlockId: history.eventTimeBlock.id,
       startTime: new Date('2026-08-03T10:00:00.000Z'),
       endTime: new Date('2026-08-03T11:00:00.000Z'),
       label: 'Recent shift',
@@ -266,7 +266,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const targetShift = await seedShift({
       churchId: seed.churchAId,
       participationId: primary.participation.id,
-      eventTimeBlockId: primary.slot.id,
+      eventTimeBlockId: primary.eventTimeBlock.id,
       startTime: new Date('2026-09-07T09:00:00.000Z'),
       endTime: new Date('2026-09-07T10:00:00.000Z'),
       label: 'Target',
@@ -274,7 +274,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const overlapShift = await seedShift({
       churchId: seed.churchAId,
       participationId: overlapBranch.participation.id,
-      eventTimeBlockId: overlapBranch.slot.id,
+      eventTimeBlockId: overlapBranch.eventTimeBlock.id,
       startTime: new Date('2026-09-07T09:30:00.000Z'),
       endTime: new Date('2026-09-07T10:30:00.000Z'),
       label: 'Overlap',
@@ -420,7 +420,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const primaryShift = await seedShift({
       churchId: seed.churchAId,
       participationId: sharedEvent.participation.id,
-      eventTimeBlockId: sharedEvent.slot.id,
+      eventTimeBlockId: sharedEvent.eventTimeBlock.id,
       startTime: new Date('2026-10-04T09:00:00.000Z'),
       endTime: new Date('2026-10-04T10:00:00.000Z'),
       label: 'Primary',
@@ -428,7 +428,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const secondaryShift = await seedShift({
       churchId: seed.churchAId,
       participationId: secondParticipation.id,
-      eventTimeBlockId: sharedEvent.slot.id,
+      eventTimeBlockId: sharedEvent.eventTimeBlock.id,
       startTime: new Date('2026-10-04T10:00:00.000Z'),
       endTime: new Date('2026-10-04T11:00:00.000Z'),
       label: 'Secondary',
@@ -609,7 +609,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: new Date('2026-11-08T09:00:00.000Z'),
       endTime: new Date('2026-11-08T10:00:00.000Z'),
       label: 'Front doors',
@@ -679,7 +679,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     );
   });
 
-  it('DL2-DS-02 counts a single assignment once when the volunteer belongs to multiple teams sharing a role slot', async () => {
+  it('DL2-DS-02 counts a single assignment once when the volunteer belongs to multiple teams sharing a role event time block', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -737,7 +737,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: new Date('2026-12-06T09:00:00.000Z'),
       endTime: new Date('2026-12-06T10:00:00.000Z'),
       label: 'Front doors',
@@ -804,7 +804,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       }),
     );
     // The assignment is attributed to exactly one team, and the still-open
-    // slot is the *other* team — never the same team twice, never both
+    // event time block is the *other* team — never the same team twice, never both
     // filled, never both open.
     expect([confirmedRow?.teamName, openRow?.teamName].sort()).toEqual([
       'Alpha Team',

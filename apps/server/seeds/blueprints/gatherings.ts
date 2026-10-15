@@ -34,7 +34,7 @@ export interface StaffingNeed<
 > {
   role: TRole;
   team?: TTeam;
-  count: number;
+  peopleNeeded: number;
   /** Lands on the materialized ShiftRequirement; a profile has no notes. */
   notes?: string;
 }
@@ -97,10 +97,10 @@ export interface GatheringsBlueprint {
 }
 
 const KIDS_BLOCK = [
-  { role: 'Líder', team: 'Kids', count: 1 },
-  { role: 'Auxiliar', team: 'Kids', count: 7 },
-  { role: 'Líder', team: 'Maternal', count: 1 },
-  { role: 'Auxiliar', team: 'Maternal', count: 3 },
+  { role: 'Líder', team: 'Kids', peopleNeeded: 1 },
+  { role: 'Auxiliar', team: 'Kids', peopleNeeded: 7 },
+  { role: 'Líder', team: 'Maternal', peopleNeeded: 1 },
+  { role: 'Auxiliar', team: 'Maternal', peopleNeeded: 3 },
 ] as const;
 
 /**
@@ -109,7 +109,7 @@ const KIDS_BLOCK = [
  * no Kids, so one operator.
  */
 const PROJECAO_TWO_PLACEMENTS = [
-  { role: 'Operador de Projeção', count: 2, notes: '1 Templo, 1 Kids' },
+  { role: 'Operador de Projeção', peopleNeeded: 2, notes: '1 Templo, 1 Kids' },
 ] as const;
 
 /** Igreja Semente's gatherings, in America/Sao_Paulo. */
@@ -156,7 +156,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
     serveGatherings({
       ministry: PROJECAO,
       blocks: {
-        'sunday-08:00': [{ role: 'Operador de Projeção', count: 1 }],
+        'sunday-08:00': [{ role: 'Operador de Projeção', peopleNeeded: 1 }],
         'sunday-10:30': PROJECAO_TWO_PLACEMENTS,
         'sunday-18:30': PROJECAO_TWO_PLACEMENTS,
         'wednesday-20:00': PROJECAO_TWO_PLACEMENTS,
@@ -174,19 +174,27 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
     serveGatherings({
       ministry: INTERCESSAO,
       blocks: {
-        'sunday-08:00': [{ role: 'Intercessor', count: 8 }],
-        'sunday-10:30': [{ role: 'Intercessor', count: 8 }],
-        'sunday-18:30': [{ role: 'Intercessor', count: 8 }],
-        'wednesday-20:00': [{ role: 'Intercessor', count: 8 }],
+        'sunday-08:00': [{ role: 'Intercessor', peopleNeeded: 8 }],
+        'sunday-10:30': [{ role: 'Intercessor', peopleNeeded: 8 }],
+        'sunday-18:30': [{ role: 'Intercessor', peopleNeeded: 8 }],
+        'wednesday-20:00': [{ role: 'Intercessor', peopleNeeded: 8 }],
       },
     }),
     serveGatherings({
       ministry: ESTACIONAMENTO,
       blocks: {
-        'sunday-08:00': [{ role: 'Orientador de Estacionamento', count: 4 }],
-        'sunday-10:30': [{ role: 'Orientador de Estacionamento', count: 4 }],
-        'sunday-18:30': [{ role: 'Orientador de Estacionamento', count: 4 }],
-        'wednesday-20:00': [{ role: 'Orientador de Estacionamento', count: 4 }],
+        'sunday-08:00': [
+          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+        ],
+        'sunday-10:30': [
+          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+        ],
+        'sunday-18:30': [
+          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+        ],
+        'wednesday-20:00': [
+          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+        ],
       },
     }),
   ],
@@ -201,7 +209,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
       participations: [
         participate({
           ministry: PROJECAO,
-          needs: [{ role: 'Operador de Projeção', count: 1 }],
+          needs: [{ role: 'Operador de Projeção', peopleNeeded: 1 }],
         }),
       ],
     },

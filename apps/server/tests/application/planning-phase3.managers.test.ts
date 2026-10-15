@@ -604,7 +604,7 @@ describe('Phase 3 planning managers', () => {
     expect(afterCancel.events[0]?.event.status).toBe('cancelled');
   });
 
-  it('regenerates events and slots after every generated draft event is deleted, stays idempotent, and never resurrects a soft-cancelled event', async () => {
+  it('regenerates events and event time blocks after every generated draft event is deleted, stays idempotent, and never resurrects a soft-cancelled event', async () => {
     // BL-020 success criteria 1, 2 and 4.
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager, templateManager } = createManagers();
@@ -839,7 +839,7 @@ describe('Phase 3 planning managers', () => {
         sourceTemplateTimeBlockId: block.id,
         serves: true,
         shiftSplit: { kind: 'equal', count: 2 },
-        headcounts: [{ roleId: roleRow.id, count: 2 }],
+        headcounts: [{ roleId: roleRow.id, peopleNeeded: 2 }],
       },
       {
         churchId: seed.churchAId,
@@ -951,7 +951,7 @@ describe('Phase 3 planning managers', () => {
 
     const draftCycle = await cycleManager.createCycle({
       churchId: churchAId,
-      name: 'Create slot cycle',
+      name: 'Create event time block cycle',
       startDate: new Date('2027-08-01T00:00:00.000Z'),
       endDate: new Date('2027-09-01T00:00:00.000Z'),
     });
@@ -977,7 +977,7 @@ describe('Phase 3 planning managers', () => {
 
     const sentCycle = await cycleManager.createCycle({
       churchId: churchAId,
-      name: 'Create slot sent cycle',
+      name: 'Create event time block sent cycle',
       startDate: new Date('2027-09-01T00:00:00.000Z'),
       endDate: new Date('2027-10-01T00:00:00.000Z'),
     });
@@ -1011,7 +1011,7 @@ describe('Phase 3 planning managers', () => {
 
     const draftCycle = await cycleManager.createCycle({
       churchId: churchAId,
-      name: 'Slot mutation cycle',
+      name: 'Event time block mutation cycle',
       startDate: new Date('2027-05-01T00:00:00.000Z'),
       endDate: new Date('2027-06-01T00:00:00.000Z'),
     });
@@ -1019,7 +1019,7 @@ describe('Phase 3 planning managers', () => {
     const twoEventTimeBlockEvent = await eventManager.createEvent({
       churchId: churchAId,
       cycleId: draftCycle.id,
-      title: 'Two-slot day',
+      title: 'Two-block day',
       start: new Date('2027-05-02T09:00:00.000Z'),
       end: new Date('2027-05-02T12:00:00.000Z'),
     });
@@ -1046,11 +1046,11 @@ describe('Phase 3 planning managers', () => {
       cycleId: draftCycle.id,
       eventId: twoEventTimeBlockEvent.id,
       eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockA.id),
-      label: 'Renamed slot',
+      label: 'Renamed event time block',
     });
-    expect(updated.label).toBe('Renamed slot');
+    expect(updated.label).toBe('Renamed event time block');
 
-    // Happy-path delete (non-last slot).
+    // Happy-path delete (non-last event time block).
     await eventManager.deleteEventTimeBlock({
       churchId: churchAId,
       cycleId: draftCycle.id,
@@ -1063,7 +1063,7 @@ describe('Phase 3 planning managers', () => {
       .where(eq(eventTimeBlock.eventId, twoEventTimeBlockEvent.id));
     expect(remaining).toHaveLength(1);
 
-    // Reject deleting a day's only remaining slot.
+    // Reject deleting a day's only remaining event time block.
     await expect(
       eventManager.deleteEventTimeBlock({
         churchId: churchAId,
@@ -1073,7 +1073,7 @@ describe('Phase 3 planning managers', () => {
       }),
     ).rejects.toThrow(LastRemainingEventTimeBlockError);
 
-    // Reject when slot/event/cycle triple mismatches (slot belongs to a
+    // Reject when event time block/event/cycle triple mismatches (event time block belongs to a
     // different event than the one supplied).
     const otherEvent = await eventManager.createEvent({
       churchId: churchAId,
@@ -1095,7 +1095,7 @@ describe('Phase 3 planning managers', () => {
     // Reject on past cycle.
     const pastCycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
-      name: 'Past slot cycle',
+      name: 'Past event time block cycle',
       startDate: new Date('2000-01-01T00:00:00.000Z'),
       endDate: new Date('2000-02-01T00:00:00.000Z'),
     });
@@ -1149,7 +1149,7 @@ describe('Phase 3 planning managers', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('updateEvent cascades a startDate change onto every child slot atomically, and leaves slots alone for non-date edits', async () => {
+  it('updateEvent cascades a startDate change onto every child event time block atomically, and leaves event time blocks alone for non-date edits', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager, eventTimeBlockRepository } =
       createManagers();
@@ -1183,7 +1183,7 @@ describe('Phase 3 planning managers', () => {
       }),
     ]);
 
-    // Changing only title/endDate must NOT move any slot.
+    // Changing only title/endDate must NOT move any event time block.
     await eventManager.updateEvent({
       churchId: churchAId,
       cycleId: cycle.id,
@@ -1195,16 +1195,20 @@ describe('Phase 3 planning managers', () => {
       .select()
       .from(eventTimeBlock)
       .where(eq(eventTimeBlock.eventId, cascadeEvent.id));
-    for (const slot of eventTimeBlocksAfterNonDateEdit) {
+    for (const eventTimeBlock of eventTimeBlocksAfterNonDateEdit) {
       const original = [eventTimeBlockOne, eventTimeBlockTwo].find(
-        (s) => s.id === slot.id,
+        (s) => s.id === eventTimeBlock.id,
       );
-      expect(slot.startTime.getTime()).toBe(original?.startTime.getTime());
-      expect(slot.endTime.getTime()).toBe(original?.endTime.getTime());
+      expect(eventTimeBlock.startTime.getTime()).toBe(
+        original?.startTime.getTime(),
+      );
+      expect(eventTimeBlock.endTime.getTime()).toBe(
+        original?.endTime.getTime(),
+      );
     }
 
-    // Changing startDate by 2 days + 3 hours must shift every slot by the
-    // same delta, preserving each slot's own duration.
+    // Changing startDate by 2 days + 3 hours must shift every event time block by the
+    // same delta, preserving each event time block's own duration.
     const newStartDate = new Date('2027-06-04T12:00:00.000Z');
     const delta =
       newStartDate.getTime() - new Date('2027-06-02T09:00:00.000Z').getTime();
@@ -1225,7 +1229,7 @@ describe('Phase 3 planning managers', () => {
       const shifted = eventTimeBlocksAfterDateShift.find(
         (s) => s.id === original.id,
       );
-      if (!shifted) throw new Error('expected slot to still exist');
+      if (!shifted) throw new Error('expected event time block to still exist');
       const originalDuration =
         original.endTime.getTime() - original.startTime.getTime();
       const shiftedDuration =
@@ -1240,7 +1244,7 @@ describe('Phase 3 planning managers', () => {
       expect(shiftedDuration).toBe(originalDuration);
     }
 
-    // Atomic rollback: if a slot in the cascade loop fails partway through,
+    // Atomic rollback: if an event time block in the cascade loop fails partway through,
     // the whole transaction — including the event's own startDate — must
     // roll back together, not leave a half-shifted day.
     const rollbackEvent = await eventManager.createEvent({

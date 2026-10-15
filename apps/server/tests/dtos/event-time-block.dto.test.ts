@@ -59,7 +59,7 @@ describe('eventTimeBlockMapper', () => {
   });
 
   describe('toResponse', () => {
-    it('maps a slot with a label and non-empty requirements', () => {
+    it('maps an event time block with a label and non-empty requirements', () => {
       const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
       const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
       const requirement = new ShiftRequirement(
@@ -71,19 +71,19 @@ describe('eventTimeBlockMapper', () => {
         },
         'req-1',
       );
-      const slot = new EventTimeBlock(
+      const eventTimeBlock = new EventTimeBlock(
         {
           churchId: 'church-1',
           eventId: 'event-1',
           startTime,
           endTime,
-          label: 'Morning Slot',
+          label: 'Morning Event time block',
           requirements: [requirement],
         },
         'event-time-block-1',
       );
 
-      const response = eventTimeBlockMapper.toResponse(slot);
+      const response = eventTimeBlockMapper.toResponse(eventTimeBlock);
 
       expect(response).toEqual({
         id: 'event-time-block-1',
@@ -91,7 +91,7 @@ describe('eventTimeBlockMapper', () => {
         eventId: 'event-1',
         startTime: startTime,
         endTime: endTime,
-        label: 'Morning Slot',
+        label: 'Morning Event time block',
         status: 'active',
         requirements: [
           {
@@ -109,10 +109,10 @@ describe('eventTimeBlockMapper', () => {
       expect(isInstant({ value: response.endTime })).toBe(true);
     });
 
-    it('maps a slot with no label and empty requirements', () => {
+    it('maps an event time block with no label and empty requirements', () => {
       const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
       const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
-      const slot = new EventTimeBlock(
+      const eventTimeBlock = new EventTimeBlock(
         {
           churchId: 'church-1',
           eventId: 'event-1',
@@ -122,7 +122,7 @@ describe('eventTimeBlockMapper', () => {
         'event-time-block-2',
       );
 
-      const response = eventTimeBlockMapper.toResponse(slot);
+      const response = eventTimeBlockMapper.toResponse(eventTimeBlock);
 
       expect(response).toEqual({
         id: 'event-time-block-2',
@@ -138,34 +138,36 @@ describe('eventTimeBlockMapper', () => {
   });
 
   describe('listToResponse', () => {
-    it('maps an empty list of slots', () => {
-      expect(eventTimeBlockMapper.listToResponse([])).toEqual({ slots: [] });
+    it('maps an empty list of event time blocks', () => {
+      expect(eventTimeBlockMapper.listToResponse([])).toEqual({
+        eventTimeBlocks: [],
+      });
     });
 
-    it('maps a non-empty list of slots', () => {
+    it('maps a non-empty list of event time blocks', () => {
       const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
       const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
-      const slot = new EventTimeBlock(
+      const eventTimeBlock = new EventTimeBlock(
         {
           churchId: 'church-1',
           eventId: 'event-1',
           startTime,
           endTime,
-          label: 'Slot A',
+          label: 'Event time block A',
         },
         'event-time-block-3',
       );
 
-      const response = eventTimeBlockMapper.listToResponse([slot]);
+      const response = eventTimeBlockMapper.listToResponse([eventTimeBlock]);
 
-      expect(response.slots).toHaveLength(1);
-      expect(response.slots[0]).toEqual({
+      expect(response.eventTimeBlocks).toHaveLength(1);
+      expect(response.eventTimeBlocks[0]).toEqual({
         id: 'event-time-block-3',
         churchId: 'church-1',
         eventId: 'event-1',
         startTime: startTime,
         endTime: endTime,
-        label: 'Slot A',
+        label: 'Event time block A',
         status: 'active',
         requirements: [],
       });

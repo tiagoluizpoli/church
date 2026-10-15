@@ -1,16 +1,16 @@
-import { availability, availabilityCheck } from '@church/db';
+import { availabilityCheck, unavailableShift } from '@church/db';
 import { type Instant, toDate } from '@church/time';
 import type { SeedWriter } from '../recipe';
 import { requireInsertedRow } from './require-inserted-row';
 
 /**
  * Direct-state builders for a requested availability round: the check one
- * Ministry Membership answers per Cycle, and the unavailability marks
+ * Ministry Membership answers per Cycle, and the unavailable shifts
  * hanging off it (a Volunteer is available unless marked).
  */
 
 export type SeededAvailabilityCheck = typeof availabilityCheck.$inferSelect;
-export type SeededUnavailableShift = typeof availability.$inferSelect;
+export type SeededUnavailableShift = typeof unavailableShift.$inferSelect;
 
 export interface BuildConfirmedAvailabilityCheckInput {
   db: SeedWriter;
@@ -22,7 +22,7 @@ export interface BuildConfirmedAvailabilityCheckInput {
   confirmedAt: Instant;
 }
 
-/** A check the Volunteer has answered, with or without marks. */
+/** A check the Volunteer has answered, with or without unavailable shifts. */
 export async function buildConfirmedAvailabilityCheck({
   db,
   churchId,
@@ -65,10 +65,10 @@ export async function buildUnavailableShift({
 }: BuildUnavailableShiftInput): Promise<SeededUnavailableShift> {
   return requireInsertedRow({
     rows: await db
-      .insert(availability)
+      .insert(unavailableShift)
       .values({ id, churchId, availabilityCheckId, shiftId })
       .returning(),
-    description: `Unavailability mark ${id}`,
+    description: `Unavailable shift ${id}`,
   });
 }
 

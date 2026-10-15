@@ -130,7 +130,7 @@ describe('EventTemplate and TemplateTimeBlock', () => {
     ).toThrow(InvalidWeekdayError);
   });
 
-  it('preserves stable block ids for later slot generation', () => {
+  it('preserves stable block ids for later event time block generation', () => {
     const block = createTemplateTimeBlock({
       props: {
         order: 1,

@@ -149,7 +149,7 @@ export async function loadGatherings({
             ministryName: rule.ministry.name,
             need,
           }),
-          count: need.count,
+          peopleNeeded: need.peopleNeeded,
         })),
       });
     }

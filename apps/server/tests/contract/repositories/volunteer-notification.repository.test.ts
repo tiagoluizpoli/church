@@ -68,7 +68,7 @@ class MockVolunteerNotificationRepository
         volunteerId: TEST_VOLUNTEER_ID,
         type: 'assignment_removed',
         title: 'Assignment removed',
-        body: 'You are no longer scheduled for this slot.',
+        body: 'You are no longer scheduled for this shift.',
         payload: {
           eventId: '66666666-6666-6666-6666-666666666661',
           section: 'notifications',

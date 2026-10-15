@@ -5,7 +5,7 @@ export class LastRemainingEventTimeBlockError extends DomainError {
 
   constructor() {
     super(
-      'Cannot delete the only remaining slot for a day; delete the day instead',
+      'Cannot delete the only remaining event time block for a day; delete the day instead',
     );
   }
 }

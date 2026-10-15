@@ -557,7 +557,7 @@ describe('development seed recipe', () => {
       shiftSplit: profile.shiftSplit,
       headcounts: profile.headcounts.map((headcount) =>
         [
-          headcount.count,
+          headcount.peopleNeeded,
           names.get(headcount.roleId),
           headcount.teamId ? names.get(headcount.teamId) : undefined,
         ]
@@ -689,13 +689,13 @@ describe('development seed recipe', () => {
       },
     ]);
 
-    const [slots] = await testDb
+    const [eventTimeBlocks] = await testDb
       .select({
         total: count(),
         fromBlocks: sql<number>`count(${eventTimeBlock.sourceTemplateTimeBlockId})::int`,
       })
       .from(eventTimeBlock);
-    expect(slots).toEqual({ total: 17, fromBlocks: 16 });
+    expect(eventTimeBlocks).toEqual({ total: 17, fromBlocks: 16 });
   });
 
   it('publishes one MinistryParticipation per serving Ministry and Event, Kids not on Sunday at 08:00', async () => {
@@ -936,7 +936,7 @@ describe('development seed recipe', () => {
         query: sql`select count(*) as value from ${assignment} a
           join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
           join ${availabilityCheck} c on c.ministry_membership_id = mv.id
-          join availability u on u.availability_check_id = c.id
+          join unavailable_shift u on u.availability_check_id = c.id
           where a.status in ('draft', 'pending', 'confirmed')
             and u.shift_id = a.shift_id`,
       }),
@@ -952,10 +952,10 @@ describe('development seed recipe', () => {
       .from(availabilityCheck);
     expect(checks).toEqual({ total: 305, confirmed: 305 });
 
-    const marks = await testDb.execute<TrailRow>(sql`
+    const unavailableShifts = await testDb.execute<TrailRow>(sql`
       select u.email, m.name as ministry,
         to_char(s.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as starts
-      from availability a
+      from unavailable_shift a
       join ${shift} s on s.id = a.shift_id
       join ${ministryParticipation} p on p.id = s.participation_id
       join ${ministry} m on m.id = p.ministry_id
@@ -974,7 +974,7 @@ describe('development seed recipe', () => {
       ministry: ministryName,
       starts,
     });
-    expect(marks.rows).toEqual([
+    expect(unavailableShifts.rows).toEqual([
       bruno({ ministryName: 'Kids', starts: '2026-02-01 10:30' }),
       bruno({ ministryName: 'Projeção', starts: '2026-02-01 18:30' }),
       bruno({ ministryName: 'Kids', starts: '2026-02-04 20:00' }),
@@ -992,13 +992,13 @@ describe('development seed recipe', () => {
       },
     ]);
 
-    // Rafael's two whole-day marks plus one side of every overlapping pair of
+    // Rafael's two whole-day unavailable shifts plus one side of every overlapping pair of
     // the 25 cross-Ministry Volunteers' Shifts: with Kids off Sunday 08:00
     // and Intercessão and Estacionamento off Saturday, 12 pairs for each
     // pairing with Kids and 16 for every other, 324 in all.
     expect(
       await queryCount({
-        query: sql`select count(*) as value from availability`,
+        query: sql`select count(*) as value from unavailable_shift`,
       }),
     ).toBe(326);
     // confirmAvailabilityCheck refuses (flag off) while two unmarked Shifts
@@ -1012,7 +1012,7 @@ describe('development seed recipe', () => {
             join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
             join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
             join ${shift} s on s.participation_id = p.id
-            where not exists (select 1 from availability u
+            where not exists (select 1 from unavailable_shift u
               where u.availability_check_id = c.id and u.shift_id = s.id))
           select count(*) as value from unmarked a join unmarked b
             on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id
@@ -1404,7 +1404,7 @@ describe('development seed recipe', () => {
       label: 'a Volunteer serves a Shift they marked unavailable',
       problem: 'unavailable',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`insert into availability (church_id, availability_check_id, shift_id)
+        await tx.execute(sql`insert into unavailable_shift (church_id, availability_check_id, shift_id)
           select c.church_id, c.id, a.shift_id
           from ${assignment} a
           join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
@@ -1435,8 +1435,8 @@ describe('development seed recipe', () => {
         'a cross-Ministry Volunteer confirmed availability with an unmarked overlap',
       problem: 'confirm',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`delete from availability
-          where id = (select u.id from availability u
+        await tx.execute(sql`delete from unavailable_shift
+          where id = (select u.id from unavailable_shift u
             join ${availabilityCheck} c on c.id = u.availability_check_id
             join ${ministryMembership} mv on mv.id = c.ministry_membership_id
             join ${volunteer} v on v.id = mv.volunteer_id

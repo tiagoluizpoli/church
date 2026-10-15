@@ -17,7 +17,7 @@ describe('User Story 4: Transaction Context Type Safety', () => {
       const churchId = 'church-1' as ChurchId;
       const tx = {} as TransactionContext;
 
-      // 1. UnavailableShiftRepository (unavailability marks)
+      // 1. UnavailableShiftRepository (unavailable shifts)
       const unavailableShiftRepo = {} as UnavailableShiftRepository;
       unavailableShiftRepo.replaceUnavailableShiftsForCheck({
         churchId,

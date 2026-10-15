@@ -19,7 +19,7 @@ export interface ParticipationEventTimeBlockInclusionInput {
   updatedAt?: Date;
 }
 
-/** Presence of a row means the ministry serves this time slot (R3). */
+/** Presence of a row means the ministry serves this event time block (R3). */
 export class ParticipationEventTimeBlockInclusion extends Entity<
   ParticipationEventTimeBlockInclusionProps,
   ParticipationEventTimeBlockInclusionId

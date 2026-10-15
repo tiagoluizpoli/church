@@ -1,6 +1,5 @@
 export * from './assignment';
 export * from './assignment-audit';
-export * from './availability';
 export * from './availability-check';
 export * from './church';
 export * from './cycle';
@@ -17,6 +16,7 @@ export * from './shift';
 export * from './shift-requirement';
 export * from './team';
 export * from './template-time-block';
+export * from './unavailable-shift';
 export * from './usual-setup';
 export * from './volunteer';
 export * from './volunteer-notification';

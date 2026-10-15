@@ -48,8 +48,8 @@ interface DrizzleVolunteerTransferRepositoryInput {
 /**
  * Every step of spec §8.5, inside the caller's transaction. The old
  * `volunteer` row is retired (never moved), the destination is born fresh, and
- * only assignments whose **time slot** starts strictly after the commit are
- * cancelled — a slot already under way is protected even inside a still-running
+ * only assignments whose **event time block** starts strictly after the commit are
+ * cancelled — an event time block already under way is protected even inside a still-running
  * event. The `volunteer_transfer` row is the idempotency key: a replay returns
  * the original result and writes nothing (the outbox enqueue is skipped on
  * replay too, for the same reason). One `outbox_message` row is written per
@@ -219,7 +219,7 @@ export class DrizzleVolunteerTransferRepository
       .where(eq(volunteer.id, activeProfile.id));
 
     // 5. Former-Church Ministry Memberships go inactive; Role / Team
-    //    qualification rows and Availability records are left untouched.
+    //    qualification rows and UnavailableShift records are left untouched.
     const membershipIds = sourceMemberships.map(({ id }) => id);
     if (membershipIds.length > 0) {
       await db
@@ -228,8 +228,8 @@ export class DrizzleVolunteerTransferRepository
         .where(inArray(ministryMembership.id, membershipIds));
     }
 
-    // 6. Cancel assignments whose time slot starts strictly after the commit
-    //    (§8.4: the cut is the slot start, not the shift or the event date).
+    // 6. Cancel assignments whose event time block starts strictly after the commit
+    //    (§8.4: the cut is the event time block start, not the shift or the event date).
     const reason = `Volunteer Transfer ${correlationId}`;
     const futureAssignments = await db
       .select({

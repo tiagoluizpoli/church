@@ -35,7 +35,7 @@ const seeder = new ProfileSeeder();
 
 function plan(input: Partial<SeedParticipationPlanInput>) {
   return seeder.plan({
-    slot: templatedEventTimeBlock,
+    eventTimeBlock: templatedEventTimeBlock,
     profileEntries: [],
     globalDefaultAllIn: false,
     timeZone,
@@ -49,7 +49,7 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
       sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ roleId, count: 3 }],
+      headcounts: [{ roleId, peopleNeeded: 3 }],
     };
 
     const result = plan({ profileEntries: [entry] });
@@ -60,11 +60,11 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
       templatedEventTimeBlock.startTime,
     );
     expect(result.shifts[1]?.endTime).toEqual(templatedEventTimeBlock.endTime);
-    expect(result.shifts[0]?.headcounts).toEqual([{ roleId, count: 3 }]);
-    expect(result.shifts[1]?.headcounts).toEqual([{ roleId, count: 3 }]);
+    expect(result.shifts[0]?.headcounts).toEqual([{ roleId, peopleNeeded: 3 }]);
+    expect(result.shifts[1]?.headcounts).toEqual([{ roleId, peopleNeeded: 3 }]);
   });
 
-  it('maps manual profile spans onto the slot date in church timezone', () => {
+  it('maps manual profile spans onto the event time block date in church timezone', () => {
     const entry: ProfileSeederEntry = {
       sourceTemplateTimeBlockId: blockId,
       serves: true,
@@ -204,9 +204,9 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     expect(result.include).toBe(false);
   });
 
-  it('DL1-PS-05 dynamic slots (no template block) are never auto-seeded', () => {
+  it('DL1-PS-05 dynamic event time blocks (no template block) are never auto-seeded', () => {
     const result = plan({
-      slot: dynamicEventTimeBlock,
+      eventTimeBlock: dynamicEventTimeBlock,
       ministryDefaultDirection: 'all_in',
       globalDefaultAllIn: true,
     });

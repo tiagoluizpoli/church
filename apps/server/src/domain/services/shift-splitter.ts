@@ -71,7 +71,9 @@ export function computeEqualSpans({
   const baseMs = Math.floor(totalMs / n);
 
   if (baseMs < 1) {
-    throw new InvalidShiftSplitError('slot is too short for the split count');
+    throw new InvalidShiftSplitError(
+      'event time block is too short for the split count',
+    );
   }
 
   const spans: EqualSpan[] = [];

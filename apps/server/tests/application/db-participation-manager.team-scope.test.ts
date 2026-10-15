@@ -85,7 +85,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     } = createManager();
     ministryRepository.getById.mockResolvedValue({});
     eventRepository.listCycleEvents.mockResolvedValue([
-      { event: { id: 'event-1' }, slots: [] },
+      { event: { id: 'event-1' }, eventTimeBlocks: [] },
     ]);
     roleRepository.listByMinistry.mockResolvedValue([]);
     volunteerRepository.listMinistryMemberships.mockResolvedValue([]);
@@ -123,7 +123,10 @@ describe('DbParticipationManager Team schedule scope', () => {
           status: 'scheduled',
           start: '2027-01-01T09:00:00.000Z',
         },
-        slots: [{ id: 'event-time-block-a' }, { id: 'event-time-block-b' }],
+        eventTimeBlocks: [
+          { id: 'event-time-block-a' },
+          { id: 'event-time-block-b' },
+        ],
       },
     ]);
     participationRepository.findByMinistryEvent.mockResolvedValue({
@@ -190,7 +193,10 @@ describe('DbParticipationManager Team schedule scope', () => {
       userId,
     });
 
-    const shifts = view.events[0]?.slots.flatMap((slot) => slot.shifts) ?? [];
+    const shifts =
+      view.events[0]?.eventTimeBlocks.flatMap(
+        (eventTimeBlock) => eventTimeBlock.shifts,
+      ) ?? [];
     expect(shifts).toHaveLength(1);
     expect(shifts[0]?.shift.id).toBe('shift-a');
     expect(
@@ -225,7 +231,7 @@ describe('DbParticipationManager Team schedule scope', () => {
           status: 'scheduled',
           start: '2027-01-01T09:00:00.000Z',
         },
-        slots: [{ id: 'event-time-block-a' }],
+        eventTimeBlocks: [{ id: 'event-time-block-a' }],
       },
     ]);
     participationRepository.findByMinistryEvent.mockResolvedValue({
@@ -273,7 +279,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     });
 
     expect(
-      view.events[0]?.slots[0]?.shifts[0]?.requirements[0]
+      view.events[0]?.eventTimeBlocks[0]?.shifts[0]?.requirements[0]
         ?.canMutateAssignments,
     ).toBe(false);
   });
@@ -292,7 +298,10 @@ describe('DbParticipationManager Team schedule scope', () => {
     } = createManager();
     ministryRepository.getById.mockResolvedValue({});
     eventRepository.listCycleEvents.mockResolvedValue([
-      { event: { id: 'event-1' }, slots: [{ id: 'event-time-block-a' }] },
+      {
+        event: { id: 'event-1' },
+        eventTimeBlocks: [{ id: 'event-time-block-a' }],
+      },
     ]);
     participationRepository.findByMinistryEvent.mockResolvedValue({
       id: 'participation-1',
@@ -323,7 +332,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     });
 
     expect(
-      view.events[0]?.slots[0]?.shifts[0]?.requirements[0]
+      view.events[0]?.eventTimeBlocks[0]?.shifts[0]?.requirements[0]
         ?.canMutateAssignments,
     ).toBe(true);
   });

@@ -404,7 +404,7 @@ export class DrizzleMinistryParticipationRepository
 
     const participationIds = participations.map((row) => row.id);
 
-    // Slot counts computed as a separate query (not an additional join on
+    // Event time block counts computed as a separate query (not an additional join on
     // the query above) specifically to avoid join fanout inflating the
     // touched/published/requested-or-later counts derived from `participations`.
     const eventTimeBlockCounts =

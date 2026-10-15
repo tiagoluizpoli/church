@@ -38,7 +38,7 @@ export const cycleDetailsResponseSchema = z.object({
   events: z.array(
     z.object({
       event: eventResponseSchema,
-      slots: z.array(eventTimeBlockResponseSchema),
+      eventTimeBlocks: z.array(eventTimeBlockResponseSchema),
     }),
   ),
 });
@@ -68,7 +68,9 @@ export const cycleMapper = {
       cycle: toCycleResponse(details.cycle),
       events: details.events.map((eventGroup) => ({
         event: eventMapper.toResponse(eventGroup.event),
-        slots: eventGroup.slots.map(eventTimeBlockMapper.toResponse),
+        eventTimeBlocks: eventGroup.eventTimeBlocks.map(
+          eventTimeBlockMapper.toResponse,
+        ),
       })),
     };
   },

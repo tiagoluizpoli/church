@@ -24,9 +24,9 @@ describe('cycleBuilderResponseSchema', () => {
             createdAt: '2026-09-01T00:00:00.000Z',
             updatedAt: '2026-09-01T00:00:00.000Z',
           },
-          slots: [
+          eventTimeBlocks: [
             {
-              slot: {
+              eventTimeBlock: {
                 id: 'event-time-block-1',
                 churchId: 'church-1',
                 eventId: 'event-1',
@@ -70,7 +70,7 @@ describe('cycleBuilderResponseSchema', () => {
     const responseWithoutCapability = structuredClone(response);
     const requirement = responseWithoutCapability.events
       .at(0)
-      ?.slots.at(0)
+      ?.eventTimeBlocks.at(0)
       ?.shifts.at(0)
       ?.requirements.at(0);
     if (!requirement) {

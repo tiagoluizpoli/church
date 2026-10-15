@@ -37,7 +37,7 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
     expect(check.state).toBe('confirmed');
   });
 
-  it('DL1-AC-02 confirm() transitions pending → confirmed and sets confirmedAt even with zero marks', () => {
+  it('DL1-AC-02 confirm() transitions pending → confirmed and sets confirmedAt even with zero unavailable shifts', () => {
     const check = buildCheck();
 
     check.confirm();

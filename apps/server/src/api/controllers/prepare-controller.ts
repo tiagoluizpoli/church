@@ -236,7 +236,7 @@ export class PrepareController implements FastifyController {
     );
 
     app.post(
-      '/participations/:participationId/slots/:eventTimeBlockId/shifts',
+      '/participations/:participationId/event-time-blocks/:eventTimeBlockId/shifts',
       {
         schema: {
           tags: ['prepare'],

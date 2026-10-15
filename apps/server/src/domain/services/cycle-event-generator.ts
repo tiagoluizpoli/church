@@ -48,13 +48,13 @@ export interface GeneratedCycleCreateEventPlan {
   title: string;
   start: Instant;
   end: Instant;
-  slots: GeneratedCycleEventTimeBlockPlan[];
+  eventTimeBlocks: GeneratedCycleEventTimeBlockPlan[];
 }
 
 export interface GeneratedCycleAppendEventTimeBlockPlan {
   kind: 'append_event_time_blocks';
   eventId: EventId;
-  slots: GeneratedCycleEventTimeBlockPlan[];
+  eventTimeBlocks: GeneratedCycleEventTimeBlockPlan[];
 }
 
 export type GeneratedCycleEventPlan =
@@ -109,7 +109,7 @@ export class CycleEventGenerator {
       });
 
       for (const eventDate of matchingDates) {
-        const slots = template.blocks
+        const eventTimeBlocks = template.blocks
           .filter((block) => {
             const fingerprint = `${eventDate}::${block.id as TemplateTimeBlockId}`;
             return !existingFingerprintSet.has(fingerprint);
@@ -125,7 +125,7 @@ export class CycleEventGenerator {
             }),
           }));
 
-        const [firstEventTimeBlock, ...restEventTimeBlocks] = slots;
+        const [firstEventTimeBlock, ...restEventTimeBlocks] = eventTimeBlocks;
         const lastEventTimeBlock =
           restEventTimeBlocks.at(-1) ?? firstEventTimeBlock;
         if (!firstEventTimeBlock || !lastEventTimeBlock) {
@@ -140,7 +140,7 @@ export class CycleEventGenerator {
           plans.push({
             kind: 'append_event_time_blocks',
             eventId: existingEvent.eventId,
-            slots,
+            eventTimeBlocks,
           });
           continue;
         }
@@ -151,7 +151,7 @@ export class CycleEventGenerator {
           title: template.name,
           start: firstEventTimeBlock.startTime,
           end: lastEventTimeBlock.endTime,
-          slots,
+          eventTimeBlocks,
         });
       }
     }

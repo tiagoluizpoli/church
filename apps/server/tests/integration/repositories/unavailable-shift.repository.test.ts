@@ -45,10 +45,10 @@ async function seedCheckWithShift(
     db: schedulingTestDb,
     churchId: churchId,
     participationId: graph.participation.id,
-    eventTimeBlockId: graph.slot.id,
-    start: fromDate({ date: graph.slot.startTime }),
-    end: fromDate({ date: graph.slot.endTime }),
-    label: 'Whole slot',
+    eventTimeBlockId: graph.eventTimeBlock.id,
+    start: fromDate({ date: graph.eventTimeBlock.startTime }),
+    end: fromDate({ date: graph.eventTimeBlock.endTime }),
+    label: 'Whole event time block',
   });
 
   const [membership] = await schedulingTestDb
@@ -78,7 +78,7 @@ describe('DrizzleUnavailableShiftRepository', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('replaceUnavailableShiftsForCheck creates marks that listUnavailableShiftsByCheck, listByVolunteerForEvent, and listByVolunteers can read', async () => {
+  it('replaceUnavailableShiftsForCheck creates unavailable shifts that listUnavailableShiftsByCheck, listByVolunteerForEvent, and listByVolunteers can read', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { event, shift, check } = await seedCheckWithShift(
       seed.churchAId,
@@ -96,13 +96,13 @@ describe('DrizzleUnavailableShiftRepository', () => {
       shiftIds: [ShiftId.from(shift.id)],
     });
 
-    const marks = await repo.listUnavailableShiftsByCheck({
+    const unavailableShifts = await repo.listUnavailableShiftsByCheck({
       churchId,
       availabilityCheckId: AvailabilityCheckId.from(check.id),
     });
-    expect(marks).toHaveLength(1);
-    expect(marks[0]?.shiftId).toBe(shift.id);
-    expect(marks[0]?.volunteerId).toBe(seed.adminVolunteerId);
+    expect(unavailableShifts).toHaveLength(1);
+    expect(unavailableShifts[0]?.shiftId).toBe(shift.id);
+    expect(unavailableShifts[0]?.volunteerId).toBe(seed.adminVolunteerId);
 
     const byVolunteerForEvent = await repo.listByVolunteerForEvent(
       churchId,
@@ -117,7 +117,7 @@ describe('DrizzleUnavailableShiftRepository', () => {
     expect(byVolunteers).toHaveLength(1);
   });
 
-  it('replaceUnavailableShiftsForCheck with an empty shiftIds array clears existing marks (delete-then-return)', async () => {
+  it('replaceUnavailableShiftsForCheck with an empty shiftIds array clears existing unavailable shifts (delete-then-return)', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { shift, check } = await seedCheckWithShift(
       seed.churchAId,

@@ -94,7 +94,7 @@ export class DrizzleEventRepository implements EventRepository {
         ),
       );
 
-    const slots = await Promise.all(
+    const eventTimeBlocks = await Promise.all(
       eventTimeBlockRows.map(async (eventTimeBlockRow) => {
         const reqRows = await db
           .select({ requirement: shiftRequirement })
@@ -108,7 +108,7 @@ export class DrizzleEventRepository implements EventRepository {
       }),
     );
 
-    return { event: ev, slots };
+    return { event: ev, eventTimeBlocks };
   }
 
   async listByMinistry(

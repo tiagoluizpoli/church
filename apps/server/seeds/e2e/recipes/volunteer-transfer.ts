@@ -161,7 +161,7 @@ export function createVolunteerTransferRecipe({
 
     // A draft cycle whose one Event is still being prepared, as a Ministry
     // leader's in-progress schedule is; the transfer withdraws any active
-    // Assignment on a future Time Slot, whatever the cycle's state.
+    // Assignment on a future Event Time Block, whatever the cycle's state.
     const churchId = churchB.church.id;
     const { hospitality } = churchB.ministries;
     const window = cycleWindow({ anchor });

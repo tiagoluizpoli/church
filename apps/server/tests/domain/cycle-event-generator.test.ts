@@ -79,7 +79,7 @@ const generator = new CycleEventGenerator();
 const timeZone = 'UTC';
 
 describe('CycleEventGenerator', () => {
-  it('creates a new event plan for every matching weekday with slots for each template block', () => {
+  it('creates a new event plan for every matching weekday with event time blocks for each template block', () => {
     const plans = generator.generate({
       cycle: createCycle(),
       templates: [createTemplate()],
@@ -100,14 +100,14 @@ describe('CycleEventGenerator', () => {
     expect(first?.end).toEqual(
       parseInstant({ value: '2026-07-01T11:00:00.000Z' }),
     );
-    expect(first?.slots).toHaveLength(2);
-    expect(first?.slots[0]).toMatchObject({
+    expect(first?.eventTimeBlocks).toHaveLength(2);
+    expect(first?.eventTimeBlocks[0]).toMatchObject({
       sourceTemplateTimeBlockId: blockAId,
       label: 'Gathering',
       startTime: parseInstant({ value: '2026-07-01T09:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
     });
-    expect(first?.slots[1]).toMatchObject({
+    expect(first?.eventTimeBlocks[1]).toMatchObject({
       sourceTemplateTimeBlockId: blockBId,
       label: 'Service',
       startTime: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
@@ -123,7 +123,7 @@ describe('CycleEventGenerator', () => {
     );
   });
 
-  it('appends slots to an existing event for the same date and template instead of creating a new one', () => {
+  it('appends event time blocks to an existing event for the same date and template instead of creating a new one', () => {
     const existingEvents: ExistingGeneratedEvent[] = [
       {
         eventId: 'existing-event-1' as EventId,
@@ -144,7 +144,7 @@ describe('CycleEventGenerator', () => {
     const appended = plans[0] as GeneratedCycleAppendEventTimeBlockPlan;
     expect(appended.kind).toBe('append_event_time_blocks');
     expect(appended.eventId).toBe('existing-event-1');
-    expect(appended.slots).toHaveLength(2);
+    expect(appended.eventTimeBlocks).toHaveLength(2);
 
     const created = plans[1] as GeneratedCycleCreateEventPlan;
     expect(created.kind).toBe('create_event');
@@ -195,11 +195,11 @@ describe('CycleEventGenerator', () => {
     });
 
     // 2026-07-08 has both blocks already fingerprinted, so it is skipped
-    // entirely (the slots.length === 0 continue branch).
+    // entirely (the eventTimeBlocks.length === 0 continue branch).
     expect(plans).toHaveLength(1);
     const plan = plans[0] as GeneratedCycleCreateEventPlan;
-    expect(plan.slots).toHaveLength(1);
-    expect(plan.slots[0]?.sourceTemplateTimeBlockId).toBe(blockBId);
+    expect(plan.eventTimeBlocks).toHaveLength(1);
+    expect(plan.eventTimeBlocks[0]?.sourceTemplateTimeBlockId).toBe(blockBId);
   });
 
   it('resolves an overnight block onto the following CalendarDay', () => {
@@ -238,7 +238,7 @@ describe('CycleEventGenerator', () => {
     });
 
     const [first] = plans as GeneratedCycleCreateEventPlan[];
-    expect(first?.slots[0]).toMatchObject({
+    expect(first?.eventTimeBlocks[0]).toMatchObject({
       startTime: parseInstant({ value: '2026-07-01T22:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-07-02T02:00:00.000Z' }),
     });

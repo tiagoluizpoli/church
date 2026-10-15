@@ -126,7 +126,7 @@ describe('DbOutboxDrainer (integration)', () => {
 describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integration)', () => {
   // Deliberately in the past relative to the drainer's real-clock claim
   // filter (`scheduledFor <= now()`) — the transfer's own business rules
-  // (invitation expiry, slot-start cutoff) only compare against this
+  // (invitation expiry, event time block-start cutoff) only compare against this
   // fixture's own timestamps, never the real wall clock.
   const COMMIT = new Date('2024-01-15T12:00:00.000Z');
   const CORRELATION_ID = 'drain-transfer-corr-0001';

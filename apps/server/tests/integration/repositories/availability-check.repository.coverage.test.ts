@@ -71,9 +71,9 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      start: fromDate({ date: graph.slot.startTime }),
-      end: fromDate({ date: graph.slot.endTime }),
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      start: fromDate({ date: graph.eventTimeBlock.startTime }),
+      end: fromDate({ date: graph.eventTimeBlock.endTime }),
       label: null,
     });
 

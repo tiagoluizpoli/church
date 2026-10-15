@@ -69,10 +69,10 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
       eventId,
       startTime: new Date('2026-08-02T11:00:00.000Z'),
       endTime: new Date('2026-08-02T12:00:00.000Z'),
-      label: 'Extra slot',
+      label: 'Extra event time block',
     });
 
-    expect(created.label).toBe('Extra slot');
+    expect(created.label).toBe('Extra event time block');
     const shifts = await schedulingTestDb
       .select()
       .from(shiftTable)
@@ -89,13 +89,15 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
 
     const updated = await repo.update(
       churchId,
-      EventTimeBlockId.from(graph.slot.id),
+      EventTimeBlockId.from(graph.eventTimeBlock.id),
       {
-        label: 'Renamed slot',
+        label: 'Renamed event time block',
       },
     );
-    expect(updated.label).toBe('Renamed slot');
-    expect(updated.startTime).toEqual(fromDate({ date: graph.slot.startTime }));
+    expect(updated.label).toBe('Renamed event time block');
+    expect(updated.startTime).toEqual(
+      fromDate({ date: graph.eventTimeBlock.startTime }),
+    );
 
     await expect(
       repo.update(
@@ -106,15 +108,18 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('deleteById removes the slot', async () => {
+  it('deleteById removes the event time block', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
     const repo = new DrizzleEventTimeBlockRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
-    await repo.deleteById(churchId, EventTimeBlockId.from(graph.slot.id));
+    await repo.deleteById(
+      churchId,
+      EventTimeBlockId.from(graph.eventTimeBlock.id),
+    );
     await expect(
-      repo.getById(churchId, EventTimeBlockId.from(graph.slot.id)),
+      repo.getById(churchId, EventTimeBlockId.from(graph.eventTimeBlock.id)),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -164,7 +169,7 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
     const newEnd = new Date('2026-08-02T10:30:00.000Z');
     const updated = await repo.update(
       churchId,
-      EventTimeBlockId.from(graph.slot.id),
+      EventTimeBlockId.from(graph.eventTimeBlock.id),
       {
         startTime: newStart,
         endTime: newEnd,
@@ -173,23 +178,23 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
 
     expect(updated.startTime).toEqual(fromDate({ date: newStart }));
     expect(updated.endTime).toEqual(fromDate({ date: newEnd }));
-    expect(updated.label).toBe(graph.slot.label ?? undefined);
+    expect(updated.label).toBe(graph.eventTimeBlock.label ?? undefined);
   });
 
-  it('countActiveAssignments counts only pending/confirmed assignments for the role on the slot', async () => {
+  it('countActiveAssignments counts only pending/confirmed assignments for the role on the event time block', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
     const repo = new DrizzleEventTimeBlockRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
-    const eventTimeBlockId = EventTimeBlockId.from(graph.slot.id);
+    const eventTimeBlockId = EventTimeBlockId.from(graph.eventTimeBlock.id);
 
     const shiftRow = await buildShift({
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      start: fromDate({ date: graph.slot.startTime }),
-      end: fromDate({ date: graph.slot.endTime }),
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      start: fromDate({ date: graph.eventTimeBlock.startTime }),
+      end: fromDate({ date: graph.eventTimeBlock.endTime }),
     });
 
     const roleRow = await buildRole({

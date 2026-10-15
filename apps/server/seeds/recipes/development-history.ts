@@ -125,7 +125,7 @@ interface PlannedServer {
 
 interface PlannedEventTimeBlock {
   key: string;
-  /** How the history blueprint names this slot's gathering. */
+  /** How the history blueprint names this event time block's gathering. */
   gatheringKey: string;
   blockId?: string;
   label: string;
@@ -142,7 +142,7 @@ interface PlannedEvent {
   /** Which matching weekday of the month this day is, 1-based. */
   week: number;
   sourceTemplateId?: string;
-  slots: PlannedEventTimeBlock[];
+  eventTimeBlocks: PlannedEventTimeBlock[];
 }
 
 interface GatheringKeyInput {
@@ -192,7 +192,7 @@ function planEvents({
 
     for (const template of gatherings.templates) {
       if (template.weekday !== weekday) continue;
-      const slots = template.blocks.map((block) => {
+      const eventTimeBlocks = template.blocks.map((block) => {
         const seededBlock = seededGatherings.blocks.find(
           (candidate) => candidate.key === block.key,
         );
@@ -214,7 +214,7 @@ function planEvents({
           }),
         };
       });
-      const [firstEventTimeBlock] = slots;
+      const [firstEventTimeBlock] = eventTimeBlocks;
       if (!firstEventTimeBlock) continue;
       events.push({
         key: template.name,
@@ -225,7 +225,7 @@ function planEvents({
         sourceTemplateId: seededGatherings.blocks.find(
           (block) => block.templateName === template.name,
         )?.templateId,
-        slots,
+        eventTimeBlocks,
       });
     }
 
@@ -243,7 +243,7 @@ function planEvents({
         day,
         start,
         week,
-        slots: [
+        eventTimeBlocks: [
           {
             key: dynamicEvent.title,
             gatheringKey: dynamicEvent.title,
@@ -277,7 +277,7 @@ interface MaterializeEventInput {
 /**
  * One Event as the cycle's generation and its leaders left it: a EventTimeBlock
  * per block, one published MinistryParticipation per serving Ministry with a
- * whole-event-time-block Shift for each slot it serves, and that Shift's requirements.
+ * whole-event-time-block Shift for each event time block it serves, and that Shift's requirements.
  */
 async function materializeEvent({
   db,
@@ -287,8 +287,8 @@ async function materializeEvent({
   ministries,
   ministryOrder,
 }: MaterializeEventInput): Promise<PlannedShift[]> {
-  const [firstEventTimeBlock] = plannedEvent.slots;
-  const lastEventTimeBlock = plannedEvent.slots.at(-1);
+  const [firstEventTimeBlock] = plannedEvent.eventTimeBlocks;
+  const lastEventTimeBlock = plannedEvent.eventTimeBlocks.at(-1);
   if (!firstEventTimeBlock || !lastEventTimeBlock) return [];
 
   const eventId = deriveSeedId({
@@ -308,35 +308,37 @@ async function materializeEvent({
   });
 
   const eventTimeBlockIdByKey = new Map<string, string>();
-  for (const slot of plannedEvent.slots) {
+  for (const eventTimeBlock of plannedEvent.eventTimeBlocks) {
     const eventTimeBlockId = deriveSeedId({
       kind: 'event-time-block',
-      parentIds: [eventId, slot.key],
+      parentIds: [eventId, eventTimeBlock.key],
     });
     await buildEventTimeBlock({
       db,
       churchId,
       eventId,
       id: eventTimeBlockId,
-      start: slot.start,
-      end: slot.end,
-      label: slot.label,
-      sourceTemplateTimeBlockId: slot.blockId,
+      start: eventTimeBlock.start,
+      end: eventTimeBlock.end,
+      label: eventTimeBlock.label,
+      sourceTemplateTimeBlockId: eventTimeBlock.blockId,
     });
-    eventTimeBlockIdByKey.set(slot.key, eventTimeBlockId);
+    eventTimeBlockIdByKey.set(eventTimeBlock.key, eventTimeBlockId);
   }
 
   const shifts: PlannedShift[] = [];
   for (const ministryName of ministryOrder) {
-    const servedEventTimeBlocks = plannedEvent.slots.flatMap((slot) => {
-      const server = slot.servers.find(
-        (candidate) => candidate.ministryName === ministryName,
-      );
-      const eventTimeBlockId = eventTimeBlockIdByKey.get(slot.key);
-      return server && eventTimeBlockId
-        ? [{ slot, server, eventTimeBlockId }]
-        : [];
-    });
+    const servedEventTimeBlocks = plannedEvent.eventTimeBlocks.flatMap(
+      (eventTimeBlock) => {
+        const server = eventTimeBlock.servers.find(
+          (candidate) => candidate.ministryName === ministryName,
+        );
+        const eventTimeBlockId = eventTimeBlockIdByKey.get(eventTimeBlock.key);
+        return server && eventTimeBlockId
+          ? [{ eventTimeBlock, server, eventTimeBlockId }]
+          : [];
+      },
+    );
     if (servedEventTimeBlocks.length === 0) continue;
 
     const ministry = requireMinistry({ ministries, name: ministryName });
@@ -356,7 +358,11 @@ async function materializeEvent({
       ),
     });
 
-    for (const { slot, server, eventTimeBlockId } of servedEventTimeBlocks) {
+    for (const {
+      eventTimeBlock,
+      server,
+      eventTimeBlockId,
+    } of servedEventTimeBlocks) {
       const shiftId = deriveSeedId({
         kind: 'shift',
         parentIds: [participationId, eventTimeBlockId],
@@ -367,8 +373,8 @@ async function materializeEvent({
         participationId,
         eventTimeBlockId,
         id: shiftId,
-        start: slot.start,
-        end: slot.end,
+        start: eventTimeBlock.start,
+        end: eventTimeBlock.end,
       });
 
       const requirements: PlannedRequirement[] = [];
@@ -390,7 +396,7 @@ async function materializeEvent({
           roleId,
           teamId,
           id: requirementId,
-          peopleNeeded: need.count,
+          peopleNeeded: need.peopleNeeded,
           notes: need.notes,
         });
         requirements.push({
@@ -398,7 +404,7 @@ async function materializeEvent({
           roleName: need.role,
           teamName: need.team,
           roleId,
-          required: need.count,
+          required: need.peopleNeeded,
         });
       }
 
@@ -409,10 +415,10 @@ async function materializeEvent({
         ministryName,
         eventId,
         eventTitle: plannedEvent.title,
-        gatheringKey: slot.gatheringKey,
+        gatheringKey: eventTimeBlock.gatheringKey,
         day: plannedEvent.day,
-        start: slot.start,
-        end: slot.end,
+        start: eventTimeBlock.start,
+        end: eventTimeBlock.end,
         requirements,
       });
     }
@@ -531,7 +537,7 @@ interface StaffingLedgerInput {
  */
 class StaffingLedger {
   private readonly busy = new Map<string, TimeRange[]>();
-  /** Marks are per Shift, as the product's UNAVAILABLE check reads them. */
+  /** Unavailable shifts are per Shift, as the product's UNAVAILABLE check reads them. */
   private readonly unavailableShiftIds = new Map<string, Set<string>>();
   private readonly excludedByShift = new Map<string, Set<string>>();
   private readonly filled = new Map<string, number>();
@@ -839,7 +845,7 @@ interface AskAvailabilityRoundInput {
 
 /**
  * Availability was requested for every Ministry Membership and every check
- * answered; only the blueprint's people left unavailability marks.
+ * answered; only the blueprint's people left unavailable shifts.
  */
 async function askAvailabilityRound({
   db,

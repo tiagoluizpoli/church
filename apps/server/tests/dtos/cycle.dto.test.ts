@@ -82,7 +82,7 @@ describe('cycleMapper', () => {
     expect(response.cycles).toEqual([]);
   });
 
-  it('maps cycle details with an event that has multiple slots', () => {
+  it('maps cycle details with an event that has multiple event time blocks', () => {
     const cycle = createCycle();
     const event = createEvent();
     const eventTimeBlockOne = createEventTimeBlock();
@@ -99,7 +99,9 @@ describe('cycleMapper', () => {
 
     const response = cycleMapper.detailsToResponse({
       cycle,
-      events: [{ event, slots: [eventTimeBlockOne, eventTimeBlockTwo] }],
+      events: [
+        { event, eventTimeBlocks: [eventTimeBlockOne, eventTimeBlockTwo] },
+      ],
     });
 
     expect(response.cycle.id).toBe('22222222-2222-2222-2222-222222222222');
@@ -107,8 +109,12 @@ describe('cycleMapper', () => {
     expect(response.events[0]?.event.id).toBe(
       '33333333-3333-3333-3333-333333333333',
     );
-    expect(response.events[0]?.slots).toHaveLength(2);
-    expect(response.events[0]?.slots.map((slot) => slot.id)).toEqual([
+    expect(response.events[0]?.eventTimeBlocks).toHaveLength(2);
+    expect(
+      response.events[0]?.eventTimeBlocks.map(
+        (eventTimeBlock) => eventTimeBlock.id,
+      ),
+    ).toEqual([
       '44444444-4444-4444-4444-444444444444',
       '55555555-5555-5555-5555-555555555555',
     ]);
@@ -125,16 +131,16 @@ describe('cycleMapper', () => {
     expect(response.events).toEqual([]);
   });
 
-  it('maps cycle details with an event that has an empty slots array', () => {
+  it('maps cycle details with an event that has an empty event time blocks array', () => {
     const cycle = createCycle();
     const event = createEvent();
 
     const response = cycleMapper.detailsToResponse({
       cycle,
-      events: [{ event, slots: [] }],
+      events: [{ event, eventTimeBlocks: [] }],
     });
 
     expect(response.events).toHaveLength(1);
-    expect(response.events[0]?.slots).toEqual([]);
+    expect(response.events[0]?.eventTimeBlocks).toEqual([]);
   });
 });

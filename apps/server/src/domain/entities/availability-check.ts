@@ -63,7 +63,7 @@ export class AvailabilityCheck extends Entity<
     return this._props.confirmedAt;
   }
 
-  /** Confirm gate: valid even with zero unavailability marks (FR-019). */
+  /** Confirm gate: valid even with zero unavailable shifts (FR-019). */
   confirm(): void {
     if (this.state !== 'pending') {
       throw new IllegalStateTransitionError(this.state, 'confirmed');

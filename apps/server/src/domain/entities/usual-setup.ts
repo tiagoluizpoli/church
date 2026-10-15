@@ -32,7 +32,7 @@ export type UsualSetupShiftSplit = UsualSetupEqualSplit | UsualSetupManualSplit;
 export interface UsualSetupHeadcount {
   roleId: RoleId;
   teamId?: TeamId;
-  count: number;
+  peopleNeeded: number;
 }
 
 export interface UsualSetupEntryInput {
@@ -124,7 +124,10 @@ function assertValidHeadcounts({
   headcounts,
 }: AssertValidHeadcountsInput): void {
   for (const headcount of headcounts) {
-    if (!Number.isInteger(headcount.count) || headcount.count < 1) {
+    if (
+      !Number.isInteger(headcount.peopleNeeded) ||
+      headcount.peopleNeeded < 1
+    ) {
       throw new InvalidRequiredCountError();
     }
   }

@@ -18,7 +18,7 @@ import {
 } from './participation.dto';
 
 // Cycle builder read (R1) — composes existing atomic schemas; no new leaf shapes.
-// Nesting: cycle -> events -> slots -> shifts.
+// Nesting: cycle -> events -> event time blocks -> shifts.
 
 export const cycleBuilderShiftViewSchema = z.object({
   shift: shiftResponseSchema,
@@ -35,7 +35,7 @@ export type CycleBuilderShiftViewResponse = z.infer<
 >;
 
 export const cycleBuilderEventTimeBlockViewSchema = z.object({
-  slot: eventTimeBlockResponseSchema,
+  eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
   shifts: z.array(cycleBuilderShiftViewSchema),
 });
@@ -46,7 +46,7 @@ export type CycleBuilderEventTimeBlockViewResponse = z.infer<
 export const cycleBuilderEventViewSchema = z.object({
   participation: participationResponseSchema, // carries state (assign/published)
   event: eventResponseSchema,
-  slots: z.array(cycleBuilderEventTimeBlockViewSchema),
+  eventTimeBlocks: z.array(cycleBuilderEventTimeBlockViewSchema),
 });
 export type CycleBuilderEventViewResponse = z.infer<
   typeof cycleBuilderEventViewSchema
@@ -113,25 +113,30 @@ export const cycleBuilderMapper = {
       events: view.events.map((eventView) => ({
         participation: participationMapper.toResponse(eventView.participation),
         event: eventMapper.toResponse(eventView.event),
-        slots: eventView.slots.map((eventTimeBlockView) => ({
-          slot: eventTimeBlockMapper.toResponse(eventTimeBlockView.slot),
-          included: eventTimeBlockView.included,
-          shifts: eventTimeBlockView.shifts.map((shiftView) => ({
-            shift: participationMapper.shiftToResponse(shiftView.shift),
-            requirements: shiftView.requirements.map((requirement) => ({
-              ...participationMapper.requirementToResponse(
-                requirement.requirement,
+        eventTimeBlocks: eventView.eventTimeBlocks.map(
+          (eventTimeBlockView) => ({
+            eventTimeBlock: eventTimeBlockMapper.toResponse(
+              eventTimeBlockView.eventTimeBlock,
+            ),
+            included: eventTimeBlockView.included,
+            shifts: eventTimeBlockView.shifts.map((shiftView) => ({
+              shift: participationMapper.shiftToResponse(shiftView.shift),
+              requirements: shiftView.requirements.map((requirement) => ({
+                ...participationMapper.requirementToResponse(
+                  requirement.requirement,
+                ),
+                canMutateAssignments: requirement.canMutateAssignments,
+              })),
+              assignments: shiftView.assignments.map((assignment) =>
+                assignmentMapper.toResponse(assignment),
               ),
-              canMutateAssignments: requirement.canMutateAssignments,
+              eligibleVolunteers: shiftView.eligibleVolunteers.map(
+                (volunteer) =>
+                  assignMapper.eligibleVolunteerToResponse(volunteer),
+              ),
             })),
-            assignments: shiftView.assignments.map((assignment) =>
-              assignmentMapper.toResponse(assignment),
-            ),
-            eligibleVolunteers: shiftView.eligibleVolunteers.map((volunteer) =>
-              assignMapper.eligibleVolunteerToResponse(volunteer),
-            ),
-          })),
-        })),
+          }),
+        ),
       })),
       roles: view.roles.map((role) => ({
         id: role.id as string,

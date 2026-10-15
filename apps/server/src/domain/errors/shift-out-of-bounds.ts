@@ -4,6 +4,6 @@ export class ShiftOutOfBoundsError extends DomainError {
   readonly code = 'SHIFT_OUT_OF_BOUNDS' as const;
 
   constructor() {
-    super('Shift must be within its time slot bounds');
+    super('Shift must be within its event time block bounds');
   }
 }

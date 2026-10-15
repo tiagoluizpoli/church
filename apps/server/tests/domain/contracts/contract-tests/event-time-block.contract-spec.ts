@@ -18,7 +18,7 @@ export function runEventTimeBlockRepositoryContractTests(
       await cleanup();
     });
 
-    it('should retrieve a time slot by ID with nested requirements', async () => {
+    it('should retrieve an event time block by ID with nested requirements', async () => {
       const found = await repo.getById(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -31,7 +31,7 @@ export function runEventTimeBlockRepositoryContractTests(
       );
     });
 
-    it('should throw NotFoundError if time slot is not found by ID', async () => {
+    it('should throw NotFoundError if event time block is not found by ID', async () => {
       await expect(
         repo.getById(
           '11111111-1111-1111-1111-111111111111' as ChurchId,
@@ -40,7 +40,7 @@ export function runEventTimeBlockRepositoryContractTests(
       ).rejects.toThrow(NotFoundError);
     });
 
-    it('should list time slots by event with nested requirements', async () => {
+    it('should list event time blocks by event with nested requirements', async () => {
       const list = await repo.listByEvent(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '66666666-6666-6666-6666-666666666661' as EventId,
@@ -50,7 +50,7 @@ export function runEventTimeBlockRepositoryContractTests(
       expect(list[0]?.requirements.length).toBe(1);
     });
 
-    it('should delete time slots by event', async () => {
+    it('should delete event time blocks by event', async () => {
       await repo.deleteByEvent(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '66666666-6666-6666-6666-666666666661' as EventId,

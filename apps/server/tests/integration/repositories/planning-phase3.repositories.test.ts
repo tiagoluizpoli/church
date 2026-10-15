@@ -146,7 +146,7 @@ describe('Phase 3 planning repositories', () => {
     ).toHaveLength(0);
   });
 
-  it('creates events, seeds participations, maps nullable fields to undefined, and returns slots by cycle', async () => {
+  it('creates events, seeds participations, maps nullable fields to undefined, and returns event time blocks by cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -187,7 +187,9 @@ describe('Phase 3 planning repositories', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0]?.event.sourceTemplateId).toBeUndefined();
-    expect(events[0]?.slots[0]?.sourceTemplateTimeBlockId).toBeUndefined();
-    expect(events[0]?.slots[0]?.label).toBe('Opening');
+    expect(
+      events[0]?.eventTimeBlocks[0]?.sourceTemplateTimeBlockId,
+    ).toBeUndefined();
+    expect(events[0]?.eventTimeBlocks[0]?.label).toBe('Opening');
   });
 });

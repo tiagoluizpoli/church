@@ -140,11 +140,11 @@ export class DbAuthorityManager implements IAuthorityManager {
   async canManageEventTimeBlock(
     input: CanManageEventTimeBlockInput,
   ): Promise<boolean> {
-    const slot = await this.eventTimeBlockRepository.getById(
+    const eventTimeBlock = await this.eventTimeBlockRepository.getById(
       input.churchId,
       input.eventTimeBlockId,
     );
-    return this.canManageEvent({ ...input, eventId: slot.eventId });
+    return this.canManageEvent({ ...input, eventId: eventTimeBlock.eventId });
   }
 
   async resolveSchedulingCapability(

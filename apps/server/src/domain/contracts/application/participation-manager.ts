@@ -31,7 +31,7 @@ export interface GetCycleParticipationInput {
 }
 
 export interface ParticipationEventTimeBlockView {
-  slot: EventTimeBlock;
+  eventTimeBlock: EventTimeBlock;
   included: boolean;
   shifts: Shift[];
   requirements: ShiftRequirement[];
@@ -40,7 +40,7 @@ export interface ParticipationEventTimeBlockView {
 export interface ParticipationEventView {
   participation: MinistryParticipation;
   event: Event;
-  slots: ParticipationEventTimeBlockView[];
+  eventTimeBlocks: ParticipationEventTimeBlockView[];
 }
 
 export interface CycleParticipationView {
@@ -74,7 +74,7 @@ export interface CycleBuilderRequirementView {
 }
 
 export interface CycleBuilderEventTimeBlockView {
-  slot: EventTimeBlock;
+  eventTimeBlock: EventTimeBlock;
   included: boolean;
   shifts: CycleBuilderShiftView[];
 }
@@ -82,7 +82,7 @@ export interface CycleBuilderEventTimeBlockView {
 export interface CycleBuilderEventView {
   participation: MinistryParticipation;
   event: Event;
-  slots: CycleBuilderEventTimeBlockView[];
+  eventTimeBlocks: CycleBuilderEventTimeBlockView[];
 }
 
 export interface CycleBuilderRoleOption {
@@ -172,7 +172,7 @@ export interface EligibleVolunteerView {
    * Every role this volunteer is qualified for in the ministry — not only the
    * roles the current shift requires. The builder shows it as the member's
    * standing skill set, so narrowing it to the shift would make the same person
-   * read differently from one slot to the next.
+   * read differently from one event time block to the next.
    */
   qualifiedRoleIds: string[];
   /** This volunteer's ministry-wide Ministry Access Level. */

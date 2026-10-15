@@ -15,10 +15,10 @@ const shiftC = '33333333-3333-4333-8333-333333333333' as ShiftId;
 const TIME_ZONE = 'America/Sao_Paulo';
 
 describe('resolveShiftAvailability (DL1-AC-04, DL1-AV-01, DL1-AV-03)', () => {
-  it('DL1-AC-04 zero marks ⇒ every shift resolves available (available-by-default)', () => {
+  it('DL1-AC-04 zero unavailable shifts ⇒ every shift resolves available (available-by-default)', () => {
     const resolved = resolveShiftAvailability({
       shiftIds: [shiftA, shiftB, shiftC],
-      markedShiftIds: [],
+      unavailableShiftIds: [],
     });
 
     expect(resolved).toEqual([
@@ -28,10 +28,10 @@ describe('resolveShiftAvailability (DL1-AC-04, DL1-AV-01, DL1-AV-03)', () => {
     ]);
   });
 
-  it('DL1-AV-01 existence of a mark ⇒ unavailable for that shift only', () => {
+  it('DL1-AV-01 existence of an unavailable shift ⇒ unavailable for that shift only', () => {
     const resolved = resolveShiftAvailability({
       shiftIds: [shiftA, shiftB],
-      markedShiftIds: [shiftB],
+      unavailableShiftIds: [shiftB],
     });
 
     expect(resolved).toEqual([
@@ -40,14 +40,14 @@ describe('resolveShiftAvailability (DL1-AC-04, DL1-AV-01, DL1-AV-03)', () => {
     ]);
   });
 
-  it('DL1-AV-03 removing a mark restores default-available', () => {
+  it('DL1-AV-03 removing an unavailable shift restores default-available', () => {
     const before = resolveShiftAvailability({
       shiftIds: [shiftA],
-      markedShiftIds: [shiftA],
+      unavailableShiftIds: [shiftA],
     });
     const after = resolveShiftAvailability({
       shiftIds: [shiftA],
-      markedShiftIds: [],
+      unavailableShiftIds: [],
     });
 
     expect(before).toEqual([{ shiftId: shiftA, available: false }]);
@@ -56,7 +56,7 @@ describe('resolveShiftAvailability (DL1-AC-04, DL1-AV-01, DL1-AV-03)', () => {
 });
 
 describe('expandWholeDayShiftIds (DL1-AV-02)', () => {
-  it('DL1-AV-02 expands to one mark per shift on the church-local date', () => {
+  it('DL1-AV-02 expands to one unavailable shift per shift on the church-local date', () => {
     // 2026-08-02 23:30 UTC is already 2026-08-02 20:30 in São Paulo (UTC-3);
     // 2026-08-03 01:00 UTC is still 2026-08-02 22:00 locally.
     const shiftIds = expandWholeDayShiftIds({
@@ -102,7 +102,7 @@ describe('expandWholeDayShiftIds (DL1-AV-02)', () => {
 });
 
 describe('assertUnavailableShiftsWithinScope (DL1-AV-04)', () => {
-  it('DL1-AV-04 rejects a mark for a shift outside the check cycle/membership scope', () => {
+  it('DL1-AV-04 rejects an unavailable shift for a shift outside the check cycle/membership scope', () => {
     expect(() =>
       assertUnavailableShiftsWithinScope({
         candidateShiftIds: [shiftA, shiftB],
@@ -111,7 +111,7 @@ describe('assertUnavailableShiftsWithinScope (DL1-AV-04)', () => {
     ).toThrow(CrossMinistryScopeError);
   });
 
-  it('accepts marks fully inside the candidate scope', () => {
+  it('accepts unavailable shifts fully inside the candidate scope', () => {
     expect(() =>
       assertUnavailableShiftsWithinScope({
         candidateShiftIds: [shiftA, shiftB],

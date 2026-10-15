@@ -200,7 +200,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
         .returning();
 
       if (!updated) {
-        throw new Error('Slot requirement update failed');
+        throw new Error('Shift requirement update failed');
       }
 
       return mapShiftRequirement(updated);
@@ -220,7 +220,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
       .returning();
 
     if (!inserted) {
-      throw new Error('Slot requirement insert failed');
+      throw new Error('Shift requirement insert failed');
     }
 
     return mapShiftRequirement(inserted);

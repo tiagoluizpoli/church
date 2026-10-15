@@ -41,7 +41,7 @@ export const scheduleBuilderDataResponseSchema = z.object({
   events: z.array(
     z.object({
       event: eventResponseSchema,
-      slots: z.array(
+      eventTimeBlocks: z.array(
         z.object({
           id: z.string(),
           churchId: z.string(),
@@ -85,7 +85,7 @@ export const scheduleBuilderDataResponseSchema = z.object({
       assignedBy: z.string().optional(),
     }),
   ),
-  availability: z.array(
+  unavailableShifts: z.array(
     z.object({
       id: z.string(),
       volunteerId: z.string(),
@@ -133,9 +133,9 @@ export const eventMapper = {
   },
   scheduleBuilderToResponse(data: ScheduleBuilderData) {
     return {
-      events: data.events.map(({ event, slots }) => ({
+      events: data.events.map(({ event, eventTimeBlocks }) => ({
         event: eventToResponse(event),
-        slots: slots.map((s) => ({
+        eventTimeBlocks: eventTimeBlocks.map((s) => ({
           id: s.id as string,
           churchId: s.churchId as string,
           eventId: s.eventId as string,
@@ -166,13 +166,13 @@ export const eventMapper = {
         assignedAt: a.assignedAt,
         assignedBy: a.assignedBy as string | undefined,
       })),
-      availability: data.availability.map((av) => ({
-        id: av.id as string,
-        volunteerId: av.volunteerId as string,
-        // Marks are unavailability-only in the reshaped model (FR-018).
+      unavailableShifts: data.unavailableShifts.map((unavailableShift) => ({
+        id: unavailableShift.id as string,
+        volunteerId: unavailableShift.volunteerId as string,
+        // Unavailable shifts are unavailability-only in the reshaped model (FR-018).
         type: 'unavailable' as const,
-        startTime: av.shiftStartTime,
-        endTime: av.shiftEndTime,
+        startTime: unavailableShift.shiftStartTime,
+        endTime: unavailableShift.shiftEndTime,
         isAllDay: false,
       })),
       volunteers: data.volunteers,

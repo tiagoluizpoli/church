@@ -78,7 +78,7 @@ export interface PlanningEventRepository {
   getEvent(input: GetPlanningEventInput): Promise<Event>;
   /**
    * Hard-deletes an event row. The `event → eventTimeBlock → shift → assignment`
-   * (and `assignment → assignmentAudit`) foreign keys all cascade, so slots,
+   * (and `assignment → assignmentAudit`) foreign keys all cascade, so event time blocks,
    * shifts, draft assignments and their audits go with it. Only ever called
    * for `draft` events — those never reached `scheduled`, so no volunteer has
    * seen them (see BL-020 / issue #12).

@@ -32,7 +32,7 @@ export interface EventProps {
 
 export interface EventWithEventTimeBlocks {
   event: Event;
-  slots: EventTimeBlock[];
+  eventTimeBlocks: EventTimeBlock[];
 }
 
 export class Event extends Entity<EventProps, EventId> {

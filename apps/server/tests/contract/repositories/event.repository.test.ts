@@ -28,7 +28,7 @@ import { runEventRepositoryContractTests } from '@/tests/domain/contracts/contra
 
 class MockEventRepository implements EventRepository {
   private events = new Map<string, Event>();
-  private slots = new Map<string, EventTimeBlock[]>();
+  private eventTimeBlocks = new Map<string, EventTimeBlock[]>();
   private ministries = new Map<string, MinistryId>();
   private idCounter = 1;
 
@@ -78,7 +78,7 @@ class MockEventRepository implements EventRepository {
       '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
     );
 
-    const slot = new EventTimeBlock(
+    const eventTimeBlock = new EventTimeBlock(
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: e1.id,
@@ -90,7 +90,7 @@ class MockEventRepository implements EventRepository {
       '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
     );
 
-    this.slots.set(e1.id, [slot]);
+    this.eventTimeBlocks.set(e1.id, [eventTimeBlock]);
   }
 
   async getById(churchId: ChurchId, id: EventId): Promise<Event> {
@@ -106,8 +106,8 @@ class MockEventRepository implements EventRepository {
     id: EventId,
   ): Promise<EventWithEventTimeBlocks> {
     const event = await this.getById(churchId, id);
-    const slots = this.slots.get(id) ?? [];
-    return { event, slots };
+    const eventTimeBlocks = this.eventTimeBlocks.get(id) ?? [];
+    return { event, eventTimeBlocks };
   }
 
   async getMinistryId(churchId: ChurchId, id: EventId): Promise<MinistryId> {

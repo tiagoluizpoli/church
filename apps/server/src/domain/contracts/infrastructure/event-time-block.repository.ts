@@ -33,14 +33,14 @@ export interface EventTimeBlockRepository {
     tx?: TransactionContext,
   ): Promise<EventTimeBlock[]>;
 
-  /** Create a single slot. */
+  /** Create a single event time block. */
   create(
     churchId: ChurchId,
     input: CreateEventTimeBlockInput,
     tx?: TransactionContext,
   ): Promise<EventTimeBlock>;
 
-  /** Update slot time and/or label. */
+  /** Update event time block time and/or label. */
   update(
     churchId: ChurchId,
     id: EventTimeBlockId,
@@ -48,14 +48,14 @@ export interface EventTimeBlockRepository {
     tx?: TransactionContext,
   ): Promise<EventTimeBlock>;
 
-  /** Delete a single slot by id. */
+  /** Delete a single event time block by id. */
   deleteById(
     churchId: ChurchId,
     id: EventTimeBlockId,
     tx?: TransactionContext,
   ): Promise<void>;
 
-  /** Find slots in the same event whose time range overlaps the given range. */
+  /** Find event time blocks in the same event whose time range overlaps the given range. */
   findOverlapping(
     churchId: ChurchId,
     eventId: EventId,
@@ -71,7 +71,7 @@ export interface EventTimeBlockRepository {
     tx?: TransactionContext,
   ): Promise<void>;
 
-  /** Count active assignments for a given slot/role pair. */
+  /** Count active assignments for a given event time block/role pair. */
   countActiveAssignments(
     churchId: ChurchId,
     eventTimeBlockId: EventTimeBlockId,

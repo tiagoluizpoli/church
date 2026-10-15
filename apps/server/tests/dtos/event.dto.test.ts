@@ -11,7 +11,7 @@ import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
-import { Availability } from '@/domain/entities/unavailable-shift';
+import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 
 const fullEventProps = {
   churchId: 'church-1',
@@ -134,7 +134,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       'req-2',
     );
 
-    const slot = new EventTimeBlock(
+    const eventTimeBlock = new EventTimeBlock(
       {
         churchId: 'church-1',
         eventId: 'event-1',
@@ -171,7 +171,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       'assignment-2',
     );
 
-    const unavailableShift = new Availability({
+    const unavailableShift = new UnavailableShift({
       props: {
         churchId: 'church-1',
         availabilityCheckId: 'check-1',
@@ -184,9 +184,9 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     });
 
     const data: ScheduleBuilderData = {
-      events: [{ event, slots: [slot] }],
+      events: [{ event, eventTimeBlocks: [eventTimeBlock] }],
       assignments: [assignmentWithExtras, assignmentWithoutExtras],
-      availability: [unavailableShift],
+      unavailableShifts: [unavailableShift],
       volunteers: [
         {
           id: VolunteerId.from('volunteer-1'),
@@ -216,9 +216,9 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
 
     expect(response.events).toHaveLength(1);
     expect(response.events[0]?.event.id).toBe('event-1');
-    expect(response.events[0]?.slots).toHaveLength(1);
+    expect(response.events[0]?.eventTimeBlocks).toHaveLength(1);
 
-    const mappedEventTimeBlock = response.events[0]?.slots[0];
+    const mappedEventTimeBlock = response.events[0]?.eventTimeBlocks[0];
     expect(mappedEventTimeBlock).toMatchObject({
       id: 'event-time-block-1',
       churchId: 'church-1',
@@ -276,7 +276,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       },
     ]);
 
-    expect(response.availability).toEqual([
+    expect(response.unavailableShifts).toEqual([
       {
         id: 'availability-1',
         volunteerId: 'volunteer-1',
@@ -315,7 +315,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       isInstant({ value: response.assignments[0]?.assignedAt ?? '' }),
     ).toBe(true);
     expect(
-      isInstant({ value: response.availability[0]?.startTime ?? '' }),
+      isInstant({ value: response.unavailableShifts[0]?.startTime ?? '' }),
     ).toBe(true);
 
     expect(response.roles).toEqual([
@@ -330,7 +330,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     const data: ScheduleBuilderData = {
       events: [],
       assignments: [],
-      availability: [],
+      unavailableShifts: [],
       volunteers: [],
       roles: [],
       callerTeamIds: null,
@@ -341,16 +341,16 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     expect(response).toEqual({
       events: [],
       assignments: [],
-      availability: [],
+      unavailableShifts: [],
       volunteers: [],
       roles: [],
       callerTeamIds: null,
     });
   });
 
-  it('maps an event with slots that have no requirements', () => {
+  it('maps an event with event time blocks that have no requirements', () => {
     const event = new Event(minimalEventProps, 'event-2');
-    const slot = new EventTimeBlock(
+    const eventTimeBlock = new EventTimeBlock(
       {
         churchId: 'church-2',
         eventId: 'event-2',
@@ -361,9 +361,9 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     );
 
     const data: ScheduleBuilderData = {
-      events: [{ event, slots: [slot] }],
+      events: [{ event, eventTimeBlocks: [eventTimeBlock] }],
       assignments: [],
-      availability: [],
+      unavailableShifts: [],
       volunteers: [],
       roles: [],
       callerTeamIds: null,
@@ -371,7 +371,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
 
     const response = eventMapper.scheduleBuilderToResponse(data);
 
-    expect(response.events[0]?.slots[0]?.requirements).toEqual([]);
-    expect(response.events[0]?.slots[0]?.label).toBeUndefined();
+    expect(response.events[0]?.eventTimeBlocks[0]?.requirements).toEqual([]);
+    expect(response.events[0]?.eventTimeBlocks[0]?.label).toBeUndefined();
   });
 });

@@ -87,7 +87,8 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       .from(shift)
       .where(and(targetShiftCondition, withChurchIsolation(shift, churchId)))
       .limit(1);
-    if (!targetShift) throw new NotFoundError('Shift not found for slot');
+    if (!targetShift)
+      throw new NotFoundError('Shift not found for event time block');
 
     const [row] = await db
       .insert(assignment)

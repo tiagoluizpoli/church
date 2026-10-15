@@ -60,6 +60,6 @@ function mapHeadcount(
   return {
     roleId: stored.roleId as RoleId,
     teamId: stored.teamId ? (stored.teamId as TeamId) : undefined,
-    count: stored.count,
+    peopleNeeded: stored.peopleNeeded,
   };
 }

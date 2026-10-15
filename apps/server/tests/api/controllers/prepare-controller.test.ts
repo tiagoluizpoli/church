@@ -132,12 +132,12 @@ describe('Prepare participation routes', () => {
     expect(availabilityCheckManager.askAvailability).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/prepare/participations/:id/slots/:eventTimeBlockId/shifts returns 201', async () => {
+  it('POST /api/v1/prepare/participations/:id/event-time-blocks/:eventTimeBlockId/shifts returns 201', async () => {
     participationManager.splitShifts.mockResolvedValue([createShift()]);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
+      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/event-time-blocks/33333333-3333-3333-8333-333333333333/shifts',
       payload: {
         strategy: {
           kind: 'equal-n',
@@ -161,14 +161,14 @@ describe('Prepare participation routes', () => {
     });
   });
 
-  it('POST /api/v1/prepare/participations/:id/slots/:eventTimeBlockId/shifts returns 409 for out-of-bounds splits', async () => {
+  it('POST /api/v1/prepare/participations/:id/event-time-blocks/:eventTimeBlockId/shifts returns 409 for out-of-bounds splits', async () => {
     participationManager.splitShifts.mockRejectedValue(
       new ShiftOutOfBoundsError(),
     );
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
+      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/event-time-blocks/33333333-3333-3333-8333-333333333333/shifts',
       payload: {
         strategy: {
           kind: 'manual',
@@ -185,16 +185,16 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: 'SHIFT_OUT_OF_BOUNDS',
-      message: 'Shift must be within its time slot bounds',
+      message: 'Shift must be within its event time block bounds',
     });
   });
 
-  it('POST /api/v1/prepare/participations/:id/slots/:eventTimeBlockId/shifts returns 403 for another ministry scope', async () => {
+  it('POST /api/v1/prepare/participations/:id/event-time-blocks/:eventTimeBlockId/shifts returns 403 for another ministry scope', async () => {
     authorityGuard.canManageParticipation.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
+      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/event-time-blocks/33333333-3333-3333-8333-333333333333/shifts',
       payload: {
         strategy: {
           kind: 'equal-n',

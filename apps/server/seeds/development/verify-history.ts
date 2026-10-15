@@ -1,7 +1,6 @@
 import {
   assignment,
   assignmentAudit,
-  availability,
   availabilityCheck,
   cycle,
   event,
@@ -16,6 +15,7 @@ import {
   shiftRequirement,
   team,
   templateTimeBlock,
+  unavailableShift,
   user,
   usualSetup,
   volunteer,
@@ -92,7 +92,7 @@ interface NeedKeyInput {
 }
 
 function needKey({ ministryName, need }: NeedKeyInput): string {
-  return `${ministryName}|${need.role}|${need.team ?? ''}|${need.count}`;
+  return `${ministryName}|${need.role}|${need.team ?? ''}|${need.peopleNeeded}`;
 }
 
 /** One gathering occurrence the cycle must hold. */
@@ -100,7 +100,7 @@ interface ExpectedGathering {
   title: string;
   day: CalendarDay;
   week: number;
-  slots: ExpectedEventTimeBlock[];
+  eventTimeBlocks: ExpectedEventTimeBlock[];
 }
 
 interface ExpectedEventTimeBlock {
@@ -139,7 +139,7 @@ function expectedGatherings({
         title: template.name,
         day,
         week,
-        slots: template.blocks.map((block) => ({
+        eventTimeBlocks: template.blocks.map((block) => ({
           blockKey: block.key,
           startTime: block.startTime,
           servers: servingRules.flatMap((rule) => {
@@ -158,7 +158,7 @@ function expectedGatherings({
         title: dynamicEvent.title,
         day,
         week,
-        slots: [
+        eventTimeBlocks: [
           {
             startTime: dynamicEvent.startTime,
             servers: dynamicEvent.participations.map((participation) => ({
@@ -209,7 +209,7 @@ async function standingRuleProblems({
         db,
         query: sql`select m.name || '|' || to_char(b.start_time, 'HH24:MI') || '|' || t.weekday
             || '|' || p.serves || '|' || (p.shift_split ->> 'kind') || (p.shift_split ->> 'count')
-            || '|' || coalesce((select string_agg(r.name || '/' || coalesce(tm.name, '') || '/' || (h ->> 'count'), ',' order by r.name, tm.name)
+            || '|' || coalesce((select string_agg(r.name || '/' || coalesce(tm.name, '') || '/' || (h ->> 'peopleNeeded'), ',' order by r.name, tm.name)
               from jsonb_array_elements(p.headcounts) h
               join ${role} r on r.id = (h ->> 'roleId')::uuid
               left join ${team} tm on tm.id = (h ->> 'teamId')::uuid), '') as key
@@ -229,7 +229,10 @@ async function standingRuleProblems({
                   `${right.role}/${right.team ?? ''}`,
                 ),
               )
-              .map((need) => `${need.role}/${need.team ?? ''}/${need.count}`)
+              .map(
+                (need) =>
+                  `${need.role}/${need.team ?? ''}/${need.peopleNeeded}`,
+              )
               .join(',');
             return `${rule.ministry.name}|${block.startTime}|${template.weekday}|${needs !== null}|equal1|${headcounts}`;
           }),
@@ -277,7 +280,7 @@ async function cycleProblems({
       }),
       expected: gatherings.map(
         (gathering) =>
-          `${gathering.title}|${gathering.day} ${gathering.slots[0]?.startTime}|past|${gathering.slots[0]?.blockKey !== undefined}|true`,
+          `${gathering.title}|${gathering.day} ${gathering.eventTimeBlocks[0]?.startTime}|past|${gathering.eventTimeBlocks[0]?.blockKey !== undefined}|true`,
       ),
     }),
     ...difference({
@@ -297,19 +300,19 @@ async function cycleProblems({
       expected: gatherings.flatMap((gathering) => {
         const ministryNames = [
           ...new Set(
-            gathering.slots.flatMap((slot) =>
-              slot.servers.map((server) => server.ministryName),
+            gathering.eventTimeBlocks.flatMap((eventTimeBlock) =>
+              eventTimeBlock.servers.map((server) => server.ministryName),
             ),
           ),
         ];
         return ministryNames.map((ministryName) => {
-          const served = gathering.slots
-            .filter((slot) =>
-              slot.servers.some(
+          const served = gathering.eventTimeBlocks
+            .filter((eventTimeBlock) =>
+              eventTimeBlock.servers.some(
                 (server) => server.ministryName === ministryName,
               ),
             )
-            .map((slot) => slot.startTime)
+            .map((eventTimeBlock) => eventTimeBlock.startTime)
             .join(',');
           return `${gathering.title}|${gathering.day}|${ministryName}|published|${served}`;
         });
@@ -332,11 +335,11 @@ async function cycleProblems({
           left join ${team} t on t.id = sr.team_id`,
       }),
       expected: gatherings.flatMap((gathering) =>
-        gathering.slots.flatMap((slot) =>
-          slot.servers.flatMap((server) =>
+        gathering.eventTimeBlocks.flatMap((eventTimeBlock) =>
+          eventTimeBlock.servers.flatMap((server) =>
             server.needs.map(
               (need) =>
-                `${needKey({ ministryName: server.ministryName, need })}|${need.notes ?? ''}|${gathering.day} ${slot.startTime}|true`,
+                `${needKey({ ministryName: server.ministryName, need })}|${need.notes ?? ''}|${gathering.day} ${eventTimeBlock.startTime}|true`,
             ),
           ),
         ),
@@ -456,7 +459,7 @@ async function assignmentProblems({
     query: sql`select count(*) as value from ${assignment} a
       join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
       join ${availabilityCheck} c on c.ministry_membership_id = mv.id
-      join ${availability} u on u.availability_check_id = c.id
+      join ${unavailableShift} u on u.availability_check_id = c.id
       where a.status in ${active} and u.shift_id = a.shift_id`,
   });
   if (unavailableServing > 0) {
@@ -488,11 +491,11 @@ async function assignmentProblems({
       }),
       expected: memberships,
     },
-    'unavailability marks (the blueprint incidents plus one side of each cross-Ministry overlap)':
+    'unavailable shifts (the blueprint incidents plus one side of each cross-Ministry overlap)':
       {
         actual: await countOf({
           db,
-          query: sql`select count(*) as value from ${availability}`,
+          query: sql`select count(*) as value from ${unavailableShift}`,
         }),
         expected:
           history.unavailability.reduce(
@@ -525,7 +528,7 @@ async function assignmentProblems({
               join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
               join ${shift} s on s.participation_id = p.id
               where c.state = 'confirmed'
-                and not exists (select 1 from ${availability} u
+                and not exists (select 1 from ${unavailableShift} u
                   where u.availability_check_id = c.id and u.shift_id = s.id))
             select count(distinct a.volunteer_id) as value from unmarked a join unmarked b
               on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id

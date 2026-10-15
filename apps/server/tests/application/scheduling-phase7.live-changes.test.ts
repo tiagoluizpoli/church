@@ -61,7 +61,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('DL2-LC-01/03 lets a volunteer cancel their own published assignment, reopening the slot to the same state as unfilled and notifying the leader', async () => {
+  it('DL2-LC-01/03 lets a volunteer cancel their own published assignment, reopening the event time block to the same state as unfilled and notifying the leader', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -87,7 +87,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: new Date('2026-12-06T09:00:00.000Z'),
       endTime: new Date('2026-12-06T10:00:00.000Z'),
       label: 'Front doors',
@@ -195,7 +195,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: new Date('2027-01-10T09:00:00.000Z'),
       endTime: new Date('2027-01-10T10:00:00.000Z'),
       label: 'Front doors',
@@ -278,7 +278,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: new Date('2027-02-07T09:00:00.000Z'),
       endTime: new Date('2027-02-07T10:00:00.000Z'),
       label: 'Front doors',
@@ -384,7 +384,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
       startTime: new Date(now.getTime() + 24 * 60 * 60 * 1000),
       endTime: new Date(now.getTime() + 25 * 60 * 60 * 1000),
       label: 'Front doors',
@@ -483,7 +483,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     await resetSchedulingPhase3Db();
   });
 
-  it('createParticipationAssignment stores the whole-event-time-block shift with its slot and participation, and getAssignment/the cycle audit log reflect the created row', async () => {
+  it('createParticipationAssignment stores the whole-event-time-block shift with its event time block and participation, and getAssignment/the cycle audit log reflect the created row', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -496,7 +496,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       churchId: seed.churchAId,
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
-      title: 'Slot-based assignment service',
+      title: 'Block-based assignment service',
       start: new Date('2027-03-07T09:00:00.000Z'),
       end: new Date('2027-03-07T10:00:00.000Z'),
       status: 'scheduled',
@@ -504,15 +504,15 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     const roleRow = await seedRole({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
-      name: 'Slot role',
+      name: 'Event time block role',
     });
     const wholeEventTimeBlockShift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
-      label: 'Whole slot',
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: graph.eventTimeBlock.startTime,
+      endTime: graph.eventTimeBlock.endTime,
+      label: 'Whole event time block',
     });
     const target = await seedVolunteerMembership({
       churchId: seed.churchAId,
@@ -532,7 +532,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       });
 
     expect(created.shiftId).toBe(wholeEventTimeBlockShift.id);
-    expect(created.eventTimeBlockId).toBe(graph.slot.id);
+    expect(created.eventTimeBlockId).toBe(graph.eventTimeBlock.id);
     expect(created.participationId).toBe(graph.participation.id);
     expect(created.status).toBe('pending');
 
@@ -580,10 +580,10 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     const wholeEventTimeBlockShift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
-      label: 'Whole slot',
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: graph.eventTimeBlock.startTime,
+      endTime: graph.eventTimeBlock.endTime,
+      label: 'Whole event time block',
     });
     const target = await seedVolunteerMembership({
       churchId: seed.churchAId,
@@ -638,9 +638,9 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: graph.eventTimeBlock.startTime,
+      endTime: graph.eventTimeBlock.endTime,
       label: 'Delete shift',
     });
     const volunteerWithActor = await seedVolunteerMembership({
@@ -710,9 +710,9 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: graph.eventTimeBlock.startTime,
+      endTime: graph.eventTimeBlock.endTime,
       label: 'Override shift',
     });
     const target = await seedVolunteerMembership({
@@ -796,9 +796,9 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: graph.eventTimeBlock.startTime,
+      endTime: graph.eventTimeBlock.endTime,
       label: 'Members-only shift',
     });
 
@@ -852,9 +852,9 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: graph.eventTimeBlock.startTime,
+      endTime: graph.eventTimeBlock.endTime,
       label: 'Qualification shift',
     });
 

@@ -60,10 +60,10 @@ describe('DrizzleShiftRepository', () => {
       props: {
         churchId,
         participationId: MinistryParticipationId.from(graph.participation.id),
-        eventTimeBlockId: EventTimeBlockId.from(graph.slot.id),
-        startTime: fromDate({ date: graph.slot.startTime }),
-        endTime: fromDate({ date: graph.slot.endTime }),
-        label: 'Whole slot',
+        eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+        startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+        endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+        label: 'Whole event time block',
       },
     });
 
@@ -74,7 +74,7 @@ describe('DrizzleShiftRepository', () => {
 
     expect(created).toHaveLength(1);
     expect(created[0]?.id).toBe(shiftEntity.id);
-    expect(created[0]?.label).toBe('Whole slot');
+    expect(created[0]?.label).toBe('Whole event time block');
   });
 
   it('getById throws NotFoundError for an invalid uuid and for a missing/foreign-church shift', async () => {
@@ -106,9 +106,9 @@ describe('DrizzleShiftRepository', () => {
             participationId: MinistryParticipationId.from(
               graph.participation.id,
             ),
-            eventTimeBlockId: EventTimeBlockId.from(graph.slot.id),
-            startTime: fromDate({ date: graph.slot.startTime }),
-            endTime: fromDate({ date: graph.slot.endTime }),
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
           },
         }),
       ],
@@ -126,7 +126,7 @@ describe('DrizzleShiftRepository', () => {
     expect(found.id).toBe(created.id);
   });
 
-  it('listByParticipation orders by startTime and listByEventTimeBlock filters by slot', async () => {
+  it('listByParticipation orders by startTime and listByEventTimeBlock filters by event time block', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedParticipationGraph(
       seed.churchAId,
@@ -137,7 +137,7 @@ describe('DrizzleShiftRepository', () => {
     const participationId = MinistryParticipationId.from(
       graph.participation.id,
     );
-    const eventTimeBlockId = EventTimeBlockId.from(graph.slot.id);
+    const eventTimeBlockId = EventTimeBlockId.from(graph.eventTimeBlock.id);
 
     const later = new Shift({
       props: {
@@ -191,9 +191,9 @@ describe('DrizzleShiftRepository', () => {
             participationId: MinistryParticipationId.from(
               graph.participation.id,
             ),
-            eventTimeBlockId: EventTimeBlockId.from(graph.slot.id),
-            startTime: fromDate({ date: graph.slot.startTime }),
-            endTime: fromDate({ date: graph.slot.endTime }),
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
             label: 'Original',
           },
         }),
@@ -235,9 +235,9 @@ describe('DrizzleShiftRepository', () => {
             participationId: MinistryParticipationId.from(
               graph.participation.id,
             ),
-            eventTimeBlockId: EventTimeBlockId.from(graph.slot.id),
-            startTime: fromDate({ date: graph.slot.startTime }),
-            endTime: fromDate({ date: graph.slot.endTime }),
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
             label: 'Keep me',
           },
         }),
@@ -270,7 +270,7 @@ describe('DrizzleShiftRepository', () => {
     const participationId = MinistryParticipationId.from(
       graph.participation.id,
     );
-    const eventTimeBlockId = EventTimeBlockId.from(graph.slot.id);
+    const eventTimeBlockId = EventTimeBlockId.from(graph.eventTimeBlock.id);
 
     const [toDelete] = await repo.createMany({
       churchId,
@@ -280,8 +280,8 @@ describe('DrizzleShiftRepository', () => {
             churchId,
             participationId,
             eventTimeBlockId,
-            startTime: fromDate({ date: graph.slot.startTime }),
-            endTime: fromDate({ date: graph.slot.endTime }),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
           },
         }),
       ],
@@ -301,8 +301,8 @@ describe('DrizzleShiftRepository', () => {
             churchId,
             participationId,
             eventTimeBlockId,
-            startTime: fromDate({ date: graph.slot.startTime }),
-            endTime: fromDate({ date: graph.slot.endTime }),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
           },
         }),
       ],
@@ -339,9 +339,9 @@ describe('DrizzleShiftRepository', () => {
           props: {
             churchId,
             participationId,
-            eventTimeBlockId: EventTimeBlockId.from(graph.slot.id),
-            startTime: fromDate({ date: graph.slot.startTime }),
-            endTime: fromDate({ date: graph.slot.endTime }),
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
           },
         }),
       ],

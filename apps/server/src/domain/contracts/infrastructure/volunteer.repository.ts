@@ -26,7 +26,7 @@ export interface MinistryTeamMembership {
  * A volunteer's membership within a single ministry.
  *
  * Teams and qualified roles are independent axes: a member may belong to
- * several teams and be qualified for several roles, and eligibility for a slot
+ * several teams and be qualified for several roles, and eligibility for an event time block
  * composes the two ("qualified for the role AND — when the requirement names a
  * team — a member of that team"). `ministryAccessLevel` is ministry-wide;
  * TeamLeader-ness is per-team, carried in `teamMemberships`.

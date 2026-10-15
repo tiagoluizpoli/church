@@ -65,7 +65,7 @@ interface SeedScheduleResult {
 
 /**
  * Church B schedule for `dualMemberAB`: four assignments across four time
- * slots, spanning the commit instant to the second.
+ * event time blocks, spanning the commit instant to the second.
  */
 async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
   const churchId = fixture.churchB.id;
@@ -179,7 +179,7 @@ beforeEach(async () => {
 });
 
 describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
-  it('cancels assignments iff their time slot starts strictly after the commit — asserted to the second', async () => {
+  it('cancels assignments iff their event time block starts strictly after the commit — asserted to the second', async () => {
     const outcome = await runTransfer();
     expect(outcome.kind).toBe('transferred');
 
@@ -254,7 +254,7 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     });
   });
 
-  it('flips former Ministry Memberships inactive with left_at while keeping Role, Team and Availability rows', async () => {
+  it('flips former Ministry Memberships inactive with left_at while keeping Role, Team and UnavailableShift rows', async () => {
     const outcome = await runTransfer();
     if (outcome.kind !== 'transferred') throw new Error('unreachable');
     expect(outcome.result.endedMembershipCount).toBe(1);

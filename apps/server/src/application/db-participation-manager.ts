@@ -373,8 +373,9 @@ export class DbParticipationManager implements IParticipationManager {
         const visibleEventGroup = teamId
           ? {
               ...eventGroup,
-              slots: eventGroup.slots.filter((slot) =>
-                visibleEventTimeBlockIds.has(slot.id),
+              eventTimeBlocks: eventGroup.eventTimeBlocks.filter(
+                (eventTimeBlock) =>
+                  visibleEventTimeBlockIds.has(eventTimeBlock.id),
               ),
             }
           : eventGroup;
@@ -424,8 +425,8 @@ export class DbParticipationManager implements IParticipationManager {
 
       const visibleRoleIds = new Set(
         events.flatMap((event) =>
-          event.slots.flatMap((slot) =>
-            slot.shifts.flatMap((shift) =>
+          event.eventTimeBlocks.flatMap((eventTimeBlock) =>
+            eventTimeBlock.shifts.flatMap((shift) =>
               shift.requirements.map(
                 (requirement) => requirement.requirement.roleId,
               ),
@@ -486,7 +487,7 @@ export class DbParticipationManager implements IParticipationManager {
       }
 
       for (const eventTimeBlockId of input.eventTimeBlockIds) {
-        const slot = await this.resolveParticipationEventTimeBlock({
+        const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
           churchId: input.churchId,
           participation,
           eventTimeBlockId,
@@ -508,12 +509,12 @@ export class DbParticipationManager implements IParticipationManager {
                   churchId: input.churchId,
                   participationId: input.participationId,
                   eventTimeBlockId,
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
+                  startTime: eventTimeBlock.startTime,
+                  endTime: eventTimeBlock.endTime,
                 },
                 eventTimeBlockBounds: {
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
+                  startTime: eventTimeBlock.startTime,
+                  endTime: eventTimeBlock.endTime,
                 },
               }),
             ],
@@ -540,7 +541,7 @@ export class DbParticipationManager implements IParticipationManager {
       });
       ensurePrepare({ participation, action: 'split_shifts' });
 
-      const slot = await this.resolveParticipationEventTimeBlock({
+      const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
         churchId: input.churchId,
         participation,
         eventTimeBlockId: input.eventTimeBlockId,
@@ -551,9 +552,9 @@ export class DbParticipationManager implements IParticipationManager {
         churchId: input.churchId,
         participationId: input.participationId,
         eventTimeBlock: {
-          id: slot.id,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+          id: eventTimeBlock.id,
+          startTime: eventTimeBlock.startTime,
+          endTime: eventTimeBlock.endTime,
         },
         strategy: input.strategy,
       });
@@ -601,7 +602,7 @@ export class DbParticipationManager implements IParticipationManager {
       });
       ensurePrepare({ participation, action: 'update_shift' });
 
-      const slot = await this.eventTimeBlockRepository.getById(
+      const eventTimeBlock = await this.eventTimeBlockRepository.getById(
         input.churchId,
         shift.eventTimeBlockId,
         tx,
@@ -615,8 +616,8 @@ export class DbParticipationManager implements IParticipationManager {
           ? fromDate({ date: input.endTime })
           : shift.endTime,
         eventTimeBlockBounds: {
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+          startTime: eventTimeBlock.startTime,
+          endTime: eventTimeBlock.endTime,
         },
       });
 
@@ -760,7 +761,7 @@ export class DbParticipationManager implements IParticipationManager {
           tx,
         });
       const volunteerIds = qualifiedVolunteers.map((volunteer) => volunteer.id);
-      const [marks, assignments] = await Promise.all([
+      const [unavailableShifts, assignments] = await Promise.all([
         this.unavailableShiftRepository.listByVolunteers(
           input.churchId,
           volunteerIds,
@@ -798,8 +799,9 @@ export class DbParticipationManager implements IParticipationManager {
         ]),
       );
       const unavailableShiftKeys = new Set(
-        marks.map(
-          (mark) => `${mark.volunteerId as string}:${mark.shiftId as string}`,
+        unavailableShifts.map(
+          (unavailableShift) =>
+            `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
         ),
       );
 
@@ -1014,17 +1016,17 @@ export class DbParticipationManager implements IParticipationManager {
     eventTimeBlockId,
     tx,
   }: ResolveParticipationEventTimeBlockInput): Promise<EventTimeBlock> {
-    const slot = await this.eventTimeBlockRepository.getById(
+    const eventTimeBlock = await this.eventTimeBlockRepository.getById(
       churchId,
       eventTimeBlockId,
       tx,
     );
 
-    if (slot.eventId !== participation.eventId) {
+    if (eventTimeBlock.eventId !== participation.eventId) {
       throw new CrossMinistryScopeError();
     }
 
-    return slot;
+    return eventTimeBlock;
   }
 
   private async getCompletionInternal({
@@ -1174,7 +1176,7 @@ export class DbParticipationManager implements IParticipationManager {
       (shift) =>
         (requirementsByShift.get(shift.id as string) ?? []).length === 0,
     );
-    const ministryVolunteers = needsMinistryWide
+    const volunteersInMinistry = needsMinistryWide
       ? await this.volunteerRepository.listByMinistry(
           churchId,
           participation.ministryId,
@@ -1182,21 +1184,21 @@ export class DbParticipationManager implements IParticipationManager {
         )
       : [];
 
-    // Union of everyone who could appear so marks/assignments load once.
+    // Union of everyone who could appear so unavailable shifts/assignments load once.
     const volunteersById = new Map<string, QualifiedVolunteerRef>();
     for (const volunteers of volunteersByRole.values()) {
       for (const volunteer of volunteers) {
         volunteersById.set(volunteer.id as string, volunteer);
       }
     }
-    for (const volunteer of ministryVolunteers) {
+    for (const volunteer of volunteersInMinistry) {
       volunteersById.set(volunteer.id as string, volunteer);
     }
     const volunteerIds = [...volunteersById.values()].map(
       (volunteer) => volunteer.id,
     );
 
-    const [marks, assignments] = await Promise.all([
+    const [unavailableShifts, assignments] = await Promise.all([
       this.unavailableShiftRepository.listByVolunteers(
         churchId,
         volunteerIds,
@@ -1230,8 +1232,9 @@ export class DbParticipationManager implements IParticipationManager {
       ]),
     );
     const unavailableShiftKeys = new Set(
-      marks.map(
-        (mark) => `${mark.volunteerId as string}:${mark.shiftId as string}`,
+      unavailableShifts.map(
+        (unavailableShift) =>
+          `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
       ),
     );
 
@@ -1240,7 +1243,7 @@ export class DbParticipationManager implements IParticipationManager {
         requirementsByShift.get(shift.id as string) ?? [];
       const qualified: QualifiedVolunteerRef[] =
         shiftRequirements.length === 0
-          ? ministryVolunteers
+          ? volunteersInMinistry
           : dedupeVolunteersById(
               shiftRequirements.flatMap(
                 (requirement) =>
@@ -1336,10 +1339,10 @@ function buildBuilderEventView({
     assignmentsByShift.set(key, shiftAssignments);
   }
 
-  const slots: CycleBuilderEventTimeBlockView[] = eventGroup.slots.map(
-    (slot) => {
+  const eventTimeBlocks: CycleBuilderEventTimeBlockView[] =
+    eventGroup.eventTimeBlocks.map((eventTimeBlock) => {
       const eventTimeBlockShifts =
-        shiftsByEventTimeBlock.get(slot.id as string) ?? [];
+        shiftsByEventTimeBlock.get(eventTimeBlock.id as string) ?? [];
       const shiftViews: CycleBuilderShiftView[] = eventTimeBlockShifts.map(
         (shift) => ({
           shift,
@@ -1350,17 +1353,16 @@ function buildBuilderEventView({
       );
 
       return {
-        slot,
-        included: includedEventTimeBlockIds.has(slot.id as string),
+        eventTimeBlock,
+        included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
         shifts: shiftViews,
       };
-    },
-  );
+    });
 
   return {
     participation,
     event: eventGroup.event,
-    slots,
+    eventTimeBlocks,
   };
 }
 
@@ -1542,27 +1544,26 @@ function buildEventView({
     requirementsByShift.set(key, shiftRequirements);
   }
 
-  const slots: ParticipationEventTimeBlockView[] = eventGroup.slots.map(
-    (slot) => {
+  const eventTimeBlocks: ParticipationEventTimeBlockView[] =
+    eventGroup.eventTimeBlocks.map((eventTimeBlock) => {
       const eventTimeBlockShifts =
-        shiftsByEventTimeBlock.get(slot.id as string) ?? [];
+        shiftsByEventTimeBlock.get(eventTimeBlock.id as string) ?? [];
       const shiftRequirements = eventTimeBlockShifts.flatMap(
         (shift) => requirementsByShift.get(shift.id as string) ?? [],
       );
 
       return {
-        slot,
-        included: includedEventTimeBlockIds.has(slot.id as string),
+        eventTimeBlock,
+        included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
         shifts: eventTimeBlockShifts,
         requirements: shiftRequirements,
       };
-    },
-  );
+    });
 
   return {
     participation,
     event: eventGroup.event,
-    slots,
+    eventTimeBlocks,
   };
 }
 

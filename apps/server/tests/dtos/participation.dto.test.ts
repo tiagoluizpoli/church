@@ -49,7 +49,7 @@ function buildEventTimeBlock(): EventTimeBlock {
       eventId: 'event-1',
       startTime: parseInstant({ value: '2026-05-15T09:00:00Z' }),
       endTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
-      label: 'Slot A',
+      label: 'Event time block A',
     },
     'event-time-block-1',
   );
@@ -191,10 +191,10 @@ describe('participationMapper', () => {
   });
 
   describe('cycleViewToResponse', () => {
-    it('maps a full nested structure with populated slots, shifts, and requirements', () => {
+    it('maps a full nested structure with populated event time blocks, shifts, and requirements', () => {
       const participation = buildParticipation();
       const event = buildEvent();
-      const slot = buildEventTimeBlock();
+      const eventTimeBlock = buildEventTimeBlock();
       const shift = buildShift('Morning Shift');
       const requirement = new ShiftRequirement(
         {
@@ -209,14 +209,14 @@ describe('participationMapper', () => {
       );
 
       const populatedEventTimeBlockView: ParticipationEventTimeBlockView = {
-        slot,
+        eventTimeBlock,
         included: true,
         shifts: [shift],
         requirements: [requirement],
       };
 
       const emptyEventTimeBlockView: ParticipationEventTimeBlockView = {
-        slot: buildEventTimeBlock(),
+        eventTimeBlock: buildEventTimeBlock(),
         included: false,
         shifts: [],
         requirements: [],
@@ -225,7 +225,7 @@ describe('participationMapper', () => {
       const eventView: ParticipationEventView = {
         participation,
         event,
-        slots: [populatedEventTimeBlockView, emptyEventTimeBlockView],
+        eventTimeBlocks: [populatedEventTimeBlockView, emptyEventTimeBlockView],
       };
 
       const view: CycleParticipationView = {
@@ -242,12 +242,12 @@ describe('participationMapper', () => {
       expect(mappedEventView.participation).toEqual(
         participationMapper.toResponse(participation),
       );
-      expect(mappedEventView.slots).toHaveLength(2);
+      expect(mappedEventView.eventTimeBlocks).toHaveLength(2);
 
       const [populatedEventTimeBlock, emptyEventTimeBlock] =
-        mappedEventView.slots;
+        mappedEventView.eventTimeBlocks;
       if (!populatedEventTimeBlock || !emptyEventTimeBlock) {
-        throw new Error('expected mapped slots');
+        throw new Error('expected mapped event time blocks');
       }
       expect(populatedEventTimeBlock.included).toBe(true);
       expect(populatedEventTimeBlock.shifts).toHaveLength(1);

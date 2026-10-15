@@ -23,7 +23,7 @@ import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { Role } from '@/domain/entities/role';
-import { Availability } from '@/domain/entities/unavailable-shift';
+import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 
@@ -102,7 +102,7 @@ function createRepos(): Repos {
       async (_churchId, input) => new EventTimeBlock({ ...input, churchId }),
     ),
     update: vi.fn(async (_churchId, id, input) => {
-      const slot = new EventTimeBlock(
+      const eventTimeBlock = new EventTimeBlock(
         {
           churchId,
           eventId,
@@ -116,7 +116,7 @@ function createRepos(): Repos {
         },
         id,
       );
-      return slot;
+      return eventTimeBlock;
     }),
     deleteById: vi.fn(async () => undefined),
     findOverlapping: vi.fn(),
@@ -331,8 +331,8 @@ describe('DbEventManager', () => {
       );
       const roles = [new Role({ churchId, ministryId, name: 'Usher' }, roleId)];
       vi.mocked(repos.roleRepo.listByMinistry).mockResolvedValue(roles);
-      const availability = [
-        new Availability({
+      const unavailableShifts = [
+        new UnavailableShift({
           props: {
             churchId,
             availabilityCheckId: 'check-1' as never,
@@ -344,7 +344,7 @@ describe('DbEventManager', () => {
         }),
       ];
       vi.mocked(repos.unavailableShiftRepo.listByVolunteers).mockResolvedValue(
-        availability,
+        unavailableShifts,
       );
 
       const manager = createManager(repos);
@@ -389,7 +389,7 @@ describe('DbEventManager', () => {
       );
       expect(result.roles).toEqual([{ id: roleId, name: 'Usher' }]);
       expect(result.assignments).toEqual([]);
-      expect(result.availability).toBe(availability);
+      expect(result.unavailableShifts).toBe(unavailableShifts);
       expect(repos.unavailableShiftRepo.listByVolunteers).toHaveBeenCalledWith(
         churchId,
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
@@ -515,16 +515,16 @@ describe('DbEventManager', () => {
         volunteerId: leaderId,
       });
 
-      expect(result.availability).toEqual([]);
+      expect(result.unavailableShifts).toEqual([]);
       expect(
         repos.unavailableShiftRepo.listByVolunteers,
       ).not.toHaveBeenCalled();
     });
 
-    it('includes the event and its slots plus raw assignments in the result', async () => {
+    it('includes the event and its event time blocks plus raw assignments in the result', async () => {
       const repos = createRepos();
       const event = buildEvent();
-      const slots = [
+      const eventTimeBlocks = [
         new EventTimeBlock(
           {
             churchId,
@@ -547,7 +547,9 @@ describe('DbEventManager', () => {
         ),
       ];
       vi.mocked(repos.eventRepo.getById).mockResolvedValue(event);
-      vi.mocked(repos.eventTimeBlockRepo.listByEvent).mockResolvedValue(slots);
+      vi.mocked(repos.eventTimeBlockRepo.listByEvent).mockResolvedValue(
+        eventTimeBlocks,
+      );
       vi.mocked(repos.assignmentRepo.listByEvent).mockResolvedValue(
         assignments,
       );
@@ -565,7 +567,7 @@ describe('DbEventManager', () => {
         volunteerId: leaderId,
       });
 
-      expect(result.events).toEqual([{ event, slots }]);
+      expect(result.events).toEqual([{ event, eventTimeBlocks }]);
       expect(result.assignments).toBe(assignments);
     });
   });

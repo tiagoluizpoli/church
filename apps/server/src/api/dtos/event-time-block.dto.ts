@@ -67,8 +67,8 @@ function eventTimeBlockToResponse(s: EventTimeBlock): EventTimeBlockResponse {
 
 export const eventTimeBlockMapper = {
   toResponse: eventTimeBlockToResponse,
-  listToResponse(slots: EventTimeBlock[]) {
-    return { slots: slots.map(eventTimeBlockToResponse) };
+  listToResponse(eventTimeBlocks: EventTimeBlock[]) {
+    return { eventTimeBlocks: eventTimeBlocks.map(eventTimeBlockToResponse) };
   },
   requirementToResponse,
 };

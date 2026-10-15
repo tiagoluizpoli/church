@@ -36,7 +36,7 @@ const volunteerManager = {
   markAllNotificationsRead: vi.fn(),
   listAvailabilityChecks: vi.fn(),
   getAvailabilityCheck: vi.fn(),
-  setUnavailability: vi.fn(),
+  setUnavailableShifts: vi.fn(),
   confirmAvailabilityCheck: vi.fn(),
 };
 
@@ -151,8 +151,10 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
     expect(response.json().checks[0].id).toBe(CHECK_ID);
   });
 
-  it('PUT /api/v1/volunteer/availability-checks/:checkId/marks returns 200 for the owner', async () => {
-    volunteerManager.setUnavailability.mockResolvedValue(createCheckDetail());
+  it('PUT /api/v1/volunteer/availability-checks/:checkId/unavailable-shifts returns 200 for the owner', async () => {
+    volunteerManager.setUnavailableShifts.mockResolvedValue(
+      createCheckDetail(),
+    );
 
     const response = await app.inject({
       method: 'PUT',
@@ -162,7 +164,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().shifts[0].available).toBe(false);
-    expect(volunteerManager.setUnavailability).toHaveBeenCalledWith(
+    expect(volunteerManager.setUnavailableShifts).toHaveBeenCalledWith(
       expect.objectContaining({
         checkId: CHECK_ID,
         shiftIds: [SHIFT_ID],
@@ -170,8 +172,8 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
     );
   });
 
-  it("PUT marks on another volunteer's check returns 403", async () => {
-    volunteerManager.setUnavailability.mockRejectedValue(
+  it("PUT unavailable shifts on another volunteer's check returns 403", async () => {
+    volunteerManager.setUnavailableShifts.mockRejectedValue(
       new CheckAccessDeniedError(),
     );
 
@@ -184,8 +186,10 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
     expect(response.statusCode).toBe(403);
   });
 
-  it('PUT marks accepts whole-day dates', async () => {
-    volunteerManager.setUnavailability.mockResolvedValue(createCheckDetail());
+  it('PUT unavailable shifts accepts whole-day dates', async () => {
+    volunteerManager.setUnavailableShifts.mockResolvedValue(
+      createCheckDetail(),
+    );
 
     const response = await app.inject({
       method: 'PUT',
@@ -194,7 +198,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(volunteerManager.setUnavailability).toHaveBeenCalledWith(
+    expect(volunteerManager.setUnavailableShifts).toHaveBeenCalledWith(
       expect.objectContaining({ wholeDayDates: ['2026-08-02'] }),
     );
   });

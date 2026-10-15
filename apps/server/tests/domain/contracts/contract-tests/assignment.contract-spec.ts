@@ -59,7 +59,7 @@ export function runAssignmentRepositoryContractTests(
       ).rejects.toThrow(NotFoundError);
     });
 
-    it('should find assignment by slot and volunteer', async () => {
+    it('should find assignment by event time block and volunteer', async () => {
       const found = await repo.findByEventTimeBlockAndVolunteer(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -70,7 +70,7 @@ export function runAssignmentRepositoryContractTests(
       expect(found?.volunteerId).toBe('44444444-4444-4444-4444-444444444441');
     });
 
-    it('should list assignments by slot', async () => {
+    it('should list assignments by event time block', async () => {
       const list = await repo.listByEventTimeBlock(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -150,7 +150,7 @@ export function runAssignmentRepositoryContractTests(
       expect(count).toBeGreaterThanOrEqual(1);
     });
 
-    it('should list declined assignments by slot', async () => {
+    it('should list declined assignments by event time block', async () => {
       const list = await repo.listDeclinedByEventTimeBlock(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,

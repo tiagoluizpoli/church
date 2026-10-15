@@ -10,8 +10,8 @@ import type {
 import { InvalidTimeRangeError } from '../errors/invalid-time-range';
 
 /**
- * Unavailability mark: its existence means the volunteer is unavailable for
- * the shift. A volunteer with no marks is available by default (FR-018).
+ * Unavailable shift: its existence means the volunteer is unavailable for
+ * the shift. A volunteer with no unavailable shifts is available by default (FR-018).
  * `volunteerId` and the shift times are denormalized from the repository join
  * (the row itself stores only check + shift keys).
  */
@@ -31,7 +31,7 @@ export interface AvailabilityInput {
   updatedAt?: Date;
 }
 
-export class Availability extends Entity<
+export class UnavailableShift extends Entity<
   UnavailableShiftProps,
   UnavailableShiftId
 > {

@@ -162,7 +162,7 @@ export async function buildEventTimeBlock({
         sourceTemplateTimeBlockId,
       })
       .returning(),
-    description: `Time Slot ${id}`,
+    description: `Event Time Block ${id}`,
   });
 }
 
@@ -173,11 +173,11 @@ export interface BuildMinistryParticipationInput {
   eventId: string;
   id?: string;
   state: ParticipationState;
-  /** The Time Slots the Ministry takes part in. */
+  /** The Event Time Blocks the Ministry takes part in. */
   eventTimeBlockIds: string[];
 }
 
-/** A Ministry's Participation in an Event with its Time Slot inclusions. */
+/** A Ministry's Participation in an Event with its Event Time Block inclusions. */
 export async function buildMinistryParticipation({
   db,
   churchId,
@@ -287,7 +287,7 @@ export async function buildShiftRequirement({
         notes,
       })
       .returning(),
-    description: `Slot Requirement ${id}`,
+    description: `Shift Requirement ${id}`,
   });
 }
 
@@ -406,7 +406,7 @@ export interface BuiltAssignedShift {
 }
 
 /**
- * A Volunteer's Assignment on a Shift that covers its own Time Slot over
+ * A Volunteer's Assignment on a Shift that covers its own Event Time Block over
  * `start`..`end`: the smallest schedule a fixture needs to hold a booking.
  */
 export async function buildAssignedShift({
@@ -420,12 +420,18 @@ export async function buildAssignedShift({
   end,
   status,
 }: BuildAssignedShiftInput): Promise<BuiltAssignedShift> {
-  const slot = await buildEventTimeBlock({ db, churchId, eventId, start, end });
+  const eventTimeBlock = await buildEventTimeBlock({
+    db,
+    churchId,
+    eventId,
+    start,
+    end,
+  });
   const eventTimeBlockShift = await buildShift({
     db,
     churchId,
     participationId,
-    eventTimeBlockId: slot.id,
+    eventTimeBlockId: eventTimeBlock.id,
     start,
     end,
   });
@@ -440,7 +446,7 @@ export async function buildAssignedShift({
   });
 
   return {
-    eventTimeBlock: slot,
+    eventTimeBlock: eventTimeBlock,
     shift: eventTimeBlockShift,
     assignment: booked,
   };

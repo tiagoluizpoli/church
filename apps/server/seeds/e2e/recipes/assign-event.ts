@@ -13,8 +13,8 @@ import type { JourneySeedIdOf } from '../journey-keys';
 import { anchoredInstant } from './assign-church';
 
 /**
- * One Event a single Ministry schedules: a Time Slot, the Ministry's
- * Participation in it, one Shift over the whole slot, and that Shift's Role
+ * One Event a single Ministry schedules: an Event Time Block, the Ministry's
+ * Participation in it, one Shift over the whole event time block, and that Shift's Role
  * requirements. The shape every assign-board style journey starts from;
  * ids derive from `key`, so one recipe can build several.
  */

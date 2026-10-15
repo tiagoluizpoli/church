@@ -76,22 +76,22 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     });
     const roleId = RoleId.from(roleRow.id);
 
-    // No shift exists for this slot yet.
+    // No shift exists for this event time block yet.
     await expect(
       repo.create(churchId, {
-        eventTimeBlockId: EventTimeBlockId.from(graph.slot.id),
+        eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
         volunteerId: VolunteerId.from(seed.adminVolunteerId),
         roleId,
       }),
-    ).rejects.toThrow('Shift not found for slot');
+    ).rejects.toThrow('Shift not found for event time block');
 
     const shiftRow = await buildShift({
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      start: fromDate({ date: graph.slot.startTime }),
-      end: fromDate({ date: graph.slot.endTime }),
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      start: fromDate({ date: graph.eventTimeBlock.startTime }),
+      end: fromDate({ date: graph.eventTimeBlock.endTime }),
     });
 
     const createdViaShiftId = await repo.create(churchId, {
@@ -111,7 +111,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
 
     const found = await repo.findByEventTimeBlockAndVolunteer(
       churchId,
-      EventTimeBlockId.from(graph.slot.id),
+      EventTimeBlockId.from(graph.eventTimeBlock.id),
       VolunteerId.from(seed.adminVolunteerId),
     );
     expect(found).toBeNull();
@@ -143,9 +143,9 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      eventTimeBlockId: graph.slot.id,
-      start: fromDate({ date: graph.slot.startTime }),
-      end: fromDate({ date: graph.slot.endTime }),
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      start: fromDate({ date: graph.eventTimeBlock.startTime }),
+      end: fromDate({ date: graph.eventTimeBlock.endTime }),
     });
 
     const created = await repo.create(churchId, {

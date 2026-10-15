@@ -5,7 +5,7 @@ import type {
   ShiftId,
   VolunteerId,
 } from '../../branded-ids';
-import type { Availability } from '../../entities/unavailable-shift';
+import type { UnavailableShift } from '../../entities/unavailable-shift';
 import type { TransactionContext } from './transaction-context';
 
 export interface ListUnavailableShiftsByCheckInput {
@@ -21,27 +21,27 @@ export interface ReplaceUnavailableShiftsForCheckInput {
   tx?: TransactionContext;
 }
 
-/** Unavailability marks: existence of a row = volunteer unavailable for that shift. */
+/** Unavailable shifts: existence of a row = volunteer unavailable for that shift. */
 export interface UnavailableShiftRepository {
   listByVolunteerForEvent(
     churchId: ChurchId,
     volunteerId: VolunteerId,
     eventId: EventId,
     tx?: TransactionContext,
-  ): Promise<Availability[]>;
+  ): Promise<UnavailableShift[]>;
 
-  /** Bulk-fetch unavailability marks for a set of volunteers. */
+  /** Bulk-fetch unavailable shifts for a set of volunteers. */
   listByVolunteers(
     churchId: ChurchId,
     volunteerIds: VolunteerId[],
     tx?: TransactionContext,
-  ): Promise<Availability[]>;
+  ): Promise<UnavailableShift[]>;
 
   listUnavailableShiftsByCheck(
     input: ListUnavailableShiftsByCheckInput,
-  ): Promise<Availability[]>;
+  ): Promise<UnavailableShift[]>;
 
-  /** Replaces the check's full mark set (PUT semantics). */
+  /** Replaces the check's full set of unavailable shifts (PUT semantics). */
   replaceUnavailableShiftsForCheck(
     input: ReplaceUnavailableShiftsForCheckInput,
   ): Promise<void>;

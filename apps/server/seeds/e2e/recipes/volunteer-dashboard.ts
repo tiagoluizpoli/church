@@ -189,7 +189,7 @@ export function createVolunteerDashboardRecipe({
     });
 
     // The product removes an Assignment by deleting its row (reassignment
-    // and own-cancellation alike), so the removed one leaves an open slot and
+    // and own-cancellation alike), so the removed one leaves an open shift and
     // a notification whose payload still names the deleted id. The event is
     // past, which keeps it off the upcoming list and the availability tasks.
     const removedEvent = await buildAssignEvent({

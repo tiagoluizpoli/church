@@ -22,7 +22,7 @@ export interface ProfileSeederEntry {
 }
 
 export interface SeedParticipationPlanInput {
-  slot: ProfileSeederEventTimeBlock;
+  eventTimeBlock: ProfileSeederEventTimeBlock;
   profileEntries: ProfileSeederEntry[];
   /** Three-tier default: profile entry > ministry direction > global flag (R10). */
   ministryDefaultDirection?: DefaultDirection;
@@ -46,20 +46,21 @@ const EXCLUDED_PLAN: ParticipationSeedPlan = { include: false, shifts: [] };
 
 export class ProfileSeeder {
   plan({
-    slot,
+    eventTimeBlock,
     profileEntries,
     ministryDefaultDirection,
     globalDefaultAllIn,
     timeZone,
   }: SeedParticipationPlanInput): ParticipationSeedPlan {
     // Dynamic events (no template block) are never auto-seeded (DL1-PS-05).
-    if (!slot.sourceTemplateTimeBlockId) {
+    if (!eventTimeBlock.sourceTemplateTimeBlockId) {
       return EXCLUDED_PLAN;
     }
 
     const entry = profileEntries.find(
       (candidate) =>
-        candidate.sourceTemplateTimeBlockId === slot.sourceTemplateTimeBlockId,
+        candidate.sourceTemplateTimeBlockId ===
+        eventTimeBlock.sourceTemplateTimeBlockId,
     );
 
     if (entry) {
@@ -69,7 +70,7 @@ export class ProfileSeeder {
 
       return {
         include: true,
-        shifts: buildProfileShifts({ slot, entry, timeZone }),
+        shifts: buildProfileShifts({ eventTimeBlock, entry, timeZone }),
       };
     }
 
@@ -84,8 +85,8 @@ export class ProfileSeeder {
       include: true,
       shifts: [
         {
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+          startTime: eventTimeBlock.startTime,
+          endTime: eventTimeBlock.endTime,
           headcounts: [],
         },
       ],
@@ -94,20 +95,20 @@ export class ProfileSeeder {
 }
 
 interface BuildProfileShiftsInput {
-  slot: ProfileSeederEventTimeBlock;
+  eventTimeBlock: ProfileSeederEventTimeBlock;
   entry: ProfileSeederEntry;
   timeZone: string;
 }
 
 function buildProfileShifts({
-  slot,
+  eventTimeBlock,
   entry,
   timeZone,
 }: BuildProfileShiftsInput): SeededShiftPlan[] {
   if (entry.shiftSplit.kind === 'equal') {
     return computeEqualSpans({
-      startTime: slot.startTime,
-      endTime: slot.endTime,
+      startTime: eventTimeBlock.startTime,
+      endTime: eventTimeBlock.endTime,
       n: entry.shiftSplit.count,
     }).map((span) => ({
       startTime: span.startTime,
@@ -116,7 +117,10 @@ function buildProfileShifts({
     }));
   }
 
-  const eventTimeBlockDate = today({ instant: slot.startTime, timeZone });
+  const eventTimeBlockDate = today({
+    instant: eventTimeBlock.startTime,
+    timeZone,
+  });
 
   return entry.shiftSplit.spans.map((span) => ({
     startTime: toInstant({

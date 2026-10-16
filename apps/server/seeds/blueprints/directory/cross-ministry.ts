@@ -21,7 +21,7 @@ export const CROSS_MINISTRY = [
   }),
   joinMinistry({
     ministry: KIDS,
-    seat: { roles: ['Auxiliar'], teams: [{ team: 'Kids' }] },
+    seat: { roles: ['Auxiliar'] },
     emails: [
       'larissa.soares@igreja-semente.test', // Intercessão
       'mateus.batista@igreja-semente.test', // Intercessão
@@ -33,7 +33,7 @@ export const CROSS_MINISTRY = [
   }),
   joinMinistry({
     ministry: KIDS,
-    seat: { roles: ['Auxiliar'], teams: [{ team: 'Maternal' }] },
+    seat: { roles: ['Auxiliar'] },
     emails: [
       'patricia.gomes@igreja-semente.test', // Intercessão
       'ricardo.mendes@igreja-semente.test', // Intercessão

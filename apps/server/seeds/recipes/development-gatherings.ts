@@ -12,7 +12,7 @@ import type { SeedWriter } from '../recipe';
 export interface SeededMinistryStructure {
   ministryId: string;
   roleIdByName: Map<string, string>;
-  teamIdByName: Map<string, string>;
+  sectorIdByName: Map<string, string>;
 }
 
 export interface SeededTemplateTimeBlock {
@@ -29,7 +29,7 @@ export interface SeededGatherings {
 
 export interface StaffingNeedIds {
   roleId: string;
-  teamId?: string;
+  sectorId: string;
 }
 
 export interface ResolveStaffingNeedInput {
@@ -38,7 +38,7 @@ export interface ResolveStaffingNeedInput {
   need: StaffingNeed;
 }
 
-/** A blueprint need's Role and Team as ids; an unknown name fails the load. */
+/** A blueprint need's Role and Sector as ids; an unknown name fails the load. */
 export function resolveStaffingNeed({
   ministry,
   ministryName,
@@ -48,12 +48,11 @@ export function resolveStaffingNeed({
   if (!roleId) {
     throw new Error(`${ministryName} has no Role ${need.role}.`);
   }
-  if (need.team === undefined) return { roleId };
-  const teamId = ministry.teamIdByName.get(need.team);
-  if (!teamId) {
-    throw new Error(`${ministryName} has no Team ${need.team}.`);
+  const sectorId = ministry.sectorIdByName.get(need.sector);
+  if (!sectorId) {
+    throw new Error(`${ministryName} has no Sector ${need.sector}.`);
   }
-  return { roleId, teamId };
+  return { roleId, sectorId };
 }
 
 export interface RequireMinistryInput {

@@ -1,17 +1,16 @@
 import { defineMinistry } from './types';
 
-/** Kids serves children in two Teams. A served Kids block needs 1 Líder + 7 Auxiliares; a Maternal block 1 Líder + 3 Auxiliares. */
+/** Kids serves children in two Sectors. A served Kids block needs 1 Líder + 7 Auxiliares; a Maternal block 1 Líder + 3 Auxiliares. */
 export const KIDS = defineMinistry({
   name: 'Kids',
   roles: ['Líder', 'Auxiliar'],
-  teams: ['Kids', 'Maternal'],
+  sectors: ['Kids', 'Maternal'],
   schedule: [
     // Ministry leaders (2)
     {
       seat: {
         ministryLeader: true,
         roles: ['Líder', 'Auxiliar'],
-        teams: [{ team: 'Kids' }, { team: 'Maternal' }],
       },
       people: [
         { name: 'Natália Viana', email: 'natalia.viana@igreja-semente.test' },
@@ -21,11 +20,10 @@ export const KIDS = defineMinistry({
         },
       ],
     },
-    // Kids TeamLeaders (3)
+    // Kids Leaders (plain Volunteers) (3)
     {
       seat: {
         roles: ['Líder', 'Auxiliar'],
-        teams: [{ team: 'Kids', teamLeader: true }],
       },
       people: [
         {
@@ -44,7 +42,7 @@ export const KIDS = defineMinistry({
     },
     // Kids Líderes (5)
     {
-      seat: { roles: ['Líder', 'Auxiliar'], teams: [{ team: 'Kids' }] },
+      seat: { roles: ['Líder', 'Auxiliar'] },
       people: [
         {
           name: 'Thiago Nogueira',
@@ -61,7 +59,7 @@ export const KIDS = defineMinistry({
     },
     // Kids Auxiliares (80)
     {
-      seat: { roles: ['Auxiliar'], teams: [{ team: 'Kids' }] },
+      seat: { roles: ['Auxiliar'] },
       people: [
         {
           name: 'Beatriz Ferreira',
@@ -247,11 +245,10 @@ export const KIDS = defineMinistry({
         { name: 'Gustavo Campos', email: 'gustavo.campos@igreja-semente.test' },
       ],
     },
-    // Maternal TeamLeaders (2)
+    // Maternal Leaders (plain Volunteers) (2)
     {
       seat: {
         roles: ['Líder', 'Auxiliar'],
-        teams: [{ team: 'Maternal', teamLeader: true }],
       },
       people: [
         {
@@ -263,7 +260,7 @@ export const KIDS = defineMinistry({
     },
     // Maternal Líderes (3)
     {
-      seat: { roles: ['Líder', 'Auxiliar'], teams: [{ team: 'Maternal' }] },
+      seat: { roles: ['Líder', 'Auxiliar'] },
       people: [
         { name: 'Juliana Lima', email: 'juliana.lima@igreja-semente.test' },
         {
@@ -275,7 +272,7 @@ export const KIDS = defineMinistry({
     },
     // Maternal Auxiliares (45)
     {
-      seat: { roles: ['Auxiliar'], teams: [{ team: 'Maternal' }] },
+      seat: { roles: ['Auxiliar'] },
       people: [
         { name: 'Rafael Moura', email: 'rafael.moura@igreja-semente.test' },
         {

@@ -27,13 +27,13 @@ export interface EventTemplateBlueprint {
   blocks: readonly TemplateTimeBlockBlueprint[];
 }
 
-/** One staffed post per Shift: a Role, optionally within a Team. */
+/** One staffed post per Shift: a Role within a Sector. */
 export interface StaffingNeed<
   TRole extends string = string,
-  TTeam extends string = string,
+  TSector extends string = string,
 > {
   role: TRole;
-  team?: TTeam;
+  sector: TSector;
   peopleNeeded: number;
   /** Lands on the materialized ShiftRequirement; a profile has no notes. */
   notes?: string;
@@ -45,31 +45,31 @@ export interface StaffingNeed<
  */
 export interface MinistryServingRule<
   TRole extends string = string,
-  TTeam extends string = string,
+  TSector extends string = string,
 > {
-  ministry: MinistryBlueprint<TRole, TTeam>;
+  ministry: MinistryBlueprint<TRole, TSector>;
   blocks: Record<
     GatheringBlockKey,
-    readonly StaffingNeed<TRole, TTeam>[] | null
+    readonly StaffingNeed<TRole, TSector>[] | null
   >;
 }
 
-export function serveGatherings<TRole extends string, TTeam extends string>(
-  rule: MinistryServingRule<TRole, TTeam>,
+export function serveGatherings<TRole extends string, TSector extends string>(
+  rule: MinistryServingRule<TRole, TSector>,
 ): MinistryServingRule {
   return rule;
 }
 
 export interface DynamicParticipationBlueprint<
   TRole extends string = string,
-  TTeam extends string = string,
+  TSector extends string = string,
 > {
-  ministry: MinistryBlueprint<TRole, TTeam>;
-  needs: readonly StaffingNeed<TRole, TTeam>[];
+  ministry: MinistryBlueprint<TRole, TSector>;
+  needs: readonly StaffingNeed<TRole, TSector>[];
 }
 
-export function participate<TRole extends string, TTeam extends string>(
-  participation: DynamicParticipationBlueprint<TRole, TTeam>,
+export function participate<TRole extends string, TSector extends string>(
+  participation: DynamicParticipationBlueprint<TRole, TSector>,
 ): DynamicParticipationBlueprint {
   return participation;
 }
@@ -97,19 +97,16 @@ export interface GatheringsBlueprint {
 }
 
 const KIDS_BLOCK = [
-  { role: 'Líder', team: 'Kids', peopleNeeded: 1 },
-  { role: 'Auxiliar', team: 'Kids', peopleNeeded: 7 },
-  { role: 'Líder', team: 'Maternal', peopleNeeded: 1 },
-  { role: 'Auxiliar', team: 'Maternal', peopleNeeded: 3 },
+  { role: 'Líder', sector: 'Kids', peopleNeeded: 1 },
+  { role: 'Auxiliar', sector: 'Kids', peopleNeeded: 7 },
+  { role: 'Líder', sector: 'Maternal', peopleNeeded: 1 },
+  { role: 'Auxiliar', sector: 'Maternal', peopleNeeded: 3 },
 ] as const;
 
-/**
- * Until #319, Projeção's two placements (Templo and Kids) share one
- * requirement whose notes say where each operator goes. Sunday at 08:00 has
- * no Kids, so one operator.
- */
+/** Projeção runs one operator in the Templo and one in Kids; Sunday at 08:00 has no Kids. */
 const PROJECAO_TWO_PLACEMENTS = [
-  { role: 'Operador de Projeção', peopleNeeded: 2, notes: '1 Templo, 1 Kids' },
+  { role: 'Operador de Projeção', sector: 'Templo', peopleNeeded: 1 },
+  { role: 'Operador de Projeção', sector: 'Kids', peopleNeeded: 1 },
 ] as const;
 
 /** Igreja Semente's gatherings, in America/Sao_Paulo. */
@@ -156,7 +153,9 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
     serveGatherings({
       ministry: PROJECAO,
       blocks: {
-        'sunday-08:00': [{ role: 'Operador de Projeção', peopleNeeded: 1 }],
+        'sunday-08:00': [
+          { role: 'Operador de Projeção', sector: 'Templo', peopleNeeded: 1 },
+        ],
         'sunday-10:30': PROJECAO_TWO_PLACEMENTS,
         'sunday-18:30': PROJECAO_TWO_PLACEMENTS,
         'wednesday-20:00': PROJECAO_TWO_PLACEMENTS,
@@ -174,26 +173,50 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
     serveGatherings({
       ministry: INTERCESSAO,
       blocks: {
-        'sunday-08:00': [{ role: 'Intercessor', peopleNeeded: 8 }],
-        'sunday-10:30': [{ role: 'Intercessor', peopleNeeded: 8 }],
-        'sunday-18:30': [{ role: 'Intercessor', peopleNeeded: 8 }],
-        'wednesday-20:00': [{ role: 'Intercessor', peopleNeeded: 8 }],
+        'sunday-08:00': [
+          { role: 'Intercessor', sector: 'Sala de Oração', peopleNeeded: 8 },
+        ],
+        'sunday-10:30': [
+          { role: 'Intercessor', sector: 'Sala de Oração', peopleNeeded: 8 },
+        ],
+        'sunday-18:30': [
+          { role: 'Intercessor', sector: 'Sala de Oração', peopleNeeded: 8 },
+        ],
+        'wednesday-20:00': [
+          { role: 'Intercessor', sector: 'Sala de Oração', peopleNeeded: 8 },
+        ],
       },
     }),
     serveGatherings({
       ministry: ESTACIONAMENTO,
       blocks: {
         'sunday-08:00': [
-          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+          {
+            role: 'Orientador de Estacionamento',
+            sector: 'Pátio',
+            peopleNeeded: 4,
+          },
         ],
         'sunday-10:30': [
-          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+          {
+            role: 'Orientador de Estacionamento',
+            sector: 'Pátio',
+            peopleNeeded: 4,
+          },
         ],
         'sunday-18:30': [
-          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+          {
+            role: 'Orientador de Estacionamento',
+            sector: 'Pátio',
+            peopleNeeded: 4,
+          },
         ],
         'wednesday-20:00': [
-          { role: 'Orientador de Estacionamento', peopleNeeded: 4 },
+          {
+            role: 'Orientador de Estacionamento',
+            sector: 'Pátio',
+            peopleNeeded: 4,
+          },
         ],
       },
     }),
@@ -209,7 +232,9 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
       participations: [
         participate({
           ministry: PROJECAO,
-          needs: [{ role: 'Operador de Projeção', peopleNeeded: 1 }],
+          needs: [
+            { role: 'Operador de Projeção', sector: 'Templo', peopleNeeded: 1 },
+          ],
         }),
       ],
     },

@@ -1,6 +1,6 @@
 /**
  * The smallest complete Church graph: one provisioned Church, its redeemed
- * ChurchAdmin, and one Volunteer seated in a Ministry, a Team and a Role. Every
+ * ChurchAdmin, and one Volunteer seated in a Ministry, a Sector and a Role. Every
  * identity is fictional and every identifier fixed, so the graph is the same
  * each time it is loaded.
  */
@@ -15,7 +15,7 @@ export const MINIMAL_CHURCH_BLUEPRINT = {
   ministry: {
     id: '5eed0000-0000-4000-8000-000000000101',
     name: 'Kids',
-    team: { id: '5eed0000-0000-4000-8000-000000000201', name: 'Maternal' },
+    sector: { id: '5eed0000-0000-4000-8000-000000000201', name: 'Maternal' },
     role: { id: '5eed0000-0000-4000-8000-000000000301', name: 'Auxiliar' },
   },
   personas: {

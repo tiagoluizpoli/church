@@ -4,58 +4,54 @@ export interface Person {
   email: string;
 }
 
-export interface TeamSeat<TTeam extends string> {
-  team: TTeam;
-  /** TeamLeader: leadership scoped to this Team only. */
-  teamLeader?: true;
-}
-
 /** Where a person sits in one Ministry. */
-export interface MinistrySeat<TRole extends string, TTeam extends string> {
+export interface MinistrySeat<TRole extends string> {
   /** Ministry leader: authority over the whole Ministry. */
   ministryLeader?: true;
   /** Role qualifications — membership alone qualifies for nothing. */
   roles: readonly TRole[];
-  teams?: readonly TeamSeat<TTeam>[];
 }
 
 /** People who share one seat, declared once so a schedule reads as a list of names. */
-export interface ScheduleGroup<TRole extends string, TTeam extends string> {
-  seat: MinistrySeat<TRole, TTeam>;
+export interface ScheduleGroup<TRole extends string> {
+  seat: MinistrySeat<TRole>;
   people: readonly Person[];
 }
 
 export interface MinistryBlueprint<
   TRole extends string = string,
-  TTeam extends string = string,
+  TSector extends string = string,
 > {
   name: string;
   roles: readonly TRole[];
-  teams: readonly TTeam[];
+  /** Named spots or duties of the Ministry (ADR-0007); eligibility spans all of them. */
+  sectors: readonly TSector[];
   /** The people whose first Ministry this is; each person is declared once. */
-  schedule: readonly ScheduleGroup<TRole, TTeam>[];
+  schedule: readonly ScheduleGroup<TRole>[];
 }
 
-/** A Ministry's structure and schedule, type-checked against its own Roles and Teams. */
+/** A Ministry's structure and schedule, type-checked against its own Roles and Sectors. */
 export function defineMinistry<
   const TRole extends string,
-  const TTeam extends string = never,
->(ministry: MinistryBlueprint<TRole, TTeam>): MinistryBlueprint<TRole, TTeam> {
+  const TSector extends string = never,
+>(
+  ministry: MinistryBlueprint<TRole, TSector>,
+): MinistryBlueprint<TRole, TSector> {
   return ministry;
 }
 
 /** People declared in another schedule who also serve in `ministry`. */
 export interface CrossMinistryGroup<
   TRole extends string = string,
-  TTeam extends string = string,
+  TSector extends string = string,
 > {
-  ministry: MinistryBlueprint<TRole, TTeam>;
-  seat: MinistrySeat<TRole, TTeam>;
+  ministry: MinistryBlueprint<TRole, TSector>;
+  seat: MinistrySeat<TRole>;
   emails: readonly string[];
 }
 
-export function joinMinistry<TRole extends string, TTeam extends string>(
-  group: CrossMinistryGroup<TRole, TTeam>,
+export function joinMinistry<TRole extends string, TSector extends string>(
+  group: CrossMinistryGroup<TRole, TSector>,
 ): CrossMinistryGroup {
   return group;
 }

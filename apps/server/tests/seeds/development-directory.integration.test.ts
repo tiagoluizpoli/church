@@ -16,6 +16,7 @@ import {
   organization,
   participationEventTimeBlockInclusion,
   role,
+  sector,
   shift,
   shiftRequirement,
   team,
@@ -43,9 +44,9 @@ import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
 /** One per (published participation, Volunteer assigned when it was published). */
-const SCHEDULE_PUBLISHED = 362;
+const SCHEDULE_PUBLISHED = 346;
 /** rafael.moura and joao.pereira never opened theirs. */
-const UNREAD_PUBLISHED = 5;
+const UNREAD_PUBLISHED = 6;
 
 class RollbackSentinel extends Error {}
 
@@ -112,31 +113,6 @@ async function ministryLeaderCount({
         eq(ministry.name, ministryName),
         eq(ministryMembership.ministryAccessLevel, 'leader'),
         eq(ministryMembership.status, 'active'),
-      ),
-    );
-  return row?.value ?? 0;
-}
-
-interface TeamLeaderCountInput extends LeaderCountInput {
-  teamName: string;
-}
-
-async function teamLeaderCount({
-  churchId,
-  ministryName,
-  teamName,
-}: TeamLeaderCountInput): Promise<number> {
-  const [row] = await testDb
-    .select({ value: count() })
-    .from(ministryMembershipTeam)
-    .innerJoin(team, eq(team.id, ministryMembershipTeam.teamId))
-    .innerJoin(ministry, eq(ministry.id, team.ministryId))
-    .where(
-      and(
-        eq(ministry.churchId, churchId),
-        eq(ministry.name, ministryName),
-        eq(team.name, teamName),
-        eq(ministryMembershipTeam.accessLevel, 'leader'),
       ),
     );
   return row?.value ?? 0;
@@ -274,7 +250,7 @@ describe('development seed recipe', () => {
     ]);
   });
 
-  it("declares each primary Ministry's Roles and Teams", async () => {
+  it("declares each primary Ministry's Roles and Sectors", async () => {
     const roles = await testDb
       .select({ ministry: ministry.name, role: role.name })
       .from(role)
@@ -289,19 +265,29 @@ describe('development seed recipe', () => {
       { ministry: 'Projeção', role: 'Operador de Projeção' },
     ]);
 
-    const teams = await testDb
-      .select({ ministry: ministry.name, team: team.name })
-      .from(team)
-      .innerJoin(ministry, eq(ministry.id, team.ministryId))
-      .where(eq(team.churchId, seeded.church.id))
-      .orderBy(ministry.name, team.name);
-    expect(teams).toEqual([
-      { ministry: 'Kids', team: 'Kids' },
-      { ministry: 'Kids', team: 'Maternal' },
+    const sectors = await testDb
+      .select({ ministry: ministry.name, sector: sector.name })
+      .from(sector)
+      .innerJoin(ministry, eq(ministry.id, sector.ministryId))
+      .where(eq(sector.churchId, seeded.church.id))
+      .orderBy(ministry.name, sector.name);
+    expect(sectors).toEqual([
+      { ministry: 'Estacionamento', sector: 'Pátio' },
+      { ministry: 'Intercessão', sector: 'Sala de Oração' },
+      { ministry: 'Kids', sector: 'Kids' },
+      { ministry: 'Kids', sector: 'Maternal' },
+      { ministry: 'Projeção', sector: 'Kids' },
+      { ministry: 'Projeção', sector: 'Templo' },
     ]);
+
+    const [teamRows] = await testDb.select({ value: count() }).from(team);
+    const [teamMembershipRows] = await testDb
+      .select({ value: count() })
+      .from(ministryMembershipTeam);
+    expect([teamRows?.value, teamMembershipRows?.value]).toEqual([0, 0]);
   });
 
-  it('gives Kids two Ministry leaders, TeamLeaders for Kids and Maternal, and every other Ministry a leader', async () => {
+  it('gives Kids two Ministry leaders and every other Ministry a leader', async () => {
     const churchId = seeded.church.id;
     expect(await ministryLeaderCount({ churchId, ministryName: 'Kids' })).toBe(
       2,
@@ -309,14 +295,9 @@ describe('development seed recipe', () => {
     for (const ministryName of ['Projeção', 'Intercessão', 'Estacionamento']) {
       expect(await ministryLeaderCount({ churchId, ministryName })).toBe(1);
     }
-    for (const teamName of ['Kids', 'Maternal']) {
-      expect(
-        await teamLeaderCount({ churchId, ministryName: 'Kids', teamName }),
-      ).toBeGreaterThan(0);
-    }
   });
 
-  it("qualifies every Ministry Membership only for its own Ministry's Roles and Teams", async () => {
+  it("qualifies every Ministry Membership only for its own Ministry's Roles and Sectors", async () => {
     expect(
       await queryCount({
         query: sql`select count(*) as value from ${ministryMembership} mv
@@ -329,14 +310,6 @@ describe('development seed recipe', () => {
           join ${ministryMembership} mv on mv.id = q.ministry_membership_id
           join ${role} r on r.id = q.role_id
           where r.ministry_id <> mv.ministry_id`,
-      }),
-    ).toBe(0);
-    expect(
-      await queryCount({
-        query: sql`select count(*) as value from ${ministryMembershipTeam} tm
-          join ${ministryMembership} mv on mv.id = tm.ministry_membership_id
-          join ${team} t on t.id = tm.team_id
-          where t.ministry_id <> mv.ministry_id`,
       }),
     ).toBe(0);
 
@@ -523,7 +496,9 @@ describe('development seed recipe', () => {
     const names = new Map<string, string>();
     for (const row of [
       ...(await testDb.select({ id: role.id, name: role.name }).from(role)),
-      ...(await testDb.select({ id: team.id, name: team.name }).from(team)),
+      ...(await testDb
+        .select({ id: sector.id, name: sector.name })
+        .from(sector)),
     ]) {
       names.set(row.id, row.name);
     }
@@ -559,7 +534,7 @@ describe('development seed recipe', () => {
         [
           headcount.peopleNeeded,
           names.get(headcount.roleId),
-          headcount.teamId ? names.get(headcount.teamId) : undefined,
+          headcount.sectorId ? names.get(headcount.sectorId) : undefined,
         ]
           .filter((part) => part !== undefined)
           .join(' '),
@@ -585,11 +560,11 @@ describe('development seed recipe', () => {
     expect(readable).toEqual([
       ...everyBlock({
         ministryName: 'Estacionamento',
-        headcounts: ['4 Orientador de Estacionamento'],
+        headcounts: ['4 Orientador de Estacionamento Pátio'],
       }),
       ...everyBlock({
         ministryName: 'Intercessão',
-        headcounts: ['8 Intercessor'],
+        headcounts: ['8 Intercessor Sala de Oração'],
       }),
       {
         ministry: 'Kids',
@@ -604,11 +579,14 @@ describe('development seed recipe', () => {
         block: '0 08:00',
         serves: true,
         shiftSplit: oneShift,
-        headcounts: ['1 Operador de Projeção'],
+        headcounts: ['1 Operador de Projeção Templo'],
       },
       ...everyBlock({
         ministryName: 'Projeção',
-        headcounts: ['2 Operador de Projeção'],
+        headcounts: [
+          '1 Operador de Projeção Templo',
+          '1 Operador de Projeção Kids',
+        ],
       }).slice(1),
     ]);
   });
@@ -764,12 +742,12 @@ describe('development seed recipe', () => {
     expect(shifts).toEqual({ total: 61, wholeEventTimeBlock: 61 });
   });
 
-  it('requires each Ministry headcount per Shift, Projeção as one noted requirement of two', async () => {
+  it('requires each Ministry headcount per Shift, Kids and Projeção on their named Sectors', async () => {
     const requirements = await testDb
       .select({
         ministry: ministry.name,
         role: role.name,
-        team: team.name,
+        sector: sector.name,
         peopleNeeded: shiftRequirement.peopleNeeded,
         notes: shiftRequirement.notes,
         shifts: count(),
@@ -781,17 +759,17 @@ describe('development seed recipe', () => {
       )
       .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
       .innerJoin(role, eq(role.id, shiftRequirement.roleId))
-      .leftJoin(team, eq(team.id, shiftRequirement.teamId))
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .groupBy(
         ministry.name,
         role.name,
-        team.name,
+        sector.name,
         shiftRequirement.peopleNeeded,
         shiftRequirement.notes,
       )
       .orderBy(
         ministry.name,
-        team.name,
+        sector.name,
         role.name,
         shiftRequirement.peopleNeeded,
       );
@@ -800,7 +778,7 @@ describe('development seed recipe', () => {
       {
         ministry: 'Estacionamento',
         role: 'Orientador de Estacionamento',
-        team: null,
+        sector: 'Pátio',
         peopleNeeded: 4,
         notes: null,
         shifts: 16,
@@ -808,7 +786,7 @@ describe('development seed recipe', () => {
       {
         ministry: 'Intercessão',
         role: 'Intercessor',
-        team: null,
+        sector: 'Sala de Oração',
         peopleNeeded: 8,
         notes: null,
         shifts: 16,
@@ -816,7 +794,7 @@ describe('development seed recipe', () => {
       {
         ministry: 'Kids',
         role: 'Auxiliar',
-        team: 'Kids',
+        sector: 'Kids',
         peopleNeeded: 7,
         notes: null,
         shifts: 12,
@@ -824,7 +802,7 @@ describe('development seed recipe', () => {
       {
         ministry: 'Kids',
         role: 'Líder',
-        team: 'Kids',
+        sector: 'Kids',
         peopleNeeded: 1,
         notes: null,
         shifts: 12,
@@ -832,7 +810,7 @@ describe('development seed recipe', () => {
       {
         ministry: 'Kids',
         role: 'Auxiliar',
-        team: 'Maternal',
+        sector: 'Maternal',
         peopleNeeded: 3,
         notes: null,
         shifts: 12,
@@ -840,7 +818,7 @@ describe('development seed recipe', () => {
       {
         ministry: 'Kids',
         role: 'Líder',
-        team: 'Maternal',
+        sector: 'Maternal',
         peopleNeeded: 1,
         notes: null,
         shifts: 12,
@@ -848,18 +826,18 @@ describe('development seed recipe', () => {
       {
         ministry: 'Projeção',
         role: 'Operador de Projeção',
-        team: null,
+        sector: 'Kids',
         peopleNeeded: 1,
         notes: null,
-        shifts: 5,
+        shifts: 12,
       },
       {
         ministry: 'Projeção',
         role: 'Operador de Projeção',
-        team: null,
-        peopleNeeded: 2,
-        notes: '1 Templo, 1 Kids',
-        shifts: 12,
+        sector: 'Templo',
+        peopleNeeded: 1,
+        notes: null,
+        shifts: 17,
       },
     ]);
   });
@@ -882,7 +860,7 @@ describe('development seed recipe', () => {
       { status: 'declined', value: 1 },
     ]);
 
-    // Assignments name a Role, not a Team (#319), so staffing is counted per
+    // Assignments name a Role, not a Sector (Spec 05b), so staffing is counted per
     // Shift and Role across that Role's requirements.
     const result = await testDb.execute<StaffingRow>(sql`
       select m.name as ministry, r.name as role,
@@ -1309,11 +1287,11 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'a Team membership leaks into the other Church',
+      label: 'a Sector leaks into the other Church',
       problem: 'Church',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${ministryMembershipTeam} set church_id = ${seeded.secondChurch.id}
-          where id = (select id from ${ministryMembershipTeam} where church_id = ${seeded.church.id} order by id limit 1)`);
+        await tx.execute(sql`update ${sector} set church_id = ${seeded.secondChurch.id}
+          where id = (select id from ${sector} where church_id = ${seeded.church.id} order by id limit 1)`);
       },
     },
     {
@@ -1366,11 +1344,14 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'Projeção loses its placement notes',
+      label: 'Projeção loses a requirement on its Kids Sector',
       problem: 'ShiftRequirement',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${shiftRequirement} set notes = null
-          where id = (select id from ${shiftRequirement} where notes is not null order by id limit 1)`);
+        await tx.execute(sql`delete from ${shiftRequirement}
+          where id = (select sr.id from ${shiftRequirement} sr
+            join ${sector} sc on sc.id = sr.sector_id
+            join ${ministry} m on m.id = sc.ministry_id
+            where m.name = 'Projeção' and sc.name = 'Kids' order by sr.id limit 1)`);
       },
     },
     {

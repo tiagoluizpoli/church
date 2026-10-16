@@ -117,7 +117,7 @@ describe('participationMapper', () => {
   });
 
   describe('requirementToResponse', () => {
-    it('maps a requirement with shiftId, participationId, teamId, and notes present', () => {
+    it('maps a requirement with shiftId, participationId, sectorId, and notes present', () => {
       const requirement = new ShiftRequirement(
         {
           churchId: 'church-1',
@@ -125,7 +125,7 @@ describe('participationMapper', () => {
           shiftId: 'shift-1',
           participationId: 'participation-1',
           roleId: 'role-1',
-          teamId: 'team-1',
+          sectorId: 'sector-1',
           peopleNeeded: 2,
           notes: 'arrive early',
         },
@@ -137,18 +137,19 @@ describe('participationMapper', () => {
         shiftId: 'shift-1',
         participationId: 'participation-1',
         roleId: 'role-1',
-        teamId: 'team-1',
+        sectorId: 'sector-1',
         peopleNeeded: 2,
         notes: 'arrive early',
       });
     });
 
-    it('maps a requirement with shiftId, participationId, teamId, and notes absent', () => {
+    it('maps a requirement with shiftId, participationId, sectorId, and notes absent', () => {
       const requirement = new ShiftRequirement(
         {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
+          sectorId: 'sector-1',
           peopleNeeded: 1,
         },
         'req-2',
@@ -159,7 +160,7 @@ describe('participationMapper', () => {
         shiftId: '',
         participationId: '',
         roleId: 'role-1',
-        teamId: undefined,
+        sectorId: 'sector-1',
         peopleNeeded: 1,
         notes: undefined,
       });
@@ -203,6 +204,7 @@ describe('participationMapper', () => {
           shiftId: 'shift-1',
           participationId: 'participation-1',
           roleId: 'role-1',
+          sectorId: 'sector-1',
           peopleNeeded: 1,
         },
         'req-1',
@@ -257,7 +259,7 @@ describe('participationMapper', () => {
         shiftId: 'shift-1',
         participationId: 'participation-1',
         roleId: 'role-1',
-        teamId: undefined,
+        sectorId: 'sector-1',
         peopleNeeded: 1,
         notes: undefined,
       });

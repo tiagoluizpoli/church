@@ -75,6 +75,7 @@ describe('DrizzleUsualSetupRepository', () => {
           headcounts: [
             {
               roleId: '55555555-5555-5555-5555-555555555551' as never,
+              sectorId: '66666666-6666-6666-6666-666666666661' as never,
               peopleNeeded: 1,
             },
             {
@@ -91,7 +92,11 @@ describe('DrizzleUsualSetupRepository', () => {
     expect(created[0]?.serves).toBe(true);
     expect(created[0]?.shiftSplit).toEqual({ kind: 'equal', count: 2 });
     expect(created[0]?.headcounts).toEqual([
-      { roleId: '55555555-5555-5555-5555-555555555551', peopleNeeded: 1 },
+      {
+        roleId: '55555555-5555-5555-5555-555555555551',
+        sectorId: '66666666-6666-6666-6666-666666666661',
+        peopleNeeded: 1,
+      },
       {
         roleId: '55555555-5555-5555-5555-555555555552',
         sectorId: '66666666-6666-6666-6666-666666666661',

@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { sector, shift, shiftRequirement } from '@church/db';
 import { toDate } from '@church/time';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type {
   CreateShiftsInput,
   DeleteShiftInput,
@@ -173,15 +173,6 @@ export class DrizzleShiftRepository implements ShiftRepository {
     input: UpsertShiftRequirementInput,
   ): Promise<ShiftRequirement> {
     const db = getClient(this.db, input.tx);
-    // shortcut: a Sector-less write still matches on Team, for seeds not yet on Sectors; #498 drops it.
-    const sectorCondition = input.sectorId
-      ? eq(shiftRequirement.sectorId, input.sectorId)
-      : and(
-          isNull(shiftRequirement.sectorId),
-          input.teamId
-            ? eq(shiftRequirement.teamId, input.teamId)
-            : isNull(shiftRequirement.teamId),
-        );
     const [existing] = await db
       .select()
       .from(shiftRequirement)
@@ -189,7 +180,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
         and(
           eq(shiftRequirement.shiftId, input.shiftId),
           eq(shiftRequirement.roleId, input.roleId),
-          sectorCondition,
+          eq(shiftRequirement.sectorId, input.sectorId),
           withChurchIsolation(shiftRequirement, input.churchId),
         ),
       )
@@ -211,8 +202,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
             participationId: input.participationId,
             shiftId: input.shiftId,
             roleId: input.roleId,
-            teamId: input.teamId ?? null,
-            sectorId: input.sectorId ?? null,
+            sectorId: input.sectorId,
             peopleNeeded: input.peopleNeeded,
             notes: input.notes ?? null,
           })
@@ -222,12 +212,10 @@ export class DrizzleShiftRepository implements ShiftRepository {
       throw new Error('Shift requirement upsert failed');
     }
 
-    const [named] = row.sectorId
-      ? await db
-          .select({ name: sector.name })
-          .from(sector)
-          .where(eq(sector.id, row.sectorId))
-      : [];
+    const [named] = await db
+      .select({ name: sector.name })
+      .from(sector)
+      .where(eq(sector.id, row.sectorId));
 
     return mapShiftRequirement({ row, sectorName: named?.name });
   }

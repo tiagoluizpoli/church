@@ -5,7 +5,6 @@ import type {
   MinistryId,
   RoleId,
   SectorId,
-  TeamId,
   TemplateTimeBlockId,
   UsualSetupId,
 } from '../branded-ids';
@@ -32,10 +31,8 @@ export interface UsualSetupManualSplit {
 export type UsualSetupShiftSplit = UsualSetupEqualSplit | UsualSetupManualSplit;
 
 export interface UsualSetupHeadcount {
-  /** Optional only during the Sector expand step (#494); #498 requires it. */
-  sectorId?: SectorId;
+  sectorId: SectorId;
   roleId: RoleId;
-  teamId?: TeamId;
   peopleNeeded: number;
 }
 
@@ -129,14 +126,11 @@ function assertValidHeadcounts({
 }: AssertValidHeadcountsInput): void {
   const places = new Set<string>();
   for (const headcount of headcounts) {
-    // Sector-less items (seeds not yet on Sectors, #498) are not keyed.
-    if (headcount.sectorId) {
-      const place = `${headcount.sectorId}:${headcount.roleId}`;
-      if (places.has(place)) {
-        throw new DuplicateHeadcountError();
-      }
-      places.add(place);
+    const place = `${headcount.sectorId}:${headcount.roleId}`;
+    if (places.has(place)) {
+      throw new DuplicateHeadcountError();
     }
+    places.add(place);
 
     if (
       !Number.isInteger(headcount.peopleNeeded) ||

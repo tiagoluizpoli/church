@@ -220,7 +220,7 @@ export type GetCycle200EventsItemEventTimeBlocksItemRequirementsItem = {
   id: string;
   eventTimeBlockId: string;
   roleId: string;
-  teamId?: string;
+  sectorId: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -484,7 +484,7 @@ export type CreatePlanningEventTimeBlock201RequirementsItem = {
   id: string;
   eventTimeBlockId: string;
   roleId: string;
-  teamId?: string;
+  sectorId: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -522,7 +522,7 @@ export type UpdatePlanningEventTimeBlock200RequirementsItem = {
   id: string;
   eventTimeBlockId: string;
   roleId: string;
-  teamId?: string;
+  sectorId: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -739,7 +739,7 @@ export type GetScheduleBuilderData200EventsItemEventTimeBlocksItemRequirementsIt
   id: string;
   eventTimeBlockId: string;
   roleId: string;
-  teamId?: string;
+  sectorId: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -1085,7 +1085,7 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockR
   id: string;
   eventTimeBlockId: string;
   roleId: string;
-  teamId?: string;
+  sectorId: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -1119,8 +1119,7 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsIte
   shiftId: string;
   participationId: string;
   roleId: string;
-  teamId?: string;
-  sectorId?: string;
+  sectorId: string;
   sectorName?: string;
   peopleNeeded: number;
   notes?: string;
@@ -1258,8 +1257,7 @@ export type UpsertShiftRequirement200 = {
   shiftId: string;
   participationId: string;
   roleId: string;
-  teamId?: string;
-  sectorId?: string;
+  sectorId: string;
   sectorName?: string;
   peopleNeeded: number;
   notes?: string;
@@ -1382,7 +1380,7 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlockReq
   id: string;
   eventTimeBlockId: string;
   roleId: string;
-  teamId?: string;
+  sectorId: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -1416,8 +1414,7 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemRequire
   shiftId: string;
   participationId: string;
   roleId: string;
-  teamId?: string;
-  sectorId?: string;
+  sectorId: string;
   sectorName?: string;
   peopleNeeded: number;
   notes?: string;

@@ -5,7 +5,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
-import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
+import {
+  buildMinistry,
+  buildRole,
+  buildSector,
+} from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildAssignmentAudit,
@@ -70,6 +74,7 @@ export async function seed(): Promise<void> {
   const carolId = '22222222-2222-2222-2222-222222222223';
   const adultMinistryId = '33333333-3333-3333-3333-333333333331';
   const usherRoleId = '55555555-5555-5555-5555-555555555551';
+  const adultSectorId = '55555555-5555-5555-5555-5555555555a1';
   const volunteerOneId = '44444444-4444-4444-4444-444444444441';
   const volunteerTwoId = '44444444-4444-4444-4444-444444444442';
   const youthGatheringId = '66666666-6666-6666-6666-666666666661';
@@ -166,6 +171,13 @@ export async function seed(): Promise<void> {
     ministryId: adultMinistryId,
     id: '55555555-5555-5555-5555-555555555552',
     name: 'Greeter',
+  });
+  await buildSector({
+    db: testDb,
+    churchId,
+    ministryId: adultMinistryId,
+    id: adultSectorId,
+    name: 'Geral',
   });
 
   // Volunteers
@@ -303,6 +315,7 @@ export async function seed(): Promise<void> {
     participationId: youthParticipationId,
     shiftId: morningShiftId,
     roleId: usherRoleId,
+    sectorId: adultSectorId,
     id: '88888888-8888-8888-8888-888888888881',
     peopleNeeded: 2,
   });

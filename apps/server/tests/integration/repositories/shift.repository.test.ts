@@ -8,11 +8,10 @@ import {
   RoleId,
   SectorId,
   ShiftId,
-  TeamId,
 } from '@/domain/branded-ids';
 import { Shift } from '@/domain/entities/shift';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { buildRole, buildSector, buildTeam } from '@/seeds/builders/ministry';
+import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -320,86 +319,6 @@ describe('DrizzleShiftRepository', () => {
         eventTimeBlockId,
       }),
     ).toEqual([]);
-  });
-
-  it('upsertRequirement inserts then updates by (shift, role, team) and lists by participation', async () => {
-    const seed = await seedSchedulingPhase3Base();
-    const graph = await seedParticipationGraph(
-      seed.churchAId,
-      seed.ministryAId,
-    );
-    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
-    const churchId = ChurchId.from(seed.churchAId);
-    const participationId = MinistryParticipationId.from(
-      graph.participation.id,
-    );
-    const [shift] = await repo.createMany({
-      churchId,
-      shifts: [
-        new Shift({
-          props: {
-            churchId,
-            participationId,
-            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
-            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
-            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
-          },
-        }),
-      ],
-    });
-    if (!shift) throw new Error('setup failed');
-    const roleRow = await buildRole({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Usher',
-    });
-    const roleId = RoleId.from(roleRow.id);
-
-    const inserted = await repo.upsertRequirement({
-      churchId,
-      shiftId: shift.id,
-      participationId,
-      roleId,
-      peopleNeeded: 2,
-      notes: 'initial',
-    });
-    expect(inserted.peopleNeeded).toBe(2);
-
-    const updated = await repo.upsertRequirement({
-      churchId,
-      shiftId: shift.id,
-      participationId,
-      roleId,
-      peopleNeeded: 5,
-      notes: 'updated',
-    });
-    expect(updated.id).toBe(inserted.id);
-    expect(updated.peopleNeeded).toBe(5);
-
-    // Distinct teamId creates a separate requirement row for the same shift/role.
-    const teamRow = await buildTeam({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Team A',
-    });
-    const teamId = TeamId.from(teamRow.id);
-    const withTeam = await repo.upsertRequirement({
-      churchId,
-      shiftId: shift.id,
-      participationId,
-      roleId,
-      teamId,
-      peopleNeeded: 1,
-    });
-    expect(withTeam.id).not.toBe(updated.id);
-
-    const requirements = await repo.listRequirementsByParticipation({
-      churchId,
-      participationId,
-    });
-    expect(requirements).toHaveLength(2);
   });
 
   it('upsertRequirement matches on (shift, sector, role) and lists each with its Sector', async () => {

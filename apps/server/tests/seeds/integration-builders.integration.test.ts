@@ -370,7 +370,7 @@ describe('integration composition of the shared seed builders', () => {
       peopleNeeded: 2,
     });
     const [requirement] = await testDb.select().from(shiftRequirement);
-    expect(requirement).toMatchObject({ sectorId: door.id, teamId: null });
+    expect(requirement).toMatchObject({ sectorId: door.id });
     const assigned = await buildAssignment({
       db: testDb,
       churchId: CHURCH_ID,

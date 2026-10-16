@@ -35,7 +35,7 @@ import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
-import { buildRole } from '@/seeds/builders/ministry';
+import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildAssignmentAudit,
@@ -150,12 +150,19 @@ async function seedRoleRequirement(
     ministryId: input.ministryId,
     name: 'Greeter',
   });
+  const stage = await buildSector({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    ministryId: input.ministryId,
+    name: 'Geral',
+  });
   await buildShiftRequirement({
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
     shiftId: input.shiftId,
     roleId: greeter.id,
+    sectorId: stage.id,
     peopleNeeded: 2,
   });
   return greeter.id;

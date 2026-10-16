@@ -50,7 +50,6 @@ interface RollbackOptimisticInput {
 
 export interface CycleBuilderRequirementSummary {
   roleId: string;
-  teamId?: string;
   peopleNeeded: number;
 }
 

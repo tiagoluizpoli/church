@@ -3,7 +3,6 @@ import {
   ministry,
   ministryMembership,
   ministryMembershipRole,
-  ministryMembershipTeam,
   user,
   volunteer,
 } from '@church/db';
@@ -20,7 +19,6 @@ import type { TransactionContext } from '../../domain/contracts/infrastructure/t
 import type {
   ListActiveLeaderEmailsInput,
   MinistryMembership,
-  TeamAccessLevel,
   VolunteerLeadership,
   VolunteerRepository,
 } from '../../domain/contracts/infrastructure/volunteer.repository';
@@ -355,7 +353,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       eq(ministryMembership.status, 'active'),
     );
 
-    const [rows, teamRows, roleRows] = await Promise.all([
+    const [rows, roleRows] = await Promise.all([
       db
         .select({
           id: ministryMembership.id,
@@ -363,21 +361,6 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           ministryAccessLevel: ministryMembership.ministryAccessLevel,
         })
         .from(ministryMembership)
-        .where(membershipScope),
-      db
-        .select({
-          membershipId: ministryMembershipTeam.ministryMembershipId,
-          teamId: ministryMembershipTeam.teamId,
-          accessLevel: ministryMembershipTeam.accessLevel,
-        })
-        .from(ministryMembershipTeam)
-        .innerJoin(
-          ministryMembership,
-          eq(
-            ministryMembership.id,
-            ministryMembershipTeam.ministryMembershipId,
-          ),
-        )
         .where(membershipScope),
       db
         .select({
@@ -395,15 +378,10 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         .where(membershipScope),
     ]);
 
-    const teamMembershipsByMembership = groupByMembership(teamRows, (r) => ({
-      teamId: r.teamId,
-      accessLevel: r.accessLevel as TeamAccessLevel,
-    }));
     const roleIdsByMembership = groupByMembership(roleRows, (r) => r.roleId);
 
     return rows.map((r) => ({
       volunteerId: r.volunteerId as VolunteerId,
-      teamMemberships: teamMembershipsByMembership.get(r.id) ?? [],
       qualifiedRoleIds: roleIdsByMembership.get(r.id) ?? [],
       ministryAccessLevel: r.ministryAccessLevel as MinistryAccessLevel,
     }));

@@ -881,6 +881,12 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
     });
+    const sectorRow = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Geral',
+    });
     const { blocks } = await createSchedulingPhase3Template({
       churchId: seed.churchAId,
       name: 'Profile template',
@@ -911,7 +917,13 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
           sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
           serves: true,
           shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 1 }],
+          headcounts: [
+            {
+              sectorId: SectorId.from(sectorRow.id),
+              roleId: RoleId.from(roleRow.id),
+              peopleNeeded: 1,
+            },
+          ],
         },
       ],
     });
@@ -948,7 +960,13 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
             sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 0 }],
+            headcounts: [
+              {
+                sectorId: SectorId.from(sectorRow.id),
+                roleId: RoleId.from(roleRow.id),
+                peopleNeeded: 0,
+              },
+            ],
           },
         ],
       }),

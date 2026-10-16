@@ -422,7 +422,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               participationId: participation.id,
               sectorId: headcount.sectorId,
               roleId: headcount.roleId,
-              teamId: headcount.teamId,
               peopleNeeded: headcount.peopleNeeded,
               tx,
             });

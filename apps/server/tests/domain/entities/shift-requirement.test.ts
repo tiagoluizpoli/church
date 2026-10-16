@@ -9,7 +9,7 @@ describe('ShiftRequirement Entity', () => {
       eventTimeBlockId: 't1',
       participationId: 'p1',
       roleId: 'r1',
-      teamId: 'team1',
+      sectorId: 'sector1',
       peopleNeeded: 2,
     });
 
@@ -17,7 +17,7 @@ describe('ShiftRequirement Entity', () => {
     expect(req.eventTimeBlockId).toBe('t1');
     expect(req.participationId).toBe('p1');
     expect(req.roleId).toBe('r1');
-    expect(req.teamId).toBe('team1');
+    expect(req.sectorId).toBe('sector1');
     expect(req.peopleNeeded).toBe(2);
   });
 
@@ -27,6 +27,7 @@ describe('ShiftRequirement Entity', () => {
       eventTimeBlockId: 't1',
       shiftId: 's1',
       roleId: 'r1',
+      sectorId: 'sector1',
       peopleNeeded: 1,
       notes: 'front row',
     });
@@ -41,6 +42,7 @@ describe('ShiftRequirement Entity', () => {
         churchId: 'c1',
         eventTimeBlockId: 't1',
         roleId: 'r1',
+        sectorId: 'sector1',
         peopleNeeded: 0,
       });
     }).toThrow(InvalidRequiredCountError);
@@ -51,6 +53,7 @@ describe('ShiftRequirement Entity', () => {
       churchId: 'c1',
       eventTimeBlockId: 't1',
       roleId: 'r1',
+      sectorId: 'sector1',
       peopleNeeded: 2,
     });
 
@@ -63,6 +66,7 @@ describe('ShiftRequirement Entity', () => {
       churchId: 'c1',
       eventTimeBlockId: 't1',
       roleId: 'r1',
+      sectorId: 'sector1',
       peopleNeeded: 2,
     });
 

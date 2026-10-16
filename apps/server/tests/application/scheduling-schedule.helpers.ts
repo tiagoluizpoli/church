@@ -1,5 +1,7 @@
 import { appConfig } from '@church/app-config';
+import { ministryParticipation, sector } from '@church/db';
 import { fromDate } from '@church/time';
+import { and, eq } from 'drizzle-orm';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
@@ -19,7 +21,7 @@ import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { buildRole } from '@/seeds/builders/ministry';
+import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import { buildShift, buildShiftRequirement } from '@/seeds/builders/scheduling';
 import {
   buildRoleQualification,
@@ -150,17 +152,14 @@ export interface SeedVolunteerMembershipInput {
   name: string;
   email: string;
   ministryAccessLevel?: 'leader' | 'volunteer';
-  teamId?: string;
 }
 
-export async function seedVolunteerMembership({
-  teamId,
-  ...input
-}: SeedVolunteerMembershipInput) {
+export async function seedVolunteerMembership(
+  input: SeedVolunteerMembershipInput,
+) {
   const { volunteer, membership } = await buildVolunteerWithMembership({
     db: schedulingTestDb,
     ...input,
-    teams: teamId ? [{ teamId, accessLevel: 'member' }] : [],
   });
 
   return { volunteer, membership };
@@ -204,10 +203,41 @@ export interface SeedRequirementInput {
   shiftId: string;
   roleId: string;
   peopleNeeded: number;
-  teamId?: string;
   sectorId?: string;
 }
 
-export async function seedRequirement(input: SeedRequirementInput) {
-  return await buildShiftRequirement({ db: schedulingTestDb, ...input });
+/** Without a `sectorId`, the requirement lands in the participation Ministry's `Geral` Sector. */
+export async function seedRequirement({
+  sectorId,
+  ...input
+}: SeedRequirementInput) {
+  const [participation] = await schedulingTestDb
+    .select({ ministryId: ministryParticipation.ministryId })
+    .from(ministryParticipation)
+    .where(eq(ministryParticipation.id, input.participationId));
+  const ministryId = participation?.ministryId as string;
+  const [existing] = sectorId
+    ? []
+    : await schedulingTestDb
+        .select({ id: sector.id })
+        .from(sector)
+        .where(
+          and(eq(sector.ministryId, ministryId), eq(sector.name, 'Geral')),
+        );
+  const resolved =
+    sectorId ??
+    existing?.id ??
+    (
+      await buildSector({
+        db: schedulingTestDb,
+        churchId: input.churchId,
+        ministryId,
+        name: 'Geral',
+      })
+    ).id;
+  return await buildShiftRequirement({
+    db: schedulingTestDb,
+    ...input,
+    sectorId: resolved,
+  });
 }

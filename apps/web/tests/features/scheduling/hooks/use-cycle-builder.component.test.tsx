@@ -97,6 +97,7 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     id: 'requirement-1',
                     shiftId: 'shift-1',
                     participationId: 'participation-1',
+                    sectorId: 'sector-1',
                     roleId: 'role-1',
                     peopleNeeded: 2,
                   },

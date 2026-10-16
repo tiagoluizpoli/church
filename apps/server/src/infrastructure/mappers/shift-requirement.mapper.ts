@@ -34,10 +34,7 @@ export function mapShiftRequirement({
     shiftId: row.shiftId as ShiftId,
     eventTimeBlockId: (eventTimeBlockId ?? row.shiftId) as EventTimeBlockId,
     roleId: row.roleId as RoleId,
-    teamId: row.teamId
-      ? (row.teamId as ShiftRequirementProps['teamId'])
-      : undefined,
-    sectorId: row.sectorId ? (row.sectorId as SectorId) : undefined,
+    sectorId: row.sectorId as SectorId,
     sectorName,
     peopleNeeded: row.peopleNeeded,
     notes: row.notes ?? undefined,

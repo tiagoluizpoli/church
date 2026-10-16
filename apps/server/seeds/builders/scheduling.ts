@@ -258,9 +258,7 @@ export interface BuildShiftRequirementInput {
   roleId: string;
   id?: string;
   peopleNeeded: number;
-  teamId?: string;
-  /** Optional only during the Sector expand step (#494); #498 requires it. */
-  sectorId?: string;
+  sectorId: string;
   notes?: string;
 }
 
@@ -272,7 +270,6 @@ export async function buildShiftRequirement({
   roleId,
   id,
   peopleNeeded,
-  teamId,
   sectorId,
   notes,
 }: BuildShiftRequirementInput): Promise<SeededShiftRequirement> {
@@ -286,7 +283,6 @@ export async function buildShiftRequirement({
         shiftId,
         roleId,
         peopleNeeded,
-        teamId,
         sectorId,
         notes,
       })

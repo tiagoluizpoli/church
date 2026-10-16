@@ -46,7 +46,6 @@ import type {
   SectorRepository,
   SecurityLogRepository,
   ShiftRepository,
-  TeamRepository,
   UnavailableShiftRepository,
   UnitOfWork,
   UsualSetupRepository,
@@ -82,7 +81,6 @@ export interface CompositionRootDependencies {
   shiftRepository: ShiftRepository;
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
-  teamRepository: TeamRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   volunteerNotificationRepository: VolunteerNotificationRepository;
   unitOfWork: UnitOfWork;

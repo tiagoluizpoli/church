@@ -15,7 +15,6 @@ export * from './role';
 export * from './sector';
 export * from './shift';
 export * from './shift-requirement';
-export * from './team';
 export * from './template-time-block';
 export * from './unavailable-shift';
 export * from './usual-setup';

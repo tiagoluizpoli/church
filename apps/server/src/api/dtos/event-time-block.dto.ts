@@ -19,7 +19,7 @@ export const shiftRequirementResponseSchema = z.object({
   id: z.string(),
   eventTimeBlockId: z.string(),
   roleId: z.string(),
-  teamId: z.string().optional(),
+  sectorId: z.string(),
   peopleNeeded: z.number(),
   notes: z.string().optional(),
 });
@@ -46,7 +46,7 @@ function requirementToResponse(r: ShiftRequirement): ShiftRequirementResponse {
     id: r.id as string,
     eventTimeBlockId: r.eventTimeBlockId as string,
     roleId: r.roleId as string,
-    teamId: r.teamId as string | undefined,
+    sectorId: r.sectorId as string,
     peopleNeeded: r.peopleNeeded,
     notes: r.notes,
   };

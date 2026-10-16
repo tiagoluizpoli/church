@@ -18,7 +18,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
-import { buildMinistry, buildTeam } from '@/seeds/builders/ministry';
+import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildMinistryParticipation,
@@ -27,7 +27,6 @@ import {
   buildAvailabilityCheck,
   buildUnavailableShift,
 } from '@/seeds/builders/unavailable-shift';
-import { buildTeamMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -36,14 +35,14 @@ import {
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
 
-interface SeedTeamInput {
+interface SeedSectorInput {
   churchId: string;
   ministryId: string;
   name: string;
 }
 
-async function seedTeam(input: SeedTeamInput) {
-  return await buildTeam({ db: schedulingTestDb, ...input });
+async function seedSector(input: SeedSectorInput) {
+  return await buildSector({ db: schedulingTestDb, ...input });
 }
 
 interface SeedUnavailableShiftInput {
@@ -553,7 +552,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     ]);
   });
 
-  it('DL2-DS-01 maps same-role rows to the correct teams in ministry schedule without claimedAssignmentIds workarounds', async () => {
+  it('DL2-DS-01 maps same-role rows of two Sectors in ministry schedule without claimedAssignmentIds workarounds', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -576,15 +575,15 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       ministryId: seed.ministryAId,
       name: 'Host',
     });
-    const alphaTeam = await seedTeam({
+    const alphaSector = await seedSector({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
-      name: 'Alpha Team',
+      name: 'Alpha Sector',
     });
-    const betaTeam = await seedTeam({
+    const betaSector = await seedSector({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
-      name: 'Beta Team',
+      name: 'Beta Sector',
     });
     const viewer = await seedVolunteerMembership({
       churchId: seed.churchAId,
@@ -597,14 +596,12 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       ministryId: seed.ministryAId,
       name: 'Alice Alpha',
       email: 'alice-phase6@test.com',
-      teamId: alphaTeam.id,
     });
     const betaVolunteer = await seedVolunteerMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       name: 'Bobby Beta',
       email: 'bobby-phase6@test.com',
-      teamId: betaTeam.id,
     });
     const shift = await seedShift({
       churchId: seed.churchAId,
@@ -619,7 +616,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       participationId: graph.participation.id,
       shiftId: shift.id,
       roleId: hostRole.id,
-      teamId: alphaTeam.id,
+      sectorId: alphaSector.id,
       peopleNeeded: 1,
     });
     await seedRequirement({
@@ -627,7 +624,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       participationId: graph.participation.id,
       shiftId: shift.id,
       roleId: hostRole.id,
-      teamId: betaTeam.id,
+      sectorId: betaSector.id,
       peopleNeeded: 1,
     });
     await seedAssignment({
@@ -678,7 +675,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     expect(rows.every((row) => !('teamName' in row))).toBe(true);
   });
 
-  it('DL2-DS-02 counts a single assignment once when the volunteer belongs to multiple teams sharing a role event time block', async () => {
+  it('DL2-DS-02 counts a single assignment once when the two Sectors share a role in one Shift', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -701,15 +698,15 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       ministryId: seed.ministryAId,
       name: 'Host',
     });
-    const alphaTeam = await seedTeam({
+    const alphaSector = await seedSector({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
-      name: 'Alpha Team',
+      name: 'Alpha Sector',
     });
-    const betaTeam = await seedTeam({
+    const betaSector = await seedSector({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
-      name: 'Beta Team',
+      name: 'Beta Sector',
     });
     const viewer = await seedVolunteerMembership({
       churchId: seed.churchAId,
@@ -722,16 +719,6 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       ministryId: seed.ministryAId,
       name: 'Dual Volunteer',
       email: 'dual-phase6@test.com',
-      teamId: alphaTeam.id,
-    });
-    // Second team membership for the same ministry membership row — this is
-    // the multi-team scenario introduced by ministry_membership_team.
-    await buildTeamMembership({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryMembershipId: dualVolunteer.membership.id,
-      teamId: betaTeam.id,
-      accessLevel: 'member',
     });
     const shift = await seedShift({
       churchId: seed.churchAId,
@@ -746,7 +733,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       participationId: graph.participation.id,
       shiftId: shift.id,
       roleId: hostRole.id,
-      teamId: alphaTeam.id,
+      sectorId: alphaSector.id,
       peopleNeeded: 1,
     });
     await seedRequirement({
@@ -754,7 +741,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       participationId: graph.participation.id,
       shiftId: shift.id,
       roleId: hostRole.id,
-      teamId: betaTeam.id,
+      sectorId: betaSector.id,
       peopleNeeded: 1,
     });
     await seedAssignment({
@@ -780,9 +767,9 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     });
     const rows = schedule.events[0]?.rows ?? [];
 
-    // One physical assignment can only satisfy ONE of the two team-scoped
+    // One physical assignment can only satisfy ONE of the two Sector
     // requirements. It must count once (one confirmed row, one still-open
-    // row for the other team) — never zero open rows (double counted) and
+    // row for the other Sector) — never zero open rows (double counted) and
     // never two confirmed rows (duplicated).
     expect(rows).toHaveLength(2);
 

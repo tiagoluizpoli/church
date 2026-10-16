@@ -18,7 +18,6 @@ import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.
 import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 import type {
   MinistryMembership,
-  MinistryTeamMembership,
   VolunteerRepository,
 } from '@/domain/contracts/infrastructure/volunteer.repository';
 import { Assignment } from '@/domain/entities/assignment';
@@ -37,21 +36,8 @@ const roleId = '44444444-4444-4444-8444-444444444444' as RoleId;
 const eventTimeBlockId =
   '55555555-5555-4555-8555-555555555555' as EventTimeBlockId;
 const leaderId = 'leader-1' as VolunteerId;
-const teamLeaderId = 'team-leader-1' as VolunteerId;
 const teamAVolunteerId = 'volunteer-team-a' as VolunteerId;
 const teamBVolunteerId = 'volunteer-team-b' as VolunteerId;
-
-interface BuildTeamMembershipInput {
-  teamId: string;
-  accessLevel?: MinistryTeamMembership['accessLevel'];
-}
-
-function teamMembership({
-  teamId,
-  accessLevel = 'member',
-}: BuildTeamMembershipInput): MinistryTeamMembership {
-  return { teamId, accessLevel };
-}
 
 function buildEvent(): Event {
   return new Event(
@@ -71,7 +57,6 @@ function buildMembership(
 ): MinistryMembership {
   return {
     volunteerId: leaderId,
-    teamMemberships: [],
     qualifiedRoleIds: [],
     ministryAccessLevel: 'leader',
     ...overrides,
@@ -284,7 +269,6 @@ describe('DbEventManager', () => {
         buildMembership({
           volunteerId: teamAVolunteerId,
           ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-a' })],
         }),
       ]);
       const manager = createManager(repos);
@@ -334,18 +318,15 @@ describe('DbEventManager', () => {
         buildMembership({
           volunteerId: leaderId,
           ministryAccessLevel: 'leader',
-          teamMemberships: [teamMembership({ teamId: 'team-a' })],
         }),
         buildMembership({
           volunteerId: teamAVolunteerId,
           ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-a' })],
           qualifiedRoleIds: [roleId as string],
         }),
         buildMembership({
           volunteerId: teamBVolunteerId,
           ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-b' })],
         }),
       ]);
       const volunteers = [
@@ -423,28 +404,6 @@ describe('DbEventManager', () => {
         churchId,
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
-    });
-
-    it('treats a TeamLeader as a plain volunteer and refuses the read', async () => {
-      const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({
-          volunteerId: teamLeaderId,
-          ministryAccessLevel: 'volunteer',
-          teamMemberships: [
-            teamMembership({ teamId: 'team-a', accessLevel: 'leader' }),
-          ],
-        }),
-      ]);
-      const manager = createManager(repos);
-
-      await expect(
-        manager.getScheduleBuilderData({
-          churchId,
-          eventId,
-          volunteerId: teamLeaderId,
-        }),
-      ).rejects.toThrow('Volunteer does not have leader privileges');
     });
 
     it('falls back to the volunteer id as the name when name is missing', async () => {

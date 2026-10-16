@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cycleBuilderResponseSchema } from '@/api/dtos/cycle-builder.dto';
 
 describe('cycleBuilderResponseSchema', () => {
-  it('requires a server-derived mutation capability on each requirement', () => {
+  it('accepts a requirement without any mutation capability flag', () => {
     const response = {
       events: [
         {
@@ -51,8 +51,9 @@ describe('cycleBuilderResponseSchema', () => {
                       shiftId: 'shift-1',
                       participationId: 'participation-1',
                       roleId: 'role-1',
+                      sectorId: 'sector-1',
+                      sectorName: 'Palco',
                       peopleNeeded: 1,
-                      canMutateAssignments: true,
                     },
                   ],
                   assignments: [],
@@ -67,18 +68,5 @@ describe('cycleBuilderResponseSchema', () => {
     };
 
     expect(cycleBuilderResponseSchema.safeParse(response).success).toBe(true);
-    const responseWithoutCapability = structuredClone(response);
-    const requirement = responseWithoutCapability.events
-      .at(0)
-      ?.eventTimeBlocks.at(0)
-      ?.shifts.at(0)
-      ?.requirements.at(0);
-    if (!requirement) {
-      throw new Error('Expected a Cycle Builder requirement');
-    }
-    Reflect.deleteProperty(requirement, 'canMutateAssignments');
-    expect(
-      cycleBuilderResponseSchema.safeParse(responseWithoutCapability).success,
-    ).toBe(false);
   });
 });

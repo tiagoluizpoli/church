@@ -131,7 +131,6 @@ describe('ministry-redemption E2E journey recipe', () => {
         id: randomUUID(),
         ministryAccessLevel: 'volunteer',
         roleIds: [worship.roles.usher.id],
-        teams: [],
       });
     }
 

@@ -98,7 +98,7 @@ export interface LoadDevelopmentHistoryInput {
 interface PlannedRequirement {
   id: string;
   roleName: string;
-  teamName?: string;
+  sectorName: string;
   roleId: string;
   required: number;
 }
@@ -379,14 +379,14 @@ async function materializeEvent({
 
       const requirements: PlannedRequirement[] = [];
       for (const need of server.needs) {
-        const { roleId, teamId } = resolveStaffingNeed({
+        const { roleId, sectorId } = resolveStaffingNeed({
           ministry,
           ministryName,
           need,
         });
         const requirementId = deriveSeedId({
           kind: 'shift-requirement',
-          parentIds: [shiftId, roleId, teamId ?? ''],
+          parentIds: [shiftId, roleId, sectorId],
         });
         await buildShiftRequirement({
           db,
@@ -394,7 +394,7 @@ async function materializeEvent({
           participationId,
           shiftId,
           roleId,
-          teamId,
+          sectorId,
           id: requirementId,
           peopleNeeded: need.peopleNeeded,
           notes: need.notes,
@@ -402,7 +402,7 @@ async function materializeEvent({
         requirements.push({
           id: requirementId,
           roleName: need.role,
-          teamName: need.team,
+          sectorName: need.sector,
           roleId,
           required: need.peopleNeeded,
         });
@@ -431,7 +431,6 @@ async function materializeEvent({
 interface PoolMember {
   email: string;
   roles: ReadonlySet<string>;
-  teams: ReadonlySet<string>;
 }
 
 interface MinistryPoolsInput {
@@ -450,7 +449,6 @@ function ministryMembers({
       members.push({
         email: person.email,
         roles: new Set(group.seat.roles),
-        teams: new Set((group.seat.teams ?? []).map((seat) => seat.team)),
       });
     }
   }
@@ -460,7 +458,6 @@ function ministryMembers({
       members.push({
         email,
         roles: new Set(group.seat.roles),
-        teams: new Set((group.seat.teams ?? []).map((seat) => seat.team)),
       });
     }
   }
@@ -566,10 +563,7 @@ class StaffingLedger {
 
   pool({ shift, requirement }: PlacementTarget): PoolMember[] {
     return (this.membersByMinistry.get(shift.ministryName) ?? []).filter(
-      (member) =>
-        member.roles.has(requirement.roleName) &&
-        (requirement.teamName === undefined ||
-          member.teams.has(requirement.teamName)),
+      (member) => member.roles.has(requirement.roleName),
     );
   }
 
@@ -593,7 +587,7 @@ class StaffingLedger {
   refusal({ target, email }: RefusalInput): string | undefined {
     const { shift, requirement } = target;
     if (!this.pool(target).some((member) => member.email === email)) {
-      return `is not qualified as ${requirement.roleName}${requirement.teamName ? ` in ${requirement.teamName}` : ''}`;
+      return `is not qualified as ${requirement.roleName}`;
     }
     if (this.excludedByShift.get(shift.id)?.has(email)) {
       return 'already declined or was withdrawn';
@@ -696,7 +690,7 @@ function findTarget({ shifts, post }: FindTargetInput): PlacementTarget {
   });
   const requirement = shift.requirements.find(
     (candidate) =>
-      candidate.roleName === post.role && candidate.teamName === post.team,
+      candidate.roleName === post.role && candidate.sectorName === post.sector,
   );
   if (!requirement) {
     throw new Error(
@@ -1123,7 +1117,7 @@ function staffByRotation({
     for (const requirement of shift.requirements) {
       const target = { shift, requirement };
       const pool = ledger.pool(target);
-      const poolKey = `${shift.ministryName}|${requirement.roleName}|${requirement.teamName ?? ''}`;
+      const poolKey = `${shift.ministryName}|${requirement.roleName}|${requirement.sectorName}`;
       let cursor = cursorByPool.get(poolKey) ?? 0;
       let open =
         requirement.required -

@@ -8,8 +8,8 @@ import {
   MinistryId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
-  TeamId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -331,7 +331,7 @@ export class PrepareController implements FastifyController {
           operationId: 'upsertShiftRequirement',
           summary: 'Set a Shift staffing requirement',
           description:
-            'Set the ShiftRequirement headcount for a Role (and optional Team) within a Shift.',
+            'Set the ShiftRequirement headcount for a Sector and Role within a Shift.',
           body: shiftRequirementBodySchema,
           response: { 200: shiftRequirementResponseSchema },
         },
@@ -345,8 +345,8 @@ export class PrepareController implements FastifyController {
         const requirement = await this.participationManager.upsertRequirement({
           churchId: ChurchId.from(request.churchId),
           shiftId: ShiftId.from(shiftId),
+          sectorId: SectorId.from(body.sectorId),
           roleId: RoleId.from(body.roleId),
-          teamId: body.teamId ? TeamId.from(body.teamId) : undefined,
           peopleNeeded: body.peopleNeeded,
           notes: body.notes,
         });

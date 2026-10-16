@@ -79,8 +79,8 @@ export class DrizzleUsualSetupRepository implements UsualSetupRepository {
           serves: entry.serves,
           shiftSplit: entry.shiftSplit,
           headcounts: entry.headcounts.map((headcount) => ({
+            sectorId: headcount.sectorId as string,
             roleId: headcount.roleId as string,
-            teamId: headcount.teamId ? (headcount.teamId as string) : undefined,
             peopleNeeded: headcount.peopleNeeded,
           })),
         })),

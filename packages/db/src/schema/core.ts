@@ -146,15 +146,39 @@ export const role = pgTable('role', {
 });
 
 /**
+ * A named spot or duty a Ministry staffs every Cycle (pt-BR *Setor*, ADR-0007),
+ * e.g. *Babies Room* or *Main Door*. Each ShiftRequirement and UsualSetup
+ * headcount names one Sector and one Role.
+ */
+export const sector = pgTable(
+  'sector',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    ministryId: uuid('ministry_id')
+      .notNull()
+      .references(() => ministry.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('sector_ministry_name_idx').on(table.ministryId, table.name),
+  ],
+);
+
+/**
  * Qualification: which roles a ministry member is able to fill.
  *
  * Hung off the **membership**, not the volunteer, because roles are
  * ministry-scoped and one person can serve in several ministries. Every role
  * requires a ministry — there are no global roles.
  *
- * Team is a separate axis — eligibility composes at query time as
- * "qualified for the role AND (requirement has no team OR the volunteer
- * belongs to that team)". There are deliberately no `(role, team)` rows.
+ * Eligibility is "qualified for the role"; the requirement's Sector does not
+ * narrow it.
  */
 export const ministryMembershipRole = pgTable(
   'ministry_membership_role',

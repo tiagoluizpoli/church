@@ -52,7 +52,7 @@ describe('DrizzleUsualSetupRepository', () => {
     expect(result).toEqual([]);
   });
 
-  it('replaceForMinistry creates entries with equal split, mapped headcounts (with and without teamId)', async () => {
+  it('replaceForMinistry creates entries with equal split, mapped headcounts (with and without sectorId)', async () => {
     const seed = await seedSchedulingPhase3Base();
     const block = await seedTemplateTimeBlock({
       churchId: seed.churchAId,
@@ -75,11 +75,12 @@ describe('DrizzleUsualSetupRepository', () => {
           headcounts: [
             {
               roleId: '55555555-5555-5555-5555-555555555551' as never,
+              sectorId: '66666666-6666-6666-6666-666666666661' as never,
               peopleNeeded: 1,
             },
             {
               roleId: '55555555-5555-5555-5555-555555555552' as never,
-              teamId: '66666666-6666-6666-6666-666666666661' as never,
+              sectorId: '66666666-6666-6666-6666-666666666661' as never,
               peopleNeeded: 3,
             },
           ],
@@ -91,10 +92,14 @@ describe('DrizzleUsualSetupRepository', () => {
     expect(created[0]?.serves).toBe(true);
     expect(created[0]?.shiftSplit).toEqual({ kind: 'equal', count: 2 });
     expect(created[0]?.headcounts).toEqual([
-      { roleId: '55555555-5555-5555-5555-555555555551', peopleNeeded: 1 },
+      {
+        roleId: '55555555-5555-5555-5555-555555555551',
+        sectorId: '66666666-6666-6666-6666-666666666661',
+        peopleNeeded: 1,
+      },
       {
         roleId: '55555555-5555-5555-5555-555555555552',
-        teamId: '66666666-6666-6666-6666-666666666661',
+        sectorId: '66666666-6666-6666-6666-666666666661',
         peopleNeeded: 3,
       },
     ]);

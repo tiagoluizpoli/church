@@ -66,7 +66,8 @@ export interface BuildMinistryMembershipInput {
   status?: SeededMinistryMembership['status'];
   /** Role qualifications — explicit grants; membership alone qualifies for nothing. */
   roleIds: string[];
-  teams: SeedTeamMembership[];
+  /** Parked Team data (BL-033); dev seeds no longer create it. */
+  teams?: SeedTeamMembership[];
 }
 
 /** A Ministry Membership with its Role qualifications and Team Memberships. */
@@ -79,7 +80,7 @@ export async function buildMinistryMembership({
   ministryAccessLevel,
   status = 'active',
   roleIds,
-  teams,
+  teams = [],
 }: BuildMinistryMembershipInput): Promise<SeededMinistryMembership> {
   const membership = requireInsertedRow({
     rows: await db

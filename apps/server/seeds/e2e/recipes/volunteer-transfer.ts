@@ -46,16 +46,14 @@ const CHURCH_A_PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
     admin: {
       name: 'Ana Arruda',
       churchAccessLevel: 'admin',
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
   },
   pool: {},
@@ -68,7 +66,7 @@ const CHURCH_B_PLAN = {
     hospitality: {
       name: 'Hospitalidade',
       roles: { porter: 'Porteiro' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
@@ -80,7 +78,6 @@ const CHURCH_B_PLAN = {
           ministry: 'hospitality',
           accessLevel: 'leader',
           roles: [],
-          teams: [],
         },
       ],
     },
@@ -92,7 +89,6 @@ const CHURCH_B_PLAN = {
           ministry: 'hospitality',
           accessLevel: 'volunteer',
           roles: ['porter'],
-          teams: [],
         },
       ],
     },
@@ -188,7 +184,11 @@ export function createVolunteerTransferRecipe({
       eventStatus: 'draft',
       participationState: 'preparing',
       requirements: {
-        porter: { roleId: hospitality.roles.porter.id, peopleNeeded: 1 },
+        porter: {
+          roleId: hospitality.roles.porter.id,
+          peopleNeeded: 1,
+          sectorId: hospitality.sectors.main.id,
+        },
       },
     });
     const assignment = await buildAssignment({

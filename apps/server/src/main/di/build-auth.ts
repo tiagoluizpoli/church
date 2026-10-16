@@ -28,7 +28,6 @@ export function buildAuth({
     eventRepository,
     eventTimeBlockRepository,
     ministryRepository,
-    teamRepository,
     churchRepository,
     unitOfWork,
   },
@@ -51,7 +50,6 @@ export function buildAuth({
       eventRepository,
       eventTimeBlockRepository,
       ministryRepository,
-      teamRepository,
     });
   const authorityGuard =
     overrides.authorityGuard ??

@@ -4,6 +4,7 @@ import type {
   ChurchId,
   MinistryId,
   RoleId,
+  SectorId,
   TemplateTimeBlockId,
 } from '@/domain/branded-ids';
 import {
@@ -18,6 +19,7 @@ const ministryId = '22222222-2222-4222-8222-222222222222' as MinistryId;
 const sourceTemplateTimeBlockId =
   '33333333-3333-4333-8333-333333333333' as TemplateTimeBlockId;
 const roleId = '44444444-4444-4444-8444-444444444444' as RoleId;
+const sectorId = '99999999-9999-4999-8999-999999999999' as SectorId;
 
 interface BuildProfileInput {
   props?: Partial<UsualSetupProps>;
@@ -31,7 +33,7 @@ function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
       sourceTemplateTimeBlockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ roleId, peopleNeeded: 1 }],
+      headcounts: [{ sectorId, roleId, peopleNeeded: 1 }],
       ...props,
     },
   });
@@ -46,7 +48,7 @@ describe('UsualSetup entity', () => {
     expect(profile.sourceTemplateTimeBlockId).toBe(sourceTemplateTimeBlockId);
     expect(profile.serves).toBe(true);
     expect(profile.shiftSplit).toEqual({ kind: 'equal', count: 2 });
-    expect(profile.headcounts).toEqual([{ roleId, peopleNeeded: 1 }]);
+    expect(profile.headcounts).toEqual([{ sectorId, roleId, peopleNeeded: 1 }]);
   });
 
   it('constructs with a valid manual split', () => {
@@ -99,13 +101,17 @@ describe('UsualSetup entity', () => {
 
   it('rejects a headcount with a non-integer count', () => {
     expect(() =>
-      buildProfile({ props: { headcounts: [{ roleId, peopleNeeded: 1.5 }] } }),
+      buildProfile({
+        props: { headcounts: [{ sectorId, roleId, peopleNeeded: 1.5 }] },
+      }),
     ).toThrow(InvalidRequiredCountError);
   });
 
   it('rejects a headcount with count less than 1', () => {
     expect(() =>
-      buildProfile({ props: { headcounts: [{ roleId, peopleNeeded: 0 }] } }),
+      buildProfile({
+        props: { headcounts: [{ sectorId, roleId, peopleNeeded: 0 }] },
+      }),
     ).toThrow(InvalidRequiredCountError);
   });
 });

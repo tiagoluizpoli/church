@@ -24,7 +24,7 @@ export const ASSIGN_BOARD_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
   ministries: z.object({
     worship: assignMinistrySchema({
       roles: ['usher', 'greeter', 'host'],
-      teams: ['alpha'],
+      sectors: ['main'],
     }),
   }),
   personas: z.object({ leader: ASSIGN_PERSONA_SCHEMA }),

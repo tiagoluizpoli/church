@@ -3,8 +3,8 @@ import { z } from 'zod';
 import type { UsualSetup } from '../../domain/entities/usual-setup';
 
 const usualSetupHeadcountSchema = z.object({
+  sectorId: z.string(),
   roleId: z.string(),
-  teamId: z.string().optional(),
   peopleNeeded: z.number().int().min(1),
 });
 
@@ -66,8 +66,8 @@ function toEntryResponse(profile: UsualSetup) {
     serves: profile.serves,
     shiftSplit: profile.shiftSplit,
     headcounts: profile.headcounts.map((headcount) => ({
+      sectorId: headcount.sectorId as string,
       roleId: headcount.roleId as string,
-      teamId: headcount.teamId as string | undefined,
       peopleNeeded: headcount.peopleNeeded,
     })),
   };

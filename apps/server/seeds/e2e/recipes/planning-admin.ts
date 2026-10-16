@@ -31,16 +31,14 @@ export const PLANNING_ADMIN_PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
     admin: {
       name: 'Lia Prado',
       churchAccessLevel: 'admin',
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
     volunteer: {
       name: 'Davi Moreira',
@@ -50,7 +48,6 @@ export const PLANNING_ADMIN_PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [],
         },
       ],
     },

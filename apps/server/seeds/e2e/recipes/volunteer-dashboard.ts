@@ -29,7 +29,7 @@ import { type AssignEvent, buildAssignEvent } from './assign-event';
  * The starting graph of the Volunteer Dashboard journeys (#329): a small
  * Church whose one Volunteer persona sits in two Ministries and owns what
  * the dashboard shows: a confirmed Assignment on a published Care event
- * (with a Team-scoped Role), an event still needing availability, and an
+ *, an event still needing availability, and an
  * unread notification. The notification reports a removal the way the
  * product leaves one: the Assignment row is gone (its id survives only in the
  * payload), on a past event that is neither upcoming nor awaiting
@@ -51,12 +51,12 @@ const PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
     care: {
       name: 'Cuidado',
       roles: { careHost: 'Anfitrião' },
-      teams: { care: 'Equipe Cuidado' },
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
@@ -64,8 +64,8 @@ const PLAN = {
       name: 'Lia Prado',
       churchAccessLevel: 'admin',
       memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-        { ministry: 'care', accessLevel: 'leader', roles: [], teams: [] },
+        { ministry: 'worship', accessLevel: 'leader', roles: [] },
+        { ministry: 'care', accessLevel: 'leader', roles: [] },
       ],
     },
     volunteer: {
@@ -76,13 +76,11 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [],
         },
         {
           ministry: 'care',
           accessLevel: 'volunteer',
           roles: ['careHost'],
-          teams: [{ team: 'care', accessLevel: 'member' }],
         },
       ],
     },
@@ -100,7 +98,7 @@ export interface VolunteerDashboardNotification {
 
 export interface VolunteerDashboardJourney extends DashboardChurch {
   anchor: CalendarDay;
-  /** Published Care event the Volunteer is confirmed on (a Team-scoped Role). */
+  /** Published Care event the Volunteer is confirmed on. */
   careEvent: AssignEvent<'careHost'>;
   /** Event whose availability the Volunteer has not answered. */
   availabilityEvent: AssignEvent<'usher'>;
@@ -153,7 +151,7 @@ export function createVolunteerDashboardRecipe({
         careHost: {
           roleId: care.roles.careHost.id,
           peopleNeeded: 1,
-          teamId: care.teams.care.id,
+          sectorId: care.sectors.main.id,
         },
       },
     });
@@ -184,7 +182,11 @@ export function createVolunteerDashboardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
+        usher: {
+          roleId: worship.roles.usher.id,
+          peopleNeeded: 1,
+          sectorId: worship.sectors.main.id,
+        },
       },
     });
 
@@ -206,7 +208,11 @@ export function createVolunteerDashboardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
+        usher: {
+          roleId: worship.roles.usher.id,
+          peopleNeeded: 1,
+          sectorId: worship.sectors.main.id,
+        },
       },
     });
 

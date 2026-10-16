@@ -75,7 +75,6 @@ function dataWithAssignments(
                     hasConflict: false,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
-                    leadTeamIds: [],
                   },
                   {
                     volunteerId: 'volunteer-b',
@@ -84,7 +83,6 @@ function dataWithAssignments(
                     hasConflict: false,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
-                    leadTeamIds: [],
                   },
                 ],
               },

@@ -153,7 +153,6 @@ export function candidates({
         name: volunteer.volunteerName,
         membership: {
           ministryAccessLevel: volunteer.ministryAccessLevel,
-          leadTeamIds: volunteer.leadTeamIds,
         },
         availabilityStatus: volunteer.isAvailable ? 'available' : 'no_response',
         // Not filtered out (B-2): the picker still lists an unqualified
@@ -199,7 +198,6 @@ export function recommendations({
     name: volunteer.volunteerName,
     membership: {
       ministryAccessLevel: volunteer.ministryAccessLevel,
-      leadTeamIds: volunteer.leadTeamIds,
     },
     status,
     workloadCount: index.workload.get(volunteer.volunteerId) ?? 0,

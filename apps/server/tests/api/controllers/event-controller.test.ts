@@ -103,7 +103,7 @@ describe('Event controller authorization wiring', () => {
       unavailableShifts: [],
       volunteers: [],
       roles: [],
-      callerTeamIds: null,
+      sectors: [],
     });
 
     const response = await app.inject({
@@ -112,6 +112,29 @@ describe('Event controller authorization wiring', () => {
     });
 
     expect(response.statusCode).toBe(200);
+  });
+
+  it("GET /api/v1/events/schedule-builder returns the Ministry's Sectors", async () => {
+    const sectors = [
+      { id: '77777777-7777-4777-8777-777777777771', name: 'Kids' },
+      { id: '77777777-7777-4777-8777-777777777772', name: 'Maternal' },
+    ];
+    eventManager.getScheduleBuilderData.mockResolvedValue({
+      events: [],
+      assignments: [],
+      unavailableShifts: [],
+      volunteers: [],
+      roles: [],
+      sectors,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/events/schedule-builder?eventId=66666666-6666-6666-6666-666666666666',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().sectors).toEqual(sectors);
   });
 
   it('GET /api/v1/events/schedule-builder 401s when the caller has no Volunteer profile at all', async () => {

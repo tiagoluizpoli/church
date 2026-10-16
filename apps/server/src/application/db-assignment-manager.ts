@@ -1,11 +1,8 @@
-import { now, toDate } from '@church/time';
-import { TeamScheduleMutationPolicy } from '../domain/authority/team-schedule-mutation-policy';
-import {
-  type AssignmentId,
-  type ChurchId,
-  type RoleId,
-  TeamId,
-  type VolunteerId,
+import { toDate } from '@church/time';
+import type {
+  AssignmentId,
+  ChurchId,
+  VolunteerId,
 } from '../domain/branded-ids';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
@@ -23,29 +20,15 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
-import type { MinistryParticipation } from '../domain/entities/ministry-participation';
-import type { Shift } from '../domain/entities/shift';
-import { AssignActionNotAvailableError } from '../domain/errors/assign-action-not-available';
 
 interface ReassignTransactionResult {
   nextAssignment: Assignment;
   previousVolunteerId: VolunteerId;
-}
-
-interface AssertTeamLeaderScheduleMutationInput {
-  churchId: ChurchId;
-  teamId: TeamId;
-  shift: Shift;
-  participation: MinistryParticipation;
-  volunteerId: VolunteerId;
-  roleId: RoleId;
-  tx: TransactionContext;
 }
 
 interface NotifyReassignmentInput {
@@ -116,36 +99,6 @@ export class DbAssignmentManager implements IAssignmentManager {
   async deleteAssignment(input: DeleteAssignmentInput): Promise<void> {
     const { assignmentId, churchId, actorId } = input;
     await this.unitOfWork.run(async (tx) => {
-      if (input.teamLeaderScopeId) {
-        const assignment = await this.assignmentRepo.getById(
-          churchId,
-          assignmentId,
-          tx,
-        );
-        if (!assignment.shiftId) {
-          throw new AssignActionNotAvailableError();
-        }
-        const shift = await this.shiftRepository.getById({
-          churchId,
-          shiftId: assignment.shiftId,
-          tx,
-        });
-        const participation = await this.participationRepository.getById({
-          churchId,
-          participationId: shift.participationId,
-          tx,
-        });
-        await this.assertTeamLeaderScheduleMutation({
-          churchId,
-          teamId: input.teamLeaderScopeId,
-          shift,
-          participation,
-          volunteerId: assignment.volunteerId,
-          roleId: assignment.roleId,
-          tx,
-        });
-      }
-
       await this.auditRepo.create(
         churchId,
         {
@@ -250,21 +203,6 @@ export class DbAssignmentManager implements IAssignmentManager {
       participationId: shift.participationId,
       tx,
     });
-    if (input.teamLeaderScopeId) {
-      if (input.teamId !== input.teamLeaderScopeId) {
-        throw new AssignActionNotAvailableError();
-      }
-      await this.assertTeamLeaderScheduleMutation({
-        churchId: input.churchId,
-        teamId: input.teamLeaderScopeId,
-        shift,
-        participation,
-        volunteerId: input.volunteerId,
-        roleId: input.roleId,
-        tx,
-      });
-    }
-
     const hasMembership =
       await this.volunteerRepository.hasMembershipInMinistry(
         input.churchId,
@@ -393,58 +331,6 @@ export class DbAssignmentManager implements IAssignmentManager {
       assignment,
       warnings,
     };
-  }
-
-  private async assertTeamLeaderScheduleMutation({
-    churchId,
-    teamId,
-    shift,
-    participation,
-    volunteerId,
-    roleId,
-    tx,
-  }: AssertTeamLeaderScheduleMutationInput): Promise<void> {
-    const [event, requirements, memberships] = await Promise.all([
-      this.planningEventRepository.getEvent({
-        churchId,
-        eventId: participation.eventId,
-        tx,
-      }),
-      this.shiftRepository.listRequirementsByParticipation({
-        churchId,
-        participationId: participation.id,
-        tx,
-      }),
-      this.volunteerRepository.listMinistryMemberships(
-        churchId,
-        participation.ministryId,
-        tx,
-      ),
-    ]);
-    const requirementTeamIds = requirements
-      .filter(
-        (requirement) =>
-          requirement.shiftId === shift.id && requirement.roleId === roleId,
-      )
-      .map((requirement) => requirement.teamId);
-    const volunteerTeamIds =
-      memberships
-        .find((membership) => membership.volunteerId === volunteerId)
-        ?.teamMemberships.map((membership) => TeamId.from(membership.teamId)) ??
-      [];
-
-    const allowed = TeamScheduleMutationPolicy.authorize({
-      teamId,
-      participationState: participation.state,
-      eventStatus: event.status,
-      eventStart: event.start,
-      now: now(),
-      requirementTeamIds,
-      volunteerTeamIds,
-    });
-    if (!allowed) {
-      throw new AssignActionNotAvailableError();
-    }
   }
 
   private async notifyReassignment({

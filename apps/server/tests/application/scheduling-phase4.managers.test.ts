@@ -17,6 +17,7 @@ import {
   MinistryId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
   TemplateTimeBlockId,
   UserId,
@@ -39,6 +40,7 @@ import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
@@ -46,7 +48,11 @@ import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizz
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import { LocalNotificationService } from '@/infrastructure/services/local-notification-service';
-import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
+import {
+  buildMinistry,
+  buildRole,
+  buildSector,
+} from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildMinistryParticipation,
@@ -111,6 +117,7 @@ function createPhase4Managers(
       }),
       usualSetupRepository,
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
+      sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
       notificationService: notificationService ?? notificationSpy,
       unitOfWork,
     }),
@@ -300,6 +307,13 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       ministryId: seed.ministryAId,
       name: 'Usher',
     });
+    const sectorRow = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Main Door',
+    });
+    const sectorId = SectorId.from(sectorRow.id);
 
     const [shiftEntity] = await participationManager.splitShifts({
       churchId,
@@ -312,6 +326,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     const created = await participationManager.upsertRequirement({
       churchId,
       shiftId: ShiftId.from(shiftEntity.id),
+      sectorId,
       roleId: RoleId.from(roleRow.id),
       peopleNeeded: 2,
     });
@@ -320,6 +335,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     const updated = await participationManager.upsertRequirement({
       churchId,
       shiftId: ShiftId.from(shiftEntity.id),
+      sectorId,
       roleId: RoleId.from(roleRow.id),
       peopleNeeded: 4,
     });
@@ -330,6 +346,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       participationManager.upsertRequirement({
         churchId,
         shiftId: ShiftId.from(shiftEntity.id),
+        sectorId,
         roleId: RoleId.from(roleRow.id),
         peopleNeeded: 0,
       }),
@@ -864,6 +881,12 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
     });
+    const sectorRow = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Geral',
+    });
     const { blocks } = await createSchedulingPhase3Template({
       churchId: seed.churchAId,
       name: 'Profile template',
@@ -894,7 +917,13 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
           sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
           serves: true,
           shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 1 }],
+          headcounts: [
+            {
+              sectorId: SectorId.from(sectorRow.id),
+              roleId: RoleId.from(roleRow.id),
+              peopleNeeded: 1,
+            },
+          ],
         },
       ],
     });
@@ -931,7 +960,13 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
             sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId: RoleId.from(roleRow.id), peopleNeeded: 0 }],
+            headcounts: [
+              {
+                sectorId: SectorId.from(sectorRow.id),
+                roleId: RoleId.from(roleRow.id),
+                peopleNeeded: 0,
+              },
+            ],
           },
         ],
       }),

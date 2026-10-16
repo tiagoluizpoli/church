@@ -23,8 +23,8 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.ministryWorkspaceIndex;
  */
 const PLAN = {
   ministries: {
-    worship: { name: 'Louvor', roles: {}, teams: {} },
-    care: { name: 'Cuidado', roles: {}, teams: {} },
+    worship: { name: 'Louvor', roles: {}, sectors: { main: 'Principal' } },
+    care: { name: 'Cuidado', roles: {}, sectors: { main: 'Principal' } },
   },
   personas: {
     admin: {
@@ -35,9 +35,7 @@ const PLAN = {
     ministryLeader: {
       name: 'Lia Prado',
       churchAccessLevel: 'member',
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
   },
   pool: {},

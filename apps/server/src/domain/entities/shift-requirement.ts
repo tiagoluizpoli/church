@@ -5,8 +5,8 @@ import type {
   EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
-  TeamId,
 } from '../branded-ids';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
 
@@ -18,7 +18,9 @@ export interface ShiftRequirementProps {
   participationId?: MinistryParticipationId;
   shiftId?: ShiftId;
   roleId: RoleId;
-  teamId?: TeamId;
+  sectorId: SectorId;
+  /** Read-side label of `sectorId`, filled when the read joins the Sector. */
+  sectorName: string;
   peopleNeeded: number;
   notes?: string;
 }
@@ -64,8 +66,12 @@ export class ShiftRequirement extends Entity<
     return this._props.roleId;
   }
 
-  get teamId(): TeamId | undefined {
-    return this._props.teamId;
+  get sectorId(): SectorId {
+    return this._props.sectorId;
+  }
+
+  get sectorName(): string {
+    return this._props.sectorName;
   }
 
   get peopleNeeded(): number {

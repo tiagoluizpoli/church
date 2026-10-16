@@ -27,6 +27,7 @@ import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTransactionContext } from '@/infrastructure/repositories/drizzle-transaction-context';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
@@ -34,7 +35,7 @@ import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
-import { buildRole } from '@/seeds/builders/ministry';
+import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildAssignmentAudit,
@@ -82,6 +83,7 @@ function createParticipationManager(): DbParticipationManager {
       db: schedulingTestDb,
     }),
     roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
+    sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
     notificationService: createNotificationServiceSpy(),
     unitOfWork,
   });
@@ -148,12 +150,19 @@ async function seedRoleRequirement(
     ministryId: input.ministryId,
     name: 'Greeter',
   });
+  const stage = await buildSector({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    ministryId: input.ministryId,
+    name: 'Geral',
+  });
   await buildShiftRequirement({
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
     shiftId: input.shiftId,
     roleId: greeter.id,
+    sectorId: stage.id,
     peopleNeeded: 2,
   });
   return greeter.id;
@@ -417,11 +426,9 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     expect(eligible).toBeDefined();
     expect(eligible?.qualifiedRoleIds).toEqual([roleId]);
     // seedSchedulingPhase3Base seeds the admin volunteer's ministry
-    // membership with ministryAccessLevel 'leader' and no team memberships —
-    // the eligible-volunteer view must carry that through so the builder can
-    // tell ministry-wide "Leader" apart from a team-scoped TeamLeader.
+    // membership with ministryAccessLevel 'leader' — the eligible-volunteer
+    // view must carry that through so the builder can badge the Leader.
     expect(eligible?.ministryAccessLevel).toBe('leader');
-    expect(eligible?.leadTeamIds).toEqual([]);
   });
 
   it('returns the same builder shape for a published participation shift', async () => {

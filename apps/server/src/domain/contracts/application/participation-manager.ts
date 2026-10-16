@@ -6,8 +6,8 @@ import type {
   MinistryId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
-  TeamId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -51,8 +51,6 @@ export interface GetCycleBuilderDataInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
-  /** Limits the read model to one led Team; absent for Ministry leaders. */
-  teamId?: TeamId;
   userId: UserId;
 }
 
@@ -63,14 +61,9 @@ export interface CycleBuilderShiftView {
   eligibleVolunteers: EligibleVolunteerView[];
 }
 
-/**
- * A requirement plus the actor-scoped authority to mutate its assignments.
- * The capability is computed for the Cycle Builder read; it is never a
- * substitute for mutation-time authorization.
- */
+/** A requirement as the Cycle Builder read returns it. */
 export interface CycleBuilderRequirementView {
   requirement: ShiftRequirement;
-  canMutateAssignments: boolean;
 }
 
 export interface CycleBuilderEventTimeBlockView {
@@ -145,8 +138,8 @@ export interface DeleteShiftManagerInput {
 export interface UpsertRequirementManagerInput {
   churchId: ChurchId;
   shiftId: ShiftId;
+  sectorId: SectorId;
   roleId: RoleId;
-  teamId?: TeamId;
   peopleNeeded: number;
   notes?: string;
 }
@@ -177,8 +170,6 @@ export interface EligibleVolunteerView {
   qualifiedRoleIds: string[];
   /** This volunteer's ministry-wide Ministry Access Level. */
   ministryAccessLevel: MinistryAccessLevel;
-  /** Teams within the ministry this volunteer leads (Team Membership `leader` access level). */
-  leadTeamIds: string[];
 }
 
 export interface ListEligibleVolunteersInput {
@@ -201,8 +192,6 @@ export interface GetParticipationCompletionInput {
 export interface ListScheduleSummariesInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  /** Limits summaries to cycles with schedule work for this Team. */
-  teamId?: TeamId;
 }
 
 /** Iteration 3 (research.md R15/R16): one row per sent `Cycle`

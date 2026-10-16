@@ -5,7 +5,7 @@ import type {
   ChurchId,
   MinistryId,
   RoleId,
-  TeamId,
+  SectorId,
   TemplateTimeBlockId,
   UsualSetupId,
 } from '../../domain/branded-ids';
@@ -58,8 +58,8 @@ function mapHeadcount(
   stored: UsualSetupRow['headcounts'][number],
 ): UsualSetupHeadcount {
   return {
+    sectorId: stored.sectorId as SectorId,
     roleId: stored.roleId as RoleId,
-    teamId: stored.teamId ? (stored.teamId as TeamId) : undefined,
     peopleNeeded: stored.peopleNeeded,
   };
 }

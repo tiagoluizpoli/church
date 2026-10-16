@@ -48,12 +48,12 @@ const PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
     care: {
       name: 'Cuidado',
       roles: { careHost: 'Anfitrião' },
-      teams: { care: 'Equipe Cuidado' },
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
@@ -61,8 +61,8 @@ const PLAN = {
       name: 'Lia Prado',
       churchAccessLevel: 'admin',
       memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-        { ministry: 'care', accessLevel: 'leader', roles: [], teams: [] },
+        { ministry: 'worship', accessLevel: 'leader', roles: [] },
+        { ministry: 'care', accessLevel: 'leader', roles: [] },
       ],
     },
     volunteer: {
@@ -73,7 +73,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [],
         },
       ],
     },
@@ -86,7 +85,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [],
         },
       ],
     },
@@ -125,7 +123,7 @@ interface MinistryScheduleInput {
   ministryId: string;
   roleId: string;
   peopleNeeded: number;
-  teamId?: string;
+  sectorId: string;
 }
 
 export function createSchedulePublishRecipe({
@@ -187,7 +185,7 @@ export function createSchedulePublishRecipe({
       ministryId,
       roleId,
       peopleNeeded,
-      teamId,
+      sectorId,
     }: MinistryScheduleInput): Promise<SchedulePublishParticipation> {
       const participation = await buildMinistryParticipation({
         db,
@@ -215,7 +213,7 @@ export function createSchedulePublishRecipe({
         roleId,
         id: idOf({ kind: `shift-requirement:${key}` }),
         peopleNeeded,
-        teamId,
+        sectorId,
       });
       return { id: participation.id, shiftId: shift.id };
     }
@@ -230,6 +228,7 @@ export function createSchedulePublishRecipe({
           key: 'worship',
           ministryId: worship.id,
           roleId: worship.roles.usher.id,
+          sectorId: worship.sectors.main.id,
           peopleNeeded: USHERS_REQUIRED,
         })),
         peopleNeeded: USHERS_REQUIRED,
@@ -239,7 +238,7 @@ export function createSchedulePublishRecipe({
         ministryId: care.id,
         roleId: care.roles.careHost.id,
         peopleNeeded: 1,
-        teamId: care.teams.care.id,
+        sectorId: care.sectors.main.id,
       }),
     };
   }

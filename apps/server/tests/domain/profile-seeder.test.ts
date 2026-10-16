@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   EventTimeBlockId,
   RoleId,
+  SectorId,
   TemplateTimeBlockId,
 } from '@/domain/branded-ids';
 import {
@@ -16,6 +17,7 @@ const blockId = '88888888-8888-4888-8888-888888888888' as TemplateTimeBlockId;
 const otherBlockId =
   '88888888-8888-4888-8888-888888888889' as TemplateTimeBlockId;
 const roleId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as RoleId;
+const sectorId = '99999999-9999-4999-8999-999999999999' as SectorId;
 
 // 09:00–12:00 church time (UTC-3) → 12:00–15:00 UTC
 const templatedEventTimeBlock = {
@@ -49,7 +51,7 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
       sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ roleId, peopleNeeded: 3 }],
+      headcounts: [{ sectorId, roleId, peopleNeeded: 3 }],
     };
 
     const result = plan({ profileEntries: [entry] });
@@ -60,8 +62,12 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
       templatedEventTimeBlock.startTime,
     );
     expect(result.shifts[1]?.endTime).toEqual(templatedEventTimeBlock.endTime);
-    expect(result.shifts[0]?.headcounts).toEqual([{ roleId, peopleNeeded: 3 }]);
-    expect(result.shifts[1]?.headcounts).toEqual([{ roleId, peopleNeeded: 3 }]);
+    expect(result.shifts[0]?.headcounts).toEqual([
+      { sectorId, roleId, peopleNeeded: 3 },
+    ]);
+    expect(result.shifts[1]?.headcounts).toEqual([
+      { sectorId, roleId, peopleNeeded: 3 },
+    ]);
   });
 
   it('maps manual profile spans onto the event time block date in church timezone', () => {

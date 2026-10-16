@@ -6,6 +6,7 @@ import {
   ministryMembershipRole,
   organization,
   participationEventTimeBlockInclusion,
+  shiftRequirement,
   unavailableShift,
   volunteer,
 } from '@church/db';
@@ -19,7 +20,11 @@ import {
   buildProvisionedChurch,
 } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
-import { buildMinistry, buildRole, buildTeam } from '@/seeds/builders/ministry';
+import {
+  buildMinistry,
+  buildRole,
+  buildSector,
+} from '@/seeds/builders/ministry';
 import { buildEventTemplate } from '@/seeds/builders/planning';
 import {
   buildAssignedShift,
@@ -121,7 +126,7 @@ describe('integration composition of the shared seed builders', () => {
     expect(members[0]).toMatchObject({ userId: ADMIN_USER_ID, role: 'admin' });
   });
 
-  it('builds a Ministry structure of Teams and Roles inside one Church', async () => {
+  it('builds a Ministry structure of Sectors and Roles inside one Church', async () => {
     await buildChurch({
       db: testDb,
       id: CHURCH_ID,
@@ -135,12 +140,12 @@ describe('integration composition of the shared seed builders', () => {
       id: '33333333-3333-4333-8333-333333333331',
       name: 'Hospitality',
     });
-    const team = await buildTeam({
+    const sector = await buildSector({
       db: testDb,
       churchId: CHURCH_ID,
       ministryId: ministry.id,
       id: '33333333-3333-4333-8333-333333333341',
-      name: 'Door team',
+      name: 'Main Door',
     });
     const role = await buildRole({
       db: testDb,
@@ -150,7 +155,7 @@ describe('integration composition of the shared seed builders', () => {
       name: 'Usher',
     });
 
-    expect(team).toMatchObject({
+    expect(sector).toMatchObject({
       ministryId: ministry.id,
       churchId: CHURCH_ID,
     });
@@ -299,6 +304,13 @@ describe('integration composition of the shared seed builders', () => {
       id: '33333333-3333-4333-8333-333333333351',
       name: 'Usher',
     });
+    const door = await buildSector({
+      db: testDb,
+      churchId: CHURCH_ID,
+      ministryId: ministry.id,
+      id: '33333333-3333-4333-8333-333333333341',
+      name: 'Main Door',
+    });
     const volunteerRow = await buildVolunteer({
       db: testDb,
       churchId: CHURCH_ID,
@@ -354,8 +366,11 @@ describe('integration composition of the shared seed builders', () => {
       participationId: participation.id,
       shiftId: shiftRow.id,
       roleId: usher.id,
+      sectorId: door.id,
       peopleNeeded: 2,
     });
+    const [requirement] = await testDb.select().from(shiftRequirement);
+    expect(requirement).toMatchObject({ sectorId: door.id });
     const assigned = await buildAssignment({
       db: testDb,
       churchId: CHURCH_ID,
@@ -384,7 +399,6 @@ describe('integration composition of the shared seed builders', () => {
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       ministryAccessLevel: 'volunteer',
       roleIds: [],
-      teams: [],
     });
     const check = await buildAvailabilityCheck({
       db: testDb,

@@ -22,11 +22,7 @@ import {
 
 export const cycleBuilderShiftViewSchema = z.object({
   shift: shiftResponseSchema,
-  requirements: z.array(
-    shiftRequirementResponseSchema.extend({
-      canMutateAssignments: z.boolean(),
-    }),
-  ),
+  requirements: z.array(shiftRequirementResponseSchema),
   assignments: z.array(assignmentResponseSchema), // [] when none
   eligibleVolunteers: z.array(eligibleVolunteerResponseSchema),
 });
@@ -121,12 +117,11 @@ export const cycleBuilderMapper = {
             included: eventTimeBlockView.included,
             shifts: eventTimeBlockView.shifts.map((shiftView) => ({
               shift: participationMapper.shiftToResponse(shiftView.shift),
-              requirements: shiftView.requirements.map((requirement) => ({
-                ...participationMapper.requirementToResponse(
+              requirements: shiftView.requirements.map((requirement) =>
+                participationMapper.requirementToResponse(
                   requirement.requirement,
                 ),
-                canMutateAssignments: requirement.canMutateAssignments,
-              })),
+              ),
               assignments: shiftView.assignments.map((assignment) =>
                 assignmentMapper.toResponse(assignment),
               ),

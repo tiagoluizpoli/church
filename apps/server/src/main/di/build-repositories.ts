@@ -15,9 +15,9 @@ import {
   DrizzlePlanningEventRepository,
   DrizzleRedemptionRepository,
   DrizzleRoleRepository,
+  DrizzleSectorRepository,
   DrizzleSecurityLogRepository,
   DrizzleShiftRepository,
-  DrizzleTeamRepository,
   DrizzleUnavailableShiftRepository,
   DrizzleUnitOfWork,
   DrizzleUsualSetupRepository,
@@ -50,7 +50,7 @@ export type Repositories = Pick<
   | 'ministryInvitationRepository'
   | 'outboxRepository'
   | 'roleRepository'
-  | 'teamRepository'
+  | 'sectorRepository'
   | 'eventTimeBlockRepository'
   | 'volunteerNotificationRepository'
   | 'unitOfWork'
@@ -124,8 +124,8 @@ export function buildRepositories({
     overrides.outboxRepository ?? new DrizzleOutboxRepository({ db: database });
   const roleRepository =
     overrides.roleRepository ?? new DrizzleRoleRepository({ db: database });
-  const teamRepository =
-    overrides.teamRepository ?? new DrizzleTeamRepository({ db: database });
+  const sectorRepository =
+    overrides.sectorRepository ?? new DrizzleSectorRepository({ db: database });
   const eventTimeBlockRepository =
     overrides.eventTimeBlockRepository ??
     new DrizzleEventTimeBlockRepository({ db: database });
@@ -157,7 +157,7 @@ export function buildRepositories({
     ministryInvitationRepository,
     outboxRepository,
     roleRepository,
-    teamRepository,
+    sectorRepository,
     eventTimeBlockRepository,
     volunteerNotificationRepository,
     unitOfWork,

@@ -23,11 +23,6 @@ interface OverrideDialogProps {
   roleLabel?: string;
   isPending: boolean;
   onConfirm: () => void;
-  /**
-   * The team the conflicted shift belongs to, if any. The badge only reads
-   * "Team Leader" when the volunteer leads this specific team (FR-013).
-   */
-  contextTeamId?: string;
 }
 
 export function OverrideDialog({
@@ -40,7 +35,6 @@ export function OverrideDialog({
   roleLabel,
   isPending,
   onConfirm,
-  contextTeamId,
 }: OverrideDialogProps) {
   // Qualification is its own override, not a flavour of "unavailable": the
   // server treats it as a separate `NOT_QUALIFIED` warning, and a leader
@@ -59,7 +53,6 @@ export function OverrideDialog({
             {isNotQualified ? 'Assign anyway?' : 'Override conflict'}
             <AssigneeRoleBadge
               membership={volunteerMembership}
-              contextTeamId={contextTeamId}
               fullNameOnExpand={volunteerName}
             />
           </DialogTitle>

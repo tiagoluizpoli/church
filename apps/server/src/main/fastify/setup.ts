@@ -49,6 +49,7 @@ const ERROR_MAP: Record<string, ErrorMapEntry> = {
   RESEND_COOLDOWN_ACTIVE: { status: 429 },
   RESEND_DAILY_CAP_EXCEEDED: { status: 429 },
   INVALID_INVITATION_ROLE: { status: 422 },
+  VALIDATION_ERROR: { status: 422 },
 };
 
 export async function createFastify() {

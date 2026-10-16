@@ -10,6 +10,7 @@ export * from './ministry-invitation-id';
 export * from './ministry-participation-id';
 export * from './participation-event-time-block-inclusion-id';
 export * from './role-id';
+export * from './sector-id';
 export * from './shift-id';
 export * from './team-id';
 export * from './template-time-block-id';

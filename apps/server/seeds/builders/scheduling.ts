@@ -258,7 +258,7 @@ export interface BuildShiftRequirementInput {
   roleId: string;
   id?: string;
   peopleNeeded: number;
-  teamId?: string;
+  sectorId: string;
   notes?: string;
 }
 
@@ -270,7 +270,7 @@ export async function buildShiftRequirement({
   roleId,
   id,
   peopleNeeded,
-  teamId,
+  sectorId,
   notes,
 }: BuildShiftRequirementInput): Promise<SeededShiftRequirement> {
   return requireInsertedRow({
@@ -283,7 +283,7 @@ export async function buildShiftRequirement({
         shiftId,
         roleId,
         peopleNeeded,
-        teamId,
+        sectorId,
         notes,
       })
       .returning(),

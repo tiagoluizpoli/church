@@ -4,10 +4,11 @@ import type {
   ChurchId,
   MinistryId,
   RoleId,
-  TeamId,
+  SectorId,
   TemplateTimeBlockId,
   UsualSetupId,
 } from '../branded-ids';
+import { DuplicateHeadcountError } from '../errors/duplicate-headcount';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
 import { InvalidShiftSplitError } from '../errors/invalid-shift-split';
 
@@ -30,8 +31,8 @@ export interface UsualSetupManualSplit {
 export type UsualSetupShiftSplit = UsualSetupEqualSplit | UsualSetupManualSplit;
 
 export interface UsualSetupHeadcount {
+  sectorId: SectorId;
   roleId: RoleId;
-  teamId?: TeamId;
   peopleNeeded: number;
 }
 
@@ -123,7 +124,14 @@ interface AssertValidHeadcountsInput {
 function assertValidHeadcounts({
   headcounts,
 }: AssertValidHeadcountsInput): void {
+  const places = new Set<string>();
   for (const headcount of headcounts) {
+    const place = `${headcount.sectorId}:${headcount.roleId}`;
+    if (places.has(place)) {
+      throw new DuplicateHeadcountError();
+    }
+    places.add(place);
+
     if (
       !Number.isInteger(headcount.peopleNeeded) ||
       headcount.peopleNeeded < 1

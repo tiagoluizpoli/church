@@ -5,7 +5,7 @@ import {
   eventResponseSchema,
   scheduleBuilderDataResponseSchema,
 } from '@/api/dtos/event.dto';
-import { RoleId, VolunteerId } from '@/domain/branded-ids';
+import { RoleId, SectorId, VolunteerId } from '@/domain/branded-ids';
 import type { ScheduleBuilderData } from '@/domain/contracts/application/event-manager';
 import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
@@ -118,7 +118,8 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         churchId: 'church-1',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-1',
-        teamId: 'team-1',
+        sectorId: 'sector-1',
+        sectorName: 'Palco',
         peopleNeeded: 2,
         notes: 'Bring instruments',
       },
@@ -129,6 +130,8 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         churchId: 'church-1',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-2',
+        sectorId: 'sector-1',
+        sectorName: 'Palco',
         peopleNeeded: 1,
       },
       'req-2',
@@ -193,23 +196,19 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
           name: 'Alice',
           ministryAccessLevel: 'leader',
           qualifiedRoleIds: ['role-1', 'role-2'],
-          teamIds: ['team-1'],
-          leadTeamIds: [],
         },
         {
           id: VolunteerId.from('volunteer-2'),
           name: 'Bob',
           ministryAccessLevel: 'volunteer',
           qualifiedRoleIds: [],
-          teamIds: [],
-          leadTeamIds: [],
         },
       ],
       roles: [
         { id: RoleId.from('role-1'), name: 'Vocalist' },
         { id: RoleId.from('role-2'), name: 'Sound Tech' },
       ],
-      callerTeamIds: ['team-1'],
+      sectors: [{ id: SectorId.from('sector-1'), name: 'Stage' }],
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);
@@ -233,7 +232,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         id: 'req-1',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-1',
-        teamId: 'team-1',
+        sectorId: 'sector-1',
         peopleNeeded: 2,
         notes: 'Bring instruments',
       },
@@ -241,7 +240,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         id: 'req-2',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-2',
-        teamId: undefined,
+        sectorId: 'sector-1',
         peopleNeeded: 1,
         notes: undefined,
       },
@@ -293,16 +292,12 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         name: 'Alice',
         ministryAccessLevel: 'leader',
         qualifiedRoleIds: ['role-1', 'role-2'],
-        teamIds: ['team-1'],
-        leadTeamIds: [],
       },
       {
         id: 'volunteer-2',
         name: 'Bob',
         ministryAccessLevel: 'volunteer',
         qualifiedRoleIds: [],
-        teamIds: [],
-        leadTeamIds: [],
       },
     ]);
 
@@ -323,17 +318,17 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       { id: 'role-2', name: 'Sound Tech' },
     ]);
 
-    expect(response.callerTeamIds).toEqual(['team-1']);
+    expect(response.sectors).toEqual([{ id: 'sector-1', name: 'Stage' }]);
   });
 
-  it('maps an all-empty schedule builder payload with a null callerTeamIds', () => {
+  it('maps an all-empty schedule builder payload', () => {
     const data: ScheduleBuilderData = {
       events: [],
       assignments: [],
       unavailableShifts: [],
       volunteers: [],
       roles: [],
-      callerTeamIds: null,
+      sectors: [],
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);
@@ -344,7 +339,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       unavailableShifts: [],
       volunteers: [],
       roles: [],
-      callerTeamIds: null,
+      sectors: [],
     });
   });
 
@@ -366,7 +361,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       unavailableShifts: [],
       volunteers: [],
       roles: [],
-      callerTeamIds: null,
+      sectors: [],
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);

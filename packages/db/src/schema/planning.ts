@@ -36,8 +36,8 @@ export interface ManualShiftSplitSpec {
 export type ShiftSplitSpec = EqualShiftSplitSpec | ManualShiftSplitSpec;
 
 export interface UsualSetupHeadcount {
+  sectorId: string;
   roleId: string;
-  teamId?: string;
   peopleNeeded: number;
 }
 

@@ -154,6 +154,7 @@ async function setUpTwoMinistryOverlapCycle({
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
               {
+                sectorId: journey.ministries.worship.sectors.stage.id,
                 roleId: journey.ministries.worship.roles.usher.id,
                 peopleNeeded: 1,
               },
@@ -176,6 +177,7 @@ async function setUpTwoMinistryOverlapCycle({
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
               {
+                sectorId: journey.ministries.care.sectors.lobby.id,
                 roleId: journey.ministries.care.roles.careHost.id,
                 peopleNeeded: 1,
               },
@@ -281,10 +283,10 @@ test('volunteer in two ministries confirms despite a cross-ministry overlap', as
   // A single-ministry volunteer's clean confirm still exercises the
   // underlying availability-confirm flow, even though the leader-facing
   // verification that used to follow it is gone — see the note below.
-  // Uses the team-leader persona, a member of Worship alone.
+  // Uses the volunteer persona, a member of Worship alone.
   const singleMinistryActorContext = await newPersonaContext({
     browser,
-    persona: journey.personas.teamLeader,
+    persona: journey.personas.volunteer,
   });
   const singleMinistryActorPage = await singleMinistryActorContext.newPage();
   await singleMinistryActorPage.goto('/volunteer/availability');

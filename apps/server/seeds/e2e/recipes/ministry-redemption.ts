@@ -34,12 +34,12 @@ const CHURCH_A_PLAN = {
     worship: {
       name: 'E2E Worship',
       roles: { usher: 'Usher' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
     care: {
       name: 'E2E Care',
       roles: { careHost: 'Care Host' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
   },
   personas: {

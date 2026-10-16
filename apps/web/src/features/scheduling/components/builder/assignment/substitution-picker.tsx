@@ -20,12 +20,6 @@ interface SubstitutionPickerProps {
   declinedVolunteerId: string;
   volunteers: PickerVolunteer[];
   onSelect: (newVolunteerId: string) => void;
-  /**
-   * The team this picker is filling a shift for, if any. Candidates only badge
-   * as "Team Leader" when they lead this specific team — a team they lead
-   * elsewhere in the ministry does not qualify (FR-013).
-   */
-  contextTeamId?: string;
 }
 
 export function SubstitutionPicker({
@@ -36,7 +30,6 @@ export function SubstitutionPicker({
   declinedVolunteerId,
   volunteers,
   onSelect,
-  contextTeamId,
 }: SubstitutionPickerProps) {
   const [search, setSearch] = useState('');
 
@@ -69,7 +62,6 @@ export function SubstitutionPicker({
             {formatVolunteerName(declinedVolunteerName)}
             <AssigneeRoleBadge
               membership={declinedVolunteerMembership}
-              contextTeamId={contextTeamId}
               fullNameOnExpand={declinedVolunteerName}
             />
           </span>
@@ -103,7 +95,6 @@ export function SubstitutionPicker({
                   {formatVolunteerName(v.name)}
                   <AssigneeRoleBadge
                     membership={v.membership}
-                    contextTeamId={contextTeamId}
                     fullNameOnExpand={v.name}
                   />
                 </span>

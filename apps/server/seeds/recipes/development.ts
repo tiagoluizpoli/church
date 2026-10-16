@@ -16,7 +16,7 @@ import {
 } from '../builders/church';
 import { deriveSeedId } from '../builders/derived-id';
 import { buildAuthenticatableUser } from '../builders/identity';
-import { buildMinistry, buildRole, buildTeam } from '../builders/ministry';
+import { buildMinistry, buildRole, buildSector } from '../builders/ministry';
 import { buildMinistryMembership, buildVolunteer } from '../builders/volunteer';
 import type { SeededChurchSummary, SeedRecipe, SeedWriter } from '../recipe';
 import {
@@ -104,26 +104,26 @@ async function buildMinistryStructure({
     roleIdByName.set(name, seededRole.id);
   }
 
-  const teamIdByName = new Map<string, string>();
-  for (const name of ministry.teams) {
-    const seededTeam = await buildTeam({
+  const sectorIdByName = new Map<string, string>();
+  for (const name of ministry.sectors) {
+    const seededSector = await buildSector({
       db,
       churchId,
       ministryId: seeded.id,
-      id: deriveSeedId({ kind: 'team', parentIds: [seeded.id, name] }),
+      id: deriveSeedId({ kind: 'sector', parentIds: [seeded.id, name] }),
       name,
     });
-    teamIdByName.set(name, seededTeam.id);
+    sectorIdByName.set(name, seededSector.id);
   }
 
-  return { ministryId: seeded.id, roleIdByName, teamIdByName };
+  return { ministryId: seeded.id, roleIdByName, sectorIdByName };
 }
 
 interface SeatVolunteerInput {
   context: ChurchDirectoryContext;
   ministry: SeededMinistryIds;
   volunteerId: string;
-  seat: MinistrySeat<string, string>;
+  seat: MinistrySeat<string>;
 }
 
 interface RequireIdInput {
@@ -163,14 +163,6 @@ async function seatVolunteer({
         description: `Role ${name}`,
       }),
     ),
-    teams: (seat.teams ?? []).map((teamSeat) => ({
-      teamId: requireId({
-        ids: ministry.teamIdByName,
-        key: teamSeat.team,
-        description: `Team ${teamSeat.team}`,
-      }),
-      accessLevel: teamSeat.teamLeader ? 'leader' : 'member',
-    })),
   });
 }
 

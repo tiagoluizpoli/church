@@ -21,8 +21,8 @@ const PARTICIPATION_SCHEMA = z.object({
 export const SCHEDULE_PUBLISH_JOURNEY_SCHEMA =
   ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     ministries: z.object({
-      worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
-      care: assignMinistrySchema({ roles: ['careHost'], teams: ['care'] }),
+      worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
+      care: assignMinistrySchema({ roles: ['careHost'], sectors: ['main'] }),
     }),
     personas: z.object({
       leader: ASSIGN_PERSONA_SCHEMA,

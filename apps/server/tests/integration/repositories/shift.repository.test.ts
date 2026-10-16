@@ -6,12 +6,12 @@ import {
   EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
-  TeamId,
 } from '@/domain/branded-ids';
 import { Shift } from '@/domain/entities/shift';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { buildRole, buildTeam } from '@/seeds/builders/ministry';
+import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -321,7 +321,7 @@ describe('DrizzleShiftRepository', () => {
     ).toEqual([]);
   });
 
-  it('upsertRequirement inserts then updates by (shift, role, team) and lists by participation', async () => {
+  it('upsertRequirement matches on (shift, sector, role) and lists each with its Sector', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedParticipationGraph(
       seed.churchAId,
@@ -347,57 +347,62 @@ describe('DrizzleShiftRepository', () => {
       ],
     });
     if (!shift) throw new Error('setup failed');
-    const roleRow = await buildRole({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Usher',
-    });
-    const roleId = RoleId.from(roleRow.id);
+    const roleId = RoleId.from(
+      (
+        await buildRole({
+          db: schedulingTestDb,
+          churchId: seed.churchAId,
+          ministryId: seed.ministryAId,
+          name: 'Teacher',
+        })
+      ).id,
+    );
+    const [babiesRoom, kidsRoom] = await Promise.all(
+      ['Babies Room', 'Kids Room'].map((name) =>
+        buildSector({
+          db: schedulingTestDb,
+          churchId: seed.churchAId,
+          ministryId: seed.ministryAId,
+          name,
+        }),
+      ),
+    );
+    if (!babiesRoom || !kidsRoom) throw new Error('setup failed');
+    const place = { churchId, shiftId: shift.id, participationId, roleId };
 
-    const inserted = await repo.upsertRequirement({
-      churchId,
-      shiftId: shift.id,
-      participationId,
-      roleId,
-      peopleNeeded: 2,
-      notes: 'initial',
-    });
-    expect(inserted.peopleNeeded).toBe(2);
-
-    const updated = await repo.upsertRequirement({
-      churchId,
-      shiftId: shift.id,
-      participationId,
-      roleId,
-      peopleNeeded: 5,
-      notes: 'updated',
-    });
-    expect(updated.id).toBe(inserted.id);
-    expect(updated.peopleNeeded).toBe(5);
-
-    // Distinct teamId creates a separate requirement row for the same shift/role.
-    const teamRow = await buildTeam({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Team A',
-    });
-    const teamId = TeamId.from(teamRow.id);
-    const withTeam = await repo.upsertRequirement({
-      churchId,
-      shiftId: shift.id,
-      participationId,
-      roleId,
-      teamId,
+    const created = await repo.upsertRequirement({
+      ...place,
+      sectorId: SectorId.from(babiesRoom.id),
       peopleNeeded: 1,
     });
-    expect(withTeam.id).not.toBe(updated.id);
+    const updated = await repo.upsertRequirement({
+      ...place,
+      sectorId: SectorId.from(babiesRoom.id),
+      peopleNeeded: 3,
+    });
+    const otherSector = await repo.upsertRequirement({
+      ...place,
+      sectorId: SectorId.from(kidsRoom.id),
+      peopleNeeded: 2,
+    });
 
-    const requirements = await repo.listRequirementsByParticipation({
+    expect(updated.id).toBe(created.id);
+    expect(otherSector.id).not.toBe(created.id);
+    const listed = await repo.listRequirementsByParticipation({
       churchId,
       participationId,
     });
-    expect(requirements).toHaveLength(2);
+    expect(
+      listed
+        .map(({ sectorId, sectorName, peopleNeeded }) => ({
+          sectorId,
+          sectorName,
+          peopleNeeded,
+        }))
+        .sort((a, b) => a.peopleNeeded - b.peopleNeeded),
+    ).toEqual([
+      { sectorId: kidsRoom.id, sectorName: 'Kids Room', peopleNeeded: 2 },
+      { sectorId: babiesRoom.id, sectorName: 'Babies Room', peopleNeeded: 3 },
+    ]);
   });
 });

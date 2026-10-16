@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   ASSIGN_CHURCH_SCHEMA,
   ASSIGN_PERSONA_SCHEMA,
+  assignMinistrySchema,
 } from './journeys/assign-church';
 
 /**
@@ -37,6 +38,9 @@ export const SHARED_PERSONAS_FILE = path.join(AUTH_DIR, 'shared-personas.json');
 
 export const SHARED_PERSONAS_SCHEMA = z.object({
   church: ASSIGN_CHURCH_SCHEMA,
+  ministries: z.object({
+    worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
+  }),
   personas: z.object({
     churchAdmin: ASSIGN_PERSONA_SCHEMA,
     volunteer: ASSIGN_PERSONA_SCHEMA,

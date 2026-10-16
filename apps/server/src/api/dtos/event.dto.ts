@@ -55,7 +55,7 @@ export const scheduleBuilderDataResponseSchema = z.object({
               id: z.string(),
               eventTimeBlockId: z.string(),
               roleId: z.string(),
-              teamId: z.string().optional(),
+              sectorId: z.string(),
               peopleNeeded: z.number(),
               notes: z.string().optional(),
             }),
@@ -101,12 +101,10 @@ export const scheduleBuilderDataResponseSchema = z.object({
       name: z.string(),
       ministryAccessLevel: z.enum(['leader', 'volunteer']),
       qualifiedRoleIds: z.array(z.string()),
-      teamIds: z.array(z.string()),
-      leadTeamIds: z.array(z.string()),
     }),
   ),
   roles: z.array(z.object({ id: z.string(), name: z.string() })),
-  callerTeamIds: z.array(z.string()).nullable(),
+  sectors: z.array(z.object({ id: z.string(), name: z.string() })),
 });
 
 function eventToResponse(ev: Event): EventResponse {
@@ -147,7 +145,7 @@ export const eventMapper = {
             id: r.id as string,
             eventTimeBlockId: r.eventTimeBlockId as string,
             roleId: r.roleId as string,
-            teamId: r.teamId as string | undefined,
+            sectorId: r.sectorId as string,
             peopleNeeded: r.peopleNeeded,
             notes: r.notes,
           })),
@@ -180,7 +178,10 @@ export const eventMapper = {
         id: role.id as string,
         name: role.name,
       })),
-      callerTeamIds: data.callerTeamIds,
+      sectors: data.sectors.map((sector) => ({
+        id: sector.id as string,
+        name: sector.name,
+      })),
     };
   },
 };

@@ -8,7 +8,7 @@ import {
   EventTimeBlockId,
   MinistryId,
   RoleId,
-  TeamId,
+  SectorId,
   TemplateTimeBlockId,
   UserId,
 } from '../../domain/branded-ids';
@@ -613,10 +613,8 @@ export class ChurchAdminController implements FastifyController {
                   }
                 : entry.shiftSplit,
             headcounts: entry.headcounts.map((headcount) => ({
+              sectorId: SectorId.from(headcount.sectorId),
               roleId: RoleId.from(headcount.roleId),
-              teamId: headcount.teamId
-                ? TeamId.from(headcount.teamId)
-                : undefined,
               peopleNeeded: headcount.peopleNeeded,
             })),
           })),

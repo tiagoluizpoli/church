@@ -92,6 +92,7 @@ async function setUpLiveChanges({
 }: SetUpLiveChangesParams): Promise<LiveChangesFixture> {
   const worshipMinistryId = journey.ministries.worship.id;
   const usherRoleId = journey.ministries.worship.roles.usher.id;
+  const stageSectorId = journey.ministries.worship.sectors.stage.id;
 
   const directionResponse = await page.request.patch(
     `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/default-direction`,
@@ -145,7 +146,9 @@ async function setUpLiveChanges({
             sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 2 },
-            headcounts: [{ roleId: usherRoleId, peopleNeeded: 1 }],
+            headcounts: [
+              { sectorId: stageSectorId, roleId: usherRoleId, peopleNeeded: 1 },
+            ],
           },
         ],
       },
@@ -200,7 +203,7 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   page,
 }, testInfo) => {
   const journey = loadLiveChangesJourney({ testInfo });
-  const { leader, owner: ownerPersona, teamLeader } = journey.personas;
+  const { leader, owner: ownerPersona, volunteer } = journey.personas;
   const usherRoleId = journey.ministries.worship.roles.usher.id;
   await signInPersonaPage({ page, persona: leader });
   const fixture = await setUpLiveChanges({ page, journey });
@@ -212,7 +215,7 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   const eligible =
     (await eligibleResponse.json()) as EligibleVolunteerListResponse;
   const owner = eligible.volunteers.find(
-    (volunteer) => volunteer.volunteerId === ownerPersona.volunteerId,
+    (candidate) => candidate.volunteerId === ownerPersona.volunteerId,
   );
   if (!owner) {
     throw new Error('Expected the owner persona to be eligible.');
@@ -249,12 +252,12 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   const reassignResponse = await page.request.patch(
     `${SERVER_URL}/api/v1/assign/assignments/${secondAssignment.id}/reassign`,
     {
-      data: { volunteerId: teamLeader.volunteerId },
+      data: { volunteerId: volunteer.volunteerId },
     },
   );
   expect(reassignResponse.ok()).toBeTruthy();
   const reassigned = (
     (await reassignResponse.json()) as ReassignedAssignmentResponse
   ).volunteerId;
-  expect(reassigned).toBe(teamLeader.volunteerId);
+  expect(reassigned).toBe(volunteer.volunteerId);
 });

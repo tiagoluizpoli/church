@@ -4,7 +4,6 @@ import type {
   EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
-  TeamId,
 } from '../../branded-ids';
 import type {
   MinistryParticipation,
@@ -88,7 +87,6 @@ export interface TouchParticipationInput {
 export interface ListScheduleSummariesInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  teamId?: TeamId;
   tx?: TransactionContext;
 }
 

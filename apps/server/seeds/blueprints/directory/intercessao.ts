@@ -4,7 +4,7 @@ import { defineMinistry } from './types';
 export const INTERCESSAO = defineMinistry({
   name: 'Intercessão',
   roles: ['Intercessor'],
-  teams: [],
+  sectors: ['Sala de Oração'],
   schedule: [
     // Ministry leader (1)
     {

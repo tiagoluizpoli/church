@@ -28,7 +28,6 @@ const shift: CycleBuilderShiftSummary = {
       hasConflict: false,
       qualifiedRoleIds: [],
       ministryAccessLevel: 'volunteer',
-      leadTeamIds: [],
     },
     {
       volunteerId: 'volunteer-2',
@@ -37,7 +36,6 @@ const shift: CycleBuilderShiftSummary = {
       hasConflict: false,
       qualifiedRoleIds: [],
       ministryAccessLevel: 'volunteer',
-      leadTeamIds: [],
     },
   ],
 };
@@ -390,76 +388,11 @@ describe('CycleBuilderCell', () => {
     expect(unassign).not.toHaveClass('w-full');
   });
 
-  it('lets a Team Leader remove an existing assignment without offering a replacement', async () => {
-    const user = userEvent.setup();
-    const onRemove = vi.fn();
-    const onSelect = vi.fn();
-    renderCell({
-      assignments: [assignments[0]],
-      allowReplacement: false,
-      onRemove,
-      onSelect,
-    });
-
-    await user.click(screen.getByTestId('assignment-chip'));
-
-    expect(screen.getByRole('button', { name: 'Unassign' })).toBeVisible();
-    expect(
-      screen.queryByLabelText('Search volunteers'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('picker-option')).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId('cycle-assignment-assignment-1'),
-    ).not.toHaveAttribute('data-drop-target');
-
-    await user.click(screen.getByRole('button', { name: 'Unassign' }));
-    expect(onRemove).toHaveBeenCalledWith('assignment-1');
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
-  describe('Team Leader badge (issue #49 end-to-end)', () => {
-    it('badges an assignee as Team Leader only when contextTeamId names a team they lead', () => {
-      const teamLeaderAssignment: CycleBuilderAssignment = {
-        ...assignments[0],
-        membership: {
-          ministryAccessLevel: 'volunteer',
-          leadTeamIds: ['team-1'],
-        },
-      };
-
-      renderCell({
-        assignments: [teamLeaderAssignment],
-        contextTeamId: 'team-1',
-      });
-
-      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
-        'Team Leader',
-      );
-    });
-
-    it('shows no badge when the cell has no context team the assignee leads', () => {
-      const teamLeaderAssignment: CycleBuilderAssignment = {
-        ...assignments[0],
-        membership: {
-          ministryAccessLevel: 'volunteer',
-          leadTeamIds: ['team-1'],
-        },
-      };
-
-      renderCell({
-        assignments: [teamLeaderAssignment],
-        contextTeamId: 'team-2',
-      });
-
-      expect(
-        screen.queryByTestId('assignee-role-badge'),
-      ).not.toBeInTheDocument();
-    });
-
-    it('badges a ministry-wide Leader regardless of contextTeamId', () => {
+  describe('Leader badge (issue #49 end-to-end)', () => {
+    it('badges a ministry Leader assignee', () => {
       const leaderAssignment: CycleBuilderAssignment = {
         ...assignments[0],
-        membership: { ministryAccessLevel: 'leader', leadTeamIds: [] },
+        membership: { ministryAccessLevel: 'leader' },
       };
 
       renderCell({ assignments: [leaderAssignment] });
@@ -467,6 +400,21 @@ describe('CycleBuilderCell', () => {
       expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
         'Leader',
       );
+    });
+
+    it('shows no badge on a plain volunteer assignee', () => {
+      renderCell({
+        assignments: [
+          {
+            ...assignments[0],
+            membership: { ministryAccessLevel: 'volunteer' },
+          },
+        ],
+      });
+
+      expect(
+        screen.queryByTestId('assignee-role-badge'),
+      ).not.toBeInTheDocument();
     });
   });
 

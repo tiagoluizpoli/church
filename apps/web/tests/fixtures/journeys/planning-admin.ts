@@ -17,7 +17,7 @@ const CYCLE_ACCESS_RECIPE_NAME = 'cycle-access';
 const PLANNING_ADMIN_FIELDS = {
   cycleWindow: CYCLE_WINDOW_SCHEMA,
   ministries: z.object({
-    worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
+    worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
   }),
   personas: z.object({
     admin: ASSIGN_PERSONA_SCHEMA,

@@ -9,6 +9,7 @@ import {
   ministryMembershipTeam,
   organization,
   role,
+  sector,
   team,
   user,
   volunteer,
@@ -124,7 +125,7 @@ describe('minimal Church seed recipe', () => {
     );
   });
 
-  it('seats the Volunteer in the Ministry, its Team, and a Role qualification', async () => {
+  it('seats the Volunteer in the Ministry, its Sector, and a Role qualification', async () => {
     const [volunteerRow] = await testDb
       .select()
       .from(volunteer)
@@ -155,11 +156,11 @@ describe('minimal Church seed recipe', () => {
       name: 'Auxiliar',
     });
 
-    const [teamRow] = await testDb
+    const [sectorRow] = await testDb
       .select()
-      .from(team)
-      .where(eq(team.id, seeded.ministry.teamId));
-    expect(teamRow).toMatchObject({
+      .from(sector)
+      .where(eq(sector.id, seeded.ministry.sectorId));
+    expect(sectorRow).toMatchObject({
       churchId: seeded.church.id,
       ministryId: seeded.ministry.id,
       name: 'Maternal',
@@ -200,26 +201,11 @@ describe('minimal Church seed recipe', () => {
       { churchId: seeded.church.id, roleId: seeded.ministry.roleId },
     ]);
 
-    const teamMemberships = await testDb
-      .select({
-        churchId: ministryMembershipTeam.churchId,
-        teamId: ministryMembershipTeam.teamId,
-        accessLevel: ministryMembershipTeam.accessLevel,
-      })
-      .from(ministryMembershipTeam)
-      .where(
-        eq(
-          ministryMembershipTeam.ministryMembershipId,
-          seeded.personas.volunteer.ministryMembershipId,
-        ),
-      );
-    expect(teamMemberships).toEqual([
-      {
-        churchId: seeded.church.id,
-        teamId: seeded.ministry.teamId,
-        accessLevel: 'member',
-      },
-    ]);
+    const teamRows = await testDb.select().from(team);
+    const teamMembershipRows = await testDb
+      .select()
+      .from(ministryMembershipTeam);
+    expect([teamRows, teamMembershipRows]).toEqual([[], []]);
   });
 
   it('returns the same identifiers every time the graph is rebuilt', async () => {

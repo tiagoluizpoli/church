@@ -21,7 +21,7 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.volunteerAvailability;
 /**
  * Two Ministries whose usual setups only this journey writes, a leader
  * who is a Volunteer in both (so a same-time Worship and Care shift overlaps
- * for them), and a TeamLeader in Worship alone (a clean, single-Ministry
+ * for them), and a Volunteer in Worship alone (a clean, single-Ministry
  * confirm). The journey creates its own Cycle, template and events
  * through the API; the graph holds only what it starts from.
  */
@@ -30,12 +30,12 @@ const PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: { alpha: 'Equipe Alpha' },
+      sectors: { stage: 'Palco' },
     },
     care: {
       name: 'Cuidado',
       roles: { careHost: 'Anfitriao de Cuidado' },
-      teams: { care: 'Equipe Cuidado' },
+      sectors: { lobby: 'Recepção' },
     },
   },
   personas: {
@@ -47,17 +47,15 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'leader',
           roles: ['usher'],
-          teams: [],
         },
         {
           ministry: 'care',
           accessLevel: 'volunteer',
           roles: ['careHost'],
-          teams: [{ team: 'care', accessLevel: 'member' }],
         },
       ],
     },
-    teamLeader: {
+    volunteer: {
       name: 'Tomas Reis',
       churchAccessLevel: 'member',
       memberships: [
@@ -65,7 +63,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [{ team: 'alpha', accessLevel: 'leader' }],
         },
       ],
     },

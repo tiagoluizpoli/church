@@ -1,10 +1,10 @@
 import { defineMinistry } from './types';
 
-/** Projeção runs projection in the Templo and in Kids. Until #319 its two placements are one Operador de Projeção requirement, so it has no Teams. */
+/** Projeção runs projection in the Templo and in Kids. */
 export const PROJECAO = defineMinistry({
   name: 'Projeção',
   roles: ['Operador de Projeção'],
-  teams: [],
+  sectors: ['Templo', 'Kids'],
   schedule: [
     // Ministry leader (1)
     {

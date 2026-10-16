@@ -21,17 +21,10 @@ interface AssignmentButtonProps {
   roleId: string;
   isPublished: boolean;
   isEditable?: boolean;
-  allowReplacement?: boolean;
   onRemove: () => void;
   onSelect: (input: AssignmentButtonSelectInput) => void;
   pickerVolunteers: PickerVolunteer[];
   onFocus: () => void;
-  /**
-   * The team this cell's requirement is scoped to, if any — threaded through
-   * to the chip so its badge only reads "Team Leader" when the assignee
-   * actually leads this specific team (FR-013).
-   */
-  contextTeamId?: string;
 }
 
 export interface AssignmentButtonSelectInput {
@@ -45,12 +38,10 @@ export function AssignmentButton({
   roleId,
   isPublished,
   isEditable = true,
-  allowReplacement = true,
   onRemove,
   onSelect,
   pickerVolunteers,
   onFocus,
-  contextTeamId,
 }: AssignmentButtonProps) {
   const [open, setOpen] = useState(false);
   // The row only carries a client-invented id while the create is in flight, so
@@ -61,7 +52,7 @@ export function AssignmentButton({
     data: { shiftId, roleId, assignmentId: assignment.id },
     // Replacing a row the server has never seen would send it an id it cannot
     // resolve. The window is short; refusing it is cheaper than a 404 toast.
-    disabled: isPending || !isEditable || !allowReplacement,
+    disabled: isPending || !isEditable,
   });
   const chip = (
     <AssignmentChip
@@ -76,7 +67,6 @@ export function AssignmentButton({
       }
       isPublished={isPublished}
       syncState={isPending ? 'pending' : 'saved'}
-      contextTeamId={contextTeamId}
     />
   );
 
@@ -87,9 +77,7 @@ export function AssignmentButton({
         'inline-flex max-w-full rounded-full',
         replacementTarget.isOver && 'ring-1 ring-primary ring-offset-1',
       )}
-      data-drop-target={
-        isPending || !isEditable || !allowReplacement ? undefined : 'replace'
-      }
+      data-drop-target={isPending || !isEditable ? undefined : 'replace'}
       data-testid={`cycle-assignment-${assignment.id}`}
     >
       {isPending || !isEditable ? (
@@ -104,7 +92,6 @@ export function AssignmentButton({
           trigger={chip}
           volunteers={pickerVolunteers}
           hasAssignment
-          allowReplacement={allowReplacement}
           onSelect={(volunteerId) => onSelect({ volunteerId })}
           onRemove={onRemove}
         />

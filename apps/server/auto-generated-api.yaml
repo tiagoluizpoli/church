@@ -531,7 +531,7 @@ paths:
                                       type: string
                                     roleId:
                                       type: string
-                                    teamId:
+                                    sectorId:
                                       type: string
                                     peopleNeeded:
                                       type: number
@@ -541,6 +541,7 @@ paths:
                                     - id
                                     - eventTimeBlockId
                                     - roleId
+                                    - sectorId
                                     - peopleNeeded
                                   additionalProperties: false
                             required:
@@ -1252,7 +1253,7 @@ paths:
                           type: string
                         roleId:
                           type: string
-                        teamId:
+                        sectorId:
                           type: string
                         peopleNeeded:
                           type: number
@@ -1262,6 +1263,7 @@ paths:
                         - id
                         - eventTimeBlockId
                         - roleId
+                        - sectorId
                         - peopleNeeded
                       additionalProperties: false
                 required:
@@ -1353,7 +1355,7 @@ paths:
                           type: string
                         roleId:
                           type: string
-                        teamId:
+                        sectorId:
                           type: string
                         peopleNeeded:
                           type: number
@@ -1363,6 +1365,7 @@ paths:
                         - id
                         - eventTimeBlockId
                         - roleId
+                        - sectorId
                         - peopleNeeded
                       additionalProperties: false
                 required:
@@ -1482,15 +1485,16 @@ paths:
                           items:
                             type: object
                             properties:
-                              roleId:
+                              sectorId:
                                 type: string
-                              teamId:
+                              roleId:
                                 type: string
                               peopleNeeded:
                                 type: integer
                                 minimum: 1
                                 maximum: 9007199254740991
                             required:
+                              - sectorId
                               - roleId
                               - peopleNeeded
                             additionalProperties: false
@@ -1573,15 +1577,16 @@ paths:
                         items:
                           type: object
                           properties:
-                            roleId:
+                            sectorId:
                               type: string
-                            teamId:
+                            roleId:
                               type: string
                             peopleNeeded:
                               type: integer
                               minimum: 1
                               maximum: 9007199254740991
                           required:
+                            - sectorId
                             - roleId
                             - peopleNeeded
                     required:
@@ -1666,15 +1671,16 @@ paths:
                           items:
                             type: object
                             properties:
-                              roleId:
+                              sectorId:
                                 type: string
-                              teamId:
+                              roleId:
                                 type: string
                               peopleNeeded:
                                 type: integer
                                 minimum: 1
                                 maximum: 9007199254740991
                             required:
+                              - sectorId
                               - roleId
                               - peopleNeeded
                             additionalProperties: false
@@ -1874,7 +1880,7 @@ paths:
                                       type: string
                                     roleId:
                                       type: string
-                                    teamId:
+                                    sectorId:
                                       type: string
                                     peopleNeeded:
                                       type: number
@@ -1884,6 +1890,7 @@ paths:
                                     - id
                                     - eventTimeBlockId
                                     - roleId
+                                    - sectorId
                                     - peopleNeeded
                                   additionalProperties: false
                             required:
@@ -1993,21 +2000,11 @@ paths:
                           type: array
                           items:
                             type: string
-                        teamIds:
-                          type: array
-                          items:
-                            type: string
-                        leadTeamIds:
-                          type: array
-                          items:
-                            type: string
                       required:
                         - id
                         - name
                         - ministryAccessLevel
                         - qualifiedRoleIds
-                        - teamIds
-                        - leadTeamIds
                       additionalProperties: false
                   roles:
                     type: array
@@ -2022,18 +2019,26 @@ paths:
                         - id
                         - name
                       additionalProperties: false
-                  callerTeamIds:
-                    nullable: true
+                  sectors:
                     type: array
                     items:
-                      type: string
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
                 required:
                   - events
                   - assignments
                   - unavailableShifts
                   - volunteers
                   - roles
-                  - callerTeamIds
+                  - sectors
                 additionalProperties: false
         "401":
           description: Default Response
@@ -2522,7 +2527,7 @@ paths:
                                           type: string
                                         roleId:
                                           type: string
-                                        teamId:
+                                        sectorId:
                                           type: string
                                         peopleNeeded:
                                           type: number
@@ -2532,6 +2537,7 @@ paths:
                                         - id
                                         - eventTimeBlockId
                                         - roleId
+                                        - sectorId
                                         - peopleNeeded
                                       additionalProperties: false
                                 required:
@@ -2586,7 +2592,9 @@ paths:
                                       type: string
                                     roleId:
                                       type: string
-                                    teamId:
+                                    sectorId:
+                                      type: string
+                                    sectorName:
                                       type: string
                                     peopleNeeded:
                                       type: number
@@ -2597,6 +2605,8 @@ paths:
                                     - shiftId
                                     - participationId
                                     - roleId
+                                    - sectorId
+                                    - sectorName
                                     - peopleNeeded
                                   additionalProperties: false
                             required:
@@ -2935,8 +2945,7 @@ paths:
       summary: Set a Shift staffing requirement
       tags:
         - prepare
-      description: Set the ShiftRequirement headcount for a Role (and optional Team)
-        within a Shift.
+      description: Set the ShiftRequirement headcount for a Sector and Role within a Shift.
       requestBody:
         required: true
         content:
@@ -2944,9 +2953,9 @@ paths:
             schema:
               type: object
               properties:
-                roleId:
+                sectorId:
                   type: string
-                teamId:
+                roleId:
                   type: string
                 peopleNeeded:
                   type: integer
@@ -2955,6 +2964,7 @@ paths:
                 notes:
                   type: string
               required:
+                - sectorId
                 - roleId
                 - peopleNeeded
       parameters:
@@ -2979,7 +2989,9 @@ paths:
                     type: string
                   roleId:
                     type: string
-                  teamId:
+                  sectorId:
+                    type: string
+                  sectorName:
                     type: string
                   peopleNeeded:
                     type: number
@@ -2990,6 +3002,8 @@ paths:
                   - shiftId
                   - participationId
                   - roleId
+                  - sectorId
+                  - sectorName
                   - peopleNeeded
                 additionalProperties: false
   /api/v1/prepare/participations/{participationId}/ask-availability:
@@ -3152,69 +3166,6 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/assign/teams/{teamId}/cycles-summary:
-    get:
-      operationId: listTeamScheduleCycles
-      summary: List a Team's readable schedule cycles
-      tags:
-        - assign
-      description: List the sent Cycles in a Ministry that a TeamLeader may open as a
-        read-only schedule.
-      parameters:
-        - schema:
-            type: string
-          in: query
-          name: ministryId
-          required: true
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
-        - schema:
-            type: string
-          in: path
-          name: teamId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  cycles:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        cycleId:
-                          type: string
-                        name:
-                          type: string
-                      required:
-                        - cycleId
-                        - name
-                      additionalProperties: false
-                required:
-                  - cycles
-                additionalProperties: false
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/builder:
     get:
       operationId: getCycleBuilderData
@@ -3229,11 +3180,6 @@ paths:
           in: query
           name: ministryId
           required: true
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
         - schema:
             type: string
           in: path
@@ -3368,7 +3314,7 @@ paths:
                                           type: string
                                         roleId:
                                           type: string
-                                        teamId:
+                                        sectorId:
                                           type: string
                                         peopleNeeded:
                                           type: number
@@ -3378,6 +3324,7 @@ paths:
                                         - id
                                         - eventTimeBlockId
                                         - roleId
+                                        - sectorId
                                         - peopleNeeded
                                       additionalProperties: false
                                 required:
@@ -3435,21 +3382,22 @@ paths:
                                             type: string
                                           roleId:
                                             type: string
-                                          teamId:
+                                          sectorId:
+                                            type: string
+                                          sectorName:
                                             type: string
                                           peopleNeeded:
                                             type: number
                                           notes:
                                             type: string
-                                          canMutateAssignments:
-                                            type: boolean
                                         required:
                                           - id
                                           - shiftId
                                           - participationId
                                           - roleId
+                                          - sectorId
+                                          - sectorName
                                           - peopleNeeded
-                                          - canMutateAssignments
                                         additionalProperties: false
                                     assignments:
                                       type: array
@@ -3521,10 +3469,6 @@ paths:
                                             enum:
                                               - leader
                                               - volunteer
-                                          leadTeamIds:
-                                            type: array
-                                            items:
-                                              type: string
                                         required:
                                           - volunteerId
                                           - volunteerName
@@ -3532,7 +3476,6 @@ paths:
                                           - hasConflict
                                           - qualifiedRoleIds
                                           - ministryAccessLevel
-                                          - leadTeamIds
                                         additionalProperties: false
                                   required:
                                     - shift
@@ -3595,11 +3538,6 @@ paths:
           in: query
           name: ministryId
           required: true
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
         - schema:
             type: string
           in: path
@@ -3687,11 +3625,6 @@ paths:
           in: query
           name: ministryId
           required: true
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
         - schema:
             type: string
           in: path
@@ -3801,10 +3734,6 @@ paths:
                           enum:
                             - leader
                             - volunteer
-                        leadTeamIds:
-                          type: array
-                          items:
-                            type: string
                       required:
                         - volunteerId
                         - volunteerName
@@ -3812,7 +3741,6 @@ paths:
                         - hasConflict
                         - qualifiedRoleIds
                         - ministryAccessLevel
-                        - leadTeamIds
                       additionalProperties: false
                 required:
                   - volunteers
@@ -3838,7 +3766,7 @@ paths:
       summary: Assign a Volunteer to a Shift
       tags:
         - assign
-      description: Assign a Volunteer to a Role (and optional Team) within a Shift.
+      description: Assign a Volunteer to a Role within a Shift.
       requestBody:
         required: true
         content:
@@ -3849,8 +3777,6 @@ paths:
                 volunteerId:
                   type: string
                 roleId:
-                  type: string
-                teamId:
                   type: string
               required:
                 - volunteerId
@@ -3958,11 +3884,6 @@ paths:
         - assign
       description: Remove a Volunteer Assignment from its Shift.
       parameters:
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
         - schema:
             type: string
           in: path
@@ -4177,31 +4098,6 @@ paths:
                           required:
                             - kind
                             - ministryId
-                            - name
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - team
-                            ministryId:
-                              type: string
-                              format: uuid
-                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-                            ministryName:
-                              type: string
-                            teamId:
-                              type: string
-                              format: uuid
-                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-                            name:
-                              type: string
-                          required:
-                            - kind
-                            - ministryId
-                            - ministryName
-                            - teamId
                             - name
                           additionalProperties: false
                 required:
@@ -5249,10 +5145,6 @@ paths:
                                 type: string
                               roleName:
                                 type: string
-                              teamId:
-                                type: string
-                              teamName:
-                                type: string
                               startTime:
                                 type: string
                                 format: date-time
@@ -5465,8 +5357,6 @@ paths:
                               eventTimeBlockLabel:
                                 type: string
                               roleName:
-                                type: string
-                              teamName:
                                 type: string
                               volunteerDisplayName:
                                 type: string

@@ -87,7 +87,6 @@ interface CycleBuilderBoardGridProps {
   filtersAreDefault: boolean;
   onClearFilters: () => void;
   dragScroll: ReturnType<typeof useBoardDragScroll>;
-  teamId?: string;
 }
 
 /**
@@ -117,7 +116,6 @@ export function CycleBuilderBoardGrid({
   filtersAreDefault,
   onClearFilters,
   dragScroll,
-  teamId,
 }: CycleBuilderBoardGridProps) {
   const gridStyle = {
     gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(320px, 1fr))`,
@@ -239,9 +237,6 @@ export function CycleBuilderBoardGrid({
                                             safe: [],
                                             needsResponse: [],
                                           };
-                                        const isEditable =
-                                          requirement.canMutateAssignments ??
-                                          true;
                                         const focusOnRequirement = () =>
                                           onFocusRequirement({
                                             key: requirementFocusKey,
@@ -297,8 +292,6 @@ export function CycleBuilderBoardGrid({
                                             isPublished={
                                               event.state === 'published'
                                             }
-                                            isEditable={isEditable}
-                                            allowReplacement={!teamId}
                                             isFocused={
                                               focusedKey === requirementFocusKey
                                             }
@@ -322,7 +315,6 @@ export function CycleBuilderBoardGrid({
                                             onDismissFailedWrite={
                                               onDismissFailedWrite
                                             }
-                                            contextTeamId={requirement.teamId}
                                           />
                                         );
                                       })}

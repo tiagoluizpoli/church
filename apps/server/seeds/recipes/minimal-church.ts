@@ -7,7 +7,7 @@ import {
   redeemChurchInvitation,
 } from '../builders/church';
 import { buildAuthenticatableUser } from '../builders/identity';
-import { buildMinistry, buildRole, buildTeam } from '../builders/ministry';
+import { buildMinistry, buildRole, buildSector } from '../builders/ministry';
 import { buildMinistryMembership, buildVolunteer } from '../builders/volunteer';
 import type {
   SeededChurchSummary,
@@ -28,7 +28,7 @@ export interface SeededVolunteerPersona extends SeededPersona {
 
 export interface SeededMinistrySummary {
   id: string;
-  teamId: string;
+  sectorId: string;
   roleId: string;
 }
 
@@ -75,11 +75,11 @@ async function loadMinimalChurch({
     id: blueprint.ministry.id,
     name: blueprint.ministry.name,
   });
-  const team = await buildTeam({
+  const sector = await buildSector({
     db,
     churchId: church.id,
     ministryId: ministry.id,
-    ...blueprint.ministry.team,
+    ...blueprint.ministry.sector,
   });
   const role = await buildRole({
     db,
@@ -121,12 +121,11 @@ async function loadMinimalChurch({
     id: volunteerPersona.ministryMembershipId,
     ministryAccessLevel: 'volunteer',
     roleIds: [role.id],
-    teams: [{ teamId: team.id, accessLevel: 'member' }],
   });
 
   return {
     church: { id: church.id, slug: church.slug },
-    ministry: { id: ministry.id, teamId: team.id, roleId: role.id },
+    ministry: { id: ministry.id, sectorId: sector.id, roleId: role.id },
     personas: {
       churchAdmin: {
         userId: churchAdmin.id,

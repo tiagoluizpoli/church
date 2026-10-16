@@ -16,12 +16,11 @@ import {
   redeemChurchInvitation,
 } from '../../builders/church';
 import { buildAuthenticatableUser } from '../../builders/identity';
-import { buildMinistry, buildRole, buildTeam } from '../../builders/ministry';
+import { buildMinistry, buildRole, buildSector } from '../../builders/ministry';
 import {
   buildMinistryMembership,
   buildVolunteer,
   type MinistryAccessLevel,
-  type TeamAccessLevel,
 } from '../../builders/volunteer';
 import type { SeedWriter } from '../../recipe';
 import {
@@ -33,7 +32,7 @@ import {
 /**
  * The shared starting graph of the #329 scheduling journeys: one provisioned
  * Church whose ChurchAdmin persona redeemed the provisioning invitation, plus
- * authenticatable personas, Ministries with Roles and Teams, and a pool of
+ * authenticatable personas, Ministries with Roles and Sectors, and a pool of
  * Volunteers qualified for given Roles. Not a registered recipe: each
  * journey recipe composes it from its own plan, so every journey still owns
  * its whole graph.
@@ -58,14 +57,8 @@ export interface AssignMinistryPlan {
   name: string;
   /** Role key → Role name. */
   roles: AssignNames;
-  /** Team key → Team name. */
-  teams: AssignNames;
-}
-
-export interface AssignTeamMembershipPlan {
-  /** A Team key of the membership's Ministry. */
-  team: string;
-  accessLevel: TeamAccessLevel;
+  /** Sector key → Sector name. */
+  sectors: AssignNames;
 }
 
 export interface AssignMinistryMembershipPlan {
@@ -75,7 +68,6 @@ export interface AssignMinistryMembershipPlan {
   /** Role keys of that Ministry the Volunteer is qualified for. Membership
    * alone qualifies for nothing; `[]` makes an unqualified member. */
   roles: readonly string[];
-  teams: readonly AssignTeamMembershipPlan[];
 }
 
 export interface AssignVolunteerPlan {
@@ -117,7 +109,7 @@ export interface AssignMinistry<TMinistry extends AssignMinistryPlan> {
   id: string;
   name: string;
   roles: KeyedBy<TMinistry['roles'], AssignNamedRow>;
-  teams: KeyedBy<TMinistry['teams'], AssignNamedRow>;
+  sectors: KeyedBy<TMinistry['sectors'], AssignNamedRow>;
 }
 
 export type AssignMinistries<TPlan extends AssignChurchPlan> = {
@@ -333,7 +325,7 @@ interface BuiltMinistry {
   id: string;
   name: string;
   roles: Record<string, AssignNamedRow>;
-  teams: Record<string, AssignNamedRow>;
+  sectors: Record<string, AssignNamedRow>;
 }
 
 interface BuildPlanMinistryInput {
@@ -368,18 +360,18 @@ async function buildPlanMinistry({
     });
     roles[roleKey] = { id: role.id, name: role.name };
   }
-  const teams: Record<string, AssignNamedRow> = {};
-  for (const [teamKey, name] of Object.entries(plan.teams)) {
-    const team = await buildTeam({
+  const sectors: Record<string, AssignNamedRow> = {};
+  for (const [sectorKey, name] of Object.entries(plan.sectors)) {
+    const sector = await buildSector({
       db,
       churchId,
       ministryId: ministry.id,
-      id: idOf({ kind: `team:${key}:${teamKey}` }),
+      id: idOf({ kind: `sector:${key}:${sectorKey}` }),
       name,
     });
-    teams[teamKey] = { id: team.id, name: team.name };
+    sectors[sectorKey] = { id: sector.id, name: sector.name };
   }
-  return { id: ministry.id, name: ministry.name, roles, teams };
+  return { id: ministry.id, name: ministry.name, roles, sectors };
 }
 
 interface BuildPlanMembershipsInput {
@@ -412,11 +404,6 @@ async function buildPlanMemberships({
     const roleIds = membership.roles.map(
       (key) => requirePlanEntry({ entries: ministry.roles, key, owner }).id,
     );
-    const teams = membership.teams.map(({ team, accessLevel }) => ({
-      teamId: requirePlanEntry({ entries: ministry.teams, key: team, owner })
-        .id,
-      accessLevel,
-    }));
     await buildMinistryMembership({
       db,
       churchId,
@@ -427,7 +414,6 @@ async function buildPlanMemberships({
       }),
       ministryAccessLevel: membership.accessLevel,
       roleIds,
-      teams,
     });
   }
 }

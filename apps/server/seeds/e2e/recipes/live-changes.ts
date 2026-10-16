@@ -21,7 +21,7 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.liveChanges;
 /**
  * One Worship Ministry with an Usher Role, its leader, and two qualified
  * Usher personas: the owner who holds and cancels the assignments, and a
- * TeamLeader who may not cancel them and is the reassignment target. The
+ * Volunteer who may not cancel them and is the reassignment target. The
  * journey creates its own Cycle, template and events through the
  * API and publishes only to its own personas.
  */
@@ -30,16 +30,14 @@ const PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: { alpha: 'Equipe Alpha' },
+      sectors: { stage: 'Palco' },
     },
   },
   personas: {
     leader: {
       name: 'Lia Prado',
       churchAccessLevel: 'admin',
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
     owner: {
       name: 'Rafael Moura',
@@ -49,11 +47,10 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [],
         },
       ],
     },
-    teamLeader: {
+    volunteer: {
       name: 'Tomas Reis',
       churchAccessLevel: 'member',
       memberships: [
@@ -61,7 +58,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [{ team: 'alpha', accessLevel: 'leader' }],
         },
       ],
     },

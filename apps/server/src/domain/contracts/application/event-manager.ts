@@ -3,6 +3,7 @@ import type {
   EventId,
   MinistryId,
   RoleId,
+  SectorId,
   VolunteerId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
@@ -25,18 +26,19 @@ export interface ScheduleBuilderEventGroup {
 export interface ScheduleBuilderVolunteerOption {
   id: VolunteerId;
   name: string;
-  /** This member's ministry-wide access level. Independent of team leadership. */
+  /** This member's ministry-wide access level. */
   ministryAccessLevel: MinistryAccessLevel;
   /** Roles this member is qualified to fill, including global roles. */
   qualifiedRoleIds: string[];
-  /** Every team this member belongs to within the ministry. Flat, no primary. */
-  teamIds: string[];
-  /** Subset of `teamIds` this member leads (TeamLeader — per-team, not ministry-wide). */
-  leadTeamIds: string[];
 }
 
 export interface ScheduleBuilderRoleOption {
   id: RoleId;
+  name: string;
+}
+
+export interface ScheduleBuilderSectorOption {
+  id: SectorId;
   name: string;
 }
 
@@ -46,12 +48,8 @@ export interface ScheduleBuilderData {
   unavailableShifts: UnavailableShift[];
   volunteers: ScheduleBuilderVolunteerOption[];
   roles: ScheduleBuilderRoleOption[];
-  /**
-   * Teams the calling TeamLeader may schedule for, or `null` when the caller
-   * is a ministry leader and therefore unrestricted. A TeamLeader can lead
-   * more than one team, so this is a list.
-   */
-  callerTeamIds: string[] | null;
+  /** The Ministry's Sectors, ordered by name. */
+  sectors: ScheduleBuilderSectorOption[];
 }
 
 export interface GetScheduleBuilderDataInput {

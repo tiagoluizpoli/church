@@ -123,20 +123,21 @@ function namedRowsSchema<const TKey extends string>({
 
 export interface AssignMinistrySchemaInput<
   TRoleKey extends string,
-  TTeamKey extends string,
+  TSectorKey extends string,
 > {
   roles: readonly TRoleKey[];
-  teams: readonly TTeamKey[];
+  /** Sector keys of the server plan. */
+  sectors: readonly TSectorKey[];
 }
 
-/** A Ministry with the Role and Team keys its server plan gives it. */
+/** A Ministry with the Role and Sector keys its server plan gives it. */
 export function assignMinistrySchema<
   const TRoleKey extends string,
-  const TTeamKey extends string,
->({ roles, teams }: AssignMinistrySchemaInput<TRoleKey, TTeamKey>) {
+  const TSectorKey extends string,
+>({ roles, sectors }: AssignMinistrySchemaInput<TRoleKey, TSectorKey>) {
   return ASSIGN_NAMED_ROW_SCHEMA.extend({
     roles: namedRowsSchema({ keys: roles }),
-    teams: namedRowsSchema({ keys: teams }),
+    sectors: namedRowsSchema({ keys: sectors }),
   });
 }
 
@@ -144,7 +145,7 @@ export const ASSIGN_REQUIREMENT_SCHEMA = z.object({
   id: z.string().min(1),
   roleId: z.string().min(1),
   peopleNeeded: z.number().int().positive(),
-  teamId: z.string().min(1).nullable(),
+  sectorId: z.string().min(1),
 });
 
 export interface AssignEventSchemaInput<TRequirementKey extends string> {
@@ -185,23 +186,15 @@ export interface SchedulePathInput {
 
 export interface AssignBuilderPathInput {
   ministryId: string;
-  /** Omitted for the Ministry's schedule link without a cycle. */
-  cycleId?: string;
-  /** Scopes the board to one Team (a TeamLeader's schedule link). */
-  teamId?: string;
+  cycleId: string;
 }
 
 /** The cycle builder (schedule board) for one Ministry's cycle. */
 export function assignBuilderPath({
   ministryId,
   cycleId,
-  teamId,
 }: AssignBuilderPathInput): string {
-  const path =
-    cycleId === undefined
-      ? `/scheduling/teams/${ministryId}`
-      : `/schedules/${ministryId}/${cycleId}/assign`;
-  return teamId === undefined ? path : `${path}?teamId=${teamId}`;
+  return `/schedules/${ministryId}/${cycleId}/assign`;
 }
 
 interface JourneyRow {
@@ -220,18 +213,15 @@ export interface WorshipCycleJourney {
 
 export interface WorshipCycleJourneyInput {
   journey: WorshipCycleJourney;
-  teamId?: string;
 }
 
 /** The Worship Ministry's builder for the journey's own cycle. */
 export function worshipBuilderPath({
   journey,
-  teamId,
 }: WorshipCycleJourneyInput): string {
   return assignBuilderPath({
     ministryId: journey.ministries.worship.id,
     cycleId: journey.cycle.id,
-    teamId,
   });
 }
 

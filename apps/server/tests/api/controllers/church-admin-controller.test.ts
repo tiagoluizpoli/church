@@ -10,7 +10,7 @@ import {
   vi,
 } from 'vitest';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
-import { RoleId } from '@/domain/branded-ids';
+import { RoleId, SectorId } from '@/domain/branded-ids';
 import { Event } from '@/domain/entities/event';
 import { Ministry } from '@/domain/entities/ministry';
 import { UsualSetup } from '@/domain/entities/usual-setup';
@@ -96,6 +96,7 @@ function createUsualSetup(): UsualSetup {
       shiftSplit: { kind: 'equal', count: 2 },
       headcounts: [
         {
+          sectorId: SectorId.from('99999999-9999-4999-8999-999999999999'),
           roleId: RoleId.from('88888888-8888-8888-8888-888888888888'),
           peopleNeeded: 3,
         },
@@ -336,6 +337,7 @@ describe('Church admin planning routes', () => {
           shiftSplit: { kind: 'equal', count: 2 },
           headcounts: [
             {
+              sectorId: '99999999-9999-4999-8999-999999999999',
               roleId: '88888888-8888-8888-8888-888888888888',
               peopleNeeded: 3,
             },
@@ -355,6 +357,7 @@ describe('Church admin planning routes', () => {
             shiftSplit: { kind: 'equal', count: 2 },
             headcounts: [
               {
+                sectorId: '99999999-9999-4999-8999-999999999999',
                 roleId: '88888888-8888-8888-8888-888888888888',
                 peopleNeeded: 3,
               },

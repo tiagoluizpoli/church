@@ -5,7 +5,6 @@ import {
   type CycleBuilderMutations,
   useCycleBuilderActions,
 } from '../../hooks/use-cycle-builder-actions';
-import { findShiftById } from '../../utils/builder/cycle-builder-shift-lookup.utils';
 import {
   summarizeCycleCounts,
   summarizeCycleStaffing,
@@ -41,7 +40,6 @@ interface CycleBuilderProps {
   reassignAssignment: CycleBuilderMutations['reassignAssignment'];
   syncedAt?: number;
   isRefreshing?: boolean;
-  teamId?: string;
 }
 
 interface RoleLabelForInput {
@@ -53,27 +51,6 @@ function roleLabelFor({ input, data }: RoleLabelForInput): string | undefined {
   return (
     input.roleLabel ?? data.roles.find((role) => role.id === input.roleId)?.name
   );
-}
-
-interface ContextTeamIdForInput {
-  input: CycleBuilderCellSelectInput;
-  data: CycleBuilderData;
-}
-
-/**
- * The team the shift×role behind this override belongs to, if any — the same
- * `shift.requirements` lookup the board cell derives per-cell, resolved here
- * from the override's own shift/role pair so its "Team Leader" badge agrees
- * with the cell it came from (FR-013).
- */
-function contextTeamIdFor({
-  input,
-  data,
-}: ContextTeamIdForInput): string | undefined {
-  const shift = findShiftById({ data, shiftId: input.shiftId });
-  return shift?.requirements.find(
-    (requirement) => requirement.roleId === input.roleId,
-  )?.teamId;
 }
 
 export function CycleBuilder({
@@ -90,7 +67,6 @@ export function CycleBuilder({
   reassignAssignment,
   syncedAt,
   isRefreshing,
-  teamId,
 }: CycleBuilderProps) {
   const { auditPanel } = appConfig.parked;
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -121,7 +97,7 @@ export function CycleBuilder({
   // Rendered on the filter toolbar's own row (B-4 header pass) rather than
   // the header — audit/publish sit with the rest of this screen's controls
   // instead of stretching a panel that otherwise only carries title + stats.
-  const toolbarActions = teamId ? null : (
+  const toolbarActions = (
     <>
       {auditPanel ? (
         <Button
@@ -181,10 +157,9 @@ export function CycleBuilder({
         failedWrites={actions.boardFailedWrites}
         onRetryFailedWrite={actions.retryFailedWrite}
         onDismissFailedWrite={actions.dismissFailedWrite}
-        teamId={teamId}
       />
 
-      {!teamId && auditPanel ? (
+      {auditPanel ? (
         <AuditLogPanel
           open={auditOpen}
           onOpenChange={setAuditOpen}
@@ -327,11 +302,6 @@ export function CycleBuilder({
         }
         isPending={actions.isSaving}
         onConfirm={actions.confirmOverride}
-        contextTeamId={
-          actions.override
-            ? contextTeamIdFor({ input: actions.override.input, data })
-            : undefined
-        }
       />
     </WorkspacePage>
   );

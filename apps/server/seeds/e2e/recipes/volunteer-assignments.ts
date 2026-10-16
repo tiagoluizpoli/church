@@ -10,7 +10,7 @@ import { hashPassword } from 'better-auth/crypto';
 import { SEED_PERSONA_PASSWORD } from '../../blueprints/credentials';
 import { buildProvisionedChurch } from '../../builders/church';
 import { buildAuthenticatableUser } from '../../builders/identity';
-import { buildMinistry, buildRole } from '../../builders/ministry';
+import { buildMinistry, buildRole, buildSector } from '../../builders/ministry';
 import {
   buildAssignment,
   buildCycle,
@@ -42,6 +42,7 @@ const ROOT_KINDS: E2eJourneyRootKinds = {
   userKinds: [VOLUNTEER_USER_KIND],
 };
 
+const SECTOR_NAME = 'Geral';
 const EVENT_OFFSET_DAYS = 7;
 const CYCLE_LENGTH_DAYS = 14;
 const EVENT_TITLE = 'Culto de Domingo';
@@ -138,6 +139,13 @@ export function createVolunteerAssignmentsRecipe({
       id: idOf({ kind: 'role' }),
       name: ROLE_NAME,
     });
+    const sector = await buildSector({
+      db,
+      churchId: church.id,
+      ministryId: ministry.id,
+      id: idOf({ kind: 'sector' }),
+      name: SECTOR_NAME,
+    });
     await buildMinistryMembership({
       db,
       churchId: church.id,
@@ -146,7 +154,6 @@ export function createVolunteerAssignmentsRecipe({
       id: idOf({ kind: 'ministry-membership' }),
       ministryAccessLevel: 'volunteer',
       roleIds: [role.id],
-      teams: [],
     });
 
     const eventDay = addCalendarDays({ day: anchor, days: EVENT_OFFSET_DAYS });
@@ -212,6 +219,7 @@ export function createVolunteerAssignmentsRecipe({
       participationId: participation.id,
       shiftId: shift.id,
       roleId: role.id,
+      sectorId: sector.id,
       id: idOf({ kind: 'shift-requirement' }),
       peopleNeeded: 1,
     });

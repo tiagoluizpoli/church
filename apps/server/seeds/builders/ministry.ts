@@ -1,10 +1,11 @@
-import { ministry, role, team } from '@church/db';
+import { ministry, role, sector, team } from '@church/db';
 import type { SeedWriter } from '../recipe';
 import { requireInsertedRow } from './require-inserted-row';
 
 export type SeededMinistry = typeof ministry.$inferSelect;
 export type SeededTeam = typeof team.$inferSelect;
 export type SeededRole = typeof role.$inferSelect;
+export type SeededSector = typeof sector.$inferSelect;
 
 export interface BuildMinistryInput {
   db: SeedWriter;
@@ -68,5 +69,21 @@ export async function buildRole({
       .values({ id, churchId, ministryId, name })
       .returning(),
     description: `Role ${name}`,
+  });
+}
+
+export async function buildSector({
+  db,
+  churchId,
+  ministryId,
+  id,
+  name,
+}: BuildMinistryChildInput): Promise<SeededSector> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(sector)
+      .values({ id, churchId, ministryId, name })
+      .returning(),
+    description: `Sector ${name}`,
   });
 }

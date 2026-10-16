@@ -22,6 +22,7 @@ import {
   outboxMessage,
   participationEventTimeBlockInclusion,
   role,
+  sector,
   securityLog,
   session,
   shift,
@@ -73,6 +74,7 @@ const IDS = {
   availabilityCheck: 'aaaaaaa1-0000-4000-8000-00000000000f',
   ministryInvitation: 'aaaaaaa1-0000-4000-8000-000000000010',
   outboxMessage: 'aaaaaaa1-0000-4000-8000-000000000011',
+  sector: 'aaaaaaa1-0000-4000-8000-000000000012',
 } as const;
 
 interface TableRowCount {
@@ -186,6 +188,13 @@ async function seedEveryTenantedTable(): Promise<void> {
     churchId: IDS.church,
     ministryId: IDS.ministry,
     name: 'Truncation Role',
+  });
+
+  await testDb.insert(sector).values({
+    id: IDS.sector,
+    churchId: IDS.church,
+    ministryId: IDS.ministry,
+    name: 'Truncation Sector',
   });
 
   await testDb.insert(volunteer).values({
@@ -321,6 +330,7 @@ async function seedEveryTenantedTable(): Promise<void> {
     churchId: IDS.church,
     participationId: IDS.participation,
     shiftId: IDS.shift,
+    sectorId: IDS.sector,
     roleId: IDS.role,
     peopleNeeded: 1,
   });

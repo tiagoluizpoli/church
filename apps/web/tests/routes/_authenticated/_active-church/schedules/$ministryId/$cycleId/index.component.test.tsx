@@ -207,7 +207,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     splitParticipationShifts.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -246,7 +246,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
 
     renderWorkspace();
@@ -280,7 +280,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
 
     renderWorkspace();
@@ -315,7 +315,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -354,7 +354,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -414,7 +414,7 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     upsertShiftRequirement.mockImplementation(
       (_shiftId: string, body: ShiftRequirementBody) =>
@@ -431,8 +431,14 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
         'toggle-event-time-block-expand-event-time-block-1',
       ),
     );
-    await user.type(screen.getByTestId('headcount-input-shift-1-role-1'), '3');
-    await user.type(screen.getByTestId('headcount-input-shift-1-role-2'), '4');
+    await user.type(
+      screen.getByTestId('headcount-input-shift-1:sector-1:role-1'),
+      '3',
+    );
+    await user.type(
+      screen.getByTestId('headcount-input-shift-1:sector-1:role-2'),
+      '4',
+    );
 
     const saveButton = screen.getByTestId(
       'save-headcounts-button-event-time-block-1',
@@ -445,7 +451,11 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
     });
     expect(upsertShiftRequirement).toHaveBeenCalledWith(
       'shift-1',
-      expect.objectContaining({ roleId: 'role-1', peopleNeeded: 3 }),
+      expect.objectContaining({
+        sectorId: 'sector-1',
+        roleId: 'role-1',
+        peopleNeeded: 3,
+      }),
     );
     expect(upsertShiftRequirement).toHaveBeenCalledWith(
       'shift-1',
@@ -486,7 +496,7 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
 
@@ -528,17 +538,19 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
       ),
     );
     await user.type(
-      await screen.findByTestId('headcount-input-shift-1-role-1'),
+      await screen.findByTestId('headcount-input-shift-1:sector-1:role-1'),
       '5',
     );
-    expect(screen.getByTestId('headcount-input-shift-1-role-1')).toHaveValue(5);
+    expect(
+      screen.getByTestId('headcount-input-shift-1:sector-1:role-1'),
+    ).toHaveValue(5);
 
     // Flip Serving off — server round-trips to included:false, shifts drop.
     includedEventTimeBlockIds = [];
     await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await waitFor(() => {
       expect(
-        screen.queryByTestId('headcount-input-shift-1-role-1'),
+        screen.queryByTestId('headcount-input-shift-1:sector-1:role-1'),
       ).not.toBeInTheDocument();
     });
 
@@ -548,9 +560,9 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
     await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('headcount-input-shift-1-role-1')).toHaveValue(
-        5,
-      );
+      expect(
+        screen.getByTestId('headcount-input-shift-1:sector-1:role-1'),
+      ).toHaveValue(5);
     });
   });
 });
@@ -600,7 +612,7 @@ describe('Prepare workspace batched save (US4/T029)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     askAvailability.mockResolvedValue({
@@ -639,7 +651,7 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -674,7 +686,7 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     askAvailability.mockResolvedValue({
@@ -723,7 +735,7 @@ describe('Prepare workspace remains editable post-release (US4/T030/FR-017)', ()
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     resendAvailabilityReminder.mockResolvedValue(undefined);
@@ -778,7 +790,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -808,7 +820,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -843,7 +855,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
 
     const { router } = renderWorkspace();
@@ -869,7 +881,7 @@ describe('Prepare workspace double-submit guard (US4/T030b)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     let resolveFire: (() => void) | undefined;
@@ -915,7 +927,7 @@ describe('Prepare workspace mid-flight save unmount (US4/T030c)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     askAvailability.mockImplementation(

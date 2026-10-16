@@ -94,7 +94,7 @@ describe('PrepareEventTimeBlockList day-grouping (US3/T026)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
 
     renderWithProviders(
@@ -155,7 +155,7 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const onSplitShifts = vi.fn();
     const onSaveHeadcounts = vi.fn();
@@ -198,7 +198,7 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
     await user.click(screen.getByTestId('shift-mode-select-0'));
     await user.click(await screen.findByText('Equal split'));
     await user.type(
-      await screen.findByTestId('headcount-input-shift-1-role-1'),
+      await screen.findByTestId('headcount-input-shift-1:sector-1:role-1'),
       '2',
     );
 
@@ -212,7 +212,7 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -261,7 +261,7 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -310,7 +310,7 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -326,8 +326,8 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
             manualSpans: [],
           },
         }}
-        headcountDrafts={{ 'shift-1:role-1': '3' }}
-        savedHeadcountDrafts={{ 'shift-1:role-1': '2' }}
+        headcountDrafts={{ 'shift-1:sector-1:role-1': '3' }}
+        savedHeadcountDrafts={{ 'shift-1:sector-1:role-1': '2' }}
         headcountDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
         events={[
           makeEventView({}, [
@@ -351,7 +351,7 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
     await user.click(
       screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
     );
-    await screen.findByText('Greeter');
+    await screen.findByText('Stage · Greeter');
     await user.click(
       screen.getByTestId('save-headcounts-button-event-time-block-1'),
     );
@@ -363,7 +363,7 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
         {
           shiftId: 'shift-1',
           validHeadcounts: [
-            { roleId: 'role-1', peopleNeeded: 3, teamId: undefined },
+            { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 3 },
           ],
         },
       ],
@@ -376,7 +376,7 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -393,12 +393,12 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
           },
         }}
         headcountDrafts={{
-          'shift-1:role-1': '3',
-          'shift-2:role-1': '2',
+          'shift-1:sector-1:role-1': '3',
+          'shift-2:sector-1:role-1': '2',
         }}
         savedHeadcountDrafts={{
-          'shift-1:role-1': '1',
-          'shift-2:role-1': '1',
+          'shift-1:sector-1:role-1': '1',
+          'shift-2:sector-1:role-1': '1',
         }}
         headcountDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
         events={[
@@ -442,13 +442,13 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
         {
           shiftId: 'shift-1',
           validHeadcounts: [
-            { roleId: 'role-1', peopleNeeded: 3, teamId: undefined },
+            { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 3 },
           ],
         },
         {
           shiftId: 'shift-2',
           validHeadcounts: [
-            { roleId: 'role-1', peopleNeeded: 2, teamId: undefined },
+            { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 2 },
           ],
         },
       ],
@@ -486,7 +486,7 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -502,7 +502,7 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
             manualSpans: [],
           },
         }}
-        headcountDrafts={{ 'shift-1:role-1': draftValue }}
+        headcountDrafts={{ 'shift-1:sector-1:role-1': draftValue }}
         events={baseEvents}
       />,
     );
@@ -528,7 +528,7 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -544,7 +544,10 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
             manualSpans: [],
           },
         }}
-        headcountDrafts={{ 'shift-1:role-1': '2', 'shift-1:role-2': '0' }}
+        headcountDrafts={{
+          'shift-1:sector-1:role-1': '2',
+          'shift-1:sector-1:role-2': '0',
+        }}
         events={baseEvents}
       />,
     );
@@ -552,7 +555,7 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
     await user.click(
       screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
     );
-    await screen.findByText('Greeter');
+    await screen.findByText('Stage · Greeter');
     const saveButton = screen.getByTestId(
       'save-headcounts-button-event-time-block-1',
     );
@@ -593,7 +596,7 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
               events: [],
               availability: [],
               volunteers: [],
-              callerTeamIds: null,
+              sectors: [{ id: 'sector-1', name: 'Stage' }],
             });
         }),
     );
@@ -651,7 +654,7 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
       await screen.findByTestId('role-catalog-error-shift-1'),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId('headcount-input-shift-1-role-1'),
+      screen.queryByTestId('headcount-input-shift-1:sector-1:role-1'),
     ).not.toBeInTheDocument();
   });
 
@@ -663,7 +666,7 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
         events: [],
         availability: [],
         volunteers: [],
-        callerTeamIds: null,
+        sectors: [{ id: 'sector-1', name: 'Stage' }],
       });
     const user = userEvent.setup();
 
@@ -687,7 +690,7 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
     await screen.findByTestId('role-catalog-error-shift-1');
     await user.click(screen.getByRole('button', { name: 'Retry' }));
 
-    expect(await screen.findByText('Greeter')).toBeInTheDocument();
+    expect(await screen.findByText('Stage · Greeter')).toBeInTheDocument();
   });
 
   it('shows a distinct empty-state (not a silent blank) when the ministry genuinely has zero roles configured', async () => {
@@ -696,7 +699,7 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -747,7 +750,7 @@ describe('PrepareEventTimeBlockList independent per-time-block unsaved indicator
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -777,7 +780,7 @@ describe('PrepareEventTimeBlockList independent per-time-block unsaved indicator
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -849,7 +852,7 @@ describe('PrepareEventTimeBlockList exact-string display under a non-UTC ambient
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamIds: null,
+      sectors: [{ id: 'sector-1', name: 'Stage' }],
     });
     const user = userEvent.setup();
 
@@ -896,5 +899,112 @@ describe('PrepareEventTimeBlockList exact-string display under a non-UTC ambient
     expect(
       await screen.findByText('12/07/2026 06:00 – 07:00'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('PrepareEventTimeBlockList Sector × Role grid (Spec 05a #494)', () => {
+  const includedEvents = [
+    makeEventView({}, [
+      {
+        included: true,
+        shifts: [
+          {
+            id: 'shift-1',
+            participationId: 'participation-1',
+            eventTimeBlockId: 'event-time-block-1',
+            startTime: '2026-07-12T09:00:00.000Z',
+            endTime: '2026-07-12T11:00:00.000Z',
+          },
+        ],
+      },
+    ]),
+  ];
+  const splitForms = {
+    'event-time-block-1': {
+      mode: 'equal' as const,
+      equalCount: '1',
+      manualSpans: [],
+    },
+  };
+
+  it('renders one row per Sector and Role and saves each with its Sector', async () => {
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [{ id: 'role-1', name: 'Teacher' }],
+      sectors: [
+        { id: 'sector-babies', name: 'Babies Room' },
+        { id: 'sector-kids', name: 'Kids Room' },
+      ],
+      events: [],
+      volunteers: [],
+    });
+    const onSaveHeadcounts = vi.fn();
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <PrepareEventTimeBlockList
+        {...NO_OP_PROPS}
+        onSaveHeadcounts={onSaveHeadcounts}
+        splitForms={splitForms}
+        headcountDrafts={{
+          'shift-1:sector-babies:role-1': '1',
+          'shift-1:sector-kids:role-1': '2',
+        }}
+        headcountDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
+        events={includedEvents}
+      />,
+    );
+
+    await user.click(
+      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
+    );
+    expect(
+      await screen.findByText('Babies Room · Teacher'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Kids Room · Teacher')).toBeInTheDocument();
+    await user.click(
+      screen.getByTestId('save-headcounts-button-event-time-block-1'),
+    );
+
+    expect(onSaveHeadcounts).toHaveBeenCalledWith({
+      participationId: 'participation-1',
+      eventTimeBlockId: 'event-time-block-1',
+      headcountSavesByShift: [
+        {
+          shiftId: 'shift-1',
+          validHeadcounts: [
+            { sectorId: 'sector-babies', roleId: 'role-1', peopleNeeded: 1 },
+            { sectorId: 'sector-kids', roleId: 'role-1', peopleNeeded: 2 },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('shows the no-Sector empty state and no inputs when the Ministry has no Sector', async () => {
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [{ id: 'role-1', name: 'Teacher' }],
+      sectors: [],
+      events: [],
+      volunteers: [],
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <PrepareEventTimeBlockList
+        {...NO_OP_PROPS}
+        splitForms={splitForms}
+        events={includedEvents}
+      />,
+    );
+
+    await user.click(
+      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
+    );
+    expect(
+      await screen.findByText(
+        'No Sectors yet. Headcounts need at least one Sector.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId(/^headcount-input-/)).not.toBeInTheDocument();
   });
 });

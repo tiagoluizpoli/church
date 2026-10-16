@@ -3,8 +3,8 @@ import type {
   EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
-  TeamId,
 } from '../../branded-ids';
 import type { Shift } from '../../entities/shift';
 import type { ShiftRequirement } from '../../entities/shift-requirement';
@@ -62,7 +62,8 @@ export interface UpsertShiftRequirementInput {
   shiftId: ShiftId;
   participationId: MinistryParticipationId;
   roleId: RoleId;
-  teamId?: TeamId;
+  /** Matched with the Shift and Role. */
+  sectorId: SectorId;
   peopleNeeded: number;
   notes?: string;
   tx?: TransactionContext;

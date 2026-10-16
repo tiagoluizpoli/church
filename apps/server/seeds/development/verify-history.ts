@@ -11,9 +11,9 @@ import {
   ministryParticipation,
   participationEventTimeBlockInclusion,
   role,
+  sector,
   shift,
   shiftRequirement,
-  team,
   templateTimeBlock,
   unavailableShift,
   user,
@@ -92,7 +92,7 @@ interface NeedKeyInput {
 }
 
 function needKey({ ministryName, need }: NeedKeyInput): string {
-  return `${ministryName}|${need.role}|${need.team ?? ''}|${need.peopleNeeded}`;
+  return `${ministryName}|${need.role}|${need.sector}|${need.peopleNeeded}`;
 }
 
 /** One gathering occurrence the cycle must hold. */
@@ -209,10 +209,10 @@ async function standingRuleProblems({
         db,
         query: sql`select m.name || '|' || to_char(b.start_time, 'HH24:MI') || '|' || t.weekday
             || '|' || p.serves || '|' || (p.shift_split ->> 'kind') || (p.shift_split ->> 'count')
-            || '|' || coalesce((select string_agg(r.name || '/' || coalesce(tm.name, '') || '/' || (h ->> 'peopleNeeded'), ',' order by r.name, tm.name)
+            || '|' || coalesce((select string_agg(r.name || '/' || sc.name || '/' || (h ->> 'peopleNeeded'), ',' order by r.name, sc.name)
               from jsonb_array_elements(p.headcounts) h
               join ${role} r on r.id = (h ->> 'roleId')::uuid
-              left join ${team} tm on tm.id = (h ->> 'teamId')::uuid), '') as key
+              join ${sector} sc on sc.id = (h ->> 'sectorId')::uuid), '') as key
           from ${usualSetup} p
           join ${ministry} m on m.id = p.ministry_id
           join ${templateTimeBlock} b on b.id = p.source_template_time_block_id
@@ -225,14 +225,11 @@ async function standingRuleProblems({
             const needs = rule.blocks[block.key];
             const headcounts = [...(needs ?? [])]
               .sort((left, right) =>
-                `${left.role}/${left.team ?? ''}`.localeCompare(
-                  `${right.role}/${right.team ?? ''}`,
+                `${left.role}/${left.sector}`.localeCompare(
+                  `${right.role}/${right.sector}`,
                 ),
               )
-              .map(
-                (need) =>
-                  `${need.role}/${need.team ?? ''}/${need.peopleNeeded}`,
-              )
+              .map((need) => `${need.role}/${need.sector}/${need.peopleNeeded}`)
               .join(',');
             return `${rule.ministry.name}|${block.startTime}|${template.weekday}|${needs !== null}|equal1|${headcounts}`;
           }),
@@ -319,11 +316,10 @@ async function cycleProblems({
       }),
     }),
     ...difference({
-      label:
-        'ShiftRequirements (whole-event-time-block Shifts, Projeção notes included)',
+      label: 'ShiftRequirements (whole-event-time-block Shifts)',
       actual: await keysOf({
         db,
-        query: sql`select m.name || '|' || r.name || '|' || coalesce(t.name, '') || '|' || sr.people_needed
+        query: sql`select m.name || '|' || r.name || '|' || t.name || '|' || sr.people_needed
             || '|' || coalesce(sr.notes, '') || '|' || to_char(sh.start_time at time zone ${timeZone}, 'YYYY-MM-DD HH24:MI')
             || '|' || (sh.start_time = ts.start_time and sh.end_time = ts.end_time) as key
           from ${shiftRequirement} sr
@@ -332,7 +328,7 @@ async function cycleProblems({
           join ${ministryParticipation} p on p.id = sr.participation_id
           join ${ministry} m on m.id = p.ministry_id
           join ${role} r on r.id = sr.role_id
-          left join ${team} t on t.id = sr.team_id`,
+          join ${sector} t on t.id = sr.sector_id`,
       }),
       expected: gatherings.flatMap((gathering) =>
         gathering.eventTimeBlocks.flatMap((eventTimeBlock) =>
@@ -347,7 +343,7 @@ async function cycleProblems({
     }),
   );
 
-  // Assignments name a Role, not a Team (#319): staffing is per Shift and Role.
+  // Assignments name a Role, not a Sector (Spec 05b): staffing is per Shift and Role.
   const blockKeyOf = new Map(
     blueprint.gatherings.templates.flatMap((template) =>
       template.blocks.map((block) => [

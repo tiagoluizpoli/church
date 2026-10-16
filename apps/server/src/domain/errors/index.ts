@@ -4,6 +4,7 @@ export * from './check-access-denied';
 export * from './church-slug-taken';
 export * from './cross-church-volunteer-conflict';
 export * from './cross-ministry-scope';
+export * from './duplicate-headcount';
 export * from './event-outside-cycle';
 export * from './illegal-state-transition';
 export * from './insufficient-invitation-authority';

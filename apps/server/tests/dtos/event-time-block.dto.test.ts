@@ -9,13 +9,14 @@ import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 
 describe('eventTimeBlockMapper', () => {
   describe('requirementToResponse', () => {
-    it('maps a requirement with teamId and notes present', () => {
+    it('maps a requirement with sectorId and notes present', () => {
       const requirement = new ShiftRequirement(
         {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
-          teamId: 'team-1',
+          sectorId: 'sector-1',
+          sectorName: 'Palco',
           peopleNeeded: 3,
           notes: 'bring a friend',
         },
@@ -28,18 +29,20 @@ describe('eventTimeBlockMapper', () => {
         id: 'req-1',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-1',
-        teamId: 'team-1',
+        sectorId: 'sector-1',
         peopleNeeded: 3,
         notes: 'bring a friend',
       });
     });
 
-    it('maps a requirement with teamId and notes absent', () => {
+    it('maps a requirement with sectorId and notes absent', () => {
       const requirement = new ShiftRequirement(
         {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
+          sectorId: 'sector-1',
+          sectorName: 'Palco',
           peopleNeeded: 1,
         },
         'req-2',
@@ -51,7 +54,7 @@ describe('eventTimeBlockMapper', () => {
         id: 'req-2',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-1',
-        teamId: undefined,
+        sectorId: 'sector-1',
         peopleNeeded: 1,
         notes: undefined,
       });
@@ -67,6 +70,8 @@ describe('eventTimeBlockMapper', () => {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
+          sectorId: 'sector-1',
+          sectorName: 'Palco',
           peopleNeeded: 2,
         },
         'req-1',
@@ -98,7 +103,7 @@ describe('eventTimeBlockMapper', () => {
             id: 'req-1',
             eventTimeBlockId: 'event-time-block-1',
             roleId: 'role-1',
-            teamId: undefined,
+            sectorId: 'sector-1',
             peopleNeeded: 2,
             notes: undefined,
           },

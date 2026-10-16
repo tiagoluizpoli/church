@@ -25,7 +25,11 @@ const CHURCH_B_SCOPE = 'b';
  */
 const CHURCH_A_PLAN = {
   ministries: {
-    worship: { name: 'E2E Church A Ministry', roles: {}, teams: {} },
+    worship: {
+      name: 'E2E Church A Ministry',
+      roles: {},
+      sectors: { main: 'Principal' },
+    },
   },
   personas: {
     admin: {
@@ -39,7 +43,11 @@ const CHURCH_A_PLAN = {
 
 const CHURCH_B_PLAN = {
   ministries: {
-    worship: { name: 'E2E Church B Ministry', roles: {}, teams: {} },
+    worship: {
+      name: 'E2E Church B Ministry',
+      roles: {},
+      sectors: { main: 'Principal' },
+    },
   },
   personas: {
     admin: {

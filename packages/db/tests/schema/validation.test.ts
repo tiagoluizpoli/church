@@ -7,6 +7,7 @@ import {
   ministry,
   ministryParticipation,
   role,
+  sector,
   shift,
   shiftRequirement,
   user,
@@ -162,12 +163,18 @@ describe('Database Level Constraints (T035)', () => {
   describe('ShiftRequirement Constraints', () => {
     it('should prevent ShiftRequirement with peopleNeeded < 1', async () => {
       let failed = false;
+      const [stage] = await testDb
+        .insert(sector)
+        .values({ churchId, ministryId, name: 'Stage' })
+        .returning();
+      if (!stage) throw new Error('Sector seed failed');
       try {
         await testDb.insert(shiftRequirement).values({
           churchId,
           participationId,
           shiftId,
           roleId,
+          sectorId: stage.id,
           peopleNeeded: 0,
         });
       } catch (_error: unknown) {

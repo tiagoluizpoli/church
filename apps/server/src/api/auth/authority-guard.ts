@@ -5,8 +5,6 @@ import type {
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
-  CanManageTeamInput,
-  CanManageTeamShiftInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
   SchedulingCapabilityProjection,
@@ -35,14 +33,6 @@ export class AuthorityGuard {
 
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean> {
     return this.manager.canManageMinistry(input);
-  }
-
-  canManageTeam(input: CanManageTeamInput): Promise<boolean> {
-    return this.manager.canManageTeam(input);
-  }
-
-  canManageTeamShift(input: CanManageTeamShiftInput): Promise<boolean> {
-    return this.manager.canManageTeamShift(input);
   }
 
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean> {

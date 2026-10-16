@@ -7,22 +7,24 @@ import type {
   EventTimeBlockId,
   MinistryId,
   RoleId,
+  SectorId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
 import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
 import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 import type {
   MinistryMembership,
-  MinistryTeamMembership,
   VolunteerRepository,
 } from '@/domain/contracts/infrastructure/volunteer.repository';
 import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { Role } from '@/domain/entities/role';
+import { Sector } from '@/domain/entities/sector';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
@@ -34,21 +36,8 @@ const roleId = '44444444-4444-4444-8444-444444444444' as RoleId;
 const eventTimeBlockId =
   '55555555-5555-4555-8555-555555555555' as EventTimeBlockId;
 const leaderId = 'leader-1' as VolunteerId;
-const teamLeaderId = 'team-leader-1' as VolunteerId;
 const teamAVolunteerId = 'volunteer-team-a' as VolunteerId;
 const teamBVolunteerId = 'volunteer-team-b' as VolunteerId;
-
-interface BuildTeamMembershipInput {
-  teamId: string;
-  accessLevel?: MinistryTeamMembership['accessLevel'];
-}
-
-function teamMembership({
-  teamId,
-  accessLevel = 'member',
-}: BuildTeamMembershipInput): MinistryTeamMembership {
-  return { teamId, accessLevel };
-}
 
 function buildEvent(): Event {
   return new Event(
@@ -68,7 +57,6 @@ function buildMembership(
 ): MinistryMembership {
   return {
     volunteerId: leaderId,
-    teamMemberships: [],
     qualifiedRoleIds: [],
     ministryAccessLevel: 'leader',
     ...overrides,
@@ -82,6 +70,7 @@ interface Repos {
   unavailableShiftRepo: UnavailableShiftRepository;
   volunteerRepo: VolunteerRepository;
   roleRepo: RoleRepository;
+  sectorRepo: SectorRepository;
 }
 
 function createRepos(): Repos {
@@ -173,6 +162,11 @@ function createRepos(): Repos {
     listByMinistry: vi.fn(async () => []),
   };
 
+  const sectorRepo: SectorRepository = {
+    getById: vi.fn(),
+    listByMinistry: vi.fn(async () => []),
+  };
+
   return {
     eventRepo,
     eventTimeBlockRepo,
@@ -180,6 +174,7 @@ function createRepos(): Repos {
     unavailableShiftRepo,
     volunteerRepo,
     roleRepo,
+    sectorRepo,
   };
 }
 
@@ -191,11 +186,41 @@ function createManager(repos: Repos): DbEventManager {
     unavailableShiftRepo: repos.unavailableShiftRepo,
     volunteerRepo: repos.volunteerRepo,
     roleRepo: repos.roleRepo,
+    sectorRepo: repos.sectorRepo,
   });
 }
 
 describe('DbEventManager', () => {
   describe('getScheduleBuilderData', () => {
+    it("returns the event Ministry's Sectors in repository order", async () => {
+      const repos = createRepos();
+      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
+        buildMembership({}),
+      ]);
+      const kidsId = '66666666-6666-4666-8666-666666666661' as SectorId;
+      const maternalId = '66666666-6666-4666-8666-666666666662' as SectorId;
+      vi.mocked(repos.sectorRepo.listByMinistry).mockResolvedValue([
+        new Sector({ churchId, ministryId, name: 'Kids' }, kidsId),
+        new Sector({ churchId, ministryId, name: 'Maternal' }, maternalId),
+      ]);
+
+      const result = await createManager(repos).getScheduleBuilderData({
+        churchId,
+        eventId,
+        ministryId,
+        volunteerId: leaderId,
+      });
+
+      expect(result.sectors).toEqual([
+        { id: kidsId, name: 'Kids' },
+        { id: maternalId, name: 'Maternal' },
+      ]);
+      expect(repos.sectorRepo.listByMinistry).toHaveBeenCalledWith({
+        churchId,
+        ministryId,
+      });
+    });
+
     it('throws IsolationBreachError when the caller is not a ministry member', async () => {
       const repos = createRepos();
       vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
@@ -235,9 +260,7 @@ describe('DbEventManager', () => {
           eventId,
           volunteerId: leaderId,
         }),
-      ).rejects.toThrow(
-        'Volunteer does not have leader or TeamLeader privileges',
-      );
+      ).rejects.toThrow('Volunteer does not have leader privileges');
     });
 
     it('throws IsolationBreachError when the caller is a plain team member, not a ministry leader or TeamLeader', async () => {
@@ -246,7 +269,6 @@ describe('DbEventManager', () => {
         buildMembership({
           volunteerId: teamAVolunteerId,
           ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-a' })],
         }),
       ]);
       const manager = createManager(repos);
@@ -257,9 +279,7 @@ describe('DbEventManager', () => {
           eventId,
           volunteerId: teamAVolunteerId,
         }),
-      ).rejects.toThrow(
-        'Volunteer does not have leader or TeamLeader privileges',
-      );
+      ).rejects.toThrow('Volunteer does not have leader privileges');
     });
 
     it('derives ministryId from the event when not provided, and skips lookup when provided', async () => {
@@ -298,18 +318,15 @@ describe('DbEventManager', () => {
         buildMembership({
           volunteerId: leaderId,
           ministryAccessLevel: 'leader',
-          teamMemberships: [teamMembership({ teamId: 'team-a' })],
         }),
         buildMembership({
           volunteerId: teamAVolunteerId,
           ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-a' })],
           qualifiedRoleIds: [roleId as string],
         }),
         buildMembership({
           volunteerId: teamBVolunteerId,
           ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-b' })],
         }),
       ]);
       const volunteers = [
@@ -354,7 +371,6 @@ describe('DbEventManager', () => {
         volunteerId: leaderId,
       });
 
-      expect(result.callerTeamIds).toBeNull();
       expect(result.volunteers.map((v) => v.id)).toEqual(
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
@@ -366,24 +382,18 @@ describe('DbEventManager', () => {
             name: 'Leader',
             ministryAccessLevel: 'leader',
             qualifiedRoleIds: [],
-            teamIds: ['team-a'],
-            leadTeamIds: [],
           },
           {
             id: teamAVolunteerId,
             name: 'Team A Vol',
             ministryAccessLevel: 'volunteer',
             qualifiedRoleIds: [roleId as string],
-            teamIds: ['team-a'],
-            leadTeamIds: [],
           },
           {
             id: teamBVolunteerId,
             name: 'Team B Vol',
             ministryAccessLevel: 'volunteer',
             qualifiedRoleIds: [],
-            teamIds: ['team-b'],
-            leadTeamIds: [],
           },
         ]),
       );
@@ -394,77 +404,6 @@ describe('DbEventManager', () => {
         churchId,
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
-    });
-
-    it('scopes a TeamLeader to only the team they lead, not every team they belong to', async () => {
-      const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({
-          volunteerId: teamLeaderId,
-          // Ordinary Ministry Member — TeamLeader-ness lives on the team
-          // membership below, not on ministryAccessLevel.
-          ministryAccessLevel: 'volunteer',
-          teamMemberships: [
-            teamMembership({ teamId: 'team-a', accessLevel: 'leader' }),
-          ],
-        }),
-        buildMembership({
-          volunteerId: teamAVolunteerId,
-          ministryAccessLevel: 'volunteer',
-          // Also in a team the TeamLeader does not lead.
-          teamMemberships: [
-            teamMembership({ teamId: 'team-a' }),
-            teamMembership({ teamId: 'team-c' }),
-          ],
-        }),
-        buildMembership({
-          volunteerId: teamBVolunteerId,
-          ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-b' })],
-        }),
-      ]);
-      const volunteers = [
-        new Volunteer(
-          { churchId, userId: 'u-team-leader', name: 'Team Leader' },
-          teamLeaderId,
-        ),
-        new Volunteer(
-          { churchId, userId: 'u-a', name: 'Team A Vol' },
-          teamAVolunteerId,
-        ),
-        new Volunteer(
-          { churchId, userId: 'u-b', name: 'Team B Vol' },
-          teamBVolunteerId,
-        ),
-      ];
-      vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue(
-        volunteers,
-      );
-
-      const manager = createManager(repos);
-      const result = await manager.getScheduleBuilderData({
-        churchId,
-        eventId,
-        volunteerId: teamLeaderId,
-      });
-
-      expect(result.callerTeamIds).toEqual(['team-a']);
-      expect(result.volunteers.map((v) => v.id)).toEqual(
-        expect.arrayContaining([teamLeaderId, teamAVolunteerId]),
-      );
-      expect(result.volunteers).toHaveLength(2);
-      // Team B is outside the TeamLeader's led scope entirely.
-      expect(result.volunteers.map((v) => v.id)).not.toContain(
-        teamBVolunteerId,
-      );
-      // Team memberships outside the TeamLeader's led scope must not travel,
-      // even for a volunteer who is otherwise visible (team-c is dropped).
-      expect(
-        result.volunteers.find((v) => v.id === teamAVolunteerId)?.teamIds,
-      ).toEqual(['team-a']);
-      const callerOption = result.volunteers.find((v) => v.id === teamLeaderId);
-      expect(callerOption?.ministryAccessLevel).toBe('volunteer');
-      expect(callerOption?.leadTeamIds).toEqual(['team-a']);
     });
 
     it('falls back to the volunteer id as the name when name is missing', async () => {
@@ -492,8 +431,6 @@ describe('DbEventManager', () => {
           name: leaderId,
           ministryAccessLevel: 'leader',
           qualifiedRoleIds: [],
-          teamIds: [],
-          leadTeamIds: [],
         },
       ]);
     });

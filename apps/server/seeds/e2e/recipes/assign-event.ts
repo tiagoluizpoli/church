@@ -28,8 +28,8 @@ export interface AssignCycleSummary {
 export interface AssignRequirementPlan {
   roleId: string;
   peopleNeeded: number;
-  /** Scopes the requirement to one Team (a TeamLeader's schedule seat). */
-  teamId?: string;
+  /** The Sector the requirement is for. */
+  sectorId: string;
 }
 
 export type AssignRequirementPlans = Readonly<
@@ -67,7 +67,7 @@ export interface AssignRequirement {
   id: string;
   roleId: string;
   peopleNeeded: number;
-  teamId: string | null;
+  sectorId: string;
 }
 
 export interface AssignEvent<TRequirementKey extends string> {
@@ -156,13 +156,13 @@ export async function buildAssignEvent<
       roleId: requirement.roleId,
       id: idOf({ kind: `shift-requirement:${key}:${requirementKey}` }),
       peopleNeeded: requirement.peopleNeeded,
-      teamId: requirement.teamId,
+      sectorId: requirement.sectorId,
     });
     built[requirementKey] = {
       id: row.id,
       roleId: row.roleId,
       peopleNeeded: row.peopleNeeded,
-      teamId: row.teamId,
+      sectorId: requirement.sectorId,
     };
   }
 

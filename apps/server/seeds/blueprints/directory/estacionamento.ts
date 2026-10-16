@@ -4,7 +4,7 @@ import { defineMinistry } from './types';
 export const ESTACIONAMENTO = defineMinistry({
   name: 'Estacionamento',
   roles: ['Orientador de Estacionamento'],
-  teams: [],
+  sectors: ['Pátio'],
   schedule: [
     // Ministry leader (1)
     {

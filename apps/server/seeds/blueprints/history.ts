@@ -14,16 +14,16 @@ export interface GatheringRef {
 /** One Ministry's post at one gathering. */
 export interface ServicePost<
   TRole extends string = string,
-  TTeam extends string = string,
+  TSector extends string = string,
 > {
-  ministry: MinistryBlueprint<TRole, TTeam>;
+  ministry: MinistryBlueprint<TRole, TSector>;
   role: TRole;
-  team?: TTeam;
+  sector: TSector;
   gathering: GatheringRef;
 }
 
-export function post<TRole extends string, TTeam extends string>(
-  servicePost: ServicePost<TRole, TTeam>,
+export function post<TRole extends string, TSector extends string>(
+  servicePost: ServicePost<TRole, TSector>,
 ): ServicePost {
   return servicePost;
 }
@@ -101,6 +101,7 @@ export const IGREJA_SEMENTE_HISTORY: HistoryBlueprint = {
       post: post({
         ministry: INTERCESSAO,
         role: 'Intercessor',
+        sector: 'Sala de Oração',
         gathering: { block: 'wednesday-20:00', week: 3 },
       }),
       reason: 'Viagem a trabalho',
@@ -113,11 +114,13 @@ export const IGREJA_SEMENTE_HISTORY: HistoryBlueprint = {
       kept: post({
         ministry: INTERCESSAO,
         role: 'Intercessor',
+        sector: 'Sala de Oração',
         gathering: { block: 'wednesday-20:00', week: 2 },
       }),
       withdrawn: post({
         ministry: PROJECAO,
         role: 'Operador de Projeção',
+        sector: 'Templo',
         gathering: { block: 'wednesday-20:00', week: 2 },
       }),
       reason: 'Já escalado na Intercessão neste culto',
@@ -131,12 +134,13 @@ export const IGREJA_SEMENTE_HISTORY: HistoryBlueprint = {
         post({
           ministry: PROJECAO,
           role: 'Operador de Projeção',
+          sector: 'Templo',
           gathering: { block: 'sunday-10:30', week: 1 },
         }),
         post({
           ministry: KIDS,
           role: 'Auxiliar',
-          team: 'Maternal',
+          sector: 'Maternal',
           gathering: { block: 'sunday-18:30', week: 1 },
         }),
       ],
@@ -147,6 +151,7 @@ export const IGREJA_SEMENTE_HISTORY: HistoryBlueprint = {
       post: post({
         ministry: ESTACIONAMENTO,
         role: 'Orientador de Estacionamento',
+        sector: 'Pátio',
         gathering: { block: 'wednesday-20:00', week: 4 },
       }),
       missing: 1,

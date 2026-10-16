@@ -63,9 +63,9 @@ export const DEVELOPMENT_BLUEPRINT: DevelopmentBlueprint = {
     { label: 'ChurchAdmin', email: 'helena.duarte@igreja-semente.test' },
     { label: 'Kids leader', email: 'natalia.viana@igreja-semente.test' },
     { label: 'Kids leader', email: 'otavio.guimaraes@igreja-semente.test' },
-    { label: 'Kids TeamLeader', email: 'patricia.cardoso@igreja-semente.test' },
+    { label: 'Kids Líder', email: 'patricia.cardoso@igreja-semente.test' },
     {
-      label: 'Maternal TeamLeader',
+      label: 'Maternal Líder',
       email: 'heloisa.rezende@igreja-semente.test',
     },
     { label: 'Volunteer', email: 'rafael.moura@igreja-semente.test' },

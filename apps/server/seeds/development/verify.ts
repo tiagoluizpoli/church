@@ -8,6 +8,7 @@ import {
   ministryMembershipTeam,
   organization,
   role,
+  sector,
   team,
   user,
   volunteer,
@@ -34,25 +35,11 @@ interface ChurchCheckInput {
   blueprint: ChurchDirectoryBlueprint;
 }
 
-interface CountedName {
-  name: string;
-  value: number;
-}
-
-interface CountedNamesInput {
-  rows: readonly CountedName[];
-}
-
-function byName({ rows }: CountedNamesInput): Map<string, number> {
-  return new Map(rows.map((row) => [row.name, row.value]));
-}
-
 interface MinistryExpectation {
   memberships: number;
   leaders: number;
   /** Role qualification rows: each seat's Roles, once per person in it. */
   qualifications: number;
-  teamLeaders: Map<string, number>;
 }
 
 interface ExpectMinistryInput {
@@ -69,7 +56,6 @@ function expectMinistry({
     memberships: 0,
     leaders: 0,
     qualifications: 0,
-    teamLeaders: new Map(ministryBlueprint.teams.map((name) => [name, 0])),
   };
   const seats = [
     ...ministryBlueprint.schedule.map((group) => ({
@@ -84,13 +70,6 @@ function expectMinistry({
     expectation.memberships += size;
     if (seat.ministryLeader) expectation.leaders += size;
     expectation.qualifications += seat.roles.length * size;
-    for (const teamSeat of seat.teams ?? []) {
-      if (!teamSeat.teamLeader) continue;
-      expectation.teamLeaders.set(
-        teamSeat.team,
-        (expectation.teamLeaders.get(teamSeat.team) ?? 0) + size,
-      );
-    }
   }
   return expectation;
 }
@@ -98,7 +77,7 @@ function expectMinistry({
 interface SortedNamesInput {
   db: SeedWriter;
   ministryId: string;
-  table: typeof role | typeof team;
+  table: typeof role | typeof sector;
 }
 
 async function sortedNames({
@@ -125,7 +104,7 @@ interface MinistryCheckInput {
   label: string;
 }
 
-/** One Ministry's Memberships, leaders, Role qualifications, Roles, Teams and TeamLeaders. */
+/** One Ministry's Memberships, leaders, Role qualifications, Roles and Sectors. */
 async function ministryProblems({
   db,
   blueprint,
@@ -184,30 +163,9 @@ async function ministryProblems({
   if (roles !== [...ministryBlueprint.roles].sort().join(', ')) {
     problems.push(`${label} has Roles [${roles}]`);
   }
-  const teams = await sortedNames({ db, ministryId, table: team });
-  if (teams !== [...ministryBlueprint.teams].sort().join(', ')) {
-    problems.push(`${label} has Teams [${teams}]`);
-  }
-
-  const teamLeaders = byName({
-    rows: await db
-      .select({ name: team.name, value: count() })
-      .from(ministryMembershipTeam)
-      .innerJoin(team, eq(team.id, ministryMembershipTeam.teamId))
-      .where(
-        and(
-          eq(team.ministryId, ministryId),
-          eq(ministryMembershipTeam.accessLevel, 'leader'),
-        ),
-      )
-      .groupBy(team.name),
-  });
-  for (const [teamName, leaders] of expected.teamLeaders) {
-    if ((teamLeaders.get(teamName) ?? 0) !== leaders) {
-      problems.push(
-        `Team ${teamName} of ${label} has ${teamLeaders.get(teamName) ?? 0} TeamLeaders, expected ${leaders}`,
-      );
-    }
+  const sectors = await sortedNames({ db, ministryId, table: sector });
+  if (sectors !== [...ministryBlueprint.sectors].sort().join(', ')) {
+    problems.push(`${label} has Sectors [${sectors}]`);
   }
 
   return problems;
@@ -352,6 +310,14 @@ async function graphWideProblems({ db }: DbInput): Promise<string[]> {
     );
   }
 
+  const teamRows = await countOf({
+    db,
+    query: sql`select (select count(*) from ${team}) + (select count(*) from ${ministryMembershipTeam}) as value`,
+  });
+  if (teamRows > 0) {
+    problems.push(`${teamRows} Team or Team Membership rows, expected none`);
+  }
+
   const crossMinistry = await countOf({
     db,
     query: sql`select count(*) as value from (
@@ -375,16 +341,12 @@ async function graphWideProblems({ db }: DbInput): Promise<string[]> {
           where mv.church_id <> v.church_id or mv.church_id <> m.church_id)
       + (select count(*) from ${role} r join ${ministry} m on m.id = r.ministry_id
           where r.church_id <> m.church_id)
-      + (select count(*) from ${team} t join ${ministry} m on m.id = t.ministry_id
-          where t.church_id <> m.church_id)
+      + (select count(*) from ${sector} sc join ${ministry} m on m.id = sc.ministry_id
+          where sc.church_id <> m.church_id)
       + (select count(*) from ${ministryMembershipRole} q
           join ${ministryMembership} mv on mv.id = q.ministry_membership_id
           join ${role} r on r.id = q.role_id
           where q.church_id <> mv.church_id or r.church_id <> mv.church_id)
-      + (select count(*) from ${ministryMembershipTeam} tm
-          join ${ministryMembership} mv on mv.id = tm.ministry_membership_id
-          join ${team} t on t.id = tm.team_id
-          where tm.church_id <> mv.church_id or t.church_id <> mv.church_id)
       + (select count(*) from ${volunteer} v
           where not exists (select 1 from ${member} cm
             where cm.organization_id = v.church_id and cm.user_id = v.user_id))

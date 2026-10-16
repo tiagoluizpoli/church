@@ -23,13 +23,12 @@ export const IGREJA_COLHEITA: ChurchDirectoryBlueprint = {
     defineMinistry({
       name: 'Kids',
       roles: ['Líder', 'Auxiliar'],
-      teams: ['Kids'],
+      sectors: ['Kids'],
       schedule: [
         {
           seat: {
             ministryLeader: true,
             roles: ['Líder', 'Auxiliar'],
-            teams: [{ team: 'Kids', teamLeader: true }],
           },
           people: [
             {
@@ -39,7 +38,7 @@ export const IGREJA_COLHEITA: ChurchDirectoryBlueprint = {
           ],
         },
         {
-          seat: { roles: ['Auxiliar'], teams: [{ team: 'Kids' }] },
+          seat: { roles: ['Auxiliar'] },
           people: [
             {
               name: 'Simone Lopes',

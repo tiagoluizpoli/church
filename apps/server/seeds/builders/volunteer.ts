@@ -66,6 +66,7 @@ export interface BuildMinistryMembershipInput {
   status?: SeededMinistryMembership['status'];
   /** Role qualifications — explicit grants; membership alone qualifies for nothing. */
   roleIds: string[];
+  /** Parked Team data (BL-033); dev seeds no longer create it. */
   teams?: SeedTeamMembership[];
 }
 

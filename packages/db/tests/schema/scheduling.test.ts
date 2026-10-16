@@ -13,6 +13,7 @@ import {
   ministryParticipation,
   participationEventTimeBlockInclusion,
   role,
+  sector,
   shift,
   shiftRequirement,
   templateTimeBlock,
@@ -284,11 +285,21 @@ describe('Scheduling reshape schema', () => {
       .returning();
     if (!check) throw new Error('Availability check seed failed');
 
+    const [stage] = await testDb
+      .insert(sector)
+      .values({
+        churchId: seed.churchAId,
+        ministryId: seed.ministryId,
+        name: 'Stage',
+      })
+      .returning();
+    if (!stage) throw new Error('Sector seed failed');
     await testDb.insert(shiftRequirement).values({
       churchId: seed.churchAId,
       participationId: graph.participationId,
       shiftId: graph.shiftId,
       roleId: seed.roleId,
+      sectorId: stage.id,
       peopleNeeded: 1,
     });
     await testDb.insert(assignment).values({

@@ -5,11 +5,12 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
-import { role, sector, team } from './core';
+import { role, sector } from './core';
 import { eventStatusEnum } from './enums';
 import { ministryParticipation } from './participation';
 import { cycle, eventTemplate, templateTimeBlock } from './planning';
@@ -139,14 +140,18 @@ export const shiftRequirement = pgTable(
     roleId: uuid('role_id')
       .notNull()
       .references(() => role.id, { onDelete: 'cascade' }),
-    teamId: uuid('team_id').references(() => team.id, { onDelete: 'set null' }),
-    sectorId: uuid('sector_id').references(() => sector.id, {
-      onDelete: 'cascade',
-    }),
+    sectorId: uuid('sector_id')
+      .notNull()
+      .references(() => sector.id, { onDelete: 'cascade' }),
     peopleNeeded: integer('people_needed').default(1).notNull(),
     notes: text('notes'),
   },
   (table) => [
+    uniqueIndex('shift_requirement_shift_sector_role_idx').on(
+      table.shiftId,
+      table.sectorId,
+      table.roleId,
+    ),
     check(
       'shift_requirement_min_people_needed_check',
       sql`${table.peopleNeeded} >= 1`,

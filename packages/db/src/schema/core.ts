@@ -177,9 +177,8 @@ export const sector = pgTable(
  * ministry-scoped and one person can serve in several ministries. Every role
  * requires a ministry — there are no global roles.
  *
- * Team is a separate axis — eligibility composes at query time as
- * "qualified for the role AND (requirement has no team OR the volunteer
- * belongs to that team)". There are deliberately no `(role, team)` rows.
+ * Eligibility is "qualified for the role"; the requirement's Sector does not
+ * narrow it.
  */
 export const ministryMembershipRole = pgTable(
   'ministry_membership_role',

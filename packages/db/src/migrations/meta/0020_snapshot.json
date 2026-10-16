@@ -1,5 +1,5 @@
 {
-  "id": "7347f135-0b20-48c3-abfa-bcd800558c73",
+  "id": "1a7ecaa9-a33b-448f-ba40-ba95bfd9c67f",
   "prevId": "658ff87a-2eba-4806-bab0-9fe075c96163",
   "version": "7",
   "dialect": "postgresql",
@@ -3977,17 +3977,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "team_id": {
-          "name": "team_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "sector_id": {
           "name": "sector_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "people_needed": {
           "name": "people_needed",
@@ -4003,7 +3997,35 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "shift_requirement_shift_sector_role_idx": {
+          "name": "shift_requirement_shift_sector_role_idx",
+          "columns": [
+            {
+              "expression": "shift_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sector_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "role_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "shift_requirement_church_id_church_id_fk": {
           "name": "shift_requirement_church_id_church_id_fk",
@@ -4055,19 +4077,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "shift_requirement_team_id_team_id_fk": {
-          "name": "shift_requirement_team_id_team_id_fk",
-          "tableFrom": "shift_requirement",
-          "tableTo": "team",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "shift_requirement_sector_id_sector_id_fk": {

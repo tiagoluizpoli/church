@@ -145,8 +145,8 @@
     {
       "idx": 20,
       "version": "7",
-      "when": 1792082108902,
-      "tag": "0020_sectors-expand",
+      "when": 1792123350937,
+      "tag": "0020_sectors",
       "breakpoints": true
     }
   ]

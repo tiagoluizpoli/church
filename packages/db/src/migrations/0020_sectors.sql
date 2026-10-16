@@ -1,9 +1,10 @@
--- Hand-edited (Spec 05a #494, expand step): creates `sector`, backfills one
+-- Hand-edited (Spec 05a #494, #498): creates `sector`, backfills one
 -- `Geral` Sector per Ministry with requirements or UsualSetup headcounts,
 -- merges Team-split (shift, role) requirements by summing people needed, adds
--- a nullable `shift_requirement.sector_id` set to `Geral`, and rewrites
--- UsualSetup headcount items to `{ sectorId, roleId, peopleNeeded }` (items
--- sharing a role summed). `team_id` stays; #498 finalises this migration.
+-- `shift_requirement.sector_id` (NOT NULL) set to `Geral`, drops `team_id`,
+-- adds the unique (shift, sector, role) index, and rewrites UsualSetup
+-- headcount items to `{ sectorId, roleId, peopleNeeded }` (items sharing a
+-- role summed).
 CREATE TABLE "sector" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"church_id" uuid NOT NULL,
@@ -35,7 +36,7 @@ WITH "grouped" AS (
 	FROM "shift_requirement"
 )
 UPDATE "shift_requirement"
-SET "people_needed" = "grouped"."total", "team_id" = NULL
+SET "people_needed" = "grouped"."total"
 FROM "grouped"
 WHERE "shift_requirement"."id" = "grouped"."id" AND "grouped"."rank" = 1 AND "grouped"."rows" > 1;--> statement-breakpoint
 DELETE FROM "shift_requirement"
@@ -52,6 +53,10 @@ FROM "ministry_participation", "sector"
 WHERE "ministry_participation"."id" = "shift_requirement"."participation_id"
 AND "sector"."ministry_id" = "ministry_participation"."ministry_id"
 AND "sector"."name" = 'Geral';--> statement-breakpoint
+ALTER TABLE "shift_requirement" ALTER COLUMN "sector_id" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "shift_requirement" DROP CONSTRAINT "shift_requirement_team_id_team_id_fk";--> statement-breakpoint
+ALTER TABLE "shift_requirement" DROP COLUMN "team_id";--> statement-breakpoint
+CREATE UNIQUE INDEX "shift_requirement_shift_sector_role_idx" ON "shift_requirement" USING btree ("shift_id","sector_id","role_id");--> statement-breakpoint
 UPDATE "usual_setup"
 SET "headcounts" = (
 	SELECT jsonb_agg(jsonb_build_object('sectorId', "sector"."id", 'roleId', "merged"."role_id", 'peopleNeeded', "merged"."total") ORDER BY "merged"."first")

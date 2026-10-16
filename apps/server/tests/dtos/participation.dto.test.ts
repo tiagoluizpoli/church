@@ -126,6 +126,7 @@ describe('participationMapper', () => {
           participationId: 'participation-1',
           roleId: 'role-1',
           sectorId: 'sector-1',
+          sectorName: 'Palco',
           peopleNeeded: 2,
           notes: 'arrive early',
         },
@@ -138,6 +139,7 @@ describe('participationMapper', () => {
         participationId: 'participation-1',
         roleId: 'role-1',
         sectorId: 'sector-1',
+        sectorName: 'Palco',
         peopleNeeded: 2,
         notes: 'arrive early',
       });
@@ -150,6 +152,7 @@ describe('participationMapper', () => {
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
           sectorId: 'sector-1',
+          sectorName: 'Palco',
           peopleNeeded: 1,
         },
         'req-2',
@@ -161,6 +164,7 @@ describe('participationMapper', () => {
         participationId: '',
         roleId: 'role-1',
         sectorId: 'sector-1',
+        sectorName: 'Palco',
         peopleNeeded: 1,
         notes: undefined,
       });
@@ -205,6 +209,7 @@ describe('participationMapper', () => {
           participationId: 'participation-1',
           roleId: 'role-1',
           sectorId: 'sector-1',
+          sectorName: 'Palco',
           peopleNeeded: 1,
         },
         'req-1',
@@ -260,6 +265,7 @@ describe('participationMapper', () => {
         participationId: 'participation-1',
         roleId: 'role-1',
         sectorId: 'sector-1',
+        sectorName: 'Palco',
         peopleNeeded: 1,
         notes: undefined,
       });

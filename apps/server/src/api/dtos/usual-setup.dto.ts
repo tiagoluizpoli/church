@@ -8,11 +8,6 @@ const usualSetupHeadcountSchema = z.object({
   peopleNeeded: z.number().int().min(1),
 });
 
-/** `sectorId` is optional on read only during the Sector expand step (#494). */
-const usualSetupHeadcountResponseSchema = usualSetupHeadcountSchema.extend({
-  sectorId: z.string().optional(),
-});
-
 const usualSetupShiftSplitSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('equal'),
@@ -48,7 +43,7 @@ export const usualSetupEntryResponseSchema = z.object({
   sourceTemplateTimeBlockId: z.string(),
   serves: z.boolean(),
   shiftSplit: usualSetupShiftSplitSchema,
-  headcounts: z.array(usualSetupHeadcountResponseSchema),
+  headcounts: z.array(usualSetupHeadcountSchema),
 });
 
 export const usualSetupResponseSchema = z.object({
@@ -71,7 +66,7 @@ function toEntryResponse(profile: UsualSetup) {
     serves: profile.serves,
     shiftSplit: profile.shiftSplit,
     headcounts: profile.headcounts.map((headcount) => ({
-      sectorId: headcount.sectorId as string | undefined,
+      sectorId: headcount.sectorId as string,
       roleId: headcount.roleId as string,
       peopleNeeded: headcount.peopleNeeded,
     })),

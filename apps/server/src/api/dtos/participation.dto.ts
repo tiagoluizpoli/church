@@ -50,7 +50,7 @@ export const shiftRequirementResponseSchema = z.object({
   participationId: z.string(),
   roleId: z.string(),
   sectorId: z.string(),
-  sectorName: z.string().optional(),
+  sectorName: z.string(),
   peopleNeeded: z.number(),
   notes: z.string().optional(),
 });

@@ -52,6 +52,7 @@ describe('cycleBuilderResponseSchema', () => {
                       participationId: 'participation-1',
                       roleId: 'role-1',
                       sectorId: 'sector-1',
+                      sectorName: 'Palco',
                       peopleNeeded: 1,
                     },
                   ],

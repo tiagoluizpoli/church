@@ -3,6 +3,7 @@ import {
   assignment,
   eventTimeBlock,
   ministryParticipation,
+  sector,
   shift,
   shiftRequirement,
 } from '@church/db';
@@ -43,15 +44,17 @@ export class DrizzleEventTimeBlockRepository
     eventTimeBlockRow: typeof eventTimeBlock.$inferSelect,
   ): Promise<EventTimeBlock> {
     const reqRows = await db
-      .select({ requirement: shiftRequirement })
+      .select({ requirement: shiftRequirement, sectorName: sector.name })
       .from(shiftRequirement)
       .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
     return mapEventTimeBlock(
       eventTimeBlockRow,
-      reqRows.map(({ requirement }) =>
+      reqRows.map(({ requirement, sectorName }) =>
         mapShiftRequirement({
           row: requirement,
+          sectorName,
           eventTimeBlockId: eventTimeBlockRow.id,
         }),
       ),

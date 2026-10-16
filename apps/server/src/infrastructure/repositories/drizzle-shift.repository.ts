@@ -217,7 +217,11 @@ export class DrizzleShiftRepository implements ShiftRepository {
       .from(sector)
       .where(eq(sector.id, row.sectorId));
 
-    return mapShiftRequirement({ row, sectorName: named?.name });
+    if (!named) {
+      throw new Error('Shift requirement Sector not found');
+    }
+
+    return mapShiftRequirement({ row, sectorName: named.name });
   }
 
   async listRequirementsByParticipation(
@@ -227,7 +231,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
     const rows = await db
       .select({ requirement: shiftRequirement, sectorName: sector.name })
       .from(shiftRequirement)
-      .leftJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .where(
         and(
           eq(shiftRequirement.participationId, input.participationId),
@@ -238,7 +242,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
     return rows.map(({ requirement, sectorName }) =>
       mapShiftRequirement({
         row: requirement,
-        sectorName: sectorName ?? undefined,
+        sectorName,
       }),
     );
   }

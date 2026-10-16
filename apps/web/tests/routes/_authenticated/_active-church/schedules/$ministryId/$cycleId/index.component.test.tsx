@@ -432,11 +432,11 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
       ),
     );
     await user.type(
-      screen.getByTestId('headcount-input-shift-1-sector-1-role-1'),
+      screen.getByTestId('headcount-input-shift-1:sector-1:role-1'),
       '3',
     );
     await user.type(
-      screen.getByTestId('headcount-input-shift-1-sector-1-role-2'),
+      screen.getByTestId('headcount-input-shift-1:sector-1:role-2'),
       '4',
     );
 
@@ -538,11 +538,11 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
       ),
     );
     await user.type(
-      await screen.findByTestId('headcount-input-shift-1-sector-1-role-1'),
+      await screen.findByTestId('headcount-input-shift-1:sector-1:role-1'),
       '5',
     );
     expect(
-      screen.getByTestId('headcount-input-shift-1-sector-1-role-1'),
+      screen.getByTestId('headcount-input-shift-1:sector-1:role-1'),
     ).toHaveValue(5);
 
     // Flip Serving off — server round-trips to included:false, shifts drop.
@@ -550,7 +550,7 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
     await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
     await waitFor(() => {
       expect(
-        screen.queryByTestId('headcount-input-shift-1-sector-1-role-1'),
+        screen.queryByTestId('headcount-input-shift-1:sector-1:role-1'),
       ).not.toBeInTheDocument();
     });
 
@@ -561,7 +561,7 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('headcount-input-shift-1-sector-1-role-1'),
+        screen.getByTestId('headcount-input-shift-1:sector-1:role-1'),
       ).toHaveValue(5);
     });
   });

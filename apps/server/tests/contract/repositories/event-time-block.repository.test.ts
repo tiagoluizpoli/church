@@ -31,6 +31,7 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         sectorId: '55555555-5555-5555-5555-5555555555a1' as SectorId,
+        sectorName: 'Palco',
         peopleNeeded: 1,
       },
       '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,

@@ -117,9 +117,8 @@ export interface VolunteerRepository {
   ): Promise<MinistryId[]>;
 
   /**
-   * List active memberships (team memberships, qualified roles, ministry
-   * access level) for a ministry. Used for TeamLeader scoping and candidate
-   * eligibility in the builder.
+   * List active memberships (qualified roles, ministry access level) for
+   * a ministry. Used for candidate eligibility in the builder.
    */
   listMinistryMemberships(
     churchId: ChurchId,

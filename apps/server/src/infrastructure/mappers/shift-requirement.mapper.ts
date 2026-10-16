@@ -19,8 +19,8 @@ type ShiftRequirementRow = InferSelectModel<typeof shiftRequirement>;
 export interface MapShiftRequirementInput {
   row: ShiftRequirementRow;
   eventTimeBlockId?: string;
-  /** The joined Sector's name, when the read joins it. */
-  sectorName?: string;
+  /** The joined Sector's name. */
+  sectorName: string;
 }
 
 export function mapShiftRequirement({

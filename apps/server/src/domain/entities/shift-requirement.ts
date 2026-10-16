@@ -20,7 +20,7 @@ export interface ShiftRequirementProps {
   roleId: RoleId;
   sectorId: SectorId;
   /** Read-side label of `sectorId`, filled when the read joins the Sector. */
-  sectorName?: string;
+  sectorName: string;
   peopleNeeded: number;
   notes?: string;
 }
@@ -70,7 +70,7 @@ export class ShiftRequirement extends Entity<
     return this._props.sectorId;
   }
 
-  get sectorName(): string | undefined {
+  get sectorName(): string {
     return this._props.sectorName;
   }
 

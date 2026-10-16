@@ -856,7 +856,11 @@ function HeadcountPanel({
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {headcountRows.map((row) => {
-                  const inputKey = `${shift.id}-${row.sectorId}-${row.roleId}`;
+                  const inputKey = toHeadcountKey({
+                    shiftId: shift.id,
+                    sectorId: row.sectorId,
+                    roleId: row.roleId,
+                  });
                   return (
                     <div key={inputKey} className="space-y-1">
                       <Label htmlFor={`headcount-${inputKey}`}>

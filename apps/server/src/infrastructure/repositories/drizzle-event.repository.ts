@@ -3,6 +3,7 @@ import {
   event,
   eventTimeBlock,
   ministryParticipation,
+  sector,
   shift,
   shiftRequirement,
 } from '@church/db';
@@ -95,13 +96,15 @@ export class DrizzleEventRepository implements EventRepository {
     const eventTimeBlocks = await Promise.all(
       eventTimeBlockRows.map(async (eventTimeBlockRow) => {
         const reqRows = await db
-          .select({ requirement: shiftRequirement })
+          .select({ requirement: shiftRequirement, sectorName: sector.name })
           .from(shiftRequirement)
           .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+          .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
           .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
-        const requirements = reqRows.map(({ requirement }) =>
+        const requirements = reqRows.map(({ requirement, sectorName }) =>
           mapShiftRequirement({
             row: requirement,
+            sectorName,
             eventTimeBlockId: eventTimeBlockRow.id,
           }),
         );

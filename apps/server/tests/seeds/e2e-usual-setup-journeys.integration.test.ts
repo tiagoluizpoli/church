@@ -1,4 +1,11 @@
-import { cycle, event, ministry, ministryMembership } from '@church/db';
+import {
+  cycle,
+  event,
+  ministry,
+  ministryMembership,
+  sector,
+  shiftRequirement,
+} from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -33,6 +40,23 @@ async function ministryNames({ churchId }: ChurchIdInput): Promise<string[]> {
     .from(ministry)
     .where(eq(ministry.churchId, churchId));
   return rows.map((row) => row.name).sort();
+}
+
+async function sectorNamesByMinistry({
+  churchId,
+}: ChurchIdInput): Promise<Record<string, string[]>> {
+  const rows = await testDb
+    .select({ ministryId: sector.ministryId, name: sector.name })
+    .from(sector)
+    .where(eq(sector.churchId, churchId));
+  const byMinistry: Record<string, string[]> = {};
+  for (const row of rows) {
+    byMinistry[row.ministryId] = [
+      ...(byMinistry[row.ministryId] ?? []),
+      row.name,
+    ].sort();
+  }
+  return byMinistry;
 }
 
 async function datedRowCounts({ churchId }: ChurchIdInput): Promise<number[]> {
@@ -166,6 +190,43 @@ describe('usual-setup journey recipes (#329 cluster B)', () => {
       new Set(Object.values(journey.personas).map((persona) => persona.name))
         .size,
     ).toBe(3);
+  });
+
+  it.each([
+    ['leader-prepare', loadLeaderPrepare, { worship: ['Palco'] }],
+    [
+      'volunteer-availability',
+      loadAvailability,
+      { worship: ['Palco'], care: ['Recepção'] },
+    ],
+    ['live-changes', loadLiveChanges, { worship: ['Palco'] }],
+  ] as const)('%s: every Ministry starts with its own Sector, and no requirement exists yet', async (_name, load, expected) => {
+    const journey = await load({ journeyKey: 'alpha', anchor: ANCHOR });
+    const ministries = journey.ministries as Record<
+      string,
+      { id: string; sectors: Record<string, { id: string }> }
+    >;
+
+    expect(
+      await sectorNamesByMinistry({ churchId: journey.church.id }),
+    ).toEqual(
+      Object.fromEntries(
+        Object.entries(expected).map(([key, names]) => [
+          ministries[key]?.id,
+          [...names],
+        ]),
+      ),
+    );
+    for (const key of Object.keys(expected)) {
+      expect(Object.keys(ministries[key]?.sectors ?? {})).toHaveLength(1);
+    }
+    // Requirements and headcounts, each carrying a Sector, are made through the API.
+    expect(
+      await testDb
+        .select({ id: shiftRequirement.id })
+        .from(shiftRequirement)
+        .where(eq(shiftRequirement.churchId, journey.church.id)),
+    ).toEqual([]);
   });
 
   it('keeps two keys on separate Ministries, so no usual setup is shared', async () => {

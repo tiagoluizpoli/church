@@ -198,7 +198,7 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
     await user.click(screen.getByTestId('shift-mode-select-0'));
     await user.click(await screen.findByText('Equal split'));
     await user.type(
-      await screen.findByTestId('headcount-input-shift-1-sector-1-role-1'),
+      await screen.findByTestId('headcount-input-shift-1:sector-1:role-1'),
       '2',
     );
 
@@ -654,7 +654,7 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
       await screen.findByTestId('role-catalog-error-shift-1'),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId('headcount-input-shift-1-sector-1-role-1'),
+      screen.queryByTestId('headcount-input-shift-1:sector-1:role-1'),
     ).not.toBeInTheDocument();
   });
 

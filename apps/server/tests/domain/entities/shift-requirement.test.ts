@@ -10,6 +10,7 @@ describe('ShiftRequirement Entity', () => {
       participationId: 'p1',
       roleId: 'r1',
       sectorId: 'sector1',
+      sectorName: 'Palco',
       peopleNeeded: 2,
     });
 
@@ -28,6 +29,7 @@ describe('ShiftRequirement Entity', () => {
       shiftId: 's1',
       roleId: 'r1',
       sectorId: 'sector1',
+      sectorName: 'Palco',
       peopleNeeded: 1,
       notes: 'front row',
     });
@@ -43,6 +45,7 @@ describe('ShiftRequirement Entity', () => {
         eventTimeBlockId: 't1',
         roleId: 'r1',
         sectorId: 'sector1',
+        sectorName: 'Palco',
         peopleNeeded: 0,
       });
     }).toThrow(InvalidRequiredCountError);
@@ -54,6 +57,7 @@ describe('ShiftRequirement Entity', () => {
       eventTimeBlockId: 't1',
       roleId: 'r1',
       sectorId: 'sector1',
+      sectorName: 'Palco',
       peopleNeeded: 2,
     });
 
@@ -67,6 +71,7 @@ describe('ShiftRequirement Entity', () => {
       eventTimeBlockId: 't1',
       roleId: 'r1',
       sectorId: 'sector1',
+      sectorName: 'Palco',
       peopleNeeded: 2,
     });
 

@@ -695,9 +695,7 @@ export class DbParticipationManager implements IParticipationManager {
       churchId: input.churchId,
       ministryId: input.ministryId,
       headcounts: input.entries.flatMap((entry) =>
-        entry.headcounts.flatMap(({ sectorId, roleId }) =>
-          sectorId ? [{ sectorId, roleId }] : [],
-        ),
+        entry.headcounts.map(({ sectorId, roleId }) => ({ sectorId, roleId })),
       ),
     });
 
@@ -1052,7 +1050,7 @@ export class DbParticipationManager implements IParticipationManager {
 
   /**
    * Membership facts per volunteer for one ministry, keyed by volunteer id:
-   * qualified role ids, ministry-wide access level, and led teams. Reads the
+   * qualified role ids and ministry-wide access level. Reads the
    * membership rows directly rather than inverting the per-role candidate
    * lists, so a volunteer's full skill set survives even when the cycle
    * happens to require only some of their roles.

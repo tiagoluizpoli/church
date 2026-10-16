@@ -135,7 +135,7 @@ export function createInitialHeadcountDrafts(
         entries[
           toHeadcountKey({
             shiftId: requirement.shiftId,
-            sectorId: requirement.sectorId ?? '',
+            sectorId: requirement.sectorId,
             roleId: requirement.roleId,
           })
         ] = String(requirement.peopleNeeded);
@@ -188,17 +188,11 @@ export function getEventTimeBlockHeadcountRows({
     );
   }
 
-  return eventTimeBlockView.requirements.flatMap((requirement) =>
-    requirement.sectorId
-      ? [
-          {
-            sectorId: requirement.sectorId,
-            roleId: requirement.roleId,
-            label: `${requirement.sectorName ?? requirement.sectorId} · ${requirement.roleId}`,
-          },
-        ]
-      : [],
-  );
+  return eventTimeBlockView.requirements.map((requirement) => ({
+    sectorId: requirement.sectorId,
+    roleId: requirement.roleId,
+    label: `${requirement.sectorName} · ${requirement.roleId}`,
+  }));
 }
 
 export function validateManualSpans({

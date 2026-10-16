@@ -559,7 +559,7 @@ export type GetUsualSetup200EntriesItemShiftSplit = {
 };
 
 export type GetUsualSetup200EntriesItemHeadcountsItem = {
-  sectorId?: string;
+  sectorId: string;
   roleId: string;
   /**
      * @minimum 1
@@ -639,7 +639,7 @@ export type UpsertUsualSetup200EntriesItemShiftSplit = {
 };
 
 export type UpsertUsualSetup200EntriesItemHeadcountsItem = {
-  sectorId?: string;
+  sectorId: string;
   roleId: string;
   /**
      * @minimum 1
@@ -1120,7 +1120,7 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsIte
   participationId: string;
   roleId: string;
   sectorId: string;
-  sectorName?: string;
+  sectorName: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -1258,7 +1258,7 @@ export type UpsertShiftRequirement200 = {
   participationId: string;
   roleId: string;
   sectorId: string;
-  sectorName?: string;
+  sectorName: string;
   peopleNeeded: number;
   notes?: string;
 };
@@ -1415,7 +1415,7 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemRequire
   participationId: string;
   roleId: string;
   sectorId: string;
-  sectorName?: string;
+  sectorName: string;
   peopleNeeded: number;
   notes?: string;
 };

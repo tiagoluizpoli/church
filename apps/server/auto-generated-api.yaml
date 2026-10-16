@@ -1494,6 +1494,7 @@ paths:
                                 minimum: 1
                                 maximum: 9007199254740991
                             required:
+                              - sectorId
                               - roleId
                               - peopleNeeded
                             additionalProperties: false
@@ -1679,6 +1680,7 @@ paths:
                                 minimum: 1
                                 maximum: 9007199254740991
                             required:
+                              - sectorId
                               - roleId
                               - peopleNeeded
                             additionalProperties: false
@@ -2604,6 +2606,7 @@ paths:
                                     - participationId
                                     - roleId
                                     - sectorId
+                                    - sectorName
                                     - peopleNeeded
                                   additionalProperties: false
                             required:
@@ -3000,6 +3003,7 @@ paths:
                   - participationId
                   - roleId
                   - sectorId
+                  - sectorName
                   - peopleNeeded
                 additionalProperties: false
   /api/v1/prepare/participations/{participationId}/ask-availability:
@@ -3392,6 +3396,7 @@ paths:
                                           - participationId
                                           - roleId
                                           - sectorId
+                                          - sectorName
                                           - peopleNeeded
                                         additionalProperties: false
                                     assignments:

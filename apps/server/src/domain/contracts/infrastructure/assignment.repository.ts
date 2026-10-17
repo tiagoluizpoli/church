@@ -4,8 +4,8 @@ import type {
   EventId,
   EventTimeBlockId,
   MinistryParticipationId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -17,10 +17,16 @@ export interface CreateAssignmentInput {
   participationId?: MinistryParticipationId;
   shiftId?: ShiftId;
   volunteerId: VolunteerId;
-  roleId: RoleId;
+  shiftRequirementId: ShiftRequirementId;
   status?: AssignmentStatus;
   reason?: string;
   assignedBy?: UserId;
+}
+
+export interface CreateAssignmentRepositoryInput {
+  churchId: ChurchId;
+  input: CreateAssignmentInput;
+  tx?: TransactionContext;
 }
 
 export interface UpdateAssignmentStatusInput {
@@ -29,11 +35,7 @@ export interface UpdateAssignmentStatusInput {
 }
 
 export interface AssignmentRepository {
-  create(
-    churchId: ChurchId,
-    input: CreateAssignmentInput,
-    tx?: TransactionContext,
-  ): Promise<Assignment>;
+  create(input: CreateAssignmentRepositoryInput): Promise<Assignment>;
 
   getById(
     churchId: ChurchId,

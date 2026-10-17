@@ -18,8 +18,8 @@ import {
   CycleId,
   MinistryId,
   MinistryParticipationId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
@@ -45,6 +45,7 @@ interface SeedAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
 }
 
@@ -92,7 +93,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date('2026-12-06T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -118,6 +119,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: volunteerA.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -200,7 +202,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date('2027-01-10T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -225,6 +227,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: owner.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -283,7 +286,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date('2027-02-07T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -313,6 +316,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: outgoing.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -389,7 +393,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date(now.getTime() + 25 * 60 * 60 * 1000),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -406,6 +410,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: volunteerA.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -520,6 +525,13 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'Direct Assign Target',
       email: 'direct-assign-phase7@test.com',
     });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: wholeEventTimeBlockShift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
 
     const managers = createSchedulingManagers();
     const { assignment: created } =
@@ -527,7 +539,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(wholeEventTimeBlockShift.id),
         volunteerId: VolunteerId.from(target.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
 
@@ -591,6 +603,13 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'Parked Audit Target',
       email: 'parked-audit@test.com',
     });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: wholeEventTimeBlockShift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
 
     const managers = createSchedulingManagers();
     const { assignment: created } =
@@ -598,7 +617,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(wholeEventTimeBlockShift.id),
         volunteerId: VolunteerId.from(target.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
 
@@ -643,6 +662,13 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       endTime: graph.eventTimeBlock.endTime,
       label: 'Delete shift',
     });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
     const volunteerWithActor = await seedVolunteerMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
@@ -655,6 +681,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: volunteerWithActor.volunteer.id,
       roleId: roleRow.id,
     });
@@ -715,6 +742,13 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       endTime: graph.eventTimeBlock.endTime,
       label: 'Override shift',
     });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
     const target = await seedVolunteerMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
@@ -729,12 +763,14 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     });
 
     const managers = createSchedulingManagers();
-    const assignment = await seedAssignment({
-      churchId: seed.churchAId,
-      participationId: graph.participation.id,
-      shiftId: shift.id,
-      volunteerId: target.volunteer.id,
-      roleId: roleRow.id,
+    const assignment = await managers.assignmentRepo.create({
+      churchId: ChurchId.from(seed.churchAId),
+      input: {
+        shiftId: ShiftId.from(shift.id),
+        volunteerId: VolunteerId.from(target.volunteer.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
+        status: 'confirmed',
+      },
     });
 
     const reassigned =
@@ -752,6 +788,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     expect(stored).toMatchObject({
       shiftId: shift.id,
       roleId: roleRow.id,
+      shiftRequirementId: requirement.id,
       volunteerId: replacement.volunteer.id,
     });
 
@@ -801,6 +838,13 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       endTime: graph.eventTimeBlock.endTime,
       label: 'Members-only shift',
     });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
 
     const otherMinistry = await buildMinistry({
       db: schedulingTestDb,
@@ -820,7 +864,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
         volunteerId: VolunteerId.from(outsider.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({ reason: 'NOT_IN_MINISTRY' });
@@ -857,6 +901,13 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       endTime: graph.eventTimeBlock.endTime,
       label: 'Qualification shift',
     });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: ownRole.id,
+      peopleNeeded: 2,
+    });
 
     const softMember = await seedVolunteerMembership({
       churchId: seed.churchAId,
@@ -878,7 +929,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
         volunteerId: VolunteerId.from(softMember.volunteer.id),
-        roleId: RoleId.from(ownRole.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
     expect(softResult.warnings).toEqual([
@@ -902,7 +953,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
         volunteerId: VolunteerId.from(qualifiedMember.volunteer.id),
-        roleId: RoleId.from(ownRole.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
 

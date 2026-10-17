@@ -58,6 +58,7 @@ import {
   buildMinistryParticipation,
 } from '@/seeds/builders/scheduling';
 import { buildVolunteerWithMembership } from '@/seeds/builders/volunteer';
+import { seedRequirement } from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -1034,11 +1035,19 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
       name: `Phase4 volunteer ${memberId}`,
       email: `${memberId}@test.com`,
     });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: overlapGraph.participation.id,
+      shiftId: overlapShift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
     await buildAssignment({
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: overlapGraph.participation.id,
       shiftId: overlapShift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: member.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',

@@ -87,8 +87,8 @@ describe('User Story 3: Church Isolation Type Safety', () => {
       const assignmentRepo = {} as AssignmentRepository;
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       assignmentRepo.getById('plain-string', 'assignment-1' as AssignmentId);
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      assignmentRepo.create('plain-string', {} as any);
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      assignmentRepo.create({ churchId: 'plain-string', input: {} as any });
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       assignmentRepo.updateStatus('plain-string', 'assignment-1' as AssignmentId, {} as any);
 

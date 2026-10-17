@@ -1,5 +1,6 @@
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { expectAssignmentRequirementsToAgree } from './assignment-requirement-contract';
 import {
   countAllRows,
   type GraphSnapshot,
@@ -61,6 +62,7 @@ describe.each(RECIPE_NAMES)('journey recipe contract: %s', (recipeName) => {
 
   it('reloading a key yields an identical whole-database snapshot', async () => {
     await loadJourney({ recipeName, journeyKey: 'alpha' });
+    await expectAssignmentRequirementsToAgree();
     const first = await snapshotAllRows();
 
     await loadJourney({ recipeName, journeyKey: 'alpha' });

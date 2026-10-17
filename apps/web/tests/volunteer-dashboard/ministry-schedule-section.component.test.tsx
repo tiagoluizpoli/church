@@ -42,9 +42,18 @@ describe('MinistryScheduleSection', () => {
               {
                 eventTimeBlockId: 'event-time-block-1',
                 eventTimeBlockLabel: '9:00 AM - 11:00 AM',
+                sectorName: 'Main Door',
                 roleName: 'Usher',
                 volunteerDisplayName: 'Alice T.',
                 confirmationState: 'confirmed',
+              },
+              {
+                eventTimeBlockId: 'event-time-block-1',
+                eventTimeBlockLabel: '9:00 AM - 11:00 AM',
+                sectorName: 'Side Door',
+                roleName: 'Usher',
+                volunteerDisplayName: 'Open',
+                confirmationState: 'open',
               },
             ],
           },
@@ -65,6 +74,8 @@ describe('MinistryScheduleSection', () => {
     expect(screen.getByText('Volunteer: Alice T.')).toBeInTheDocument();
     expect(screen.queryByText(/^Team:/)).not.toBeInTheDocument();
     expect(screen.getByText('Confirmed')).toBeInTheDocument();
+    expect(screen.getByText('Usher · Main Door')).toBeInTheDocument();
+    expect(screen.getByText('Usher · Side Door')).toBeInTheDocument();
   });
 
   it('allows ministry switching and shows explicit empty state', async () => {
@@ -119,6 +130,7 @@ describe('MinistryScheduleSection', () => {
               {
                 eventTimeBlockId: 'event-time-block-1',
                 eventTimeBlockLabel: '9:00 AM - 11:00 AM',
+                sectorName: 'Main Door',
                 roleName: 'Usher',
                 volunteerDisplayName: 'Alice T.',
                 confirmationState: 'confirmed',

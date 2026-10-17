@@ -294,20 +294,25 @@ describe('Scheduling reshape schema', () => {
       })
       .returning();
     if (!stage) throw new Error('Sector seed failed');
-    await testDb.insert(shiftRequirement).values({
-      churchId: seed.churchAId,
-      participationId: graph.participationId,
-      shiftId: graph.shiftId,
-      roleId: seed.roleId,
-      sectorId: stage.id,
-      peopleNeeded: 1,
-    });
+    const [requirement] = await testDb
+      .insert(shiftRequirement)
+      .values({
+        churchId: seed.churchAId,
+        participationId: graph.participationId,
+        shiftId: graph.shiftId,
+        roleId: seed.roleId,
+        sectorId: stage.id,
+        peopleNeeded: 1,
+      })
+      .returning();
+    if (!requirement) throw new Error('Shift requirement seed failed');
     await testDb.insert(assignment).values({
       churchId: seed.churchAId,
       participationId: graph.participationId,
       shiftId: graph.shiftId,
       volunteerId: seed.volunteerId,
       roleId: seed.roleId,
+      shiftRequirementId: requirement.id,
     });
     await testDb.insert(unavailableShift).values({
       churchId: seed.churchAId,

@@ -31,8 +31,7 @@ test('schedule builder has no critical or serious WCAG violations', async ({
   const assignedChips = page
     .getByTestId(
       requirementCellTestId({
-        shiftId: assignedService.shiftId,
-        roleId: assignedService.requirements.host.roleId,
+        requirementId: assignedService.requirements.host.id,
       }),
     )
     .getByTestId('assignment-chip');

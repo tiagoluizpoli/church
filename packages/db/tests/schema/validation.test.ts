@@ -24,6 +24,7 @@ describe('Database Level Constraints (T035)', () => {
   let volunteerId: string;
   let participationId: string;
   let shiftId: string;
+  let shiftRequirementId: string;
 
   beforeEach(async () => {
     await clearDatabase();
@@ -110,6 +111,24 @@ describe('Database Level Constraints (T035)', () => {
       .returning();
     if (!insertedRole) throw new Error('Role insert failed');
     roleId = insertedRole.id;
+    const [insertedSector] = await testDb
+      .insert(sector)
+      .values({ churchId, ministryId, name: 'General' })
+      .returning();
+    if (!insertedSector) throw new Error('Sector insert failed');
+    const [insertedRequirement] = await testDb
+      .insert(shiftRequirement)
+      .values({
+        churchId,
+        participationId,
+        shiftId,
+        roleId,
+        sectorId: insertedSector.id,
+        peopleNeeded: 1,
+      })
+      .returning();
+    if (!insertedRequirement) throw new Error('Requirement insert failed');
+    shiftRequirementId = insertedRequirement.id;
 
     await testDb.insert(user).values({
       id: 'user_constraint',
@@ -197,6 +216,7 @@ describe('Database Level Constraints (T035)', () => {
           shiftId,
           volunteerId,
           roleId,
+          shiftRequirementId,
           status: 'invalid_status',
         });
       } catch (_error: unknown) {

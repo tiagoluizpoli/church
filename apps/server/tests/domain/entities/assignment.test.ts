@@ -9,6 +9,7 @@ describe('Assignment Entity', () => {
       eventTimeBlockId: 't1',
       volunteerId: 'v1',
       roleId: 'r1',
+      shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
     });
 
     expect(assignment.churchId).toBe('c1');
@@ -25,6 +26,7 @@ describe('Assignment Entity', () => {
       eventTimeBlockId: 't1',
       volunteerId: 'v1',
       roleId: 'r1',
+      shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
     });
 
     expect(assignment.status).toBe('draft');

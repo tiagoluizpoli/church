@@ -3,8 +3,8 @@ import type {
   ChurchId,
   CycleId,
   MinistryId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -16,8 +16,8 @@ export interface CreateParticipationAssignmentInput {
   churchId: ChurchId;
   shiftId: ShiftId;
   volunteerId: VolunteerId;
-  roleId: RoleId;
   actorId: UserId;
+  shiftRequirementId: ShiftRequirementId;
 }
 
 export interface CreateParticipationAssignmentResult {

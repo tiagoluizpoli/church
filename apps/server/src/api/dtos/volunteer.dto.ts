@@ -155,6 +155,7 @@ const ministryScheduleEventResponseSchema = z.object({
     z.object({
       eventTimeBlockId: z.string(),
       eventTimeBlockLabel: z.string(),
+      sectorName: z.string(),
       roleName: z.string(),
       volunteerDisplayName: z.string().optional(),
       confirmationState: z.enum(['pending', 'confirmed', 'declined', 'open']),

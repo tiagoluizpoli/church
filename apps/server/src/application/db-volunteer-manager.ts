@@ -58,7 +58,6 @@ import type {
   AssignmentStatus,
 } from '../domain/entities/assignment';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
-import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
@@ -87,49 +86,6 @@ interface DashboardAssignmentGroupDraft {
   ministryName: string;
   eventStart: string;
   items: DashboardAssignmentItem[];
-}
-
-interface ClaimShiftCoverageInput {
-  shiftRequirements: ShiftRequirement[];
-  shiftAssignments: Assignment[];
-}
-
-interface ShiftCoverageClaims {
-  /** Requirement id -> how many of its peopleNeeded places this shift's assignments actually filled. */
-  requirementFilledCount: Map<string, number>;
-}
-
-/**
- * Resolves, per shift, how many places each requirement has filled. Every
- * Assignment of the requirement's role covers; an Assignment is consumed by at
- * most one requirement (ordered by id, so the result is deterministic).
- */
-function claimShiftCoverage(
-  input: ClaimShiftCoverageInput,
-): ShiftCoverageClaims {
-  const { shiftRequirements, shiftAssignments } = input;
-  const claimedAssignmentIds = new Set<string>();
-  const requirementFilledCount = new Map<string, number>();
-
-  const orderedRequirements = [...shiftRequirements].sort((a, b) =>
-    (a.id as string).localeCompare(b.id as string),
-  );
-
-  for (const requirement of orderedRequirements) {
-    const claimed = shiftAssignments
-      .filter(
-        (assignment) =>
-          assignment.roleId === requirement.roleId &&
-          !claimedAssignmentIds.has(assignment.id as string),
-      )
-      .slice(0, requirement.peopleNeeded);
-    for (const assignment of claimed) {
-      claimedAssignmentIds.add(assignment.id as string);
-    }
-    requirementFilledCount.set(requirement.id as string, claimed.length);
-  }
-
-  return { requirementFilledCount };
 }
 
 interface EventTimeBlockKeyInput {
@@ -172,6 +128,16 @@ function isPublishedStatus(
   return (
     status === 'pending' || status === 'confirmed' || status === 'declined'
   );
+}
+
+interface RequirementCoverageStatusInput {
+  status: AssignmentStatus;
+}
+
+function countsTowardRequirementCoverage({
+  status,
+}: RequirementCoverageStatusInput): boolean {
+  return status === 'draft' || status === 'pending' || status === 'confirmed';
 }
 
 function aggregateState(
@@ -623,40 +589,47 @@ export class DbVolunteerManager implements IVolunteerManager {
             const shiftRequirements = requirements.filter(
               (requirement) => requirement.shiftId === shift.id,
             );
-            const { requirementFilledCount } = claimShiftCoverage({
-              shiftRequirements,
-              shiftAssignments,
-            });
-            const assignmentRows = shiftAssignments.map((assignment) => ({
-              eventTimeBlockId: shift.eventTimeBlockId as string,
-              eventTimeBlockLabel: scheduleShiftLabel(shift),
-              roleName:
-                roleNames.get(assignment.roleId as string) ?? 'Unknown role',
-              volunteerDisplayName: scheduleVolunteerName(
-                volunteerNames.get(assignment.volunteerId as string),
-              ),
-              confirmationState: isPublishedStatus(assignment.status)
-                ? assignment.status
-                : 'pending',
-            }));
-            const openRows = shiftRequirements.flatMap((requirement) => {
-              const filledCount =
-                requirementFilledCount.get(requirement.id as string) ?? 0;
-              return Array.from(
-                {
-                  length: Math.max(0, requirement.peopleNeeded - filledCount),
-                },
+            return shiftRequirements.flatMap((requirement) => {
+              const boundAssignments = shiftAssignments.filter(
+                (assignment) =>
+                  assignment.shiftRequirementId === requirement.id,
+              );
+              const assignmentRows = boundAssignments.map((assignment) => {
+                const volunteerName = volunteerNames.get(
+                  assignment.volunteerId as string,
+                );
+                const volunteerDisplayName =
+                  scheduleVolunteerName(volunteerName);
+                return {
+                  eventTimeBlockId: shift.eventTimeBlockId as string,
+                  eventTimeBlockLabel: scheduleShiftLabel(shift),
+                  sectorName: requirement.sectorName,
+                  roleName:
+                    roleNames.get(requirement.roleId as string) ??
+                    'Unknown role',
+                  volunteerDisplayName,
+                  confirmationState: isPublishedStatus(assignment.status)
+                    ? assignment.status
+                    : 'pending',
+                };
+              });
+              const filledCount = boundAssignments.filter((assignment) =>
+                countsTowardRequirementCoverage({ status: assignment.status }),
+              ).length;
+              const openRows = Array.from(
+                { length: Math.max(0, requirement.peopleNeeded - filledCount) },
                 () => ({
                   eventTimeBlockId: shift.eventTimeBlockId as string,
                   eventTimeBlockLabel: scheduleShiftLabel(shift),
+                  sectorName: requirement.sectorName,
                   roleName:
                     roleNames.get(requirement.roleId as string) ??
                     'Unknown role',
                   confirmationState: 'open' as const,
                 }),
               );
+              return [...assignmentRows, ...openRows];
             });
-            return [...assignmentRows, ...openRows];
           });
           return {
             eventId: event.id as string,

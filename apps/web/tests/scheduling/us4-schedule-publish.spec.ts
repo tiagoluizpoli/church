@@ -67,8 +67,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
 
   const requirement = page.getByTestId(
     requirementCellTestId({
-      shiftId: journey.worship.shiftId,
-      roleId: journey.ministries.worship.roles.usher.id,
+      requirementId: journey.worship.requirementId,
     }),
   );
   await expect(requirement).toContainText(`0/${peopleNeeded}`);

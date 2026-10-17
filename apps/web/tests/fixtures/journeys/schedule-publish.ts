@@ -16,6 +16,7 @@ const RECIPE_NAME = 'schedule-publish';
 const PARTICIPATION_SCHEMA = z.object({
   id: z.string().min(1),
   shiftId: z.string().min(1),
+  requirementId: z.string().min(1),
 });
 
 export const SCHEDULE_PUBLISH_JOURNEY_SCHEMA =

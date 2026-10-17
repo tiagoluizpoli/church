@@ -1439,6 +1439,7 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignm
   shiftId?: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status: GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItemStatus;
   reason?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -1600,7 +1601,7 @@ export type ListEligibleVolunteers403 = {
 
 export type CreateParticipationAssignmentBody = {
   volunteerId: string;
-  roleId: string;
+  shiftRequirementId: string;
 };
 
 export type CreateParticipationAssignment201AssignmentStatus = typeof CreateParticipationAssignment201AssignmentStatus[keyof typeof CreateParticipationAssignment201AssignmentStatus];
@@ -1622,6 +1623,7 @@ export type CreateParticipationAssignment201Assignment = {
   shiftId?: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status: CreateParticipationAssignment201AssignmentStatus;
   reason?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -1692,6 +1694,7 @@ export type ReassignParticipationAssignment200 = {
   shiftId?: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status: ReassignParticipationAssignment200Status;
   reason?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -2144,6 +2147,7 @@ export type GetMyAssignments200AssignmentsItem = {
   shiftId?: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status: GetMyAssignments200AssignmentsItemStatus;
   reason?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -2168,6 +2172,7 @@ export const GetMinistrySchedule200EventsItemRowsItemConfirmationState = {
 export type GetMinistrySchedule200EventsItemRowsItem = {
   eventTimeBlockId: string;
   eventTimeBlockLabel: string;
+  sectorName: string;
   roleName: string;
   volunteerDisplayName?: string;
   confirmationState: GetMinistrySchedule200EventsItemRowsItemConfirmationState;
@@ -2317,6 +2322,7 @@ export type RespondToAssignment200 = {
   shiftId?: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status: RespondToAssignment200Status;
   reason?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -2400,6 +2406,7 @@ export type GetPublishedVolunteerSchedule200AssignmentsItem = {
   shiftId?: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status: GetPublishedVolunteerSchedule200AssignmentsItemStatus;
   reason?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */

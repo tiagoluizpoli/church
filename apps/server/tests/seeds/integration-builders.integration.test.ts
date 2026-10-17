@@ -371,6 +371,33 @@ describe('integration composition of the shared seed builders', () => {
     });
     const [requirement] = await testDb.select().from(shiftRequirement);
     expect(requirement).toMatchObject({ sectorId: door.id });
+    const sideDoor = await buildSector({
+      db: testDb,
+      churchId: CHURCH_ID,
+      ministryId: ministry.id,
+      name: 'Side Door',
+    });
+    const sideRequirement = await buildShiftRequirement({
+      db: testDb,
+      churchId: CHURCH_ID,
+      participationId: participation.id,
+      shiftId: shiftRow.id,
+      roleId: usher.id,
+      sectorId: sideDoor.id,
+      peopleNeeded: 1,
+    });
+    await expect(
+      buildAssignment({
+        db: testDb,
+        churchId: CHURCH_ID,
+        participationId: participation.id,
+        shiftId: shiftRow.id,
+        roleId: usher.id,
+        volunteerId: volunteerRow.id,
+        shiftRequirementId: undefined as never,
+        status: 'confirmed',
+      }),
+    ).rejects.toThrow('explicit ShiftRequirement');
     const assigned = await buildAssignment({
       db: testDb,
       churchId: CHURCH_ID,
@@ -378,9 +405,17 @@ describe('integration composition of the shared seed builders', () => {
       shiftId: shiftRow.id,
       volunteerId: volunteerRow.id,
       roleId: usher.id,
+      shiftRequirementId: sideRequirement.id,
       status: 'confirmed',
       assignedAt: parseInstant({ value: '2024-06-01T10:00:00Z' }),
       assignedBy: ADMIN_USER_ID,
+    });
+    expect(assigned).toMatchObject({
+      shiftRequirementId: sideRequirement.id,
+      churchId: CHURCH_ID,
+      participationId: participation.id,
+      shiftId: shiftRow.id,
+      roleId: usher.id,
     });
     await buildAssignmentAudit({
       db: testDb,

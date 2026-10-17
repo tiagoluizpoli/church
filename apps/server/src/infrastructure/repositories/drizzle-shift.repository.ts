@@ -6,6 +6,7 @@ import type {
   CreateShiftsInput,
   DeleteShiftInput,
   DeleteShiftsByEventTimeBlockInput,
+  GetRequirementForShiftInput,
   GetShiftInput,
   ListRequirementsByParticipationInput,
   ListShiftsByEventTimeBlockInput,
@@ -245,5 +246,39 @@ export class DrizzleShiftRepository implements ShiftRepository {
         sectorName,
       }),
     );
+  }
+
+  async getRequirementForShift(
+    input: GetRequirementForShiftInput,
+  ): Promise<ShiftRequirement> {
+    const db = getClient(this.db, input.tx);
+    const requirementShiftJoin = eq(shift.id, shiftRequirement.shiftId);
+    const requirementSectorJoin = eq(sector.id, shiftRequirement.sectorId);
+    const requirementConditions = [
+      eq(shiftRequirement.id, input.shiftRequirementId),
+      eq(shiftRequirement.shiftId, input.shiftId),
+      eq(shiftRequirement.participationId, shift.participationId),
+      withChurchIsolation(shiftRequirement, input.churchId),
+      withChurchIsolation(shift, input.churchId),
+    ];
+    const requirementPredicate = and(...requirementConditions);
+    const [row] = await db
+      .select({
+        requirement: shiftRequirement,
+        sectorName: sector.name,
+        eventTimeBlockId: shift.eventTimeBlockId,
+      })
+      .from(shiftRequirement)
+      .innerJoin(shift, requirementShiftJoin)
+      .innerJoin(sector, requirementSectorJoin)
+      .where(requirementPredicate);
+
+    if (!row) throw new NotFoundError('Shift requirement not found');
+    const { requirement, sectorName, eventTimeBlockId } = row;
+    return mapShiftRequirement({
+      row: requirement,
+      sectorName,
+      eventTimeBlockId,
+    });
   }
 }

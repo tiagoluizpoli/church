@@ -165,6 +165,7 @@ describe('Assign routes', () => {
           shiftId: '66666666-6666-6666-8666-666666666666',
           volunteerId: 'vol-1',
           roleId: 'role-1',
+          shiftRequirementId: '88888888-8888-8888-8888-888888888888',
           status: 'pending',
         },
         'assign-1',
@@ -182,11 +183,20 @@ describe('Assign routes', () => {
       url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: {
         volunteerId: 'vol-1',
-        roleId: 'role-1',
+        shiftRequirementId: '88888888-8888-8888-8888-888888888888',
       },
     });
 
     expect(response.statusCode).toBe(201);
+    expect(
+      assignmentManager.createParticipationAssignment,
+    ).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      shiftId: '66666666-6666-6666-8666-666666666666',
+      volunteerId: 'vol-1',
+      shiftRequirementId: '88888888-8888-8888-8888-888888888888',
+      actorId: 'leader-user',
+    });
     expect(response.json()).toEqual({
       assignment: {
         id: 'assign-1',
@@ -195,6 +205,7 @@ describe('Assign routes', () => {
         participationId: '22222222-2222-2222-8222-222222222222',
         shiftId: '66666666-6666-6666-8666-666666666666',
         volunteerId: 'vol-1',
+        shiftRequirementId: '88888888-8888-8888-8888-888888888888',
         roleId: 'role-1',
         status: 'pending',
         assignedAt: expect.any(String),
@@ -208,13 +219,46 @@ describe('Assign routes', () => {
     });
   });
 
+  it('rejects a request that combines a ShiftRequirement with caller-supplied Role', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      payload: {
+        volunteerId: 'vol-1',
+        shiftRequirementId: '88888888-8888-8888-8888-888888888888',
+        roleId: 'role-1',
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(
+      assignmentManager.createParticipationAssignment,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('rejects the legacy role-only create contract', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      payload: { volunteerId: 'vol-1', roleId: 'role-1' },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(
+      assignmentManager.createParticipationAssignment,
+    ).not.toHaveBeenCalled();
+  });
+
   it('denies a TeamLeader assignment as a plain Volunteer non-disclosively', async () => {
     authorityGuard.canManageShift.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
-      payload: { volunteerId: 'vol-1', roleId: 'role-1' },
+      payload: {
+        volunteerId: 'vol-1',
+        shiftRequirementId: '88888888-8888-8888-8888-888888888888',
+      },
     });
 
     expect(response.statusCode).toBe(403);
@@ -297,6 +341,7 @@ describe('Assign routes', () => {
           shiftId: '66666666-6666-6666-8666-666666666666',
           volunteerId: 'vol-2',
           roleId: 'role-1',
+          shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
           status: 'pending',
         },
         'assign-2',
@@ -320,6 +365,7 @@ describe('Assign routes', () => {
       shiftId: '66666666-6666-6666-8666-666666666666',
       volunteerId: 'vol-2',
       roleId: 'role-1',
+      shiftRequirementId: '00000000-0000-0000-0000-000000000021',
       status: 'pending',
       assignedAt: expect.any(String),
     });
@@ -354,7 +400,7 @@ describe('Assign routes', () => {
       url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: {
         volunteerId: 'vol-1',
-        roleId: 'role-1',
+        shiftRequirementId: '88888888-8888-8888-8888-888888888888',
       },
     });
 

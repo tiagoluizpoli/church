@@ -13,7 +13,7 @@ import type {
 } from '@/domain/branded-ids';
 import type {
   AssignmentRepository,
-  CreateAssignmentInput,
+  CreateAssignmentRepositoryInput,
   UpdateAssignmentStatusInput,
 } from '@/domain/contracts/infrastructure/assignment.repository';
 import {
@@ -34,6 +34,7 @@ class MockAssignmentRepository implements AssignmentRepository {
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
         volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+        shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         status: 'confirmed',
       },
       '99999999-9999-9999-9999-999999999991' as AssignmentId,
@@ -45,6 +46,7 @@ class MockAssignmentRepository implements AssignmentRepository {
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
         volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+        shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         status: 'declined',
         reason: 'Sick',
       },
@@ -57,6 +59,7 @@ class MockAssignmentRepository implements AssignmentRepository {
           '77777777-7777-7777-7777-777777777772' as EventTimeBlockId,
         volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+        shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         status: 'confirmed',
       },
       '99999999-9999-9999-9999-999999999993' as AssignmentId,
@@ -67,10 +70,10 @@ class MockAssignmentRepository implements AssignmentRepository {
     this.assignments.set(a3.id, a3);
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateAssignmentInput,
-  ): Promise<Assignment> {
+  async create({
+    churchId,
+    input,
+  }: CreateAssignmentRepositoryInput): Promise<Assignment> {
     const id = `assignment-gen-${this.idCounter++}` as AssignmentId;
     const a = new Assignment(
       {
@@ -81,7 +84,8 @@ class MockAssignmentRepository implements AssignmentRepository {
         participationId: input.participationId,
         shiftId: input.shiftId,
         volunteerId: input.volunteerId,
-        roleId: input.roleId,
+        roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+        shiftRequirementId: input.shiftRequirementId,
         status: input.status ?? 'draft',
         reason: input.reason,
         assignedBy: input.assignedBy,

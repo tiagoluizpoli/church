@@ -96,6 +96,7 @@ type SchedulePublishChurch = AssignChurch<typeof PLAN>;
 export interface SchedulePublishParticipation {
   id: string;
   shiftId: string;
+  requirementId: string;
 }
 
 export interface SchedulePublishEvent {
@@ -205,7 +206,7 @@ export function createSchedulePublishRecipe({
         start: startsAt,
         end: endsAt,
       });
-      await buildShiftRequirement({
+      const requirement = await buildShiftRequirement({
         db,
         churchId,
         participationId: participation.id,
@@ -215,7 +216,11 @@ export function createSchedulePublishRecipe({
         peopleNeeded,
         sectorId,
       });
-      return { id: participation.id, shiftId: shift.id };
+      return {
+        id: participation.id,
+        shiftId: shift.id,
+        requirementId: requirement.id,
+      };
     }
 
     return {

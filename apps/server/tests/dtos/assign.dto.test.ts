@@ -93,6 +93,7 @@ describe('assignMapper', () => {
           eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
+          shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
         'a1',
       );

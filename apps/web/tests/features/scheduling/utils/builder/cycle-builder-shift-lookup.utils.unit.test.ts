@@ -8,7 +8,7 @@ import type {
 import {
   findShiftById,
   focusKey,
-  roleHasRoom,
+  requirementHasRoom,
 } from '@/features/scheduling/utils/builder/cycle-builder-shift-lookup.utils';
 
 function makeShift(
@@ -76,6 +76,7 @@ function makeAssignment(
     eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     roleId: 'role-1',
+    shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2027-01-01T12:00:00.000Z',
     ...overrides,
@@ -83,9 +84,9 @@ function makeAssignment(
 }
 
 describe('focusKey', () => {
-  it('separates two roles inside the same shift', () => {
-    expect(focusKey({ shiftId: 'shift-1', roleId: 'role-1' })).not.toBe(
-      focusKey({ shiftId: 'shift-1', roleId: 'role-2' }),
+  it('uses the requirement as the cell identity', () => {
+    expect(focusKey({ shiftRequirementId: 'requirement-1' })).not.toBe(
+      focusKey({ shiftRequirementId: 'requirement-2' }),
     );
   });
 });
@@ -93,38 +94,67 @@ describe('focusKey', () => {
 describe('roleHasRoom', () => {
   it('has room while active assignments sit below the required headcount', () => {
     const shift = makeShift({
-      requirements: [{ roleId: 'role-1', peopleNeeded: 2 }],
+      requirements: [
+        {
+          id: 'requirement-role-1',
+          roleId: 'role-1',
+          sectorName: 'Main',
+          peopleNeeded: 2,
+        },
+      ],
       assignments: [makeAssignment({ id: 'a-1', volunteerId: 'ana' })],
     });
 
-    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(true);
+    expect(
+      requirementHasRoom({ shift, shiftRequirementId: 'requirement-role-1' }),
+    ).toBe(true);
   });
 
   it('is full once active assignments reach the headcount', () => {
     const shift = makeShift({
-      requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+      requirements: [
+        {
+          id: 'requirement-role-1',
+          roleId: 'role-1',
+          sectorName: 'Main',
+          peopleNeeded: 1,
+        },
+      ],
       assignments: [makeAssignment({ id: 'a-1', volunteerId: 'ana' })],
     });
 
-    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(false);
+    expect(
+      requirementHasRoom({ shift, shiftRequirementId: 'requirement-role-1' }),
+    ).toBe(false);
   });
 
   it('ignores cancelled and declined assignments against the ceiling', () => {
     const shift = makeShift({
-      requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+      requirements: [
+        {
+          id: 'requirement-role-1',
+          roleId: 'role-1',
+          sectorName: 'Main',
+          peopleNeeded: 1,
+        },
+      ],
       assignments: [
         makeAssignment({ id: 'a-1', volunteerId: 'ana', status: 'cancelled' }),
         makeAssignment({ id: 'a-2', volunteerId: 'bruno', status: 'declined' }),
       ],
     });
 
-    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(true);
+    expect(
+      requirementHasRoom({ shift, shiftRequirementId: 'requirement-role-1' }),
+    ).toBe(true);
   });
 
   it('has no room for a role with no requirement at all', () => {
     const shift = makeShift({ requirements: [], assignments: [] });
 
-    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(false);
+    expect(
+      requirementHasRoom({ shift, shiftRequirementId: 'requirement-role-1' }),
+    ).toBe(false);
   });
 });
 

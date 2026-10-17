@@ -52,9 +52,9 @@ export function findShiftContextById({
   return undefined;
 }
 
-interface RoleHasRoomInput {
+interface RequirementHasRoomInput {
   shift: CycleBuilderShiftSummary;
-  roleId: string;
+  shiftRequirementId: string;
 }
 
 /**
@@ -63,21 +63,24 @@ interface RoleHasRoomInput {
  * board enforces cell-side as `canAdd`, so the rail's direct-assign cannot
  * over-fill a role the board would have refused.
  */
-export function roleHasRoom({ shift, roleId }: RoleHasRoomInput): boolean {
+export function requirementHasRoom({
+  shift,
+  shiftRequirementId,
+}: RequirementHasRoomInput): boolean {
   const required =
-    shift.requirements.find((requirement) => requirement.roleId === roleId)
-      ?.peopleNeeded ?? 0;
+    shift.requirements.find(
+      (requirement) => requirement.id === shiftRequirementId,
+    )?.peopleNeeded ?? 0;
   const active = shift.assignments.filter(
     (assignment) =>
-      assignment.roleId === roleId &&
+      assignment.shiftRequirementId === shiftRequirementId &&
       isActiveAssignment({ status: assignment.status }),
   ).length;
   return required > active;
 }
 
 interface FocusKeyInput {
-  shiftId: string;
-  roleId: string;
+  shiftRequirementId: string;
 }
 
 /**
@@ -85,8 +88,8 @@ interface FocusKeyInput {
  * and each shift asks for several roles, so only the pair identifies what the
  * rail is ranking for — focusing one cell must not light up its siblings.
  */
-export function focusKey({ shiftId, roleId }: FocusKeyInput): string {
-  return `${shiftId}:${roleId}`;
+export function focusKey({ shiftRequirementId }: FocusKeyInput): string {
+  return shiftRequirementId;
 }
 
 /**
@@ -105,6 +108,7 @@ export interface FocusedShift {
   label: string;
   /** The assignable place, so the rail can commit a pick straight to it. */
   shiftId: string;
+  shiftRequirementId: string;
   roleId: string;
   /** The role's own name, for copy that must not read "this role" (B-2). */
   roleLabel: string;

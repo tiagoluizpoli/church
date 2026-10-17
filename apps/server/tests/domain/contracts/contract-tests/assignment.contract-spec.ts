@@ -5,7 +5,7 @@ import type {
   ChurchId,
   EventId,
   EventTimeBlockId,
-  RoleId,
+  ShiftRequirementId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
@@ -26,15 +26,16 @@ export function runAssignmentRepositoryContractTests(
     });
 
     it('should create an assignment', async () => {
-      const created = await repo.create(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        {
+      const created = await repo.create({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        input: {
           eventTimeBlockId:
             '77777777-7777-7777-7777-777777777772' as EventTimeBlockId,
           volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
-          roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+          shiftRequirementId:
+            '88888888-8888-4888-8888-888888888882' as ShiftRequirementId,
         },
-      );
+      });
 
       expect(created).toBeDefined();
       expect(created.id).toBeDefined();

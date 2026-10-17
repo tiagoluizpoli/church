@@ -20,11 +20,17 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
+
+interface CreateParticipationAssignmentTransactionInput {
+  input: CreateParticipationAssignmentInput;
+  tx: TransactionContext;
+}
 
 interface ReassignTransactionResult {
   nextAssignment: Assignment;
@@ -92,7 +98,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     input: CreateParticipationAssignmentInput,
   ): Promise<CreateParticipationAssignmentResult> {
     return this.unitOfWork.run((tx) =>
-      this.createParticipationAssignmentInTransaction(input, tx),
+      this.createParticipationAssignmentInTransaction({ input, tx }),
     );
   }
 
@@ -126,16 +132,16 @@ export class DbAssignmentManager implements IAssignmentManager {
           throw new Error('Assignment is missing a shift reference');
         }
         const nextAssignmentResult =
-          await this.createParticipationAssignmentInTransaction(
-            {
+          await this.createParticipationAssignmentInTransaction({
+            input: {
               churchId: input.churchId,
               shiftId: currentAssignment.shiftId,
               volunteerId: input.volunteerId,
-              roleId: currentAssignment.roleId,
+              shiftRequirementId: currentAssignment.shiftRequirementId,
               actorId: input.actorId,
             },
             tx,
-          );
+          });
         if (!nextAssignmentResult.assignment.participationId) {
           throw new Error('Assignment is missing a participation reference');
         }
@@ -189,18 +195,27 @@ export class DbAssignmentManager implements IAssignmentManager {
     });
   }
 
-  private async createParticipationAssignmentInTransaction(
-    input: CreateParticipationAssignmentInput,
-    tx: import('../domain/contracts/infrastructure/transaction-context').TransactionContext,
-  ): Promise<CreateParticipationAssignmentResult> {
+  private async createParticipationAssignmentInTransaction({
+    input,
+    tx,
+  }: CreateParticipationAssignmentTransactionInput): Promise<CreateParticipationAssignmentResult> {
     const shift = await this.shiftRepository.getById({
       churchId: input.churchId,
       shiftId: input.shiftId,
       tx,
     });
+    const requirement = await this.shiftRepository.getRequirementForShift({
+      churchId: input.churchId,
+      shiftId: shift.id,
+      shiftRequirementId: input.shiftRequirementId,
+      tx,
+    });
+    const { roleId } = requirement;
+    const participationId =
+      requirement.participationId ?? shift.participationId;
     const participation = await this.participationRepository.getById({
       churchId: input.churchId,
-      participationId: shift.participationId,
+      participationId,
       tx,
     });
     const hasMembership =
@@ -223,7 +238,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         input.churchId,
         input.volunteerId,
         participation.ministryId,
-        input.roleId,
+        roleId,
         tx,
       );
     const existingShiftAssignments = await this.assignmentRepo.listByShift(
@@ -293,19 +308,19 @@ export class DbAssignmentManager implements IAssignmentManager {
       );
     }
 
-    const assignment = await this.assignmentRepo.create(
-      input.churchId,
-      {
+    const assignment = await this.assignmentRepo.create({
+      churchId: input.churchId,
+      input: {
         eventTimeBlockId: shift.eventTimeBlockId,
-        participationId: participation.id,
-        shiftId: shift.id,
+        participationId: requirement.participationId ?? participation.id,
+        shiftId: requirement.shiftId ?? shift.id,
         volunteerId: input.volunteerId,
-        roleId: input.roleId,
+        shiftRequirementId: requirement.id,
         status: 'pending',
         assignedBy: input.actorId,
       },
       tx,
-    );
+    });
 
     if (participation.state === 'availability_requested') {
       participation.startAssigning();

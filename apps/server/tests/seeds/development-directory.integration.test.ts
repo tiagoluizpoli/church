@@ -29,6 +29,7 @@ import { parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import { and, count, countDistinct, eq, isNull, ne, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { expectAssignmentRequirementsToAgree } from './assignment-requirement-contract';
 import { createFastify } from '@/main/fastify/setup';
 import {
   SEED_PERSONA_PASSWORD,
@@ -843,6 +844,7 @@ describe('development seed recipe', () => {
   });
 
   it('staffs every published requirement in full except the one declared shortfall', async () => {
+    await expectAssignmentRequirementsToAgree();
     const [totals] = await testDb
       .select({
         required: sql<number>`sum(${shiftRequirement.peopleNeeded})::int`,
@@ -860,21 +862,20 @@ describe('development seed recipe', () => {
       { status: 'declined', value: 1 },
     ]);
 
-    // Assignments name a Role, not a Sector (Spec 05b), so staffing is counted per
-    // Shift and Role across that Role's requirements.
+    // Every Assignment staffs its named requirement, including same-Role Sectors.
     const result = await testDb.execute<StaffingRow>(sql`
       select m.name as ministry, r.name as role,
         to_char(sh.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as starts,
         sum(sr.people_needed)::int as required,
         (select count(*) from ${assignment} a
-          where a.shift_id = sr.shift_id and a.role_id = sr.role_id
+          where a.shift_requirement_id = sr.id
             and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
       from ${shiftRequirement} sr
       join ${shift} sh on sh.id = sr.shift_id
       join ${ministryParticipation} p on p.id = sr.participation_id
       join ${ministry} m on m.id = p.ministry_id
       join ${role} r on r.id = sr.role_id
-      group by m.name, r.name, sh.start_time, sr.shift_id, sr.role_id`);
+      group by m.name, r.name, sh.start_time, sr.id`);
     expect(result.rows.filter((row) => row.assigned !== row.required)).toEqual([
       {
         ministry: 'Estacionamento',

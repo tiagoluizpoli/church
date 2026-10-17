@@ -48,7 +48,7 @@ describe('User Story 4: Transaction Context Type Safety', () => {
 
       // 4. AssignmentRepository
       const assignmentRepo = {} as AssignmentRepository;
-      assignmentRepo.create(churchId, {} as any, tx);
+      assignmentRepo.create({ churchId, input: {} as any, tx });
       assignmentRepo.updateStatus(
         churchId,
         'assignment-1' as AssignmentId,

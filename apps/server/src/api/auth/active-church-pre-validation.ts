@@ -61,15 +61,15 @@ export function createActiveChurchPreValidation(
     if (resolution.status === 'no_membership') {
       // A stale active organization, if any, was already cleared by
       // resolveActiveChurchAndPersist above.
-      return reply.status(401).send({
-        error: 'UNAUTHORIZED',
+      return reply.status(403).send({
+        error: 'FORBIDDEN',
         message: 'No active Church membership found',
       });
     }
 
     if (requireVolunteer && !resolution.volunteerId) {
-      return reply.status(401).send({
-        error: 'UNAUTHORIZED',
+      return reply.status(403).send({
+        error: 'FORBIDDEN',
         message: 'Volunteer profile not found',
       });
     }

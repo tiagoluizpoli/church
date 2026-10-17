@@ -28,12 +28,6 @@ export interface MinistryMembership {
 }
 
 export interface VolunteerRepository {
-  isChurchAdmin(
-    churchId: ChurchId,
-    userId: UserId,
-    tx?: TransactionContext,
-  ): Promise<boolean>;
-
   getById(
     churchId: ChurchId,
     id: VolunteerId,

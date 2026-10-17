@@ -24,7 +24,6 @@ function actorWithMembership(input: ActorWithMembershipInput): AuthorityActor {
       accessLevel: input.accessLevel,
     },
     ministryMemberships: [],
-    teamMemberships: [],
   };
 }
 
@@ -35,7 +34,6 @@ function actorWithoutMembership(activeChurchId: ChurchId): AuthorityActor {
     activeChurchId,
     churchMembership: null,
     ministryMemberships: [],
-    teamMemberships: [],
   };
 }
 

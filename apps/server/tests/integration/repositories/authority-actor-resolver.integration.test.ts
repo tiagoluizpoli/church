@@ -1,6 +1,7 @@
 import * as schema from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { parseInstant } from '@church/time';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -199,7 +200,6 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
     expect(actor.volunteerId).toBeNull();
     expect(actor.churchMembership).toEqual({ churchId, accessLevel: 'admin' });
     expect(actor.ministryMemberships).toEqual([]);
-    expect(actor.teamMemberships).toEqual([]);
 
     const churchResource: AuthorityResource = { type: 'church', churchId };
     const manage = AuthorityService.authorize({
@@ -220,7 +220,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
     });
   });
 
-  it('resolves a TeamLeader end to end, allowed to manage their Team', async () => {
+  it('resolves a Ministry leader with zero Roles, allowed to manage their Ministry', async () => {
     const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
     const actor = await resolver.resolveActor({
       userId: leaderUserId,
@@ -236,14 +236,11 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
         qualifiedRoleIds: [],
       },
     ]);
-    expect(actor.teamMemberships).toEqual([
-      { churchId, ministryId, teamId, accessLevel: 'leader' },
-    ]);
 
     const decision = AuthorityService.authorize({
       actor,
       action: 'manage',
-      resource: { type: 'team', churchId, ministryId, teamId },
+      resource: { type: 'ministry', churchId, ministryId },
     });
 
     expect(decision).toEqual({ allowed: true });
@@ -305,7 +302,6 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
     expect(actor.volunteerId).toBeNull();
     expect(actor.churchMembership).toEqual({ churchId, accessLevel: 'member' });
     expect(actor.ministryMemberships).toEqual([]);
-    expect(actor.teamMemberships).toEqual([]);
 
     const decision = AuthorityService.authorize({
       actor,
@@ -329,7 +325,6 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
     expect(actor.volunteerId).toBeNull();
     expect(actor.churchMembership).toBeNull();
     expect(actor.ministryMemberships).toEqual([]);
-    expect(actor.teamMemberships).toEqual([]);
 
     const decision = AuthorityService.authorize({
       actor,
@@ -341,5 +336,61 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
       allowed: false,
       reason: 'NO_CHURCH_MEMBERSHIP',
     });
+  });
+  it('parked Team leadership grants no Ministry management authority', async () => {
+    await testDb
+      .update(schema.ministryMembership)
+      .set({ ministryAccessLevel: 'volunteer' })
+      .where(eq(schema.ministryMembership.volunteerId, leaderVolunteerId));
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
+    const actor = await resolver.resolveActor({
+      userId: leaderUserId,
+      activeChurchId: churchId,
+    });
+    expect(
+      AuthorityService.authorize({
+        actor,
+        action: 'manage',
+        resource: { type: 'ministry', churchId, ministryId },
+      }),
+    ).toEqual({ allowed: false, reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+    expect('teamMemberships' in actor).toBe(false);
+  });
+  it('inactive Ministry Membership does not grant management or serving access', async () => {
+    await testDb
+      .update(schema.ministryMembership)
+      .set({ status: 'inactive' })
+      .where(eq(schema.ministryMembership.volunteerId, leaderVolunteerId));
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
+    const actor = await resolver.resolveActor({
+      userId: leaderUserId,
+      activeChurchId: churchId,
+    });
+    expect(actor.ministryMemberships).toEqual([]);
+    expect(
+      AuthorityService.authorize({
+        actor,
+        action: 'participate',
+        resource: { type: 'church', churchId },
+      }),
+    ).toEqual({ allowed: false, reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+  });
+  it('facts in the previous Church grant nothing in a different Active Church', async () => {
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
+    const otherChurchId = ChurchId.from('22222222-2222-4222-8222-a22222222222');
+    const actor = await resolver.resolveActor({
+      userId: leaderUserId,
+      activeChurchId: otherChurchId,
+    });
+    expect(actor.churchMembership).toBeNull();
+    expect(actor.volunteerId).toBeNull();
+    expect(actor.ministryMemberships).toEqual([]);
+    expect(
+      AuthorityService.authorize({
+        actor,
+        action: 'manage',
+        resource: { type: 'ministry', churchId: otherChurchId, ministryId },
+      }),
+    ).toEqual({ allowed: false, reason: 'NO_CHURCH_MEMBERSHIP' });
   });
 });

@@ -2,7 +2,6 @@ import {
   member,
   ministryMembership,
   ministryMembershipRole,
-  ministryMembershipTeam,
   volunteer,
 } from '@church/db';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -11,14 +10,11 @@ import type {
   ChurchAccessLevel,
   ChurchMembershipFact,
   MinistryMembershipFact,
-  TeamAccessLevel,
-  TeamMembershipFact,
 } from '../../domain/authority/types';
 import type {
   ChurchId,
   MinistryId,
   RoleId,
-  TeamId,
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -44,13 +40,6 @@ interface ResolveMembershipFactsInput {
 
 interface MembershipFacts {
   ministryMemberships: MinistryMembershipFact[];
-  teamMemberships: TeamMembershipFact[];
-}
-
-interface MembershipTeamRow {
-  membershipId: string;
-  teamId: string;
-  accessLevel: string;
 }
 
 interface MembershipRoleRow {
@@ -80,9 +69,8 @@ interface DrizzleAuthorityActorResolverInput {
 
 /**
  * Resolves the AuthorityActor AuthorityService evaluates against: Church
- * Membership reads Better Auth's `member` table directly (the same source
- * `isChurchAdminMember` uses), the caller's own Volunteer profile and their
- * Ministry/Team Memberships read the scheduling domain tables. Supersedes
+ * Membership reads Better Auth's `member` table directly; the caller's own
+ * Volunteer profile and Ministry Memberships read scheduling domain tables. Supersedes
  * `DrizzleSchedulingRbacResolver` for callers migrated onto AuthorityService.
  */
 export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
@@ -110,16 +98,14 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
         activeChurchId,
         churchMembership,
         ministryMemberships: [],
-        teamMemberships: [],
       };
     }
 
-    const { ministryMemberships, teamMemberships } =
-      await this.resolveMembershipFacts({
-        db,
-        churchId: activeChurchId,
-        volunteerId,
-      });
+    const { ministryMemberships } = await this.resolveMembershipFacts({
+      db,
+      churchId: activeChurchId,
+      volunteerId,
+    });
 
     return {
       userId,
@@ -127,7 +113,6 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       activeChurchId,
       churchMembership,
       ministryMemberships,
-      teamMemberships,
     };
   }
 
@@ -167,7 +152,7 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
 
   /**
    * One volunteer's active Ministry Memberships across the whole Church, each
-   * with its qualified Roles and Team Memberships — the inverse scope of
+   * with its qualified Roles — the inverse scope of
    * `DrizzleVolunteerRepository.listMinistryMemberships`, which lists every
    * volunteer within one ministry.
    */
@@ -191,33 +176,20 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       );
 
     if (rows.length === 0) {
-      return { ministryMemberships: [], teamMemberships: [] };
+      return { ministryMemberships: [] };
     }
 
     const membershipIds = rows.map((row) => row.id);
-    const [teamRows, roleRows] = await Promise.all([
-      db
-        .select({
-          membershipId: ministryMembershipTeam.ministryMembershipId,
-          teamId: ministryMembershipTeam.teamId,
-          accessLevel: ministryMembershipTeam.accessLevel,
-        })
-        .from(ministryMembershipTeam)
-        .where(
-          inArray(ministryMembershipTeam.ministryMembershipId, membershipIds),
-        ),
-      db
-        .select({
-          membershipId: ministryMembershipRole.ministryMembershipId,
-          roleId: ministryMembershipRole.roleId,
-        })
-        .from(ministryMembershipRole)
-        .where(
-          inArray(ministryMembershipRole.ministryMembershipId, membershipIds),
-        ),
-    ]);
+    const roleRows = await db
+      .select({
+        membershipId: ministryMembershipRole.ministryMembershipId,
+        roleId: ministryMembershipRole.roleId,
+      })
+      .from(ministryMembershipRole)
+      .where(
+        inArray(ministryMembershipRole.ministryMembershipId, membershipIds),
+      );
 
-    const teamsByMembership = groupByMembership<MembershipTeamRow>(teamRows);
     const rolesByMembership = groupByMembership<MembershipRoleRow>(roleRows);
 
     const ministryMemberships: MinistryMembershipFact[] = rows.map((row) => ({
@@ -229,15 +201,6 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       ),
     }));
 
-    const teamMemberships: TeamMembershipFact[] = rows.flatMap((row) =>
-      (teamsByMembership.get(row.id) ?? []).map((team) => ({
-        churchId,
-        ministryId: row.ministryId as MinistryId,
-        teamId: team.teamId as TeamId,
-        accessLevel: team.accessLevel as TeamAccessLevel,
-      })),
-    );
-
-    return { ministryMemberships, teamMemberships };
+    return { ministryMemberships };
   }
 }

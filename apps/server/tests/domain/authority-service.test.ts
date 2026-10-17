@@ -7,12 +7,10 @@ import type {
   AuthorityResource,
   ChurchMembershipFact,
   MinistryMembershipFact,
-  TeamMembershipFact,
 } from '@/domain/authority/types';
 import type {
   ChurchId,
   MinistryId,
-  TeamId,
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
@@ -25,8 +23,6 @@ const churchId = 'chu_home' as ChurchId;
 const otherChurchId = 'chu_other' as ChurchId;
 const ministryId = 'min_worship' as MinistryId;
 const otherMinistryId = 'min_kids' as MinistryId;
-const teamId = 'team_acoustic' as TeamId;
-const otherTeamId = 'team_media' as TeamId;
 const userId = 'usr_1' as UserId;
 const volunteerId = 'vol_1' as VolunteerId;
 const otherVolunteerId = 'vol_2' as VolunteerId;
@@ -55,18 +51,6 @@ function ministryMembership(
   };
 }
 
-function teamMembership(
-  overrides: Partial<TeamMembershipFact> = {},
-): TeamMembershipFact {
-  return {
-    churchId,
-    ministryId,
-    teamId,
-    accessLevel: 'member',
-    ...overrides,
-  };
-}
-
 function actor(overrides: Partial<AuthorityActor> = {}): AuthorityActor {
   return {
     userId,
@@ -74,7 +58,6 @@ function actor(overrides: Partial<AuthorityActor> = {}): AuthorityActor {
     activeChurchId: churchId,
     churchMembership: churchMembership({ accessLevel: 'member' }),
     ministryMemberships: [],
-    teamMemberships: [],
     ...overrides,
   };
 }
@@ -150,40 +133,7 @@ describe('AuthorityService — scope-data integrity', () => {
     expect(denyReason(decision)).toBe('CONFLICTING_SCOPE');
   });
 
-  it('denies with CONFLICTING_SCOPE when a Team Membership fact carries a different churchId than the Active Church', () => {
-    const decision = AuthorityService.authorize(
-      request({
-        actor: actor({
-          teamMemberships: [
-            teamMembership({ churchId: otherChurchId, accessLevel: 'leader' }),
-          ],
-        }),
-        resource: { type: 'team', churchId, ministryId, teamId },
-      }),
-    );
-    expect(allowed(decision)).toBe(false);
-    expect(denyReason(decision)).toBe('CONFLICTING_SCOPE');
-  });
-
-  it('denies with CONFLICTING_SCOPE when a Team Membership fact carries a different ministryId than the team resource', () => {
-    const decision = AuthorityService.authorize(
-      request({
-        actor: actor({
-          teamMemberships: [
-            teamMembership({
-              ministryId: otherMinistryId,
-              accessLevel: 'leader',
-            }),
-          ],
-        }),
-        resource: { type: 'team', churchId, ministryId, teamId },
-      }),
-    );
-    expect(allowed(decision)).toBe(false);
-    expect(denyReason(decision)).toBe('CONFLICTING_SCOPE');
-  });
-
-  it('denies with CONFLICTING_SCOPE when a resource claims the actor owns it but no matching Ministry Membership fact exists', () => {
+  it('denies participation when the owned object has no active Ministry Membership', () => {
     const decision = AuthorityService.authorize(
       request({
         actor: actor({ ministryMemberships: [] }),
@@ -197,25 +147,7 @@ describe('AuthorityService — scope-data integrity', () => {
       }),
     );
     expect(allowed(decision)).toBe(false);
-    expect(denyReason(decision)).toBe('CONFLICTING_SCOPE');
-  });
-
-  it('denies with CONFLICTING_SCOPE when a resource claims the actor owns it but no matching Team Membership fact exists', () => {
-    const decision = AuthorityService.authorize(
-      request({
-        actor: actor({ teamMemberships: [] }),
-        action: 'participate',
-        resource: {
-          type: 'team',
-          churchId,
-          ministryId,
-          teamId,
-          ownerVolunteerId: volunteerId,
-        },
-      }),
-    );
-    expect(allowed(decision)).toBe(false);
-    expect(denyReason(decision)).toBe('CONFLICTING_SCOPE');
+    expect(denyReason(decision)).toBe('INSUFFICIENT_ACCESS_LEVEL');
   });
 });
 
@@ -442,147 +374,41 @@ describe('AuthorityService — ministry resource', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Team resource — Team Membership scoped to explicitly assigned Teams only
-// ---------------------------------------------------------------------------
-
-describe('AuthorityService — team resource', () => {
-  const resource: AuthorityResource = {
-    type: 'team',
-    churchId,
-    ministryId,
-    teamId,
-  };
-
-  it.each([
-    {
-      name: 'church admin, no memberships, manage -> allowed (admin override)',
-      churchAccessLevel: 'admin' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [] as TeamMembershipFact[],
-      action: 'manage' as const,
-      expectAllowed: true,
-    },
-    {
-      name: 'ministry leader of the SAME ministry, without an explicit Team Membership, manage -> denied (Team access is a fully independent axis)',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [ministryMembership({ accessLevel: 'leader' })],
-      teamMemberships: [] as TeamMembershipFact[],
-      action: 'manage' as const,
-      expectAllowed: false,
-    },
-    {
-      name: 'TeamLeader (matching team, no Ministry Membership), manage -> allowed',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [teamMembership({ accessLevel: 'leader' })],
-      action: 'manage' as const,
-      expectAllowed: true,
-    },
-    {
-      name: 'TeamLeader of a DIFFERENT team, manage -> denied',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [
-        teamMembership({ teamId: otherTeamId, accessLevel: 'leader' }),
-      ],
-      action: 'manage' as const,
-      expectAllowed: false,
-    },
-    {
-      name: 'team member (not leader), manage -> denied',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [teamMembership({ accessLevel: 'member' })],
-      action: 'manage' as const,
-      expectAllowed: false,
-    },
-    {
-      name: 'no memberships at all, manage -> denied',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [] as TeamMembershipFact[],
-      action: 'manage' as const,
-      expectAllowed: false,
-    },
-    {
-      name: 'church admin, no Team Membership, participate -> denied (no participatory capability)',
-      churchAccessLevel: 'admin' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [] as TeamMembershipFact[],
-      action: 'participate' as const,
-      expectAllowed: false,
-    },
-    {
-      name: 'ministry leader WITHOUT explicit Team Membership, participate -> denied (scoped to explicitly assigned Teams only)',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [ministryMembership({ accessLevel: 'leader' })],
-      teamMemberships: [] as TeamMembershipFact[],
-      action: 'participate' as const,
-      expectAllowed: false,
-    },
-    {
-      name: 'team member, participate -> allowed',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [teamMembership({ accessLevel: 'member' })],
-      action: 'participate' as const,
-      expectAllowed: true,
-    },
-    {
-      name: 'TeamLeader, participate -> allowed',
-      churchAccessLevel: 'member' as const,
-      ministryMemberships: [] as MinistryMembershipFact[],
-      teamMemberships: [teamMembership({ accessLevel: 'leader' })],
-      action: 'participate' as const,
-      expectAllowed: true,
-    },
-  ])('$name', ({
-    churchAccessLevel,
-    ministryMemberships,
-    teamMemberships,
-    action,
-    expectAllowed,
-  }) => {
-    const decision = AuthorityService.authorize(
-      request({
-        actor: actor({
-          churchMembership: churchMembership({
-            accessLevel: churchAccessLevel,
+describe('AuthorityService — scope-aware decisions', () => {
+  it('hides an owned object from a non-owner without turning missing capability into a conflict', () => {
+    expect(
+      AuthorityService.authorize(
+        request({
+          actor: actor({
+            churchMembership: churchMembership({ accessLevel: 'admin' }),
           }),
-          ministryMemberships,
-          teamMemberships,
+          action: 'participate',
+          resource: {
+            type: 'ministry',
+            churchId,
+            ministryId,
+            ownerVolunteerId: otherVolunteerId,
+          },
+          scope: 'object',
         }),
-        action,
-        resource,
-      }),
-    );
-    expect(allowed(decision)).toBe(expectAllowed);
-    if (!expectAllowed) expect(denyReason(decision)).toBeDefined();
+      ),
+    ).toEqual({ allowed: false, reason: 'OUTSIDE_SCOPE' });
   });
-
-  describe('ownership', () => {
-    it('owner participating in their own resource, with a matching Team Membership -> allowed', () => {
-      const decision = AuthorityService.authorize(
+  it('allows a serving collection for a leader without Roles but denies an orphan Volunteer profile', () => {
+    expect(
+      AuthorityService.authorize(
         request({
-          actor: actor({ teamMemberships: [teamMembership()] }),
+          actor: actor({
+            ministryMemberships: [
+              ministryMembership({ accessLevel: 'leader' }),
+            ],
+          }),
           action: 'participate',
-          resource: { ...resource, ownerVolunteerId: volunteerId },
         }),
-      );
-      expect(allowed(decision)).toBe(true);
-    });
-
-    it("non-owner attempting to participate in a teammate's owned resource -> denied", () => {
-      const decision = AuthorityService.authorize(
-        request({
-          actor: actor({ teamMemberships: [teamMembership()] }),
-          action: 'participate',
-          resource: { ...resource, ownerVolunteerId: otherVolunteerId },
-        }),
-      );
-      expect(allowed(decision)).toBe(false);
-      expect(denyReason(decision)).toBe('INSUFFICIENT_ACCESS_LEVEL');
-    });
+      ),
+    ).toEqual({ allowed: true });
+    expect(
+      AuthorityService.authorize(request({ action: 'participate' })),
+    ).toEqual({ allowed: false, reason: 'INSUFFICIENT_ACCESS_LEVEL' });
   });
 });

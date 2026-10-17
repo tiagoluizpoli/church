@@ -153,9 +153,11 @@ beforeAll(async () => {
   cpSync(MIGRATIONS, folder, { recursive: true });
   const journalPath = join(folder, 'meta/_journal.json');
   const journal = JSON.parse(readFileSync(journalPath, 'utf8'));
-  journal.entries = journal.entries.filter(
-    (entry: { tag: string }) => entry.tag !== SECTORS_TAG,
+  const migrationIndex = journal.entries.findIndex(
+    (entry: { tag: string }) => entry.tag === SECTORS_TAG,
   );
+  if (migrationIndex < 0) throw new Error(`Missing migration: ${SECTORS_TAG}`);
+  journal.entries = journal.entries.slice(0, migrationIndex);
   writeFileSync(journalPath, JSON.stringify(journal));
   await migrate(drizzle(scratch), { migrationsFolder: folder });
 

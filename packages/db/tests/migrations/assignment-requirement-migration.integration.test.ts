@@ -188,9 +188,12 @@ describe('assignment ShiftRequirement migration', () => {
     const journal = JSON.parse(
       readFileSync(journalPath, 'utf8'),
     ) as MigrationJournal;
-    journal.entries = journal.entries.filter(
-      ({ tag }) => tag !== MIGRATION_TAG,
+    const migrationIndex = journal.entries.findIndex(
+      ({ tag }) => tag === MIGRATION_TAG,
     );
+    if (migrationIndex < 0)
+      throw new Error(`Missing migration: ${MIGRATION_TAG}`);
+    journal.entries = journal.entries.slice(0, migrationIndex);
     writeFileSync(journalPath, JSON.stringify(journal));
 
     await migrate(drizzle(scratch), {

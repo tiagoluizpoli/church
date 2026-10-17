@@ -44,7 +44,7 @@ const ANA_ASSIGNMENT: RawAssignment = {
   shiftId: 'shift-1',
   volunteerId: 'ana',
   roleId: 'role-1',
-  shiftRequirementId: 'requirement-role-1',
+  shiftRequirementId: 'requirement-1',
   status: 'confirmed',
   assignedAt: '2026-07-01T10:00:00.000Z',
 };
@@ -161,6 +161,49 @@ beforeEach(() => {
 });
 
 describe('useCycleBuilder optimistic assignments', () => {
+  it('reports half coverage when two active Assignments fill only one of two Sector needs', async () => {
+    const data = makeCycleBuilderData();
+    const shift = data.events[0]?.eventTimeBlocks[0]?.shifts[0];
+    const first = shift?.requirements[0];
+    if (!shift || !first) throw new Error('Missing Shift fixture');
+    shift.requirements = [
+      { ...first, peopleNeeded: 1 },
+      {
+        ...first,
+        id: 'requirement-2',
+        sectorId: 'sector-2',
+        sectorName: 'Other Door',
+        peopleNeeded: 1,
+      },
+    ];
+    shift.assignments = [
+      ANA_ASSIGNMENT,
+      { ...ANA_ASSIGNMENT, id: 'assignment-2', volunteerId: 'bruno' },
+      {
+        ...ANA_ASSIGNMENT,
+        id: 'assignment-3',
+        volunteerId: 'declined',
+        shiftRequirementId: 'requirement-2',
+        status: 'declined',
+      },
+      {
+        ...ANA_ASSIGNMENT,
+        id: 'assignment-4',
+        volunteerId: 'cancelled',
+        shiftRequirementId: 'requirement-2',
+        status: 'cancelled',
+      },
+    ];
+    adminApiMock.getCycleBuilderData.mockResolvedValue(data);
+    const { result } = renderCycleBuilder();
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    expect(result.current.data?.events[0]).toMatchObject({
+      assignedCount: 2,
+      peopleNeeded: 2,
+      fillRatio: 0.5,
+    });
+  });
+
   it('shows a created assignment before the server answers', async () => {
     const pendingCreate = defer<unknown>();
     adminApiMock.createParticipationAssignment.mockReturnValue(

@@ -583,44 +583,29 @@ export class DbVolunteerManager implements IVolunteerManager {
             const shiftRequirements = requirements.filter(
               (requirement) => requirement.shiftId === shift.id,
             );
-            const requirementsById = new Map(
-              shiftRequirements.map((requirement) => [
-                requirement.id as string,
-                requirement,
-              ]),
-            );
-            const assignmentRows = shiftAssignments.flatMap((assignment) => {
-              const requirement = assignment.shiftRequirementId
-                ? requirementsById.get(assignment.shiftRequirementId as string)
-                : undefined;
-              if (!requirement) return [];
-              return [
-                {
-                  eventTimeBlockId: shift.eventTimeBlockId as string,
-                  eventTimeBlockLabel: scheduleShiftLabel(shift),
-                  sectorName: requirement.sectorName,
-                  roleName:
-                    roleNames.get(requirement.roleId as string) ??
-                    'Unknown role',
-                  volunteerDisplayName: scheduleVolunteerName(
-                    volunteerNames.get(assignment.volunteerId as string),
-                  ),
-                  confirmationState: isPublishedStatus(assignment.status)
-                    ? assignment.status
-                    : 'pending',
-                },
-              ];
-            });
-            const openRows = shiftRequirements.flatMap((requirement) => {
-              const filledCount = shiftAssignments.filter(
+            return shiftRequirements.flatMap((requirement) => {
+              const boundAssignments = shiftAssignments.filter(
                 (assignment) =>
-                  assignment.shiftRequirementId === requirement.id &&
-                  countsTowardRequirementCoverage(assignment.status),
+                  assignment.shiftRequirementId === requirement.id,
+              );
+              const assignmentRows = boundAssignments.map((assignment) => ({
+                eventTimeBlockId: shift.eventTimeBlockId as string,
+                eventTimeBlockLabel: scheduleShiftLabel(shift),
+                sectorName: requirement.sectorName,
+                roleName:
+                  roleNames.get(requirement.roleId as string) ?? 'Unknown role',
+                volunteerDisplayName: scheduleVolunteerName(
+                  volunteerNames.get(assignment.volunteerId as string),
+                ),
+                confirmationState: isPublishedStatus(assignment.status)
+                  ? assignment.status
+                  : 'pending',
+              }));
+              const filledCount = boundAssignments.filter((assignment) =>
+                countsTowardRequirementCoverage(assignment.status),
               ).length;
-              return Array.from(
-                {
-                  length: Math.max(0, requirement.peopleNeeded - filledCount),
-                },
+              const openRows = Array.from(
+                { length: Math.max(0, requirement.peopleNeeded - filledCount) },
                 () => ({
                   eventTimeBlockId: shift.eventTimeBlockId as string,
                   eventTimeBlockLabel: scheduleShiftLabel(shift),
@@ -631,8 +616,8 @@ export class DbVolunteerManager implements IVolunteerManager {
                   confirmationState: 'open' as const,
                 }),
               );
+              return [...assignmentRows, ...openRows];
             });
-            return [...assignmentRows, ...openRows];
           });
           return {
             eventId: event.id as string,

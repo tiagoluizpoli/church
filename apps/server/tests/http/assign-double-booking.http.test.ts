@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
-import { assignment, assignmentAudit } from '@church/db';
+import {
+  assignment,
+  assignmentAudit,
+  ministryParticipation,
+  shiftRequirement,
+} from '@church/db';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -12,6 +17,7 @@ import {
   vi,
 } from 'vitest';
 import { AssignController } from '@/api/controllers/assign-controller';
+import { VolunteerController } from '@/api/controllers/volunteer-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
@@ -72,6 +78,15 @@ beforeAll(async () => {
       instance.register(controller.registerRoutes.bind(controller), {
         prefix: controller.prefix,
       });
+      const volunteerController = new VolunteerController({
+        volunteerManager: managers.volunteerManager,
+        activeChurchResolver: activeChurchResolver as never,
+        config: appConfig,
+      });
+      instance.register(
+        volunteerController.registerRoutes.bind(volunteerController),
+        { prefix: volunteerController.prefix },
+      );
     },
     { prefix: '/api/v1' },
   );
@@ -560,5 +575,102 @@ describe('requirement-bound Assignment HTTP contract', () => {
       expect(response.statusCode).toBe(404);
       expect(response.json()).toMatchObject({ error: 'NOT_FOUND' });
     }
+  });
+});
+
+describe('requirement coverage and published placement HTTP contract', () => {
+  it('keeps an empty Sector open at 50% even when the other Sector has two active Assignments', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    authorityGuard.canManageParticipation.mockResolvedValue(true);
+    await schedulingTestDb
+      .update(shiftRequirement)
+      .set({ peopleNeeded: 1 })
+      .where(eq(shiftRequirement.id, seed.targetRequirementId));
+    const side = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Side Door',
+    });
+    const sideRequirement = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      roleId: seed.targetRoleId,
+      sectorId: side.id,
+      peopleNeeded: 1,
+    });
+    const extra = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Extra',
+      email: 'coverage-extra@test.com',
+    });
+    for (const [volunteerId, requirementId, status] of [
+      [seed.freeVolunteerId, sideRequirement.id, 'declined'],
+      [seed.freeVolunteerId, seed.targetRequirementId, 'confirmed'],
+      [extra.volunteer.id, seed.targetRequirementId, 'pending'],
+      [extra.volunteer.id, sideRequirement.id, 'cancelled'],
+    ] as const) {
+      await buildAssignment({
+        db: schedulingTestDb,
+        churchId: seed.churchId,
+        participationId: seed.targetParticipationId,
+        shiftId: seed.targetShiftId,
+        roleId: seed.targetRoleId,
+        shiftRequirementId: requirementId,
+        volunteerId,
+        status,
+      });
+    }
+    const completion = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/participations/${seed.targetParticipationId}/completion`,
+    });
+    expect(completion.statusCode).toBe(200);
+    expect(completion.json()).toMatchObject({
+      peopleNeeded: 2,
+      assignedCount: 2,
+      completionPercent: 50,
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'published' })
+      .where(eq(ministryParticipation.id, seed.targetParticipationId));
+    const published = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${seed.ministryId}/schedule`,
+    });
+    expect(published.statusCode).toBe(200);
+    const rows = published.json().events[0].rows;
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sectorName: 'Geral',
+          roleName: 'Greeter',
+          confirmationState: 'confirmed',
+        }),
+        expect.objectContaining({
+          sectorName: 'Geral',
+          confirmationState: 'pending',
+        }),
+        expect.objectContaining({
+          sectorName: 'Side Door',
+          confirmationState: 'declined',
+        }),
+        expect.objectContaining({
+          sectorName: 'Side Door',
+          confirmationState: 'open',
+        }),
+      ]),
+    );
+    expect(rows).toHaveLength(4);
+    const sideRows = rows
+      .map((row: { sectorName: string }) => row.sectorName)
+      .join(',');
+    expect([
+      'Geral,Geral,Side Door,Side Door',
+      'Side Door,Side Door,Geral,Geral',
+    ]).toContain(sideRows);
   });
 });

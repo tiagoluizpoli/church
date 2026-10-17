@@ -1061,6 +1061,7 @@ describe('CycleBuilderMatrix', () => {
         end: '2026-08-02T11:00:00.000Z',
         peopleNeeded: 2,
         assignedCount: 2,
+        fillRatio: 1,
       };
       const partialEvent: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
@@ -1071,6 +1072,7 @@ describe('CycleBuilderMatrix', () => {
         end: '2026-08-09T11:00:00.000Z',
         peopleNeeded: 2,
         assignedCount: 1,
+        fillRatio: 0.5,
         // Time blocks would otherwise still carry boardData's Aug 2 startTime,
         // so `eventOccursOnDay` (start-day-only, not a raw bounds check)
         // would never place the event under its own Aug 9 column.
@@ -1086,6 +1088,7 @@ describe('CycleBuilderMatrix', () => {
         end: '2026-08-16T11:00:00.000Z',
         peopleNeeded: 2,
         assignedCount: 0,
+        fillRatio: 0,
         eventTimeBlockCount: 0,
         eventTimeBlocks: [],
       };

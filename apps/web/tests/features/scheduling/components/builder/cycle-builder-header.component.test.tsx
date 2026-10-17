@@ -11,6 +11,7 @@ import type {
 
 const staffing: CycleStaffingSummary = {
   filled: 42,
+  coveredPlaces: 42,
   required: 48,
   percent: 88,
   shiftsBelowTarget: 6,
@@ -84,7 +85,7 @@ describe('CycleBuilderHeader (B-4)', () => {
     );
 
     const progress = screen.getByTestId('cycle-builder-progress');
-    expect(progress).toHaveTextContent('42 of 48 assignments filled');
+    expect(progress).toHaveTextContent('42 of 48 places filled');
     expect(progress).toHaveTextContent('88%');
     expect(progress).toHaveTextContent('6 shifts are below target');
   });
@@ -105,6 +106,7 @@ describe('CycleBuilderHeader (B-4)', () => {
       <CycleBuilderHeader
         staffing={{
           filled: 48,
+          coveredPlaces: 48,
           required: 48,
           percent: 100,
           shiftsBelowTarget: 0,
@@ -121,7 +123,13 @@ describe('CycleBuilderHeader (B-4)', () => {
   it('does not render a percentage for a cycle that asks for nobody', () => {
     render(
       <CycleBuilderHeader
-        staffing={{ filled: 0, required: 0, percent: 0, shiftsBelowTarget: 0 }}
+        staffing={{
+          filled: 0,
+          coveredPlaces: 0,
+          required: 0,
+          percent: 0,
+          shiftsBelowTarget: 0,
+        }}
         counts={{
           eventCount: 0,
           eventTimeBlockCount: 0,

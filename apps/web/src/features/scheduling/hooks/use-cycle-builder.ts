@@ -2,6 +2,7 @@ import { now } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
+import { countCoveredPlaces } from '../utils/builder/cycle-builder-staffing.utils';
 import {
   addOptimisticAssignment,
   type CycleBuilderQueryData,
@@ -299,6 +300,17 @@ function mapCycleBuilderData(
 
     const peopleNeeded = sumPeopleNeeded(item.eventTimeBlocks);
     const assignedCount = sumAssignedCount(item.eventTimeBlocks);
+    const coveredPlaces = item.eventTimeBlocks
+      .filter((block) => block.included)
+      .reduce(
+        (covered, block) =>
+          covered +
+          block.shifts.reduce(
+            (total, shift) => total + countCoveredPlaces(shift),
+            0,
+          ),
+        0,
+      );
 
     return {
       participationId: item.participation.id,
@@ -308,7 +320,7 @@ function mapCycleBuilderData(
       start: item.event.start,
       end: item.event.end,
       status: item.event.status,
-      fillRatio: peopleNeeded === 0 ? 0 : assignedCount / peopleNeeded,
+      fillRatio: peopleNeeded === 0 ? 0 : coveredPlaces / peopleNeeded,
       peopleNeeded,
       assignedCount,
       eventTimeBlockCount: eventTimeBlocks.filter(

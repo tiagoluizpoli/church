@@ -21,8 +21,28 @@ function makeShift(
     endTime: '2027-01-04T13:00:00.000Z',
     peopleNeeded: 1,
     assignedCount: 0,
-    requirements: [],
-    assignments: [],
+    requirements: [
+      {
+        id: 'requirement-1',
+        roleId: 'role-1',
+        sectorName: 'Door',
+        peopleNeeded: overrides.peopleNeeded ?? 1,
+      },
+    ],
+    assignments: Array.from(
+      { length: overrides.assignedCount ?? 0 },
+      (_, index) => ({
+        id: `assignment-${index}`,
+        churchId: 'church-1',
+        eventTimeBlockId: 'event-time-block-1',
+        shiftId: overrides.shiftId ?? 'shift-1',
+        volunteerId: `volunteer-${index}`,
+        roleId: 'role-1',
+        shiftRequirementId: 'requirement-1',
+        status: 'confirmed' as const,
+        assignedAt: '2027-01-01T10:00:00Z',
+      }),
+    ),
     eligibleVolunteerCount: 0,
     eligibleVolunteers: [],
     ...overrides,
@@ -67,6 +87,40 @@ function makeEvent(
 }
 
 describe('summarizeCycleStaffing (B-4)', () => {
+  it('retains actual totals but does not let overstaffing conceal another Sector vacancy', () => {
+    const shift = makeShift({ peopleNeeded: 2, assignedCount: 2 });
+    shift.requirements = [
+      {
+        id: 'requirement-1',
+        roleId: 'role-1',
+        sectorName: 'Main Door',
+        peopleNeeded: 1,
+      },
+      {
+        id: 'requirement-2',
+        roleId: 'role-1',
+        sectorName: 'Side Door',
+        peopleNeeded: 1,
+      },
+    ];
+    const data = {
+      events: [
+        makeEvent({
+          eventTimeBlocks: [makeEventTimeBlock({ shifts: [shift] })],
+        }),
+      ],
+      assignments: [],
+      roles: [],
+    };
+    expect(summarizeCycleStaffing({ data })).toEqual({
+      filled: 2,
+      coveredPlaces: 1,
+      required: 2,
+      percent: 50,
+      shiftsBelowTarget: 1,
+    });
+  });
+
   it('counts filled, required and shifts below target across included time blocks', () => {
     const data = {
       events: [
@@ -95,6 +149,7 @@ describe('summarizeCycleStaffing (B-4)', () => {
 
     expect(summarizeCycleStaffing({ data })).toEqual({
       filled: 3,
+      coveredPlaces: 3,
       required: 5,
       percent: 60,
       shiftsBelowTarget: 1,
@@ -130,6 +185,7 @@ describe('summarizeCycleStaffing (B-4)', () => {
 
     expect(summarizeCycleStaffing({ data })).toEqual({
       filled: 1,
+      coveredPlaces: 1,
       required: 2,
       percent: 50,
       shiftsBelowTarget: 1,
@@ -151,6 +207,7 @@ describe('summarizeCycleStaffing (B-4)', () => {
 
     expect(summarizeCycleStaffing({ data })).toEqual({
       filled: 0,
+      coveredPlaces: 0,
       required: 0,
       percent: 0,
       shiftsBelowTarget: 0,

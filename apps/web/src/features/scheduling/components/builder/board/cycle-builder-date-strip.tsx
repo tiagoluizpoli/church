@@ -91,7 +91,7 @@ export function CycleBuilderDateStrip({
           {dates.map((date) => {
             const dayEvents = eventsForDate.get(date) ?? [];
             const assigned = dayEvents.reduce(
-              (total, event) => total + event.assignedCount,
+              (total, event) => total + event.fillRatio * event.peopleNeeded,
               0,
             );
             const required = dayEvents.reduce(

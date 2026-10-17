@@ -278,6 +278,7 @@ export function createAssignBoardRecipe({
         churchId,
         participationId: assignedEvent.participationId,
         shiftId: assignedEvent.shiftId,
+        shiftRequirementId: assignedEvent.requirements.host.id,
         volunteerId: volunteer.volunteerId,
         roleId: worship.roles.host.id,
         id: idOf({ kind: `assignment:assigned-service:${status}` }),

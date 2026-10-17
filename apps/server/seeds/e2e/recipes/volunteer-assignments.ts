@@ -213,7 +213,7 @@ export function createVolunteerAssignmentsRecipe({
       start: startsAt,
       end: endsAt,
     });
-    await buildShiftRequirement({
+    const requirement = await buildShiftRequirement({
       db,
       churchId: church.id,
       participationId: participation.id,
@@ -228,6 +228,7 @@ export function createVolunteerAssignmentsRecipe({
       churchId: church.id,
       participationId: participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: volunteer.id,
       roleId: role.id,
       id: idOf({ kind: 'assignment' }),

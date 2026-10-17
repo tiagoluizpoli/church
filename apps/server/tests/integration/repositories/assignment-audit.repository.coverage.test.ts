@@ -6,6 +6,7 @@ import { AssignmentId, ChurchId, EventId, UserId } from '@/domain/branded-ids';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { buildRole } from '@/seeds/builders/ministry';
 import { buildAssignment, buildShift } from '@/seeds/builders/scheduling';
+import { seedRequirement } from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -53,11 +54,19 @@ async function seedAssignment(input: {
     name: 'Usher',
   });
 
+  const requirement = await seedRequirement({
+    churchId: input.churchId,
+    participationId: graph.participation.id,
+    shiftId: shiftRow.id,
+    roleId: roleRow.id,
+    peopleNeeded: 1,
+  });
   const assignmentRow = await buildAssignment({
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: graph.participation.id,
     shiftId: shiftRow.id,
+    shiftRequirementId: requirement.id,
     volunteerId: input.volunteerId,
     roleId: roleRow.id,
     status: 'confirmed',

@@ -160,6 +160,7 @@ export function createVolunteerDashboardRecipe({
       churchId,
       participationId: careEvent.participationId,
       shiftId: careEvent.shiftId,
+      shiftRequirementId: careEvent.requirements.careHost.id,
       volunteerId: volunteer.volunteerId,
       roleId: care.roles.careHost.id,
       id: idOf({ kind: 'assignment:care' }),

@@ -16,6 +16,7 @@ import {
   buildEvent,
   buildShift,
 } from '@/seeds/builders/scheduling';
+import { seedRequirement } from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -209,11 +210,19 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
       await repo.countActiveAssignments(churchId, eventTimeBlockId, roleId),
     ).toBe(0);
 
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shiftRow.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
     await buildAssignment({
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shiftRow.id,
+      shiftRequirementId: requirement.id,
       volunteerId: seed.adminVolunteerId,
       roleId: roleRow.id,
       status: 'confirmed',

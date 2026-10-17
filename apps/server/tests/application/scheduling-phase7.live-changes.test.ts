@@ -45,6 +45,7 @@ interface SeedAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
   status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
 }
 
@@ -92,7 +93,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date('2026-12-06T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -118,6 +119,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: volunteerA.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -200,7 +202,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date('2027-01-10T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -225,6 +227,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: owner.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -283,7 +286,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date('2027-02-07T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -313,6 +316,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: outgoing.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -389,7 +393,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       endTime: new Date(now.getTime() + 25 * 60 * 60 * 1000),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -406,6 +410,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: volunteerA.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -657,7 +662,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       endTime: graph.eventTimeBlock.endTime,
       label: 'Delete shift',
     });
-    await seedRequirement({
+    const requirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -676,6 +681,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
+      shiftRequirementId: requirement.id,
       volunteerId: volunteerWithActor.volunteer.id,
       roleId: roleRow.id,
     });

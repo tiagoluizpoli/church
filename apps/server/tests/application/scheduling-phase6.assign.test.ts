@@ -75,7 +75,7 @@ interface SeedAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
-  shiftRequirementId?: string;
+  shiftRequirementId: string;
   status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
 }
 
@@ -190,14 +190,14 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       roleId: roleRow.id,
     });
 
-    await seedRequirement({
+    const oldShiftRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: history.participation.id,
       shiftId: oldShift.id,
       roleId: roleRow.id,
       peopleNeeded: 1,
     });
-    await seedRequirement({
+    const recentShiftRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: history.participation.id,
       shiftId: recentShift.id,
@@ -209,6 +209,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       churchId: seed.churchAId,
       participationId: history.participation.id,
       shiftId: oldShift.id,
+      shiftRequirementId: oldShiftRequirement.id,
       volunteerId: ada.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -217,6 +218,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       churchId: seed.churchAId,
       participationId: history.participation.id,
       shiftId: recentShift.id,
+      shiftRequirementId: recentShiftRequirement.id,
       volunteerId: grace.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -342,6 +344,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       churchId: seed.churchAId,
       participationId: overlapBranch.participation.id,
       shiftId: overlapShift.id,
+      shiftRequirementId: overlapRequirement.id,
       volunteerId: overlapVolunteer.volunteer.id,
       roleId: roleRow.id,
       status: 'confirmed',
@@ -573,14 +576,14 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       endTime: new Date('2026-10-04T11:00:00.000Z'),
       label: 'Secondary',
     });
-    await seedRequirement({
+    const primaryShiftRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: sharedEvent.participation.id,
       shiftId: primaryShift.id,
       roleId: roleA.id,
       peopleNeeded: 2,
     });
-    await seedRequirement({
+    const secondaryShiftRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: secondParticipation.id,
       shiftId: secondaryShift.id,
@@ -620,6 +623,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       churchId: seed.churchAId,
       participationId: sharedEvent.participation.id,
       shiftId: primaryShift.id,
+      shiftRequirementId: primaryShiftRequirement.id,
       volunteerId: primaryVolunteer.volunteer.id,
       roleId: roleA.id,
       status: 'pending',
@@ -628,6 +632,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       churchId: seed.churchAId,
       participationId: secondParticipation.id,
       shiftId: secondaryShift.id,
+      shiftRequirementId: secondaryShiftRequirement.id,
       volunteerId: secondVolunteer.volunteer.id,
       roleId: roleB.id,
       status: 'pending',
@@ -636,6 +641,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       churchId: seed.churchAId,
       participationId: secondParticipation.id,
       shiftId: secondaryShift.id,
+      shiftRequirementId: secondaryShiftRequirement.id,
       volunteerId: floatingVolunteer.volunteer.id,
       roleId: roleB.id,
       status: 'pending',

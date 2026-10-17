@@ -301,7 +301,7 @@ export interface BuildAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
-  shiftRequirementId?: string;
+  shiftRequirementId: string;
   id?: string;
   status: AssignmentStatus;
   /** Why it was declined or cancelled. */
@@ -326,6 +326,8 @@ export async function buildAssignment({
   assignedAt,
   assignedBy,
 }: BuildAssignmentInput): Promise<SeededAssignment> {
+  if (!shiftRequirementId)
+    throw new Error('Assignment requires an explicit ShiftRequirement');
   const [requirementRow] = await db
     .select({
       id: shiftRequirement.id,
@@ -337,13 +339,11 @@ export async function buildAssignment({
     .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
     .where(
       and(
-        eq(shiftRequirement.id, shiftRequirementId ?? shiftRequirement.id),
+        eq(shiftRequirement.id, shiftRequirementId),
         eq(shiftRequirement.churchId, churchId),
         eq(shiftRequirement.shiftId, shiftId),
-        ...(shiftRequirementId ? [] : [eq(shiftRequirement.roleId, roleId)]),
       ),
     )
-    .orderBy(asc(sector.name), asc(shiftRequirement.id))
     .limit(1);
   if (
     !requirementRow ||

@@ -320,12 +320,24 @@ export async function seed(): Promise<void> {
     peopleNeeded: 2,
   });
 
+  await buildShiftRequirement({
+    db: testDb,
+    churchId,
+    participationId: adultParticipationId,
+    shiftId: afternoonShiftId,
+    roleId: usherRoleId,
+    sectorId: adultSectorId,
+    id: '88888888-8888-4888-8888-888888888882',
+    peopleNeeded: 1,
+  });
+
   // Assignments (assignment-1 confirmed, assignment-2 declined for event-time-block-1)
   await buildAssignment({
     db: testDb,
     churchId,
     participationId: youthParticipationId,
     shiftId: morningShiftId,
+    shiftRequirementId: '88888888-8888-8888-8888-888888888881',
     volunteerId: volunteerOneId,
     roleId: usherRoleId,
     id: confirmedAssignmentId,
@@ -338,6 +350,7 @@ export async function seed(): Promise<void> {
     churchId,
     participationId: youthParticipationId,
     shiftId: morningShiftId,
+    shiftRequirementId: '88888888-8888-8888-8888-888888888881',
     volunteerId: volunteerTwoId,
     roleId: usherRoleId,
     id: '99999999-9999-9999-9999-999999999992',
@@ -349,6 +362,7 @@ export async function seed(): Promise<void> {
     churchId,
     participationId: adultParticipationId,
     shiftId: afternoonShiftId,
+    shiftRequirementId: '88888888-8888-4888-8888-888888888882',
     volunteerId: volunteerOneId,
     roleId: usherRoleId,
     id: '99999999-9999-9999-9999-999999999993',

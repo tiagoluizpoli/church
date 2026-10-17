@@ -5,6 +5,7 @@ import type {
   RoleId,
   SectorId,
   ShiftId,
+  ShiftRequirementId,
 } from '../../branded-ids';
 import type { Shift } from '../../entities/shift';
 import type { ShiftRequirement } from '../../entities/shift-requirement';
@@ -75,6 +76,13 @@ export interface ListRequirementsByParticipationInput {
   tx?: TransactionContext;
 }
 
+export interface GetRequirementForShiftInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  shiftRequirementId: ShiftRequirementId;
+  tx?: TransactionContext;
+}
+
 export interface ShiftRepository {
   createMany(input: CreateShiftsInput): Promise<Shift[]>;
   getById(input: GetShiftInput): Promise<Shift>;
@@ -93,4 +101,7 @@ export interface ShiftRepository {
   listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,
   ): Promise<ShiftRequirement[]>;
+  getRequirementForShift(
+    input: GetRequirementForShiftInput,
+  ): Promise<ShiftRequirement>;
 }

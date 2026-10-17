@@ -44,6 +44,7 @@ const ANA_ASSIGNMENT: RawAssignment = {
   shiftId: 'shift-1',
   volunteerId: 'ana',
   roleId: 'role-1',
+  shiftRequirementId: 'requirement-role-1',
   status: 'confirmed',
   assignedAt: '2026-07-01T10:00:00.000Z',
 };
@@ -170,7 +171,7 @@ describe('useCycleBuilder optimistic assignments', () => {
 
     void result.current.createAssignment.mutateAsync({
       shiftId: 'shift-1',
-      body: { volunteerId: 'bruno', roleId: 'role-1' },
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
     });
 
     await waitFor(() =>
@@ -200,7 +201,7 @@ describe('useCycleBuilder optimistic assignments', () => {
 
     const mutation = result.current.createAssignment.mutateAsync({
       shiftId: 'shift-1',
-      body: { volunteerId: 'bruno', roleId: 'role-1' },
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
     });
     await waitFor(() =>
       expect(result.current.data?.assignments).toHaveLength(2),

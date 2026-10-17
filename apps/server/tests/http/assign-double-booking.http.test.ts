@@ -14,7 +14,7 @@ import {
 import { AssignController } from '@/api/controllers/assign-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
-import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import { buildAssignment } from '@/seeds/builders/scheduling';
 import { buildMinistryMembership } from '@/seeds/builders/volunteer';
 import {
@@ -172,7 +172,7 @@ async function seedCrossMinistryOverlap({
     endTime: new Date(otherShiftEnd),
     label: 'Other',
   });
-  await seedRequirement({
+  const targetRequirement = await seedRequirement({
     churchId: seed.churchAId,
     participationId: target.participation.id,
     shiftId: targetShift.id,
@@ -200,6 +200,13 @@ async function seedCrossMinistryOverlap({
     roleIds: [otherRole.id],
     teams: [],
   });
+  const otherRequirement = await seedRequirement({
+    churchId: seed.churchAId,
+    participationId: other.participation.id,
+    shiftId: otherShift.id,
+    roleId: otherRole.id,
+    peopleNeeded: 1,
+  });
   await buildAssignment({
     db: schedulingTestDb,
     churchId: seed.churchAId,
@@ -207,6 +214,7 @@ async function seedCrossMinistryOverlap({
     shiftId: otherShift.id,
     volunteerId: doubleBooked.volunteer.id,
     roleId: otherRole.id,
+    shiftRequirementId: otherRequirement.id,
     status: 'confirmed',
   });
 
@@ -224,8 +232,13 @@ async function seedCrossMinistryOverlap({
 
   return {
     churchId: seed.churchAId,
+    foreignChurchId: seed.churchBId,
+    foreignMinistryId: seed.ministryBId,
     ministryId: seed.ministryAId,
+    targetBlockId: target.eventTimeBlock.id,
+    otherRequirementId: otherRequirement.id,
     targetShiftId: targetShift.id,
+    targetRequirementId: targetRequirement.id,
     targetParticipationId: target.participation.id,
     targetRoleId: targetRole.id,
     doubleBookedVolunteerId: doubleBooked.volunteer.id,
@@ -239,6 +252,7 @@ interface SeedTargetAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId: string;
 }
 
 async function seedTargetAssignment(input: SeedTargetAssignmentInput) {
@@ -258,7 +272,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
-        roleId: seed.targetRoleId,
+        shiftRequirementId: seed.targetRequirementId,
       },
     });
 
@@ -277,7 +291,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
-        roleId: seed.targetRoleId,
+        shiftRequirementId: seed.targetRequirementId,
       },
     });
 
@@ -296,7 +310,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
-        roleId: seed.targetRoleId,
+        shiftRequirementId: seed.targetRequirementId,
       },
     });
 
@@ -311,8 +325,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
-        roleId: seed.targetRoleId,
-        override: { reason: 'Leader approved the overlap' },
+        shiftRequirementId: seed.targetRequirementId,
       },
     });
 
@@ -328,6 +341,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
       shiftId: seed.targetShiftId,
       volunteerId: seed.freeVolunteerId,
       roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
     });
 
     const response = await app.inject({
@@ -338,6 +352,15 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
 
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual(DOUBLE_BOOKED_REFUSAL);
+    const retained = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, current.id));
+    expect(retained).toHaveLength(1);
+    expect(retained[0]).toMatchObject({
+      volunteerId: seed.freeVolunteerId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
   });
 });
 
@@ -356,6 +379,7 @@ describe('reassign without a reason input', () => {
       shiftId: seed.targetShiftId,
       volunteerId: outgoing.volunteer.id,
       roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
     });
 
     const response = await app.inject({
@@ -392,5 +416,149 @@ describe('reassign without a reason input', () => {
       ]),
     );
     expect(audits).toHaveLength(2);
+  });
+});
+
+describe('requirement-bound Assignment HTTP contract', () => {
+  it('derives the Role and scope, warns for missing qualification, and preserves the Sector on replacement', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const sector = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Side Door',
+    });
+    const requirement = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      roleId: seed.targetRoleId,
+      sectorId: sector.id,
+      peopleNeeded: 1,
+    });
+    const unqualified = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unqualified',
+      email: 'requirement-warning@test.com',
+    });
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: unqualified.volunteer.id,
+        shiftRequirementId: requirement.id,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      assignment: {
+        shiftRequirementId: requirement.id,
+        shiftId: seed.targetShiftId,
+        participationId: seed.targetParticipationId,
+        roleId: seed.targetRoleId,
+      },
+      warnings: [{ type: 'NOT_QUALIFIED' }],
+    });
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: unqualified.volunteer.id,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(duplicate.statusCode).toBe(409);
+    const replacement = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${created.json().assignment.id}/reassign`,
+      payload: { volunteerId: seed.freeVolunteerId },
+    });
+    expect(replacement.statusCode).toBe(200);
+    expect(replacement.json()).toMatchObject({
+      volunteerId: seed.freeVolunteerId,
+      shiftRequirementId: requirement.id,
+      roleId: seed.targetRoleId,
+      shiftId: seed.targetShiftId,
+    });
+    const stored = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(eq(assignment.shiftId, seed.targetShiftId));
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      id: replacement.json().id,
+      shiftRequirementId: requirement.id,
+      roleId: seed.targetRoleId,
+    });
+  });
+
+  it('returns NOT_FOUND for a requirement of another Shift, Ministry, Church, or a missing requirement', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const otherShift = await seedShift({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      eventTimeBlockId: seed.targetBlockId,
+      startTime: new Date('2026-09-07T10:00:00Z'),
+      endTime: new Date('2026-09-07T11:00:00Z'),
+      label: 'Later',
+    });
+    const otherRequirement = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: otherShift.id,
+      roleId: seed.targetRoleId,
+      peopleNeeded: 1,
+    });
+    const foreignCycle = await createSchedulingPhase3Cycle({
+      churchId: seed.foreignChurchId,
+      name: 'Foreign',
+      startDate: new Date('2026-09-01T00:00:00Z'),
+      endDate: new Date('2026-10-01T00:00:00Z'),
+      state: 'sent',
+    });
+    const foreignGraph = await createSchedulingPhase3EventGraph({
+      churchId: seed.foreignChurchId,
+      cycleId: foreignCycle.id,
+      ministryId: seed.foreignMinistryId,
+      title: 'Foreign',
+      start: new Date('2026-09-07T09:00:00Z'),
+      end: new Date('2026-09-07T11:00:00Z'),
+      status: 'scheduled',
+    });
+    const foreignRole = await seedRole({
+      churchId: seed.foreignChurchId,
+      ministryId: seed.foreignMinistryId,
+      name: 'Foreign Role',
+    });
+    const foreignShift = await seedShift({
+      churchId: seed.foreignChurchId,
+      participationId: foreignGraph.participation.id,
+      eventTimeBlockId: foreignGraph.eventTimeBlock.id,
+      startTime: foreignGraph.eventTimeBlock.startTime,
+      endTime: foreignGraph.eventTimeBlock.endTime,
+      label: 'Foreign Shift',
+    });
+    const foreignRequirement = await seedRequirement({
+      churchId: seed.foreignChurchId,
+      participationId: foreignGraph.participation.id,
+      shiftId: foreignShift.id,
+      roleId: foreignRole.id,
+      peopleNeeded: 1,
+    });
+    for (const shiftRequirementId of [
+      otherRequirement.id,
+      seed.otherRequirementId,
+      foreignRequirement.id,
+      randomUUID(),
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+        payload: { volunteerId: seed.freeVolunteerId, shiftRequirementId },
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ error: 'NOT_FOUND' });
+    }
   });
 });

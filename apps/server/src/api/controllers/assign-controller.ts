@@ -8,8 +8,8 @@ import {
   CycleId,
   MinistryId,
   MinistryParticipationId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -325,8 +325,9 @@ export class AssignController implements FastifyController {
         schema: {
           tags: ['assign'],
           operationId: 'createParticipationAssignment',
-          summary: 'Assign a Volunteer to a Shift',
-          description: 'Assign a Volunteer to a Role within a Shift.',
+          summary: 'Assign a Volunteer to a ShiftRequirement',
+          description:
+            'Assign a Volunteer to a specific Sector and Role need within a Shift.',
           body: createParticipationAssignmentBodySchema,
           response: {
             201: createParticipationAssignmentResponseSchema,
@@ -344,14 +345,15 @@ export class AssignController implements FastifyController {
         });
         if (scope.denied) return;
 
+        const input = {
+          churchId: ChurchId.from(request.churchId),
+          shiftId: ShiftId.from(shiftId),
+          volunteerId: VolunteerId.from(body.volunteerId),
+          actorId: UserId.from(request.userId),
+          shiftRequirementId: ShiftRequirementId.from(body.shiftRequirementId),
+        };
         const result =
-          await this.assignmentManager.createParticipationAssignment({
-            churchId: ChurchId.from(request.churchId),
-            shiftId: ShiftId.from(shiftId),
-            volunteerId: VolunteerId.from(body.volunteerId),
-            roleId: RoleId.from(body.roleId),
-            actorId: UserId.from(request.userId),
-          });
+          await this.assignmentManager.createParticipationAssignment(input);
         return reply
           .status(201)
           .send(assignMapper.assignmentResultToResponse(result));

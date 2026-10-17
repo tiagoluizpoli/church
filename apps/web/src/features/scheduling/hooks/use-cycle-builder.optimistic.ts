@@ -93,6 +93,10 @@ export function addOptimisticAssignment({
     data,
     mapShift: ({ shift, eventTimeBlock }) => {
       if (shift.shift.id !== shiftId) return shift;
+      const requirement = shift.requirements.find(
+        (item) => item.id === body.shiftRequirementId,
+      );
+      if (!requirement) return shift;
       const optimistic: CycleBuilderRawAssignment = {
         id: assignmentId,
         churchId: eventTimeBlock.churchId,
@@ -100,7 +104,8 @@ export function addOptimisticAssignment({
         participationId: shift.shift.participationId,
         shiftId: shift.shift.id,
         volunteerId: body.volunteerId,
-        roleId: body.roleId,
+        roleId: requirement.roleId,
+        shiftRequirementId: requirement.id,
         // The server creates assignments as `pending`; anything else would
         // change the assigned counts the board renders from this row.
         status: 'pending',

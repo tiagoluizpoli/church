@@ -4,8 +4,8 @@ import type {
   EventId,
   EventTimeBlockId,
   MinistryParticipationId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -17,7 +17,7 @@ export interface CreateAssignmentInput {
   participationId?: MinistryParticipationId;
   shiftId?: ShiftId;
   volunteerId: VolunteerId;
-  roleId: RoleId;
+  shiftRequirementId: ShiftRequirementId;
   status?: AssignmentStatus;
   reason?: string;
   assignedBy?: UserId;

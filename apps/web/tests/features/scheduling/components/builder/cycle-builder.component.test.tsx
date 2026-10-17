@@ -63,7 +63,14 @@ const builderData: CycleBuilderData = {
               endTime: '2026-08-02T11:00:00.000Z',
               peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+              requirements: [
+                {
+                  id: 'requirement-role-1',
+                  roleId: 'role-1',
+                  sectorName: 'Main',
+                  peopleNeeded: 1,
+                },
+              ],
               assignments: [],
               eligibleVolunteerCount: 1,
               eligibleVolunteers: [
@@ -92,6 +99,7 @@ const existingAssignment = {
   shiftId: 'shift-1',
   volunteerId: 'volunteer-1',
   roleId: 'role-1',
+  shiftRequirementId: 'requirement-role-1',
   status: 'confirmed',
   assignedAt: '2026-07-01T10:00:00.000Z',
   volunteerName: 'Grace Hopper',
@@ -197,7 +205,7 @@ describe('CycleBuilder rail selection wiring (#217)', () => {
     const user = userEvent.setup();
     renderBuilder();
 
-    const cell = screen.getByTestId('cycle-requirement-shift-1-role-1');
+    const cell = screen.getByTestId('cycle-requirement-requirement-role-1');
     expect(cell).toHaveAttribute('data-selected-fit', 'none');
 
     const selectShift = screen.getAllByTestId('volunteer-select-shift')[0];
@@ -313,7 +321,7 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
     expect(screen.getByRole('button', { name: 'Audit log' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
     expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveAttribute('data-drop-target', 'append');
     expect(screen.getByTestId('cycle-assignment-assignment-1')).toHaveAttribute(
       'data-drop-target',

@@ -42,6 +42,7 @@ describe('MinistryScheduleSection', () => {
               {
                 eventTimeBlockId: 'event-time-block-1',
                 eventTimeBlockLabel: '9:00 AM - 11:00 AM',
+                sectorName: 'Main Door',
                 roleName: 'Usher',
                 volunteerDisplayName: 'Alice T.',
                 confirmationState: 'confirmed',
@@ -119,6 +120,7 @@ describe('MinistryScheduleSection', () => {
               {
                 eventTimeBlockId: 'event-time-block-1',
                 eventTimeBlockLabel: '9:00 AM - 11:00 AM',
+                sectorName: 'Main Door',
                 roleName: 'Usher',
                 volunteerDisplayName: 'Alice T.',
                 confirmationState: 'confirmed',

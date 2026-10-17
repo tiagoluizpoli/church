@@ -13,8 +13,8 @@ import {
   CycleId,
   MinistryId,
   MinistryParticipationId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
@@ -75,6 +75,7 @@ interface SeedAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId?: string;
   status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
 }
 
@@ -189,6 +190,21 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       roleId: roleRow.id,
     });
 
+    await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: history.participation.id,
+      shiftId: oldShift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
+    await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: history.participation.id,
+      shiftId: recentShift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
+    });
+
     await seedAssignment({
       churchId: seed.churchAId,
       participationId: history.participation.id,
@@ -278,12 +294,19 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       endTime: new Date('2026-09-07T10:30:00.000Z'),
       label: 'Overlap',
     });
-    await seedRequirement({
+    const targetRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: primary.participation.id,
       shiftId: targetShift.id,
       roleId: roleRow.id,
       peopleNeeded: 2,
+    });
+    const overlapRequirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: overlapBranch.participation.id,
+      shiftId: overlapShift.id,
+      roleId: roleRow.id,
+      peopleNeeded: 1,
     });
 
     const firstVolunteer = await seedVolunteerMembership({
@@ -329,14 +352,28 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(firstVolunteer.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
+        shiftRequirementId: ShiftRequirementId.from(targetRequirement.id),
         actorId: UserId.from(seed.adminUserId),
       });
     expect(firstResult.assignment.shiftId).toBe(targetShift.id);
+    expect(firstResult.assignment.shiftRequirementId).toBe(
+      targetRequirement.id,
+    );
+    expect(firstResult.assignment.roleId).toBe(roleRow.id);
     expect(firstResult.assignment.participationId).toBe(
       primary.participation.id,
     );
     expect(firstResult.warnings).toEqual([]);
+
+    await expect(
+      managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(targetShift.id),
+        volunteerId: VolunteerId.from(firstVolunteer.volunteer.id),
+        shiftRequirementId: ShiftRequirementId.from(overlapRequirement.id),
+        actorId: UserId.from(seed.adminUserId),
+      }),
+    ).rejects.toThrow('Shift requirement not found');
 
     const completionAfterFirst =
       await managers.participationManager.getCompletion({
@@ -352,7 +389,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(firstVolunteer.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
+        shiftRequirementId: ShiftRequirementId.from(targetRequirement.id),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({
@@ -364,12 +401,116 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(overlapVolunteer.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
+        shiftRequirementId: ShiftRequirementId.from(targetRequirement.id),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({
       reason: 'DUPLICATE_ASSIGNMENT',
       message: 'Volunteer is already assigned to another overlapping shift',
+    });
+  });
+
+  it('caps completion at the places filled in each requirement', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'October 2026',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Capped completion service',
+      start: new Date('2026-10-04T09:00:00.000Z'),
+      end: new Date('2026-10-04T11:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const role = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Host',
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: graph.eventTimeBlock.startTime,
+      endTime: graph.eventTimeBlock.endTime,
+      label: 'Morning',
+    });
+    const alpha = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    const betaSector = await seedSector({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Beta Room',
+    });
+    const beta = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      sectorId: betaSector.id,
+      peopleNeeded: 1,
+    });
+    const activeOne = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Active One',
+      email: 'active-one-completion@test.com',
+    });
+    const activeTwo = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Active Two',
+      email: 'active-two-completion@test.com',
+    });
+    const declined = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Declined Completion',
+      email: 'declined-completion@test.com',
+    });
+    const cancelled = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Cancelled Completion',
+      email: 'cancelled-completion@test.com',
+    });
+    for (const [volunteerId, requirementId, status] of [
+      [activeOne.volunteer.id, alpha.id, 'confirmed'],
+      [activeTwo.volunteer.id, alpha.id, 'pending'],
+      [declined.volunteer.id, beta.id, 'declined'],
+      [cancelled.volunteer.id, beta.id, 'cancelled'],
+    ] as const) {
+      await seedAssignment({
+        churchId: seed.churchAId,
+        participationId: graph.participation.id,
+        shiftId: shift.id,
+        volunteerId,
+        roleId: role.id,
+        shiftRequirementId: requirementId,
+        status,
+      });
+    }
+
+    const managers = createSchedulingManagers();
+    const completion = await managers.participationManager.getCompletion({
+      churchId: ChurchId.from(seed.churchAId),
+      participationId: MinistryParticipationId.from(graph.participation.id),
+    });
+    expect(completion).toMatchObject({
+      peopleNeeded: 2,
+      assignedCount: 2,
+      completionPercent: 50,
     });
   });
 
@@ -611,7 +752,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       endTime: new Date('2026-11-08T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const alphaRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -619,7 +760,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       sectorId: alphaSector.id,
       peopleNeeded: 1,
     });
-    await seedRequirement({
+    const betaRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -633,6 +774,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       shiftId: shift.id,
       volunteerId: alphaVolunteer.volunteer.id,
       roleId: hostRole.id,
+      shiftRequirementId: alphaRequirement.id,
       status: 'confirmed',
     });
     await seedAssignment({
@@ -641,6 +783,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       shiftId: shift.id,
       volunteerId: betaVolunteer.volunteer.id,
       roleId: hostRole.id,
+      shiftRequirementId: betaRequirement.id,
       status: 'pending',
     });
 
@@ -662,11 +805,13 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       expect.arrayContaining([
         expect.objectContaining({
           roleName: 'Host',
+          sectorName: 'Alpha Sector',
           volunteerDisplayName: 'Alice A.',
           confirmationState: 'confirmed',
         }),
         expect.objectContaining({
           roleName: 'Host',
+          sectorName: 'Beta Sector',
           volunteerDisplayName: 'Bobby B.',
           confirmationState: 'pending',
         }),
@@ -728,7 +873,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       endTime: new Date('2026-12-06T10:00:00.000Z'),
       label: 'Front doors',
     });
-    await seedRequirement({
+    const alphaRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -736,7 +881,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       sectorId: alphaSector.id,
       peopleNeeded: 1,
     });
-    await seedRequirement({
+    const betaRequirement = await seedRequirement({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId: shift.id,
@@ -750,7 +895,17 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       shiftId: shift.id,
       volunteerId: dualVolunteer.volunteer.id,
       roleId: hostRole.id,
+      shiftRequirementId: alphaRequirement.id,
       status: 'confirmed',
+    });
+    await seedAssignment({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      volunteerId: dualVolunteer.volunteer.id,
+      roleId: hostRole.id,
+      shiftRequirementId: betaRequirement.id,
+      status: 'declined',
     });
 
     const managers = createSchedulingManagers();
@@ -771,22 +926,34 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     // requirements. It must count once (one confirmed row, one still-open
     // row for the other Sector) — never zero open rows (double counted) and
     // never two confirmed rows (duplicated).
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
 
     const confirmedRow = rows.find(
       (row) => row.confirmationState === 'confirmed',
     );
     const openRow = rows.find((row) => row.confirmationState === 'open');
+    const declinedRow = rows.find(
+      (row) => row.confirmationState === 'declined',
+    );
 
     expect(confirmedRow).toEqual(
       expect.objectContaining({
         roleName: 'Host',
+        sectorName: 'Alpha Sector',
         volunteerDisplayName: 'Dual V.',
       }),
     );
     expect(openRow).toEqual(
       expect.objectContaining({
         roleName: 'Host',
+        sectorName: 'Beta Sector',
+      }),
+    );
+    expect(declinedRow).toEqual(
+      expect.objectContaining({
+        roleName: 'Host',
+        sectorName: 'Beta Sector',
+        confirmationState: 'declined',
       }),
     );
   });

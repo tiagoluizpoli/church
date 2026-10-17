@@ -24,6 +24,7 @@ const EXISTING_ASSIGNMENT: RawAssignment = {
   shiftId: 'shift-1',
   volunteerId: 'ana',
   roleId: 'role-1',
+  shiftRequirementId: 'requirement-role-1',
   status: 'confirmed',
   assignedAt: '2026-07-01T10:00:00.000Z',
 };
@@ -72,7 +73,17 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
                   startTime: '2026-07-05T09:00:00.000Z',
                   endTime: '2026-07-05T11:00:00.000Z',
                 },
-                requirements: [],
+                requirements: [
+                  {
+                    id: 'requirement-1',
+                    shiftId: 'shift-1',
+                    participationId: 'participation-1',
+                    sectorName: 'Main',
+                    sectorId: 'sector-1',
+                    roleId: 'role-1',
+                    peopleNeeded: 1,
+                  },
+                ],
                 assignments,
                 eligibleVolunteers: [],
               },
@@ -104,7 +115,7 @@ describe('addOptimisticAssignment', () => {
       data,
       assignmentId: 'optimistic:1',
       shiftId: 'shift-1',
-      body: { volunteerId: 'bruno', roleId: 'role-1' },
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
       assignedAt: '2026-07-02T10:00:00.000Z',
     });
 
@@ -119,6 +130,7 @@ describe('addOptimisticAssignment', () => {
         shiftId: 'shift-1',
         volunteerId: 'bruno',
         roleId: 'role-1',
+        shiftRequirementId: 'requirement-1',
         status: 'pending',
         assignedAt: '2026-07-02T10:00:00.000Z',
       },
@@ -133,7 +145,7 @@ describe('addOptimisticAssignment', () => {
       data,
       assignmentId: 'optimistic:1',
       shiftId: 'shift-1',
-      body: { volunteerId: 'bruno', roleId: 'role-1' },
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
       assignedAt: '2026-07-02T10:00:00.000Z',
     });
 
@@ -149,7 +161,7 @@ describe('addOptimisticAssignment', () => {
       data,
       assignmentId: 'optimistic:1',
       shiftId: 'shift-missing',
-      body: { volunteerId: 'bruno', roleId: 'role-1' },
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
       assignedAt: '2026-07-02T10:00:00.000Z',
     });
 

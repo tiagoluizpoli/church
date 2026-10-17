@@ -131,7 +131,7 @@ export class DbAssignmentManager implements IAssignmentManager {
               churchId: input.churchId,
               shiftId: currentAssignment.shiftId,
               volunteerId: input.volunteerId,
-              roleId: currentAssignment.roleId,
+              shiftRequirementId: currentAssignment.shiftRequirementId,
               actorId: input.actorId,
             },
             tx,
@@ -198,9 +198,18 @@ export class DbAssignmentManager implements IAssignmentManager {
       shiftId: input.shiftId,
       tx,
     });
+    const requirement = await this.shiftRepository.getRequirementForShift({
+      churchId: input.churchId,
+      shiftId: shift.id,
+      shiftRequirementId: input.shiftRequirementId,
+      tx,
+    });
+    const roleId = requirement.roleId;
+    const participationId =
+      requirement.participationId ?? shift.participationId;
     const participation = await this.participationRepository.getById({
       churchId: input.churchId,
-      participationId: shift.participationId,
+      participationId,
       tx,
     });
     const hasMembership =
@@ -223,7 +232,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         input.churchId,
         input.volunteerId,
         participation.ministryId,
-        input.roleId,
+        roleId,
         tx,
       );
     const existingShiftAssignments = await this.assignmentRepo.listByShift(
@@ -297,10 +306,10 @@ export class DbAssignmentManager implements IAssignmentManager {
       input.churchId,
       {
         eventTimeBlockId: shift.eventTimeBlockId,
-        participationId: participation.id,
-        shiftId: shift.id,
+        participationId: requirement.participationId ?? participation.id,
+        shiftId: requirement.shiftId ?? shift.id,
         volunteerId: input.volunteerId,
-        roleId: input.roleId,
+        shiftRequirementId: requirement.id,
         status: 'pending',
         assignedBy: input.actorId,
       },

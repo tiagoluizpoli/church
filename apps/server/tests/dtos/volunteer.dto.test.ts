@@ -139,6 +139,7 @@ describe('volunteerMapper', () => {
           shiftId: 'sh1',
           volunteerId: 'v1',
           roleId: 'r1',
+          shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
           status: 'confirmed',
           reason: 'because',
           assignedAt,
@@ -156,6 +157,7 @@ describe('volunteerMapper', () => {
           eventTimeBlockId: 's1',
           participationId: 'p1',
           shiftId: 'sh1',
+          shiftRequirementId: '00000000-0000-0000-0000-000000000021',
           volunteerId: 'v1',
           roleId: 'r1',
           status: 'confirmed',
@@ -173,6 +175,7 @@ describe('volunteerMapper', () => {
           eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
+          shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
         'a1',
       );
@@ -201,6 +204,7 @@ describe('volunteerMapper', () => {
           eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
+          shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
         'a1',
       );
@@ -240,6 +244,7 @@ describe('volunteerMapper', () => {
               {
                 eventTimeBlockId: 'event-time-block-1',
                 eventTimeBlockLabel: 'Worship Set',
+                sectorName: 'Sanctuary',
                 roleName: 'Vocalist',
                 confirmationState: 'confirmed' as const,
               },

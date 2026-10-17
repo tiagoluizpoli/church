@@ -378,10 +378,12 @@ describe('integration composition of the shared seed builders', () => {
       shiftId: shiftRow.id,
       volunteerId: volunteerRow.id,
       roleId: usher.id,
+      shiftRequirementId: requirement?.id,
       status: 'confirmed',
       assignedAt: parseInstant({ value: '2024-06-01T10:00:00Z' }),
       assignedBy: ADMIN_USER_ID,
     });
+    expect(assigned.shiftRequirementId).toBe(requirement?.id);
     await buildAssignmentAudit({
       db: testDb,
       churchId: CHURCH_ID,

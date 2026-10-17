@@ -48,6 +48,7 @@ let app: FastifyTypedInstance;
 
 const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
 const VOLUNTEER_ID = '55555555-5555-4555-8555-555555555551';
+const MINISTRY_ID = '66666666-6666-4666-8666-666666666661';
 
 beforeAll(async () => {
   app = await createFastify();
@@ -143,6 +144,61 @@ describe('GET /api/v1/volunteer/notifications (C1 pagination)', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().nextCursor).toBe('2026-07-02T00:00:00.000Z');
+  });
+});
+
+describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
+  it('returns the Sector for occupied and open requirement rows', async () => {
+    volunteerManager.getMinistrySchedule.mockResolvedValue({
+      ministryId: MINISTRY_ID,
+      ministryName: 'Kids',
+      events: [
+        {
+          eventId: 'event-1',
+          title: 'Sunday',
+          start: '2026-07-06T09:00:00.000Z',
+          end: '2026-07-06T11:00:00.000Z',
+          assignmentCount: 1,
+          rows: [
+            {
+              eventTimeBlockId: 'time-block-1',
+              eventTimeBlockLabel: 'Morning',
+              sectorName: 'Babies Room',
+              roleName: 'Teacher',
+              volunteerDisplayName: 'Alice T.',
+              confirmationState: 'confirmed',
+            },
+            {
+              eventTimeBlockId: 'time-block-1',
+              eventTimeBlockLabel: 'Morning',
+              sectorName: 'Kids Room',
+              roleName: 'Teacher',
+              confirmationState: 'open',
+            },
+          ],
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().events[0].rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sectorName: 'Babies Room',
+          roleName: 'Teacher',
+        }),
+        expect.objectContaining({
+          sectorName: 'Kids Room',
+          roleName: 'Teacher',
+          confirmationState: 'open',
+        }),
+      ]),
+    );
   });
 });
 

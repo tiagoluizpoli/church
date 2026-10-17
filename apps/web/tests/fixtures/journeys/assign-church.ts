@@ -234,16 +234,14 @@ export function assignPreparePath({
 }
 
 export interface RequirementCellInput {
-  shiftId: string;
-  roleId: string;
+  requirementId: string;
 }
 
-/** The cycle builder cell's test id for one shift×role requirement. */
+/** The cycle builder cell's test id for one ShiftRequirement. */
 export function requirementCellTestId({
-  shiftId,
-  roleId,
+  requirementId,
 }: RequirementCellInput): string {
-  return `cycle-requirement-${shiftId}-${roleId}`;
+  return `cycle-requirement-${requirementId}`;
 }
 
 export interface DayFilterNameInput {

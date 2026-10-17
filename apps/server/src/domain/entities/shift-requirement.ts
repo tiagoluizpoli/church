@@ -1,4 +1,4 @@
-import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { Entity, type LooseProps } from '@church/core';
 import { now, toDate } from '@church/time';
 import type {
   ChurchId,
@@ -7,10 +7,11 @@ import type {
   RoleId,
   SectorId,
   ShiftId,
+  ShiftRequirementId,
 } from '../branded-ids';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
 
-export type ShiftRequirementId = BrandedId<'ShiftRequirementId'>;
+export type { ShiftRequirementId } from '../branded-ids';
 
 export interface ShiftRequirementProps {
   churchId: ChurchId;

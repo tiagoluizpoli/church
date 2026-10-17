@@ -73,6 +73,7 @@ export interface VolunteerDashboard {
 export interface MinistryScheduleRow {
   eventTimeBlockId: string;
   eventTimeBlockLabel: string;
+  sectorName: string;
   roleName: string;
   volunteerDisplayName?: string;
   confirmationState: 'pending' | 'confirmed' | 'declined' | 'open';

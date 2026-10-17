@@ -13,8 +13,8 @@ import {
   CycleId,
   MinistryId,
   MinistryParticipationId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
@@ -143,7 +143,7 @@ interface SeedRequirementInput {
 
 async function seedRoleRequirement(
   input: SeedRequirementInput,
-): Promise<string> {
+): Promise<{ roleId: string; shiftRequirementId: string }> {
   const greeter = await buildRole({
     db: schedulingTestDb,
     churchId: input.churchId,
@@ -156,7 +156,7 @@ async function seedRoleRequirement(
     ministryId: input.ministryId,
     name: 'Geral',
   });
-  await buildShiftRequirement({
+  const requirement = await buildShiftRequirement({
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
@@ -165,7 +165,7 @@ async function seedRoleRequirement(
     sectorId: stage.id,
     peopleNeeded: 2,
   });
-  return greeter.id;
+  return { roleId: greeter.id, shiftRequirementId: requirement.id };
 }
 
 interface SeedQualificationInput {
@@ -391,7 +391,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
-    const roleId = await seedRoleRequirement({
+    const { roleId } = await seedRoleRequirement({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       participationId: graph.participation.id,
@@ -537,7 +537,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
-    const roleId = await seedRoleRequirement({
+    const { shiftRequirementId } = await seedRoleRequirement({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       participationId: graph.participation.id,
@@ -578,7 +578,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       churchId: ChurchId.from(seed.churchAId),
       shiftId: ShiftId.from(shiftId),
       volunteerId: VolunteerId.from(unqualified.volunteerId),
-      roleId: RoleId.from(roleId),
+      shiftRequirementId: ShiftRequirementId.from(shiftRequirementId),
       actorId: UserId.from(seed.adminUserId),
     });
 
@@ -622,7 +622,7 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
-    const roleId = await seedRoleRequirement({
+    const { roleId, shiftRequirementId } = await seedRoleRequirement({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       participationId: graph.participation.id,
@@ -692,7 +692,7 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shiftId),
         volunteerId: VolunteerId.from(seed.adminVolunteerId),
-        roleId: RoleId.from(roleId),
+        shiftRequirementId: ShiftRequirementId.from(shiftRequirementId),
         actorId: UserId.from(seed.adminUserId),
       })
       .then(
@@ -895,12 +895,32 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
-    const usher = await buildRole({
-      db: schedulingTestDb,
+    const { roleId, shiftRequirementId } = await seedRoleRequirement({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
-      name: 'Usher',
+      participationId: graph.participation.id,
+      shiftId,
     });
+    const unrelatedParticipation = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Unrelated service',
+      start: new Date('2026-08-08T10:00:00.000Z'),
+      end: new Date('2026-08-08T12:00:00.000Z'),
+    });
+    await expect(
+      buildAssignment({
+        db: schedulingTestDb,
+        churchId: seed.churchAId,
+        participationId: unrelatedParticipation.participation.id,
+        shiftId,
+        shiftRequirementId,
+        volunteerId: seed.adminVolunteerId,
+        roleId,
+        status: 'confirmed',
+      }),
+    ).rejects.toThrow('No matching ShiftRequirement');
     const createdAt = parseInstant({ value: '2026-08-01T10:00:00.000Z' });
     const assigned = await buildAssignment({
       db: schedulingTestDb,
@@ -908,7 +928,8 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       participationId: graph.participation.id,
       shiftId,
       volunteerId: seed.adminVolunteerId,
-      roleId: usher.id,
+      roleId,
+      shiftRequirementId,
       status: 'confirmed',
       assignedAt: createdAt,
       assignedBy: seed.adminUserId,

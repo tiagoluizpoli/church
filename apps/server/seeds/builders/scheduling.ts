@@ -6,6 +6,7 @@ import {
   eventTimeBlock,
   ministryParticipation,
   participationEventTimeBlockInclusion,
+  sector,
   shift,
   shiftRequirement,
 } from '@church/db';
@@ -15,8 +16,10 @@ import {
   parseInstant,
   toDate,
 } from '@church/time';
+import { and, asc, eq } from 'drizzle-orm';
 import type { SeedWriter } from '../recipe';
 import { deriveSeedId } from './derived-id';
+import { buildSector } from './ministry';
 import { requireInsertedRow } from './require-inserted-row';
 
 /**
@@ -298,6 +301,7 @@ export interface BuildAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
+  shiftRequirementId?: string;
   id?: string;
   status: AssignmentStatus;
   /** Why it was declined or cancelled. */
@@ -315,22 +319,53 @@ export async function buildAssignment({
   shiftId,
   volunteerId,
   roleId,
+  shiftRequirementId,
   id,
   status,
   reason,
   assignedAt,
   assignedBy,
 }: BuildAssignmentInput): Promise<SeededAssignment> {
+  const [requirementRow] = await db
+    .select({
+      id: shiftRequirement.id,
+      participationId: shiftRequirement.participationId,
+      shiftId: shiftRequirement.shiftId,
+      roleId: shiftRequirement.roleId,
+    })
+    .from(shiftRequirement)
+    .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+    .where(
+      and(
+        eq(shiftRequirement.id, shiftRequirementId ?? shiftRequirement.id),
+        eq(shiftRequirement.churchId, churchId),
+        eq(shiftRequirement.shiftId, shiftId),
+        ...(shiftRequirementId ? [] : [eq(shiftRequirement.roleId, roleId)]),
+      ),
+    )
+    .orderBy(asc(sector.name), asc(shiftRequirement.id))
+    .limit(1);
+  if (
+    !requirementRow ||
+    requirementRow.participationId !== participationId ||
+    requirementRow.shiftId !== shiftId ||
+    requirementRow.roleId !== roleId
+  ) {
+    throw new Error(
+      `No matching ShiftRequirement for assignment on shift ${shiftId} and role ${roleId}`,
+    );
+  }
   return requireInsertedRow({
     rows: await db
       .insert(assignment)
       .values({
         id,
         churchId,
-        participationId,
-        shiftId,
+        participationId: requirementRow.participationId,
+        shiftId: requirementRow.shiftId,
         volunteerId,
-        roleId,
+        roleId: requirementRow.roleId,
+        shiftRequirementId: requirementRow.id,
         status,
         reason,
         assignedAt:
@@ -435,6 +470,41 @@ export async function buildAssignedShift({
     start,
     end,
   });
+  const [participationRow] = await db
+    .select({ ministryId: ministryParticipation.ministryId })
+    .from(ministryParticipation)
+    .where(eq(ministryParticipation.id, participationId));
+  if (!participationRow) {
+    throw new Error(`MinistryParticipation ${participationId} was not found`);
+  }
+  const [firstSector] = await db
+    .select({ id: sector.id })
+    .from(sector)
+    .where(
+      and(
+        eq(sector.churchId, churchId),
+        eq(sector.ministryId, participationRow.ministryId),
+      ),
+    )
+    .orderBy(asc(sector.name), asc(sector.id))
+    .limit(1);
+  const targetSector =
+    firstSector ??
+    (await buildSector({
+      db,
+      churchId,
+      ministryId: participationRow.ministryId,
+      name: 'Geral',
+    }));
+  const requirement = await buildShiftRequirement({
+    db,
+    churchId,
+    participationId,
+    shiftId: eventTimeBlockShift.id,
+    roleId,
+    sectorId: targetSector.id,
+    peopleNeeded: 1,
+  });
   const booked = await buildAssignment({
     db,
     churchId,
@@ -442,6 +512,7 @@ export async function buildAssignedShift({
     shiftId: eventTimeBlockShift.id,
     volunteerId,
     roleId,
+    shiftRequirementId: requirement.id,
     status,
   });
 

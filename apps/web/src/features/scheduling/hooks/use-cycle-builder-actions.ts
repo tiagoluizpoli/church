@@ -18,7 +18,7 @@ import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 interface CreateAssignmentBody {
   volunteerId: string;
-  roleId: string;
+  shiftRequirementId: string;
 }
 
 export interface CreateAssignmentInput {
@@ -211,15 +211,14 @@ export function useCycleBuilderActions({
           shiftId: input.shiftId,
           body: {
             volunteerId: input.volunteerId,
-            roleId: input.roleId,
+            shiftRequirementId: input.shiftRequirementId,
           },
         });
       }
       setFailedWrites((current) =>
         current.filter(
           (record) =>
-            record.input.shiftId !== input.shiftId ||
-            record.input.roleId !== input.roleId ||
+            record.input.shiftRequirementId !== input.shiftRequirementId ||
             record.input.volunteerId !== input.volunteerId,
         ),
       );
@@ -237,6 +236,7 @@ export function useCycleBuilderActions({
           failedWrite: {
             failedWriteId: randomId(),
             shiftId: input.shiftId,
+            shiftRequirementId: input.shiftRequirementId,
             roleId: input.roleId,
             volunteerId: input.volunteerId,
             volunteerName,

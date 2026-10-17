@@ -213,20 +213,20 @@ export function CycleBuilderBoardGrid({
                                         const assignments =
                                           shift.assignments.filter(
                                             (assignment) =>
-                                              assignment.roleId ===
-                                                requirement.roleId &&
+                                              assignment.shiftRequirementId ===
+                                                requirement.id &&
                                               isActiveAssignment({
                                                 status: assignment.status,
                                               }),
                                           );
-                                        const roleLabel =
+                                        const roleName =
                                           data.roles.find(
                                             (role) =>
                                               role.id === requirement.roleId,
                                           )?.name ?? 'Role';
+                                        const roleLabel = `${requirement.sectorName} · ${roleName}`;
                                         const requirementFocusKey = focusKey({
-                                          shiftId: shift.shiftId,
-                                          roleId: requirement.roleId,
+                                          shiftRequirementId: requirement.id,
                                         });
                                         const cellDerived =
                                           cellDerivedByKey.get(
@@ -251,6 +251,7 @@ export function CycleBuilderBoardGrid({
                                               }),
                                             }),
                                             shiftId: shift.shiftId,
+                                            shiftRequirementId: requirement.id,
                                             roleId: requirement.roleId,
                                             roleLabel,
                                             eventTimeBlockLabel:
@@ -264,8 +265,9 @@ export function CycleBuilderBoardGrid({
                                           });
                                         return (
                                           <CycleBuilderCell
-                                            key={requirement.roleId}
+                                            key={requirement.id}
                                             shift={shift}
+                                            shiftRequirementId={requirement.id}
                                             roleId={requirement.roleId}
                                             roleLabel={roleLabel}
                                             peopleNeeded={

@@ -148,6 +148,13 @@
       "when": 1792123350937,
       "tag": "0020_sectors",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792243333968,
+      "tag": "0021_gorgeous_sabretooth",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,14 @@
 import { NotFoundError } from '@church/core';
-import { assignment, eventTimeBlock, shift } from '@church/db';
+import {
+  assignment,
+  eventTimeBlock,
+  sector,
+  shift,
+  shiftRequirement,
+} from '@church/db';
 import {
   and,
+  asc,
   between,
   count,
   eq,
@@ -90,14 +97,32 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     if (!targetShift)
       throw new NotFoundError('Shift not found for event time block');
 
+    const requirementConditions = [
+      eq(shiftRequirement.shiftId, targetShift.id),
+      eq(shiftRequirement.participationId, targetShift.participationId),
+      withChurchIsolation(shiftRequirement, churchId),
+    ];
+    requirementConditions.push(
+      eq(shiftRequirement.id, input.shiftRequirementId),
+    );
+    const [requirement] = await db
+      .select({ requirement: shiftRequirement })
+      .from(shiftRequirement)
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .where(and(...requirementConditions))
+      .orderBy(asc(sector.name), asc(shiftRequirement.id))
+      .limit(1);
+    if (!requirement) throw new NotFoundError('Shift requirement not found');
+
     const [row] = await db
       .insert(assignment)
       .values({
         churchId,
-        participationId: input.participationId ?? targetShift.participationId,
+        participationId: requirement.requirement.participationId,
         shiftId: targetShift.id,
         volunteerId: input.volunteerId,
-        roleId: input.roleId,
+        roleId: requirement.requirement.roleId,
+        shiftRequirementId: requirement.requirement.id,
         status: input.status ?? 'draft',
         reason: input.reason ?? null,
         assignedBy: input.assignedBy ?? null,

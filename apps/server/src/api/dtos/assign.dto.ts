@@ -43,10 +43,12 @@ export const eligibleVolunteerListResponseSchema = z.object({
   volunteers: z.array(eligibleVolunteerResponseSchema),
 });
 
-export const createParticipationAssignmentBodySchema = z.object({
-  volunteerId: z.string(),
-  roleId: z.string(),
-});
+export const createParticipationAssignmentBodySchema = z
+  .object({
+    volunteerId: z.string(),
+    shiftRequirementId: z.string(),
+  })
+  .strict();
 
 export const createParticipationAssignmentResponseSchema = z.object({
   assignment: assignmentResponseSchema,

@@ -5,7 +5,6 @@ import type {
   ChurchId,
   EventId,
   EventTimeBlockId,
-  RoleId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
@@ -32,7 +31,7 @@ export function runAssignmentRepositoryContractTests(
           eventTimeBlockId:
             '77777777-7777-7777-7777-777777777772' as EventTimeBlockId,
           volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
-          roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+          shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
       );
 

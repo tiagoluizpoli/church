@@ -85,8 +85,8 @@ const listEligibleVolunteers = (
       );
     }
   /**
- * Assign a Volunteer to a Role within a Shift.
- * @summary Assign a Volunteer to a Shift
+ * Assign a Volunteer to a specific Sector and Role need within a Shift.
+ * @summary Assign a Volunteer to a ShiftRequirement
  */
 const createParticipationAssignment = (
     shiftId: string,

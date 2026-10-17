@@ -39,6 +39,7 @@ function makeAssignment(
     eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     roleId: 'role-1',
+    shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2027-01-01T12:00:00.000Z',
     ...overrides,
@@ -69,7 +70,14 @@ function makeShift(
     endTime: '2027-01-04T13:00:00.000Z',
     peopleNeeded: 1,
     assignedCount: 0,
-    requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+    requirements: [
+      {
+        id: 'requirement-role-1',
+        roleId: 'role-1',
+        sectorName: 'Main',
+        peopleNeeded: 1,
+      },
+    ],
     assignments: [],
     eligibleVolunteerCount: 0,
     eligibleVolunteers: [],
@@ -593,8 +601,18 @@ describe('buildCellDerivedIndex', () => {
                 makeShift({
                   shiftId: 'shift-1',
                   requirements: [
-                    { roleId: 'role-1', peopleNeeded: 1 },
-                    { roleId: 'role-2', peopleNeeded: 1 },
+                    {
+                      id: 'requirement-role-1',
+                      roleId: 'role-1',
+                      sectorName: 'Main',
+                      peopleNeeded: 1,
+                    },
+                    {
+                      id: 'requirement-role-2',
+                      roleId: 'role-2',
+                      sectorName: 'Main',
+                      peopleNeeded: 1,
+                    },
                   ],
                   eligibleVolunteers,
                 }),
@@ -609,17 +627,17 @@ describe('buildCellDerivedIndex', () => {
 
     expect([...derived.keys()].sort()).toEqual(
       [
-        focusKey({ shiftId: 'shift-1', roleId: 'role-1' }),
-        focusKey({ shiftId: 'shift-1', roleId: 'role-2' }),
+        focusKey({ shiftRequirementId: 'requirement-role-1' }),
+        focusKey({ shiftRequirementId: 'requirement-role-2' }),
       ].sort(),
     );
     // Per-role, not per-shift: Diego is unqualified for Sound so he is listed
     // but never recommended there, while for Vocals he is a safe pick.
     const sound = derived.get(
-      focusKey({ shiftId: 'shift-1', roleId: 'role-1' }),
+      focusKey({ shiftRequirementId: 'requirement-role-1' }),
     );
     const vocals = derived.get(
-      focusKey({ shiftId: 'shift-1', roleId: 'role-2' }),
+      focusKey({ shiftRequirementId: 'requirement-role-2' }),
     );
     expect(sound?.candidates.map((row) => row.id)).toEqual(['ana', 'diego']);
     expect(sound?.recommendations.safe.map((row) => row.id)).toEqual(['ana']);

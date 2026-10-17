@@ -479,6 +479,7 @@ describe('DbEventManager', () => {
             eventTimeBlockId,
             volunteerId: leaderId,
             roleId,
+            shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
           },
           'assignment-1',
         ),

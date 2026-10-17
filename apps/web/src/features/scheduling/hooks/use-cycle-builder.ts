@@ -49,7 +49,9 @@ interface RollbackOptimisticInput {
 }
 
 export interface CycleBuilderRequirementSummary {
+  id: string;
   roleId: string;
+  sectorName: string;
   peopleNeeded: number;
 }
 

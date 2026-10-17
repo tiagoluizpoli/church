@@ -3,8 +3,8 @@ import type {
   ChurchId,
   CycleId,
   MinistryId,
-  RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -12,13 +12,17 @@ import type { ConflictIssue } from '../../conflict/types';
 import type { Assignment } from '../../entities/assignment';
 import type { AssignmentAudit } from '../../entities/assignment-audit';
 
-export interface CreateParticipationAssignmentInput {
+interface CreateParticipationAssignmentInputBase {
   churchId: ChurchId;
   shiftId: ShiftId;
   volunteerId: VolunteerId;
-  roleId: RoleId;
   actorId: UserId;
 }
+
+export type CreateParticipationAssignmentInput =
+  CreateParticipationAssignmentInputBase & {
+    shiftRequirementId: ShiftRequirementId;
+  };
 
 export interface CreateParticipationAssignmentResult {
   assignment: Assignment;

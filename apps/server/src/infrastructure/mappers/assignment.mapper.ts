@@ -8,6 +8,7 @@ import type {
   MinistryParticipationId,
   RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -27,6 +28,7 @@ export function mapAssignment(
     eventTimeBlockId: (eventTimeBlockId ?? row.shiftId) as EventTimeBlockId,
     volunteerId: row.volunteerId as VolunteerId,
     roleId: row.roleId as RoleId,
+    shiftRequirementId: row.shiftRequirementId as ShiftRequirementId,
     status: row.status as AssignmentProps['status'],
     reason: row.reason ?? undefined,
     assignedAt: fromDate({ date: row.assignedAt }),

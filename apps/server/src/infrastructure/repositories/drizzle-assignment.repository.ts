@@ -2,13 +2,11 @@ import { NotFoundError } from '@church/core';
 import {
   assignment,
   eventTimeBlock,
-  sector,
   shift,
   shiftRequirement,
 } from '@church/db';
 import {
   and,
-  asc,
   between,
   count,
   eq,
@@ -28,7 +26,7 @@ import type {
 } from '../../domain/branded-ids';
 import type {
   AssignmentRepository,
-  CreateAssignmentInput,
+  CreateAssignmentRepositoryInput,
   UpdateAssignmentStatusInput,
 } from '../../domain/contracts/infrastructure/assignment.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
@@ -73,56 +71,57 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     );
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateAssignmentInput,
-    tx?: TransactionContext,
-  ): Promise<Assignment> {
+  async create({
+    churchId,
+    input,
+    tx,
+  }: CreateAssignmentRepositoryInput): Promise<Assignment> {
     const db = getClient(this.db, tx);
-    const targetShiftCondition = input.shiftId
-      ? eq(shift.id, input.shiftId)
-      : input.eventTimeBlockId
-        ? eq(shift.eventTimeBlockId, input.eventTimeBlockId)
-        : null;
-    if (!targetShiftCondition) {
+    if (!input.shiftId && !input.eventTimeBlockId) {
       throw new Error(
         'Assignment creation requires either shiftId or eventTimeBlockId',
       );
     }
-    const [targetShift] = await db
-      .select()
-      .from(shift)
-      .where(and(targetShiftCondition, withChurchIsolation(shift, churchId)))
-      .limit(1);
-    if (!targetShift)
-      throw new NotFoundError('Shift not found for event time block');
-
-    const requirementConditions = [
-      eq(shiftRequirement.shiftId, targetShift.id),
-      eq(shiftRequirement.participationId, targetShift.participationId),
-      withChurchIsolation(shiftRequirement, churchId),
-    ];
-    requirementConditions.push(
+    const requirementJoin = eq(shift.id, shiftRequirement.shiftId);
+    const conditions = [
       eq(shiftRequirement.id, input.shiftRequirementId),
-    );
-    const [requirement] = await db
-      .select({ requirement: shiftRequirement })
+      eq(shiftRequirement.participationId, shift.participationId),
+      withChurchIsolation(shiftRequirement, churchId),
+      withChurchIsolation(shift, churchId),
+    ];
+    if (input.shiftId) {
+      const requestedShift = eq(shift.id, input.shiftId);
+      conditions.push(requestedShift);
+    }
+    if (input.eventTimeBlockId) {
+      const requestedBlock = eq(shift.eventTimeBlockId, input.eventTimeBlockId);
+      conditions.push(requestedBlock);
+    }
+    if (input.participationId) {
+      const requestedParticipation = eq(
+        shiftRequirement.participationId,
+        input.participationId,
+      );
+      conditions.push(requestedParticipation);
+    }
+    const requirementPredicate = and(...conditions);
+    const [selected] = await db
+      .select({ requirement: shiftRequirement, targetShift: shift })
       .from(shiftRequirement)
-      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
-      .where(and(...requirementConditions))
-      .orderBy(asc(sector.name), asc(shiftRequirement.id))
-      .limit(1);
-    if (!requirement) throw new NotFoundError('Shift requirement not found');
+      .innerJoin(shift, requirementJoin)
+      .where(requirementPredicate);
+    if (!selected) throw new NotFoundError('Shift requirement not found');
+    const { requirement, targetShift } = selected;
 
     const [row] = await db
       .insert(assignment)
       .values({
         churchId,
-        participationId: requirement.requirement.participationId,
+        participationId: requirement.participationId,
         shiftId: targetShift.id,
         volunteerId: input.volunteerId,
-        roleId: requirement.requirement.roleId,
-        shiftRequirementId: requirement.requirement.id,
+        roleId: requirement.roleId,
+        shiftRequirementId: requirement.id,
         status: input.status ?? 'draft',
         reason: input.reason ?? null,
         assignedBy: input.assignedBy ?? null,

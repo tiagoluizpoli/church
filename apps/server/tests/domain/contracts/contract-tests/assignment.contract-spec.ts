@@ -25,15 +25,15 @@ export function runAssignmentRepositoryContractTests(
     });
 
     it('should create an assignment', async () => {
-      const created = await repo.create(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        {
+      const created = await repo.create({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        input: {
           eventTimeBlockId:
             '77777777-7777-7777-7777-777777777772' as EventTimeBlockId,
           volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
           shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
-      );
+      });
 
       expect(created).toBeDefined();
       expect(created.id).toBeDefined();

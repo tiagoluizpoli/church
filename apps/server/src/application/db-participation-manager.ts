@@ -1043,21 +1043,16 @@ export class DbParticipationManager implements IParticipationManager {
         isActiveAssignmentStatus(assignment.status)
       ) {
         const requirementId = assignment.shiftRequirementId as string;
-        activeByRequirement.set(
-          requirementId,
-          (activeByRequirement.get(requirementId) ?? 0) + 1,
-        );
+        const activeCount = activeByRequirement.get(requirementId) ?? 0;
+        activeByRequirement.set(requirementId, activeCount + 1);
       }
     }
-    const coveredPlaces = requirements.reduce(
-      (sum, requirement) =>
-        sum +
-        Math.min(
-          activeByRequirement.get(requirement.id as string) ?? 0,
-          requirement.peopleNeeded,
-        ),
-      0,
-    );
+    const coveredPlaces = requirements.reduce((sum, requirement) => {
+      const activeCount =
+        activeByRequirement.get(requirement.id as string) ?? 0;
+      const coveredCount = Math.min(activeCount, requirement.peopleNeeded);
+      return sum + coveredCount;
+    }, 0);
 
     return {
       participationId,

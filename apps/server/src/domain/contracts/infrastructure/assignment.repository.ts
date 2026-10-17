@@ -23,17 +23,19 @@ export interface CreateAssignmentInput {
   assignedBy?: UserId;
 }
 
+export interface CreateAssignmentRepositoryInput {
+  churchId: ChurchId;
+  input: CreateAssignmentInput;
+  tx?: TransactionContext;
+}
+
 export interface UpdateAssignmentStatusInput {
   status: AssignmentStatus;
   reason?: string;
 }
 
 export interface AssignmentRepository {
-  create(
-    churchId: ChurchId,
-    input: CreateAssignmentInput,
-    tx?: TransactionContext,
-  ): Promise<Assignment>;
+  create(input: CreateAssignmentRepositoryInput): Promise<Assignment>;
 
   getById(
     churchId: ChurchId,

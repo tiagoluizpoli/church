@@ -355,7 +355,9 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(firstVolunteer.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(targetRequirement.id),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: targetRequirement.id,
+        }),
         actorId: UserId.from(seed.adminUserId),
       });
     expect(firstResult.assignment.shiftId).toBe(targetShift.id);
@@ -373,7 +375,9 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(firstVolunteer.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(overlapRequirement.id),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: overlapRequirement.id,
+        }),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toThrow('Shift requirement not found');
@@ -392,7 +396,9 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(firstVolunteer.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(targetRequirement.id),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: targetRequirement.id,
+        }),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({
@@ -404,7 +410,9 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(overlapVolunteer.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(targetRequirement.id),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: targetRequirement.id,
+        }),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({

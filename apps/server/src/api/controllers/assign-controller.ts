@@ -350,7 +350,9 @@ export class AssignController implements FastifyController {
           shiftId: ShiftId.from(shiftId),
           volunteerId: VolunteerId.from(body.volunteerId),
           actorId: UserId.from(request.userId),
-          shiftRequirementId: ShiftRequirementId.from(body.shiftRequirementId),
+          shiftRequirementId: ShiftRequirementId.from({
+            raw: body.shiftRequirementId,
+          }),
         };
         const result =
           await this.assignmentManager.createParticipationAssignment(input);

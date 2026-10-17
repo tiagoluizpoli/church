@@ -130,7 +130,13 @@ function isPublishedStatus(
   );
 }
 
-function countsTowardRequirementCoverage(status: AssignmentStatus): boolean {
+interface RequirementCoverageStatusInput {
+  status: AssignmentStatus;
+}
+
+function countsTowardRequirementCoverage({
+  status,
+}: RequirementCoverageStatusInput): boolean {
   return status === 'draft' || status === 'pending' || status === 'confirmed';
 }
 
@@ -588,21 +594,27 @@ export class DbVolunteerManager implements IVolunteerManager {
                 (assignment) =>
                   assignment.shiftRequirementId === requirement.id,
               );
-              const assignmentRows = boundAssignments.map((assignment) => ({
-                eventTimeBlockId: shift.eventTimeBlockId as string,
-                eventTimeBlockLabel: scheduleShiftLabel(shift),
-                sectorName: requirement.sectorName,
-                roleName:
-                  roleNames.get(requirement.roleId as string) ?? 'Unknown role',
-                volunteerDisplayName: scheduleVolunteerName(
-                  volunteerNames.get(assignment.volunteerId as string),
-                ),
-                confirmationState: isPublishedStatus(assignment.status)
-                  ? assignment.status
-                  : 'pending',
-              }));
+              const assignmentRows = boundAssignments.map((assignment) => {
+                const volunteerName = volunteerNames.get(
+                  assignment.volunteerId as string,
+                );
+                const volunteerDisplayName =
+                  scheduleVolunteerName(volunteerName);
+                return {
+                  eventTimeBlockId: shift.eventTimeBlockId as string,
+                  eventTimeBlockLabel: scheduleShiftLabel(shift),
+                  sectorName: requirement.sectorName,
+                  roleName:
+                    roleNames.get(requirement.roleId as string) ??
+                    'Unknown role',
+                  volunteerDisplayName,
+                  confirmationState: isPublishedStatus(assignment.status)
+                    ? assignment.status
+                    : 'pending',
+                };
+              });
               const filledCount = boundAssignments.filter((assignment) =>
-                countsTowardRequirementCoverage(assignment.status),
+                countsTowardRequirementCoverage({ status: assignment.status }),
               ).length;
               const openRows = Array.from(
                 { length: Math.max(0, requirement.peopleNeeded - filledCount) },

@@ -539,7 +539,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(wholeEventTimeBlockShift.id),
         volunteerId: VolunteerId.from(target.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(requirement.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
 
@@ -617,7 +617,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(wholeEventTimeBlockShift.id),
         volunteerId: VolunteerId.from(target.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(requirement.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
 
@@ -763,15 +763,15 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     });
 
     const managers = createSchedulingManagers();
-    const assignment = await managers.assignmentRepo.create(
-      ChurchId.from(seed.churchAId),
-      {
+    const assignment = await managers.assignmentRepo.create({
+      churchId: ChurchId.from(seed.churchAId),
+      input: {
         shiftId: ShiftId.from(shift.id),
         volunteerId: VolunteerId.from(target.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(requirement.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         status: 'confirmed',
       },
-    );
+    });
 
     const reassigned =
       await managers.assignmentManager.reassignParticipationAssignment({
@@ -864,7 +864,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
         volunteerId: VolunteerId.from(outsider.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(requirement.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({ reason: 'NOT_IN_MINISTRY' });
@@ -929,7 +929,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
         volunteerId: VolunteerId.from(softMember.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(requirement.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
     expect(softResult.warnings).toEqual([
@@ -953,7 +953,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
         volunteerId: VolunteerId.from(qualifiedMember.volunteer.id),
-        shiftRequirementId: ShiftRequirementId.from(requirement.id),
+        shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         actorId: UserId.from(seed.adminUserId),
       });
 

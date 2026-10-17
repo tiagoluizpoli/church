@@ -252,6 +252,16 @@ export class DrizzleShiftRepository implements ShiftRepository {
     input: GetRequirementForShiftInput,
   ): Promise<ShiftRequirement> {
     const db = getClient(this.db, input.tx);
+    const requirementShiftJoin = eq(shift.id, shiftRequirement.shiftId);
+    const requirementSectorJoin = eq(sector.id, shiftRequirement.sectorId);
+    const requirementConditions = [
+      eq(shiftRequirement.id, input.shiftRequirementId),
+      eq(shiftRequirement.shiftId, input.shiftId),
+      eq(shiftRequirement.participationId, shift.participationId),
+      withChurchIsolation(shiftRequirement, input.churchId),
+      withChurchIsolation(shift, input.churchId),
+    ];
+    const requirementPredicate = and(...requirementConditions);
     const [row] = await db
       .select({
         requirement: shiftRequirement,
@@ -259,23 +269,16 @@ export class DrizzleShiftRepository implements ShiftRepository {
         eventTimeBlockId: shift.eventTimeBlockId,
       })
       .from(shiftRequirement)
-      .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
-      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
-      .where(
-        and(
-          eq(shiftRequirement.id, input.shiftRequirementId),
-          eq(shiftRequirement.shiftId, input.shiftId),
-          eq(shiftRequirement.participationId, shift.participationId),
-          withChurchIsolation(shiftRequirement, input.churchId),
-          withChurchIsolation(shift, input.churchId),
-        ),
-      );
+      .innerJoin(shift, requirementShiftJoin)
+      .innerJoin(sector, requirementSectorJoin)
+      .where(requirementPredicate);
 
     if (!row) throw new NotFoundError('Shift requirement not found');
+    const { requirement, sectorName, eventTimeBlockId } = row;
     return mapShiftRequirement({
-      row: row.requirement,
-      sectorName: row.sectorName,
-      eventTimeBlockId: row.eventTimeBlockId,
+      row: requirement,
+      sectorName,
+      eventTimeBlockId,
     });
   }
 }

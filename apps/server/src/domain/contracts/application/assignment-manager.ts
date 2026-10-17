@@ -12,17 +12,13 @@ import type { ConflictIssue } from '../../conflict/types';
 import type { Assignment } from '../../entities/assignment';
 import type { AssignmentAudit } from '../../entities/assignment-audit';
 
-interface CreateParticipationAssignmentInputBase {
+export interface CreateParticipationAssignmentInput {
   churchId: ChurchId;
   shiftId: ShiftId;
   volunteerId: VolunteerId;
   actorId: UserId;
+  shiftRequirementId: ShiftRequirementId;
 }
-
-export type CreateParticipationAssignmentInput =
-  CreateParticipationAssignmentInputBase & {
-    shiftRequirementId: ShiftRequirementId;
-  };
 
 export interface CreateParticipationAssignmentResult {
   assignment: Assignment;

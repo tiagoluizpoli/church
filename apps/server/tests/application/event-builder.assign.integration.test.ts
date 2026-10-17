@@ -578,7 +578,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       churchId: ChurchId.from(seed.churchAId),
       shiftId: ShiftId.from(shiftId),
       volunteerId: VolunteerId.from(unqualified.volunteerId),
-      shiftRequirementId: ShiftRequirementId.from(shiftRequirementId),
+      shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
       actorId: UserId.from(seed.adminUserId),
     });
 
@@ -692,7 +692,9 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shiftId),
         volunteerId: VolunteerId.from(seed.adminVolunteerId),
-        shiftRequirementId: ShiftRequirementId.from(shiftRequirementId),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: shiftRequirementId,
+        }),
         actorId: UserId.from(seed.adminUserId),
       })
       .then(

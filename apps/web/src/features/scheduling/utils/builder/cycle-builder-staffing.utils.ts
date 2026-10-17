@@ -25,20 +25,14 @@ export function countCoveredPlaces({
     if (assignment.status === 'declined' || assignment.status === 'cancelled')
       continue;
     const { shiftRequirementId } = assignment;
-    activeByRequirement.set(
-      shiftRequirementId,
-      (activeByRequirement.get(shiftRequirementId) ?? 0) + 1,
-    );
+    const activeCount = activeByRequirement.get(shiftRequirementId) ?? 0;
+    activeByRequirement.set(shiftRequirementId, activeCount + 1);
   }
-  return requirements.reduce(
-    (covered, requirement) =>
-      covered +
-      Math.min(
-        requirement.peopleNeeded,
-        activeByRequirement.get(requirement.id) ?? 0,
-      ),
-    0,
-  );
+  return requirements.reduce((covered, requirement) => {
+    const activeCount = activeByRequirement.get(requirement.id) ?? 0;
+    const coveredCount = Math.min(requirement.peopleNeeded, activeCount);
+    return covered + coveredCount;
+  }, 0);
 }
 
 export interface CycleStaffingSummary {

@@ -13,7 +13,7 @@ import type {
 } from '@/domain/branded-ids';
 import type {
   AssignmentRepository,
-  CreateAssignmentInput,
+  CreateAssignmentRepositoryInput,
   UpdateAssignmentStatusInput,
 } from '@/domain/contracts/infrastructure/assignment.repository';
 import {
@@ -70,10 +70,10 @@ class MockAssignmentRepository implements AssignmentRepository {
     this.assignments.set(a3.id, a3);
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateAssignmentInput,
-  ): Promise<Assignment> {
+  async create({
+    churchId,
+    input,
+  }: CreateAssignmentRepositoryInput): Promise<Assignment> {
     const id = `assignment-gen-${this.idCounter++}` as AssignmentId;
     const a = new Assignment(
       {

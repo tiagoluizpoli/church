@@ -49,7 +49,7 @@ import {
   type FocusedShift,
   findShiftContextById,
   focusKey,
-  roleHasRoom,
+  requirementHasRoom,
 } from '../../../utils/builder/cycle-builder-shift-lookup.utils';
 import { VolunteerCard } from '../volunteer-rail/volunteer-card';
 import { VolunteerPoolSidebar } from '../volunteer-rail/volunteer-pool-sidebar';
@@ -242,8 +242,7 @@ export function CycleBuilderMatrix(props: Props) {
     const byCell = new Map<string, FailedAssignmentWrite[]>();
     for (const failedWrite of props.failedWrites ?? []) {
       const key = focusKey({
-        shiftId: failedWrite.shiftId,
-        roleId: failedWrite.roleId,
+        shiftRequirementId: failedWrite.shiftRequirementId,
       });
       const existing = byCell.get(key);
       if (existing) existing.push(failedWrite);
@@ -295,7 +294,10 @@ export function CycleBuilderMatrix(props: Props) {
     focused &&
       focusedShift &&
       focusedRequirementIsEditable &&
-      roleHasRoom({ shift: focusedShift, roleId: focused.roleId }),
+      requirementHasRoom({
+        shift: focusedShift,
+        shiftRequirementId: focused.shiftRequirementId,
+      }),
   );
   // Everyone the leader may commit to the focused shift, each carrying the tier
   // that pick would land in — so the rail's own button can say what the pick
@@ -333,6 +335,7 @@ export function CycleBuilderMatrix(props: Props) {
     props.onSelectAssignment({
       volunteerId,
       shiftId: focused.shiftId,
+      shiftRequirementId: focused.shiftRequirementId,
       roleId: focused.roleId,
       volunteerName: volunteers.find(
         (volunteer) => volunteer.volunteerId === volunteerId,
@@ -393,23 +396,26 @@ export function CycleBuilderMatrix(props: Props) {
             setDraggingVolunteerId(null);
             const volunteerId = draggedVolunteerId({ active: event.active });
             const target = dropTargetData({ over: event.over ?? null });
-            if (volunteerId && target?.shiftId && target.roleId) {
+            if (volunteerId && target?.shiftId && target.shiftRequirementId) {
               const shiftContext = findShiftContextById({
                 data: props.data,
                 shiftId: target.shiftId,
               });
               const shift = shiftContext?.shift;
-              const roleLabel = props.data.roles.find(
-                (role) => role.id === target.roleId,
+              const requirement = shift?.requirements.find(
+                (item) => item.id === target.shiftRequirementId,
+              );
+              const roleName = props.data.roles.find(
+                (role) => role.id === requirement?.roleId,
               )?.name;
-              if (!shiftContext) return;
-              if (shiftContext && shift && roleLabel) {
+              if (!shiftContext || !shift || !requirement || !roleName) return;
+              const roleLabel = `${requirement.sectorName} · ${roleName}`;
+              {
                 const eventTimeBlockLabel =
                   shiftContext.eventTimeBlock.label ?? 'this shift';
                 setFocused({
                   key: focusKey({
-                    shiftId: target.shiftId,
-                    roleId: target.roleId,
+                    shiftRequirementId: target.shiftRequirementId,
                   }),
                   label: buildFocusLabel({
                     roleLabel,
@@ -423,12 +429,13 @@ export function CycleBuilderMatrix(props: Props) {
                     }),
                   }),
                   shiftId: target.shiftId,
-                  roleId: target.roleId,
+                  shiftRequirementId: target.shiftRequirementId,
+                  roleId: requirement.roleId,
                   roleLabel,
                   eventTimeBlockLabel,
                   ...rankVolunteersForShiftRole({
                     shift,
-                    roleId: target.roleId,
+                    roleId: requirement.roleId,
                     assignments: props.data.assignments,
                   }),
                 });
@@ -438,17 +445,16 @@ export function CycleBuilderMatrix(props: Props) {
               // the reason dialog is gated on this field. The drop target is
               // disabled for tier `none`, so a drop that lands here is one the
               // predicate already accepted.
-              const droppedFit = shift
-                ? volunteerFitForShiftRole({
-                    shift,
-                    roleId: target.roleId,
-                    volunteerId,
-                  })
-                : undefined;
+              const droppedFit = volunteerFitForShiftRole({
+                shift,
+                roleId: requirement.roleId,
+                volunteerId,
+              });
               props.onSelectAssignment({
                 volunteerId,
                 shiftId: target.shiftId,
-                roleId: target.roleId,
+                shiftRequirementId: target.shiftRequirementId,
+                roleId: requirement.roleId,
                 roleLabel,
                 assignmentId: target.assignmentId,
                 conflictType: droppedFit

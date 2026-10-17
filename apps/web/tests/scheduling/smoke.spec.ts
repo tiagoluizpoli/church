@@ -23,8 +23,7 @@ interface JourneyInput {
 function teamGreeterCellTestId({ journey }: JourneyInput): string {
   const { teamService } = journey.events;
   return requirementCellTestId({
-    shiftId: teamService.shiftId,
-    roleId: teamService.requirements.greeter.roleId,
+    requirementId: teamService.requirements.greeter.id,
   });
 }
 
@@ -107,8 +106,7 @@ test('a draft assignment persists through publish and can be reassigned', async 
 
   const firstRequirement = page.getByTestId(
     requirementCellTestId({
-      shiftId: service.shiftId,
-      roleId: service.requirements.usher.roleId,
+      requirementId: service.requirements.usher.id,
     }),
   );
   const requirement = page.getByTestId(teamGreeterCellTestId({ journey }));

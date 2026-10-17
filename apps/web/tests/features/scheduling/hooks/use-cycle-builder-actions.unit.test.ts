@@ -20,6 +20,7 @@ function assignment(
     eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     roleId: 'role-1',
+    shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2027-01-01T12:00:00.000Z',
     ...overrides,
@@ -64,7 +65,14 @@ function dataWithAssignments(
                 endTime: '2027-01-04T13:00:00.000Z',
                 peopleNeeded: 1,
                 assignedCount: assignments.length,
-                requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+                requirements: [
+                  {
+                    id: 'requirement-role-1',
+                    roleId: 'role-1',
+                    sectorName: 'Main',
+                    peopleNeeded: 1,
+                  },
+                ],
                 assignments,
                 eligibleVolunteerCount: 2,
                 eligibleVolunteers: [
@@ -103,6 +111,56 @@ function mutations(): CycleBuilderMutations {
 }
 
 describe('useCycleBuilderActions', () => {
+  it('keeps another Sector failure when retrying the same Volunteer and Role in one Shift', async () => {
+    const writes = mutations();
+    const create = vi.mocked(writes.createAssignment.mutateAsync);
+    create
+      .mockRejectedValueOnce(new Error('First Sector failed'))
+      .mockRejectedValueOnce(new Error('Second Sector failed'))
+      .mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCycleBuilderActions({ data: dataWithAssignments([]), ...writes }),
+    );
+    act(() =>
+      result.current.handleSelectAssignment({
+        shiftId: 'shift-1',
+        shiftRequirementId: 'babies-requirement',
+        roleId: 'role-1',
+        volunteerId: 'volunteer-b',
+      }),
+    );
+    await waitFor(() => expect(result.current.failedWrites).toHaveLength(1));
+    act(() =>
+      result.current.handleSelectAssignment({
+        shiftId: 'shift-1',
+        shiftRequirementId: 'kids-requirement',
+        roleId: 'role-1',
+        volunteerId: 'volunteer-b',
+      }),
+    );
+    await waitFor(() => expect(result.current.failedWrites).toHaveLength(2));
+    const failed = result.current.failedWrites.find(
+      ({ failedWrite }) =>
+        failedWrite.shiftRequirementId === 'babies-requirement',
+    );
+    if (!failed) throw new Error('Missing failed Assignment');
+    act(() =>
+      result.current.retryFailedWrite(failed.failedWrite.failedWriteId),
+    );
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(3));
+    expect(create).toHaveBeenLastCalledWith({
+      shiftId: 'shift-1',
+      body: {
+        volunteerId: 'volunteer-b',
+        shiftRequirementId: 'babies-requirement',
+      },
+    });
+    await waitFor(() => expect(result.current.failedWrites).toHaveLength(1));
+    expect(result.current.failedWrites[0]?.failedWrite.shiftRequirementId).toBe(
+      'kids-requirement',
+    );
+  });
+
   it('reassigns an existing assignment once the override is confirmed', async () => {
     const writes = mutations();
     const { result } = renderHook(() =>
@@ -117,6 +175,7 @@ describe('useCycleBuilderActions', () => {
     act(() =>
       result.current.handleSelectAssignment({
         shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
         roleId: 'role-1',
         volunteerId: 'volunteer-b',
         volunteerName: 'Volunteer B',
@@ -152,6 +211,7 @@ describe('useCycleBuilderActions', () => {
     act(() =>
       result.current.handleSelectAssignment({
         shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
         roleId: 'role-1',
         volunteerId: 'volunteer-b',
         volunteerName: 'Volunteer B',
@@ -171,7 +231,7 @@ describe('useCycleBuilderActions', () => {
         shiftId: 'shift-1',
         body: {
           volunteerId: 'volunteer-b',
-          roleId: 'role-1',
+          shiftRequirementId: 'requirement-role-1',
         },
       }),
     );
@@ -209,6 +269,7 @@ describe('useCycleBuilderActions', () => {
     act(() =>
       result.current.handleSelectAssignment({
         shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
         roleId: 'role-1',
         volunteerId: 'volunteer-a',
         assignmentId: 'target-assignment',
@@ -250,6 +311,7 @@ describe('useCycleBuilderActions', () => {
     act(() =>
       result.current.handleSelectAssignment({
         shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
         roleId: 'role-1',
         volunteerId: 'volunteer-b',
         volunteerName: 'Volunteer B',

@@ -343,7 +343,7 @@ async function cycleProblems({
     }),
   );
 
-  // Assignments name a Role, not a Sector (Spec 05b): staffing is per Shift and Role.
+  // Each Assignment fills its bound requirement; another Sector cannot cover its places.
   const blockKeyOf = new Map(
     blueprint.gatherings.templates.flatMap((template) =>
       template.blocks.map((block) => [
@@ -359,14 +359,14 @@ async function cycleProblems({
       to_char(sh.start_time at time zone ${timeZone}, 'HH24:MI') as "startTime",
       sum(sr.people_needed)::int as required,
       (select count(*) from ${assignment} a
-        where a.shift_id = sr.shift_id and a.role_id = sr.role_id
+        where a.shift_requirement_id = sr.id
           and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
     from ${shiftRequirement} sr
     join ${shift} sh on sh.id = sr.shift_id
     join ${ministryParticipation} p on p.id = sr.participation_id
     join ${ministry} m on m.id = p.ministry_id
     join ${role} r on r.id = sr.role_id
-    group by m.name, r.name, sh.start_time, sr.shift_id, sr.role_id`);
+    group by m.name, r.name, sh.start_time, sr.id`);
   const overfilled = staffing.rows.filter((row) => row.assigned > row.required);
   if (overfilled.length > 0) {
     problems.push(

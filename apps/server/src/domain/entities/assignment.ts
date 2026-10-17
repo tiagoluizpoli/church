@@ -7,6 +7,7 @@ import type {
   MinistryParticipationId,
   RoleId,
   ShiftId,
+  ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '../branded-ids';
@@ -27,6 +28,7 @@ export interface AssignmentProps {
   shiftId?: ShiftId;
   volunteerId: VolunteerId;
   roleId: RoleId;
+  shiftRequirementId: ShiftRequirementId;
   status: AssignmentStatus;
   reason?: string;
   assignedAt: Instant;
@@ -75,6 +77,10 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
 
   get roleId(): RoleId {
     return this._props.roleId;
+  }
+
+  get shiftRequirementId(): ShiftRequirementId {
+    return this._props.shiftRequirementId;
   }
 
   get status(): AssignmentStatus {

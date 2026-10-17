@@ -56,7 +56,14 @@ const janeiroData: CycleBuilderData = {
               endTime: '2027-01-04T13:00:00.000Z',
               peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+              requirements: [
+                {
+                  id: 'requirement-shift-manha',
+                  roleId: 'role-1',
+                  sectorName: 'Main',
+                  peopleNeeded: 1,
+                },
+              ],
               assignments: [],
               eligibleVolunteerCount: 0,
               eligibleVolunteers: [],
@@ -80,7 +87,14 @@ const janeiroData: CycleBuilderData = {
               endTime: '2027-01-04T21:00:00.000Z',
               peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+              requirements: [
+                {
+                  id: 'requirement-shift-tarde',
+                  roleId: 'role-1',
+                  sectorName: 'Main',
+                  peopleNeeded: 1,
+                },
+              ],
               assignments: [],
               eligibleVolunteerCount: 0,
               eligibleVolunteers: [],
@@ -120,7 +134,14 @@ const janeiroData: CycleBuilderData = {
               endTime: '2027-01-11T15:00:00.000Z',
               peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+              requirements: [
+                {
+                  id: 'requirement-shift-manha-2',
+                  roleId: 'role-1',
+                  sectorName: 'Main',
+                  peopleNeeded: 1,
+                },
+              ],
               assignments: [],
               eligibleVolunteerCount: 0,
               eligibleVolunteers: [],
@@ -176,7 +197,9 @@ describe.each([
     // assignment appear on both days.
     for (const shiftId of ['shift-manha', 'shift-tarde', 'shift-manha-2']) {
       expect(
-        await screen.findAllByTestId(`cycle-requirement-${shiftId}-role-1`),
+        await screen.findAllByTestId(
+          `cycle-requirement-requirement-${shiftId}`,
+        ),
       ).toHaveLength(1);
     }
   });
@@ -229,7 +252,14 @@ describe.each([
                   endTime: '2027-01-09T04:00:00.000Z',
                   peopleNeeded: 1,
                   assignedCount: 0,
-                  requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
+                  requirements: [
+                    {
+                      id: 'requirement-shift-vigilia',
+                      roleId: 'role-1',
+                      sectorName: 'Main',
+                      peopleNeeded: 1,
+                    },
+                  ],
                   assignments: [],
                   eligibleVolunteerCount: 0,
                   eligibleVolunteers: [],
@@ -256,11 +286,11 @@ describe.each([
     // Saturday, which is exactly the phantom-day shape this guards against.
     expect(
       await within(fridayColumn).findAllByTestId(
-        'cycle-requirement-shift-vigilia-role-1',
+        'cycle-requirement-requirement-shift-vigilia',
       ),
     ).toHaveLength(1);
     expect(
-      screen.queryAllByTestId('cycle-requirement-shift-vigilia-role-1'),
+      screen.queryAllByTestId('cycle-requirement-requirement-shift-vigilia'),
     ).toHaveLength(1);
 
     // The event's own card/title is the AC2 regression this guards against:

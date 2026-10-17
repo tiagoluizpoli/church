@@ -1,11 +1,48 @@
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 
+interface RequirementCoverage {
+  id: string;
+  peopleNeeded: number;
+}
+
+interface AssignmentCoverage {
+  shiftRequirementId: string;
+  status: string;
+}
+
+interface CountCoveredPlacesInput {
+  requirements: readonly RequirementCoverage[];
+  assignments: readonly AssignmentCoverage[];
+}
+
+/** Overstaffing one Sector cannot fill a different Sector's places. */
+export function countCoveredPlaces({
+  requirements,
+  assignments,
+}: CountCoveredPlacesInput): number {
+  const activeByRequirement = new Map<string, number>();
+  for (const assignment of assignments) {
+    if (assignment.status === 'declined' || assignment.status === 'cancelled')
+      continue;
+    const { shiftRequirementId } = assignment;
+    const activeCount = activeByRequirement.get(shiftRequirementId) ?? 0;
+    activeByRequirement.set(shiftRequirementId, activeCount + 1);
+  }
+  return requirements.reduce((covered, requirement) => {
+    const activeCount = activeByRequirement.get(requirement.id) ?? 0;
+    const coveredCount = Math.min(requirement.peopleNeeded, activeCount);
+    return covered + coveredCount;
+  }, 0);
+}
+
 export interface CycleStaffingSummary {
   /** Active assignments standing against the cycle's included shifts. */
   filled: number;
+  /** Places covered, capped per requirement; filled retains the actual Assignment total. */
+  coveredPlaces: number;
   /** Headcount those shifts ask for. */
   required: number;
-  /** `filled / required`, uncapped — over-staffing is worth seeing. */
+  /** Covered places / required, capped separately for each requirement. */
   percent: number;
   shiftsBelowTarget: number;
 }
@@ -24,22 +61,26 @@ export function summarizeCycleStaffing({
   data,
 }: SummarizeCycleStaffingInput): CycleStaffingSummary {
   let filled = 0;
+  let covered = 0;
   let required = 0;
   let shiftsBelowTarget = 0;
   for (const event of data.events) {
     for (const eventTimeBlock of event.eventTimeBlocks) {
       if (!eventTimeBlock.included) continue;
       for (const shift of eventTimeBlock.shifts) {
+        const coveredPlaces = countCoveredPlaces(shift);
+        covered += coveredPlaces;
         filled += shift.assignedCount;
         required += shift.peopleNeeded;
-        if (shift.assignedCount < shift.peopleNeeded) shiftsBelowTarget += 1;
+        if (coveredPlaces < shift.peopleNeeded) shiftsBelowTarget += 1;
       }
     }
   }
   return {
     filled,
+    coveredPlaces: covered,
     required,
-    percent: required === 0 ? 0 : Math.round((filled / required) * 100),
+    percent: required === 0 ? 0 : Math.round((covered / required) * 100),
     shiftsBelowTarget,
   };
 }

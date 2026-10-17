@@ -196,6 +196,7 @@ export function createVolunteerTransferRecipe({
       churchId,
       participationId: event.participationId,
       shiftId: event.shiftId,
+      shiftRequirementId: event.requirements.porter.id,
       volunteerId: transferee.volunteerId,
       roleId: hospitality.roles.porter.id,
       id: idOf({ kind: 'assignment:seat' }),

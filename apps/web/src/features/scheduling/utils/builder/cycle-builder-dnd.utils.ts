@@ -8,6 +8,7 @@ export interface VolunteerDragData {
 /** Payload a board cell puts on its dnd-kit droppable. */
 export interface CycleDropTargetData {
   shiftId?: string;
+  shiftRequirementId?: string;
   roleId?: string;
   assignmentId?: string;
 }
@@ -47,6 +48,10 @@ export function dropTargetData({
   return {
     shiftId:
       typeof candidate.shiftId === 'string' ? candidate.shiftId : undefined,
+    shiftRequirementId:
+      typeof candidate.shiftRequirementId === 'string'
+        ? candidate.shiftRequirementId
+        : undefined,
     roleId: typeof candidate.roleId === 'string' ? candidate.roleId : undefined,
     assignmentId:
       typeof candidate.assignmentId === 'string'

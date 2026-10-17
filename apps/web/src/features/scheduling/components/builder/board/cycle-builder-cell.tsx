@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 
 interface CycleBuilderCellProps {
   shift: CycleBuilderShiftSummary;
+  shiftRequirementId: string;
   roleId: string;
   roleLabel: string;
   peopleNeeded: number;
@@ -83,6 +84,7 @@ interface CycleBuilderCellCommitInput {
 
 export interface CycleBuilderCellSelectInput {
   shiftId: string;
+  shiftRequirementId: string;
   roleId: string;
   volunteerId: string;
   volunteerName?: string;
@@ -100,6 +102,7 @@ export interface CycleBuilderCellSelectInput {
 
 export function CycleBuilderCell({
   shift,
+  shiftRequirementId,
   roleId,
   roleLabel,
   peopleNeeded,
@@ -138,8 +141,8 @@ export function CycleBuilderCell({
     ? volunteerFitForShiftRole({ shift, roleId, volunteerId: draggedId })
     : null;
   const roleDropTarget = useDroppable({
-    id: `cycle-role:${shift.shiftId}:${roleId}`,
-    data: { shiftId: shift.shiftId, roleId },
+    id: `cycle-requirement:${shiftRequirementId}`,
+    data: { shiftId: shift.shiftId, shiftRequirementId },
     disabled:
       !isEditable ||
       !canAdd ||
@@ -176,6 +179,7 @@ export function CycleBuilderCell({
     onFocus();
     onSelect({
       shiftId: shift.shiftId,
+      shiftRequirementId,
       roleId,
       volunteerId: input.volunteerId,
       volunteerName: input.volunteerName,
@@ -259,13 +263,12 @@ export function CycleBuilderCell({
       )}
       data-selected-fit={selectedFit.tier}
       data-drop-target={isEditable && canAdd ? 'append' : undefined}
-      data-testid={`cycle-requirement-${shift.shiftId}-${roleId}`}
+      data-testid={`cycle-requirement-${shiftRequirementId}`}
     >
       <div className="flex items-center justify-between gap-2">
         <RoleFocusButton
           roleLabel={roleLabel}
-          shiftId={shift.shiftId}
-          roleId={roleId}
+          shiftRequirementId={shiftRequirementId}
           isFocused={isFocused ?? false}
           onToggleFocus={onToggleFocus}
         />
@@ -280,7 +283,7 @@ export function CycleBuilderCell({
             key={assignment.id}
             assignment={assignment}
             shiftId={shift.shiftId}
-            roleId={roleId}
+            shiftRequirementId={shiftRequirementId}
             isPublished={isPublished}
             isEditable={isEditable}
             onFocus={onFocus}

@@ -1293,6 +1293,7 @@ export async function loadDevelopmentHistory({
       shiftId: write.target.shift.id,
       volunteerId: requireKnown({ ids: volunteerIdByEmail, key: write.email }),
       roleId: write.target.requirement.roleId,
+      shiftRequirementId: write.target.requirement.id,
       id: assignmentId,
       status: write.outcome,
       reason: write.reason,

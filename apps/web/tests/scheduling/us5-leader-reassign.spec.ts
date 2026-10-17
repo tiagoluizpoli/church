@@ -36,10 +36,12 @@ interface EventSummaryResponse {
 
 interface ShiftSummaryResponse {
   id: string;
+  requirements: { id: string; roleId: string }[];
 }
 
 interface EventTimeBlockSummaryResponse {
   shifts: ShiftSummaryResponse[];
+  requirements: { id: string; shiftId: string; roleId: string }[];
 }
 
 interface ParticipationEventViewResponse {
@@ -77,6 +79,8 @@ interface LiveChangesFixture {
   cycleId: string;
   firstShiftId: string;
   secondShiftId: string;
+  firstRequirementId: string;
+  secondRequirementId: string;
 }
 
 interface SetUpLiveChangesParams {
@@ -191,11 +195,27 @@ async function setUpLiveChanges({
       'Expected two generated shifts for the live-changes cycle.',
     );
   }
+  const requirements = eventView.eventTimeBlocks[0]?.requirements ?? [];
+  const firstRequirement = requirements.find(
+    ({ shiftId, roleId }) =>
+      shiftId === firstShift.id &&
+      roleId === journey.ministries.worship.roles.usher.id,
+  );
+  const secondRequirement = requirements.find(
+    ({ shiftId, roleId }) =>
+      shiftId === secondShift.id &&
+      roleId === journey.ministries.worship.roles.usher.id,
+  );
+  if (!firstRequirement || !secondRequirement) {
+    throw new Error('Expected an Usher requirement for each generated shift.');
+  }
 
   return {
     cycleId: cycle.id,
     firstShiftId: firstShift.id,
     secondShiftId: secondShift.id,
+    firstRequirementId: firstRequirement.id,
+    secondRequirementId: secondRequirement.id,
   };
 }
 
@@ -204,7 +224,6 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
 }, testInfo) => {
   const journey = loadLiveChangesJourney({ testInfo });
   const { leader, owner: ownerPersona, volunteer } = journey.personas;
-  const usherRoleId = journey.ministries.worship.roles.usher.id;
   await signInPersonaPage({ page, persona: leader });
   const fixture = await setUpLiveChanges({ page, journey });
 
@@ -224,13 +243,23 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   // Both shifts are staffed so the publish is a full one.
   const firstResponse = await page.request.post(
     `${SERVER_URL}/api/v1/assign/shifts/${fixture.firstShiftId}/assignments`,
-    { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
+    {
+      data: {
+        volunteerId: owner.volunteerId,
+        shiftRequirementId: fixture.firstRequirementId,
+      },
+    },
   );
   expect(firstResponse.ok()).toBeTruthy();
 
   const secondResponse = await page.request.post(
     `${SERVER_URL}/api/v1/assign/shifts/${fixture.secondShiftId}/assignments`,
-    { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
+    {
+      data: {
+        volunteerId: owner.volunteerId,
+        shiftRequirementId: fixture.secondRequirementId,
+      },
+    },
   );
   expect(secondResponse.ok()).toBeTruthy();
   const secondAssignment = ((await secondResponse.json()) as AssignmentResponse)

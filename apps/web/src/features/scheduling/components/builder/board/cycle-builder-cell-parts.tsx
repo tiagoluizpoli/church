@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 interface AssignmentButtonProps {
   assignment: CycleBuilderAssignment;
   shiftId: string;
-  roleId: string;
+  shiftRequirementId: string;
   isPublished: boolean;
   isEditable?: boolean;
   onRemove: () => void;
@@ -35,7 +35,7 @@ export interface AssignmentButtonSelectInput {
 export function AssignmentButton({
   assignment,
   shiftId,
-  roleId,
+  shiftRequirementId,
   isPublished,
   isEditable = true,
   onRemove,
@@ -49,7 +49,7 @@ export function AssignmentButton({
   const isPending = isOptimisticAssignmentId({ assignmentId: assignment.id });
   const replacementTarget = useDroppable({
     id: `cycle-assignment:${assignment.id}`,
-    data: { shiftId, roleId, assignmentId: assignment.id },
+    data: { shiftId, shiftRequirementId, assignmentId: assignment.id },
     // Replacing a row the server has never seen would send it an id it cannot
     // resolve. The window is short; refusing it is cheaper than a 404 toast.
     disabled: isPending || !isEditable,
@@ -103,6 +103,7 @@ export function AssignmentButton({
 export interface FailedAssignmentWrite {
   failedWriteId: string;
   shiftId: string;
+  shiftRequirementId: string;
   roleId: string;
   volunteerId: string;
   volunteerName: string;
@@ -191,8 +192,7 @@ export function FailedAssignmentChip({
 
 interface RoleFocusButtonProps {
   roleLabel: string;
-  shiftId: string;
-  roleId: string;
+  shiftRequirementId: string;
   isFocused: boolean;
   onToggleFocus: () => void;
 }
@@ -205,8 +205,7 @@ interface RoleFocusButtonProps {
  */
 export function RoleFocusButton({
   roleLabel,
-  shiftId,
-  roleId,
+  shiftRequirementId,
   isFocused,
   onToggleFocus,
 }: RoleFocusButtonProps) {
@@ -223,7 +222,7 @@ export function RoleFocusButton({
           ? `Showing volunteers for ${roleLabel} — clear to show the whole list`
           : `Show volunteers for ${roleLabel} first`
       }
-      data-testid={`cycle-requirement-focus-${shiftId}-${roleId}`}
+      data-testid={`cycle-requirement-focus-${shiftRequirementId}`}
       onClick={onToggleFocus}
       className={cn(
         '-my-1 -ml-1 h-auto min-w-0 gap-1.5 rounded-md px-1 py-1 font-medium text-foreground text-xs aria-pressed:text-primary',

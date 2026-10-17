@@ -1,5 +1,10 @@
 import { NotFoundError } from '@church/core';
-import { assignment, eventTimeBlock, shift } from '@church/db';
+import {
+  assignment,
+  eventTimeBlock,
+  shift,
+  shiftRequirement,
+} from '@church/db';
 import {
   and,
   between,
@@ -21,7 +26,7 @@ import type {
 } from '../../domain/branded-ids';
 import type {
   AssignmentRepository,
-  CreateAssignmentInput,
+  CreateAssignmentRepositoryInput,
   UpdateAssignmentStatusInput,
 } from '../../domain/contracts/infrastructure/assignment.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
@@ -66,38 +71,57 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     );
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateAssignmentInput,
-    tx?: TransactionContext,
-  ): Promise<Assignment> {
+  async create({
+    churchId,
+    input,
+    tx,
+  }: CreateAssignmentRepositoryInput): Promise<Assignment> {
     const db = getClient(this.db, tx);
-    const targetShiftCondition = input.shiftId
-      ? eq(shift.id, input.shiftId)
-      : input.eventTimeBlockId
-        ? eq(shift.eventTimeBlockId, input.eventTimeBlockId)
-        : null;
-    if (!targetShiftCondition) {
+    if (!input.shiftId && !input.eventTimeBlockId) {
       throw new Error(
         'Assignment creation requires either shiftId or eventTimeBlockId',
       );
     }
-    const [targetShift] = await db
-      .select()
-      .from(shift)
-      .where(and(targetShiftCondition, withChurchIsolation(shift, churchId)))
-      .limit(1);
-    if (!targetShift)
-      throw new NotFoundError('Shift not found for event time block');
+    const requirementJoin = eq(shift.id, shiftRequirement.shiftId);
+    const conditions = [
+      eq(shiftRequirement.id, input.shiftRequirementId),
+      eq(shiftRequirement.participationId, shift.participationId),
+      withChurchIsolation(shiftRequirement, churchId),
+      withChurchIsolation(shift, churchId),
+    ];
+    if (input.shiftId) {
+      const requestedShift = eq(shift.id, input.shiftId);
+      conditions.push(requestedShift);
+    }
+    if (input.eventTimeBlockId) {
+      const requestedBlock = eq(shift.eventTimeBlockId, input.eventTimeBlockId);
+      conditions.push(requestedBlock);
+    }
+    if (input.participationId) {
+      const requestedParticipation = eq(
+        shiftRequirement.participationId,
+        input.participationId,
+      );
+      conditions.push(requestedParticipation);
+    }
+    const requirementPredicate = and(...conditions);
+    const [selected] = await db
+      .select({ requirement: shiftRequirement, targetShift: shift })
+      .from(shiftRequirement)
+      .innerJoin(shift, requirementJoin)
+      .where(requirementPredicate);
+    if (!selected) throw new NotFoundError('Shift requirement not found');
+    const { requirement, targetShift } = selected;
 
     const [row] = await db
       .insert(assignment)
       .values({
         churchId,
-        participationId: input.participationId ?? targetShift.participationId,
+        participationId: requirement.participationId,
         shiftId: targetShift.id,
         volunteerId: input.volunteerId,
-        roleId: input.roleId,
+        roleId: requirement.roleId,
+        shiftRequirementId: requirement.id,
         status: input.status ?? 'draft',
         reason: input.reason ?? null,
         assignedBy: input.assignedBy ?? null,

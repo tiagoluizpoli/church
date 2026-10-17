@@ -17,7 +17,14 @@ const shift: CycleBuilderShiftSummary = {
   endTime: '2026-08-02T10:00:00.000Z',
   peopleNeeded: 2,
   assignedCount: 0,
-  requirements: [{ roleId: 'role-1', peopleNeeded: 2 }],
+  requirements: [
+    {
+      id: 'requirement-role-1',
+      roleId: 'role-1',
+      sectorName: 'Main',
+      peopleNeeded: 2,
+    },
+  ],
   assignments: [],
   eligibleVolunteerCount: 2,
   eligibleVolunteers: [
@@ -48,6 +55,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftId: 'shift-1',
     volunteerId: 'volunteer-1',
     roleId: 'role-1',
+    shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
     volunteerName: 'Grace Hopper',
@@ -59,6 +67,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftId: 'shift-1',
     volunteerId: 'volunteer-2',
     roleId: 'role-1',
+    shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
     volunteerName: 'Ada Lovelace',
@@ -72,6 +81,7 @@ function renderCell(
     <DndContext>
       <CycleBuilderCell
         shift={shift}
+        shiftRequirementId="requirement-role-1"
         roleId="role-1"
         roleLabel="Greeter"
         peopleNeeded={2}
@@ -112,7 +122,7 @@ describe('CycleBuilderCell', () => {
     expect(screen.getByText('1/2')).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Add' })).toHaveLength(1);
     expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveAttribute('data-drop-target', 'append');
   });
 
@@ -174,14 +184,13 @@ describe('CycleBuilderCell', () => {
     });
 
     expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveAttribute('data-selected-fit', 'ready');
     // The fit ring is the only way to find where a selected person fits on a
     // horizontally-scrolling board, so it is full-opacity and 2px (B-3).
-    expect(screen.getByTestId('cycle-requirement-shift-1-role-1')).toHaveClass(
-      'ring-2',
-      'ring-primary',
-    );
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveClass('ring-2', 'ring-primary');
     expect(
       screen.getByRole('button', { name: 'Assign Grace Hopper' }),
     ).toHaveClass('border-primary');
@@ -205,14 +214,13 @@ describe('CycleBuilderCell', () => {
     });
 
     expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveAttribute('data-selected-fit', 'override');
     // Dashed amber outline, not a fainter ring than the safe tier: the
     // dangerous one used to be the harder of the two to see (B-3).
-    expect(screen.getByTestId('cycle-requirement-shift-1-role-1')).toHaveClass(
-      'outline-2',
-      'outline-dashed',
-    );
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveClass('outline-2', 'outline-dashed');
     const assign = screen.getByRole('button', {
       name: 'Assign Grace Hopper — Not available for this shift — assigning is an override',
     });
@@ -239,7 +247,7 @@ describe('CycleBuilderCell', () => {
     });
 
     expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveAttribute('data-selected-fit', 'none');
     expect(
       screen.queryByRole('button', { name: /^Assign Grace Hopper/ }),
@@ -265,15 +273,14 @@ describe('CycleBuilderCell', () => {
     // Qualification is a soft constraint with friction, not a hard filter:
     // the fit still surfaces as an assignable tier the cell renders...
     expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveAttribute('data-selected-fit', 'unqualified');
     // Dotted, not dashed: `unqualified` reads apart from `override` at a
     // glance, without hovering, even though both share the amber "needs a
     // reason" color (B-9).
-    expect(screen.getByTestId('cycle-requirement-shift-1-role-1')).toHaveClass(
-      'outline-2',
-      'outline-dotted',
-    );
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveClass('outline-2', 'outline-dotted');
     // ...and Add stays available beside it — selecting someone must not take
     // away the picker from the cells where they don't qualify (B-7).
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
@@ -370,7 +377,7 @@ describe('CycleBuilderCell', () => {
     renderCell({ isFocused: true });
 
     expect(
-      screen.getByTestId('cycle-requirement-focus-shift-1-role-1'),
+      screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -444,6 +451,7 @@ describe('CycleBuilderCell', () => {
           {
             failedWriteId: 'failed-1',
             shiftId: 'shift-1',
+            shiftRequirementId: 'requirement-role-1',
             roleId: 'role-1',
             volunteerId: 'volunteer-2',
             volunteerName: 'Ada Lovelace',
@@ -472,6 +480,7 @@ describe('CycleBuilderCell', () => {
           {
             failedWriteId: 'failed-1',
             shiftId: 'shift-1',
+            shiftRequirementId: 'requirement-role-1',
             roleId: 'role-1',
             volunteerId: 'volunteer-2',
             volunteerName: 'Ada Lovelace',

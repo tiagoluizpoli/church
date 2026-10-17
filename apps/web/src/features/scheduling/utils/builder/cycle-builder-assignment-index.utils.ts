@@ -290,21 +290,21 @@ export function buildCellDerivedIndex({
     for (const eventTimeBlock of event.eventTimeBlocks) {
       for (const shift of eventTimeBlock.shifts) {
         for (const requirement of shift.requirements) {
-          byKey.set(
-            focusKey({ shiftId: shift.shiftId, roleId: requirement.roleId }),
-            {
-              candidates: candidates({
-                shift,
-                roleId: requirement.roleId,
-                index,
-              }),
-              recommendations: recommendations({
-                shift,
-                roleId: requirement.roleId,
-                index,
-              }),
-            },
-          );
+          const key = focusKey({ shiftRequirementId: requirement.id });
+          const cellCandidates = candidates({
+            shift,
+            roleId: requirement.roleId,
+            index,
+          });
+          const cellRecommendations = recommendations({
+            shift,
+            roleId: requirement.roleId,
+            index,
+          });
+          byKey.set(key, {
+            candidates: cellCandidates,
+            recommendations: cellRecommendations,
+          });
         }
       }
     }

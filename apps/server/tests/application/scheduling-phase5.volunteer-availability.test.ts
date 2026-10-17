@@ -42,6 +42,7 @@ import {
   buildMinistryMembership,
   buildVolunteerWithMembership,
 } from '@/seeds/builders/volunteer';
+import { seedRequirement } from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -514,11 +515,19 @@ async function seedPublishedAssignment(input: SeedPublishedAssignmentInput) {
     .update(ministryParticipation)
     .set({ state: 'published' })
     .where(eq(ministryParticipation.id, graph.participation.id));
+  const requirement = await seedRequirement({
+    churchId: input.churchId,
+    participationId: graph.participation.id,
+    shiftId: shift.id,
+    roleId: roleRow.id,
+    peopleNeeded: 1,
+  });
   const assignmentRow = await buildAssignment({
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: graph.participation.id,
     shiftId: shift.id,
+    shiftRequirementId: requirement.id,
     volunteerId: input.volunteerId,
     roleId: roleRow.id,
     status: input.status ?? 'confirmed',

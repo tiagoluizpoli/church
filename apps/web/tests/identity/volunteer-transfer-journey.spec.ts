@@ -58,8 +58,7 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
         cycleId: seat.cycle.id,
       });
       const seatCellTestId = requirementCellTestId({
-        shiftId: seat.event.shiftId,
-        roleId: churchBRole.id,
+        requirementId: seat.event.requirements.porter.id,
       });
       await churchBAdminPage.goto(seatBuilderPath);
       await expect(churchBAdminPage.getByTestId('cycle-builder')).toBeVisible({

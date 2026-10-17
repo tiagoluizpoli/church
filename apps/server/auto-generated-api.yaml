@@ -3418,6 +3418,8 @@ paths:
                                             type: string
                                           roleId:
                                             type: string
+                                          shiftRequirementId:
+                                            type: string
                                           status:
                                             type: string
                                             enum:
@@ -3440,6 +3442,7 @@ paths:
                                           - eventTimeBlockId
                                           - volunteerId
                                           - roleId
+                                          - shiftRequirementId
                                           - status
                                           - assignedAt
                                         additionalProperties: false
@@ -3763,10 +3766,10 @@ paths:
   /api/v1/assign/shifts/{shiftId}/assignments:
     post:
       operationId: createParticipationAssignment
-      summary: Assign a Volunteer to a Shift
+      summary: Assign a Volunteer to a ShiftRequirement
       tags:
         - assign
-      description: Assign a Volunteer to a Role within a Shift.
+      description: Assign a Volunteer to a specific Sector and Role need within a Shift.
       requestBody:
         required: true
         content:
@@ -3776,11 +3779,12 @@ paths:
               properties:
                 volunteerId:
                   type: string
-                roleId:
+                shiftRequirementId:
                   type: string
               required:
                 - volunteerId
-                - roleId
+                - shiftRequirementId
+              additionalProperties: false
       parameters:
         - schema:
             type: string
@@ -3812,6 +3816,8 @@ paths:
                         type: string
                       roleId:
                         type: string
+                      shiftRequirementId:
+                        type: string
                       status:
                         type: string
                         enum:
@@ -3834,6 +3840,7 @@ paths:
                       - eventTimeBlockId
                       - volunteerId
                       - roleId
+                      - shiftRequirementId
                       - status
                       - assignedAt
                     additionalProperties: false
@@ -3961,6 +3968,8 @@ paths:
                     type: string
                   roleId:
                     type: string
+                  shiftRequirementId:
+                    type: string
                   status:
                     type: string
                     enum:
@@ -3983,6 +3992,7 @@ paths:
                   - eventTimeBlockId
                   - volunteerId
                   - roleId
+                  - shiftRequirementId
                   - status
                   - assignedAt
                 additionalProperties: false
@@ -5275,6 +5285,8 @@ paths:
                           type: string
                         roleId:
                           type: string
+                        shiftRequirementId:
+                          type: string
                         status:
                           type: string
                           enum:
@@ -5297,6 +5309,7 @@ paths:
                         - eventTimeBlockId
                         - volunteerId
                         - roleId
+                        - shiftRequirementId
                         - status
                         - assignedAt
                       additionalProperties: false
@@ -5356,6 +5369,8 @@ paths:
                                 type: string
                               eventTimeBlockLabel:
                                 type: string
+                              sectorName:
+                                type: string
                               roleName:
                                 type: string
                               volunteerDisplayName:
@@ -5370,6 +5385,7 @@ paths:
                             required:
                               - eventTimeBlockId
                               - eventTimeBlockLabel
+                              - sectorName
                               - roleName
                               - confirmationState
                             additionalProperties: false
@@ -5692,6 +5708,8 @@ paths:
                     type: string
                   roleId:
                     type: string
+                  shiftRequirementId:
+                    type: string
                   status:
                     type: string
                     enum:
@@ -5714,6 +5732,7 @@ paths:
                   - eventTimeBlockId
                   - volunteerId
                   - roleId
+                  - shiftRequirementId
                   - status
                   - assignedAt
                 additionalProperties: false
@@ -5896,6 +5915,8 @@ paths:
                           type: string
                         roleId:
                           type: string
+                        shiftRequirementId:
+                          type: string
                         status:
                           type: string
                           enum:
@@ -5918,6 +5939,7 @@ paths:
                         - eventTimeBlockId
                         - volunteerId
                         - roleId
+                        - shiftRequirementId
                         - status
                         - assignedAt
                       additionalProperties: false

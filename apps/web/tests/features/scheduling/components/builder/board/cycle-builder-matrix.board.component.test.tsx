@@ -44,7 +44,14 @@ const boardData: CycleBuilderData = {
               endTime: '2026-08-02T11:00:00.000Z',
               peopleNeeded: 2,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', peopleNeeded: 2 }],
+              requirements: [
+                {
+                  id: 'requirement-role-1',
+                  roleId: 'role-1',
+                  sectorName: 'Main',
+                  peopleNeeded: 2,
+                },
+              ],
               assignments: [],
               eligibleVolunteerCount: 1,
               eligibleVolunteers: [
@@ -72,6 +79,7 @@ const sameShiftAssignment: CycleBuilderAssignment = {
   shiftId: 'shift-1',
   volunteerId: 'volunteer-1',
   roleId: 'role-support',
+  shiftRequirementId: 'requirement-role-support',
   status: 'confirmed',
   assignedAt: '2026-08-01T09:00:00.000Z',
   volunteerName: 'Local Volunteer',
@@ -133,8 +141,18 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
                 peopleNeeded: 2,
                 assignedCount: 1,
                 requirements: [
-                  { roleId: 'role-support', peopleNeeded: 1 },
-                  { roleId: 'role-coordinator', peopleNeeded: 1 },
+                  {
+                    id: 'requirement-role-support',
+                    roleId: 'role-support',
+                    sectorName: 'Main',
+                    peopleNeeded: 1,
+                  },
+                  {
+                    id: 'requirement-role-coordinator',
+                    roleId: 'role-coordinator',
+                    sectorName: 'Main',
+                    peopleNeeded: 1,
+                  },
                 ],
                 assignments: [sameShiftAssignment],
                 eligibleVolunteerCount: eligibleVolunteers.length,
@@ -148,7 +166,14 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
                 endTime: '2026-08-02T19:00:00.000Z',
                 peopleNeeded: 1,
                 assignedCount: 0,
-                requirements: [{ roleId: 'role-coordinator', peopleNeeded: 1 }],
+                requirements: [
+                  {
+                    id: 'requirement-evening-coordinator',
+                    roleId: 'role-coordinator',
+                    sectorName: 'Main',
+                    peopleNeeded: 1,
+                  },
+                ],
                 assignments: [],
                 eligibleVolunteerCount: eligibleVolunteers.length,
                 eligibleVolunteers,
@@ -162,6 +187,115 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
 }
 
 describe('CycleBuilderMatrix', () => {
+  it('keeps same-role Sector cells independent and selects the requirement id', async () => {
+    const user = userEvent.setup();
+    const onSelectAssignment = vi.fn();
+    const onRemoveAssignment = vi.fn();
+    const event = boardData.events[0];
+    const timeBlock = event?.eventTimeBlocks[0];
+    const shift = timeBlock?.shifts[0];
+    if (!(event && timeBlock && shift))
+      throw new Error('Board fixture is incomplete');
+    const assigned: CycleBuilderAssignment = {
+      ...sameShiftAssignment,
+      shiftRequirementId: 'babies-requirement',
+    };
+    const requirements = [
+      {
+        id: 'babies-requirement',
+        roleId: 'role-1',
+        sectorName: 'Babies Room',
+        peopleNeeded: 1,
+      },
+      {
+        id: 'kids-requirement',
+        roleId: 'role-1',
+        sectorName: 'Kids Room',
+        peopleNeeded: 2,
+      },
+    ];
+    const data: CycleBuilderData = {
+      ...boardData,
+      assignments: [assigned],
+      events: [
+        {
+          ...event,
+          eventTimeBlocks: [
+            {
+              ...timeBlock,
+              shifts: [
+                {
+                  ...shift,
+                  requirements,
+                  assignments: [assigned],
+                  eligibleVolunteers: [
+                    {
+                      volunteerId: 'volunteer-2',
+                      volunteerName: 'Available Volunteer',
+                      isAvailable: true,
+                      hasConflict: false,
+                      qualifiedRoleIds: ['role-1'],
+                      ministryAccessLevel: 'volunteer',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={data}
+        selectedDate="2026-08-02"
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={onSelectAssignment}
+        onRemoveAssignment={onRemoveAssignment}
+      />,
+    );
+
+    const babiesCell = screen.getByTestId(
+      'cycle-requirement-babies-requirement',
+    );
+    const kidsCell = screen.getByTestId('cycle-requirement-kids-requirement');
+    expect(within(babiesCell).getByText('1/1')).toBeVisible();
+    expect(within(kidsCell).getByText('0/2')).toBeVisible();
+    expect(within(babiesCell).getByText('Babies Room · Greeter')).toBeVisible();
+    expect(within(kidsCell).getByText('Kids Room · Greeter')).toBeVisible();
+
+    await user.click(within(kidsCell).getByRole('button', { name: 'Add' }));
+    await user.click(await screen.findByText('Available Volunteer'));
+    expect(onSelectAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shiftId: 'shift-1',
+        shiftRequirementId: 'kids-requirement',
+        roleId: 'role-1',
+        volunteerId: 'volunteer-2',
+      }),
+    );
+    expect(
+      screen.getByTestId('cycle-requirement-focus-kids-requirement'),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByTestId('cycle-requirement-focus-babies-requirement'),
+    ).toHaveAttribute('aria-pressed', 'false');
+    await user.click(within(babiesCell).getByText('Local Volunteer'));
+    await user.click(await screen.findByText('Available Volunteer'));
+    expect(onSelectAssignment).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        assignmentId: assigned.id,
+        shiftRequirementId: 'babies-requirement',
+        volunteerId: 'volunteer-2',
+      }),
+    );
+    await user.click(within(babiesCell).getByText('Local Volunteer'));
+    await user.click(screen.getByRole('button', { name: 'Unassign' }));
+    expect(onRemoveAssignment).toHaveBeenCalledWith(assigned.id);
+    expect(within(kidsCell).getByText('0/2')).toBeVisible();
+  });
+
   it('excludes same-shift assignees and warns when they serve in another shift', async () => {
     const user = userEvent.setup();
     renderWithProviders(
@@ -216,7 +350,7 @@ describe('CycleBuilderMatrix', () => {
       screen.getByTestId('cycle-event-staffing-percent-event-1'),
     ).toHaveClass('text-destructive');
     expect(screen.getByText(/Morning service/)).toBeVisible();
-    expect(screen.getByText('Greeter')).toBeVisible();
+    expect(screen.getByText('Main · Greeter')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Add' })).toHaveLength(1);
     expect(
@@ -927,6 +1061,7 @@ describe('CycleBuilderMatrix', () => {
         end: '2026-08-02T11:00:00.000Z',
         peopleNeeded: 2,
         assignedCount: 2,
+        fillRatio: 1,
       };
       const partialEvent: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
@@ -937,6 +1072,7 @@ describe('CycleBuilderMatrix', () => {
         end: '2026-08-09T11:00:00.000Z',
         peopleNeeded: 2,
         assignedCount: 1,
+        fillRatio: 0.5,
         // Time blocks would otherwise still carry boardData's Aug 2 startTime,
         // so `eventOccursOnDay` (start-day-only, not a raw bounds check)
         // would never place the event under its own Aug 9 column.
@@ -952,6 +1088,7 @@ describe('CycleBuilderMatrix', () => {
         end: '2026-08-16T11:00:00.000Z',
         peopleNeeded: 2,
         assignedCount: 0,
+        fillRatio: 0,
         eventTimeBlockCount: 0,
         eventTimeBlocks: [],
       };

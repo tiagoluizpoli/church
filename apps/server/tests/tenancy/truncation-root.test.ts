@@ -326,14 +326,18 @@ async function seedEveryTenantedTable(): Promise<void> {
     endTime: new Date('2026-06-07T11:00:00Z'),
   });
 
-  await testDb.insert(shiftRequirement).values({
-    churchId: IDS.church,
-    participationId: IDS.participation,
-    shiftId: IDS.shift,
-    sectorId: IDS.sector,
-    roleId: IDS.role,
-    peopleNeeded: 1,
-  });
+  const [requirement] = await testDb
+    .insert(shiftRequirement)
+    .values({
+      churchId: IDS.church,
+      participationId: IDS.participation,
+      shiftId: IDS.shift,
+      sectorId: IDS.sector,
+      roleId: IDS.role,
+      peopleNeeded: 1,
+    })
+    .returning({ id: shiftRequirement.id });
+  if (!requirement) throw new Error('Requirement seed failed');
 
   await testDb.insert(assignment).values({
     id: IDS.assignment,
@@ -342,6 +346,7 @@ async function seedEveryTenantedTable(): Promise<void> {
     shiftId: IDS.shift,
     volunteerId: IDS.volunteer,
     roleId: IDS.role,
+    shiftRequirementId: requirement.id,
     status: 'confirmed',
     assignedBy: IDS.user,
   });

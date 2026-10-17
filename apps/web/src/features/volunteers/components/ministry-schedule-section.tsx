@@ -179,7 +179,9 @@ export function MinistryScheduleSection({
                         >
                           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                             <div className="space-y-1">
-                              <div className="font-medium">{row.roleName}</div>
+                              <div className="font-medium">
+                                {row.roleName} · {row.sectorName}
+                              </div>
                               <div className="text-muted-foreground">
                                 {row.eventTimeBlockLabel}
                               </div>

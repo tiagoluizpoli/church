@@ -9,7 +9,9 @@ import {
   ministry,
   ministryParticipation,
   role,
+  sector,
   shift,
+  shiftRequirement,
   user,
   volunteer,
 } from '../../src/schema';
@@ -25,6 +27,7 @@ describe('Assignments and Audit Schema', () => {
   let eventTimeBlockId: string;
   let participationId: string;
   let shiftId: string;
+  let shiftRequirementId: string;
   let roleId: string;
 
   beforeAll(async () => {
@@ -141,6 +144,25 @@ describe('Assignments and Audit Schema', () => {
       .returning();
     if (!newShift) throw new Error('Failed to create shift');
     shiftId = newShift.id;
+
+    const [newSector] = await testDb
+      .insert(sector)
+      .values({ churchId, ministryId, name: 'General' })
+      .returning();
+    if (!newSector) throw new Error('Failed to create sector');
+    const [newRequirement] = await testDb
+      .insert(shiftRequirement)
+      .values({
+        churchId,
+        participationId,
+        shiftId,
+        roleId,
+        sectorId: newSector.id,
+        peopleNeeded: 1,
+      })
+      .returning();
+    if (!newRequirement) throw new Error('Failed to create requirement');
+    shiftRequirementId = newRequirement.id;
   }, 30000);
 
   afterAll(async () => {
@@ -156,6 +178,7 @@ describe('Assignments and Audit Schema', () => {
         shiftId,
         volunteerId,
         roleId,
+        shiftRequirementId,
         assignedBy: userId,
       })
       .returning();
@@ -175,6 +198,7 @@ describe('Assignments and Audit Schema', () => {
         shiftId,
         volunteerId,
         roleId,
+        shiftRequirementId,
       });
       throw new Error('Should have failed');
     } catch (_error) {
@@ -207,6 +231,7 @@ describe('Assignments and Audit Schema', () => {
         shiftId,
         volunteerId: newVolunteer.id,
         roleId,
+        shiftRequirementId,
       })
       .returning();
 
@@ -253,6 +278,7 @@ describe('Assignments and Audit Schema', () => {
         shiftId,
         volunteerId: newVolunteer.id,
         roleId,
+        shiftRequirementId,
       })
       .returning();
 

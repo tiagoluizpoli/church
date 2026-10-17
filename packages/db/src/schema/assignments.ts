@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  index,
   pgTable,
   text,
   timestamp,
@@ -13,7 +14,7 @@ import { church } from './church';
 import { role, volunteer } from './core';
 import { assignmentStatusEnum, auditActionEnum } from './enums';
 import { ministryParticipation } from './participation';
-import { shift } from './scheduling';
+import { shift, shiftRequirement } from './scheduling';
 
 export const assignment = pgTable(
   'assignment',
@@ -34,6 +35,9 @@ export const assignment = pgTable(
     roleId: uuid('role_id')
       .notNull()
       .references(() => role.id, { onDelete: 'cascade' }),
+    shiftRequirementId: uuid('shift_requirement_id')
+      .notNull()
+      .references(() => shiftRequirement.id, { onDelete: 'cascade' }),
     status: assignmentStatusEnum('status').default('pending').notNull(), // pending, confirmed, declined
     reason: text('reason'),
     assignedAt: timestamp('assigned_at', {
@@ -47,6 +51,7 @@ export const assignment = pgTable(
     }),
   },
   (table) => [
+    index('assignment_shift_requirement_idx').on(table.shiftRequirementId),
     // Partial: a volunteer may hold only one ACTIVE assignment per Shift.
     // Declined/cancelled rows are excluded so a volunteer can be re-assigned
     // (or substituted in) after declining the same Shift.

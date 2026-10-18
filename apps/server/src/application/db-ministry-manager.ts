@@ -1,3 +1,4 @@
+import type { ChurchId } from '../domain/branded-ids';
 import type {
   IMinistryManager,
   ListMinistriesByLeaderInput,
@@ -19,6 +20,10 @@ export class DbMinistryManager implements IMinistryManager {
   constructor({ ministryRepo, volunteerRepo }: DbMinistryManagerDependencies) {
     this.ministryRepo = ministryRepo;
     this.volunteerRepo = volunteerRepo;
+  }
+
+  async listByChurch(churchId: ChurchId): Promise<Ministry[]> {
+    return this.ministryRepo.listByChurch(churchId);
   }
 
   async listByLeader(input: ListMinistriesByLeaderInput): Promise<Ministry[]> {

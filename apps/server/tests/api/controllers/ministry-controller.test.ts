@@ -25,6 +25,7 @@ const mockGetSession = vi.mocked(
 );
 
 const ministryManager = {
+  listByChurch: vi.fn(),
   listByLeader: vi.fn(),
 };
 
@@ -39,7 +40,7 @@ const activeChurchResolver = {
 };
 
 const authorityGuard = {
-  hasSchedulingAccess: vi.fn(),
+  resolveCallerCapabilities: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -85,7 +86,12 @@ beforeEach(() => {
   activeChurchResolver.resolve.mockResolvedValue(
     createActiveChurchResolution(),
   );
-  authorityGuard.hasSchedulingAccess.mockResolvedValue(true);
+  authorityGuard.resolveCallerCapabilities.mockResolvedValue({
+    churchId: '11111111-1111-1111-1111-111111111111',
+    isChurchAdmin: false,
+    ledMinistries: [{ ministryId: 'ministry-1', name: 'Worship' }],
+    hasVolunteerMembership: true,
+  });
 });
 
 describe('Ministry controller authorization wiring', () => {
@@ -101,7 +107,7 @@ describe('Ministry controller authorization wiring', () => {
     expect(ministryManager.listByLeader).not.toHaveBeenCalled();
   });
 
-  it('GET /api/v1/ministries is gated by hasSchedulingAccess, not per-Ministry (self-scoped by leaderId)', async () => {
+  it('GET /api/v1/ministries returns led Ministries for a leader and every Ministry for an admin', async () => {
     ministryManager.listByLeader.mockResolvedValue([]);
 
     const allowed = await app.inject({
@@ -110,33 +116,42 @@ describe('Ministry controller authorization wiring', () => {
     });
     expect(allowed.statusCode).toBe(200);
 
-    authorityGuard.hasSchedulingAccess.mockResolvedValueOnce(false);
-    const denied = await app.inject({
+    authorityGuard.resolveCallerCapabilities.mockResolvedValueOnce({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      isChurchAdmin: true,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
+    });
+    ministryManager.listByChurch.mockResolvedValueOnce([]);
+    const admin = await app.inject({
       method: 'GET',
       url: '/api/v1/ministries',
     });
-    expect(denied.statusCode).toBe(403);
-    expect(denied.json()).toEqual({
-      error: 'FORBIDDEN',
-      message: 'Admin or leader role required',
-    });
+    expect(admin.statusCode).toBe(200);
+    expect(ministryManager.listByChurch).toHaveBeenCalledTimes(1);
     expect(ministryManager.listByLeader).toHaveBeenCalledTimes(1);
   });
 
-  it('GET /api/v1/ministries requires a Volunteer profile', async () => {
+  it('GET /api/v1/ministries returns 403 for a plain Church Member without a Volunteer profile', async () => {
     activeChurchResolver.resolve.mockResolvedValue({
       ...createActiveChurchResolution(),
       volunteerId: null,
     });
 
+    authorityGuard.resolveCallerCapabilities.mockResolvedValueOnce({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      isChurchAdmin: false,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
+    });
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/ministries',
     });
-    expect(response.statusCode).toBe(401);
+    expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'UNAUTHORIZED',
-      message: 'Volunteer profile not found',
+      error: 'FORBIDDEN',
+      message: 'Ministry leadership required',
     });
     expect(ministryManager.listByLeader).not.toHaveBeenCalled();
   });

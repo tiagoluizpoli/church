@@ -13,6 +13,7 @@ export interface SetDefaultDirectionInput {
 }
 
 export interface IMinistryManager {
+  listByChurch(churchId: ChurchId): Promise<Ministry[]>;
   listByLeader(input: ListMinistriesByLeaderInput): Promise<Ministry[]>;
   setDefaultDirection(input: SetDefaultDirectionInput): Promise<Ministry>;
 }

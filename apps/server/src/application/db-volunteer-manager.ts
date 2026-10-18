@@ -809,7 +809,14 @@ export class DbVolunteerManager implements IVolunteerManager {
   async respondToAssignment(
     input: RespondToAssignmentInput,
   ): Promise<Assignment> {
-    const { assignmentId, churchId, response, reason } = input;
+    const { assignmentId, churchId, volunteerId, response, reason } = input;
+    const assignment = await this.assignmentRepo.getById(
+      churchId,
+      assignmentId,
+    );
+    if (assignment.volunteerId !== volunteerId) {
+      throw new AssignmentAccessDeniedError();
+    }
     const status = response === 'accepted' ? 'confirmed' : 'declined';
     await this.assignmentRepo.updateStatus(churchId, assignmentId, {
       status,

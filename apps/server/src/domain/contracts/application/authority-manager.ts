@@ -1,4 +1,10 @@
 import type {
+  AuthorityAction,
+  AuthorityDecision,
+  AuthorityResource,
+  AuthorityScope,
+} from '../../authority/types';
+import type {
   ChurchId,
   EventId,
   EventTimeBlockId,
@@ -7,6 +13,15 @@ import type {
   ShiftId,
   UserId,
 } from '../../branded-ids';
+
+/** Target facts must come from a Church-scoped repository; null is a missing target. */
+export interface DecideAuthorityInput {
+  churchId: ChurchId;
+  userId: UserId;
+  action: AuthorityAction;
+  resource: AuthorityResource | null;
+  scope: AuthorityScope;
+}
 
 export interface CanManageChurchInput {
   churchId: ChurchId;
@@ -65,6 +80,7 @@ export interface SchedulingCapabilityProjection {
  * for callers migrated onto AuthorityService.
  */
 export interface IAuthorityManager {
+  decideAuthority(input: DecideAuthorityInput): Promise<AuthorityDecision>;
   canManageChurch(input: CanManageChurchInput): Promise<boolean>;
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;

@@ -1,4 +1,5 @@
 import { AuthorityService } from '../domain/authority/authority-service';
+import type { AuthorityDecision } from '../domain/authority/types';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type {
   CanManageChurchInput,
@@ -7,6 +8,7 @@ import type {
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
+  DecideAuthorityInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
   SchedulingCapabilityProjection,
@@ -49,6 +51,15 @@ export class DbAuthorityManager implements IAuthorityManager {
     this.eventRepository = eventRepository;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
     this.ministryRepository = ministryRepository;
+  }
+
+  async decideAuthority(
+    input: DecideAuthorityInput,
+  ): Promise<AuthorityDecision> {
+    const { resource, action, scope } = input;
+    if (!resource) return { allowed: false, reason: 'RESOURCE_NOT_FOUND' };
+    const actor = await this.resolveActor(input);
+    return AuthorityService.authorize({ actor, action, resource, scope });
   }
 
   async canManageChurch(input: CanManageChurchInput): Promise<boolean> {

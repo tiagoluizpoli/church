@@ -1,3 +1,4 @@
+import type { AuthorityDecision } from '../../domain/authority/types';
 import type {
   CanManageChurchInput,
   CanManageEventInput,
@@ -5,6 +6,7 @@ import type {
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
+  DecideAuthorityInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
   SchedulingCapabilityProjection,
@@ -25,6 +27,10 @@ export class AuthorityGuard {
 
   constructor({ manager }: AuthorityGuardDependencies) {
     this.manager = manager;
+  }
+
+  decideAuthority(input: DecideAuthorityInput): Promise<AuthorityDecision> {
+    return this.manager.decideAuthority(input);
   }
 
   canManageChurch(input: CanManageChurchInput): Promise<boolean> {

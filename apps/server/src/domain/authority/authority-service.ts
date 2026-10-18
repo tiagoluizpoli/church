@@ -1,4 +1,4 @@
-import type { MinistryId, TeamId, VolunteerId } from '../branded-ids';
+import type { MinistryId, VolunteerId } from '../branded-ids';
 import type {
   AuthorityAction,
   AuthorityActor,
@@ -8,8 +8,6 @@ import type {
   ChurchResource,
   MinistryMembershipFact,
   MinistryResource,
-  TeamMembershipFact,
-  TeamResource,
 } from './types';
 
 interface AuthorizeChurchResourceInput {
@@ -26,13 +24,6 @@ interface AuthorizeMinistryResourceInput {
   isAdmin: boolean;
 }
 
-interface AuthorizeTeamResourceInput {
-  actor: AuthorityActor;
-  action: AuthorityAction;
-  resource: TeamResource;
-  isAdmin: boolean;
-}
-
 interface DenyInput {
   reason: AuthorityDenyReason;
 }
@@ -40,11 +31,6 @@ interface DenyInput {
 interface FindMinistryMembershipInput {
   actor: AuthorityActor;
   ministryId: MinistryId;
-}
-
-interface FindTeamMembershipInput {
-  actor: AuthorityActor;
-  teamId: TeamId;
 }
 
 interface EvaluateOwnedParticipationInput {
@@ -69,18 +55,9 @@ function findMinistryMembership(
   );
 }
 
-function findTeamMembership(
-  input: FindTeamMembershipInput,
-): TeamMembershipFact | undefined {
-  return input.actor.teamMemberships.find(
-    (membership) => membership.teamId === input.teamId,
-  );
-}
-
 /**
  * `participate` on a resource owned by one Volunteer is self-service only:
- * the actor must be that Volunteer, and a fact claiming ownership with no
- * matching Membership fact is conflicting scope data, not a grant.
+ * the actor must be that Volunteer and retain an active Membership.
  */
 function evaluateOwnedParticipation(
   input: EvaluateOwnedParticipationInput,
@@ -91,16 +68,30 @@ function evaluateOwnedParticipation(
   }
   return hasMatchingMembership
     ? allow()
-    : deny({ reason: 'CONFLICTING_SCOPE' });
+    : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
 }
 
 /** Church Membership `admin` grants management church-wide; it is never participatory. */
 function authorizeChurchResource(
   input: AuthorizeChurchResourceInput,
 ): AuthorityDecision {
-  const { action, isAdmin } = input;
+  const { actor, action, resource, isAdmin } = input;
   if (action === 'participate') {
-    return deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+    const hasMatchingMembership =
+      Boolean(actor.volunteerId) &&
+      actor.ministryMemberships.some(
+        (membership) => membership.churchId === actor.activeChurchId,
+      );
+    if (resource.ownerVolunteerId) {
+      return evaluateOwnedParticipation({
+        actor,
+        ownerVolunteerId: resource.ownerVolunteerId,
+        hasMatchingMembership,
+      });
+    }
+    return hasMatchingMembership
+      ? allow()
+      : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
   }
   return isAdmin ? allow() : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
 }
@@ -114,43 +105,6 @@ function authorizeMinistryResource(
     ministryId: resource.ministryId,
   });
   if (membership && membership.churchId !== actor.activeChurchId) {
-    return deny({ reason: 'CONFLICTING_SCOPE' });
-  }
-
-  if (action === 'manage') {
-    if (isAdmin) return allow();
-    if (membership?.accessLevel === 'leader') return allow();
-    return deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
-  }
-
-  if (resource.ownerVolunteerId) {
-    return evaluateOwnedParticipation({
-      actor,
-      ownerVolunteerId: resource.ownerVolunteerId,
-      hasMatchingMembership: Boolean(membership),
-    });
-  }
-
-  return membership ? allow() : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
-}
-
-/**
- * Team Membership is a fully independent axis from Ministry Membership:
- * leading a Ministry does not cascade into managing or participating in its
- * Teams — Team access is scoped to explicitly assigned Teams only, per the
- * matrix. Only a Church Membership `admin` override or an explicit Team
- * Membership grants `manage` here.
- */
-function authorizeTeamResource(
-  input: AuthorizeTeamResourceInput,
-): AuthorityDecision {
-  const { actor, action, resource, isAdmin } = input;
-  const membership = findTeamMembership({ actor, teamId: resource.teamId });
-  if (
-    membership &&
-    (membership.churchId !== actor.activeChurchId ||
-      membership.ministryId !== resource.ministryId)
-  ) {
     return deny({ reason: 'CONFLICTING_SCOPE' });
   }
 
@@ -192,18 +146,32 @@ export const AuthorityService = {
 
     const isAdmin = actor.churchMembership.accessLevel === 'admin';
 
+    let decision: AuthorityDecision;
     switch (resource.type) {
       case 'church':
-        return authorizeChurchResource({ actor, action, resource, isAdmin });
-      case 'ministry':
-        return authorizeMinistryResource({
+        decision = authorizeChurchResource({
           actor,
           action,
           resource,
           isAdmin,
         });
-      case 'team':
-        return authorizeTeamResource({ actor, action, resource, isAdmin });
+        break;
+      case 'ministry':
+        decision = authorizeMinistryResource({
+          actor,
+          action,
+          resource,
+          isAdmin,
+        });
+        break;
     }
+    if (
+      !decision.allowed &&
+      decision.reason === 'INSUFFICIENT_ACCESS_LEVEL' &&
+      request.scope === 'object'
+    ) {
+      return deny({ reason: 'OUTSIDE_SCOPE' });
+    }
+    return decision;
   },
 } as const;

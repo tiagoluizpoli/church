@@ -140,7 +140,6 @@ function createRepos(): Repos {
   };
 
   const volunteerRepo: VolunteerRepository = {
-    isChurchAdmin: vi.fn(),
     getById: vi.fn(),
     findByUserId: vi.fn(),
     listByMinistry: vi.fn(async () => []),

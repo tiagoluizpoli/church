@@ -1,14 +1,14 @@
 import * as authSchema from '@church/db/schema/auth';
 import * as organizationSchema from '@church/db/schema/organization';
-import { getTableColumns } from 'drizzle-orm';
+import { eq, getTableColumns } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { auth } from '../src/index';
+import { clearDatabase, testDb } from './setup';
+import { auth } from '@/index';
 import {
   organizationCreatorRole,
   organizationRoles,
-} from '../src/organization/roles';
-import { clearDatabase } from './setup';
+} from '@/organization/roles';
 
 interface DeclaredField {
   required?: boolean;
@@ -56,6 +56,7 @@ interface OrganizationFixture {
   organizationId: string;
   candidateUserId: string;
   memberId: string;
+  adminMemberId: string;
   adminCookie: string;
 }
 
@@ -131,7 +132,10 @@ async function createOrganizationFixture(): Promise<OrganizationFixture> {
     model: 'organization',
     data: { name: 'Role Test Church', slug: 'role-test-church' },
   });
-  await adapter.create<Record<string, unknown>, CreatedMember>({
+  const adminMember = await adapter.create<
+    Record<string, unknown>,
+    CreatedMember
+  >({
     model: 'member',
     data: {
       organizationId: organization.id,
@@ -154,6 +158,7 @@ async function createOrganizationFixture(): Promise<OrganizationFixture> {
     organizationId: organization.id,
     candidateUserId: candidate.user.id,
     memberId: existingMember.id,
+    adminMemberId: adminMember.id,
     adminCookie: admin.cookie,
   };
 }
@@ -234,7 +239,36 @@ describe('organization plugin', () => {
         role,
       },
     });
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
+  });
+
+  it.each([
+    { memberId: 'member', role: 'admin', expectedRole: 'member' },
+    { memberId: 'member', role: 'member', expectedRole: 'member' },
+    { memberId: 'admin', role: 'member', expectedRole: 'admin' },
+  ])('does not change the persisted $memberId role through update-member-role to $role', async ({
+    memberId,
+    role,
+    expectedRole,
+  }) => {
+    const targetMemberId =
+      memberId === 'admin' ? fixture.adminMemberId : fixture.memberId;
+    const response = await requestOrganizationEndpoint({
+      path: 'update-member-role',
+      cookie: fixture.adminCookie,
+      body: {
+        memberId: targetMemberId,
+        organizationId: fixture.organizationId,
+        role,
+      },
+    });
+    const [persistedMember] = await testDb
+      .select({ role: organizationSchema.member.role })
+      .from(organizationSchema.member)
+      .where(eq(organizationSchema.member.id, targetMemberId));
+
+    expect(response.status).toBe(404);
+    expect(persistedMember?.role).toBe(expectedRole);
   });
 
   it.each([

@@ -27,9 +27,10 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
     },
-    // Public registration is deliberately unavailable. Redemption uses the
-    // server API directly, which does not traverse this HTTP route.
-    disabledPaths: ['/sign-up/email'],
+    // Public registration and Church Access Level changes are deliberately
+    // unavailable. Redemption and app-managed access changes use trusted
+    // server APIs, which do not traverse these HTTP routes.
+    disabledPaths: ['/sign-up/email', '/organization/update-member-role'],
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {

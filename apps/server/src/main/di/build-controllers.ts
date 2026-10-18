@@ -2,12 +2,12 @@ import type { FastifyController } from '../../api/contracts/fastify-controller';
 import {
   ActiveChurchController,
   AssignController,
+  CallerCapabilitiesController,
   ChurchAdminController,
   EventController,
   MinistryController,
   PrepareController,
   RedemptionController,
-  SchedulingCapabilityController,
   VolunteerController,
   VolunteerScheduleController,
 } from '../../api/controllers';
@@ -74,7 +74,7 @@ export function buildControllers({
       authorityGuard,
       config,
     }),
-    new SchedulingCapabilityController({
+    new CallerCapabilitiesController({
       activeChurchResolver,
       authorityGuard,
     }),

@@ -1,7 +1,9 @@
+import { NotFoundError } from '@church/core';
 import { AuthorityService } from '../domain/authority/authority-service';
 import type { AuthorityDecision } from '../domain/authority/types';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type {
+  CallerCapabilitiesProjection,
   CanManageChurchInput,
   CanManageEventInput,
   CanManageEventTimeBlockInput,
@@ -11,7 +13,7 @@ import type {
   DecideAuthorityInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
-  SchedulingCapabilityProjection,
+  ResolveCallerCapabilitiesInput,
 } from '../domain/contracts/application/authority-manager';
 import type { AuthorityActorRepository } from '../domain/contracts/infrastructure/authority-actor.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
@@ -84,6 +86,63 @@ export class DbAuthorityManager implements IAuthorityManager {
     }).allowed;
   }
 
+  async decideManageMinistry(
+    input: CanManageMinistryInput,
+  ): Promise<AuthorityDecision> {
+    const { churchId, ministryId, userId } = input;
+    try {
+      await this.ministryRepository.getById(churchId, ministryId);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return { allowed: false, reason: 'RESOURCE_NOT_FOUND' };
+      }
+      throw error;
+    }
+    return this.decideAuthority({
+      churchId,
+      userId,
+      action: 'manage',
+      resource: { type: 'ministry', churchId, ministryId },
+      scope: 'object',
+    });
+  }
+
+  async decideManageParticipation(
+    input: CanManageParticipationInput,
+  ): Promise<AuthorityDecision> {
+    const { churchId, participationId, userId } = input;
+    const ministryId = await this.scopeRepository.resolveParticipationMinistry({
+      churchId,
+      participationId,
+    });
+    if (!ministryId) return { allowed: false, reason: 'RESOURCE_NOT_FOUND' };
+    return this.decideAuthority({
+      churchId,
+      userId,
+      action: 'manage',
+      resource: { type: 'ministry', churchId, ministryId },
+      scope: 'object',
+    });
+  }
+
+  async decideManageShift(
+    input: CanManageShiftInput,
+  ): Promise<AuthorityDecision> {
+    const { churchId, shiftId, userId } = input;
+    const ministryId = await this.scopeRepository.resolveShiftMinistry({
+      churchId,
+      shiftId,
+    });
+    if (!ministryId) return { allowed: false, reason: 'RESOURCE_NOT_FOUND' };
+    return this.decideAuthority({
+      churchId,
+      userId,
+      action: 'manage',
+      resource: { type: 'ministry', churchId, ministryId },
+      scope: 'object',
+    });
+  }
+
   async canManageParticipation(
     input: CanManageParticipationInput,
   ): Promise<boolean> {
@@ -122,47 +181,63 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.canManageEvent({ ...input, eventId: eventTimeBlock.eventId });
   }
 
-  async resolveSchedulingCapability(
-    input: HasSchedulingAccessInput,
-  ): Promise<SchedulingCapabilityProjection> {
+  async resolveCallerCapabilities(
+    input: ResolveCallerCapabilitiesInput,
+  ): Promise<CallerCapabilitiesProjection> {
+    const { churchId } = input;
     const actor = await this.resolveActor(input);
+    const churchResource = { type: 'church' as const, churchId };
     const churchDecision = AuthorityService.authorize({
       actor,
       action: 'manage',
-      resource: { type: 'church', churchId: input.churchId },
+      resource: churchResource,
     });
-    if (churchDecision.allowed) {
-      return { canAccessScheduling: true, entries: [{ kind: 'church' }] };
-    }
-
-    const ledMinistryIds = actor.ministryMemberships.flatMap((membership) => {
-      const decision = AuthorityService.authorize({
-        actor,
-        action: 'manage',
-        resource: {
-          type: 'ministry',
-          churchId: input.churchId,
-          ministryId: membership.ministryId,
-        },
-      });
-      return decision.allowed ? [membership.ministryId] : [];
+    const servingDecision = AuthorityService.authorize({
+      actor,
+      action: 'participate',
+      resource: churchResource,
     });
-    const ministryEntries = await Promise.all(
-      ledMinistryIds.map(async (ministryId) => {
-        const ministry = await this.ministryRepository.getById(
-          input.churchId,
-          ministryId,
-        );
-        return { kind: 'ministry' as const, ministryId, name: ministry.name };
+    const ledMinistryIds = new Set(
+      actor.ministryMemberships.flatMap((membership) => {
+        if (
+          !actor.volunteerId ||
+          membership.accessLevel !== 'leader' ||
+          membership.churchId !== churchId
+        )
+          return [];
+        const decision = AuthorityService.authorize({
+          actor,
+          action: 'manage',
+          resource: {
+            type: 'ministry',
+            churchId,
+            ministryId: membership.ministryId,
+          },
+        });
+        return decision.allowed ? [membership.ministryId] : [];
       }),
     );
-    const entries = ministryEntries;
-    return { canAccessScheduling: entries.length > 0, entries };
+    const ledMinistries = await Promise.all(
+      [...ledMinistryIds].map(async (ministryId) => {
+        const ministry = await this.ministryRepository.getById(
+          churchId,
+          ministryId,
+        );
+        return { ministryId, name: ministry.name };
+      }),
+    );
+    return {
+      churchId,
+      isChurchAdmin: churchDecision.allowed,
+      ledMinistries,
+      hasVolunteerMembership: servingDecision.allowed,
+    };
   }
 
   async hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {
-    const capability = await this.resolveSchedulingCapability(input);
-    return capability.canAccessScheduling;
+    const { isChurchAdmin, ledMinistries } =
+      await this.resolveCallerCapabilities(input);
+    return isChurchAdmin || ledMinistries.length > 0;
   }
 
   private async resolveActor(input: ResolveActorInput) {

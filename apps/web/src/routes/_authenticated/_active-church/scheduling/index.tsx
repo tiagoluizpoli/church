@@ -15,8 +15,9 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
-import type { GetSchedulingCapability200EntriesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { schedulingCapabilitiesApi } from '@/utils/api-instances';
+import type { GetCallerCapabilities200LedMinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
+import { callerCapabilitiesApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/',
@@ -25,12 +26,24 @@ export const Route = createFileRoute(
 });
 
 function SchedulingIndexRoute() {
+  const scope = useCallerCapabilitiesScope();
   const capabilityQuery = useQuery({
-    queryKey: ['scheduling-capability'],
-    queryFn: () => schedulingCapabilitiesApi.getSchedulingCapability(),
+    queryKey: ['caller-capabilities', scope?.userId, scope?.churchId],
+    queryFn: () => callerCapabilitiesApi.getCallerCapabilities(),
+    enabled: Boolean(scope?.userId && scope.churchId),
     retry: false,
   });
-  const entries = capabilityQuery.data?.entries ?? [];
+  const capabilities = capabilityQuery.data;
+  const entries =
+    capabilities && capabilities.churchId === scope?.churchId
+      ? [
+          ...(capabilities.isChurchAdmin ? [{ kind: 'church' as const }] : []),
+          ...capabilities.ledMinistries.map((ministry) => ({
+            kind: 'ministry' as const,
+            ...ministry,
+          })),
+        ]
+      : [];
   const retryCapability = () => capabilityQuery.refetch();
 
   return (
@@ -92,7 +105,9 @@ function SchedulingIndexRoute() {
 function SchedulingEntryCard({
   entry,
 }: {
-  entry: GetSchedulingCapability200EntriesItem;
+  entry:
+    | { kind: 'church' }
+    | ({ kind: 'ministry' } & GetCallerCapabilities200LedMinistriesItem);
 }) {
   if (entry.kind === 'church') {
     return (

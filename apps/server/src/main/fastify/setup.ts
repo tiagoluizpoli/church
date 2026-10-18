@@ -113,8 +113,8 @@ export async function createFastify() {
           description: 'Cycle and shift assign endpoints',
         },
         {
-          name: 'scheduling-capability',
-          description: 'Active Church Scheduling navigation capability',
+          name: 'caller-capabilities',
+          description: 'Current caller capabilities in the Active Church',
         },
         { name: 'volunteer', description: 'Volunteer-facing endpoints' },
         {

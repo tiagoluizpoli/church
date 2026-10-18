@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { schedulingCapabilitiesApi } from '@/utils/api-instances';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
+import { callerCapabilitiesApi } from '@/utils/api-instances';
 
 export interface CallerNavVisibility {
   canSeeScheduling: boolean;
@@ -11,19 +12,29 @@ export interface CallerNavVisibility {
  * projection. A failed projection never becomes an implicit grant.
  */
 export function useCallerRoles(): CallerNavVisibility {
-  const schedulingCapabilityQuery = useQuery({
-    queryKey: ['scheduling-capability'],
-    queryFn: () => schedulingCapabilitiesApi.getSchedulingCapability(),
+  const scope = useCallerCapabilitiesScope();
+  const callerCapabilitiesQuery = useQuery({
+    queryKey: ['caller-capabilities', scope?.userId, scope?.churchId],
+    queryFn: () => callerCapabilitiesApi.getCallerCapabilities(),
+    enabled: Boolean(scope?.userId && scope.churchId),
     retry: false,
   });
 
-  if (schedulingCapabilityQuery.isLoading) {
+  if (!scope || callerCapabilitiesQuery.isLoading) {
     return { canSeeScheduling: false, isResolving: true };
   }
 
+  if (callerCapabilitiesQuery.isError) {
+    return { canSeeScheduling: false, isResolving: false };
+  }
+
+  const capabilities = callerCapabilitiesQuery.data;
+  const belongsToCurrentChurch = capabilities?.churchId === scope.churchId;
+
   return {
     canSeeScheduling:
-      schedulingCapabilityQuery.data?.canAccessScheduling === true,
+      belongsToCurrentChurch &&
+      (capabilities.isChurchAdmin || capabilities.ledMinistries.length > 0),
     isResolving: false,
   };
 }

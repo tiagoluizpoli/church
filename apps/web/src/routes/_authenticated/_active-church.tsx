@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
+import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 import {
   extractRequestedChurchId,
@@ -26,6 +27,7 @@ interface RequireChurchTimezoneInput {
 }
 
 interface ChurchTimezoneContext {
+  churchId: string;
   churchTimezone: string;
 }
 
@@ -42,7 +44,7 @@ function requireChurchTimezone({
       'The Active Church status did not resolve with a Church Timezone',
     );
   }
-  return { churchTimezone: status.timezone };
+  return { churchId: status.churchId, churchTimezone: status.timezone };
 }
 
 export const Route = createFileRoute('/_authenticated/_active-church')({
@@ -138,7 +140,7 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
 });
 
 function ActiveChurchLayout() {
-  const { churchTimezone } = Route.useRouteContext();
+  const { churchId, churchTimezone, session } = Route.useRouteContext();
   const cycleBreadcrumb = useCycleBreadcrumb();
   const ministryBreadcrumb = useMinistryBreadcrumb();
   const overrides = [cycleBreadcrumb, ministryBreadcrumb].filter(
@@ -147,10 +149,15 @@ function ActiveChurchLayout() {
   const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;
 
   return (
-    <TimezoneProvider churchTimezone={churchTimezone}>
-      <AppShell breadcrumbOverrides={breadcrumbOverrides}>
-        <Outlet />
-      </AppShell>
-    </TimezoneProvider>
+    <CallerCapabilitiesScopeProvider
+      churchId={churchId}
+      userId={session?.data?.user.id ?? null}
+    >
+      <TimezoneProvider churchTimezone={churchTimezone}>
+        <AppShell breadcrumbOverrides={breadcrumbOverrides}>
+          <Outlet />
+        </AppShell>
+      </TimezoneProvider>
+    </CallerCapabilitiesScopeProvider>
   );
 }

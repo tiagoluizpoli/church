@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import type { AuthorityActor } from '@/domain/authority/types';
@@ -33,13 +34,6 @@ function memberActor(): AuthorityActor {
     activeChurchId: churchId,
     churchMembership: { churchId, accessLevel: 'member' },
     ministryMemberships: [],
-  };
-}
-
-function volunteerActor(): AuthorityActor {
-  return {
-    ...memberActor(),
-    volunteerId: 'vol_1' as never,
   };
 }
 
@@ -212,30 +206,63 @@ describe('DbAuthorityManager', () => {
     );
   });
 
-  it('projects Scheduling entries for Church admins and Ministry leaders, but not plain Volunteers', async () => {
+  it('preserves simultaneous admin, actual leadership and serving capacities without Roles', async () => {
     const manager = createManager();
-
-    actorRepository.resolveActor.mockResolvedValueOnce(adminActor());
-    await expect(
-      manager.resolveSchedulingCapability({ churchId, userId }),
-    ).resolves.toEqual({
-      canAccessScheduling: true,
-      entries: [{ kind: 'church' }],
+    const leader = ministryLeaderActor();
+    actorRepository.resolveActor.mockResolvedValue({
+      ...leader,
+      churchMembership: { churchId, accessLevel: 'admin' },
+      ministryMemberships: [
+        ...leader.ministryMemberships,
+        ...leader.ministryMemberships,
+        {
+          churchId,
+          ministryId: 'min_member' as MinistryId,
+          accessLevel: 'member',
+          qualifiedRoleIds: [],
+        },
+      ],
     });
-
-    actorRepository.resolveActor.mockResolvedValueOnce(ministryLeaderActor());
-    ministryRepository.getById.mockResolvedValueOnce({ name: 'Worship' });
+    ministryRepository.getById.mockResolvedValue({ name: 'Worship' });
     await expect(
-      manager.resolveSchedulingCapability({ churchId, userId }),
+      manager.resolveCallerCapabilities({ churchId, userId }),
     ).resolves.toEqual({
-      canAccessScheduling: true,
-      entries: [{ kind: 'ministry', ministryId, name: 'Worship' }],
+      churchId,
+      isChurchAdmin: true,
+      ledMinistries: [{ ministryId, name: 'Worship' }],
+      hasVolunteerMembership: true,
     });
+  });
 
-    actorRepository.resolveActor.mockResolvedValueOnce(volunteerActor());
+  it('conceals missing and unauthorized management targets through object decisions', async () => {
+    const manager = createManager();
+    ministryRepository.getById.mockRejectedValueOnce(
+      new NotFoundError('missing'),
+    );
     await expect(
-      manager.resolveSchedulingCapability({ churchId, userId }),
-    ).resolves.toEqual({ canAccessScheduling: false, entries: [] });
+      manager.decideManageMinistry({ churchId, ministryId, userId }),
+    ).resolves.toEqual({ allowed: false, reason: 'RESOURCE_NOT_FOUND' });
+    ministryRepository.getById.mockResolvedValueOnce({ id: ministryId });
+    actorRepository.resolveActor.mockResolvedValue(memberActor());
+    await expect(
+      manager.decideManageMinistry({ churchId, ministryId, userId }),
+    ).resolves.toEqual({ allowed: false, reason: 'OUTSIDE_SCOPE' });
+    scopeRepository.resolveParticipationMinistry.mockResolvedValueOnce(null);
+    await expect(
+      manager.decideManageParticipation({
+        churchId,
+        userId,
+        participationId: 'part_missing' as MinistryParticipationId,
+      }),
+    ).resolves.toEqual({ allowed: false, reason: 'RESOURCE_NOT_FOUND' });
+    scopeRepository.resolveShiftMinistry.mockResolvedValueOnce(ministryId);
+    await expect(
+      manager.decideManageShift({
+        churchId,
+        userId,
+        shiftId: 'shift_hidden' as ShiftId,
+      }),
+    ).resolves.toEqual({ allowed: false, reason: 'OUTSIDE_SCOPE' });
   });
 
   it('denies a resource whose resolved Ministry belongs to a different Church', async () => {

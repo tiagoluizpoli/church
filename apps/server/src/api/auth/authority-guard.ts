@@ -1,5 +1,6 @@
 import type { AuthorityDecision } from '../../domain/authority/types';
 import type {
+  CallerCapabilitiesProjection,
   CanManageChurchInput,
   CanManageEventInput,
   CanManageEventTimeBlockInput,
@@ -9,7 +10,7 @@ import type {
   DecideAuthorityInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
-  SchedulingCapabilityProjection,
+  ResolveCallerCapabilitiesInput,
 } from '../../domain/contracts/application/authority-manager';
 
 interface AuthorityGuardDependencies {
@@ -31,6 +32,22 @@ export class AuthorityGuard {
 
   decideAuthority(input: DecideAuthorityInput): Promise<AuthorityDecision> {
     return this.manager.decideAuthority(input);
+  }
+
+  decideManageMinistry(
+    input: CanManageMinistryInput,
+  ): Promise<AuthorityDecision> {
+    return this.manager.decideManageMinistry(input);
+  }
+
+  decideManageParticipation(
+    input: CanManageParticipationInput,
+  ): Promise<AuthorityDecision> {
+    return this.manager.decideManageParticipation(input);
+  }
+
+  decideManageShift(input: CanManageShiftInput): Promise<AuthorityDecision> {
+    return this.manager.decideManageShift(input);
   }
 
   canManageChurch(input: CanManageChurchInput): Promise<boolean> {
@@ -59,10 +76,10 @@ export class AuthorityGuard {
     return this.manager.canManageEventTimeBlock(input);
   }
 
-  resolveSchedulingCapability(
-    input: HasSchedulingAccessInput,
-  ): Promise<SchedulingCapabilityProjection> {
-    return this.manager.resolveSchedulingCapability(input);
+  resolveCallerCapabilities(
+    input: ResolveCallerCapabilitiesInput,
+  ): Promise<CallerCapabilitiesProjection> {
+    return this.manager.resolveCallerCapabilities(input);
   }
 
   hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {

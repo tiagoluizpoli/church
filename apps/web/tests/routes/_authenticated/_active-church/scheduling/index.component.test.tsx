@@ -4,14 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
-const getSchedulingCapability = vi.fn();
+const getCallerCapabilities = vi.fn();
 const listCycles = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
-  schedulingCapabilitiesApi: {
-    getSchedulingCapability: (...args: unknown[]) =>
-      getSchedulingCapability(...args),
+  callerCapabilitiesApi: {
+    getCallerCapabilities: (...args: unknown[]) =>
+      getCallerCapabilities(...args),
   },
   adminApi: {
     listCycles: (...args: unknown[]) => listCycles(...args),
@@ -39,7 +39,7 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 beforeEach(() => {
-  getSchedulingCapability.mockReset();
+  getCallerCapabilities.mockReset();
   listCycles.mockReset();
   listCycles.mockResolvedValue({ cycles: [] });
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
@@ -47,16 +47,13 @@ beforeEach(() => {
 
 describe('Scheduling capability index route', () => {
   it('renders capability-backed Church and Ministry entries', async () => {
-    getSchedulingCapability.mockResolvedValue({
-      canAccessScheduling: true,
-      entries: [
-        { kind: 'church' },
-        {
-          kind: 'ministry',
-          ministryId: '11111111-1111-4111-8111-111111111111',
-          name: 'Worship',
-        },
+    getCallerCapabilities.mockResolvedValue({
+      churchId: 'church-1',
+      isChurchAdmin: true,
+      ledMinistries: [
+        { ministryId: '11111111-1111-4111-8111-111111111111', name: 'Worship' },
       ],
+      hasVolunteerMembership: true,
     });
 
     renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
@@ -74,7 +71,7 @@ describe('Scheduling capability index route', () => {
   });
 
   it('keeps entry links hidden while the capability projection resolves', async () => {
-    getSchedulingCapability.mockReturnValue(new Promise(() => {}));
+    getCallerCapabilities.mockReturnValue(new Promise(() => {}));
 
     renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
 
@@ -85,9 +82,11 @@ describe('Scheduling capability index route', () => {
   });
 
   it('shows an honest empty state when the projection grants no entries', async () => {
-    getSchedulingCapability.mockResolvedValue({
-      canAccessScheduling: false,
-      entries: [],
+    getCallerCapabilities.mockResolvedValue({
+      churchId: 'church-1',
+      isChurchAdmin: false,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
     });
 
     renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
@@ -98,9 +97,14 @@ describe('Scheduling capability index route', () => {
   });
 
   it('does not mistake a failed capability request for an empty projection', async () => {
-    getSchedulingCapability
+    getCallerCapabilities
       .mockRejectedValueOnce(new Error('Unavailable'))
-      .mockResolvedValueOnce({ canAccessScheduling: false, entries: [] });
+      .mockResolvedValueOnce({
+        churchId: 'church-1',
+        isChurchAdmin: false,
+        ledMinistries: [],
+        hasVolunteerMembership: false,
+      });
     const user = userEvent.setup();
 
     renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
@@ -117,9 +121,11 @@ describe('Scheduling capability index route', () => {
   });
 
   it('shows not-found for the retired Team schedule URL, with no redirect', async () => {
-    getSchedulingCapability.mockResolvedValue({
-      canAccessScheduling: false,
-      entries: [],
+    getCallerCapabilities.mockResolvedValue({
+      churchId: 'church-1',
+      isChurchAdmin: false,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
     });
 
     const { router } = renderRoute({

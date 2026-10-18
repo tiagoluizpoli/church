@@ -1719,21 +1719,26 @@ export type GetParticipationCompletion403 = {
   message: string;
 };
 
-export type GetSchedulingCapability200EntriesItem = {
-  kind: 'church';
-} | {
-  kind: 'ministry';
+export type GetCallerCapabilities200LedMinistriesItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
   name: string;
 };
 
-export type GetSchedulingCapability200 = {
-  canAccessScheduling: boolean;
-  entries: GetSchedulingCapability200EntriesItem[];
+export type GetCallerCapabilities200 = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  churchId: string;
+  isChurchAdmin: boolean;
+  ledMinistries: GetCallerCapabilities200LedMinistriesItem[];
+  hasVolunteerMembership: boolean;
 };
 
-export type GetSchedulingCapability401 = {
+export type GetCallerCapabilities401 = {
+  error: string;
+  message: string;
+};
+
+export type GetCallerCapabilities403 = {
   error: string;
   message: string;
 };

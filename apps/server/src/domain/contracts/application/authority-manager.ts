@@ -63,14 +63,22 @@ export interface HasSchedulingAccessInput {
   userId: UserId;
 }
 
-export type SchedulingCapabilityEntry =
-  | { kind: 'church' }
-  | { kind: 'ministry'; ministryId: MinistryId; name: string };
+export interface ResolveCallerCapabilitiesInput {
+  churchId: ChurchId;
+  userId: UserId;
+}
 
-/** Navigation data only; every protected resource still asks AuthorityService. */
-export interface SchedulingCapabilityProjection {
-  canAccessScheduling: boolean;
-  entries: SchedulingCapabilityEntry[];
+export interface LedMinistryCapability {
+  ministryId: MinistryId;
+  name: string;
+}
+
+/** Navigation data only; protected resources still ask AuthorityService. */
+export interface CallerCapabilitiesProjection {
+  churchId: ChurchId;
+  isChurchAdmin: boolean;
+  ledMinistries: LedMinistryCapability[];
+  hasVolunteerMembership: boolean;
 }
 
 /**
@@ -81,6 +89,13 @@ export interface SchedulingCapabilityProjection {
  */
 export interface IAuthorityManager {
   decideAuthority(input: DecideAuthorityInput): Promise<AuthorityDecision>;
+  decideManageMinistry(
+    input: CanManageMinistryInput,
+  ): Promise<AuthorityDecision>;
+  decideManageParticipation(
+    input: CanManageParticipationInput,
+  ): Promise<AuthorityDecision>;
+  decideManageShift(input: CanManageShiftInput): Promise<AuthorityDecision>;
   canManageChurch(input: CanManageChurchInput): Promise<boolean>;
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
@@ -89,12 +104,12 @@ export interface IAuthorityManager {
   canManageEventTimeBlock(
     input: CanManageEventTimeBlockInput,
   ): Promise<boolean>;
-  resolveSchedulingCapability(
-    input: HasSchedulingAccessInput,
-  ): Promise<SchedulingCapabilityProjection>;
+  resolveCallerCapabilities(
+    input: ResolveCallerCapabilitiesInput,
+  ): Promise<CallerCapabilitiesProjection>;
   /**
    * Compatibility boolean for server-only callers such as the active-Church
-   * selector. It delegates to the Scheduling capability projection.
+   * selector. It delegates to the caller-capabilities projection.
    */
   hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean>;
 }

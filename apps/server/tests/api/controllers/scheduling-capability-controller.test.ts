@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import { SchedulingCapabilityController } from '@/api/controllers/scheduling-capability-controller';
+import { CallerCapabilitiesController } from '@/api/controllers/scheduling-capability-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 
@@ -24,13 +24,13 @@ const mockGetSession = vi.mocked(
 );
 
 const activeChurchResolver = { resolve: vi.fn() };
-const authorityGuard = { resolveSchedulingCapability: vi.fn() };
+const authorityGuard = { resolveCallerCapabilities: vi.fn() };
 
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new SchedulingCapabilityController({
+  const controller = new CallerCapabilitiesController({
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,
   });
@@ -57,86 +57,84 @@ beforeEach(() => {
   } as never);
   activeChurchResolver.resolve.mockResolvedValue({
     status: 'resolved',
-    churchId: '11111111-1111-1111-1111-111111111111',
+    churchId: '11111111-1111-4111-8111-111111111111',
     volunteerId: null,
     autoSelected: false,
   });
 });
 
-describe('Scheduling capability controller', () => {
-  it('returns the Active-Church capability projection for a ChurchAdmin without a Volunteer profile', async () => {
-    authorityGuard.resolveSchedulingCapability.mockResolvedValue({
-      canAccessScheduling: true,
-      entries: [{ kind: 'church' }],
+describe('Caller capabilities controller', () => {
+  it('returns all Active-Church capacities for an admin without a Volunteer profile', async () => {
+    authorityGuard.resolveCallerCapabilities.mockResolvedValue({
+      churchId: '11111111-1111-4111-8111-111111111111',
+      isChurchAdmin: true,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
     });
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/scheduling/capability',
+      url: '/api/v1/caller-capabilities',
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
-      canAccessScheduling: true,
-      entries: [{ kind: 'church' }],
+      churchId: '11111111-1111-4111-8111-111111111111',
+      isChurchAdmin: true,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
     });
-    expect(authorityGuard.resolveSchedulingCapability).toHaveBeenCalledWith({
-      churchId: '11111111-1111-1111-1111-111111111111',
+    expect(authorityGuard.resolveCallerCapabilities).toHaveBeenCalledWith({
+      churchId: '11111111-1111-4111-8111-111111111111',
       userId: 'current-user',
     });
   });
 
-  it('returns an explicit denial projection for a Volunteer without Scheduling authority', async () => {
-    activeChurchResolver.resolve.mockResolvedValueOnce({
-      status: 'resolved',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      volunteerId: '22222222-2222-2222-8222-222222222222',
-      autoSelected: false,
-    });
-    authorityGuard.resolveSchedulingCapability.mockResolvedValue({
-      canAccessScheduling: false,
-      entries: [],
+  it('returns empty capacities for a plain Church Member', async () => {
+    authorityGuard.resolveCallerCapabilities.mockResolvedValue({
+      churchId: '11111111-1111-4111-8111-111111111111',
+      isChurchAdmin: false,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
     });
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/scheduling/capability',
+      url: '/api/v1/caller-capabilities',
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
-      canAccessScheduling: false,
-      entries: [],
+      churchId: '11111111-1111-4111-8111-111111111111',
+      isChurchAdmin: false,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
     });
   });
 
-  it('returns only the led Ministry entries from the capability projection', async () => {
-    authorityGuard.resolveSchedulingCapability.mockResolvedValue({
-      canAccessScheduling: true,
-      entries: [
-        {
-          kind: 'ministry',
-          ministryId: '22222222-2222-4222-8222-222222222222',
-          name: 'Worship',
-        },
+  it('retains actual leadership alongside serving capacity', async () => {
+    authorityGuard.resolveCallerCapabilities.mockResolvedValue({
+      churchId: '11111111-1111-4111-8111-111111111111',
+      isChurchAdmin: false,
+      ledMinistries: [
+        { ministryId: '22222222-2222-4222-8222-222222222222', name: 'Worship' },
       ],
+      hasVolunteerMembership: true,
     });
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/scheduling/capability',
+      url: '/api/v1/caller-capabilities',
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
-      canAccessScheduling: true,
-      entries: [
-        {
-          kind: 'ministry',
-          ministryId: '22222222-2222-4222-8222-222222222222',
-          name: 'Worship',
-        },
+      churchId: '11111111-1111-4111-8111-111111111111',
+      isChurchAdmin: false,
+      ledMinistries: [
+        { ministryId: '22222222-2222-4222-8222-222222222222', name: 'Worship' },
       ],
+      hasVolunteerMembership: true,
     });
   });
 });

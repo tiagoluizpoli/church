@@ -14,7 +14,7 @@ export default defineConfig({
           'planning',
           'prepare',
           'assign',
-          'scheduling-capability',
+          'caller-capabilities',
           'volunteer',
           'active-church',
           'redemption',

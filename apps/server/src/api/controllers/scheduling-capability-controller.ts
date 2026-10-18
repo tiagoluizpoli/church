@@ -11,31 +11,24 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
-const schedulingCapabilityResponseSchema = z.object({
-  canAccessScheduling: z.boolean(),
-  entries: z.array(
-    z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('church') }),
-      z.object({
-        kind: z.literal('ministry'),
-        ministryId: z.uuid(),
-        name: z.string(),
-      }),
-    ]),
-  ),
+const callerCapabilitiesResponseSchema = z.object({
+  churchId: z.uuid(),
+  isChurchAdmin: z.boolean(),
+  ledMinistries: z.array(z.object({ ministryId: z.uuid(), name: z.string() })),
+  hasVolunteerMembership: z.boolean(),
 });
 
 /**
  * Resolves navigation capability for the Active Church. This response never
  * authorizes resource access; protected routes continue through AuthorityService.
  */
-interface SchedulingCapabilityControllerDependencies {
+interface CallerCapabilitiesControllerDependencies {
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
 }
 
-export class SchedulingCapabilityController implements FastifyController {
-  readonly prefix = '/scheduling';
+export class CallerCapabilitiesController implements FastifyController {
+  readonly prefix = '';
 
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
@@ -43,7 +36,7 @@ export class SchedulingCapabilityController implements FastifyController {
   constructor({
     activeChurchResolver,
     authorityGuard,
-  }: SchedulingCapabilityControllerDependencies) {
+  }: CallerCapabilitiesControllerDependencies) {
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
   }
@@ -58,27 +51,28 @@ export class SchedulingCapabilityController implements FastifyController {
     );
 
     app.get(
-      '/capability',
+      '/caller-capabilities',
       {
         schema: {
-          tags: ['scheduling-capability'],
-          operationId: 'getSchedulingCapability',
-          summary: 'Get Scheduling capability for the Active Church',
+          tags: ['caller-capabilities'],
+          operationId: 'getCallerCapabilities',
+          summary: 'Get caller capabilities for the Active Church',
           description:
-            'Return whether the current caller may enter Scheduling in the Active Church. This is navigation data, not an authorization grant.',
+            'Return the current caller capacities in the Active Church. This is navigation data, not an authorization grant.',
           response: {
-            200: schedulingCapabilityResponseSchema,
+            200: callerCapabilitiesResponseSchema,
             401: errorResponseSchema,
+            403: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const capability =
-          await this.authorityGuard.resolveSchedulingCapability({
+        const capabilities =
+          await this.authorityGuard.resolveCallerCapabilities({
             churchId: ChurchId.from(request.churchId),
             userId: UserId.from(request.userId),
           });
-        return reply.send(capability);
+        return reply.send(capabilities);
       },
     );
   }

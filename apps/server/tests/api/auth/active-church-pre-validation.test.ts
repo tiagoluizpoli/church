@@ -1,3 +1,4 @@
+import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@church/auth', () => ({
@@ -93,7 +94,7 @@ describe('createActiveChurchPreValidation', () => {
     });
   });
 
-  it('denies with 401 when requireVolunteer is set and the resolver finds no Volunteer profile', async () => {
+  it('denies with 403 when requireVolunteer is set and the resolver finds no Volunteer profile', async () => {
     mockGetSession.mockResolvedValueOnce({
       user: { id: 'usr_1' },
       session: { activeOrganizationId: 'chu_1' },
@@ -113,7 +114,7 @@ describe('createActiveChurchPreValidation', () => {
 
     await hook(request as never, reply as never);
 
-    expect(reply.status).toHaveBeenCalledWith(401);
+    expect(reply.status).toHaveBeenCalledWith(403);
     expect(reply.send).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Volunteer profile not found' }),
     );
@@ -136,7 +137,7 @@ describe('createActiveChurchPreValidation', () => {
     expect(reply.status).toHaveBeenCalledWith(409);
   });
 
-  it('responds 401 when no Church Membership resolves at all, and does not touch the session when it had no active organization', async () => {
+  it('responds 403 when no Church Membership resolves at all, and does not touch the session when it had no active organization', async () => {
     mockGetSession.mockResolvedValueOnce({
       user: { id: 'usr_1' },
       session: { activeOrganizationId: null },
@@ -150,7 +151,7 @@ describe('createActiveChurchPreValidation', () => {
 
     await hook(request as never, reply as never);
 
-    expect(reply.status).toHaveBeenCalledWith(401);
+    expect(reply.status).toHaveBeenCalledWith(403);
     expect(mockSetActiveOrganization).not.toHaveBeenCalled();
   });
 
@@ -169,7 +170,7 @@ describe('createActiveChurchPreValidation', () => {
 
     await hook(request as never, reply as never);
 
-    expect(reply.status).toHaveBeenCalledWith(401);
+    expect(reply.status).toHaveBeenCalledWith(403);
     expect(mockSetActiveOrganization).toHaveBeenCalledWith(
       expect.objectContaining({ body: { organizationId: null } }),
     );
@@ -189,7 +190,7 @@ describe('createActiveChurchPreValidation', () => {
     const reply = createReply();
 
     await expect(hook(request as never, reply as never)).resolves.toBeDefined();
-    expect(reply.status).toHaveBeenCalledWith(401);
+    expect(reply.status).toHaveBeenCalledWith(403);
   });
 
   it('persists an auto-selected Church onto the session via setActiveOrganization', async () => {
@@ -241,5 +242,29 @@ describe('createActiveChurchPreValidation', () => {
       hook(request as never, reply as never),
     ).resolves.toBeUndefined();
     expect(requestFields(request).churchId).toBe('chu_1');
+  });
+  it('returns FORBIDDEN over HTTP for a valid signed-in session without Church Membership', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: 'usr_1' },
+      session: { activeOrganizationId: null },
+    } as never);
+    resolver.resolve.mockResolvedValueOnce({ status: 'no_membership' });
+    const app = Fastify();
+    app.get(
+      '/protected',
+      {
+        preValidation: createActiveChurchPreValidation({
+          resolver: resolver as never,
+        }),
+      },
+      async () => ({ granted: true }),
+    );
+    const response = await app.inject({ method: 'GET', url: '/protected' });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: 'No active Church membership found',
+    });
+    await app.close();
   });
 });

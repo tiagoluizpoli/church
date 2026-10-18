@@ -4062,14 +4062,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/scheduling/capability:
+  /api/v1/caller-capabilities:
     get:
-      operationId: getSchedulingCapability
-      summary: Get Scheduling capability for the Active Church
+      operationId: getCallerCapabilities
+      summary: Get caller capabilities for the Active Church
       tags:
-        - scheduling-capability
-      description: Return whether the current caller may enter Scheduling in the
-        Active Church. This is navigation data, not an authorization grant.
+        - caller-capabilities
+      description: Return the current caller capacities in the Active Church. This is
+        navigation data, not an authorization grant.
       responses:
         "200":
           description: Default Response
@@ -4078,43 +4078,51 @@ paths:
               schema:
                 type: object
                 properties:
-                  canAccessScheduling:
+                  churchId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  isChurchAdmin:
                     type: boolean
-                  entries:
+                  ledMinistries:
                     type: array
                     items:
-                      oneOf:
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - church
-                          required:
-                            - kind
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - ministry
-                            ministryId:
-                              type: string
-                              format: uuid
-                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-                            name:
-                              type: string
-                          required:
-                            - kind
-                            - ministryId
-                            - name
-                          additionalProperties: false
+                      type: object
+                      properties:
+                        ministryId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        name:
+                          type: string
+                      required:
+                        - ministryId
+                        - name
+                      additionalProperties: false
+                  hasVolunteerMembership:
+                    type: boolean
                 required:
-                  - canAccessScheduling
-                  - entries
+                  - churchId
+                  - isChurchAdmin
+                  - ledMinistries
+                  - hasVolunteerMembership
                 additionalProperties: false
         "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
           description: Default Response
           content:
             application/json:
@@ -5961,8 +5969,8 @@ tags:
     description: MinistryParticipation prepare endpoints
   - name: assign
     description: Cycle and shift assign endpoints
-  - name: scheduling-capability
-    description: Active Church Scheduling navigation capability
+  - name: caller-capabilities
+    description: Current caller capabilities in the Active Church
   - name: volunteer
     description: Volunteer-facing endpoints
   - name: active-church

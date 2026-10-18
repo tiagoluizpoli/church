@@ -30,7 +30,6 @@ import type {
 import { mapVolunteer } from '../mappers/volunteer.mapper';
 import {
   getClient,
-  isChurchAdminMember,
   isValidUuid,
   withActiveVolunteer,
   withChurchIsolation,
@@ -47,14 +46,6 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   }
 
   private readonly db: AnyDrizzleDb;
-
-  async isChurchAdmin(
-    churchId: ChurchId,
-    userId: UserId,
-    tx?: TransactionContext,
-  ): Promise<boolean> {
-    return isChurchAdminMember(this.db, churchId, userId, tx);
-  }
 
   async getById(
     churchId: ChurchId,

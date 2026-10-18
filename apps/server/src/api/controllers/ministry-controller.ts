@@ -1,4 +1,3 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -37,16 +36,6 @@ interface MinistryInvitationRouteParams {
 interface ResendMinistryInvitationRouteParams {
   ministryId: string;
   invitationId: string;
-}
-
-interface DenySchedulingAccessInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-interface DenyMissingVolunteerProfileInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
 }
 
 interface MinistryControllerDependencies {
@@ -93,29 +82,39 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'listMinistries',
-          summary: "List the caller's led Ministries",
+          summary: "List the caller's accessible Ministries",
           description:
-            'List the Ministries the current Volunteer leads within the Active Church.',
+            'List every Ministry for a ChurchAdmin, or the Ministries the caller actively leads.',
           response: {
             200: ministryListResponseSchema,
             401: errorResponseSchema,
+            403: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const deniedProfile = await this.denyMissingVolunteerProfile({
-          request,
-          reply,
-        });
-        if (deniedProfile) return;
-
-        const denied = await this.denySchedulingAccess({ request, reply });
-        if (denied) return;
-
-        const ministries = await this.ministryManager.listByLeader({
-          leaderId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-        });
+        const churchId = ChurchId.from(request.churchId);
+        const capabilities =
+          await this.authorityGuard.resolveCallerCapabilities({
+            churchId,
+            userId: UserId.from(request.userId),
+          });
+        if (
+          !capabilities.isChurchAdmin &&
+          capabilities.ledMinistries.length === 0
+        ) {
+          reply.status(403).send({
+            error: 'FORBIDDEN',
+            message: 'Ministry leadership required',
+          });
+          return;
+        }
+        const ministries = capabilities.isChurchAdmin
+          ? await this.ministryManager.listByChurch(churchId)
+          : await this.ministryManager.listByLeader({
+              churchId,
+              leaderId: VolunteerId.from(request.volunteerId as string),
+            });
         return reply.send(ministryMapper.toResponseList(ministries));
       },
     );
@@ -205,54 +204,5 @@ export class MinistryController implements FastifyController {
         );
       },
     );
-  }
-
-  /**
-   * `/ministries` is the only route here that reads `request.volunteerId`
-   * (leader-scoped listing) — the Ministry-invitation routes are pure
-   * Church-authority operations a Volunteer-less ChurchAdmin must still
-   * reach, so the profile requirement is scoped to just this route instead
-   * of the controller's shared preValidation hook.
-   */
-  private async denyMissingVolunteerProfile({
-    request,
-    reply,
-  }: DenyMissingVolunteerProfileInput): Promise<boolean> {
-    if (request.volunteerId) return false;
-
-    reply.status(401).send({
-      error: 'UNAUTHORIZED',
-      message: 'Volunteer profile not found',
-    });
-    return true;
-  }
-
-  /**
-   * Returns whether access was denied. `FastifyReply` is a thenable (it
-   * resolves once the response is flushed) — `return reply.send(...)` from
-   * an `async` method would have its own returned promise silently adopt
-   * that reply's resolution instead of the reply object itself, so callers
-   * must never `await` a reply and branch on the awaited value. Each guard
-   * here sends the 403 as a side effect and returns a plain boolean.
-   *
-   * Gates the frontend's nav-visibility probe (`useCallerRoles`): there is
-   * no "my roles" endpoint, so the caller derives whether it may see
-   * Scheduling nav from whether this lightweight query is forbidden.
-   */
-  private async denySchedulingAccess({
-    request,
-    reply,
-  }: DenySchedulingAccessInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.hasSchedulingAccess({
-      churchId: ChurchId.from(request.churchId),
-      userId: UserId.from(request.userId),
-    });
-    if (allowed) return false;
-
-    reply.status(403).send({
-      error: 'FORBIDDEN',
-      message: 'Admin or leader role required',
-    });
-    return true;
   }
 }

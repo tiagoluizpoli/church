@@ -5,6 +5,6 @@ export { EventController } from './event-controller';
 export { MinistryController } from './ministry-controller';
 export { PrepareController } from './prepare-controller';
 export { RedemptionController } from './redemption-controller';
-export { SchedulingCapabilityController } from './scheduling-capability-controller';
+export { CallerCapabilitiesController } from './scheduling-capability-controller';
 export { VolunteerController } from './volunteer-controller';
 export { VolunteerScheduleController } from './volunteer-schedule-controller';

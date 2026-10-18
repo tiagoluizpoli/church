@@ -45,6 +45,20 @@ describe('Auth passthrough (T031)', () => {
     expect(res.body).toBe('Not Found');
   });
 
+  it('returns Not Found for public Church role changes', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/organization/update-member-role',
+      payload: {
+        memberId: 'member-id',
+        organizationId: 'organization-id',
+        role: 'admin',
+      },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toBe('Not Found');
+  });
+
   it('GET /api/v1/nonexistent returns 404', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/v1/nonexistent' });
     expect(res.statusCode).toBe(404);

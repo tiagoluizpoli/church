@@ -1243,6 +1243,11 @@ export type GetCycleParticipation403 = {
   message: string;
 };
 
+export type GetCycleParticipation404 = {
+  error: string;
+  message: string;
+};
+
 export type ListScheduleSummaries200CyclesItemStatus = typeof ListScheduleSummaries200CyclesItemStatus[keyof typeof ListScheduleSummaries200CyclesItemStatus];
 
 
@@ -1276,8 +1281,32 @@ export type ListScheduleSummaries403 = {
   message: string;
 };
 
+export type ListScheduleSummaries404 = {
+  error: string;
+  message: string;
+};
+
 export type SetParticipationInclusionsBody = {
   eventTimeBlockIds: string[];
+};
+
+/**
+ * @nullable
+ */
+export type SetParticipationInclusions204 = typeof SetParticipationInclusions204[keyof typeof SetParticipationInclusions204] | null;
+
+
+export const SetParticipationInclusions204 = {
+} as const;
+
+export type SetParticipationInclusions403 = {
+  error: string;
+  message: string;
+};
+
+export type SetParticipationInclusions404 = {
+  error: string;
+  message: string;
 };
 
 export type SplitParticipationShiftsBodyStrategy = {
@@ -1318,6 +1347,16 @@ export type SplitParticipationShifts201 = {
   shifts: SplitParticipationShifts201ShiftsItem[];
 };
 
+export type SplitParticipationShifts403 = {
+  error: string;
+  message: string;
+};
+
+export type SplitParticipationShifts404 = {
+  error: string;
+  message: string;
+};
+
 export type UpdateShiftBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime?: string;
@@ -1335,6 +1374,35 @@ export type UpdateShift200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+};
+
+export type UpdateShift403 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateShift404 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type DeleteShift204 = typeof DeleteShift204[keyof typeof DeleteShift204] | null;
+
+
+export const DeleteShift204 = {
+} as const;
+
+export type DeleteShift403 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteShift404 = {
+  error: string;
+  message: string;
 };
 
 export type UpsertShiftRequirementBody = {
@@ -1359,9 +1427,29 @@ export type UpsertShiftRequirement200 = {
   notes?: string;
 };
 
+export type UpsertShiftRequirement403 = {
+  error: string;
+  message: string;
+};
+
+export type UpsertShiftRequirement404 = {
+  error: string;
+  message: string;
+};
+
 export type AskAvailability202 = {
   createdCheckCount: number;
   notifiedVolunteerCount: number;
+};
+
+export type AskAvailability403 = {
+  error: string;
+  message: string;
+};
+
+export type AskAvailability404 = {
+  error: string;
+  message: string;
 };
 
 export type GetCycleAvailabilityStatusParams = {
@@ -1393,6 +1481,11 @@ export type GetCycleAvailabilityStatus403 = {
   message: string;
 };
 
+export type GetCycleAvailabilityStatus404 = {
+  error: string;
+  message: string;
+};
+
 export type GetAvailabilityStatus200StatusesItemState = typeof GetAvailabilityStatus200StatusesItemState[keyof typeof GetAvailabilityStatus200StatusesItemState];
 
 
@@ -1411,6 +1504,30 @@ export type GetAvailabilityStatus200StatusesItem = {
 
 export type GetAvailabilityStatus200 = {
   statuses: GetAvailabilityStatus200StatusesItem[];
+};
+
+export type GetAvailabilityStatus403 = {
+  error: string;
+  message: string;
+};
+
+export type GetAvailabilityStatus404 = {
+  error: string;
+  message: string;
+};
+
+export type ResendAvailabilityReminder202 = {
+  resent: boolean;
+};
+
+export type ResendAvailabilityReminder403 = {
+  error: string;
+  message: string;
+};
+
+export type ResendAvailabilityReminder404 = {
+  error: string;
+  message: string;
 };
 
 export type GetCycleBuilderDataParams = {

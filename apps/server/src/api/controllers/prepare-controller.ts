@@ -98,6 +98,10 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
+const resendAvailabilityResponseSchema = z.object({
+  resent: z.boolean(),
+});
+
 interface PrepareControllerDependencies {
   participationManager: IParticipationManager;
   availabilityCheckManager: IAvailabilityCheckManager;
@@ -147,6 +151,7 @@ export class PrepareController implements FastifyController {
           response: {
             200: cycleParticipationResponseSchema,
             403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -189,6 +194,7 @@ export class PrepareController implements FastifyController {
           response: {
             200: scheduleSummaryListResponseSchema,
             403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -229,6 +235,11 @@ export class PrepareController implements FastifyController {
           description:
             'Replace the set of EventTimeBlocks a Ministry is opted into for a MinistryParticipation.',
           body: setInclusionsBodySchema,
+          response: {
+            204: z.null(),
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -260,7 +271,11 @@ export class PrepareController implements FastifyController {
           description:
             "Split a MinistryParticipation's EventTimeBlock into Shifts, either into equal parts or by manually-set spans.",
           body: splitShiftsBodySchema,
-          response: { 201: shiftListResponseSchema },
+          response: {
+            201: shiftListResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -295,7 +310,11 @@ export class PrepareController implements FastifyController {
           summary: 'Update a Shift',
           description: "Update a Shift's bounds or label.",
           body: updateShiftBodySchema,
-          response: { 200: shiftResponseSchema },
+          response: {
+            200: shiftResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -323,6 +342,11 @@ export class PrepareController implements FastifyController {
           operationId: 'deleteShift',
           summary: 'Delete a Shift',
           description: 'Delete a Shift from its MinistryParticipation.',
+          response: {
+            204: z.null(),
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -348,7 +372,11 @@ export class PrepareController implements FastifyController {
           description:
             'Set the ShiftRequirement headcount for a Sector and Role within a Shift.',
           body: shiftRequirementBodySchema,
-          response: { 200: shiftRequirementResponseSchema },
+          response: {
+            200: shiftRequirementResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -380,7 +408,11 @@ export class PrepareController implements FastifyController {
           summary: 'Ask availability for a MinistryParticipation',
           description:
             "Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.",
-          response: { 202: askAvailabilityResponseSchema },
+          response: {
+            202: askAvailabilityResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -413,6 +445,7 @@ export class PrepareController implements FastifyController {
           response: {
             200: availabilityStatusResponseSchema,
             403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -460,7 +493,11 @@ export class PrepareController implements FastifyController {
           summary: "Get a MinistryParticipation's AvailabilityCheck status",
           description:
             "List the AvailabilityCheck states of a MinistryParticipation's Volunteers.",
-          response: { 200: availabilityStatusResponseSchema },
+          response: {
+            200: availabilityStatusResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -496,6 +533,11 @@ export class PrepareController implements FastifyController {
           summary: 'Resend an availability reminder',
           description:
             "Resend the availability reminder VolunteerNotification to a MinistryParticipation's unconfirmed Volunteers.",
+          response: {
+            202: resendAvailabilityResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {

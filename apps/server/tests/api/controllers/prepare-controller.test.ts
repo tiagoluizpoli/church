@@ -128,6 +128,38 @@ beforeEach(() => {
 });
 
 describe('Prepare participation routes', () => {
+  it('documents the generic 404 refusal for every scope-protected route', () => {
+    const document = app.swagger();
+    if (!document.paths) {
+      throw new Error('OpenAPI document must declare paths');
+    }
+    const { paths } = document;
+    const scopeProtectedOperations = [
+      paths['/api/v1/prepare/cycles/{cycleId}/participation']?.get,
+      paths['/api/v1/prepare/ministries/{ministryId}/cycles-summary']?.get,
+      paths['/api/v1/prepare/participations/{participationId}/inclusions']?.put,
+      paths[
+        '/api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/shifts'
+      ]?.post,
+      paths['/api/v1/prepare/shifts/{shiftId}']?.patch,
+      paths['/api/v1/prepare/shifts/{shiftId}']?.delete,
+      paths['/api/v1/prepare/shifts/{shiftId}/requirements']?.put,
+      paths['/api/v1/prepare/participations/{participationId}/ask-availability']
+        ?.post,
+      paths['/api/v1/prepare/cycles/{cycleId}/availability-status']?.get,
+      paths[
+        '/api/v1/prepare/participations/{participationId}/availability-status'
+      ]?.get,
+      paths[
+        '/api/v1/prepare/participations/{participationId}/resend-availability'
+      ]?.post,
+    ];
+
+    for (const operation of scopeProtectedOperations) {
+      expect(operation?.responses?.['404']).toBeDefined();
+    }
+  });
+
   it('returns the same generic 404 for a missing or inaccessible participation after admission', async () => {
     authorityGuard.decideManageParticipation.mockResolvedValueOnce({
       allowed: false,

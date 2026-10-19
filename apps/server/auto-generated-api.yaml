@@ -2793,6 +2793,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/ministries/{ministryId}/cycles-summary:
     get:
       operationId: listScheduleSummaries
@@ -2878,6 +2893,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/participations/{participationId}/inclusions:
     put:
       operationId: setParticipationInclusions
@@ -2906,8 +2936,45 @@ paths:
           name: participationId
           required: true
       responses:
-        "200":
+        "204":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/shifts:
     post:
       operationId: splitParticipationShifts
@@ -3018,6 +3085,36 @@ paths:
                 required:
                   - shifts
                 additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/shifts/{shiftId}:
     patch:
       operationId: updateShift
@@ -3079,6 +3176,36 @@ paths:
                   - startTime
                   - endTime
                 additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     delete:
       operationId: deleteShift
       summary: Delete a Shift
@@ -3092,8 +3219,45 @@ paths:
           name: shiftId
           required: true
       responses:
-        "200":
+        "204":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/shifts/{shiftId}/requirements:
     put:
       operationId: upsertShiftRequirement
@@ -3161,6 +3325,36 @@ paths:
                   - sectorName
                   - peopleNeeded
                 additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/participations/{participationId}/ask-availability:
     post:
       operationId: askAvailability
@@ -3190,6 +3384,36 @@ paths:
                 required:
                   - createdCheckCount
                   - notifiedVolunteerCount
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/availability-status:
     get:
@@ -3257,6 +3481,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/participations/{participationId}/availability-status:
     get:
       operationId: getAvailabilityStatus
@@ -3304,6 +3543,36 @@ paths:
                 required:
                   - statuses
                 additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/participations/{participationId}/resend-availability:
     post:
       operationId: resendAvailabilityReminder
@@ -3319,8 +3588,48 @@ paths:
           name: participationId
           required: true
       responses:
-        "200":
+        "202":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resent:
+                    type: boolean
+                required:
+                  - resent
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/builder:
     get:
       operationId: getCycleBuilderData

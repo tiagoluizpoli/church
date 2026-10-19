@@ -35,9 +35,8 @@ const mockGetSession = vi.mocked(
 
 const activeChurchResolver = { resolve: vi.fn() };
 const authorityGuard = {
-  canManageParticipation: vi.fn(),
-  canManageShift: vi.fn(),
-  canManageMinistry: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
+  decideManageShift: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -84,7 +83,8 @@ async function seedPreparingShift() {
     volunteerId: seed.adminVolunteerId,
     autoSelected: false,
   });
-  authorityGuard.canManageShift.mockResolvedValue(true);
+  authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageShift.mockResolvedValue({ allowed: true });
 
   const cycle = await createSchedulingPhase3Cycle({
     churchId: seed.churchAId,

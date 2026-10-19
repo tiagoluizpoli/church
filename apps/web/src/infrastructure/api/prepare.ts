@@ -6,12 +6,15 @@
  */
 import type {
   AskAvailability202,
+  DeleteShift204,
   GetAvailabilityStatus200,
   GetCycleAvailabilityStatus200,
   GetCycleAvailabilityStatusParams,
   GetCycleParticipation200,
   GetCycleParticipationParams,
   ListScheduleSummaries200,
+  ResendAvailabilityReminder202,
+  SetParticipationInclusions204,
   SetParticipationInclusionsBody,
   SplitParticipationShifts201,
   SplitParticipationShiftsBody,
@@ -61,7 +64,7 @@ const setParticipationInclusions = (
     participationId: string,
     setParticipationInclusionsBody: SetParticipationInclusionsBody,
  ) => {
-      return apiClient<void>(
+      return apiClient<SetParticipationInclusions204>(
       {url: `/api/v1/prepare/participations/${participationId}/inclusions`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: setParticipationInclusionsBody
@@ -106,7 +109,7 @@ const updateShift = (
 const deleteShift = (
     shiftId: string,
  ) => {
-      return apiClient<void>(
+      return apiClient<DeleteShift204>(
       {url: `/api/v1/prepare/shifts/${shiftId}`, method: 'DELETE'
     },
       );
@@ -171,7 +174,7 @@ const getAvailabilityStatus = (
 const resendAvailabilityReminder = (
     participationId: string,
  ) => {
-      return apiClient<void>(
+      return apiClient<ResendAvailabilityReminder202>(
       {url: `/api/v1/prepare/participations/${participationId}/resend-availability`, method: 'POST'
     },
       );

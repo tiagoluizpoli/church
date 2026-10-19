@@ -1275,6 +1275,25 @@ paths:
                   - status
                   - requirements
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks/{eventTimeBlockId}:
     patch:
       operationId: updatePlanningEventTimeBlock
@@ -1377,6 +1396,25 @@ paths:
                   - status
                   - requirements
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     delete:
       operationId: deletePlanningEventTimeBlock
       summary: Delete a EventTimeBlock
@@ -1400,8 +1438,34 @@ paths:
           name: eventTimeBlockId
           required: true
       responses:
-        "200":
+        "204":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/ministries/{ministryId}/usual-setup:
     get:
       operationId: getUsualSetup
@@ -3619,6 +3683,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/audit:
     get:
       operationId: getCycleAuditLog
@@ -3682,6 +3761,21 @@ paths:
                   - items
                 additionalProperties: false
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:
@@ -3780,6 +3874,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/shifts/{shiftId}/eligible-volunteers:
     get:
       operationId: listEligibleVolunteers
@@ -3840,6 +3949,21 @@ paths:
                   - volunteers
                 additionalProperties: false
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:
@@ -3974,6 +4098,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/assignments/{assignmentId}:
     delete:
       operationId: deleteParticipationAssignment
@@ -3998,6 +4137,21 @@ paths:
                 enum:
                   - null
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:
@@ -4102,6 +4256,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/participations/{participationId}/completion:
     get:
       operationId: getParticipationCompletion
@@ -4139,6 +4308,21 @@ paths:
                   - completionPercent
                 additionalProperties: false
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:
@@ -5501,6 +5685,25 @@ paths:
                   - ministryName
                   - events
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/availability-checks:
     get:
       operationId: listAvailabilityChecks
@@ -5835,6 +6038,25 @@ paths:
                   - status
                   - assignedAt
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}/cancel:
     post:
       operationId: cancelOwnAssignment
@@ -5858,6 +6080,25 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/notifications:
     get:
       operationId: getNotifications
@@ -5968,6 +6209,25 @@ paths:
                     type: boolean
                 required:
                   - marked
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/volunteer/notifications/read-all:
     post:

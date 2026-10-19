@@ -9,6 +9,7 @@ import {
   vi,
 } from 'vitest';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import { AssignmentAccessDeniedError } from '@/domain/errors/assignment-access-denied';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 
@@ -245,6 +246,26 @@ describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
         volunteerId: VOLUNTEER_ID,
       }),
     );
+    await parkedOn.close();
+  });
+
+  it('returns generic 404 for another Volunteer when the switch is on', async () => {
+    const parkedOn = await buildApp(withAllParkedOn(appConfig) as never);
+    volunteerManager.respondToAssignment.mockRejectedValue(
+      new AssignmentAccessDeniedError(),
+    );
+
+    const response = await parkedOn.inject({
+      method: 'PATCH',
+      url,
+      payload: body,
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
     await parkedOn.close();
   });
 });

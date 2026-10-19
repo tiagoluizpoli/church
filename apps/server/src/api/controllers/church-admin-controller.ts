@@ -1,5 +1,7 @@
+import { NotFoundError } from '@church/core';
 import { parseTimeOfDay } from '@church/time';
-import type { z } from 'zod';
+import type { FastifyReply } from 'fastify';
+import { z } from 'zod';
 import {
   ChurchId,
   CycleId,
@@ -93,6 +95,16 @@ const manualPlanningEventBodySchema = createEventBodySchema.omit({
 
 const updatePlanningEventBodySchema = manualPlanningEventBodySchema.partial();
 
+const NOT_FOUND_RESPONSE = {
+  error: 'NOT_FOUND',
+  message: 'Resource not found',
+};
+
+const notFoundResponseSchema = z.object({
+  error: z.literal('NOT_FOUND'),
+  message: z.literal('Resource not found'),
+});
+
 type ManualPlanningEventBody = z.infer<typeof manualPlanningEventBodySchema>;
 type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
 
@@ -104,6 +116,11 @@ interface ChurchAdminControllerDependencies {
   participationManager: IParticipationManager;
   ministryManager: IMinistryManager;
   authorityGuard: AuthorityGuard;
+}
+
+interface NestedObjectOperationInput<T> {
+  reply: FastifyReply;
+  operation: () => Promise<T>;
 }
 
 export class ChurchAdminController implements FastifyController {
@@ -477,7 +494,10 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Create a EventTimeBlock on an Event',
           description: 'Create a church-level EventTimeBlock within an Event.',
           body: createEventTimeBlockBodySchema,
-          response: { 201: eventTimeBlockResponseSchema },
+          response: {
+            201: eventTimeBlockResponseSchema,
+            404: notFoundResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -485,15 +505,19 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body as z.infer<
           typeof createEventTimeBlockBodySchema
         >;
-        const eventTimeBlock =
-          await this.planningEventManager.createEventTimeBlock({
-            churchId: ChurchId.from(request.churchId),
-            cycleId: CycleId.from(cycleId),
-            eventId: EventId.from(eventId),
-            startTime: dateFromInstantString({ value: body.startTime }),
-            endTime: dateFromInstantString({ value: body.endTime }),
-            label: body.label,
-          });
+        const eventTimeBlock = await this.withNestedNotFound({
+          reply,
+          operation: () =>
+            this.planningEventManager.createEventTimeBlock({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              startTime: dateFromInstantString({ value: body.startTime }),
+              endTime: dateFromInstantString({ value: body.endTime }),
+              label: body.label,
+            }),
+        });
+        if (!eventTimeBlock) return;
         return reply
           .status(201)
           .send(eventTimeBlockMapper.toResponse(eventTimeBlock));
@@ -509,7 +533,10 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Update a EventTimeBlock',
           description: "Update a EventTimeBlock's bounds or label.",
           body: updateEventTimeBlockBodySchema,
-          response: { 200: eventTimeBlockResponseSchema },
+          response: {
+            200: eventTimeBlockResponseSchema,
+            404: notFoundResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -518,16 +545,22 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body as z.infer<
           typeof updateEventTimeBlockBodySchema
         >;
-        const eventTimeBlock =
-          await this.planningEventManager.updateEventTimeBlock({
-            churchId: ChurchId.from(request.churchId),
-            cycleId: CycleId.from(cycleId),
-            eventId: EventId.from(eventId),
-            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-            startTime: optionalDateFromInstantString({ value: body.startTime }),
-            endTime: optionalDateFromInstantString({ value: body.endTime }),
-            label: body.label,
-          });
+        const eventTimeBlock = await this.withNestedNotFound({
+          reply,
+          operation: () =>
+            this.planningEventManager.updateEventTimeBlock({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              startTime: optionalDateFromInstantString({
+                value: body.startTime,
+              }),
+              endTime: optionalDateFromInstantString({ value: body.endTime }),
+              label: body.label,
+            }),
+        });
+        if (!eventTimeBlock) return;
         return reply.send(eventTimeBlockMapper.toResponse(eventTimeBlock));
       },
     );
@@ -540,17 +573,25 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'deletePlanningEventTimeBlock',
           summary: 'Delete a EventTimeBlock',
           description: 'Delete a EventTimeBlock from an Event.',
+          response: { 204: z.null(), 404: notFoundResponseSchema },
         },
       },
       async (request, reply) => {
         const { cycleId, eventId, eventTimeBlockId } =
           request.params as PlanningEventTimeBlockRouteParams;
-        await this.planningEventManager.deleteEventTimeBlock({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: CycleId.from(cycleId),
-          eventId: EventId.from(eventId),
-          eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+        const deleted = await this.withNestedNotFound({
+          reply,
+          operation: async () => {
+            await this.planningEventManager.deleteEventTimeBlock({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+            });
+            return true;
+          },
         });
+        if (!deleted) return;
         return reply.status(204).send();
       },
     );
@@ -647,5 +688,20 @@ export class ChurchAdminController implements FastifyController {
         return reply.send(ministryMapper.toResponse(ministry));
       },
     );
+  }
+
+  private async withNestedNotFound<T>({
+    reply,
+    operation,
+  }: NestedObjectOperationInput<T>): Promise<T | undefined> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        reply.status(404).send(NOT_FOUND_RESPONSE);
+        return undefined;
+      }
+      throw error;
+    }
   }
 }

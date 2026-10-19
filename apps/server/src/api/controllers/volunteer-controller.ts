@@ -17,6 +17,7 @@ import type {
   IVolunteerManager,
   MinistrySchedule,
 } from '../../domain/contracts/application/volunteer-manager';
+import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-access-denied';
 import { CheckAccessDeniedError } from '../../domain/errors/check-access-denied';
 import { IsolationBreachError } from '../../domain/errors/isolation-breach-error';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -65,7 +66,7 @@ interface VolunteerControllerDependencies {
   config: AppConfig;
 }
 
-interface PrivateCheckOperationInput<T> {
+interface PrivateObjectOperationInput<T> {
   reply: FastifyReply;
   operation: () => Promise<T>;
 }
@@ -229,7 +230,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
-        const detail = await this.withPrivateCheckNotFound({
+        const detail = await this.withPrivateObjectNotFound({
           reply,
           operation: () =>
             this.volunteerManager.getAvailabilityCheck({
@@ -263,7 +264,7 @@ export class VolunteerController implements FastifyController {
         const body = request.body as z.infer<
           typeof setUnavailableShiftsBodySchema
         >;
-        const detail = await this.withPrivateCheckNotFound({
+        const detail = await this.withPrivateObjectNotFound({
           reply,
           operation: () =>
             this.volunteerManager.setUnavailableShifts({
@@ -294,7 +295,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
-        const confirmed = await this.withPrivateCheckNotFound({
+        const confirmed = await this.withPrivateObjectNotFound({
           reply,
           operation: () =>
             this.volunteerManager.confirmAvailabilityCheck({
@@ -319,7 +320,10 @@ export class VolunteerController implements FastifyController {
             description:
               "Record the current Volunteer's accept/decline response to one of their own Assignments.",
             body: respondToAssignmentBodySchema,
-            response: { 200: assignmentResponseSchema },
+            response: {
+              200: assignmentResponseSchema,
+              404: notFoundResponseSchema,
+            },
           },
         },
         async (request, reply) => {
@@ -327,13 +331,18 @@ export class VolunteerController implements FastifyController {
           const body = request.body as z.infer<
             typeof respondToAssignmentBodySchema
           >;
-          const result = await this.volunteerManager.respondToAssignment({
-            assignmentId: AssignmentId.from(assignmentId),
-            volunteerId: VolunteerId.from(request.volunteerId as string),
-            churchId: ChurchId.from(request.churchId),
-            response: body.response,
-            reason: body.reason,
+          const result = await this.withPrivateObjectNotFound({
+            reply,
+            operation: () =>
+              this.volunteerManager.respondToAssignment({
+                assignmentId: AssignmentId.from(assignmentId),
+                volunteerId: VolunteerId.from(request.volunteerId as string),
+                churchId: ChurchId.from(request.churchId),
+                response: body.response,
+                reason: body.reason,
+              }),
           });
+          if (!result) return;
           return reply.send(volunteerMapper.assignmentToResponse(result));
         },
       );
@@ -349,16 +358,23 @@ export class VolunteerController implements FastifyController {
             summary: "Cancel one of the caller's Assignments",
             description:
               "Cancel one of the current Volunteer's own Assignments.",
-            response: { 204: z.null() },
+            response: { 204: z.null(), 404: notFoundResponseSchema },
           },
         },
         async (request, reply) => {
           const { assignmentId } = request.params as AssignmentRouteParams;
-          await this.volunteerManager.cancelOwnAssignment({
-            assignmentId: AssignmentId.from(assignmentId),
-            volunteerId: VolunteerId.from(request.volunteerId as string),
-            churchId: ChurchId.from(request.churchId),
+          const cancelled = await this.withPrivateObjectNotFound({
+            reply,
+            operation: async () => {
+              await this.volunteerManager.cancelOwnAssignment({
+                assignmentId: AssignmentId.from(assignmentId),
+                volunteerId: VolunteerId.from(request.volunteerId as string),
+                churchId: ChurchId.from(request.churchId),
+              });
+              return true;
+            },
           });
+          if (!cancelled) return;
           return reply.status(204).send(null);
         },
       );
@@ -445,15 +461,16 @@ export class VolunteerController implements FastifyController {
     );
   }
 
-  private async withPrivateCheckNotFound<T>({
+  private async withPrivateObjectNotFound<T>({
     reply,
     operation,
-  }: PrivateCheckOperationInput<T>): Promise<T | undefined> {
+  }: PrivateObjectOperationInput<T>): Promise<T | undefined> {
     try {
       return await operation();
     } catch (error) {
       if (
         error instanceof CheckAccessDeniedError ||
+        error instanceof AssignmentAccessDeniedError ||
         error instanceof NotFoundError
       ) {
         reply.status(404).send(NOT_FOUND_RESPONSE);

@@ -18,8 +18,8 @@ import { apiClient } from '../../utils/api-client';
 
   export const getMinistries = () => {
 /**
- * List the Ministries the current Volunteer leads within the Active Church.
- * @summary List the caller's led Ministries
+ * List every Ministry for a ChurchAdmin, or the Ministries the caller actively leads.
+ * @summary List the caller's accessible Ministries
  */
 const listMinistries = (
 

@@ -846,6 +846,16 @@ export type GetScheduleBuilderData401 = {
   message: string;
 };
 
+export type GetScheduleBuilderData403 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleBuilderData404 = {
+  error: string;
+  message: string;
+};
+
 export type ListEventsParams = {
 ministryId: string;
 status?: ListEventsStatus;
@@ -894,6 +904,21 @@ export type ListEvents200 = {
   events: ListEvents200EventsItem[];
 };
 
+export type ListEvents401 = {
+  error: string;
+  message: string;
+};
+
+export type ListEvents403 = {
+  error: string;
+  message: string;
+};
+
+export type ListEvents404 = {
+  error: string;
+  message: string;
+};
+
 export type ListMinistries200MinistriesItemDefaultDirection = typeof ListMinistries200MinistriesItemDefaultDirection[keyof typeof ListMinistries200MinistriesItemDefaultDirection];
 
 
@@ -919,6 +944,11 @@ export type ListMinistries200 = {
 };
 
 export type ListMinistries401 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistries403 = {
   error: string;
   message: string;
 };

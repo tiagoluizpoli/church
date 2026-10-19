@@ -110,6 +110,9 @@ export function buildManagers({
       volunteerRepo: volunteerRepository,
       roleRepo: roleRepository,
       sectorRepo: sectorRepository,
+      ministryParticipationRepo: ministryParticipationRepository,
+      authorityManager,
+      shiftRepo: shiftRepository,
     });
   const eventTemplateManager =
     overrides.eventTemplateManager ??

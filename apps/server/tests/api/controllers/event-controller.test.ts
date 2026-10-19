@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import {
   afterAll,
   beforeAll,
@@ -33,8 +34,8 @@ const activeChurchResolver = {
 };
 
 const authorityGuard = {
-  canManageMinistry: vi.fn(),
-  canManageEvent: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
+  decideManageMinistry: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -79,8 +80,8 @@ beforeEach(() => {
   activeChurchResolver.resolve.mockResolvedValue(
     createActiveChurchResolution(),
   );
-  authorityGuard.canManageMinistry.mockResolvedValue(true);
-  authorityGuard.canManageEvent.mockResolvedValue(true);
+  authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
 });
 
 describe('Event controller authorization wiring', () => {
@@ -96,7 +97,11 @@ describe('Event controller authorization wiring', () => {
     expect(eventManager.listEvents).not.toHaveBeenCalled();
   });
 
-  it('GET /api/v1/events/schedule-builder stays reachable by any authenticated volunteer (no coarse role gate)', async () => {
+  it('GET /api/v1/events/schedule-builder allows a ChurchAdmin without a Volunteer profile and passes User identity', async () => {
+    activeChurchResolver.resolve.mockResolvedValue({
+      ...createActiveChurchResolution(),
+      volunteerId: null,
+    });
     eventManager.getScheduleBuilderData.mockResolvedValue({
       events: [],
       assignments: [],
@@ -112,6 +117,12 @@ describe('Event controller authorization wiring', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(eventManager.getScheduleBuilderData).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      eventId: '66666666-6666-6666-6666-666666666666',
+      userId: 'admin-leader-user',
+      ministryId: undefined,
+    });
   });
 
   it("GET /api/v1/events/schedule-builder returns the Ministry's Sectors", async () => {
@@ -137,10 +148,10 @@ describe('Event controller authorization wiring', () => {
     expect(response.json().sectors).toEqual(sectors);
   });
 
-  it('GET /api/v1/events/schedule-builder 401s when the caller has no Volunteer profile at all', async () => {
-    activeChurchResolver.resolve.mockResolvedValue({
-      ...createActiveChurchResolution(),
-      volunteerId: null,
+  it('GET /api/v1/events/schedule-builder returns 403 before object lookup when the caller lacks the scheduling function', async () => {
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
     });
 
     const response = await app.inject({
@@ -148,41 +159,90 @@ describe('Event controller authorization wiring', () => {
       url: '/api/v1/events/schedule-builder?eventId=66666666-6666-6666-6666-666666666666',
     });
 
-    expect(response.statusCode).toBe(401);
+    expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'UNAUTHORIZED',
-      message: 'Volunteer profile not found',
+      error: 'FORBIDDEN',
+      message: 'Scheduling leadership required',
     });
     expect(eventManager.getScheduleBuilderData).not.toHaveBeenCalled();
   });
 
-  it('GET /api/v1/events allows a Ministry leader and denies a non-leader', async () => {
+  it('GET /api/v1/events/schedule-builder returns a generic 404 for missing or hidden objects', async () => {
+    eventManager.getScheduleBuilderData.mockRejectedValue(
+      new NotFoundError('hidden ministry'),
+    );
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/events/schedule-builder?eventId=66666666-6666-6666-6666-666666666666&ministryId=99999999-9999-4999-8999-999999999999',
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
+  });
+
+  it('GET /api/v1/events admits a ChurchAdmin, then evaluates the requested Ministry object', async () => {
     eventManager.listEvents.mockResolvedValue([]);
 
-    const allowed = await app.inject({
+    const response = await app.inject({
       method: 'GET',
       url: '/api/v1/events?ministryId=22222222-2222-2222-8222-222222222222',
     });
-    expect(allowed.statusCode).toBe(200);
-    expect(authorityGuard.canManageMinistry).toHaveBeenCalledWith({
+
+    expect(response.statusCode).toBe(200);
+    expect(authorityGuard.decideManageAnyMinistry).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      userId: 'admin-leader-user',
+    });
+    expect(authorityGuard.decideManageMinistry).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
       ministryId: '22222222-2222-2222-8222-222222222222',
       userId: 'admin-leader-user',
     });
+  });
 
-    authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
-    const denied = await app.inject({
+  it('GET /api/v1/events returns 403 for a caller without the scheduling function', async () => {
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+
+    const response = await app.inject({
       method: 'GET',
       url: '/api/v1/events?ministryId=22222222-2222-2222-8222-222222222222',
     });
-    expect(denied.statusCode).toBe(403);
-    expect(denied.json()).toEqual({
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not a leader of this ministry',
+      message: 'Scheduling leadership required',
     });
+    expect(eventManager.listEvents).not.toHaveBeenCalled();
   });
 
-  it('a ChurchAdmin with no Volunteer profile is still a valid caller for pure Church-authority routes', async () => {
+  it('GET /api/v1/events returns an indistinguishable 404 for a missing or hidden Ministry', async () => {
+    authorityGuard.decideManageMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'OUTSIDE_SCOPE',
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/events?ministryId=99999999-9999-4999-8999-999999999999',
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
+    expect(eventManager.listEvents).not.toHaveBeenCalled();
+  });
+
+  it('a ChurchAdmin with no Volunteer profile remains valid for Ministry Event reads', async () => {
     activeChurchResolver.resolve.mockResolvedValue({
       ...createActiveChurchResolution(),
       volunteerId: null,
@@ -193,6 +253,7 @@ describe('Event controller authorization wiring', () => {
       method: 'GET',
       url: '/api/v1/events?ministryId=22222222-2222-2222-8222-222222222222',
     });
+
     expect(response.statusCode).toBe(200);
   });
 });

@@ -92,6 +92,28 @@ describe('DbAuthorityManager', () => {
     });
   });
 
+  it('decideManageAnyMinistry admits ChurchAdmins and actual leaders, but not plain members', async () => {
+    const manager = createManager();
+
+    actorRepository.resolveActor.mockResolvedValueOnce(adminActor());
+    await expect(
+      manager.decideManageAnyMinistry({ churchId, userId }),
+    ).resolves.toEqual({ allowed: true });
+
+    actorRepository.resolveActor.mockResolvedValueOnce(ministryLeaderActor());
+    await expect(
+      manager.decideManageAnyMinistry({ churchId, userId }),
+    ).resolves.toEqual({ allowed: true });
+
+    actorRepository.resolveActor.mockResolvedValueOnce(memberActor());
+    await expect(
+      manager.decideManageAnyMinistry({ churchId, userId }),
+    ).resolves.toEqual({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+  });
+
   it('canManageMinistry allows the Ministry leader and denies a plain member', async () => {
     const manager = createManager();
 

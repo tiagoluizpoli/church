@@ -4,7 +4,7 @@ import type {
   MinistryId,
   RoleId,
   SectorId,
-  VolunteerId,
+  UserId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
 import type { Event, EventStatus } from '../../entities/event';
@@ -55,7 +55,7 @@ export interface ScheduleBuilderData {
 export interface GetScheduleBuilderDataInput {
   churchId: ChurchId;
   eventId: EventId;
-  volunteerId: VolunteerId;
+  userId: UserId;
   /**
    * Disambiguates which ministry's slice to build when the event has more
    * than one MinistryParticipation (the normal case post-017: a church-owned

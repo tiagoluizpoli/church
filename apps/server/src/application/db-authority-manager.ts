@@ -64,6 +64,42 @@ export class DbAuthorityManager implements IAuthorityManager {
     return AuthorityService.authorize({ actor, action, resource, scope });
   }
 
+  async decideManageAnyMinistry(
+    input: CanManageChurchInput,
+  ): Promise<AuthorityDecision> {
+    const { churchId } = input;
+    const actor = await this.resolveActor(input);
+    const churchDecision = AuthorityService.authorize({
+      actor,
+      action: 'manage',
+      resource: { type: 'church', churchId },
+      scope: 'function',
+    });
+    if (churchDecision.allowed) return churchDecision;
+    if (
+      !actor.churchMembership ||
+      actor.churchMembership.churchId !== churchId
+    ) {
+      return churchDecision;
+    }
+
+    for (const membership of actor.ministryMemberships) {
+      if (membership.churchId !== churchId) continue;
+      const ministryDecision = AuthorityService.authorize({
+        actor,
+        action: 'manage',
+        resource: {
+          type: 'ministry',
+          churchId,
+          ministryId: membership.ministryId,
+        },
+        scope: 'function',
+      });
+      if (ministryDecision.allowed) return ministryDecision;
+    }
+    return { allowed: false, reason: 'INSUFFICIENT_ACCESS_LEVEL' };
+  }
+
   async canManageChurch(input: CanManageChurchInput): Promise<boolean> {
     const actor = await this.resolveActor(input);
     return AuthorityService.authorize({

@@ -5,6 +5,7 @@ import type {
   RoleId,
   SectorId,
   UserId,
+  VolunteerId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
 import type { Event, EventStatus } from '../../entities/event';

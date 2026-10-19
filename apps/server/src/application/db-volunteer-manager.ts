@@ -1,4 +1,5 @@
 import type { AppConfig } from '@church/app-config';
+import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
   compareInstants,
@@ -913,7 +914,14 @@ export class DbVolunteerManager implements IVolunteerManager {
 
   async markNotificationRead(input: MarkNotificationReadInput): Promise<void> {
     const { notificationId, volunteerId, churchId } = input;
-    await this.notificationRepo.markRead(churchId, volunteerId, notificationId);
+    const readAt = await this.notificationRepo.markRead(
+      churchId,
+      volunteerId,
+      notificationId,
+    );
+    if (!readAt) {
+      throw new NotFoundError('Resource not found');
+    }
   }
 
   async markAllNotificationsRead(

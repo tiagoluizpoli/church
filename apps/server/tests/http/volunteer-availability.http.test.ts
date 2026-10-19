@@ -172,7 +172,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
     );
   });
 
-  it("PUT unavailable shifts on another volunteer's check returns 403", async () => {
+  it("PUT unavailable shifts on another volunteer's check returns generic 404", async () => {
     volunteerManager.setUnavailableShifts.mockRejectedValue(
       new CheckAccessDeniedError(),
     );
@@ -183,7 +183,11 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
       payload: { shiftIds: [SHIFT_ID] },
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
   });
 
   it('PUT unavailable shifts accepts whole-day dates', async () => {
@@ -219,7 +223,7 @@ describe('Volunteer availability-check confirm (DL3-HT-09)', () => {
     expect(response.statusCode).toBe(204);
   });
 
-  it("confirming another volunteer's check returns 403", async () => {
+  it("confirming another volunteer's check returns generic 404", async () => {
     volunteerManager.confirmAvailabilityCheck.mockRejectedValue(
       new CheckAccessDeniedError(),
     );
@@ -229,6 +233,10 @@ describe('Volunteer availability-check confirm (DL3-HT-09)', () => {
       url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/confirm`,
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
   });
 });

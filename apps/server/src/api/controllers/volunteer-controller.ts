@@ -1,5 +1,7 @@
 import type { AppConfig } from '@church/app-config';
+import { NotFoundError } from '@church/core';
 import { instantSchema, toDate } from '@church/time';
+import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
   AssignmentId,
@@ -11,7 +13,12 @@ import {
   VolunteerNotificationId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
-import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
+import type {
+  IVolunteerManager,
+  MinistrySchedule,
+} from '../../domain/contracts/application/volunteer-manager';
+import { CheckAccessDeniedError } from '../../domain/errors/check-access-denied';
+import { IsolationBreachError } from '../../domain/errors/isolation-breach-error';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -57,6 +64,21 @@ interface VolunteerControllerDependencies {
   activeChurchResolver: IActiveChurchResolver;
   config: AppConfig;
 }
+
+interface PrivateCheckOperationInput<T> {
+  reply: FastifyReply;
+  operation: () => Promise<T>;
+}
+
+const NOT_FOUND_RESPONSE = {
+  error: 'NOT_FOUND',
+  message: 'Resource not found',
+};
+
+const notFoundResponseSchema = z.object({
+  error: z.literal('NOT_FOUND'),
+  message: z.literal('Resource not found'),
+});
 
 export class VolunteerController implements FastifyController {
   readonly prefix = '/volunteer';
@@ -143,16 +165,30 @@ export class VolunteerController implements FastifyController {
           summary: "Get the caller's published Ministry schedule",
           description:
             "Get the current Volunteer's published schedule within one Ministry.",
-          response: { 200: ministryScheduleResponseSchema },
+          response: {
+            200: ministryScheduleResponseSchema,
+            404: notFoundResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { ministryId } = request.params as MinistryRouteParams;
-        const schedule = await this.volunteerManager.getMinistrySchedule({
-          ministryId: MinistryId.from(ministryId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-        });
+        let schedule: MinistrySchedule;
+        try {
+          schedule = await this.volunteerManager.getMinistrySchedule({
+            ministryId: MinistryId.from(ministryId),
+            volunteerId: VolunteerId.from(request.volunteerId as string),
+            churchId: ChurchId.from(request.churchId),
+          });
+        } catch (error) {
+          if (
+            error instanceof IsolationBreachError ||
+            error instanceof NotFoundError
+          ) {
+            return reply.status(404).send(NOT_FOUND_RESPONSE);
+          }
+          throw error;
+        }
         return reply.send(volunteerMapper.ministryScheduleToResponse(schedule));
       },
     );
@@ -193,11 +229,16 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
-        const detail = await this.volunteerManager.getAvailabilityCheck({
-          checkId: AvailabilityCheckId.from(checkId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+        const detail = await this.withPrivateCheckNotFound({
+          reply,
+          operation: () =>
+            this.volunteerManager.getAvailabilityCheck({
+              checkId: AvailabilityCheckId.from(checkId),
+              volunteerId: VolunteerId.from(request.volunteerId as string),
+              churchId: ChurchId.from(request.churchId),
+            }),
         });
+        if (!detail) return;
         return reply.send(
           volunteerMapper.availabilityCheckDetailToResponse(detail),
         );
@@ -222,13 +263,18 @@ export class VolunteerController implements FastifyController {
         const body = request.body as z.infer<
           typeof setUnavailableShiftsBodySchema
         >;
-        const detail = await this.volunteerManager.setUnavailableShifts({
-          checkId: AvailabilityCheckId.from(checkId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-          shiftIds: body.shiftIds.map((shiftId) => ShiftId.from(shiftId)),
-          wholeDayDates: body.wholeDayDates,
+        const detail = await this.withPrivateCheckNotFound({
+          reply,
+          operation: () =>
+            this.volunteerManager.setUnavailableShifts({
+              checkId: AvailabilityCheckId.from(checkId),
+              volunteerId: VolunteerId.from(request.volunteerId as string),
+              churchId: ChurchId.from(request.churchId),
+              shiftIds: body.shiftIds.map((shiftId) => ShiftId.from(shiftId)),
+              wholeDayDates: body.wholeDayDates,
+            }),
         });
+        if (!detail) return;
         return reply.send(
           volunteerMapper.availabilityCheckDetailToResponse(detail),
         );
@@ -248,11 +294,16 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
-        await this.volunteerManager.confirmAvailabilityCheck({
-          checkId: AvailabilityCheckId.from(checkId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+        const confirmed = await this.withPrivateCheckNotFound({
+          reply,
+          operation: () =>
+            this.volunteerManager.confirmAvailabilityCheck({
+              checkId: AvailabilityCheckId.from(checkId),
+              volunteerId: VolunteerId.from(request.volunteerId as string),
+              churchId: ChurchId.from(request.churchId),
+            }),
         });
+        if (!confirmed) return;
         return reply.status(204).send();
       },
     );
@@ -349,16 +400,26 @@ export class VolunteerController implements FastifyController {
           summary: 'Mark a VolunteerNotification read',
           description:
             "Mark one of the current Volunteer's VolunteerNotifications as read.",
-          response: { 200: z.object({ marked: z.boolean() }) },
+          response: {
+            200: z.object({ marked: z.boolean() }),
+            404: notFoundResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { notificationId } = request.params as NotificationRouteParams;
-        await this.volunteerManager.markNotificationRead({
-          notificationId: VolunteerNotificationId.from(notificationId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-        });
+        try {
+          await this.volunteerManager.markNotificationRead({
+            notificationId: VolunteerNotificationId.from(notificationId),
+            volunteerId: VolunteerId.from(request.volunteerId as string),
+            churchId: ChurchId.from(request.churchId),
+          });
+        } catch (error) {
+          if (error instanceof NotFoundError) {
+            return reply.status(404).send(NOT_FOUND_RESPONSE);
+          }
+          throw error;
+        }
         return reply.status(200).send({ marked: true });
       },
     );
@@ -382,5 +443,23 @@ export class VolunteerController implements FastifyController {
         return reply.status(201).send({ marked: true });
       },
     );
+  }
+
+  private async withPrivateCheckNotFound<T>({
+    reply,
+    operation,
+  }: PrivateCheckOperationInput<T>): Promise<T | undefined> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (
+        error instanceof CheckAccessDeniedError ||
+        error instanceof NotFoundError
+      ) {
+        reply.status(404).send(NOT_FOUND_RESPONSE);
+        return undefined;
+      }
+      throw error;
+    }
   }
 }

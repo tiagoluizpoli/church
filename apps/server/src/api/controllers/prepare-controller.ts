@@ -73,6 +73,17 @@ interface DenyShiftScopeInput {
   shiftId: string;
 }
 
+interface DenyAuthorityDecisionInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  allowed: boolean;
+}
+
+const NOT_FOUND_RESPONSE = {
+  error: 'NOT_FOUND',
+  message: 'Resource not found',
+};
+
 type SplitShiftsBody = z.infer<typeof splitShiftsBodySchema>;
 type SetInclusionsBody = z.infer<typeof setInclusionsBodySchema>;
 type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
@@ -143,17 +154,19 @@ export class PrepareController implements FastifyController {
         const { cycleId } = request.params as CycleParticipationRouteParams;
         const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
+        const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
         });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this ministry',
-          });
-        }
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
 
         const view = await this.participationManager.getCycleParticipation({
           churchId: ChurchId.from(request.churchId),
@@ -182,17 +195,19 @@ export class PrepareController implements FastifyController {
       async (request, reply) => {
         const { ministryId } = request.params as ScheduleSummaryRouteParams;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
+        const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
         });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this ministry',
-          });
-        }
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
 
         const views = await this.participationManager.listScheduleSummaries({
           churchId: ChurchId.from(request.churchId),
@@ -405,17 +420,19 @@ export class PrepareController implements FastifyController {
         const { cycleId } = request.params as CycleParticipationRouteParams;
         const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
+        const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
         });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this ministry',
-          });
-        }
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
 
         const statuses =
           await this.availabilityCheckManager.listCycleCheckStatuses({
@@ -512,21 +529,17 @@ export class PrepareController implements FastifyController {
     reply,
     participationId,
   }: DenyParticipationScopeInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.canManageParticipation({
+    const decision = await this.authorityGuard.decideManageParticipation({
       churchId: ChurchId.from(request.churchId),
       participationId: MinistryParticipationId.from(participationId),
       userId: UserId.from(request.userId),
     });
 
-    if (!allowed) {
-      reply.status(403).send({
-        error: 'FORBIDDEN',
-        message: 'Participation belongs to another ministry',
-      });
-      return true;
-    }
-
-    return false;
+    return this.denyAuthorityDecision({
+      request,
+      reply,
+      allowed: decision.allowed,
+    });
   }
 
   private async denyShiftScope({
@@ -534,21 +547,38 @@ export class PrepareController implements FastifyController {
     reply,
     shiftId,
   }: DenyShiftScopeInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.canManageShift({
+    const decision = await this.authorityGuard.decideManageShift({
       churchId: ChurchId.from(request.churchId),
       shiftId: ShiftId.from(shiftId),
       userId: UserId.from(request.userId),
     });
 
-    if (!allowed) {
+    return this.denyAuthorityDecision({
+      request,
+      reply,
+      allowed: decision.allowed,
+    });
+  }
+
+  private async denyAuthorityDecision({
+    request,
+    reply,
+    allowed,
+  }: DenyAuthorityDecisionInput): Promise<boolean> {
+    if (allowed) return false;
+    const functionDecision = await this.authorityGuard.decideManageAnyMinistry({
+      churchId: ChurchId.from(request.churchId),
+      userId: UserId.from(request.userId),
+    });
+    if (!functionDecision.allowed) {
       reply.status(403).send({
         error: 'FORBIDDEN',
-        message: 'Shift belongs to another ministry',
+        message: 'Not permitted to manage ministry schedules',
       });
       return true;
     }
-
-    return false;
+    reply.status(404).send(NOT_FOUND_RESPONSE);
+    return true;
   }
 }
 

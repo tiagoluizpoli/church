@@ -73,16 +73,14 @@ function buildParticipation(
     eventId: EventId;
   }> = {},
 ): MinistryParticipation {
-  return new MinistryParticipation(
-    {
-      props: {
-        churchId,
-        ministryId: overrides.ministryId ?? ministryId,
-        eventId: overrides.eventId ?? eventId,
-      },
+  return new MinistryParticipation({
+    props: {
+      churchId,
+      ministryId: overrides.ministryId ?? ministryId,
+      eventId: overrides.eventId ?? eventId,
     },
-    overrides.id ?? participationId,
-  );
+    id: overrides.id ?? participationId,
+  });
 }
 
 function buildMembership(
@@ -105,7 +103,11 @@ interface Repos {
   roleRepo: RoleRepository;
   sectorRepo: SectorRepository;
   ministryParticipationRepo: MinistryParticipationRepository;
-  authorityManager: Pick<IAuthorityManager, 'decideManageMinistry'>;
+  authorityManager: {
+    decideManageMinistry: ReturnType<
+      typeof vi.fn<IAuthorityManager['decideManageMinistry']>
+    >;
+  };
   shiftRepo: Pick<
     ShiftRepository,
     'listByParticipation' | 'listRequirementsByParticipation'
@@ -221,7 +223,9 @@ function createRepos(): Repos {
   };
 
   const authorityManager = {
-    decideManageMinistry: vi.fn(async () => ({ allowed: true })),
+    decideManageMinistry: vi.fn<IAuthorityManager['decideManageMinistry']>(
+      async () => ({ allowed: true }),
+    ),
   };
 
   const shiftRepo = {
@@ -637,12 +641,19 @@ describe('DbEventManager', () => {
         ministryId,
       });
 
-      expect(result.events[0].eventTimeBlocks[0].requirements).toEqual([
-        ownRequirement,
-      ]);
+      const [scheduledEvent] = result.events;
+      if (!scheduledEvent) throw new Error('Expected a scheduled Event');
+      const [scheduledTimeBlock] = scheduledEvent.eventTimeBlocks;
+      if (!scheduledTimeBlock) {
+        throw new Error('Expected an Event time block');
+      }
+      const [unavailableShift] = result.unavailableShifts;
+      if (!unavailableShift) throw new Error('Expected an unavailable Shift');
+
+      expect(scheduledTimeBlock.requirements).toEqual([ownRequirement]);
       expect(result.assignments).toBe(assignments);
       expect(result.unavailableShifts).toHaveLength(1);
-      expect(result.unavailableShifts[0].shiftId).toBe(ownShiftId);
+      expect(unavailableShift.shiftId).toBe(ownShiftId);
       expect(repos.assignmentRepo.listByEvent).not.toHaveBeenCalled();
       expect(repos.assignmentRepo.listByParticipation).toHaveBeenCalledWith(
         churchId,

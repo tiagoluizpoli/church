@@ -300,6 +300,11 @@ export function buildValidationSteps({
       command: 'bun',
       label: 'test-placement',
     });
+    checkLane.push({
+      args: ['run', 'validate:i18n-parity'],
+      command: 'bun',
+      label: 'i18n-parity',
+    });
 
     if (plan.workspaceNames.length > 0) {
       const filters = plan.workspaceNames.flatMap((workspaceName) => [
@@ -326,6 +331,7 @@ export function buildValidationSteps({
     checkedLabels.push(
       'lint',
       'test-placement',
+      'i18n-parity',
       'typecheck',
       ...ALL_TEST_LAYERS,
     );

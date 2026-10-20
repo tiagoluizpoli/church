@@ -40,6 +40,24 @@ describe('DatePickerField', () => {
     expect(trigger).not.toHaveTextContent(/September/);
   });
 
+  it('labels months and weekday headers in Portuguese', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <DatePickerField
+        value="2026-08-15"
+        onChange={vi.fn()}
+        data-testid="date-field"
+      />,
+    );
+
+    await user.click(screen.getByTestId('date-field'));
+
+    const months = screen.getByRole('combobox', { name: 'Choose the Month' });
+    expect(months).toHaveTextContent('ago.');
+    expect(months).not.toHaveTextContent('Aug');
+    expect(screen.getByText('dom')).toBeInTheDocument();
+  });
+
   describe('minDate/maxDate bounds', () => {
     it('disables days outside [minDate, maxDate] and leaves days inside it pickable', async () => {
       const onChange = vi.fn();

@@ -97,6 +97,7 @@ export function buildManagers({
       volunteerRepository,
       unavailableShiftRepository,
       planningEventRepository,
+      cycleRepository,
       notificationService,
       unitOfWork,
     });
@@ -232,6 +233,8 @@ export function buildManagers({
       volunteerRepository,
       ministryRepository,
       usualSetupRepository: usualSetupRepository,
+      eventTemplateRepository,
+      cycleRepository,
       roleRepository,
       sectorRepository,
       notificationService,
@@ -243,6 +246,7 @@ export function buildManagers({
       participationRepository: ministryParticipationRepository,
       eventRepository: planningEventRepository,
       availabilityCheckRepository,
+      cycleRepository,
       notificationService,
       unitOfWork,
     });

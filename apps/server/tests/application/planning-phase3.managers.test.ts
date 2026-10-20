@@ -754,6 +754,72 @@ describe('Phase 3 planning managers', () => {
     ).toHaveLength(1);
   });
 
+  it('treats an Event addressed under another Cycle as not found and writes nothing', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+    const addressedCycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Addressed cycle',
+      startDate: new Date('2027-05-01T00:00:00.000Z'),
+      endDate: new Date('2027-06-01T00:00:00.000Z'),
+    });
+    const owningCycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Owning cycle',
+      startDate: new Date('2027-06-01T00:00:00.000Z'),
+      endDate: new Date('2027-07-01T00:00:00.000Z'),
+    });
+    const owned = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: owningCycle.id,
+      title: 'Owned event',
+      start: new Date('2027-06-05T09:00:00.000Z'),
+      end: new Date('2027-06-05T10:00:00.000Z'),
+    });
+    const mismatched = {
+      churchId: churchAId,
+      cycleId: addressedCycle.id,
+      eventId: owned.id,
+    };
+    const notFound = {
+      code: 'NOT_FOUND',
+      message: `Event not found: ${owned.id}`,
+    };
+    const countBlocks = async () =>
+      (
+        await schedulingTestDb
+          .select()
+          .from(eventTimeBlock)
+          .where(eq(eventTimeBlock.eventId, owned.id))
+      ).length;
+    const blocksBefore = await countBlocks();
+
+    await expect(
+      eventManager.updateEvent({ ...mismatched, title: 'Renamed' }),
+    ).rejects.toMatchObject(notFound);
+    await expect(eventManager.cancelEvent(mismatched)).rejects.toMatchObject(
+      notFound,
+    );
+    await expect(
+      eventManager.createEventTimeBlock({
+        ...mismatched,
+        startTime: new Date('2027-06-05T09:00:00.000Z'),
+        endTime: new Date('2027-06-05T09:30:00.000Z'),
+      }),
+    ).rejects.toMatchObject(notFound);
+    await expect(cycleManager.reopenEvent(mismatched)).rejects.toMatchObject(
+      notFound,
+    );
+
+    const [row] = await schedulingTestDb
+      .select()
+      .from(event)
+      .where(eq(event.id, owned.id));
+    expect(row).toMatchObject({ title: 'Owned event', status: 'draft' });
+    expect(await countBlocks()).toBe(blocksBefore);
+  });
+
   it('updateEvent rejects moving a startDate outside its cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager } = createManagers();

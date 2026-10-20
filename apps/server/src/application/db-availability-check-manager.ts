@@ -12,6 +12,7 @@ import type {
   ActiveMinistryMembership,
   AvailabilityCheckRepository,
 } from '../domain/contracts/infrastructure/availability-check.repository';
+import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
@@ -30,6 +31,7 @@ interface DbAvailabilityCheckManagerDependencies {
   participationRepository: MinistryParticipationRepository;
   eventRepository: PlanningEventRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
+  cycleRepository: CycleRepository;
   notificationService: NotificationService;
   unitOfWork: UnitOfWork;
 }
@@ -38,6 +40,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly availabilityCheckRepository: AvailabilityCheckRepository;
+  private readonly cycleRepository: CycleRepository;
   private readonly notificationService: NotificationService;
   private readonly unitOfWork: UnitOfWork;
 
@@ -45,12 +48,14 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     participationRepository,
     eventRepository,
     availabilityCheckRepository,
+    cycleRepository,
     notificationService,
     unitOfWork,
   }: DbAvailabilityCheckManagerDependencies) {
     this.participationRepository = participationRepository;
     this.eventRepository = eventRepository;
     this.availabilityCheckRepository = availabilityCheckRepository;
+    this.cycleRepository = cycleRepository;
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
   }
@@ -156,6 +161,10 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
   async listCycleCheckStatuses(
     input: ListCycleCheckStatusesInput,
   ): Promise<CheckStatusRow[]> {
+    await this.cycleRepository.getById({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
+    });
     const memberships =
       await this.availabilityCheckRepository.listActiveMemberships({
         churchId: input.churchId,

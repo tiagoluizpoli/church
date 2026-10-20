@@ -116,6 +116,141 @@ beforeEach(() => {
   });
 });
 
+const ASSIGN_MINISTRY = '55555555-5555-5555-8555-555555555555';
+const ASSIGN_CYCLE = '77777777-7777-7777-8777-777777777777';
+const ASSIGN_SHIFT = '66666666-6666-6666-8666-666666666666';
+const ASSIGN_PARTICIPATION = '22222222-2222-2222-8222-222222222222';
+const ASSIGN_ASSIGNMENT = '88888888-8888-8888-8888-888888888888';
+
+interface ScopedAssignRoute {
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  url: string;
+  decision:
+    | 'decideManageMinistry'
+    | 'decideManageParticipation'
+    | 'decideManageShift';
+  payload?: Record<string, unknown>;
+  /** Routes addressed by Assignment id: "missing" is an unknown Assignment. */
+  byAssignment?: boolean;
+}
+
+const scopedAssignRoutes: ScopedAssignRoute[] = [
+  {
+    method: 'GET',
+    url: `/api/v1/assign/cycles/${ASSIGN_CYCLE}/builder?ministryId=${ASSIGN_MINISTRY}`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/assign/cycles/${ASSIGN_CYCLE}/publish?ministryId=${ASSIGN_MINISTRY}`,
+    decision: 'decideManageMinistry',
+    payload: {},
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/assign/shifts/${ASSIGN_SHIFT}/eligible-volunteers`,
+    decision: 'decideManageShift',
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/assign/shifts/${ASSIGN_SHIFT}/assignments`,
+    decision: 'decideManageShift',
+    payload: {
+      volunteerId: 'volunteer-2',
+      shiftRequirementId: 'requirement-1',
+    },
+  },
+  {
+    method: 'DELETE',
+    url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}`,
+    decision: 'decideManageShift',
+    byAssignment: true,
+  },
+  {
+    method: 'PATCH',
+    url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}/reassign`,
+    decision: 'decideManageShift',
+    payload: { volunteerId: 'volunteer-2' },
+    byAssignment: true,
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/assign/participations/${ASSIGN_PARTICIPATION}/completion`,
+    decision: 'decideManageParticipation',
+  },
+];
+
+function expectNoAssignWork(): void {
+  const { getAssignment: _scopeRead, ...assignmentWork } = assignmentManager;
+  for (const operation of [
+    ...Object.values(participationManager),
+    ...Object.values(assignmentWork),
+  ]) {
+    expect(operation).not.toHaveBeenCalled();
+  }
+}
+
+describe('Assign route refusals', () => {
+  it.each(
+    scopedAssignRoutes,
+  )('$method $url: missing and hidden objects share one 404', async ({
+    method,
+    url,
+    decision,
+    payload,
+    byAssignment,
+  }) => {
+    if (byAssignment) {
+      assignmentManager.getAssignment.mockRejectedValueOnce(
+        new NotFoundError(`Assignment not found: ${ASSIGN_ASSIGNMENT}`),
+      );
+    } else {
+      authorityGuard[decision].mockResolvedValueOnce({
+        allowed: false,
+        reason: 'RESOURCE_NOT_FOUND',
+      });
+    }
+    const missing = await app.inject({ method, url, payload });
+    authorityGuard[decision].mockResolvedValueOnce({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    const hidden = await app.inject({ method, url, payload });
+
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
+    expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
+    expectNoAssignWork();
+  });
+
+  it.each(
+    scopedAssignRoutes,
+  )('$method $url: 403 without the scheduling function', async ({
+    method,
+    url,
+    decision,
+    payload,
+  }) => {
+    authorityGuard[decision].mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error).toBe('FORBIDDEN');
+    expectNoAssignWork();
+  });
+});
+
 describe('Assign routes', () => {
   it('returns 401 for any route when there is no session', async () => {
     mockGetSession.mockResolvedValueOnce(null as never);

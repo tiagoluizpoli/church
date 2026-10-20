@@ -1,7 +1,10 @@
 import { NotFoundError } from '@church/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
-import type { AuthorityActor } from '@/domain/authority/types';
+import type {
+  AuthorityActor,
+  MinistryMembershipFact,
+} from '@/domain/authority/types';
 import type {
   ChurchId,
   EventId,
@@ -253,6 +256,123 @@ describe('DbAuthorityManager', () => {
       isChurchAdmin: true,
       ledMinistries: [{ ministryId, name: 'Worship' }],
       hasVolunteerMembership: true,
+    });
+  });
+
+  describe('resolveCallerCapabilities projection matrix', () => {
+    const volunteerId = 'vol_1' as never;
+    const servedId = 'min_member' as MinistryId;
+    const membership = (
+      overrides: Partial<MinistryMembershipFact> = {},
+    ): MinistryMembershipFact => ({
+      churchId,
+      ministryId,
+      accessLevel: 'volunteer',
+      qualifiedRoleIds: [],
+      ...overrides,
+    });
+    const led = [{ ministryId, name: 'Worship' }];
+
+    const cases: Array<[string, Partial<AuthorityActor>, object]> = [
+      [
+        'admin who serves (no leadership) keeps serving',
+        {
+          churchMembership: { churchId, accessLevel: 'admin' },
+          volunteerId,
+          ministryMemberships: [membership({ ministryId: servedId })],
+        },
+        {
+          isChurchAdmin: true,
+          ledMinistries: [],
+          hasVolunteerMembership: true,
+        },
+      ],
+      [
+        'leader with Roles',
+        {
+          volunteerId,
+          ministryMemberships: [
+            membership({
+              accessLevel: 'leader',
+              qualifiedRoleIds: ['rol_1' as never],
+            }),
+          ],
+        },
+        {
+          isChurchAdmin: false,
+          ledMinistries: led,
+          hasVolunteerMembership: true,
+        },
+      ],
+      [
+        'Volunteer only',
+        { volunteerId, ministryMemberships: [membership()] },
+        {
+          isChurchAdmin: false,
+          ledMinistries: [],
+          hasVolunteerMembership: true,
+        },
+      ],
+      [
+        'orphan Volunteer profile (no active Ministry Membership)',
+        { volunteerId, ministryMemberships: [] },
+        {
+          isChurchAdmin: false,
+          ledMinistries: [],
+          hasVolunteerMembership: false,
+        },
+      ],
+      [
+        'Ministry Membership from another Church is excluded',
+        {
+          volunteerId,
+          ministryMemberships: [
+            membership({ churchId: otherChurchId, accessLevel: 'leader' }),
+          ],
+        },
+        {
+          isChurchAdmin: false,
+          ledMinistries: [],
+          hasVolunteerMembership: false,
+        },
+      ],
+      [
+        'missing Church Membership grants nothing',
+        {
+          churchMembership: null,
+          volunteerId,
+          ministryMemberships: [membership({ accessLevel: 'leader' })],
+        },
+        {
+          isChurchAdmin: false,
+          ledMinistries: [],
+          hasVolunteerMembership: false,
+        },
+      ],
+      [
+        'stale Church Membership grants nothing',
+        {
+          churchMembership: { churchId: otherChurchId, accessLevel: 'admin' },
+          volunteerId,
+          ministryMemberships: [membership({ accessLevel: 'leader' })],
+        },
+        {
+          isChurchAdmin: false,
+          ledMinistries: [],
+          hasVolunteerMembership: false,
+        },
+      ],
+    ];
+
+    it.each(cases)('%s', async (_name, actor, expected) => {
+      actorRepository.resolveActor.mockResolvedValue({
+        ...memberActor(),
+        ...actor,
+      });
+      ministryRepository.getById.mockResolvedValue({ name: 'Worship' });
+      await expect(
+        createManager().resolveCallerCapabilities({ churchId, userId }),
+      ).resolves.toEqual({ churchId, ...expected });
     });
   });
 

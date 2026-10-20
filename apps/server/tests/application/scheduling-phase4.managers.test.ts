@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { NotFoundError } from '@church/core';
 import {
   ministryParticipation,
   shift as shiftTable,
@@ -24,7 +25,6 @@ import {
 } from '@/domain/branded-ids';
 import type { NotificationService } from '@/domain/contracts/infrastructure/notification-service';
 import {
-  CrossMinistryScopeError,
   IllegalStateTransitionError,
   InvalidRequiredCountError,
   InvalidShiftSplitError,
@@ -34,7 +34,9 @@ import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-aut
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
@@ -89,6 +91,7 @@ function createPhase4Managers(
   const eventTimeBlockRepository = new DrizzleEventTimeBlockRepository({
     db: schedulingTestDb,
   });
+  const cycleRepository = new DrizzleCycleRepository({ db: schedulingTestDb });
   const usualSetupRepository = new DrizzleUsualSetupRepository({
     db: schedulingTestDb,
   });
@@ -117,6 +120,10 @@ function createPhase4Managers(
         db: schedulingTestDb,
       }),
       usualSetupRepository,
+      cycleRepository,
+      eventTemplateRepository: new DrizzleEventTemplateRepository({
+        db: schedulingTestDb,
+      }),
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
       sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
       notificationService: notificationService ?? notificationSpy,
@@ -126,6 +133,7 @@ function createPhase4Managers(
       participationRepository,
       eventRepository,
       availabilityCheckRepository,
+      cycleRepository,
       notificationService: notificationService ?? notificationSpy,
       unitOfWork,
     }),
@@ -483,7 +491,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('rejects splitting an event time block that belongs to another event', async () => {
+  it("treats splitting another event's event time block as not found", async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph1 = await seedCycleWithEvent({ seed });
     const seedB = graph1;
@@ -505,7 +513,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
         eventTimeBlockId: EventTimeBlockId.from(otherGraph.eventTimeBlock.id),
         strategy: { kind: 'equal-n', n: 2 },
       }),
-    ).rejects.toThrow(CrossMinistryScopeError);
+    ).rejects.toThrow(NotFoundError);
   });
 });
 

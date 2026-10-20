@@ -1,4 +1,5 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
+import { NotFoundError } from '@church/core';
 import {
   afterAll,
   beforeAll,
@@ -10,6 +11,8 @@ import {
 } from 'vitest';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
 import { AssignmentAccessDeniedError } from '@/domain/errors/assignment-access-denied';
+import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
+import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 
@@ -83,7 +86,164 @@ beforeEach(() => {
     status: 'resolved',
     churchId: CHURCH_ID,
     volunteerId: VOLUNTEER_ID,
+    hasVolunteerMembership: true,
     autoSelected: false,
+  });
+});
+
+const CHECK_ID = '77777777-7777-4777-8777-777777777771';
+const NOTIFICATION_ID = '88888888-8888-4888-8888-888888888881';
+const GENERIC_NOT_FOUND = { error: 'NOT_FOUND', message: 'Resource not found' };
+
+const servingCollections = [
+  { method: 'GET' as const, url: '/api/v1/volunteer/dashboard' },
+  { method: 'GET' as const, url: '/api/v1/volunteer/assignments' },
+  { method: 'GET' as const, url: '/api/v1/volunteer/availability-checks' },
+  { method: 'GET' as const, url: '/api/v1/volunteer/notifications' },
+  { method: 'POST' as const, url: '/api/v1/volunteer/notifications/read-all' },
+];
+
+describe('Volunteer route access', () => {
+  it.each(
+    servingCollections,
+  )('$method $url returns 401 only when signed out', async ({
+    method,
+    url,
+  }) => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({ method, url });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required',
+    });
+    expect(activeChurchResolver.resolve).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    servingCollections,
+  )('$method $url returns 403 for a leftover profile without an active Ministry Membership', async ({
+    method,
+    url,
+  }) => {
+    activeChurchResolver.resolve.mockResolvedValue({
+      status: 'resolved',
+      churchId: CHURCH_ID,
+      volunteerId: VOLUNTEER_ID,
+      hasVolunteerMembership: false,
+      autoSelected: false,
+    });
+
+    const response = await app.inject({ method, url });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error).toBe('FORBIDDEN');
+    for (const operation of Object.values(volunteerManager)) {
+      expect(operation).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each([
+    {
+      name: 'GET check',
+      method: 'GET' as const,
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}`,
+      operation: volunteerManager.getAvailabilityCheck,
+      payload: undefined,
+    },
+    {
+      name: 'PUT unavailable shifts',
+      method: 'PUT' as const,
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/unavailable-shifts`,
+      operation: volunteerManager.setUnavailableShifts,
+      payload: { shiftIds: [] },
+    },
+    {
+      name: 'POST confirm',
+      method: 'POST' as const,
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/confirm`,
+      operation: volunteerManager.confirmAvailabilityCheck,
+      payload: undefined,
+    },
+  ])("$name returns the same 404 for a missing and another Volunteer's check", async ({
+    method,
+    url,
+    operation,
+    payload,
+  }) => {
+    operation.mockRejectedValueOnce(
+      new NotFoundError(`Availability check not found: ${CHECK_ID}`),
+    );
+    const missing = await app.inject({ method, url, payload });
+    operation.mockRejectedValueOnce(new CheckAccessDeniedError());
+    const hidden = await app.inject({ method, url, payload });
+
+    expect(missing.statusCode).toBe(404);
+    expect(hidden.statusCode).toBe(404);
+    expect(missing.json()).toEqual(GENERIC_NOT_FOUND);
+    expect(hidden.json()).toEqual(GENERIC_NOT_FOUND);
+    expect(operation).toHaveBeenCalledWith(
+      expect.objectContaining({ checkId: CHECK_ID, volunteerId: VOLUNTEER_ID }),
+    );
+  });
+
+  it('returns a serving Volunteer their own check', async () => {
+    volunteerManager.getAvailabilityCheck.mockResolvedValue({
+      id: CHECK_ID,
+      cycleId: 'cycle-1',
+      cycleName: 'August',
+      ministryId: MINISTRY_ID,
+      ministryName: 'Kids',
+      state: 'pending',
+      confirmedAt: undefined,
+      shifts: [],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().id).toBe(CHECK_ID);
+  });
+
+  it('returns the same 404 for a missing and a non-member Ministry schedule', async () => {
+    const url = `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule`;
+    volunteerManager.getMinistrySchedule.mockRejectedValueOnce(
+      new NotFoundError(`Ministry not found: ${MINISTRY_ID}`),
+    );
+    const missing = await app.inject({ method: 'GET', url });
+    volunteerManager.getMinistrySchedule.mockRejectedValueOnce(
+      new IsolationBreachError(),
+    );
+    const hidden = await app.inject({ method: 'GET', url });
+
+    expect(missing.statusCode).toBe(404);
+    expect(hidden.statusCode).toBe(404);
+    expect(missing.json()).toEqual(GENERIC_NOT_FOUND);
+    expect(hidden.json()).toEqual(GENERIC_NOT_FOUND);
+  });
+
+  it("returns the generic 404 for a missing or another Volunteer's notification", async () => {
+    volunteerManager.markNotificationRead.mockRejectedValue(
+      new NotFoundError('Resource not found'),
+    );
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/volunteer/notifications/${NOTIFICATION_ID}`,
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual(GENERIC_NOT_FOUND);
+    expect(volunteerManager.markNotificationRead).toHaveBeenCalledWith({
+      notificationId: NOTIFICATION_ID,
+      volunteerId: VOLUNTEER_ID,
+      churchId: CHURCH_ID,
+    });
   });
 });
 

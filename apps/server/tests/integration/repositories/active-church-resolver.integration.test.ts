@@ -145,6 +145,7 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
       status: 'resolved',
       churchId: churchAId,
       volunteerId: null,
+      hasVolunteerMembership: false,
       autoSelected: true,
     });
   });
@@ -172,6 +173,7 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
       status: 'resolved',
       churchId: churchBId,
       volunteerId: null,
+      hasVolunteerMembership: false,
       autoSelected: false,
     });
   });
@@ -199,6 +201,7 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
       status: 'resolved',
       churchId: churchBId,
       volunteerId: null,
+      hasVolunteerMembership: false,
       autoSelected: true,
       membershipRemovedFrom: 'Active Resolver Church A',
     });

@@ -225,7 +225,10 @@ export class VolunteerController implements FastifyController {
           summary: "Get one of the caller's AvailabilityChecks",
           description:
             'Get the detail of a single AvailabilityCheck belonging to the current Volunteer.',
-          response: { 200: availabilityCheckDetailResponseSchema },
+          response: {
+            200: availabilityCheckDetailResponseSchema,
+            404: notFoundResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -256,7 +259,10 @@ export class VolunteerController implements FastifyController {
           description:
             "Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
           body: setUnavailableShiftsBodySchema,
-          response: { 200: availabilityCheckDetailResponseSchema },
+          response: {
+            200: availabilityCheckDetailResponseSchema,
+            404: notFoundResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -291,6 +297,7 @@ export class VolunteerController implements FastifyController {
           summary: 'Confirm an AvailabilityCheck',
           description:
             "Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no unavailable shifts were left.",
+          response: { 204: z.null(), 404: notFoundResponseSchema },
         },
       },
       async (request, reply) => {
@@ -305,7 +312,7 @@ export class VolunteerController implements FastifyController {
             }),
         });
         if (!confirmed) return;
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 

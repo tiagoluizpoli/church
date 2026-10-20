@@ -68,6 +68,7 @@ beforeEach(() => {
     status: 'resolved',
     churchId: '11111111-1111-1111-1111-111111111111',
     volunteerId: '44444444-4444-4444-8444-444444444444',
+    hasVolunteerMembership: true,
     autoSelected: false,
   });
 });

@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { usualSetup } from '@church/db';
 import { parseTimeOfDay } from '@church/time';
+import { eq } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -100,6 +102,22 @@ async function seedUsualSetupMinistry() {
   });
   const [block] = template.blocks;
   if (!block) throw new Error('block seed failed');
+  const foreignTemplate = await buildEventTemplate({
+    db: schedulingTestDb,
+    churchId: seed.churchBId,
+    name: 'Foreign Sunday',
+    weekday: 0,
+    blocks: [
+      {
+        label: 'Morning',
+        startTime: parseTimeOfDay({ value: '09:00' }),
+        endTime: parseTimeOfDay({ value: '11:00' }),
+        order: 1,
+      },
+    ],
+  });
+  const [foreignBlock] = foreignTemplate.blocks;
+  if (!foreignBlock) throw new Error('foreign block seed failed');
   const teacher = await seedRole({
     churchId: seed.churchAId,
     ministryId: seed.ministryAId,
@@ -137,6 +155,8 @@ async function seedUsualSetupMinistry() {
     babiesRoomId: babiesRoom.id,
     kidsRoomId: kidsRoom.id,
     foreignSectorId: foreignSector.id,
+    foreignChurchMinistryId: seed.ministryBId,
+    foreignBlockId: foreignBlock.id,
   };
 }
 
@@ -235,5 +255,70 @@ describe('PUT /admin/ministries/:ministryId/usual-setup on Sectors', () => {
     });
 
     expect(response.statusCode).toBe(422);
+  });
+});
+
+describe('/admin/ministries/:ministryId/usual-setup Ministry scope', () => {
+  it('returns the same 404 for a missing and a foreign-Church Ministry, and writes nothing', async () => {
+    const seed = await seedUsualSetupMinistry();
+    const missingMinistryId = randomUUID();
+    const read = (ministryId: string) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/v1/admin/ministries/${ministryId}/usual-setup`,
+      });
+    const write = (ministryId: string) =>
+      putUsualSetup({ ministryId, blockId: seed.blockId, headcounts: [] });
+
+    for (const response of [
+      await read(missingMinistryId),
+      await read(seed.foreignChurchMinistryId),
+      await write(missingMinistryId),
+      await write(seed.foreignChurchMinistryId),
+    ]) {
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error).toBe('NOT_FOUND');
+    }
+    expect((await read(missingMinistryId)).json().message).toBe(
+      `Ministry not found: ${missingMinistryId}`,
+    );
+    expect((await read(seed.foreignChurchMinistryId)).json().message).toBe(
+      `Ministry not found: ${seed.foreignChurchMinistryId}`,
+    );
+    const foreignRows = await schedulingTestDb
+      .select()
+      .from(usualSetup)
+      .where(eq(usualSetup.ministryId, seed.foreignChurchMinistryId));
+    expect(foreignRows).toHaveLength(0);
+  });
+});
+
+describe('/admin/ministries/:ministryId/usual-setup TemplateTimeBlock scope', () => {
+  it('returns the same 404 for a missing and a foreign-Church block, and writes nothing', async () => {
+    const seed = await seedUsualSetupMinistry();
+    const kept = await putUsualSetup({
+      ministryId: seed.ministryId,
+      blockId: seed.blockId,
+      headcounts: [],
+    });
+    expect(kept.statusCode).toBe(200);
+    const rowsBefore = await schedulingTestDb.select().from(usualSetup);
+    const missingBlockId = randomUUID();
+
+    for (const blockId of [missingBlockId, seed.foreignBlockId]) {
+      const response = await putUsualSetup({
+        ministryId: seed.ministryId,
+        blockId,
+        headcounts: [],
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error).toBe('NOT_FOUND');
+      expect(response.json().message).toBe(
+        `Template time block not found: ${blockId}`,
+      );
+    }
+    expect(await schedulingTestDb.select().from(usualSetup)).toEqual(
+      rowsBefore,
+    );
   });
 });

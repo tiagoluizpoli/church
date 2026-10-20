@@ -1071,6 +1071,11 @@ export type MintMinistryInvitation201 = {
   deliveryStatus: MintMinistryInvitation201DeliveryStatus;
 };
 
+export type MintMinistryInvitation403 = {
+  error: string;
+  message: string;
+};
+
 export type MintMinistryInvitation404 = {
   error: string;
   message: string;
@@ -1111,6 +1116,11 @@ export type ResendMinistryInvitation200 = {
   expiresAt: string;
   redemptionPath: string;
   deliveryStatus: ResendMinistryInvitation200DeliveryStatus;
+};
+
+export type ResendMinistryInvitation403 = {
+  error: string;
+  message: string;
 };
 
 export type ResendMinistryInvitation404 = {
@@ -2529,6 +2539,25 @@ export type GetAvailabilityCheck200 = {
   shifts: GetAvailabilityCheck200ShiftsItem[];
 };
 
+export type GetAvailabilityCheck404Error = typeof GetAvailabilityCheck404Error[keyof typeof GetAvailabilityCheck404Error];
+
+
+export const GetAvailabilityCheck404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type GetAvailabilityCheck404Message = typeof GetAvailabilityCheck404Message[keyof typeof GetAvailabilityCheck404Message];
+
+
+export const GetAvailabilityCheck404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type GetAvailabilityCheck404 = {
+  error: GetAvailabilityCheck404Error;
+  message: GetAvailabilityCheck404Message;
+};
+
 export type SetUnavailableShiftsBody = {
   shiftIds: string[];
   /** @items.pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
@@ -2565,6 +2594,53 @@ export type SetUnavailableShifts200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
   shifts: SetUnavailableShifts200ShiftsItem[];
+};
+
+export type SetUnavailableShifts404Error = typeof SetUnavailableShifts404Error[keyof typeof SetUnavailableShifts404Error];
+
+
+export const SetUnavailableShifts404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type SetUnavailableShifts404Message = typeof SetUnavailableShifts404Message[keyof typeof SetUnavailableShifts404Message];
+
+
+export const SetUnavailableShifts404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type SetUnavailableShifts404 = {
+  error: SetUnavailableShifts404Error;
+  message: SetUnavailableShifts404Message;
+};
+
+/**
+ * @nullable
+ */
+export type ConfirmAvailabilityCheck204 = typeof ConfirmAvailabilityCheck204[keyof typeof ConfirmAvailabilityCheck204] | null;
+
+
+export const ConfirmAvailabilityCheck204 = {
+} as const;
+
+export type ConfirmAvailabilityCheck404Error = typeof ConfirmAvailabilityCheck404Error[keyof typeof ConfirmAvailabilityCheck404Error];
+
+
+export const ConfirmAvailabilityCheck404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type ConfirmAvailabilityCheck404Message = typeof ConfirmAvailabilityCheck404Message[keyof typeof ConfirmAvailabilityCheck404Message];
+
+
+export const ConfirmAvailabilityCheck404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type ConfirmAvailabilityCheck404 = {
+  error: ConfirmAvailabilityCheck404Error;
+  message: ConfirmAvailabilityCheck404Message;
 };
 
 export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];

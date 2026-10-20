@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import {
   assignment as assignmentTable,
   ministryMembership as ministryMembershipTable,
@@ -22,6 +23,8 @@ import { HardConstraintError } from '@/domain/conflict/errors/hard-constraint-er
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
@@ -82,6 +85,10 @@ function createParticipationManager(): DbParticipationManager {
     usualSetupRepository: new DrizzleUsualSetupRepository({
       db: schedulingTestDb,
     }),
+    cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+    eventTemplateRepository: new DrizzleEventTemplateRepository({
+      db: schedulingTestDb,
+    }),
     roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
     sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
     notificationService: createNotificationServiceSpy(),
@@ -109,6 +116,7 @@ function createAssignmentManager(input?: {
     planningEventRepository: new DrizzlePlanningEventRepository({
       db: schedulingTestDb,
     }),
+    cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
     notificationService: createNotificationServiceSpy(),
     unitOfWork,
   });
@@ -497,14 +505,14 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     });
 
     const manager = createParticipationManager();
-    const view = await manager.getCycleBuilderData({
-      churchId: ChurchId.from(seed.churchBId),
-      cycleId: CycleId.from(cycle.id),
-      ministryId: MinistryId.from(seed.ministryBId),
-      userId: UserId.from(seed.adminUserId),
-    });
-
-    expect(view.events).toEqual([]);
+    await expect(
+      manager.getCycleBuilderData({
+        churchId: ChurchId.from(seed.churchBId),
+        cycleId: CycleId.from(cycle.id),
+        ministryId: MinistryId.from(seed.ministryBId),
+        userId: UserId.from(seed.adminUserId),
+      }),
+    ).rejects.toThrow(NotFoundError);
   });
 });
 
@@ -855,15 +863,15 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
     });
 
     const manager = createParticipationManager();
-    const result = await manager.publishCycle({
-      churchId: ChurchId.from(seed.churchBId),
-      cycleId: CycleId.from(cycle.id),
-      ministryId: MinistryId.from(seed.ministryBId),
-      userId: UserId.from(seed.adminUserId),
-      confirmBelowFull: true,
-    });
-
-    expect(result.participations).toEqual([]);
+    await expect(
+      manager.publishCycle({
+        churchId: ChurchId.from(seed.churchBId),
+        cycleId: CycleId.from(cycle.id),
+        ministryId: MinistryId.from(seed.ministryBId),
+        userId: UserId.from(seed.adminUserId),
+        confirmBelowFull: true,
+      }),
+    ).rejects.toThrow(NotFoundError);
     expect(await readParticipationState(participationId)).toBe('assigning');
   });
 });

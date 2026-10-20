@@ -16,6 +16,7 @@ import type {
 } from '../domain/contracts/application/assignment-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
+import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
@@ -53,6 +54,7 @@ interface DbAssignmentManagerDependencies {
   volunteerRepository: VolunteerRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
   planningEventRepository: PlanningEventRepository;
+  cycleRepository: CycleRepository;
   notificationService: NotificationService;
   unitOfWork: UnitOfWork;
 }
@@ -65,6 +67,7 @@ export class DbAssignmentManager implements IAssignmentManager {
   private readonly volunteerRepository: VolunteerRepository;
   private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly planningEventRepository: PlanningEventRepository;
+  private readonly cycleRepository: CycleRepository;
   private readonly notificationService: NotificationService;
   private readonly unitOfWork: UnitOfWork;
 
@@ -76,6 +79,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     volunteerRepository,
     unavailableShiftRepository,
     planningEventRepository,
+    cycleRepository,
     notificationService,
     unitOfWork,
   }: DbAssignmentManagerDependencies) {
@@ -86,6 +90,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.volunteerRepository = volunteerRepository;
     this.unavailableShiftRepository = unavailableShiftRepository;
     this.planningEventRepository = planningEventRepository;
+    this.cycleRepository = cycleRepository;
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
   }
@@ -188,6 +193,10 @@ export class DbAssignmentManager implements IAssignmentManager {
   async listAuditLogForCycle(
     input: ListCycleAuditLogInput,
   ): Promise<AssignmentAudit[]> {
+    await this.cycleRepository.getById({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
+    });
     return this.auditRepo.listByCycle({
       churchId: input.churchId,
       cycleId: input.cycleId,

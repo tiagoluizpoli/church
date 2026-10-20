@@ -474,7 +474,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       fetchOptions.onSuccess();
     });
 
-    const { router, container } = renderRoute({
+    const { router, container, queryClient } = renderRoute({
       initialPath: '/invitations/ministry/invitation-1',
     });
     const user = userEvent.setup();
@@ -483,6 +483,8 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       await screen.findByText('This invitation belongs to another account'),
     ).toBeVisible();
     expect(container.textContent).not.toContain('@');
+    const capabilityKey = ['caller-capabilities', 'u1', 'church-1'];
+    queryClient.setQueryData(capabilityKey, { isChurchAdmin: true });
 
     await user.click(screen.getByRole('button', { name: 'Switch account' }));
     expect(signOut).not.toHaveBeenCalled();
@@ -492,6 +494,10 @@ describe('the existing-member Ministry Invitation redemption route', () => {
 
     await user.click(
       screen.getByRole('button', { name: 'Sign out and switch' }),
+    );
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(capabilityKey)).toBeUndefined(),
     );
 
     expect(signOut).toHaveBeenCalled();

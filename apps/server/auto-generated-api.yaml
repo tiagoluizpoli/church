@@ -2444,6 +2444,21 @@ paths:
                   - redemptionPath
                   - deliveryStatus
                 additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -2518,6 +2533,21 @@ paths:
                   - expiresAt
                   - redemptionPath
                   - deliveryStatus
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "404":
           description: Default Response
@@ -6150,6 +6180,25 @@ paths:
                   - state
                   - shifts
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/availability-checks/{checkId}/unavailable-shifts:
     put:
       operationId: setUnavailableShifts
@@ -6250,6 +6299,25 @@ paths:
                   - state
                   - shifts
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/availability-checks/{checkId}/confirm:
     post:
       operationId: confirmAvailabilityCheck
@@ -6265,8 +6333,34 @@ paths:
           name: checkId
           required: true
       responses:
-        "200":
+        "204":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                  message:
+                    type: string
+                    enum:
+                      - Resource not found
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}:
     patch:
       operationId: respondToAssignment

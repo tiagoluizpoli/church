@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { authClient } from '@/lib/auth-client';
 import {
   activeChurchApiMock,
   resolvedActiveChurchStatus,
@@ -46,6 +47,21 @@ describe('select-church route (compare-access selector)', () => {
     getSession.mockResolvedValue({
       data: { user: { id: 'u1', name: 'Dual Member' }, session: {} },
     });
+  });
+
+  it('clears cached caller capabilities when signing out from the selector', async () => {
+    listActiveChurchOptions.mockResolvedValue({ churches: [] });
+    const { queryClient } = renderSelectChurch();
+    const queryKey = ['caller-capabilities', 'u1', 'church-a'];
+    queryClient.setQueryData(queryKey, { isChurchAdmin: true });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
+    const options = vi.mocked(authClient.signOut).mock.calls[0]?.[0];
+    const onSuccess = options?.fetchOptions?.onSuccess;
+    if (!onSuccess) throw new Error('Sign out callback missing');
+    getSession.mockResolvedValue({ data: null });
+    await onSuccess({} as never);
+    expect(queryClient.getQueryData(queryKey)).toBeUndefined();
   });
 
   it('lists every Church Membership with identity, access, areas and last-opened', async () => {

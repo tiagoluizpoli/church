@@ -163,7 +163,12 @@ function SelectChurchRoute() {
             onClick={() => {
               authClient.signOut({
                 fetchOptions: {
-                  onSuccess: () => navigate({ to: '/login' }),
+                  onSuccess: () => {
+                    queryClient.removeQueries({
+                      queryKey: ['caller-capabilities'],
+                    });
+                    navigate({ to: '/login' });
+                  },
                 },
               });
             }}

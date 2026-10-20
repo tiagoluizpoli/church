@@ -1,5 +1,5 @@
 import { formatRelative, parseInstant } from '@church/time';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -93,6 +93,7 @@ function describeDeclineFailure({
 }
 
 function MinistryInvitationRoute() {
+  const queryClient = useQueryClient();
   const { invitationId } = Route.useParams();
   const navigate = useNavigate();
   const [idempotencyKey] = useState(() => randomId());
@@ -140,11 +141,13 @@ function MinistryInvitationRoute() {
   const handleSwitchAccount = (): void => {
     authClient.signOut({
       fetchOptions: {
-        onSuccess: () =>
+        onSuccess: () => {
+          queryClient.removeQueries({ queryKey: ['caller-capabilities'] });
           navigate({
             to: '/login',
             search: { redirect: `/invitations/ministry/${invitationId}` },
-          }),
+          });
+        },
       },
     });
   };

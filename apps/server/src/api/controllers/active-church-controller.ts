@@ -46,7 +46,8 @@ async function requireSession(
     .getSession({ headers: headersFromRequest(request) })
     .catch(() => null);
   if (!session?.user) {
-    await reply
+    // FastifyReply is thenable: send without awaiting, return a plain value.
+    reply
       .status(401)
       .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
     return null;

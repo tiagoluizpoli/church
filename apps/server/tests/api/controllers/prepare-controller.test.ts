@@ -127,6 +127,149 @@ beforeEach(() => {
   authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
 });
 
+const MINISTRY = '55555555-5555-5555-8555-555555555555';
+const CYCLE = '77777777-7777-7777-8777-777777777777';
+const PARTICIPATION = '22222222-2222-2222-8222-222222222222';
+const BLOCK = '33333333-3333-3333-8333-333333333333';
+const SHIFT = '66666666-6666-6666-8666-666666666666';
+
+type ScopeDecision =
+  | 'decideManageMinistry'
+  | 'decideManageParticipation'
+  | 'decideManageShift';
+
+interface ScopedPrepareRoute {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  url: string;
+  decision: ScopeDecision;
+  payload?: Record<string, unknown>;
+}
+
+const scopedPrepareRoutes: ScopedPrepareRoute[] = [
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/cycles/${CYCLE}/participation?ministryId=${MINISTRY}`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/ministries/${MINISTRY}/cycles-summary`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'PUT',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/inclusions`,
+    decision: 'decideManageParticipation',
+    payload: { eventTimeBlockIds: [] },
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/event-time-blocks/${BLOCK}/shifts`,
+    decision: 'decideManageParticipation',
+    payload: { strategy: { kind: 'equal-n', n: 2 } },
+  },
+  {
+    method: 'PATCH',
+    url: `/api/v1/prepare/shifts/${SHIFT}`,
+    decision: 'decideManageShift',
+    payload: { label: 'Renamed' },
+  },
+  {
+    method: 'DELETE',
+    url: `/api/v1/prepare/shifts/${SHIFT}`,
+    decision: 'decideManageShift',
+  },
+  {
+    method: 'PUT',
+    url: `/api/v1/prepare/shifts/${SHIFT}/requirements`,
+    decision: 'decideManageShift',
+    payload: { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 1 },
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/ask-availability`,
+    decision: 'decideManageParticipation',
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/cycles/${CYCLE}/availability-status?ministryId=${MINISTRY}`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/availability-status`,
+    decision: 'decideManageParticipation',
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/resend-availability`,
+    decision: 'decideManageParticipation',
+  },
+];
+
+function expectNoPrepareWork(): void {
+  for (const operation of [
+    ...Object.values(participationManager),
+    ...Object.values(availabilityCheckManager),
+  ]) {
+    expect(operation).not.toHaveBeenCalled();
+  }
+}
+
+describe('Prepare route refusals', () => {
+  it.each(
+    scopedPrepareRoutes,
+  )('$method $url: missing and hidden objects share one 404', async ({
+    method,
+    url,
+    decision,
+    payload,
+  }) => {
+    authorityGuard[decision].mockResolvedValueOnce({
+      allowed: false,
+      reason: 'RESOURCE_NOT_FOUND',
+    });
+    const missing = await app.inject({ method, url, payload });
+    authorityGuard[decision].mockResolvedValueOnce({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    const hidden = await app.inject({ method, url, payload });
+
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
+    expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
+    expectNoPrepareWork();
+  });
+
+  it.each(
+    scopedPrepareRoutes,
+  )('$method $url: 403 without the scheduling function', async ({
+    method,
+    url,
+    decision,
+    payload,
+  }) => {
+    authorityGuard[decision].mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error).toBe('FORBIDDEN');
+    expectNoPrepareWork();
+  });
+});
+
 describe('Prepare participation routes', () => {
   it('documents the generic 404 refusal for every scope-protected route', () => {
     const document = app.swagger();

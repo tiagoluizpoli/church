@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -23,6 +24,14 @@ vi.mock('@/lib/auth-client', () => ({
 
 const mockedUseSession = vi.mocked(authClient.useSession);
 
+function renderUserMenu() {
+  return render(
+    <QueryClientProvider client={new QueryClient()}>
+      <UserMenu />
+    </QueryClientProvider>,
+  );
+}
+
 describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -31,7 +40,7 @@ describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
   it('shows a loading skeleton while the session is pending', () => {
     mockedUseSession.mockReturnValue({ data: null, isPending: true } as never);
 
-    const { container } = render(<UserMenu />);
+    const { container } = renderUserMenu();
 
     expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
   });
@@ -42,7 +51,7 @@ describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
       isPending: false,
     } as never);
 
-    render(<UserMenu />);
+    renderUserMenu();
 
     expect(screen.getByRole('link', { name: 'Sign In' })).toHaveAttribute(
       'href',
@@ -56,7 +65,7 @@ describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
       isPending: false,
     } as never);
 
-    render(<UserMenu />);
+    renderUserMenu();
 
     const user = userEvent.setup();
     await user.click(
@@ -78,7 +87,7 @@ describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
       isPending: false,
     } as never);
 
-    render(<UserMenu />);
+    renderUserMenu();
 
     const user = userEvent.setup();
     await user.click(

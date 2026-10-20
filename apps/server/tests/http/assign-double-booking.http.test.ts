@@ -123,6 +123,7 @@ async function seedCrossMinistryOverlap({
     status: 'resolved',
     churchId: seed.churchAId,
     volunteerId: seed.adminVolunteerId,
+    hasVolunteerMembership: true,
     autoSelected: false,
   });
   authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });

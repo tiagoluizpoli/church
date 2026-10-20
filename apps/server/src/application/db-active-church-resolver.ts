@@ -1,3 +1,4 @@
+import { AuthorityService } from '../domain/authority/authority-service';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type {
   ActiveChurchResolution,
@@ -127,6 +128,11 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
       status: 'resolved',
       churchId,
       volunteerId: actor.volunteerId,
+      hasVolunteerMembership: AuthorityService.authorize({
+        actor,
+        action: 'participate',
+        resource: { type: 'church', churchId },
+      }).allowed,
       autoSelected,
     };
   }

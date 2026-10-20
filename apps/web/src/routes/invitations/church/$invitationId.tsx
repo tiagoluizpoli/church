@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -77,7 +78,7 @@ function describeRedemptionOutcome({
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
   if (outcome.kind === 'retryable-failure') {
     return {
-      title: 'Something went wrong',
+      title: m.common_generic_error(),
       description:
         "Your account was created, but we couldn't finish adding you to the Ministry yet. Try again.",
       canRetry: true,

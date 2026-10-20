@@ -1,5 +1,15 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common_generic_error": "Algo deu errado. Tente novamente.",
-  "common_validation_error": "Algumas informações enviadas são inválidas."
+  "common_validation_error": "Algumas informações enviadas são inválidas.",
+  "common_publish_failed": "Publicação falhou",
+  "common_assignment_failed": "Atribuição falhou",
+  "common_removal_failed": "remoção falhou",
+  "common_refresh_failed": "Atualização falhou. Os dados mais recentes ainda estão disponíveis.",
+  "auth_error_invalid_email_or_password": "E-mail ou senha incorretos.",
+  "auth_error_email_not_verified": "E-mail não verificado. Verifique sua caixa de entrada.",
+  "auth_error_user_already_exists": "Já existe uma conta com este e-mail. Tente entrar.",
+  "auth_error_user_already_exists_use_another_email": "Já existe uma conta com este e-mail. Use outro e-mail.",
+  "auth_error_password_too_short": "A senha é muito curta.",
+  "auth_error_password_too_long": "A senha é muito longa."
 }

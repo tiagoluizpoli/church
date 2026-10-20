@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { formatRelative, parseInstant } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -66,7 +67,7 @@ function describeAcceptFailure({
   }
   if (outcome.kind === 'retryable-failure') {
     return {
-      title: 'Something went wrong',
+      title: m.common_generic_error(),
       description: "We couldn't finish adding you to the Ministry. Try again.",
       canRetry: true,
     };

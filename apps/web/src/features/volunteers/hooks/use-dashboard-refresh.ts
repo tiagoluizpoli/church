@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useOnlineState } from './use-online-state';
@@ -92,9 +93,7 @@ export function useDashboardRefresh({
       setRefreshState('error');
       isManualRefreshRef.current = false;
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Refresh failed. Last-known dashboard data is still available.',
+        error instanceof Error ? error.message : m.common_refresh_failed(),
       );
     }
   };

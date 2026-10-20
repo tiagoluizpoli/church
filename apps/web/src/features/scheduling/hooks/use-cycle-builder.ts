@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { now } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -363,7 +364,9 @@ export function useCycleBuilder({
       toast.warning('Cycle not published — confirm to publish below target.');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Publish failed');
+      toast.error(
+        error instanceof Error ? error.message : m.common_publish_failed(),
+      );
     },
   });
 

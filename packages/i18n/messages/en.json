@@ -1,5 +1,15 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common_generic_error": "Something went wrong. Please try again.",
-  "common_validation_error": "Some of the information sent is invalid."
+  "common_validation_error": "Some of the information sent is invalid.",
+  "common_publish_failed": "Publish failed",
+  "common_assignment_failed": "Assignment failed",
+  "common_removal_failed": "removal failed",
+  "common_refresh_failed": "Refresh failed. Last-known dashboard data is still available.",
+  "auth_error_invalid_email_or_password": "Invalid email or password.",
+  "auth_error_email_not_verified": "Email not verified. Please check your inbox.",
+  "auth_error_user_already_exists": "An account with this email already exists. Try signing in.",
+  "auth_error_user_already_exists_use_another_email": "An account with this email already exists. Use another email.",
+  "auth_error_password_too_short": "Password is too short.",
+  "auth_error_password_too_long": "Password is too long."
 }

@@ -465,7 +465,8 @@ export class RedemptionController implements FastifyController {
     const session = await auth.api.getSession({ headers }).catch(() => null);
     const sessionCookie = request.headers.cookie;
     if (!session?.user || !sessionCookie) {
-      await reply
+      // FastifyReply is thenable: send without awaiting, return a plain value.
+      reply
         .status(401)
         .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
       return null;

@@ -68,6 +68,7 @@ beforeEach(() => {
     status: 'resolved',
     churchId: '11111111-1111-1111-1111-111111111111',
     volunteerId: '44444444-4444-4444-8444-444444444444',
+    hasVolunteerMembership: true,
     autoSelected: false,
   });
 });
@@ -89,7 +90,7 @@ describe('DL3-HT-10 volunteer cancels own assignment', () => {
     });
   });
 
-  it("POST /api/v1/volunteer/assignments/:id/cancel returns 403 for another volunteer's assignment", async () => {
+  it("POST /api/v1/volunteer/assignments/:id/cancel returns generic 404 for another volunteer's assignment", async () => {
     volunteerManager.cancelOwnAssignment.mockRejectedValue(
       new AssignmentAccessDeniedError(),
     );
@@ -99,10 +100,10 @@ describe('DL3-HT-10 volunteer cancels own assignment', () => {
       url: '/api/v1/volunteer/assignments/66666666-6666-6666-8666-666666666666/cancel',
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
-      error: 'ASSIGNMENT_ACCESS_DENIED',
-      message: 'This assignment belongs to another volunteer',
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
     });
   });
 

@@ -1,3 +1,4 @@
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -37,6 +38,16 @@ interface ResendMinistryInvitationRouteParams {
   ministryId: string;
   invitationId: string;
 }
+
+interface DenyMissingMinistryFunctionInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+}
+
+const MINISTRY_FUNCTION_FORBIDDEN_RESPONSE = {
+  error: 'FORBIDDEN',
+  message: 'Ministry leadership required',
+};
 
 interface MinistryControllerDependencies {
   ministryManager: IMinistryManager;
@@ -103,10 +114,7 @@ export class MinistryController implements FastifyController {
           !capabilities.isChurchAdmin &&
           capabilities.ledMinistries.length === 0
         ) {
-          reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Ministry leadership required',
-          });
+          reply.status(403).send(MINISTRY_FUNCTION_FORBIDDEN_RESPONSE);
           return;
         }
         const ministries = capabilities.isChurchAdmin
@@ -121,10 +129,10 @@ export class MinistryController implements FastifyController {
 
     // Ministry Invitation routes — reachable by ChurchAdmin or Ministry
     // leader alike, so they live here rather than under a role-specific
-    // controller; `DbMinistryInvitationManager` derives and enforces the
-    // caller's actual authority itself (indistinguishable 404 on any
-    // unauthorized/nonexistent/cross-Church Ministry), so no guard call is
-    // needed at this layer.
+    // controller. A caller who manages no Ministry is refused 403 here;
+    // `DbMinistryInvitationManager` enforces the per-Ministry authority
+    // itself (indistinguishable 404 on any unauthorized/nonexistent/
+    // cross-Church Ministry).
     app.post(
       '/:ministryId/invitations',
       {
@@ -137,11 +145,13 @@ export class MinistryController implements FastifyController {
           body: mintMinistryInvitationBodySchema,
           response: {
             201: ministryInvitationResponseSchema,
+            403: errorResponseSchema,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
+        if (await this.denyMissingMinistryFunction({ request, reply })) return;
         const { ministryId } = request.params as MinistryInvitationRouteParams;
         const body = request.body as z.infer<
           typeof mintMinistryInvitationBodySchema
@@ -179,11 +189,13 @@ export class MinistryController implements FastifyController {
           description: 'Resend the delivery email for a Ministry Invitation.',
           response: {
             200: ministryInvitationResponseSchema,
+            403: errorResponseSchema,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
+        if (await this.denyMissingMinistryFunction({ request, reply })) return;
         const { ministryId, invitationId } =
           request.params as ResendMinistryInvitationRouteParams;
 
@@ -204,5 +216,22 @@ export class MinistryController implements FastifyController {
         );
       },
     );
+  }
+
+  /**
+   * Returns whether access was denied. `FastifyReply` is thenable, so the
+   * refusal is sent as a side effect and a plain boolean returned.
+   */
+  private async denyMissingMinistryFunction({
+    request,
+    reply,
+  }: DenyMissingMinistryFunctionInput): Promise<boolean> {
+    const decision = await this.authorityGuard.decideManageAnyMinistry({
+      churchId: ChurchId.from(request.churchId),
+      userId: UserId.from(request.userId),
+    });
+    if (decision.allowed) return false;
+    reply.status(403).send(MINISTRY_FUNCTION_FORBIDDEN_RESPONSE);
+    return true;
   }
 }

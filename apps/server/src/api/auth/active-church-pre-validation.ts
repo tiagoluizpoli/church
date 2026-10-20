@@ -8,9 +8,10 @@ import { resolveActiveChurchAndPersist } from './resolve-active-church-and-persi
 export interface CreateActiveChurchPreValidationInput {
   resolver: IActiveChurchResolver;
   /**
-   * The route's own Volunteer, not the Church, requires this — e.g. a
-   * Volunteer's own dashboard. A Church admin with no Volunteer profile is a
-   * valid caller everywhere else, per the authority matrix.
+   * The route serves the caller's own Volunteer — e.g. their dashboard — so it
+   * needs an active serving Membership, not just a leftover profile. A Church
+   * admin with no Volunteer profile is a valid caller everywhere else, per the
+   * authority matrix.
    */
   requireVolunteer?: boolean;
 }
@@ -67,7 +68,7 @@ export function createActiveChurchPreValidation(
       });
     }
 
-    if (requireVolunteer && !resolution.volunteerId) {
+    if (requireVolunteer && !resolution.hasVolunteerMembership) {
       return reply.status(403).send({
         error: 'FORBIDDEN',
         message: 'Volunteer profile not found',

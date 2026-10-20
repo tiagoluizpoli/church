@@ -51,6 +51,10 @@ const authorityGuard = {
   canManageParticipation: vi.fn(),
   canManageShift: vi.fn(),
   canManageMinistry: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
+  decideManageMinistry: vi.fn(),
+  decideManageParticipation: vi.fn(),
+  decideManageShift: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -103,8 +107,147 @@ beforeEach(() => {
   authorityGuard.canManageParticipation.mockResolvedValue(true);
   authorityGuard.canManageShift.mockResolvedValue(true);
   authorityGuard.canManageMinistry.mockResolvedValue(true);
+  authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageParticipation.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageShift.mockResolvedValue({ allowed: true });
   assignmentManager.getAssignment.mockResolvedValue({
     shiftId: '66666666-6666-6666-8666-666666666666',
+  });
+});
+
+const ASSIGN_MINISTRY = '55555555-5555-5555-8555-555555555555';
+const ASSIGN_CYCLE = '77777777-7777-7777-8777-777777777777';
+const ASSIGN_SHIFT = '66666666-6666-6666-8666-666666666666';
+const ASSIGN_PARTICIPATION = '22222222-2222-2222-8222-222222222222';
+const ASSIGN_ASSIGNMENT = '88888888-8888-8888-8888-888888888888';
+
+interface ScopedAssignRoute {
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  url: string;
+  decision:
+    | 'decideManageMinistry'
+    | 'decideManageParticipation'
+    | 'decideManageShift';
+  payload?: Record<string, unknown>;
+  /** Routes addressed by Assignment id: "missing" is an unknown Assignment. */
+  byAssignment?: boolean;
+}
+
+const scopedAssignRoutes: ScopedAssignRoute[] = [
+  {
+    method: 'GET',
+    url: `/api/v1/assign/cycles/${ASSIGN_CYCLE}/builder?ministryId=${ASSIGN_MINISTRY}`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/assign/cycles/${ASSIGN_CYCLE}/publish?ministryId=${ASSIGN_MINISTRY}`,
+    decision: 'decideManageMinistry',
+    payload: {},
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/assign/shifts/${ASSIGN_SHIFT}/eligible-volunteers`,
+    decision: 'decideManageShift',
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/assign/shifts/${ASSIGN_SHIFT}/assignments`,
+    decision: 'decideManageShift',
+    payload: {
+      volunteerId: 'volunteer-2',
+      shiftRequirementId: 'requirement-1',
+    },
+  },
+  {
+    method: 'DELETE',
+    url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}`,
+    decision: 'decideManageShift',
+    byAssignment: true,
+  },
+  {
+    method: 'PATCH',
+    url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}/reassign`,
+    decision: 'decideManageShift',
+    payload: { volunteerId: 'volunteer-2' },
+    byAssignment: true,
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/assign/participations/${ASSIGN_PARTICIPATION}/completion`,
+    decision: 'decideManageParticipation',
+  },
+];
+
+function expectNoAssignWork(): void {
+  const { getAssignment: _scopeRead, ...assignmentWork } = assignmentManager;
+  for (const operation of [
+    ...Object.values(participationManager),
+    ...Object.values(assignmentWork),
+  ]) {
+    expect(operation).not.toHaveBeenCalled();
+  }
+}
+
+describe('Assign route refusals', () => {
+  it.each(
+    scopedAssignRoutes,
+  )('$method $url: missing and hidden objects share one 404', async ({
+    method,
+    url,
+    decision,
+    payload,
+    byAssignment,
+  }) => {
+    if (byAssignment) {
+      assignmentManager.getAssignment.mockRejectedValueOnce(
+        new NotFoundError(`Assignment not found: ${ASSIGN_ASSIGNMENT}`),
+      );
+    } else {
+      authorityGuard[decision].mockResolvedValueOnce({
+        allowed: false,
+        reason: 'RESOURCE_NOT_FOUND',
+      });
+    }
+    const missing = await app.inject({ method, url, payload });
+    authorityGuard[decision].mockResolvedValueOnce({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    const hidden = await app.inject({ method, url, payload });
+
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
+    expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
+    expectNoAssignWork();
+  });
+
+  it.each(
+    scopedAssignRoutes,
+  )('$method $url: 403 without the scheduling function', async ({
+    method,
+    url,
+    decision,
+    payload,
+  }) => {
+    authorityGuard[decision].mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error).toBe('FORBIDDEN');
+    expectNoAssignWork();
   });
 });
 
@@ -249,8 +392,11 @@ describe('Assign routes', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('denies a TeamLeader assignment as a plain Volunteer non-disclosively', async () => {
-    authorityGuard.canManageShift.mockResolvedValue(false);
+  it('returns 403 when a Volunteer has no assignment-management function', async () => {
+    authorityGuard.decideManageShift.mockResolvedValue({ allowed: false });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+    });
 
     const response = await app.inject({
       method: 'POST',
@@ -263,15 +409,15 @@ describe('Assign routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
-      message: 'Schedule action is not available',
+      error: 'FORBIDDEN',
+      message: 'Not permitted to manage ministry schedules',
     });
     expect(
       assignmentManager.createParticipationAssignment,
     ).not.toHaveBeenCalled();
   });
 
-  it('denies a forged Assignment id without disclosing whether it exists', async () => {
+  it('returns the same generic 404 for a missing Assignment after function admission', async () => {
     assignmentManager.getAssignment.mockRejectedValueOnce(
       new NotFoundError('Assignment not found'),
     );
@@ -281,10 +427,10 @@ describe('Assign routes', () => {
       url: '/api/v1/assign/assignments/forged',
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
-      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
-      message: 'Schedule action is not available',
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
     });
     expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
   });
@@ -371,8 +517,8 @@ describe('Assign routes', () => {
     });
   });
 
-  it('PATCH /api/v1/assign/assignments/:id/reassign returns 403 for another ministry scope', async () => {
-    authorityGuard.canManageShift.mockResolvedValue(false);
+  it('PATCH /api/v1/assign/assignments/:id/reassign returns generic 404 for another ministry scope', async () => {
+    authorityGuard.decideManageShift.mockResolvedValue({ allowed: false });
 
     const response = await app.inject({
       method: 'PATCH',
@@ -382,18 +528,18 @@ describe('Assign routes', () => {
       },
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
-      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
-      message: 'Schedule action is not available',
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
     });
     expect(
       assignmentManager.reassignParticipationAssignment,
     ).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/assign/shifts/:id/assignments returns 403 for another ministry scope', async () => {
-    authorityGuard.canManageShift.mockResolvedValue(false);
+  it('POST /api/v1/assign/shifts/:id/assignments returns generic 404 for another ministry scope', async () => {
+    authorityGuard.decideManageShift.mockResolvedValue({ allowed: false });
 
     const response = await app.inject({
       method: 'POST',
@@ -404,17 +550,17 @@ describe('Assign routes', () => {
       },
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
-      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
-      message: 'Schedule action is not available',
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
     });
     expect(
       assignmentManager.createParticipationAssignment,
     ).not.toHaveBeenCalled();
   });
 
-  it('PATCH /api/v1/assign/assignments/:id/reassign denies when the Assignment has no Shift scope', async () => {
+  it('PATCH /api/v1/assign/assignments/:id/reassign returns generic 404 when the Assignment has no Shift scope', async () => {
     assignmentManager.getAssignment.mockResolvedValue({ shiftId: undefined });
 
     const response = await app.inject({
@@ -425,8 +571,8 @@ describe('Assign routes', () => {
       },
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(authorityGuard.canManageShift).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(404);
+    expect(authorityGuard.decideManageShift).not.toHaveBeenCalled();
     expect(
       assignmentManager.reassignParticipationAssignment,
     ).not.toHaveBeenCalled();
@@ -444,7 +590,12 @@ describe('Assign routes', () => {
     });
     expect(allowed.statusCode).toBe(200);
 
-    authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
+    authorityGuard.decideManageMinistry.mockResolvedValueOnce({
+      allowed: false,
+    });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValueOnce({
+      allowed: false,
+    });
     const denied = await app.inject({
       method: 'GET',
       url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
@@ -452,7 +603,7 @@ describe('Assign routes', () => {
     expect(denied.statusCode).toBe(403);
     expect(denied.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not a leader of this ministry',
+      message: 'Not permitted to manage ministry schedules',
     });
   });
 
@@ -466,7 +617,10 @@ describe('Assign routes', () => {
   });
 
   it('GET /api/v1/assign/cycles/:id/builder denies a TeamLeader as a plain Volunteer and ignores teamId', async () => {
-    authorityGuard.canManageMinistry.mockResolvedValue(false);
+    authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: false });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+    });
 
     const response = await app.inject({
       method: 'GET',
@@ -475,6 +629,27 @@ describe('Assign routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(participationManager.getCycleBuilderData).not.toHaveBeenCalled();
+  });
+
+  it('returns the same generic 404 for hidden Shift and missing Assignment resources', async () => {
+    authorityGuard.decideManageShift.mockResolvedValueOnce({ allowed: false });
+    const hiddenShift = await app.inject({
+      method: 'GET',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
+    });
+
+    assignmentManager.getAssignment.mockRejectedValueOnce(
+      new NotFoundError('Assignment not found'),
+    );
+    const missingAssignment = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/assign/assignments/forged',
+    });
+
+    expect(hiddenShift.statusCode).toBe(404);
+    expect(hiddenShift.json()).toEqual(missingAssignment.json());
+    expect(participationManager.listEligibleVolunteers).not.toHaveBeenCalled();
+    expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
   });
 
   it('GET /api/v1/assign/cycles/:id/audit is 404 while the audit panel is parked', async () => {
@@ -500,7 +675,12 @@ describe('Assign routes', () => {
       ministryId: '22222222-2222-2222-8222-222222222222',
     });
 
-    authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
+    authorityGuard.decideManageMinistry.mockResolvedValueOnce({
+      allowed: false,
+    });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValueOnce({
+      allowed: false,
+    });
     const denied = await parkedOnApp.inject({
       method: 'GET',
       url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
@@ -508,12 +688,17 @@ describe('Assign routes', () => {
     expect(denied.statusCode).toBe(403);
     expect(denied.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not a leader of this ministry',
+      message: 'Not permitted to manage ministry schedules',
     });
   });
 
   it('POST /api/v1/assign/cycles/:id/publish denies a non-leader of the ministry', async () => {
-    authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
+    authorityGuard.decideManageMinistry.mockResolvedValueOnce({
+      allowed: false,
+    });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValueOnce({
+      allowed: false,
+    });
 
     const response = await app.inject({
       method: 'POST',
@@ -524,7 +709,7 @@ describe('Assign routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not a leader of this ministry',
+      message: 'Not permitted to manage ministry schedules',
     });
     expect(participationManager.publishCycle).not.toHaveBeenCalled();
   });

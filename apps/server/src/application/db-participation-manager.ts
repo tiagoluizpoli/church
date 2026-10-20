@@ -38,6 +38,8 @@ import type {
   UpsertUsualSetupInput,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
+import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
@@ -63,7 +65,6 @@ import { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import { UsualSetup } from '../domain/entities/usual-setup';
 import {
-  CrossMinistryScopeError,
   IllegalStateTransitionError,
   InvalidRequiredCountError,
 } from '../domain/errors';
@@ -175,6 +176,8 @@ interface DbParticipationManagerDependencies {
   volunteerRepository: VolunteerRepository;
   ministryRepository: MinistryRepository;
   usualSetupRepository: UsualSetupRepository;
+  eventTemplateRepository: EventTemplateRepository;
+  cycleRepository: CycleRepository;
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
   notificationService: NotificationService;
@@ -205,6 +208,8 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly volunteerRepository: VolunteerRepository;
   private readonly ministryRepository: MinistryRepository;
   private readonly usualSetupRepository: UsualSetupRepository;
+  private readonly eventTemplateRepository: EventTemplateRepository;
+  private readonly cycleRepository: CycleRepository;
   private readonly roleRepository: RoleRepository;
   private readonly sectorRepository: SectorRepository;
   private readonly notificationService: NotificationService;
@@ -220,6 +225,8 @@ export class DbParticipationManager implements IParticipationManager {
     volunteerRepository,
     ministryRepository,
     usualSetupRepository,
+    eventTemplateRepository,
+    cycleRepository,
     roleRepository,
     sectorRepository,
     notificationService,
@@ -234,6 +241,8 @@ export class DbParticipationManager implements IParticipationManager {
     this.volunteerRepository = volunteerRepository;
     this.ministryRepository = ministryRepository;
     this.usualSetupRepository = usualSetupRepository;
+    this.eventTemplateRepository = eventTemplateRepository;
+    this.cycleRepository = cycleRepository;
     this.roleRepository = roleRepository;
     this.sectorRepository = sectorRepository;
     this.notificationService = notificationService;
@@ -244,6 +253,10 @@ export class DbParticipationManager implements IParticipationManager {
     input: GetCycleParticipationInput,
   ): Promise<CycleParticipationView> {
     await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.cycleRepository.getById({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
+    });
 
     return this.unitOfWork.run(async (tx) => {
       const eventGroups = await this.eventRepository.listCycleEvents({
@@ -300,6 +313,10 @@ export class DbParticipationManager implements IParticipationManager {
     input: GetCycleBuilderDataInput,
   ): Promise<CycleBuilderView> {
     await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.cycleRepository.getById({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
+    });
     return this.unitOfWork.run(async (tx) => {
       const eventGroups = await this.eventRepository.listCycleEvents({
         churchId: input.churchId,
@@ -674,10 +691,12 @@ export class DbParticipationManager implements IParticipationManager {
   }
 
   async getUsualSetup(input: GetUsualSetupInput): Promise<UsualSetup[]> {
+    await this.ministryRepository.getById(input.churchId, input.ministryId);
     return this.usualSetupRepository.listByMinistry(input);
   }
 
   async upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]> {
+    await this.ministryRepository.getById(input.churchId, input.ministryId);
     // Validate every entry through the domain entity before persisting.
     for (const entry of input.entries) {
       void new UsualSetup({
@@ -690,6 +709,20 @@ export class DbParticipationManager implements IParticipationManager {
           headcounts: entry.headcounts,
         },
       });
+    }
+    // A TemplateTimeBlock of another Church is indistinguishable from a missing one.
+    const templates = await this.eventTemplateRepository.list({
+      churchId: input.churchId,
+    });
+    const churchBlockIds = new Set<string>(
+      templates.flatMap((template) => template.blocks.map((block) => block.id)),
+    );
+    for (const { sourceTemplateTimeBlockId } of input.entries) {
+      if (!churchBlockIds.has(sourceTemplateTimeBlockId)) {
+        throw new NotFoundError(
+          `Template time block not found: ${sourceTemplateTimeBlockId}`,
+        );
+      }
     }
     await this.assertMinistryHeadcounts({
       churchId: input.churchId,
@@ -819,6 +852,10 @@ export class DbParticipationManager implements IParticipationManager {
 
   async publishCycle(input: PublishCycleInput): Promise<PublishCycleView> {
     await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.cycleRepository.getById({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
+    });
 
     return this.unitOfWork.run(async (tx) => {
       const eventGroups = await this.eventRepository.listCycleEvents({
@@ -1005,8 +1042,9 @@ export class DbParticipationManager implements IParticipationManager {
       tx,
     );
 
+    // Another Event's EventTimeBlock is as missing as an unknown one.
     if (eventTimeBlock.eventId !== participation.eventId) {
-      throw new CrossMinistryScopeError();
+      throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlockId}`);
     }
 
     return eventTimeBlock;

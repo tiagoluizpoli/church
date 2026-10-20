@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import { compareCalendarDays, now, today } from '@church/time';
 import type {
   CreateCycleManagerInput,
@@ -168,6 +169,10 @@ export class DbCycleManager implements ICycleManager {
         eventId: input.eventId,
         tx,
       });
+      // An Event under another Cycle is as missing as an unknown Event.
+      if (event.cycleId !== input.cycleId) {
+        throw new NotFoundError(`Event not found: ${input.eventId}`);
+      }
 
       cycle.assertCanReopenEvent({ eventState: event.status });
       await this.eventRepository.updateEvent({

@@ -97,6 +97,7 @@ export function buildManagers({
       volunteerRepository,
       unavailableShiftRepository,
       planningEventRepository,
+      cycleRepository,
       notificationService,
       unitOfWork,
     });
@@ -110,6 +111,9 @@ export function buildManagers({
       volunteerRepo: volunteerRepository,
       roleRepo: roleRepository,
       sectorRepo: sectorRepository,
+      ministryParticipationRepo: ministryParticipationRepository,
+      authorityManager,
+      shiftRepo: shiftRepository,
     });
   const eventTemplateManager =
     overrides.eventTemplateManager ??
@@ -229,6 +233,8 @@ export function buildManagers({
       volunteerRepository,
       ministryRepository,
       usualSetupRepository: usualSetupRepository,
+      eventTemplateRepository,
+      cycleRepository,
       roleRepository,
       sectorRepository,
       notificationService,
@@ -240,6 +246,7 @@ export function buildManagers({
       participationRepository: ministryParticipationRepository,
       eventRepository: planningEventRepository,
       availabilityCheckRepository,
+      cycleRepository,
       notificationService,
       unitOfWork,
     });

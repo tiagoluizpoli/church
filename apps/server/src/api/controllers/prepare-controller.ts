@@ -73,6 +73,17 @@ interface DenyShiftScopeInput {
   shiftId: string;
 }
 
+interface DenyAuthorityDecisionInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  allowed: boolean;
+}
+
+const NOT_FOUND_RESPONSE = {
+  error: 'NOT_FOUND',
+  message: 'Resource not found',
+};
+
 type SplitShiftsBody = z.infer<typeof splitShiftsBodySchema>;
 type SetInclusionsBody = z.infer<typeof setInclusionsBodySchema>;
 type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
@@ -85,6 +96,10 @@ const cycleParticipationQuerySchema = z.object({
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
+});
+
+const resendAvailabilityResponseSchema = z.object({
+  resent: z.boolean(),
 });
 
 interface PrepareControllerDependencies {
@@ -136,6 +151,7 @@ export class PrepareController implements FastifyController {
           response: {
             200: cycleParticipationResponseSchema,
             403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -143,17 +159,19 @@ export class PrepareController implements FastifyController {
         const { cycleId } = request.params as CycleParticipationRouteParams;
         const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
+        const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
         });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this ministry',
-          });
-        }
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
 
         const view = await this.participationManager.getCycleParticipation({
           churchId: ChurchId.from(request.churchId),
@@ -176,23 +194,26 @@ export class PrepareController implements FastifyController {
           response: {
             200: scheduleSummaryListResponseSchema,
             403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
         const { ministryId } = request.params as ScheduleSummaryRouteParams;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
+        const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
         });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this ministry',
-          });
-        }
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
 
         const views = await this.participationManager.listScheduleSummaries({
           churchId: ChurchId.from(request.churchId),
@@ -214,6 +235,11 @@ export class PrepareController implements FastifyController {
           description:
             'Replace the set of EventTimeBlocks a Ministry is opted into for a MinistryParticipation.',
           body: setInclusionsBodySchema,
+          response: {
+            204: z.null(),
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -245,7 +271,11 @@ export class PrepareController implements FastifyController {
           description:
             "Split a MinistryParticipation's EventTimeBlock into Shifts, either into equal parts or by manually-set spans.",
           body: splitShiftsBodySchema,
-          response: { 201: shiftListResponseSchema },
+          response: {
+            201: shiftListResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -280,7 +310,11 @@ export class PrepareController implements FastifyController {
           summary: 'Update a Shift',
           description: "Update a Shift's bounds or label.",
           body: updateShiftBodySchema,
-          response: { 200: shiftResponseSchema },
+          response: {
+            200: shiftResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -308,6 +342,11 @@ export class PrepareController implements FastifyController {
           operationId: 'deleteShift',
           summary: 'Delete a Shift',
           description: 'Delete a Shift from its MinistryParticipation.',
+          response: {
+            204: z.null(),
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -333,7 +372,11 @@ export class PrepareController implements FastifyController {
           description:
             'Set the ShiftRequirement headcount for a Sector and Role within a Shift.',
           body: shiftRequirementBodySchema,
-          response: { 200: shiftRequirementResponseSchema },
+          response: {
+            200: shiftRequirementResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -365,7 +408,11 @@ export class PrepareController implements FastifyController {
           summary: 'Ask availability for a MinistryParticipation',
           description:
             "Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.",
-          response: { 202: askAvailabilityResponseSchema },
+          response: {
+            202: askAvailabilityResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -398,6 +445,7 @@ export class PrepareController implements FastifyController {
           response: {
             200: availabilityStatusResponseSchema,
             403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -405,17 +453,19 @@ export class PrepareController implements FastifyController {
         const { cycleId } = request.params as CycleParticipationRouteParams;
         const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
+        const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
         });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this ministry',
-          });
-        }
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
 
         const statuses =
           await this.availabilityCheckManager.listCycleCheckStatuses({
@@ -443,7 +493,11 @@ export class PrepareController implements FastifyController {
           summary: "Get a MinistryParticipation's AvailabilityCheck status",
           description:
             "List the AvailabilityCheck states of a MinistryParticipation's Volunteers.",
-          response: { 200: availabilityStatusResponseSchema },
+          response: {
+            200: availabilityStatusResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -479,6 +533,11 @@ export class PrepareController implements FastifyController {
           summary: 'Resend an availability reminder',
           description:
             "Resend the availability reminder VolunteerNotification to a MinistryParticipation's unconfirmed Volunteers.",
+          response: {
+            202: resendAvailabilityResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -512,21 +571,17 @@ export class PrepareController implements FastifyController {
     reply,
     participationId,
   }: DenyParticipationScopeInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.canManageParticipation({
+    const decision = await this.authorityGuard.decideManageParticipation({
       churchId: ChurchId.from(request.churchId),
       participationId: MinistryParticipationId.from(participationId),
       userId: UserId.from(request.userId),
     });
 
-    if (!allowed) {
-      reply.status(403).send({
-        error: 'FORBIDDEN',
-        message: 'Participation belongs to another ministry',
-      });
-      return true;
-    }
-
-    return false;
+    return this.denyAuthorityDecision({
+      request,
+      reply,
+      allowed: decision.allowed,
+    });
   }
 
   private async denyShiftScope({
@@ -534,21 +589,38 @@ export class PrepareController implements FastifyController {
     reply,
     shiftId,
   }: DenyShiftScopeInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.canManageShift({
+    const decision = await this.authorityGuard.decideManageShift({
       churchId: ChurchId.from(request.churchId),
       shiftId: ShiftId.from(shiftId),
       userId: UserId.from(request.userId),
     });
 
-    if (!allowed) {
+    return this.denyAuthorityDecision({
+      request,
+      reply,
+      allowed: decision.allowed,
+    });
+  }
+
+  private async denyAuthorityDecision({
+    request,
+    reply,
+    allowed,
+  }: DenyAuthorityDecisionInput): Promise<boolean> {
+    if (allowed) return false;
+    const functionDecision = await this.authorityGuard.decideManageAnyMinistry({
+      churchId: ChurchId.from(request.churchId),
+      userId: UserId.from(request.userId),
+    });
+    if (!functionDecision.allowed) {
       reply.status(403).send({
         error: 'FORBIDDEN',
-        message: 'Shift belongs to another ministry',
+        message: 'Not permitted to manage ministry schedules',
       });
       return true;
     }
-
-    return false;
+    reply.status(404).send(NOT_FOUND_RESPONSE);
+    return true;
   }
 }
 

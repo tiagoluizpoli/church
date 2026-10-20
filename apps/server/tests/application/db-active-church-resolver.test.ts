@@ -78,6 +78,7 @@ describe('DbActiveChurchResolver', () => {
       status: 'resolved',
       churchId,
       volunteerId,
+      hasVolunteerMembership: false,
       autoSelected: false,
     });
     expect(actorRepository.resolveActor).toHaveBeenCalledWith({
@@ -85,6 +86,32 @@ describe('DbActiveChurchResolver', () => {
       activeChurchId: churchId,
     });
     expect(membershipRepository.listByUserId).not.toHaveBeenCalled();
+  });
+
+  it('marks a Volunteer serving only when an active Ministry Membership in this Church backs the profile', async () => {
+    const resolver = createResolver();
+    actorRepository.resolveActor.mockResolvedValueOnce({
+      ...actorWithMembership({ churchId, accessLevel: 'member', volunteerId }),
+      ministryMemberships: [
+        {
+          churchId,
+          ministryId: 'min_1',
+          accessLevel: 'member',
+          qualifiedRoleIds: [],
+        },
+      ],
+    });
+
+    const result = await resolver.resolve({
+      userId,
+      activeOrganizationId: churchId,
+    });
+
+    expect(result).toMatchObject({
+      status: 'resolved',
+      volunteerId,
+      hasVolunteerMembership: true,
+    });
   });
 
   it('shows the selector with a removal notice when the session names a Church the User was removed from and several Memberships remain', async () => {
@@ -135,6 +162,7 @@ describe('DbActiveChurchResolver', () => {
       status: 'resolved',
       churchId: otherChurchId,
       volunteerId: null,
+      hasVolunteerMembership: false,
       autoSelected: true,
       membershipRemovedFrom: 'Former Home Church',
     });
@@ -184,6 +212,7 @@ describe('DbActiveChurchResolver', () => {
       status: 'resolved',
       churchId,
       volunteerId: null,
+      hasVolunteerMembership: false,
       autoSelected: true,
     });
     expect(unitOfWork.run).toHaveBeenCalledWith(expect.any(Function), {

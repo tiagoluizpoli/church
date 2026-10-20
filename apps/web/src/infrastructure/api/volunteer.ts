@@ -6,6 +6,7 @@
  */
 import type {
   CancelOwnAssignment204,
+  ConfirmAvailabilityCheck204,
   GetAvailabilityCheck200,
   GetMinistrySchedule200,
   GetMyAssignments200,
@@ -109,7 +110,7 @@ const setUnavailableShifts = (
 const confirmAvailabilityCheck = (
     checkId: string,
  ) => {
-      return apiClient<void>(
+      return apiClient<ConfirmAvailabilityCheck204>(
       {url: `/api/v1/volunteer/availability-checks/${checkId}/confirm`, method: 'POST'
     },
       );

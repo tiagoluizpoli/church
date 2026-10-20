@@ -9,6 +9,15 @@ interface CallerCapabilitiesScope {
   userId: string;
 }
 
+interface UseSchedulingAccessFallbackInput {
+  shouldRedirect: boolean;
+}
+
+interface ResolveSchedulingAccessFallbackInput {
+  queryClient: QueryClient;
+  scope?: CallerCapabilitiesScope;
+}
+
 /**
  * Revalidates Scheduling capability after a protected route denies access.
  * A failed revalidation goes to the index, where the caller can retry without
@@ -16,9 +25,7 @@ interface CallerCapabilitiesScope {
  */
 export function useSchedulingAccessFallback({
   shouldRedirect,
-}: {
-  shouldRedirect: boolean;
-}): void {
+}: UseSchedulingAccessFallbackInput): void {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const scope = useCallerCapabilitiesScope();
@@ -50,19 +57,19 @@ export function useSchedulingAccessFallback({
 export async function resolveSchedulingAccessFallback({
   queryClient,
   scope,
-}: {
-  queryClient: QueryClient;
-  scope?: CallerCapabilitiesScope;
-}): Promise<'/scheduling' | '/dashboard'> {
+}: ResolveSchedulingAccessFallbackInput): Promise<
+  '/scheduling' | '/dashboard'
+> {
   try {
-    const capability = await callerCapabilitiesApi.getCallerCapabilities();
+    const capability = scope
+      ? await queryClient.fetchQuery({
+          queryKey: ['caller-capabilities', scope.userId, scope.churchId],
+          queryFn: () => callerCapabilitiesApi.getCallerCapabilities(),
+          staleTime: 0,
+          retry: false,
+        })
+      : await callerCapabilitiesApi.getCallerCapabilities();
     if (scope && capability.churchId !== scope.churchId) return '/dashboard';
-    if (scope) {
-      queryClient.setQueryData(
-        ['caller-capabilities', scope.userId, scope.churchId],
-        capability,
-      );
-    }
     return capability.isChurchAdmin || capability.ledMinistries.length > 0
       ? '/scheduling'
       : '/dashboard';

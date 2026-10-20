@@ -22,6 +22,11 @@ export interface ResolvedActiveChurch extends MembershipRemovalNotice {
   /** The caller's own Volunteer profile in `churchId`, if any — a Church admin may have none. */
   volunteerId: VolunteerId | null;
   /**
+   * The caller serves here: an active Volunteer profile with at least one
+   * active Ministry Membership in `churchId` — the gate for serving-only routes.
+   */
+  hasVolunteerMembership: boolean;
+  /**
    * True when no active organization was on the session and exactly one
    * Church Membership existed, so this Church was selected on the caller's
    * behalf. The caller (the HTTP boundary) is responsible for persisting the

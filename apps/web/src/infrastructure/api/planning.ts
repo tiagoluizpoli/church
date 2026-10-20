@@ -15,6 +15,7 @@ import type {
   CreatePlanningEventBody,
   CreatePlanningEventTimeBlock201,
   CreatePlanningEventTimeBlockBody,
+  DeletePlanningEventTimeBlock204,
   GetCycle200,
   GetUsualSetup200,
   ListCycles200,
@@ -256,7 +257,7 @@ const deletePlanningEventTimeBlock = (
     eventId: string,
     eventTimeBlockId: string,
  ) => {
-      return apiClient<void>(
+      return apiClient<DeletePlanningEventTimeBlock204>(
       {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}`, method: 'DELETE'
     },
       );

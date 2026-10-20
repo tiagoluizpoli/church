@@ -502,6 +502,25 @@ export type CreatePlanningEventTimeBlock201 = {
   requirements: CreatePlanningEventTimeBlock201RequirementsItem[];
 };
 
+export type CreatePlanningEventTimeBlock404Error = typeof CreatePlanningEventTimeBlock404Error[keyof typeof CreatePlanningEventTimeBlock404Error];
+
+
+export const CreatePlanningEventTimeBlock404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type CreatePlanningEventTimeBlock404Message = typeof CreatePlanningEventTimeBlock404Message[keyof typeof CreatePlanningEventTimeBlock404Message];
+
+
+export const CreatePlanningEventTimeBlock404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type CreatePlanningEventTimeBlock404 = {
+  error: CreatePlanningEventTimeBlock404Error;
+  message: CreatePlanningEventTimeBlock404Message;
+};
+
 export type UpdatePlanningEventTimeBlockBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime?: string;
@@ -538,6 +557,53 @@ export type UpdatePlanningEventTimeBlock200 = {
   label?: string;
   status: UpdatePlanningEventTimeBlock200Status;
   requirements: UpdatePlanningEventTimeBlock200RequirementsItem[];
+};
+
+export type UpdatePlanningEventTimeBlock404Error = typeof UpdatePlanningEventTimeBlock404Error[keyof typeof UpdatePlanningEventTimeBlock404Error];
+
+
+export const UpdatePlanningEventTimeBlock404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type UpdatePlanningEventTimeBlock404Message = typeof UpdatePlanningEventTimeBlock404Message[keyof typeof UpdatePlanningEventTimeBlock404Message];
+
+
+export const UpdatePlanningEventTimeBlock404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type UpdatePlanningEventTimeBlock404 = {
+  error: UpdatePlanningEventTimeBlock404Error;
+  message: UpdatePlanningEventTimeBlock404Message;
+};
+
+/**
+ * @nullable
+ */
+export type DeletePlanningEventTimeBlock204 = typeof DeletePlanningEventTimeBlock204[keyof typeof DeletePlanningEventTimeBlock204] | null;
+
+
+export const DeletePlanningEventTimeBlock204 = {
+} as const;
+
+export type DeletePlanningEventTimeBlock404Error = typeof DeletePlanningEventTimeBlock404Error[keyof typeof DeletePlanningEventTimeBlock404Error];
+
+
+export const DeletePlanningEventTimeBlock404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type DeletePlanningEventTimeBlock404Message = typeof DeletePlanningEventTimeBlock404Message[keyof typeof DeletePlanningEventTimeBlock404Message];
+
+
+export const DeletePlanningEventTimeBlock404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type DeletePlanningEventTimeBlock404 = {
+  error: DeletePlanningEventTimeBlock404Error;
+  message: DeletePlanningEventTimeBlock404Message;
 };
 
 export type GetUsualSetup200EntriesItemShiftSplit = {
@@ -846,6 +912,16 @@ export type GetScheduleBuilderData401 = {
   message: string;
 };
 
+export type GetScheduleBuilderData403 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleBuilderData404 = {
+  error: string;
+  message: string;
+};
+
 export type ListEventsParams = {
 ministryId: string;
 status?: ListEventsStatus;
@@ -894,6 +970,21 @@ export type ListEvents200 = {
   events: ListEvents200EventsItem[];
 };
 
+export type ListEvents401 = {
+  error: string;
+  message: string;
+};
+
+export type ListEvents403 = {
+  error: string;
+  message: string;
+};
+
+export type ListEvents404 = {
+  error: string;
+  message: string;
+};
+
 export type ListMinistries200MinistriesItemDefaultDirection = typeof ListMinistries200MinistriesItemDefaultDirection[keyof typeof ListMinistries200MinistriesItemDefaultDirection];
 
 
@@ -919,6 +1010,11 @@ export type ListMinistries200 = {
 };
 
 export type ListMinistries401 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistries403 = {
   error: string;
   message: string;
 };
@@ -975,6 +1071,11 @@ export type MintMinistryInvitation201 = {
   deliveryStatus: MintMinistryInvitation201DeliveryStatus;
 };
 
+export type MintMinistryInvitation403 = {
+  error: string;
+  message: string;
+};
+
 export type MintMinistryInvitation404 = {
   error: string;
   message: string;
@@ -1015,6 +1116,11 @@ export type ResendMinistryInvitation200 = {
   expiresAt: string;
   redemptionPath: string;
   deliveryStatus: ResendMinistryInvitation200DeliveryStatus;
+};
+
+export type ResendMinistryInvitation403 = {
+  error: string;
+  message: string;
 };
 
 export type ResendMinistryInvitation404 = {
@@ -1147,6 +1253,11 @@ export type GetCycleParticipation403 = {
   message: string;
 };
 
+export type GetCycleParticipation404 = {
+  error: string;
+  message: string;
+};
+
 export type ListScheduleSummaries200CyclesItemStatus = typeof ListScheduleSummaries200CyclesItemStatus[keyof typeof ListScheduleSummaries200CyclesItemStatus];
 
 
@@ -1180,8 +1291,32 @@ export type ListScheduleSummaries403 = {
   message: string;
 };
 
+export type ListScheduleSummaries404 = {
+  error: string;
+  message: string;
+};
+
 export type SetParticipationInclusionsBody = {
   eventTimeBlockIds: string[];
+};
+
+/**
+ * @nullable
+ */
+export type SetParticipationInclusions204 = typeof SetParticipationInclusions204[keyof typeof SetParticipationInclusions204] | null;
+
+
+export const SetParticipationInclusions204 = {
+} as const;
+
+export type SetParticipationInclusions403 = {
+  error: string;
+  message: string;
+};
+
+export type SetParticipationInclusions404 = {
+  error: string;
+  message: string;
 };
 
 export type SplitParticipationShiftsBodyStrategy = {
@@ -1222,6 +1357,16 @@ export type SplitParticipationShifts201 = {
   shifts: SplitParticipationShifts201ShiftsItem[];
 };
 
+export type SplitParticipationShifts403 = {
+  error: string;
+  message: string;
+};
+
+export type SplitParticipationShifts404 = {
+  error: string;
+  message: string;
+};
+
 export type UpdateShiftBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime?: string;
@@ -1239,6 +1384,35 @@ export type UpdateShift200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+};
+
+export type UpdateShift403 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateShift404 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type DeleteShift204 = typeof DeleteShift204[keyof typeof DeleteShift204] | null;
+
+
+export const DeleteShift204 = {
+} as const;
+
+export type DeleteShift403 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteShift404 = {
+  error: string;
+  message: string;
 };
 
 export type UpsertShiftRequirementBody = {
@@ -1263,9 +1437,29 @@ export type UpsertShiftRequirement200 = {
   notes?: string;
 };
 
+export type UpsertShiftRequirement403 = {
+  error: string;
+  message: string;
+};
+
+export type UpsertShiftRequirement404 = {
+  error: string;
+  message: string;
+};
+
 export type AskAvailability202 = {
   createdCheckCount: number;
   notifiedVolunteerCount: number;
+};
+
+export type AskAvailability403 = {
+  error: string;
+  message: string;
+};
+
+export type AskAvailability404 = {
+  error: string;
+  message: string;
 };
 
 export type GetCycleAvailabilityStatusParams = {
@@ -1297,6 +1491,11 @@ export type GetCycleAvailabilityStatus403 = {
   message: string;
 };
 
+export type GetCycleAvailabilityStatus404 = {
+  error: string;
+  message: string;
+};
+
 export type GetAvailabilityStatus200StatusesItemState = typeof GetAvailabilityStatus200StatusesItemState[keyof typeof GetAvailabilityStatus200StatusesItemState];
 
 
@@ -1315,6 +1514,30 @@ export type GetAvailabilityStatus200StatusesItem = {
 
 export type GetAvailabilityStatus200 = {
   statuses: GetAvailabilityStatus200StatusesItem[];
+};
+
+export type GetAvailabilityStatus403 = {
+  error: string;
+  message: string;
+};
+
+export type GetAvailabilityStatus404 = {
+  error: string;
+  message: string;
+};
+
+export type ResendAvailabilityReminder202 = {
+  resent: boolean;
+};
+
+export type ResendAvailabilityReminder403 = {
+  error: string;
+  message: string;
+};
+
+export type ResendAvailabilityReminder404 = {
+  error: string;
+  message: string;
 };
 
 export type GetCycleBuilderDataParams = {
@@ -1500,6 +1723,11 @@ export type GetCycleBuilderData403 = {
   message: string;
 };
 
+export type GetCycleBuilderData404 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleAuditLogParams = {
 ministryId: string;
 };
@@ -1531,6 +1759,11 @@ export type GetCycleAuditLog200 = {
 };
 
 export type GetCycleAuditLog403 = {
+  error: string;
+  message: string;
+};
+
+export type GetCycleAuditLog404 = {
   error: string;
   message: string;
 };
@@ -1571,6 +1804,11 @@ export type PublishCycle403 = {
   message: string;
 };
 
+export type PublishCycle404 = {
+  error: string;
+  message: string;
+};
+
 export type ListEligibleVolunteers200VolunteersItemMinistryAccessLevel = typeof ListEligibleVolunteers200VolunteersItemMinistryAccessLevel[keyof typeof ListEligibleVolunteers200VolunteersItemMinistryAccessLevel];
 
 
@@ -1595,6 +1833,11 @@ export type ListEligibleVolunteers200 = {
 };
 
 export type ListEligibleVolunteers403 = {
+  error: string;
+  message: string;
+};
+
+export type ListEligibleVolunteers404 = {
   error: string;
   message: string;
 };
@@ -1657,6 +1900,11 @@ export type CreateParticipationAssignment403 = {
   message: string;
 };
 
+export type CreateParticipationAssignment404 = {
+  error: string;
+  message: string;
+};
+
 /**
  * @nullable
  */
@@ -1667,6 +1915,11 @@ export const DeleteParticipationAssignment204 = {
 } as const;
 
 export type DeleteParticipationAssignment403 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteParticipationAssignment404 = {
   error: string;
   message: string;
 };
@@ -1707,6 +1960,11 @@ export type ReassignParticipationAssignment403 = {
   message: string;
 };
 
+export type ReassignParticipationAssignment404 = {
+  error: string;
+  message: string;
+};
+
 export type GetParticipationCompletion200 = {
   participationId: string;
   peopleNeeded: number;
@@ -1715,6 +1973,11 @@ export type GetParticipationCompletion200 = {
 };
 
 export type GetParticipationCompletion403 = {
+  error: string;
+  message: string;
+};
+
+export type GetParticipationCompletion404 = {
   error: string;
   message: string;
 };
@@ -2200,6 +2463,25 @@ export type GetMinistrySchedule200 = {
   events: GetMinistrySchedule200EventsItem[];
 };
 
+export type GetMinistrySchedule404Error = typeof GetMinistrySchedule404Error[keyof typeof GetMinistrySchedule404Error];
+
+
+export const GetMinistrySchedule404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type GetMinistrySchedule404Message = typeof GetMinistrySchedule404Message[keyof typeof GetMinistrySchedule404Message];
+
+
+export const GetMinistrySchedule404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type GetMinistrySchedule404 = {
+  error: GetMinistrySchedule404Error;
+  message: GetMinistrySchedule404Message;
+};
+
 export type ListAvailabilityChecks200ChecksItemState = typeof ListAvailabilityChecks200ChecksItemState[keyof typeof ListAvailabilityChecks200ChecksItemState];
 
 
@@ -2257,6 +2539,25 @@ export type GetAvailabilityCheck200 = {
   shifts: GetAvailabilityCheck200ShiftsItem[];
 };
 
+export type GetAvailabilityCheck404Error = typeof GetAvailabilityCheck404Error[keyof typeof GetAvailabilityCheck404Error];
+
+
+export const GetAvailabilityCheck404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type GetAvailabilityCheck404Message = typeof GetAvailabilityCheck404Message[keyof typeof GetAvailabilityCheck404Message];
+
+
+export const GetAvailabilityCheck404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type GetAvailabilityCheck404 = {
+  error: GetAvailabilityCheck404Error;
+  message: GetAvailabilityCheck404Message;
+};
+
 export type SetUnavailableShiftsBody = {
   shiftIds: string[];
   /** @items.pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
@@ -2293,6 +2594,53 @@ export type SetUnavailableShifts200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
   shifts: SetUnavailableShifts200ShiftsItem[];
+};
+
+export type SetUnavailableShifts404Error = typeof SetUnavailableShifts404Error[keyof typeof SetUnavailableShifts404Error];
+
+
+export const SetUnavailableShifts404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type SetUnavailableShifts404Message = typeof SetUnavailableShifts404Message[keyof typeof SetUnavailableShifts404Message];
+
+
+export const SetUnavailableShifts404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type SetUnavailableShifts404 = {
+  error: SetUnavailableShifts404Error;
+  message: SetUnavailableShifts404Message;
+};
+
+/**
+ * @nullable
+ */
+export type ConfirmAvailabilityCheck204 = typeof ConfirmAvailabilityCheck204[keyof typeof ConfirmAvailabilityCheck204] | null;
+
+
+export const ConfirmAvailabilityCheck204 = {
+} as const;
+
+export type ConfirmAvailabilityCheck404Error = typeof ConfirmAvailabilityCheck404Error[keyof typeof ConfirmAvailabilityCheck404Error];
+
+
+export const ConfirmAvailabilityCheck404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type ConfirmAvailabilityCheck404Message = typeof ConfirmAvailabilityCheck404Message[keyof typeof ConfirmAvailabilityCheck404Message];
+
+
+export const ConfirmAvailabilityCheck404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type ConfirmAvailabilityCheck404 = {
+  error: ConfirmAvailabilityCheck404Error;
+  message: ConfirmAvailabilityCheck404Message;
 };
 
 export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];
@@ -2335,6 +2683,25 @@ export type RespondToAssignment200 = {
   assignedBy?: string;
 };
 
+export type RespondToAssignment404Error = typeof RespondToAssignment404Error[keyof typeof RespondToAssignment404Error];
+
+
+export const RespondToAssignment404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type RespondToAssignment404Message = typeof RespondToAssignment404Message[keyof typeof RespondToAssignment404Message];
+
+
+export const RespondToAssignment404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type RespondToAssignment404 = {
+  error: RespondToAssignment404Error;
+  message: RespondToAssignment404Message;
+};
+
 /**
  * @nullable
  */
@@ -2343,6 +2710,25 @@ export type CancelOwnAssignment204 = typeof CancelOwnAssignment204[keyof typeof 
 
 export const CancelOwnAssignment204 = {
 } as const;
+
+export type CancelOwnAssignment404Error = typeof CancelOwnAssignment404Error[keyof typeof CancelOwnAssignment404Error];
+
+
+export const CancelOwnAssignment404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type CancelOwnAssignment404Message = typeof CancelOwnAssignment404Message[keyof typeof CancelOwnAssignment404Message];
+
+
+export const CancelOwnAssignment404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type CancelOwnAssignment404 = {
+  error: CancelOwnAssignment404Error;
+  message: CancelOwnAssignment404Message;
+};
 
 export type GetNotificationsParams = {
 /**
@@ -2390,6 +2776,25 @@ export type GetNotifications200 = {
 
 export type MarkNotificationRead200 = {
   marked: boolean;
+};
+
+export type MarkNotificationRead404Error = typeof MarkNotificationRead404Error[keyof typeof MarkNotificationRead404Error];
+
+
+export const MarkNotificationRead404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type MarkNotificationRead404Message = typeof MarkNotificationRead404Message[keyof typeof MarkNotificationRead404Message];
+
+
+export const MarkNotificationRead404Message = {
+  Resource_not_found: 'Resource not found',
+} as const;
+
+export type MarkNotificationRead404 = {
+  error: MarkNotificationRead404Error;
+  message: MarkNotificationRead404Message;
 };
 
 export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus[keyof typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus];

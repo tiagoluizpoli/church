@@ -120,6 +120,59 @@ describe('createActiveChurchPreValidation', () => {
     );
   });
 
+  it('denies with 403 when requireVolunteer is set and a leftover profile has no active Ministry Membership', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: 'usr_1' },
+      session: { activeOrganizationId: 'chu_1' },
+    } as never);
+    resolver.resolve.mockResolvedValueOnce({
+      status: 'resolved',
+      churchId: 'chu_1',
+      volunteerId: 'vol_1',
+      hasVolunteerMembership: false,
+      autoSelected: false,
+    });
+    const hook = createActiveChurchPreValidation({
+      resolver: resolver as never,
+      requireVolunteer: true,
+    });
+    const request = createRequest();
+    const reply = createReply();
+
+    await hook(request as never, reply as never);
+
+    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(reply.send).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'FORBIDDEN' }),
+    );
+    expect(requestFields(request).volunteerId).toBeUndefined();
+  });
+
+  it('admits a serving Volunteer when requireVolunteer is set', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: 'usr_1' },
+      session: { activeOrganizationId: 'chu_1' },
+    } as never);
+    resolver.resolve.mockResolvedValueOnce({
+      status: 'resolved',
+      churchId: 'chu_1',
+      volunteerId: 'vol_1',
+      hasVolunteerMembership: true,
+      autoSelected: false,
+    });
+    const hook = createActiveChurchPreValidation({
+      resolver: resolver as never,
+      requireVolunteer: true,
+    });
+    const request = createRequest();
+    const reply = createReply();
+
+    await hook(request as never, reply as never);
+
+    expect(reply.status).not.toHaveBeenCalled();
+    expect(requestFields(request).volunteerId).toBe('vol_1');
+  });
+
   it('responds 409 when Active Church selection is required', async () => {
     mockGetSession.mockResolvedValueOnce({
       user: { id: 'usr_1' },

@@ -9,6 +9,7 @@ import {
   vi,
 } from 'vitest';
 import { MinistryController } from '@/api/controllers/ministry-controller';
+import { MinistryInvitationNotFoundError } from '@/domain/errors/ministry-invitation-not-found';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 
@@ -41,6 +42,7 @@ const activeChurchResolver = {
 
 const authorityGuard = {
   resolveCallerCapabilities: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -92,6 +94,7 @@ beforeEach(() => {
     ledMinistries: [{ ministryId: 'ministry-1', name: 'Worship' }],
     hasVolunteerMembership: true,
   });
+  authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
 });
 
 describe('Ministry controller authorization wiring', () => {
@@ -251,5 +254,75 @@ describe('Ministry Invitation minting routes', () => {
       ministryInvitationId: 'ministry-invitation-1',
       callerId: 'admin-leader-user',
     });
+  });
+
+  it.each([
+    {
+      route: 'mint',
+      method: 'POST' as const,
+      url: `/api/v1/ministries/${ministryId}/invitations`,
+      payload: {
+        email: 'outsider@example.com',
+        ministryAccessLevel: 'volunteer',
+        roleIds: [],
+      },
+    },
+    {
+      route: 'resend',
+      method: 'POST' as const,
+      url: `/api/v1/ministries/${ministryId}/invitations/ministry-invitation-1/resend`,
+      payload: undefined,
+    },
+  ])('$route returns 403 before any lookup for a caller who manages no Ministry', async ({
+    method,
+    url,
+    payload,
+  }) => {
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: 'Ministry leadership required',
+    });
+    expect(ministryInvitationManager.mint).not.toHaveBeenCalled();
+    expect(ministryInvitationManager.resend).not.toHaveBeenCalled();
+  });
+
+  it('returns the same not-found body for a missing and a hidden Ministry once admitted', async () => {
+    const hiddenMinistryId = '33333333-3333-3333-8333-333333333333';
+    ministryInvitationManager.mint.mockRejectedValue(
+      new MinistryInvitationNotFoundError(),
+    );
+    const payload = {
+      email: 'outsider@example.com',
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+    };
+
+    const missing = await app.inject({
+      method: 'POST',
+      url: `/api/v1/ministries/${ministryId}/invitations`,
+      payload,
+    });
+    const hidden = await app.inject({
+      method: 'POST',
+      url: `/api/v1/ministries/${hiddenMinistryId}/invitations`,
+      payload,
+    });
+
+    expect(missing.statusCode).toBe(404);
+    expect(hidden.statusCode).toBe(404);
+    expect(hidden.json()).toEqual(missing.json());
+    expect(missing.json()).toEqual({
+      error: 'MINISTRY_NOT_FOUND',
+      message: 'Ministry not found',
+    });
+    expect(ministryInvitationManager.getDeliveryStatus).not.toHaveBeenCalled();
   });
 });

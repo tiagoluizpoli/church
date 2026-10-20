@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import { parseInstant } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import { DbEventManager } from '@/application/db-event-manager';
@@ -6,15 +7,21 @@ import type {
   EventId,
   EventTimeBlockId,
   MinistryId,
+  MinistryParticipationId,
   RoleId,
   SectorId,
+  ShiftId,
+  UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import type { IAuthorityManager } from '@/domain/contracts/application/authority-manager';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
 import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
+import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
+import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
 import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 import type {
   MinistryMembership,
@@ -23,11 +30,13 @@ import type {
 import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
+import { MinistryParticipation } from '@/domain/entities/ministry-participation';
 import { Role } from '@/domain/entities/role';
 import { Sector } from '@/domain/entities/sector';
+import { Shift } from '@/domain/entities/shift';
+import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
-import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const ministryId = '22222222-2222-4222-8222-222222222222' as MinistryId;
@@ -35,9 +44,14 @@ const eventId = '33333333-3333-4333-8333-333333333333' as EventId;
 const roleId = '44444444-4444-4444-8444-444444444444' as RoleId;
 const eventTimeBlockId =
   '55555555-5555-4555-8555-555555555555' as EventTimeBlockId;
+const participationId =
+  '66666666-6666-4666-8666-666666666666' as MinistryParticipationId;
+const userId = '77777777-7777-4777-8777-777777777777' as UserId;
 const leaderId = 'leader-1' as VolunteerId;
 const teamAVolunteerId = 'volunteer-team-a' as VolunteerId;
 const teamBVolunteerId = 'volunteer-team-b' as VolunteerId;
+const ownShiftId = 'shift-own' as ShiftId;
+const foreignShiftId = 'shift-foreign' as ShiftId;
 
 function buildEvent(): Event {
   return new Event(
@@ -50,6 +64,23 @@ function buildEvent(): Event {
     },
     eventId,
   );
+}
+
+function buildParticipation(
+  overrides: Partial<{
+    id: MinistryParticipationId;
+    ministryId: MinistryId;
+    eventId: EventId;
+  }> = {},
+): MinistryParticipation {
+  return new MinistryParticipation({
+    props: {
+      churchId,
+      ministryId: overrides.ministryId ?? ministryId,
+      eventId: overrides.eventId ?? eventId,
+    },
+    id: overrides.id ?? participationId,
+  });
 }
 
 function buildMembership(
@@ -71,6 +102,16 @@ interface Repos {
   volunteerRepo: VolunteerRepository;
   roleRepo: RoleRepository;
   sectorRepo: SectorRepository;
+  ministryParticipationRepo: MinistryParticipationRepository;
+  authorityManager: {
+    decideManageMinistry: ReturnType<
+      typeof vi.fn<IAuthorityManager['decideManageMinistry']>
+    >;
+  };
+  shiftRepo: Pick<
+    ShiftRepository,
+    'listByParticipation' | 'listRequirementsByParticipation'
+  >;
 }
 
 function createRepos(): Repos {
@@ -119,7 +160,7 @@ function createRepos(): Repos {
     findByEventTimeBlockAndVolunteer: vi.fn(),
     listByEventTimeBlock: vi.fn(),
     listByEvent: vi.fn(async () => []),
-    listByParticipation: vi.fn(),
+    listByParticipation: vi.fn(async () => []),
     listByShift: vi.fn(),
     listByVolunteer: vi.fn(),
     listByVolunteers: vi.fn(),
@@ -166,6 +207,32 @@ function createRepos(): Repos {
     listByMinistry: vi.fn(async () => []),
   };
 
+  const ministryParticipationRepo: MinistryParticipationRepository = {
+    getById: vi.fn(),
+    findByMinistryEvent: vi.fn(async () => buildParticipation()),
+    create: vi.fn(),
+    listByEvent: vi.fn(async () => [buildParticipation()]),
+    listByMinistry: vi.fn(),
+    listByIds: vi.fn(),
+    updateState: vi.fn(),
+    listInclusions: vi.fn(),
+    replaceInclusions: vi.fn(),
+    addInclusion: vi.fn(),
+    touch: vi.fn(),
+    listScheduleSummaries: vi.fn(),
+  };
+
+  const authorityManager = {
+    decideManageMinistry: vi.fn<IAuthorityManager['decideManageMinistry']>(
+      async () => ({ allowed: true }),
+    ),
+  };
+
+  const shiftRepo = {
+    listByParticipation: vi.fn(async () => []),
+    listRequirementsByParticipation: vi.fn(async () => []),
+  };
+
   return {
     eventRepo,
     eventTimeBlockRepo,
@@ -174,6 +241,9 @@ function createRepos(): Repos {
     volunteerRepo,
     roleRepo,
     sectorRepo,
+    ministryParticipationRepo,
+    authorityManager,
+    shiftRepo,
   };
 }
 
@@ -186,6 +256,9 @@ function createManager(repos: Repos): DbEventManager {
     volunteerRepo: repos.volunteerRepo,
     roleRepo: repos.roleRepo,
     sectorRepo: repos.sectorRepo,
+    ministryParticipationRepo: repos.ministryParticipationRepo,
+    authorityManager: repos.authorityManager as never,
+    shiftRepo: repos.shiftRepo as never,
   });
 }
 
@@ -206,8 +279,8 @@ describe('DbEventManager', () => {
       const result = await createManager(repos).getScheduleBuilderData({
         churchId,
         eventId,
+        userId,
         ministryId,
-        volunteerId: leaderId,
       });
 
       expect(result.sectors).toEqual([
@@ -220,95 +293,107 @@ describe('DbEventManager', () => {
       });
     });
 
-    it('throws IsolationBreachError when the caller is not a ministry member', async () => {
+    it('derives the selected Ministry from a MinistryParticipation instead of the legacy event fallback', async () => {
       const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({ volunteerId: 'someone-else' as VolunteerId }),
+      const participation = buildParticipation();
+      vi.mocked(repos.ministryParticipationRepo.listByEvent).mockResolvedValue([
+        participation,
       ]);
-      const manager = createManager(repos);
 
-      await expect(
-        manager.getScheduleBuilderData({
-          churchId,
-          eventId,
-          volunteerId: leaderId,
-        }),
-      ).rejects.toThrow(IsolationBreachError);
-      await expect(
-        manager.getScheduleBuilderData({
-          churchId,
-          eventId,
-          volunteerId: leaderId,
-        }),
-      ).rejects.toThrow('Volunteer does not belong to the event ministry');
-    });
-
-    it('throws IsolationBreachError when the caller only has plain volunteer privileges', async () => {
-      const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({
-          volunteerId: leaderId,
-          ministryAccessLevel: 'volunteer',
-        }),
-      ]);
-      const manager = createManager(repos);
-
-      await expect(
-        manager.getScheduleBuilderData({
-          churchId,
-          eventId,
-          volunteerId: leaderId,
-        }),
-      ).rejects.toThrow('Volunteer does not have leader privileges');
-    });
-
-    it('throws IsolationBreachError when the caller is a plain team member, not a ministry leader or TeamLeader', async () => {
-      const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({
-          volunteerId: teamAVolunteerId,
-          ministryAccessLevel: 'volunteer',
-        }),
-      ]);
-      const manager = createManager(repos);
-
-      await expect(
-        manager.getScheduleBuilderData({
-          churchId,
-          eventId,
-          volunteerId: teamAVolunteerId,
-        }),
-      ).rejects.toThrow('Volunteer does not have leader privileges');
-    });
-
-    it('derives ministryId from the event when not provided, and skips lookup when provided', async () => {
-      const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({
-          volunteerId: leaderId,
-          ministryAccessLevel: 'leader',
-        }),
-      ]);
-      const manager = createManager(repos);
-
-      await manager.getScheduleBuilderData({
+      await createManager(repos).getScheduleBuilderData({
         churchId,
         eventId,
-        volunteerId: leaderId,
+        userId,
       });
-      expect(repos.eventRepo.getMinistryId).toHaveBeenCalledWith(
-        churchId,
-        eventId,
-      );
 
-      vi.mocked(repos.eventRepo.getMinistryId).mockClear();
-      await manager.getScheduleBuilderData({
+      expect(repos.ministryParticipationRepo.listByEvent).toHaveBeenCalledWith({
         churchId,
         eventId,
-        volunteerId: leaderId,
-        ministryId,
       });
       expect(repos.eventRepo.getMinistryId).not.toHaveBeenCalled();
+      expect(repos.authorityManager.decideManageMinistry).toHaveBeenCalledWith({
+        churchId,
+        ministryId,
+        userId,
+      });
+    });
+
+    it('uses the supplied MinistryParticipation and never consults the legacy event fallback', async () => {
+      const repos = createRepos();
+      const participation = buildParticipation();
+      vi.mocked(
+        repos.ministryParticipationRepo.findByMinistryEvent,
+      ).mockResolvedValue(participation);
+
+      await createManager(repos).getScheduleBuilderData({
+        churchId,
+        eventId,
+        userId,
+        ministryId,
+      });
+
+      expect(
+        repos.ministryParticipationRepo.findByMinistryEvent,
+      ).toHaveBeenCalledWith({ churchId, ministryId, eventId });
+      expect(
+        repos.ministryParticipationRepo.listByEvent,
+      ).not.toHaveBeenCalled();
+      expect(repos.eventRepo.getMinistryId).not.toHaveBeenCalled();
+    });
+
+    it('conceals a missing or hidden Ministry as NotFound after the caller passed the function gate', async () => {
+      const repos = createRepos();
+      vi.mocked(
+        repos.ministryParticipationRepo.findByMinistryEvent,
+      ).mockResolvedValue(null);
+
+      await expect(
+        createManager(repos).getScheduleBuilderData({
+          churchId,
+          eventId,
+          userId,
+          ministryId,
+        }),
+      ).rejects.toThrow(NotFoundError);
+      expect(
+        repos.authorityManager.decideManageMinistry,
+      ).not.toHaveBeenCalled();
+      expect(repos.eventTimeBlockRepo.listByEvent).not.toHaveBeenCalled();
+    });
+
+    it('conceals an existing Event without a matching participation as the same NotFound', async () => {
+      const repos = createRepos();
+      vi.mocked(
+        repos.ministryParticipationRepo.findByMinistryEvent,
+      ).mockResolvedValue(null);
+
+      await expect(
+        createManager(repos).getScheduleBuilderData({
+          churchId,
+          eventId,
+          userId,
+          ministryId,
+        }),
+      ).rejects.toThrow('Schedule builder resource not found');
+    });
+
+    it('conceals an unauthorized selected Ministry as NotFound and reads no payload', async () => {
+      const repos = createRepos();
+      repos.authorityManager.decideManageMinistry.mockResolvedValue({
+        allowed: false,
+        reason: 'OUTSIDE_SCOPE',
+      });
+
+      await expect(
+        createManager(repos).getScheduleBuilderData({
+          churchId,
+          eventId,
+          userId,
+          ministryId,
+        }),
+      ).rejects.toThrow(NotFoundError);
+      expect(repos.eventTimeBlockRepo.listByEvent).not.toHaveBeenCalled();
+      expect(repos.assignmentRepo.listByEvent).not.toHaveBeenCalled();
     });
 
     it('lets a leader see every volunteer in the ministry regardless of team', async () => {
@@ -352,7 +437,7 @@ describe('DbEventManager', () => {
           props: {
             churchId,
             availabilityCheckId: 'check-1' as never,
-            shiftId: 'shift-1' as never,
+            shiftId: ownShiftId,
             volunteerId: teamAVolunteerId,
             shiftStartTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
             shiftEndTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
@@ -362,15 +447,27 @@ describe('DbEventManager', () => {
       vi.mocked(repos.unavailableShiftRepo.listByVolunteers).mockResolvedValue(
         unavailableShifts,
       );
+      vi.mocked(repos.shiftRepo.listByParticipation).mockResolvedValue([
+        new Shift({
+          props: {
+            churchId,
+            participationId,
+            eventTimeBlockId,
+            startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+            endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+          },
+          id: ownShiftId,
+        }),
+      ]);
 
-      const manager = createManager(repos);
-      const result = await manager.getScheduleBuilderData({
+      const result = await createManager(repos).getScheduleBuilderData({
         churchId,
         eventId,
-        volunteerId: leaderId,
+        userId,
+        ministryId,
       });
 
-      expect(result.volunteers.map((v) => v.id)).toEqual(
+      expect(result.volunteers.map((volunteer) => volunteer.id)).toEqual(
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
       expect(result.volunteers).toHaveLength(3);
@@ -398,11 +495,7 @@ describe('DbEventManager', () => {
       );
       expect(result.roles).toEqual([{ id: roleId, name: 'Usher' }]);
       expect(result.assignments).toEqual([]);
-      expect(result.unavailableShifts).toBe(unavailableShifts);
-      expect(repos.unavailableShiftRepo.listByVolunteers).toHaveBeenCalledWith(
-        churchId,
-        expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
-      );
+      expect(result.unavailableShifts).toEqual(unavailableShifts);
     });
 
     it('falls back to the volunteer id as the name when name is missing', async () => {
@@ -417,11 +510,11 @@ describe('DbEventManager', () => {
         new Volunteer({ churchId, userId: 'u-leader' }, leaderId),
       ]);
 
-      const manager = createManager(repos);
-      const result = await manager.getScheduleBuilderData({
+      const result = await createManager(repos).getScheduleBuilderData({
         churchId,
         eventId,
-        volunteerId: leaderId,
+        userId,
+        ministryId,
       });
 
       expect(result.volunteers).toEqual([
@@ -434,48 +527,61 @@ describe('DbEventManager', () => {
       ]);
     });
 
-    it('skips availability lookup and returns an empty array when there are no visible volunteers', async () => {
+    it('scopes requirements, assignments and unavailable shifts to the selected participation', async () => {
       const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({
-          volunteerId: leaderId,
-          ministryAccessLevel: 'leader',
-        }),
-      ]);
-      vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue([]);
-
-      const manager = createManager(repos);
-      const result = await manager.getScheduleBuilderData({
-        churchId,
-        eventId,
-        volunteerId: leaderId,
-      });
-
-      expect(result.unavailableShifts).toEqual([]);
-      expect(
-        repos.unavailableShiftRepo.listByVolunteers,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('includes the event and its event time blocks plus raw assignments in the result', async () => {
-      const repos = createRepos();
-      const event = buildEvent();
-      const eventTimeBlocks = [
-        new EventTimeBlock(
-          {
-            churchId,
-            eventId,
-            startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
-            endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
-          },
+      const selectedParticipation = buildParticipation();
+      const ownRequirement = new ShiftRequirement(
+        {
+          churchId,
           eventTimeBlockId,
-        ),
-      ];
+          participationId,
+          shiftId: ownShiftId,
+          roleId,
+          sectorId: 'sector-1' as never,
+          sectorName: 'Kids',
+          peopleNeeded: 2,
+        },
+        'requirement-own' as never,
+      );
+      const foreignRequirement = new ShiftRequirement(
+        {
+          churchId,
+          eventTimeBlockId,
+          participationId: 'participation-foreign' as never,
+          shiftId: foreignShiftId,
+          roleId,
+          sectorId: 'sector-2' as never,
+          sectorName: 'Maternal',
+          peopleNeeded: 1,
+        },
+        'requirement-foreign' as never,
+      );
+      const eventTimeBlock = new EventTimeBlock(
+        {
+          churchId,
+          eventId,
+          startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+          requirements: [ownRequirement, foreignRequirement],
+        },
+        eventTimeBlockId,
+      );
+      const ownShift = new Shift({
+        props: {
+          churchId,
+          participationId,
+          eventTimeBlockId,
+          startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        },
+        id: ownShiftId,
+      });
       const assignments = [
         new Assignment(
           {
             churchId,
             eventTimeBlockId,
+            participationId,
             volunteerId: leaderId,
             roleId,
             shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
@@ -483,29 +589,93 @@ describe('DbEventManager', () => {
           'assignment-1',
         ),
       ];
-      vi.mocked(repos.eventRepo.getById).mockResolvedValue(event);
-      vi.mocked(repos.eventTimeBlockRepo.listByEvent).mockResolvedValue(
-        eventTimeBlocks,
-      );
-      vi.mocked(repos.assignmentRepo.listByEvent).mockResolvedValue(
+
+      vi.mocked(repos.eventTimeBlockRepo.listByEvent).mockResolvedValue([
+        eventTimeBlock,
+      ]);
+      vi.mocked(
+        repos.ministryParticipationRepo.findByMinistryEvent,
+      ).mockResolvedValue(selectedParticipation);
+      vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue([
+        new Volunteer(
+          { churchId, userId: 'u-leader', name: 'Leader' },
+          leaderId,
+        ),
+      ]);
+      vi.mocked(repos.assignmentRepo.listByParticipation).mockResolvedValue(
         assignments,
       );
-      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
-        buildMembership({
-          volunteerId: leaderId,
-          ministryAccessLevel: 'leader',
+      vi.mocked(repos.shiftRepo.listByParticipation).mockResolvedValue([
+        ownShift,
+      ]);
+      vi.mocked(
+        repos.shiftRepo.listRequirementsByParticipation,
+      ).mockResolvedValue([ownRequirement]);
+      vi.mocked(repos.unavailableShiftRepo.listByVolunteers).mockResolvedValue([
+        new UnavailableShift({
+          props: {
+            churchId,
+            availabilityCheckId: 'check-own' as never,
+            shiftId: ownShiftId,
+            volunteerId: leaderId,
+            shiftStartTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+            shiftEndTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+          },
+        }),
+        new UnavailableShift({
+          props: {
+            churchId,
+            availabilityCheckId: 'check-foreign' as never,
+            shiftId: foreignShiftId,
+            volunteerId: leaderId,
+            shiftStartTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+            shiftEndTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+          },
         }),
       ]);
 
-      const manager = createManager(repos);
-      const result = await manager.getScheduleBuilderData({
+      const result = await createManager(repos).getScheduleBuilderData({
         churchId,
         eventId,
-        volunteerId: leaderId,
+        userId,
+        ministryId,
       });
 
-      expect(result.events).toEqual([{ event, eventTimeBlocks }]);
+      const [scheduledEvent] = result.events;
+      if (!scheduledEvent) throw new Error('Expected a scheduled Event');
+      const [scheduledTimeBlock] = scheduledEvent.eventTimeBlocks;
+      if (!scheduledTimeBlock) {
+        throw new Error('Expected an Event time block');
+      }
+      const [unavailableShift] = result.unavailableShifts;
+      if (!unavailableShift) throw new Error('Expected an unavailable Shift');
+
+      expect(scheduledTimeBlock.requirements).toEqual([ownRequirement]);
       expect(result.assignments).toBe(assignments);
+      expect(result.unavailableShifts).toHaveLength(1);
+      expect(unavailableShift.shiftId).toBe(ownShiftId);
+      expect(repos.assignmentRepo.listByEvent).not.toHaveBeenCalled();
+      expect(repos.assignmentRepo.listByParticipation).toHaveBeenCalledWith(
+        churchId,
+        selectedParticipation.id,
+      );
+    });
+
+    it('skips the availability bulk lookup when the selected Ministry has no visible volunteers', async () => {
+      const repos = createRepos();
+      vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue([]);
+
+      const result = await createManager(repos).getScheduleBuilderData({
+        churchId,
+        eventId,
+        userId,
+        ministryId,
+      });
+
+      expect(result.unavailableShifts).toEqual([]);
+      expect(
+        repos.unavailableShiftRepo.listByVolunteers,
+      ).not.toHaveBeenCalled();
     });
   });
 

@@ -49,11 +49,9 @@ const mockGetSession = vi.mocked(
 
 const activeChurchResolver = { resolve: vi.fn() };
 const authorityGuard = {
-  canManageParticipation: vi.fn(),
-  canManageShift: vi.fn(),
-  canManageMinistry: vi.fn(),
-  canManageTeam: vi.fn(),
-  canManageTeamShift: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
+  decideManageParticipation: vi.fn(),
+  decideManageShift: vi.fn(),
 };
 
 const DOUBLE_BOOKED_REFUSAL = {
@@ -125,10 +123,12 @@ async function seedCrossMinistryOverlap({
     status: 'resolved',
     churchId: seed.churchAId,
     volunteerId: seed.adminVolunteerId,
+    hasVolunteerMembership: true,
     autoSelected: false,
   });
-  authorityGuard.canManageShift.mockResolvedValue(true);
-  authorityGuard.canManageTeamShift.mockResolvedValue(false);
+  authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageParticipation.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageShift.mockResolvedValue({ allowed: true });
 
   const otherMinistry = await buildMinistry({
     db: schedulingTestDb,
@@ -581,7 +581,9 @@ describe('requirement-bound Assignment HTTP contract', () => {
 describe('requirement coverage and published placement HTTP contract', () => {
   it('keeps an empty Sector open at 50% even when the other Sector has two active Assignments', async () => {
     const seed = await seedCrossMinistryOverlap();
-    authorityGuard.canManageParticipation.mockResolvedValue(true);
+    authorityGuard.decideManageParticipation.mockResolvedValue({
+      allowed: true,
+    });
     await schedulingTestDb
       .update(shiftRequirement)
       .set({ peopleNeeded: 1 })

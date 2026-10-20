@@ -9,6 +9,12 @@ import {
 } from '@/domain/branded-ids';
 
 const manager = {
+  decideAuthority: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
+  decideManageMinistry: vi.fn(),
+  decideManageParticipation: vi.fn(),
+  decideManageShift: vi.fn(),
+  resolveCallerCapabilities: vi.fn(),
   canManageChurch: vi.fn(),
   canManageMinistry: vi.fn(),
   canManageParticipation: vi.fn(),
@@ -27,6 +33,12 @@ describe('AuthorityGuard', () => {
     const guard = createGuard();
     const input = { churchId: 'chu_1', userId: 'usr_1' } as never;
 
+    guard.decideAuthority(input);
+    guard.decideManageAnyMinistry(input);
+    guard.decideManageMinistry(input);
+    guard.decideManageParticipation(input);
+    guard.decideManageShift(input);
+    guard.resolveCallerCapabilities(input);
     guard.canManageChurch(input);
     guard.canManageMinistry(input);
     guard.canManageParticipation(input);
@@ -35,6 +47,12 @@ describe('AuthorityGuard', () => {
     guard.canManageEventTimeBlock(input);
     guard.hasSchedulingAccess(input);
 
+    expect(manager.decideAuthority).toHaveBeenCalledWith(input);
+    expect(manager.decideManageAnyMinistry).toHaveBeenCalledWith(input);
+    expect(manager.decideManageMinistry).toHaveBeenCalledWith(input);
+    expect(manager.decideManageParticipation).toHaveBeenCalledWith(input);
+    expect(manager.decideManageShift).toHaveBeenCalledWith(input);
+    expect(manager.resolveCallerCapabilities).toHaveBeenCalledWith(input);
     expect(manager.canManageChurch).toHaveBeenCalledWith(input);
     expect(manager.canManageMinistry).toHaveBeenCalledWith(input);
     expect(manager.canManageParticipation).toHaveBeenCalledWith(input);

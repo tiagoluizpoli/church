@@ -488,4 +488,40 @@ describe('Church admin planning routes', () => {
     });
     expect(lastEventTimeBlock.statusCode).toBe(409);
   });
+
+  it('returns the same 404 for missing and cross-parent nested EventTimeBlocks', async () => {
+    const cycleId = '22222222-2222-2222-2222-222222222222';
+    const eventId = '66666666-6666-6666-6666-666666666666';
+    const missingTimeBlockId = '99999999-9999-9999-9999-999999999998';
+    const hiddenTimeBlockId = '99999999-9999-9999-9999-999999999997';
+    planningEventManager.updateEventTimeBlock.mockRejectedValueOnce(
+      new NotFoundError(`EventTimeBlock not found: ${missingTimeBlockId}`),
+    );
+    const missing = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${missingTimeBlockId}`,
+      payload: { label: 'Missing' },
+    });
+
+    planningEventManager.updateEventTimeBlock.mockRejectedValueOnce(
+      new NotFoundError(`EventTimeBlock not found: ${hiddenTimeBlockId}`),
+    );
+    const crossParent = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${hiddenTimeBlockId}`,
+      payload: { label: 'Foreign' },
+    });
+
+    expect(missing.statusCode).toBe(404);
+    expect(crossParent.statusCode).toBe(404);
+    expect(crossParent.json()).toEqual(missing.json());
+    expect(planningEventManager.updateEventTimeBlock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        churchId: '11111111-1111-1111-1111-111111111111',
+        cycleId,
+        eventId,
+        eventTimeBlockId: hiddenTimeBlockId,
+      }),
+    );
+  });
 });

@@ -89,6 +89,9 @@ export interface CallerCapabilitiesProjection {
  */
 export interface IAuthorityManager {
   decideAuthority(input: DecideAuthorityInput): Promise<AuthorityDecision>;
+  decideManageAnyMinistry(
+    input: CanManageChurchInput,
+  ): Promise<AuthorityDecision>;
   decideManageMinistry(
     input: CanManageMinistryInput,
   ): Promise<AuthorityDecision>;

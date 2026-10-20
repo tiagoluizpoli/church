@@ -80,6 +80,14 @@ interface EnsureWritableEventInput {
   tx: TransactionContext;
 }
 
+interface GetCycleEventInput {
+  input:
+    | EnsureWritableEventInput['input']
+    | UpdatePlanningEventManagerInput
+    | CancelPlanningEventManagerInput;
+  tx: TransactionContext;
+}
+
 interface LoadWritableEventTimeBlockInput {
   input:
     | UpdatePlanningEventTimeBlockManagerInput
@@ -476,11 +484,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
-      const currentEvent = await this.eventRepository.getEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        tx,
-      });
+      const currentEvent = await this.getCycleEvent({ input, tx });
 
       if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
         throw new IllegalStateTransitionError(currentEvent.status, 'update');
@@ -641,16 +645,28 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       cycle: await this.cycleRepository.getById({ ...input, tx }),
       churchTimeZone: church.timezone,
     });
-    const event = await this.eventRepository.getEvent({
-      churchId: input.churchId,
-      eventId: input.eventId,
-      tx,
-    });
+    const event = await this.getCycleEvent({ input, tx });
 
     if (cycle.state === 'sent' && event.status !== 'draft') {
       throw new IllegalStateTransitionError(event.status, action);
     }
 
+    return event;
+  }
+
+  /** An Event under another Cycle is as missing as an unknown Event. */
+  private async getCycleEvent({
+    input,
+    tx,
+  }: GetCycleEventInput): Promise<Event> {
+    const event = await this.eventRepository.getEvent({
+      churchId: input.churchId,
+      eventId: input.eventId,
+      tx,
+    });
+    if (event.cycleId !== input.cycleId) {
+      throw new NotFoundError(`Event not found: ${input.eventId}`);
+    }
     return event;
   }
 
@@ -685,11 +701,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
-      const currentEvent = await this.eventRepository.getEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        tx,
-      });
+      const currentEvent = await this.getCycleEvent({ input, tx });
 
       if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
         throw new IllegalStateTransitionError(currentEvent.status, 'cancel');

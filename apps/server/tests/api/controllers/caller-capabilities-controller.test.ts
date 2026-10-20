@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import { CallerCapabilitiesController } from '@/api/controllers/scheduling-capability-controller';
+import { CallerCapabilitiesController } from '@/api/controllers/caller-capabilities-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 

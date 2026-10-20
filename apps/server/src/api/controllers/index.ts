@@ -1,10 +1,10 @@
 export { ActiveChurchController } from './active-church-controller';
 export { AssignController } from './assign-controller';
+export { CallerCapabilitiesController } from './caller-capabilities-controller';
 export { ChurchAdminController } from './church-admin-controller';
 export { EventController } from './event-controller';
 export { MinistryController } from './ministry-controller';
 export { PrepareController } from './prepare-controller';
 export { RedemptionController } from './redemption-controller';
-export { CallerCapabilitiesController } from './scheduling-capability-controller';
 export { VolunteerController } from './volunteer-controller';
 export { VolunteerScheduleController } from './volunteer-schedule-controller';

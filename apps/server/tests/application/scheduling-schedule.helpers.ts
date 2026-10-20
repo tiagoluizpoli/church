@@ -8,7 +8,9 @@ import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
@@ -93,6 +95,7 @@ export function createSchedulingManagers({
       volunteerRepository: volunteerRepo,
       unavailableShiftRepository: unavailableShiftRepo,
       planningEventRepository: eventRepo,
+      cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
       notificationService: notificationSpy,
       unitOfWork,
     }),
@@ -106,6 +109,10 @@ export function createSchedulingManagers({
       volunteerRepository: volunteerRepo,
       ministryRepository: ministryRepo,
       usualSetupRepository: new DrizzleUsualSetupRepository({
+        db: schedulingTestDb,
+      }),
+      cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+      eventTemplateRepository: new DrizzleEventTemplateRepository({
         db: schedulingTestDb,
       }),
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),

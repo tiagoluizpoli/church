@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
@@ -5,7 +6,6 @@ import {
   EventId,
   MinistryId,
   UserId,
-  VolunteerId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
@@ -26,6 +26,9 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
+const FUNCTION_FORBIDDEN_MESSAGE = 'Scheduling leadership required';
+const NOT_FOUND_MESSAGE = 'Resource not found';
+
 interface ScheduleBuilderQuery {
   eventId: string;
   ministryId?: string;
@@ -36,12 +39,12 @@ interface ListEventsQuery {
   status?: string;
 }
 
-interface DenyMissingVolunteerProfileInput {
+interface DenySchedulingFunctionInput {
   request: FastifyRequest;
   reply: FastifyReply;
 }
 
-interface DenyMinistryScopeInput {
+interface DenyMinistryObjectInput {
   request: FastifyRequest;
   reply: FastifyReply;
   ministryId: string;
@@ -74,12 +77,6 @@ export class EventController implements FastifyController {
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
-    // Most routes here are pure Church-authority operations that a
-    // ChurchAdmin with no Volunteer profile must still be able to reach —
-    // see createActiveChurchPreValidation's own doc comment. `requireVolunteer`
-    // therefore stays off at the controller level; `/schedule-builder` below,
-    // the only route here that reads `request.volunteerId`, checks for it
-    // itself.
     app.addHook(
       'preValidation',
       createActiveChurchPreValidation({
@@ -103,24 +100,36 @@ export class EventController implements FastifyController {
           response: {
             200: scheduleBuilderDataResponseSchema,
             401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const deniedProfile = await this.denyMissingVolunteerProfile({
+        const deniedFunction = await this.denyMissingSchedulingFunction({
           request,
           reply,
         });
-        if (deniedProfile) return;
+        if (deniedFunction) return;
 
         const { eventId, ministryId } = request.query as ScheduleBuilderQuery;
-        const data = await this.eventManager.getScheduleBuilderData({
-          churchId: ChurchId.from(request.churchId),
-          eventId: EventId.from(eventId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
-        });
-        return reply.send(eventMapper.scheduleBuilderToResponse(data));
+        try {
+          const data = await this.eventManager.getScheduleBuilderData({
+            churchId: ChurchId.from(request.churchId),
+            eventId: EventId.from(eventId),
+            userId: UserId.from(request.userId),
+            ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
+          });
+          return reply.send(eventMapper.scheduleBuilderToResponse(data));
+        } catch (error) {
+          if (error instanceof NotFoundError) {
+            return reply.status(404).send({
+              error: 'NOT_FOUND',
+              message: NOT_FOUND_MESSAGE,
+            });
+          }
+          throw error;
+        }
       },
     );
 
@@ -134,17 +143,28 @@ export class EventController implements FastifyController {
           description:
             'List Events for a Ministry, optionally filtered by status.',
           query: listEventsQuerySchema,
-          response: { 200: eventListResponseSchema },
+          response: {
+            200: eventListResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { ministryId, status } = request.query as ListEventsQuery;
-        const denied = await this.denyMinistryScope({
+        const deniedFunction = await this.denyMissingSchedulingFunction({
+          request,
+          reply,
+        });
+        if (deniedFunction) return;
+
+        const deniedObject = await this.denyInaccessibleMinistry({
           request,
           reply,
           ministryId,
         });
-        if (denied) return;
+        if (deniedObject) return;
 
         const events = await this.eventManager.listEvents({
           churchId: ChurchId.from(request.churchId),
@@ -157,48 +177,45 @@ export class EventController implements FastifyController {
   }
 
   /**
-   * `/schedule-builder` is the only route here that reads
-   * `request.volunteerId` — everywhere else in this controller is a pure
-   * Church-authority operation a Volunteer-less ChurchAdmin must still
-   * reach, so the profile requirement is scoped to just this route instead
-   * of the controller's shared preValidation hook.
-   */
-  private async denyMissingVolunteerProfile({
-    request,
-    reply,
-  }: DenyMissingVolunteerProfileInput): Promise<boolean> {
-    if (request.volunteerId) return false;
-
-    reply.status(401).send({
-      error: 'UNAUTHORIZED',
-      message: 'Volunteer profile not found',
-    });
-    return true;
-  }
-
-  /**
    * Returns whether access was denied. `FastifyReply` is a thenable (it
    * resolves once the response is flushed) — `return reply.send(...)` from
    * an `async` method would have its own returned promise silently adopt
    * that reply's resolution instead of the reply object itself, so callers
    * must never `await` a reply and branch on the awaited value. Each guard
-   * here sends the 403 as a side effect and returns a plain boolean.
+   * here sends the refusal as a side effect and returns a plain boolean.
    */
-  private async denyMinistryScope({
+  private async denyMissingSchedulingFunction({
+    request,
+    reply,
+  }: DenySchedulingFunctionInput): Promise<boolean> {
+    const decision = await this.authorityGuard.decideManageAnyMinistry({
+      churchId: ChurchId.from(request.churchId),
+      userId: UserId.from(request.userId),
+    });
+    if (decision.allowed) return false;
+
+    reply.status(403).send({
+      error: 'FORBIDDEN',
+      message: FUNCTION_FORBIDDEN_MESSAGE,
+    });
+    return true;
+  }
+
+  private async denyInaccessibleMinistry({
     request,
     reply,
     ministryId,
-  }: DenyMinistryScopeInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.canManageMinistry({
+  }: DenyMinistryObjectInput): Promise<boolean> {
+    const decision = await this.authorityGuard.decideManageMinistry({
       churchId: ChurchId.from(request.churchId),
       ministryId: MinistryId.from(ministryId),
       userId: UserId.from(request.userId),
     });
-    if (allowed) return false;
+    if (decision.allowed) return false;
 
-    reply.status(403).send({
-      error: 'FORBIDDEN',
-      message: 'Not a leader of this ministry',
+    reply.status(404).send({
+      error: 'NOT_FOUND',
+      message: NOT_FOUND_MESSAGE,
     });
     return true;
   }

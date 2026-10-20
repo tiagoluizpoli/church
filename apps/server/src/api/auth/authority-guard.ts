@@ -34,6 +34,12 @@ export class AuthorityGuard {
     return this.manager.decideAuthority(input);
   }
 
+  decideManageAnyMinistry(
+    input: CanManageChurchInput,
+  ): Promise<AuthorityDecision> {
+    return this.manager.decideManageAnyMinistry(input);
+  }
+
   decideManageMinistry(
     input: CanManageMinistryInput,
   ): Promise<AuthorityDecision> {

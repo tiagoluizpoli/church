@@ -45,7 +45,7 @@ describe('composition root', () => {
       'ministries',
       'redemption',
       'assign',
-      'scheduling',
+      'caller-capabilities',
       'prepare',
       'volunteer',
     ];

@@ -51,6 +51,10 @@ const authorityGuard = {
   canManageMinistry: vi.fn(),
   canManageParticipation: vi.fn(),
   canManageShift: vi.fn(),
+  decideManageMinistry: vi.fn(),
+  decideManageParticipation: vi.fn(),
+  decideManageShift: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -117,9 +121,211 @@ beforeEach(() => {
   authorityGuard.canManageMinistry.mockResolvedValue(true);
   authorityGuard.canManageParticipation.mockResolvedValue(true);
   authorityGuard.canManageShift.mockResolvedValue(true);
+  authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageParticipation.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageShift.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+});
+
+const MINISTRY = '55555555-5555-5555-8555-555555555555';
+const CYCLE = '77777777-7777-7777-8777-777777777777';
+const PARTICIPATION = '22222222-2222-2222-8222-222222222222';
+const BLOCK = '33333333-3333-3333-8333-333333333333';
+const SHIFT = '66666666-6666-6666-8666-666666666666';
+
+type ScopeDecision =
+  | 'decideManageMinistry'
+  | 'decideManageParticipation'
+  | 'decideManageShift';
+
+interface ScopedPrepareRoute {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  url: string;
+  decision: ScopeDecision;
+  payload?: Record<string, unknown>;
+}
+
+const scopedPrepareRoutes: ScopedPrepareRoute[] = [
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/cycles/${CYCLE}/participation?ministryId=${MINISTRY}`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/ministries/${MINISTRY}/cycles-summary`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'PUT',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/inclusions`,
+    decision: 'decideManageParticipation',
+    payload: { eventTimeBlockIds: [] },
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/event-time-blocks/${BLOCK}/shifts`,
+    decision: 'decideManageParticipation',
+    payload: { strategy: { kind: 'equal-n', n: 2 } },
+  },
+  {
+    method: 'PATCH',
+    url: `/api/v1/prepare/shifts/${SHIFT}`,
+    decision: 'decideManageShift',
+    payload: { label: 'Renamed' },
+  },
+  {
+    method: 'DELETE',
+    url: `/api/v1/prepare/shifts/${SHIFT}`,
+    decision: 'decideManageShift',
+  },
+  {
+    method: 'PUT',
+    url: `/api/v1/prepare/shifts/${SHIFT}/requirements`,
+    decision: 'decideManageShift',
+    payload: { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 1 },
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/ask-availability`,
+    decision: 'decideManageParticipation',
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/cycles/${CYCLE}/availability-status?ministryId=${MINISTRY}`,
+    decision: 'decideManageMinistry',
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/availability-status`,
+    decision: 'decideManageParticipation',
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/resend-availability`,
+    decision: 'decideManageParticipation',
+  },
+];
+
+function expectNoPrepareWork(): void {
+  for (const operation of [
+    ...Object.values(participationManager),
+    ...Object.values(availabilityCheckManager),
+  ]) {
+    expect(operation).not.toHaveBeenCalled();
+  }
+}
+
+describe('Prepare route refusals', () => {
+  it.each(
+    scopedPrepareRoutes,
+  )('$method $url: missing and hidden objects share one 404', async ({
+    method,
+    url,
+    decision,
+    payload,
+  }) => {
+    authorityGuard[decision].mockResolvedValueOnce({
+      allowed: false,
+      reason: 'RESOURCE_NOT_FOUND',
+    });
+    const missing = await app.inject({ method, url, payload });
+    authorityGuard[decision].mockResolvedValueOnce({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    const hidden = await app.inject({ method, url, payload });
+
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toEqual({
+      error: 'NOT_FOUND',
+      message: 'Resource not found',
+    });
+    expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
+    expectNoPrepareWork();
+  });
+
+  it.each(
+    scopedPrepareRoutes,
+  )('$method $url: 403 without the scheduling function', async ({
+    method,
+    url,
+    decision,
+    payload,
+  }) => {
+    authorityGuard[decision].mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error).toBe('FORBIDDEN');
+    expectNoPrepareWork();
+  });
 });
 
 describe('Prepare participation routes', () => {
+  it('documents the generic 404 refusal for every scope-protected route', () => {
+    const document = app.swagger();
+    if (!document.paths) {
+      throw new Error('OpenAPI document must declare paths');
+    }
+    const { paths } = document;
+    const scopeProtectedOperations = [
+      paths['/api/v1/prepare/cycles/{cycleId}/participation']?.get,
+      paths['/api/v1/prepare/ministries/{ministryId}/cycles-summary']?.get,
+      paths['/api/v1/prepare/participations/{participationId}/inclusions']?.put,
+      paths[
+        '/api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/shifts'
+      ]?.post,
+      paths['/api/v1/prepare/shifts/{shiftId}']?.patch,
+      paths['/api/v1/prepare/shifts/{shiftId}']?.delete,
+      paths['/api/v1/prepare/shifts/{shiftId}/requirements']?.put,
+      paths['/api/v1/prepare/participations/{participationId}/ask-availability']
+        ?.post,
+      paths['/api/v1/prepare/cycles/{cycleId}/availability-status']?.get,
+      paths[
+        '/api/v1/prepare/participations/{participationId}/availability-status'
+      ]?.get,
+      paths[
+        '/api/v1/prepare/participations/{participationId}/resend-availability'
+      ]?.post,
+    ];
+
+    for (const operation of scopeProtectedOperations) {
+      expect(operation?.responses?.['404']).toBeDefined();
+    }
+  });
+
+  it('returns the same generic 404 for a missing or inaccessible participation after admission', async () => {
+    authorityGuard.decideManageParticipation.mockResolvedValueOnce({
+      allowed: false,
+      reason: 'RESOURCE_NOT_FOUND',
+    });
+    const missing = await app.inject({
+      method: 'POST',
+      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/ask-availability',
+    });
+
+    authorityGuard.decideManageParticipation.mockResolvedValueOnce({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
+    const hidden = await app.inject({
+      method: 'POST',
+      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/ask-availability',
+    });
+
+    expect(missing.statusCode).toBe(404);
+    expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
+    expect(availabilityCheckManager.askAvailability).not.toHaveBeenCalled();
+  });
   it('returns 401 for any route when there is no session', async () => {
     mockGetSession.mockResolvedValueOnce(null as never);
 
@@ -190,7 +396,8 @@ describe('Prepare participation routes', () => {
   });
 
   it('POST /api/v1/prepare/participations/:id/event-time-blocks/:eventTimeBlockId/shifts returns 403 for another ministry scope', async () => {
-    authorityGuard.canManageParticipation.mockResolvedValue(false);
+    authorityGuard.decideManageParticipation.mockResolvedValue(false);
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'POST',
@@ -206,7 +413,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Participation belongs to another ministry',
+      message: 'Not permitted to manage ministry schedules',
     });
     expect(participationManager.splitShifts).not.toHaveBeenCalled();
   });
@@ -327,7 +534,8 @@ describe('Prepare participation routes', () => {
   });
 
   it('GET /api/v1/prepare/ministries/:ministryId/cycles-summary returns 403 for a non-leader of the ministry', async () => {
-    authorityGuard.canManageMinistry.mockResolvedValue(false);
+    authorityGuard.decideManageMinistry.mockResolvedValue(false);
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'GET',
@@ -337,7 +545,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not a leader of this ministry',
+      message: 'Not permitted to manage ministry schedules',
     });
     expect(participationManager.listScheduleSummaries).not.toHaveBeenCalled();
   });

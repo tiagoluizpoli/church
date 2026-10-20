@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { CycleBuilderCellSelectInput } from '../components/builder/board/cycle-builder-cell';
@@ -229,7 +230,7 @@ export function useCycleBuilderActions({
       });
       return true;
     } catch (error) {
-      const message = errorMessage(error, 'Assignment failed');
+      const message = errorMessage(error, m.common_assignment_failed());
       setFailedWrites((current) => [
         ...current,
         {
@@ -317,7 +318,7 @@ export function useCycleBuilderActions({
         await deleteAssignment.mutateAsync(source.id);
       } catch (error) {
         report({
-          message: `${sourceName} was assigned here, but the previous assignment could not be removed — they are now in both: ${errorMessage(error, 'removal failed')}`,
+          message: `${sourceName} was assigned here, but the previous assignment could not be removed — they are now in both: ${errorMessage(error, m.common_removal_failed())}`,
           tone: 'error',
         });
       }
@@ -331,7 +332,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage(error, 'reassignment failed')}`,
+        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage(error, m.common_generic_error())}`,
         tone: 'error',
       });
       return;
@@ -344,7 +345,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage(error, 'reassignment failed')}. Reassign ${sourceName} by hand.`,
+        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage(error, m.common_generic_error())}. Reassign ${sourceName} by hand.`,
         tone: 'error',
       });
       return;
@@ -455,7 +456,7 @@ export function useCycleBuilderActions({
       return true;
     } catch (error) {
       report({
-        message: `Could not remove ${volunteerName}: ${errorMessage(error, 'removal failed')}`,
+        message: `Could not remove ${volunteerName}: ${errorMessage(error, m.common_removal_failed())}`,
         tone: 'error',
       });
       return false;

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import {
   Card,
@@ -20,7 +21,7 @@ interface DescribeAcknowledgementInput {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.';
+  return error instanceof Error ? error.message : m.common_generic_error();
 }
 
 function describeAcknowledgement({

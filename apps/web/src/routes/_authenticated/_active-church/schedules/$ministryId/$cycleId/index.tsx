@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
@@ -72,9 +73,7 @@ function StatChip({ label, value, testId }: StatChipProps) {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : 'Something went wrong. Try again.';
+  return error instanceof Error ? error.message : m.common_generic_error();
 }
 
 interface SaveInclusionsParams {

@@ -18,6 +18,7 @@ import {
   selectActiveChurchBodySchema,
 } from '../dtos/active-church.dto';
 import { headersFromRequest } from '../utils/headers';
+import { refuse } from '../utils/refuse';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -47,9 +48,7 @@ async function requireSession(
     .catch(() => null);
   if (!session?.user) {
     // FastifyReply is thenable: send without awaiting, return a plain value.
-    reply
-      .status(401)
-      .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
+    refuse(reply, request, 'UNAUTHORIZED');
     return null;
   }
   return {
@@ -174,10 +173,7 @@ export class ActiveChurchController implements FastifyController {
         });
 
         if (resolution.status !== 'resolved') {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a member of that Church',
-          });
+          return refuse(reply, request, 'FORBIDDEN');
         }
 
         await auth.api

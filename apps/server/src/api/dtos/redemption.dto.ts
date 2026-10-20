@@ -21,10 +21,12 @@ export const redeemNewUserBodySchema = z.object({
 
 export const unavailableRedemptionResponseSchema = z.object({
   error: z.literal('INVITATION_UNAVAILABLE'),
+  message: z.string(),
 });
 
 export const rateLimitedResponseSchema = z.object({
   error: z.literal('RATE_LIMITED'),
+  message: z.string(),
 });
 
 export const redemptionPreviewResponseSchema = z.object({

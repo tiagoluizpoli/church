@@ -117,7 +117,7 @@ describe('Volunteer route access', () => {
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({
       error: 'UNAUTHORIZED',
-      message: 'Authentication required',
+      message: 'Autenticação necessária.',
     });
     expect(activeChurchResolver.resolve).not.toHaveBeenCalled();
   });

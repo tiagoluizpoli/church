@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ChurchId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import { headersFromRequest } from '../utils/headers';
+import { refuse } from '../utils/refuse';
 import { resolveActiveChurchAndPersist } from './resolve-active-church-and-persist';
 
 export interface CreateActiveChurchPreValidationInput {
@@ -36,9 +37,7 @@ export function createActiveChurchPreValidation(
     const headers = headersFromRequest(request);
     const session = await auth.api.getSession({ headers }).catch(() => null);
     if (!session?.user) {
-      return reply
-        .status(401)
-        .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
+      return refuse(reply, request, 'UNAUTHORIZED');
     }
 
     const userId = UserId.from(session.user.id);
@@ -53,26 +52,17 @@ export function createActiveChurchPreValidation(
     });
 
     if (resolution.status === 'selection_required') {
-      return reply.status(409).send({
-        error: 'ACTIVE_CHURCH_SELECTION_REQUIRED',
-        message: 'Select an active Church before continuing',
-      });
+      return refuse(reply, request, 'ACTIVE_CHURCH_SELECTION_REQUIRED');
     }
 
     if (resolution.status === 'no_membership') {
       // A stale active organization, if any, was already cleared by
       // resolveActiveChurchAndPersist above.
-      return reply.status(403).send({
-        error: 'FORBIDDEN',
-        message: 'No active Church membership found',
-      });
+      return refuse(reply, request, 'FORBIDDEN');
     }
 
     if (requireVolunteer && !resolution.hasVolunteerMembership) {
-      return reply.status(403).send({
-        error: 'FORBIDDEN',
-        message: 'Volunteer profile not found',
-      });
+      return refuse(reply, request, 'FORBIDDEN');
     }
 
     request.userId = session.user.id;

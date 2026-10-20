@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import {
   type CycleBuilderData,
   type CycleBuilderShiftSummary,
@@ -59,6 +60,7 @@ export function buildShiftAssignmentIndex({
   for (const event of data.events) {
     const eventDayLabel = dateLabel({
       day: churchDayOf({ value: event.start, timeZone }),
+      locale: getLocale(),
     });
     for (const eventTimeBlock of event.eventTimeBlocks) {
       for (const candidateShift of eventTimeBlock.shifts) {

@@ -1,8 +1,9 @@
+import { getLocale } from '@church/i18n/runtime';
 import {
   type CalendarDay,
   enumerateCalendarDays,
   formatCalendarDayWithWeekday,
-  formatWeekday,
+  formatWeekdayShort,
   parseCalendarDay,
 } from '@church/time';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
@@ -202,7 +203,10 @@ export function PrepareCalendar({
             const hasEvent = eventDayMarkers.has(iso);
             const isDayFilter = selectedDate === iso;
             const isRovingTarget = focusedIso === iso;
-            const fullDateLabel = formatCalendarDayWithWeekday({ day: iso });
+            const fullDateLabel = formatCalendarDayWithWeekday({
+              day: iso,
+              locale: getLocale(),
+            });
 
             return (
               <button
@@ -251,7 +255,7 @@ export function PrepareCalendar({
                 }}
               >
                 <span className="text-[10px] text-muted-foreground uppercase">
-                  {formatWeekday({ day: iso }).slice(0, 3)}
+                  {formatWeekdayShort({ day: iso, locale: getLocale() })}
                 </span>
                 <span className="font-medium">{dayOfMonth({ day: iso })}</span>
               </button>

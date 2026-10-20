@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, parseInstant } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -416,6 +417,7 @@ function RedeemableInvitationCard({
           {formatRelative({
             instant: parseInstant({ value: status.expiresAt }),
             timeZone: 'UTC',
+            locale: getLocale(),
           })}
         </p>
       </div>

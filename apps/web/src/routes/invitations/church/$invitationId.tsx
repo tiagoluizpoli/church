@@ -1,5 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -258,6 +259,7 @@ function ChurchInvitationRedemptionRoute() {
           {formatRelative({
             instant: parseInstant({ value: preview.expiresAt }),
             timeZone: 'UTC',
+            locale: getLocale(),
           })}
         </p>
       </div>

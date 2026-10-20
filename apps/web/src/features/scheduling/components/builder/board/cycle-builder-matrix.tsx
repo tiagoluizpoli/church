@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import {
   DndContext,
   DragOverlay,
@@ -426,6 +427,7 @@ export function CycleBuilderMatrix(props: Props) {
                         value: shiftContext.event.start,
                         timeZone: churchTimezone,
                       }),
+                      locale: getLocale(),
                     }),
                   }),
                   shiftId: target.shiftId,

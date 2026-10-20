@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import { CalendarDays } from 'lucide-react';
 import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
 import {
@@ -160,7 +161,7 @@ export function CycleBuilderBoardGrid({
                 >
                   <header className="border-b px-3 py-2">
                     <p className="font-semibold text-foreground text-sm">
-                      {dateLabel({ day: date })}
+                      {dateLabel({ day: date, locale: getLocale() })}
                     </p>
                     <p className="mt-0.5 text-muted-foreground text-xs">
                       {(eventsForDate.get(date) ?? []).length} event
@@ -248,6 +249,7 @@ export function CycleBuilderBoardGrid({
                                               eventTitle: event.title,
                                               dateText: dateLabel({
                                                 day: date,
+                                                locale: getLocale(),
                                               }),
                                             }),
                                             shiftId: shift.shiftId,

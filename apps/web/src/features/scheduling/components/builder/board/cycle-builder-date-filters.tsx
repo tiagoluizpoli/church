@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import { ChevronDownIcon, ChevronUpIcon, FilterIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
@@ -228,7 +229,7 @@ export function CycleBuilderDateFilters({
                   aria-pressed={weekday === day}
                   onClick={() => onWeekdayChange(weekday === day ? null : day)}
                 >
-                  {weekdayLongName({ weekday: day })}s
+                  {weekdayLongName({ weekday: day, locale: getLocale() })}s
                 </Button>
               ))}
             </div>

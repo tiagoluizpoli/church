@@ -3,17 +3,8 @@ import type { CalendarDay, Instant, TimeOfDay } from './brands';
 import { now } from './clock';
 import { today, toTimeOfDay, toTimeOfDaySeconds } from './conversion';
 
-// English words only: this is the seam's one authored presentation, not a
-// locale layer. No format/options/locale parameter belongs on any export here.
-const WEEKDAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-] as const;
+/** Locales supported by the date/time seam. Declared here; never imports Paraglide. */
+export type Locale = 'en' | 'pt-BR';
 
 export interface CalendarDayFormatInput {
   day: CalendarDay;
@@ -37,17 +28,96 @@ export function formatCalendarDay({ day }: CalendarDayFormatInput): string {
   return `${dayOfMonth}/${month}/${year}`;
 }
 
-/** `Monday, 04/01/2027`. */
+/** `Monday, 04/01/2027` / `Segunda-feira, 04/01/2027`. */
 export function formatCalendarDayWithWeekday({
   day,
-}: CalendarDayFormatInput): string {
-  return `${formatWeekday({ day })}, ${formatCalendarDay({ day })}`;
+  locale,
+}: CalendarDayFormatInput & { locale: Locale }): string {
+  return `${formatWeekday({ day, locale })}, ${formatCalendarDay({ day })}`;
 }
 
-/** `Monday`. */
-export function formatWeekday({ day }: CalendarDayFormatInput): string {
-  // weekdayIndex is always 0-6 for a valid CalendarDay.
-  return WEEKDAYS[weekdayIndex({ day }) as 0 | 1 | 2 | 3 | 4 | 5 | 6];
+// UTC anchor date that falls on Sunday (weekday index 0); adding the index gives the right weekday.
+// Using Date.UTC avoids any ambient-timezone shift of the reference day.
+function weekdayAnchorDate(index: 0 | 1 | 2 | 3 | 4 | 5 | 6): Date {
+  return new Date(Date.UTC(2024, 0, 7 + index));
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** `Monday` / `Segunda-feira`. Weekdays always start with a capital letter. */
+export function formatWeekday({
+  day,
+  locale,
+}: CalendarDayFormatInput & { locale: Locale }): string {
+  const idx = weekdayIndex({ day }) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  const raw = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    timeZone: 'UTC',
+  }).format(weekdayAnchorDate(idx));
+  return capitalize(raw);
+}
+
+/** `Mon` / `Seg.`. Short weekdays always start with a capital letter. */
+export function formatWeekdayShort({
+  day,
+  locale,
+}: CalendarDayFormatInput & { locale: Locale }): string {
+  const idx = weekdayIndex({ day }) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  const raw = new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    timeZone: 'UTC',
+  }).format(weekdayAnchorDate(idx));
+  return capitalize(raw);
+}
+
+export interface WeekdayByIndexInput {
+  /** 0 (Sunday) … 6 (Saturday). */
+  index: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  locale: Locale;
+}
+
+/** Long weekday name for a 0–6 index. Capitalized. */
+export function formatWeekdayOfIndex({
+  index,
+  locale,
+}: WeekdayByIndexInput): string {
+  const raw = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    timeZone: 'UTC',
+  }).format(weekdayAnchorDate(index));
+  return capitalize(raw);
+}
+
+// shortcut: fixed lists for plural weekdays; Intl has no plural-weekday API, per ADR-0003 amendment.
+const PLURAL_WEEKDAYS: Record<Locale, readonly string[]> = {
+  en: [
+    'Sundays',
+    'Mondays',
+    'Tuesdays',
+    'Wednesdays',
+    'Thursdays',
+    'Fridays',
+    'Saturdays',
+  ],
+  'pt-BR': [
+    'Domingos',
+    'Segundas-feiras',
+    'Terças-feiras',
+    'Quartas-feiras',
+    'Quintas-feiras',
+    'Sextas-feiras',
+    'Sábados',
+  ],
+};
+
+/** Plural weekday name for a 0–6 index (e.g. `Segundas-feiras`, `Mondays`). */
+export function formatWeekdayPluralOfIndex({
+  index,
+  locale,
+}: WeekdayByIndexInput): string {
+  return PLURAL_WEEKDAYS[locale][index] ?? '';
 }
 
 /** `04/01`. */
@@ -96,26 +166,25 @@ function daysFromNow({ instant, timeZone }: InstantFormatInput): number {
   return calendarDaysBetween({ start: nowDay, end: day });
 }
 
-interface RelativeDayPhraseInput {
-  dayDiff: number;
-}
-
-function relativeDayPhrase({ dayDiff }: RelativeDayPhraseInput): string {
-  if (dayDiff === 0) return 'today';
-  if (dayDiff === 1) return 'tomorrow';
-  if (dayDiff === -1) return 'yesterday';
-  return dayDiff > 0 ? `in ${dayDiff} days` : `${-dayDiff} days ago`;
+export interface RelativeFormatInput extends InstantFormatInput {
+  locale: Locale;
 }
 
 /**
- * `today` / `tomorrow` / `yesterday` / `in N days` / `N days ago`, by
- * CalendarDay distance from `now()` in the Church Timezone.
+ * `hoje` / `amanhã` / `ontem` / `em N dias` / `há N dias` (pt-BR) or
+ * `today` / `tomorrow` / `yesterday` / `in N days` / `N days ago` (en).
+ * Relative phrases never start with a capital letter.
  */
 export function formatRelative({
   instant,
   timeZone,
-}: InstantFormatInput): string {
-  return relativeDayPhrase({ dayDiff: daysFromNow({ instant, timeZone }) });
+  locale,
+}: RelativeFormatInput): string {
+  const dayDiff = daysFromNow({ instant, timeZone });
+  return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
+    dayDiff,
+    'day',
+  );
 }
 
 /**
@@ -126,8 +195,14 @@ export function formatRelative({
 export function formatRecency({
   instant,
   timeZone,
-}: InstantFormatInput): string {
+  locale,
+}: RelativeFormatInput): string {
   const dayDiff = daysFromNow({ instant, timeZone });
-  if (Math.abs(dayDiff) < 7) return relativeDayPhrase({ dayDiff });
+  if (Math.abs(dayDiff) < 7) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
+      dayDiff,
+      'day',
+    );
+  }
   return formatCalendarDay({ day: today({ instant, timeZone }) });
 }

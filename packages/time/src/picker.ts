@@ -1,4 +1,6 @@
+import { enUS, ptBR } from 'date-fns/locale';
 import type { CalendarDay } from './brands';
+import type { Locale } from './display';
 
 /**
  * Bridge for date-picker widgets (react-day-picker) that model a day as a
@@ -22,4 +24,36 @@ export function fromPickerDate({ date }: FromPickerDateInput): CalendarDay {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const dayOfMonth = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${dayOfMonth}` as CalendarDay;
+}
+
+const DATEFNS_LOCALE = { en: enUS, 'pt-BR': ptBR } as const;
+
+export interface PickerLocaleInput {
+  locale: Locale;
+}
+
+export interface PickerLocaleResult {
+  locale: typeof enUS | typeof ptBR;
+  formatters: {
+    formatMonthDropdown: (date: Date) => string;
+  };
+}
+
+/** Locale and month-dropdown formatter for react-day-picker, keyed by the seam's Locale. */
+export function pickerLocale({
+  locale,
+}: PickerLocaleInput): PickerLocaleResult {
+  const fmt = new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    timeZone: 'UTC',
+  });
+  return {
+    locale: DATEFNS_LOCALE[locale],
+    formatters: {
+      formatMonthDropdown: (date: Date) => {
+        const s = fmt.format(date);
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      },
+    },
+  };
 }

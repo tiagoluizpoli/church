@@ -22,6 +22,8 @@
       "!!**/.zed",
       "!!**/.vscode",
       "!!**/routeTree.gen.ts",
+      "!!**/src/paraglide",
+      "!!**/project.inlang/.meta.json",
       "!!**/src-tauri",
       "!!**/.nuxt",
       "!!**/bts.jsonc",

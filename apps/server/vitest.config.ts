@@ -83,8 +83,10 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     env: { NODE_ENV: 'test' },
+    // Load the compiled catalog with Node, not Vite's transform (spike #395).
+    server: { deps: { external: [/packages\/i18n\/src\/paraglide\//] } },
     // Inherited by every project below.
-    setupFiles: ['./tests/setup/clock.ts'],
+    setupFiles: ['./tests/setup/clock.ts', './tests/setup/locale.ts'],
     projects: [
       {
         extends: true,
@@ -111,6 +113,7 @@ export default defineConfig({
             'tests/infrastructure/**/*.test.ts',
             'tests/main/**/*.test.ts',
             'tests/seeds/**/*.unit.test.ts',
+            'tests/setup/**/*.test.ts',
             'tests/test-support/**/*.test.ts',
           ],
         },

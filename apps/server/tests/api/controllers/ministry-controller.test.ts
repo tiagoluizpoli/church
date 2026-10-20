@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseInstant } from '@church/time';
 import {
   afterAll,
@@ -321,7 +322,7 @@ describe('Ministry Invitation minting routes', () => {
     expect(hidden.json()).toEqual(missing.json());
     expect(missing.json()).toEqual({
       error: 'MINISTRY_NOT_FOUND',
-      message: 'Ministry not found',
+      message: m.error_ministry_not_found(),
     });
     expect(ministryInvitationManager.getDeliveryStatus).not.toHaveBeenCalled();
   });

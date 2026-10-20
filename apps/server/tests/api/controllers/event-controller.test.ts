@@ -1,4 +1,5 @@
 import { NotFoundError } from '@church/core';
+import { m } from '@church/i18n/messages';
 import {
   afterAll,
   beforeAll,
@@ -162,7 +163,7 @@ describe('Event controller authorization wiring', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Scheduling leadership required',
+      message: m.error_forbidden(),
     });
     expect(eventManager.getScheduleBuilderData).not.toHaveBeenCalled();
   });
@@ -180,7 +181,7 @@ describe('Event controller authorization wiring', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
   });
 
@@ -218,7 +219,7 @@ describe('Event controller authorization wiring', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Scheduling leadership required',
+      message: m.error_forbidden(),
     });
     expect(eventManager.listEvents).not.toHaveBeenCalled();
   });
@@ -237,7 +238,7 @@ describe('Event controller authorization wiring', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     expect(eventManager.listEvents).not.toHaveBeenCalled();
   });

@@ -155,7 +155,7 @@ describe('Ministry controller authorization wiring', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Ministry leadership required',
+      message: m.error_forbidden(),
     });
     expect(ministryManager.listByLeader).not.toHaveBeenCalled();
   });
@@ -289,7 +289,7 @@ describe('Ministry Invitation minting routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Ministry leadership required',
+      message: m.error_forbidden(),
     });
     expect(ministryInvitationManager.mint).not.toHaveBeenCalled();
     expect(ministryInvitationManager.resend).not.toHaveBeenCalled();

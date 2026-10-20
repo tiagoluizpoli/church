@@ -1,5 +1,6 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { NotFoundError } from '@church/core';
+import { m } from '@church/i18n/messages';
 import {
   afterAll,
   beforeAll,
@@ -93,7 +94,7 @@ beforeEach(() => {
 
 const CHECK_ID = '77777777-7777-4777-8777-777777777771';
 const NOTIFICATION_ID = '88888888-8888-4888-8888-888888888881';
-const GENERIC_NOT_FOUND = { error: 'NOT_FOUND', message: 'Resource not found' };
+const GENERIC_NOT_FOUND = { error: 'NOT_FOUND', message: m.error_not_found() };
 
 const servingCollections = [
   { method: 'GET' as const, url: '/api/v1/volunteer/dashboard' },
@@ -424,7 +425,7 @@ describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     await parkedOn.close();
   });

@@ -1,4 +1,5 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import {
   afterAll,
   beforeAll,
@@ -103,7 +104,7 @@ describe('DL3-HT-10 volunteer cancels own assignment', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
   });
 

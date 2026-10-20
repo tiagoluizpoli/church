@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { CalendarDay } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -23,7 +24,7 @@ function availabilityCheckQueryKey(checkId: string): string[] {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.';
+  return error instanceof Error ? error.message : m.common_generic_error();
 }
 
 export function useVolunteerAvailability() {

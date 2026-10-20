@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { usualSetup } from '@church/db';
+import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
@@ -280,10 +281,10 @@ describe('/admin/ministries/:ministryId/usual-setup Ministry scope', () => {
       expect(response.json().error).toBe('NOT_FOUND');
     }
     expect((await read(missingMinistryId)).json().message).toBe(
-      `Ministry not found: ${missingMinistryId}`,
+      m.error_not_found(),
     );
     expect((await read(seed.foreignChurchMinistryId)).json().message).toBe(
-      `Ministry not found: ${seed.foreignChurchMinistryId}`,
+      m.error_not_found(),
     );
     const foreignRows = await schedulingTestDb
       .select()
@@ -313,9 +314,7 @@ describe('/admin/ministries/:ministryId/usual-setup TemplateTimeBlock scope', ()
       });
       expect(response.statusCode).toBe(404);
       expect(response.json().error).toBe('NOT_FOUND');
-      expect(response.json().message).toBe(
-        `Template time block not found: ${blockId}`,
-      );
+      expect(response.json().message).toBe(m.error_not_found());
     }
     expect(await schedulingTestDb.select().from(usualSetup)).toEqual(
       rowsBefore,

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import {
   addMilliseconds,
   type Instant,
@@ -177,7 +178,7 @@ export function getErrorMessage({ error }: ErrorMessageInput): string {
     return error.message;
   }
 
-  return 'Request failed';
+  return m.common_generic_error();
 }
 
 export function isForbiddenError({ error }: ForbiddenErrorInput): boolean {

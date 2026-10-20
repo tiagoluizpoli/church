@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseInstant } from '@church/time';
 import {
   afterAll,
@@ -391,7 +392,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: 'SHIFT_OUT_OF_BOUNDS',
-      message: 'Shift must be within its event time block bounds',
+      message: m.error_shift_out_of_bounds(),
     });
   });
 
@@ -449,7 +450,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: 'ILLEGAL_STATE_TRANSITION',
-      message: 'Cannot transition from availability_requested to ask',
+      message: m.error_illegal_state_transition(),
     });
   });
 

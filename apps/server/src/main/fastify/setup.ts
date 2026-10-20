@@ -1,6 +1,7 @@
 import { auth } from '@church/auth';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
+import { m } from '@church/i18n/messages';
 import fastifyCors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
@@ -17,40 +18,14 @@ import pino from 'pino';
 import PinoPretty from 'pino-pretty';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
+import { ERROR_MAP } from './error-map';
+import { domainErrorMessage } from './error-messages';
+import { requestLocale } from './request-locale';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
 type FastifyFactory = (opts?: Record<string, unknown>) => FastifyInstance;
-type ErrorMapEntry = { status: number };
 const createFastifyInstance = Fastify as unknown as FastifyFactory;
-const ERROR_MAP: Record<string, ErrorMapEntry> = {
-  INVALID_DATE_RANGE: { status: 400 },
-  INVALID_TIME_RANGE: { status: 400 },
-  INVALID_REQUIRED_COUNT: { status: 400 },
-  INVALID_SHIFT_SPLIT: { status: 400 },
-  INVALID_WEEKDAY: { status: 400 },
-  NOT_FOUND: { status: 404 },
-  MINISTRY_NOT_FOUND: { status: 404 },
-  CHECK_ACCESS_DENIED: { status: 403 },
-  ASSIGNMENT_ACCESS_DENIED: { status: 403 },
-  ASSIGN_ACTION_NOT_AVAILABLE: { status: 403 },
-  INSUFFICIENT_INVITATION_AUTHORITY: { status: 403 },
-  CANCEL_WINDOW_CLOSED: { status: 409 },
-  ISOLATION_BREACH: { status: 409 },
-  CROSS_MINISTRY_SCOPE: { status: 409 },
-  OVERLAPPING_CYCLE: { status: 409 },
-  ILLEGAL_STATE_TRANSITION: { status: 409 },
-  EVENT_OUTSIDE_CYCLE: { status: 409 },
-  LAST_REMAINING_EVENT_TIME_BLOCK: { status: 409 },
-  SHIFT_OUT_OF_BOUNDS: { status: 409 },
-  HARD_CONSTRAINT_VIOLATION: { status: 409 },
-  BELOW_FULL_PUBLISH: { status: 409 },
-  INVITEE_ALREADY_MINISTRY_MEMBER: { status: 409 },
-  RESEND_COOLDOWN_ACTIVE: { status: 429 },
-  RESEND_DAILY_CAP_EXCEEDED: { status: 429 },
-  INVALID_INVITATION_ROLE: { status: 422 },
-  VALIDATION_ERROR: { status: 422 },
-};
 
 export async function createFastify() {
   const isTest = env.NODE_ENV === 'test';
@@ -152,6 +127,7 @@ export async function createFastify() {
   }
 
   app.setErrorHandler((error, request, reply) => {
+    const locale = requestLocale(request);
     if (error instanceof DomainError) {
       const mapped = ERROR_MAP[error.code];
       const status = mapped?.status ?? 500;
@@ -159,14 +135,20 @@ export async function createFastify() {
         { code: error.code, message: error.message },
         'DomainError',
       );
-      return reply
-        .status(status)
-        .send({ error: error.code, message: error.message });
+      const message = domainErrorMessage({ error, locale });
+      if (message === undefined) {
+        request.log.warn({ code: error.code }, 'No catalog message for code');
+      }
+      return reply.status(status).send({
+        error: error.code,
+        message: message ?? m.common_generic_error({}, { locale }),
+      });
     }
 
     if (hasZodFastifySchemaValidationErrors(error)) {
       return reply.code(422).send({
         error: 'VALIDATION_ERROR',
+        message: m.common_validation_error({}, { locale }),
         issues: error.validation,
       });
     }
@@ -176,11 +158,17 @@ export async function createFastify() {
         { issues: error.cause.issues, url: request.url },
         'Serialization error',
       );
-      return reply.code(500).send({ error: 'INTERNAL_SERVER_ERROR' });
+      return reply.code(500).send({
+        error: 'INTERNAL_SERVER_ERROR',
+        message: m.common_generic_error({}, { locale }),
+      });
     }
 
     request.log.error({ err: error, url: request.url }, 'Unhandled error');
-    return reply.status(500).send({ error: 'INTERNAL_SERVER_ERROR' });
+    return reply.status(500).send({
+      error: 'INTERNAL_SERVER_ERROR',
+      message: m.common_generic_error({}, { locale }),
+    });
   });
 
   app.addHook('onResponse', (request, reply, done) => {

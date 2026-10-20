@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { ministryParticipation } from '@church/db';
+import { m } from '@church/i18n/messages';
 import {
   afterAll,
   beforeAll,
@@ -146,10 +147,8 @@ describe('Cycle-scoped Prepare/Assign routes', () => {
     expect(foreign.statusCode).toBe(404);
     expect(missing.json().error).toBe('NOT_FOUND');
     expect(foreign.json().error).toBe('NOT_FOUND');
-    expect(missing.json().message).toBe(`Cycle not found: ${missingCycleId}`);
-    expect(foreign.json().message).toBe(
-      `Cycle not found: ${seed.foreignCycleId}`,
-    );
+    expect(missing.json().message).toBe(m.error_not_found());
+    expect(foreign.json()).toEqual(missing.json());
     expect(await schedulingTestDb.select().from(ministryParticipation)).toEqual(
       [],
     );

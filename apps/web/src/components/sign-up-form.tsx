@@ -40,7 +40,7 @@ export default function SignUpForm({
             toast.success('Sign up successful');
           },
           onError: (error) => {
-            toast.error(authErrorMessage(error.error));
+            toast.error(authErrorMessage(error.error.code));
           },
         },
       );

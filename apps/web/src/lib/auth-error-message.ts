@@ -13,10 +13,7 @@ const AUTH_ERROR_MAP: Partial<Record<AuthErrorCode, () => string>> = {
   PASSWORD_TOO_LONG: m.auth_error_password_too_long,
 };
 
-export function authErrorMessage(error: { code?: string }): string {
-  const fn =
-    error.code !== undefined
-      ? AUTH_ERROR_MAP[error.code as AuthErrorCode]
-      : undefined;
+export function authErrorMessage(code: string | undefined): string {
+  const fn = code ? AUTH_ERROR_MAP[code as AuthErrorCode] : undefined;
   return fn ? fn() : m.common_generic_error();
 }

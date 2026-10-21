@@ -561,7 +561,7 @@ describe('CycleBuilderMatrix', () => {
       // Both seeded events fall on a Sunday, so the repeated-weekday quick
       // filter should surface exactly that day.
       expect(screen.getByText('Repeats on')).toBeVisible();
-      expect(screen.getByRole('button', { name: 'Sundays' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Domingos' })).toBeVisible();
     });
 
     it('keeps the always-on row to search plus Show, and folds the date filters behind one disclosure (B-4)', async () => {
@@ -661,7 +661,7 @@ describe('CycleBuilderMatrix', () => {
       expect(
         screen.getByRole('button', { name: 'Event dates' }),
       ).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByRole('button', { name: 'Sundays' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Domingos' })).toHaveAttribute(
         'aria-pressed',
         'false',
       );

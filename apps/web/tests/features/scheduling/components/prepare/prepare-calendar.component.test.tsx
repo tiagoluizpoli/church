@@ -225,7 +225,7 @@ describe('PrepareCalendar day-strip render (Iteration 2/T040)', () => {
     );
 
     const cell = screen.getByTestId('prepare-calendar-day-2026-07-10');
-    expect(cell).toHaveTextContent('Fri');
+    expect(cell).toHaveTextContent('Sex.');
     expect(cell).toHaveTextContent('10');
   });
 

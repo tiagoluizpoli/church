@@ -184,10 +184,10 @@ describe.each([
   it('shows only the two Mondays the cycle actually serves', async () => {
     renderBoard();
 
-    expect(await screen.findAllByText('Mon, 04/01')).not.toHaveLength(0);
-    expect(screen.getAllByText('Mon, 11/01')).not.toHaveLength(0);
-    expect(screen.queryByText('Tue, 05/01')).not.toBeInTheDocument();
-    expect(screen.queryByText('Tue, 12/01')).not.toBeInTheDocument();
+    expect(await screen.findAllByText('Seg., 04/01')).not.toHaveLength(0);
+    expect(screen.getAllByText('Seg., 11/01')).not.toHaveLength(0);
+    expect(screen.queryByText('Ter., 05/01')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ter., 12/01')).not.toBeInTheDocument();
   });
 
   it('renders each shift in exactly one column', async () => {
@@ -275,7 +275,7 @@ describe.each([
 
     // "Fri, 08/01" also appears on the date-strip focus button; the board
     // column's own copy is the `<p>` heading inside its `<section>`.
-    const fridayLabels = await screen.findAllByText('Fri, 08/01');
+    const fridayLabels = await screen.findAllByText('Sex., 08/01');
     const fridayHeading = fridayLabels.find(
       (element) => element.tagName === 'P',
     );
@@ -300,6 +300,6 @@ describe.each([
     expect(
       within(fridayColumn).getByText('vigília noturna'),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Sat, 09/01')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sáb., 09/01')).not.toBeInTheDocument();
   });
 });

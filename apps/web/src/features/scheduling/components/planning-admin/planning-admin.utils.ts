@@ -1,8 +1,10 @@
 import { m } from '@church/i18n/messages';
 import {
   addMilliseconds,
+  formatWeekdayOfIndex,
   type Instant,
   instantSpan,
+  type Locale,
   millisecondsBetween,
   parseInstant,
   parseTimeOfDay,
@@ -31,16 +33,6 @@ import type {
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { describeSpan } from '@/shared/utils/span-description';
 
-export const WEEKDAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-] as const;
-
 let templateTemplateTimeBlockDraftCounter = 0;
 
 interface FormatDateInput {
@@ -49,6 +41,7 @@ interface FormatDateInput {
 
 interface DescribeTemplateInput {
   template: PlanningTemplateSummary;
+  locale: Locale;
 }
 
 interface TemplateFormFromTemplateInput {
@@ -101,6 +94,7 @@ interface CyclesTableRowInput {
 
 interface TemplateLibraryTableRowInput {
   template: PlanningTemplateSummary;
+  locale: Locale;
 }
 
 interface CycleCalendarTableRowInput {
@@ -199,8 +193,15 @@ function cycleDateKey({ date }: FormatDateInput): string {
   return date.slice(0, 10);
 }
 
-export function describeTemplate({ template }: DescribeTemplateInput): string {
-  return `${WEEKDAYS[template.weekday] ?? 'Unknown'} · ${template.blocks.length} block${template.blocks.length === 1 ? '' : 's'}`;
+export function describeTemplate({
+  template,
+  locale,
+}: DescribeTemplateInput): string {
+  const day = formatWeekdayOfIndex({
+    index: template.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    locale,
+  });
+  return `${day} · ${template.blocks.length} block${template.blocks.length === 1 ? '' : 's'}`;
 }
 
 export interface DescribeTemplateTimeBlockSpanInput {
@@ -385,13 +386,17 @@ export function toCyclesTableRow({
 
 export function toTemplateLibraryTableRow({
   template,
+  locale,
 }: TemplateLibraryTableRowInput): TemplateLibraryTableRow {
   return {
     id: template.id,
     name: template.name,
-    weekday: WEEKDAYS[template.weekday] ?? 'Unknown',
+    weekday: formatWeekdayOfIndex({
+      index: template.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+      locale,
+    }),
     blockCount: template.blocks.length,
-    description: describeTemplate({ template }),
+    description: describeTemplate({ template, locale }),
   };
 }
 

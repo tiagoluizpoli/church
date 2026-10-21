@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseInstant } from '@church/time';
 import {
   afterAll,
@@ -154,7 +155,7 @@ describe('Ministry controller authorization wiring', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Ministry leadership required',
+      message: m.error_forbidden(),
     });
     expect(ministryManager.listByLeader).not.toHaveBeenCalled();
   });
@@ -288,7 +289,7 @@ describe('Ministry Invitation minting routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Ministry leadership required',
+      message: m.error_forbidden(),
     });
     expect(ministryInvitationManager.mint).not.toHaveBeenCalled();
     expect(ministryInvitationManager.resend).not.toHaveBeenCalled();
@@ -321,7 +322,7 @@ describe('Ministry Invitation minting routes', () => {
     expect(hidden.json()).toEqual(missing.json());
     expect(missing.json()).toEqual({
       error: 'MINISTRY_NOT_FOUND',
-      message: 'Ministry not found',
+      message: m.error_ministry_not_found(),
     });
     expect(ministryInvitationManager.getDeliveryStatus).not.toHaveBeenCalled();
   });

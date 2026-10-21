@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import { useEffect, useRef } from 'react';
 import { describeTemplate } from './planning-admin.utils';
 import { useTemplateApplyDialog } from './planning-admin-context';
@@ -86,7 +87,7 @@ export function ApplyTemplatesDialog({
                 <div className="space-y-1">
                   <div className="font-medium">{template.name}</div>
                   <div className="text-muted-foreground text-xs">
-                    {describeTemplate({ template })}
+                    {describeTemplate({ template, locale: getLocale() })}
                   </div>
                 </div>
               </Label>

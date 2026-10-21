@@ -1,10 +1,11 @@
+import { m } from '@church/i18n/messages';
 import { useVolunteerAvailability } from '../hooks/use-volunteer-availability';
 import { AvailabilityCheckDetail } from './availability-check-detail';
 import { AvailabilityCheckList } from './availability-check-list';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.';
+  return error instanceof Error ? error.message : m.common_generic_error();
 }
 
 export function VolunteerAvailabilityPage() {

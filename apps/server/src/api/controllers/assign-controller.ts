@@ -41,6 +41,7 @@ import {
   publishCycleMapper,
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
+import { refuse } from '../utils/refuse';
 
 interface ParticipationRouteParams {
   participationId: string;
@@ -70,11 +71,6 @@ const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-const NOT_FOUND_RESPONSE = {
-  error: 'NOT_FOUND',
-  message: 'Resource not found',
-};
 
 type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
@@ -585,13 +581,10 @@ export class AssignController implements FastifyController {
       userId: UserId.from(request.userId),
     });
     if (!functionDecision.allowed) {
-      reply.status(403).send({
-        error: 'FORBIDDEN',
-        message: 'Not permitted to manage ministry schedules',
-      });
+      refuse({ reply, request, code: 'FORBIDDEN' });
       return true;
     }
-    reply.status(404).send(NOT_FOUND_RESPONSE);
+    refuse({ reply, request, code: 'NOT_FOUND' });
     return true;
   }
 }

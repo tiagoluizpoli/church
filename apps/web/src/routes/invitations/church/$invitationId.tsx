@@ -1,4 +1,6 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -77,7 +79,7 @@ function describeRedemptionOutcome({
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
   if (outcome.kind === 'retryable-failure') {
     return {
-      title: 'Something went wrong',
+      title: m.common_generic_error_title(),
       description:
         "Your account was created, but we couldn't finish adding you to the Ministry yet. Try again.",
       canRetry: true,
@@ -257,6 +259,7 @@ function ChurchInvitationRedemptionRoute() {
           {formatRelative({
             instant: parseInstant({ value: preview.expiresAt }),
             timeZone: 'UTC',
+            locale: getLocale(),
           })}
         </p>
       </div>

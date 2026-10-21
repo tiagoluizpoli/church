@@ -1284,12 +1284,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -1405,12 +1401,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -1456,12 +1448,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -4815,8 +4803,11 @@ paths:
                     type: string
                     enum:
                       - INVITATION_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
+                  - message
                 additionalProperties: false
         "429":
           description: Default Response
@@ -4829,8 +4820,11 @@ paths:
                     type: string
                     enum:
                       - RATE_LIMITED
+                  message:
+                    type: string
                 required:
                   - error
+                  - message
                 additionalProperties: false
   /api/v1/redemption/church/{invitationId}/code:
     post:
@@ -4874,8 +4868,11 @@ paths:
                     type: string
                     enum:
                       - INVITATION_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
+                  - message
                 additionalProperties: false
         "429":
           description: Default Response
@@ -4888,8 +4885,11 @@ paths:
                     type: string
                     enum:
                       - RATE_LIMITED
+                  message:
+                    type: string
                 required:
                   - error
+                  - message
                 additionalProperties: false
   /api/v1/redemption/church/{invitationId}/redeem:
     post:
@@ -5680,8 +5680,11 @@ paths:
                     type: string
                     enum:
                       - INVITATION_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
+                  - message
                 additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
@@ -6033,12 +6036,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -6189,12 +6188,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -6308,12 +6303,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -6351,12 +6342,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -6450,12 +6437,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -6492,12 +6475,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message
@@ -6622,12 +6601,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    enum:
-                      - NOT_FOUND
                   message:
                     type: string
-                    enum:
-                      - Resource not found
                 required:
                   - error
                   - message

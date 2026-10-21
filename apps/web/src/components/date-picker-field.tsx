@@ -1,8 +1,10 @@
+import { getLocale } from '@church/i18n/runtime';
 import {
   formatCalendarDay,
   fromPickerDate,
   now,
   parseCalendarDay,
+  pickerLocale,
   today,
   toPickerDate,
 } from '@church/time';
@@ -153,6 +155,7 @@ export function DatePickerField({
             captionLayout="dropdown"
             startMonth={CALENDAR_START_MONTH}
             endMonth={CALENDAR_END_MONTH}
+            {...pickerLocale({ locale: getLocale() })}
             selected={selected}
             defaultMonth={selected}
             disabled={

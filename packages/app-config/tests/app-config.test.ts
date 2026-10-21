@@ -43,3 +43,16 @@ describe('appConfigSchema', () => {
     expect(appConfigSchema.safeParse(bad).success).toBe(false);
   });
 });
+
+describe('locale config', () => {
+  it('defaults to pt-BR, with the cookie and lang override names', () => {
+    expect(appConfig.defaultLocale).toBe('pt-BR');
+    expect(appConfig.localeCookieName).toBe('church_locale');
+    expect(appConfig.localeQueryParam).toBe('lang');
+  });
+
+  it('refuses a locale outside en and pt-BR', () => {
+    const bad = { ...appConfig, defaultLocale: 'fr' };
+    expect(appConfigSchema.safeParse(bad).success).toBe(false);
+  });
+});

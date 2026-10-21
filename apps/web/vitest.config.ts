@@ -49,8 +49,10 @@ export default defineConfig({
     // count) but 3-4 pinned host CPU above 80%. 2 avoids that while costing
     // nothing measurable versus 3 or 4.
     maxWorkers: 2,
+    // Load the compiled catalog with Node, not Vite's transform (spike #395).
+    server: { deps: { external: [/packages\/i18n\/src\/paraglide\//] } },
     // Inherited by every project below; a project's own `setupFiles` add to it.
-    setupFiles: ['./tests/setup/clock.ts'],
+    setupFiles: ['./tests/setup/clock.ts', './tests/setup/locale.ts'],
     projects: [
       {
         extends: true,

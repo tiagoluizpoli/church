@@ -60,8 +60,12 @@ export interface WeekdayIndexInput {
 }
 
 /** 0 (Sunday) … 6 (Saturday). */
-export function weekdayIndex({ day }: WeekdayIndexInput): number {
-  return utcMidnightOf({ day }).getUTCDay();
+export type WeekdayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/** 0 (Sunday) … 6 (Saturday). */
+export function weekdayIndex({ day }: WeekdayIndexInput): WeekdayIndex {
+  // getUTCDay is always 0–6.
+  return utcMidnightOf({ day }).getUTCDay() as WeekdayIndex;
 }
 
 export interface AddMillisecondsInput {

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseInstant } from '@church/time';
 import {
   afterAll,
@@ -239,7 +240,7 @@ describe('Prepare route refusals', () => {
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
     expectNoPrepareWork();
@@ -391,7 +392,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: 'SHIFT_OUT_OF_BOUNDS',
-      message: 'Shift must be within its event time block bounds',
+      message: m.error_shift_out_of_bounds(),
     });
   });
 
@@ -413,7 +414,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
     expect(participationManager.splitShifts).not.toHaveBeenCalled();
   });
@@ -449,7 +450,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: 'ILLEGAL_STATE_TRANSITION',
-      message: 'Cannot transition from availability_requested to ask',
+      message: m.error_illegal_state_transition(),
     });
   });
 
@@ -545,7 +546,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
     expect(participationManager.listScheduleSummaries).not.toHaveBeenCalled();
   });

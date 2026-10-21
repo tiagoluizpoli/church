@@ -40,6 +40,24 @@ describe('DatePickerField', () => {
     expect(trigger).not.toHaveTextContent(/September/);
   });
 
+  it('labels months and weekday headers in Portuguese', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <DatePickerField
+        value="2026-08-15"
+        onChange={vi.fn()}
+        data-testid="date-field"
+      />,
+    );
+
+    await user.click(screen.getByTestId('date-field'));
+
+    const months = screen.getByRole('combobox', { name: 'Choose the Month' });
+    expect(months).toHaveTextContent('Ago.');
+    expect(months).not.toHaveTextContent('Aug');
+    expect(screen.getByText('dom')).toBeInTheDocument();
+  });
+
   describe('minDate/maxDate bounds', () => {
     it('disables days outside [minDate, maxDate] and leaves days inside it pickable', async () => {
       const onChange = vi.fn();
@@ -58,7 +76,7 @@ describe('DatePickerField', () => {
 
       // Aug 5th is before minDate (Aug 10th) — must be disabled and unpickable.
       const outOfRangeDay = screen.getByRole('button', {
-        name: /August 5th, 2026$/,
+        name: /quarta-feira, 5 de agosto de 2026$/,
       });
       expect(outOfRangeDay).toBeDisabled();
       await user.click(outOfRangeDay);
@@ -66,7 +84,7 @@ describe('DatePickerField', () => {
 
       // Aug 15th is inside [Aug 10th, Aug 20th] — must stay pickable.
       const inRangeDay = screen.getByRole('button', {
-        name: /August 15th, 2026$/,
+        name: /sábado, 15 de agosto de 2026$/,
       });
       expect(inRangeDay).not.toBeDisabled();
     });
@@ -84,7 +102,9 @@ describe('DatePickerField', () => {
       await user.click(screen.getByTestId('date-field'));
 
       expect(
-        screen.getByRole('button', { name: /August 5th, 2026$/ }),
+        screen.getByRole('button', {
+          name: /quarta-feira, 5 de agosto de 2026$/,
+        }),
       ).not.toBeDisabled();
     });
   });

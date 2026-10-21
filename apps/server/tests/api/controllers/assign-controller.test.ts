@@ -1,5 +1,6 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { NotFoundError } from '@church/core';
+import { m } from '@church/i18n/messages';
 import { parseInstant } from '@church/time';
 import {
   afterAll,
@@ -220,7 +221,7 @@ describe('Assign route refusals', () => {
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
     expectNoAssignWork();
@@ -410,7 +411,7 @@ describe('Assign routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
     expect(
       assignmentManager.createParticipationAssignment,
@@ -430,7 +431,7 @@ describe('Assign routes', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
   });
@@ -531,7 +532,7 @@ describe('Assign routes', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     expect(
       assignmentManager.reassignParticipationAssignment,
@@ -553,7 +554,7 @@ describe('Assign routes', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     expect(
       assignmentManager.createParticipationAssignment,
@@ -603,7 +604,7 @@ describe('Assign routes', () => {
     expect(denied.statusCode).toBe(403);
     expect(denied.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
   });
 
@@ -688,7 +689,7 @@ describe('Assign routes', () => {
     expect(denied.statusCode).toBe(403);
     expect(denied.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
   });
 
@@ -709,7 +710,7 @@ describe('Assign routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
     expect(participationManager.publishCycle).not.toHaveBeenCalled();
   });

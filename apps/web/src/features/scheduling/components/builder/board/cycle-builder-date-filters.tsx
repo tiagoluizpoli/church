@@ -1,9 +1,10 @@
+import { getLocale } from '@church/i18n/runtime';
+import { formatWeekdayPluralOfIndex } from '@church/time';
 import { ChevronDownIcon, ChevronUpIcon, FilterIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import {
-  type DateMode,
-  type DateSpanMode,
-  weekdayLongName,
+import type {
+  DateMode,
+  DateSpanMode,
 } from '../../../utils/builder/cycle-builder-date.utils';
 import { DatePickerField } from '@/components/date-picker-field';
 import { Badge } from '@/components/ui/badge';
@@ -228,7 +229,10 @@ export function CycleBuilderDateFilters({
                   aria-pressed={weekday === day}
                   onClick={() => onWeekdayChange(weekday === day ? null : day)}
                 >
-                  {weekdayLongName({ weekday: day })}s
+                  {formatWeekdayPluralOfIndex({
+                    index: day as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+                    locale: getLocale(),
+                  })}
                 </Button>
               ))}
             </div>

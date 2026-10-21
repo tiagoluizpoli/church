@@ -24,6 +24,7 @@ import {
   ministryInvitationResponseSchema,
   mintMinistryInvitationBodySchema,
 } from '../dtos/ministry-invitation.dto';
+import { refuse } from '../utils/refuse';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -43,11 +44,6 @@ interface DenyMissingMinistryFunctionInput {
   request: FastifyRequest;
   reply: FastifyReply;
 }
-
-const MINISTRY_FUNCTION_FORBIDDEN_RESPONSE = {
-  error: 'FORBIDDEN',
-  message: 'Ministry leadership required',
-};
 
 interface MinistryControllerDependencies {
   ministryManager: IMinistryManager;
@@ -114,7 +110,7 @@ export class MinistryController implements FastifyController {
           !capabilities.isChurchAdmin &&
           capabilities.ledMinistries.length === 0
         ) {
-          reply.status(403).send(MINISTRY_FUNCTION_FORBIDDEN_RESPONSE);
+          refuse({ reply, request, code: 'FORBIDDEN' });
           return;
         }
         const ministries = capabilities.isChurchAdmin
@@ -231,7 +227,7 @@ export class MinistryController implements FastifyController {
       userId: UserId.from(request.userId),
     });
     if (decision.allowed) return false;
-    reply.status(403).send(MINISTRY_FUNCTION_FORBIDDEN_RESPONSE);
+    refuse({ reply, request, code: 'FORBIDDEN' });
     return true;
   }
 }

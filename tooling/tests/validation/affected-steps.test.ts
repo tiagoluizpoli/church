@@ -36,6 +36,12 @@ const TEST_PLACEMENT_STEP = {
   label: 'test-placement',
 };
 
+const I18N_PARITY_STEP = {
+  args: ['run', 'validate:i18n-parity'],
+  command: 'bun',
+  label: 'i18n-parity',
+};
+
 describe('buildValidationSteps', () => {
   it('skips the test-placement guard for an E2E-only run', () => {
     const { checkLane } = buildValidationSteps({
@@ -47,15 +53,16 @@ describe('buildValidationSteps', () => {
     expect(checkLane).not.toContainEqual(TEST_PLACEMENT_STEP);
   });
 
-  it('plans only the test-placement guard for an empty plan', () => {
+  it('plans only the guards for an empty plan', () => {
     const steps = buildValidationSteps({
       onlyE2e: false,
       plan: makePlan({}),
       skipE2e: false,
     });
 
-    expect(steps.checkLane).toEqual([TEST_PLACEMENT_STEP]);
+    expect(steps.checkLane).toEqual([TEST_PLACEMENT_STEP, I18N_PARITY_STEP]);
     expect(steps.checkedLabels).toContain('test-placement');
+    expect(steps.checkedLabels).toContain('i18n-parity');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
   });
@@ -77,6 +84,7 @@ describe('buildValidationSteps', () => {
         label: 'lint',
       },
       TEST_PLACEMENT_STEP,
+      I18N_PARITY_STEP,
       {
         args: [
           'turbo',

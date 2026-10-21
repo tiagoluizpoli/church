@@ -1,4 +1,5 @@
-import { WEEKDAYS } from './planning-admin.utils';
+import { getLocale } from '@church/i18n/runtime';
+import { formatWeekdayOfIndex } from '@church/time';
 import { useTemplateEditor } from './planning-admin-context';
 import { TemplateTimeBlockRow } from './template-time-block-row';
 import { Button } from '@/components/ui/button';
@@ -31,8 +32,13 @@ export function TemplateEditorForm({
     handleAddTemplateTimeBlock,
     handleSaveTemplate,
   } = useTemplateEditor();
-  const selectedWeekdayLabel =
-    WEEKDAYS[Number.parseInt(templateForm.weekday, 10)] ?? null;
+  const selectedWeekdayIndex = Number.parseInt(templateForm.weekday, 10);
+  const selectedWeekdayLabel = Number.isNaN(selectedWeekdayIndex)
+    ? null
+    : formatWeekdayOfIndex({
+        index: selectedWeekdayIndex as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+        locale: getLocale(),
+      });
 
   return (
     <div className="space-y-4">
@@ -69,13 +75,13 @@ export function TemplateEditorForm({
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {WEEKDAYS.map((weekday, index) => (
+            {([0, 1, 2, 3, 4, 5, 6] as const).map((index) => (
               <SelectItem
-                key={weekday}
+                key={index}
                 value={String(index)}
                 data-testid={`template-weekday-option-${index}`}
               >
-                {weekday}
+                {formatWeekdayOfIndex({ index, locale: getLocale() })}
               </SelectItem>
             ))}
           </SelectContent>

@@ -36,6 +36,11 @@ export const appConfigSchema = z.object({
     backoffCapMinutes: positiveInt,
   }),
   assignment: z.object({ cancelLeadTimeDays: positiveInt }),
+  /** MVP choice until user settings exist. */
+  defaultLocale: z.enum(['en', 'pt-BR']),
+  /** Cookie holding the chosen locale; written by the `?lang=` override. */
+  localeCookieName: z.string().min(1),
+  localeQueryParam: z.string().min(1),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;
@@ -58,6 +63,9 @@ export const appConfig = appConfigSchema.parse({
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
   outbox: { maxAttempts: 5, backoffCapMinutes: 60 },
   assignment: { cancelLeadTimeDays: 3 },
+  defaultLocale: 'pt-BR',
+  localeCookieName: 'church_locale',
+  localeQueryParam: 'lang',
 });
 
 /** A copy of the config with every parked switch on (tests, OpenAPI export). */

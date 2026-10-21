@@ -124,8 +124,12 @@ describe('RedemptionController', () => {
 
     expect(previewResponse.statusCode).toBe(404);
     expect(codeResponse.statusCode).toBe(404);
-    expect(previewResponse.json()).toEqual({ error: 'INVITATION_UNAVAILABLE' });
-    expect(codeResponse.json()).toEqual({ error: 'INVITATION_UNAVAILABLE' });
+    const unavailable = {
+      error: 'INVITATION_UNAVAILABLE',
+      message: 'Este convite não está disponível.',
+    };
+    expect(previewResponse.json()).toEqual(unavailable);
+    expect(codeResponse.json()).toEqual(unavailable);
   });
 
   it('rate-limits the public preview and verification-code endpoints', async () => {
@@ -146,7 +150,10 @@ describe('RedemptionController', () => {
     });
 
     expect(codeResponse.statusCode).toBe(429);
-    expect(codeResponse.json()).toEqual({ error: 'RATE_LIMITED' });
+    expect(codeResponse.json()).toEqual({
+      error: 'RATE_LIMITED',
+      message: 'Muitas tentativas. Tente novamente em instantes.',
+    });
     expect(redemptionManager.requestVerificationCode).not.toHaveBeenCalled();
   });
 
@@ -164,7 +171,10 @@ describe('RedemptionController', () => {
     });
 
     expect(response.statusCode).toBe(429);
-    expect(response.json()).toEqual({ error: 'RATE_LIMITED' });
+    expect(response.json()).toEqual({
+      error: 'RATE_LIMITED',
+      message: 'Muitas tentativas. Tente novamente em instantes.',
+    });
   });
 
   it('forwards the authenticated session cookie on a full redemption', async () => {
@@ -272,7 +282,10 @@ describe('RedemptionController', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ error: 'INVITATION_UNAVAILABLE' });
+    expect(response.json()).toEqual({
+      error: 'INVITATION_UNAVAILABLE',
+      message: 'Este convite não está disponível.',
+    });
   });
 });
 

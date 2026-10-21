@@ -10,6 +10,9 @@ import {
   formatRelative,
   formatTimeOfDay,
   formatWeekday,
+  formatWeekdayOfIndex,
+  formatWeekdayPluralOfIndex,
+  formatWeekdayShort,
   type Instant,
   parseCalendarDay,
   parseInstant,
@@ -37,10 +40,16 @@ describe('formatCalendarDay', () => {
 });
 
 describe('formatCalendarDayWithWeekday', () => {
-  it('prefixes the weekday name', () => {
-    expect(formatCalendarDayWithWeekday({ day: day('2027-01-04') })).toBe(
-      'Monday, 04/01/2027',
-    );
+  it('prefixes the weekday name in en', () => {
+    expect(
+      formatCalendarDayWithWeekday({ day: day('2027-01-04'), locale: 'en' }),
+    ).toBe('Monday, 04/01/2027');
+  });
+
+  it('prefixes the weekday name in pt-BR', () => {
+    expect(
+      formatCalendarDayWithWeekday({ day: day('2027-01-04'), locale: 'pt-BR' }),
+    ).toBe('Segunda-feira, 04/01/2027');
   });
 });
 
@@ -49,8 +58,118 @@ describe('formatWeekday', () => {
     ['2027-01-03', 'Sunday'],
     ['2027-01-04', 'Monday'],
     ['2027-01-09', 'Saturday'],
-  ])('names the weekday for %s', (value, expected) => {
-    expect(formatWeekday({ day: day(value) })).toBe(expected);
+  ])('names the weekday for %s in en', (value, expected) => {
+    expect(formatWeekday({ day: day(value), locale: 'en' })).toBe(expected);
+  });
+
+  it.each([
+    ['2027-01-03', 'Domingo'],
+    ['2027-01-04', 'Segunda-feira'],
+    ['2027-01-05', 'Terça-feira'],
+    ['2027-01-06', 'Quarta-feira'],
+    ['2027-01-07', 'Quinta-feira'],
+    ['2027-01-08', 'Sexta-feira'],
+    ['2027-01-09', 'Sábado'],
+  ])('names the weekday for %s in pt-BR', (value, expected) => {
+    expect(formatWeekday({ day: day(value), locale: 'pt-BR' })).toBe(expected);
+  });
+
+  it('capitalizes the first letter in pt-BR', () => {
+    expect(formatWeekday({ day: day('2027-01-04'), locale: 'pt-BR' })).toMatch(
+      /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/,
+    );
+  });
+});
+
+describe('formatWeekdayShort', () => {
+  it.each([
+    ['2027-01-03', 'Sun'],
+    ['2027-01-04', 'Mon'],
+    ['2027-01-09', 'Sat'],
+  ])('gives short weekday for %s in en', (value, expected) => {
+    expect(formatWeekdayShort({ day: day(value), locale: 'en' })).toBe(
+      expected,
+    );
+  });
+
+  it.each([
+    ['2027-01-03', 'Dom.'],
+    ['2027-01-04', 'Seg.'],
+    ['2027-01-05', 'Ter.'],
+    ['2027-01-06', 'Qua.'],
+    ['2027-01-07', 'Qui.'],
+    ['2027-01-08', 'Sex.'],
+    ['2027-01-09', 'Sáb.'],
+  ])('gives short weekday for %s in pt-BR', (value, expected) => {
+    expect(formatWeekdayShort({ day: day(value), locale: 'pt-BR' })).toBe(
+      expected,
+    );
+  });
+
+  it('capitalizes the first letter in pt-BR', () => {
+    expect(
+      formatWeekdayShort({ day: day('2027-01-04'), locale: 'pt-BR' }),
+    ).toMatch(/^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/);
+  });
+});
+
+describe('formatWeekdayOfIndex', () => {
+  it.each([
+    [0, 'Sunday'],
+    [1, 'Monday'],
+    [6, 'Saturday'],
+  ] as const)('returns long name for index %d in en', (index, expected) => {
+    expect(formatWeekdayOfIndex({ index, locale: 'en' })).toBe(expected);
+  });
+
+  it.each([
+    [0, 'Domingo'],
+    [1, 'Segunda-feira'],
+    [2, 'Terça-feira'],
+    [3, 'Quarta-feira'],
+    [4, 'Quinta-feira'],
+    [5, 'Sexta-feira'],
+    [6, 'Sábado'],
+  ] as const)('returns long name for index %d in pt-BR', (index, expected) => {
+    expect(formatWeekdayOfIndex({ index, locale: 'pt-BR' })).toBe(expected);
+  });
+});
+
+describe('formatWeekdayPluralOfIndex', () => {
+  const EN_PLURALS = [
+    'Sundays',
+    'Mondays',
+    'Tuesdays',
+    'Wednesdays',
+    'Thursdays',
+    'Fridays',
+    'Saturdays',
+  ] as const;
+
+  const PTBR_PLURALS = [
+    'Domingos',
+    'Segundas-feiras',
+    'Terças-feiras',
+    'Quartas-feiras',
+    'Quintas-feiras',
+    'Sextas-feiras',
+    'Sábados',
+  ] as const;
+
+  it('returns all 7 plural weekdays in en', () => {
+    for (let i = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6; i <= 6; i++) {
+      expect(formatWeekdayPluralOfIndex({ index: i, locale: 'en' })).toBe(
+        EN_PLURALS[i],
+      );
+    }
+  });
+
+  it('returns all 7 plural weekdays in pt-BR', () => {
+    for (let i = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6; i <= 6; i++) {
+      expect(formatWeekdayPluralOfIndex({ index: i, locale: 'pt-BR' })).toBe(
+        PTBR_PLURALS[i],
+      );
+    }
   });
 });
 
@@ -140,42 +259,90 @@ describe('formatInstantPrecise', () => {
 });
 
 describe('formatRelative', () => {
-  it('names today, tomorrow and yesterday in the Church Timezone', () => {
+  it('names today, tomorrow and yesterday in en', () => {
     setTestClock({ instant: instant('2027-01-04T12:00:00.000Z') });
     expect(
       formatRelative({
         instant: instant('2027-01-04T20:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('today');
     expect(
       formatRelative({
         instant: instant('2027-01-05T20:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('tomorrow');
     expect(
       formatRelative({
         instant: instant('2027-01-03T20:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('yesterday');
   });
 
-  it('counts days beyond the adjacent day', () => {
+  it('names hoje, amanhã and ontem in pt-BR', () => {
+    setTestClock({ instant: instant('2027-01-04T12:00:00.000Z') });
+    expect(
+      formatRelative({
+        instant: instant('2027-01-04T20:00:00.000Z'),
+        timeZone: 'UTC',
+        locale: 'pt-BR',
+      }),
+    ).toBe('hoje');
+    expect(
+      formatRelative({
+        instant: instant('2027-01-05T20:00:00.000Z'),
+        timeZone: 'UTC',
+        locale: 'pt-BR',
+      }),
+    ).toBe('amanhã');
+    expect(
+      formatRelative({
+        instant: instant('2027-01-03T20:00:00.000Z'),
+        timeZone: 'UTC',
+        locale: 'pt-BR',
+      }),
+    ).toBe('ontem');
+  });
+
+  it('counts days beyond the adjacent day in en', () => {
     setTestClock({ instant: instant('2027-01-04T12:00:00.000Z') });
     expect(
       formatRelative({
         instant: instant('2027-01-07T12:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('in 3 days');
     expect(
       formatRelative({
         instant: instant('2027-01-01T12:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('3 days ago');
+  });
+
+  it('counts days beyond the adjacent day in pt-BR', () => {
+    setTestClock({ instant: instant('2027-01-04T12:00:00.000Z') });
+    expect(
+      formatRelative({
+        instant: instant('2027-01-07T12:00:00.000Z'),
+        timeZone: 'UTC',
+        locale: 'pt-BR',
+      }),
+    ).toBe('em 3 dias');
+    expect(
+      formatRelative({
+        instant: instant('2027-01-01T12:00:00.000Z'),
+        timeZone: 'UTC',
+        locale: 'pt-BR',
+      }),
+    ).toBe('há 3 dias');
   });
 
   it('resolves the CalendarDay through a non-UTC, DST-observing zone', () => {
@@ -186,26 +353,57 @@ describe('formatRelative', () => {
       formatRelative({
         instant: instant('2027-03-14T17:00:00.000Z'),
         timeZone: 'America/New_York',
+        locale: 'en',
       }),
     ).toBe('tomorrow');
+  });
+
+  it('relative phrases never start with a capital letter', () => {
+    setTestClock({ instant: instant('2027-01-04T12:00:00.000Z') });
+    const phrase = formatRelative({
+      instant: instant('2027-01-07T12:00:00.000Z'),
+      timeZone: 'UTC',
+      locale: 'pt-BR',
+    });
+    expect(phrase.charAt(0)).toBe(phrase.charAt(0).toLowerCase());
   });
 });
 
 describe('formatRecency', () => {
-  it('is relative under 7 days', () => {
+  it('is relative under 7 days in en', () => {
     setTestClock({ instant: instant('2027-01-10T12:00:00.000Z') });
     expect(
       formatRecency({
         instant: instant('2027-01-04T12:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('6 days ago');
     expect(
       formatRecency({
         instant: instant('2027-01-16T12:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('in 6 days');
+  });
+
+  it('is relative under 7 days in pt-BR', () => {
+    setTestClock({ instant: instant('2027-01-10T12:00:00.000Z') });
+    expect(
+      formatRecency({
+        instant: instant('2027-01-07T12:00:00.000Z'),
+        timeZone: 'UTC',
+        locale: 'pt-BR',
+      }),
+    ).toBe('há 3 dias');
+    expect(
+      formatRecency({
+        instant: instant('2027-01-13T12:00:00.000Z'),
+        timeZone: 'UTC',
+        locale: 'pt-BR',
+      }),
+    ).toBe('em 3 dias');
   });
 
   it('switches to the absolute CalendarDay at exactly 7 days, past and future', () => {
@@ -214,12 +412,14 @@ describe('formatRecency', () => {
       formatRecency({
         instant: instant('2027-01-03T12:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('03/01/2027');
     expect(
       formatRecency({
         instant: instant('2027-01-17T12:00:00.000Z'),
         timeZone: 'UTC',
+        locale: 'en',
       }),
     ).toBe('17/01/2027');
   });
@@ -233,6 +433,7 @@ describe('formatRecency', () => {
       formatRecency({
         instant: instant('2027-03-21T13:00:00.000Z'),
         timeZone: 'America/New_York',
+        locale: 'en',
       }),
     ).toBe('21/03/2027');
     // 2027-03-16T13:00Z is 2027-03-16 09:00 EDT — 3 CalendarDays later, still
@@ -241,6 +442,7 @@ describe('formatRecency', () => {
       formatRecency({
         instant: instant('2027-03-16T13:00:00.000Z'),
         timeZone: 'America/New_York',
+        locale: 'en',
       }),
     ).toBe('in 3 days');
   });

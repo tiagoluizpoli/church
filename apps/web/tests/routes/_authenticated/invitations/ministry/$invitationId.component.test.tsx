@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoute } from '@/tests/setup/render-route';
@@ -373,7 +374,9 @@ describe('the existing-member Ministry Invitation redemption route', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Accept' }));
 
-    expect(await screen.findByText('Something went wrong')).toBeVisible();
+    expect(
+      await screen.findByText(m.common_generic_error_title()),
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Accept' })).toBeEnabled();
   });
 

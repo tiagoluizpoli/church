@@ -1,12 +1,13 @@
 import {
-  addCalendarDays,
   type CalendarDay,
   enumerateCalendarDays,
   formatDayAndMonth,
   formatTimeOfDay,
-  formatWeekday,
+  formatWeekdayOfIndex,
+  formatWeekdayShort,
   type Instant,
   isCalendarDay,
+  type Locale,
   millisecondsBetween,
   parseCalendarDay,
   parseInstant,
@@ -50,16 +51,13 @@ export type DateSpanMode = 'starts' | 'ends' | 'within';
 export interface DateLabelInput {
   /** A CalendarDay, or a raw value `churchDayOf` can resolve to one. */
   day: string;
+  locale: Locale;
 }
 
-/** Compact `Mon, 04/01` column/label text. Built only from the seam's own
- * weekday name and day/month formatters — never a raw `Date` or the browser
- * locale. The weekday is trimmed to three letters for narrow columns; that is
- * plain string slicing of the seam's own English constant, not a locale
- * token. */
-export function dateLabel({ day }: DateLabelInput): string {
+/** Compact `Seg., 04/01` / `Mon, 04/01` column/label text. */
+export function dateLabel({ day, locale }: DateLabelInput): string {
   const calendarDay = parseCalendarDay({ value: day });
-  return `${formatWeekday({ day: calendarDay }).slice(0, 3)}, ${formatDayAndMonth({ day: calendarDay })}`;
+  return `${formatWeekdayShort({ day: calendarDay, locale })}, ${formatDayAndMonth({ day: calendarDay })}`;
 }
 
 export interface TimeLabelInput {
@@ -255,18 +253,17 @@ export function weekdayForDayKey({ day }: WeekdayForDayKeyInput): number {
 interface WeekdayLongNameInput {
   /** 0 (Sunday) … 6 (Saturday), as returned by `weekdayForDayKey`. */
   weekday: number;
+  locale: Locale;
 }
 
-// 2024-01-07 is a Sunday; offsetting it by the weekday index lands on that
-// weekday. Anchored through the seam's own CalendarDay arithmetic, never a
-// local `Date`.
-const WEEKDAY_NAME_ANCHOR_SUNDAY = parseCalendarDay({ value: '2024-01-07' });
-
-/** The seam's English weekday name ("Sunday", "Monday", …) for a weekday
- * index. */
-export function weekdayLongName({ weekday }: WeekdayLongNameInput): string {
-  return formatWeekday({
-    day: addCalendarDays({ day: WEEKDAY_NAME_ANCHOR_SUNDAY, days: weekday }),
+/** Long weekday name for a weekday index in the given locale. */
+export function weekdayLongName({
+  weekday,
+  locale,
+}: WeekdayLongNameInput): string {
+  return formatWeekdayOfIndex({
+    index: weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    locale,
   });
 }
 

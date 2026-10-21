@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import { CalendarDays, LocateFixed, XIcon } from 'lucide-react';
 import type { useDateStripDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
 import type { CycleBuilderEventSummary } from '../../../hooks/use-cycle-builder';
@@ -45,7 +46,7 @@ export function CycleBuilderDateStrip({
           <button
             type="button"
             data-testid="cycle-date-strip-focus"
-            aria-label={`Showing ${dateLabel({ day: selectedDate })} only — clear to show all dates`}
+            aria-label={`Showing ${dateLabel({ day: selectedDate, locale: getLocale() })} only — clear to show all dates`}
             onClick={() => onSelectedDateChange(null)}
             className={cn(
               DATE_STRIP_FOCUS_CLASS,
@@ -54,7 +55,7 @@ export function CycleBuilderDateStrip({
           >
             <XIcon className="size-4" />
             <span className="font-semibold text-foreground">
-              {dateLabel({ day: selectedDate })}
+              {dateLabel({ day: selectedDate, locale: getLocale() })}
             </span>
             <span className="text-muted-foreground text-xs leading-tight">
               Show all dates
@@ -119,12 +120,12 @@ export function CycleBuilderDateStrip({
                     aria-label={
                       selected
                         ? 'Show all dates'
-                        : `Show only ${dateLabel({ day: date })}`
+                        : `Show only ${dateLabel({ day: date, locale: getLocale() })}`
                     }
                     onClick={() => onSelectedDateChange(selected ? null : date)}
                     className="-my-1 -ml-1 flex items-center gap-1.5 rounded-md p-1 text-foreground hover:bg-muted aria-pressed:text-primary"
                   >
-                    {dateLabel({ day: date })}
+                    {dateLabel({ day: date, locale: getLocale() })}
                     <LocateFixed className="size-3.5 text-muted-foreground" />
                   </button>
                   <span

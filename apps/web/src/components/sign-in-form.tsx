@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
+import { authErrorMessage } from '@/lib/auth-error-message';
 
 export interface SignInFormProps {
   onSwitchToSignUp?: () => void;
@@ -41,7 +42,7 @@ export default function SignInForm({
             toast.success('Sign in successful');
           },
           onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
+            toast.error(authErrorMessage({ error: error.error }));
           },
         },
       );

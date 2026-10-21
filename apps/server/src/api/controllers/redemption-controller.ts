@@ -29,6 +29,7 @@ import {
 } from '../dtos/redemption.dto';
 import { debugEndpointsEnabled } from '../utils/debug-endpoints';
 import { headersFromRequest } from '../utils/headers';
+import { refuse } from '../utils/refuse';
 
 type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
 type RedeemNewUserBody = z.infer<typeof redeemNewUserBodySchema>;
@@ -122,13 +123,13 @@ export class RedemptionController implements FastifyController {
       },
       async (request, reply) => {
         if (this.isRateLimitedRequest({ key: request.ip }))
-          return reply.status(429).send({ error: 'RATE_LIMITED' });
+          return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         const preview = await this.redemptionManager.getPublicPreview({
           ministryInvitationId: MinistryInvitationId.from(params.invitationId),
         });
         if (!preview)
-          return reply.status(404).send({ error: 'INVITATION_UNAVAILABLE' });
+          return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
         return reply.send(toInvitationPreviewFields(preview));
       },
     );
@@ -152,7 +153,7 @@ export class RedemptionController implements FastifyController {
       },
       async (request, reply) => {
         if (this.isRateLimitedRequest({ key: request.ip }))
-          return reply.status(429).send({ error: 'RATE_LIMITED' });
+          return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         let sent: boolean;
         try {
@@ -163,12 +164,12 @@ export class RedemptionController implements FastifyController {
           });
         } catch (error) {
           if (error instanceof VerificationCodeError) {
-            return reply.status(429).send({ error: 'RATE_LIMITED' });
+            return refuse({ reply, request, code: 'RATE_LIMITED' });
           }
           throw error;
         }
         if (!sent)
-          return reply.status(404).send({ error: 'INVITATION_UNAVAILABLE' });
+          return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
         return reply.send({ status: 'sent' });
       },
     );
@@ -423,7 +424,7 @@ export class RedemptionController implements FastifyController {
             ),
           });
           if (!code)
-            return reply.status(404).send({ error: 'INVITATION_UNAVAILABLE' });
+            return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
           return reply.send({ code });
         },
       );
@@ -466,9 +467,7 @@ export class RedemptionController implements FastifyController {
     const sessionCookie = request.headers.cookie;
     if (!session?.user || !sessionCookie) {
       // FastifyReply is thenable: send without awaiting, return a plain value.
-      reply
-        .status(401)
-        .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
+      refuse({ reply, request, code: 'UNAUTHORIZED' });
       return null;
     }
     return { userId: UserId.from(session.user.id), sessionCookie };

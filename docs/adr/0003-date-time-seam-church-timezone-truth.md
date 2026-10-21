@@ -66,7 +66,7 @@ There is no time-format configuration. 24-hour time and `dd/MM/yyyy` dates are *
   - Words come from `Intl.DateTimeFormat` (`weekday`) and `Intl.RelativeTimeFormat` (`numeric: 'auto'`) *inside* the seam, pinned by exact-string tests per locale. Times never go through `Intl`.
   - `dd/MM/yyyy` and 24-hour time stay constants in both languages; no month names are displayed.
   - Weekday outputs start with a capital letter in every locale (`Segunda-feira`, `Seg.`); relative phrases never do (`amanhã`).
-  - New: `formatWeekdayShort` (replaces `.slice(0, 3)` cuts) and a weekday-from-index formatter (replaces the web's private English weekday list).
+  - New: `formatWeekdayShort` (replaces `.slice(0, 3)` cuts), a weekday-from-index formatter (replaces the web's private English weekday list), and `formatWeekdayPluralOfIndex` (fixed per-locale lists — the one non-`Intl` word source, because `Intl` has no plural-weekday API).
   - The date picker's locale and month-dropdown formatter come from one seam export, passed only by `date-picker-field.tsx` (`Calendar`'s sole caller); `calendar.tsx` stays unedited.
 - Seconds are an Instant-only property, never part of TimeOfDay (which CONTEXT.md defines as hour-and-minute) — hence `formatInstantPrecise` as a distinct function rather than an option on `formatInstant`. Milliseconds are never formatted.
 - **`formatRecency` lives in the seam** because the seam bans `new Date` everywhere else, so no caller outside it can compute "older than a week" itself. Threshold: 7 days on the absolute distance (so `in 3 days` also renders); a boolean "past/future" parameter was rejected as unreadable at call sites.

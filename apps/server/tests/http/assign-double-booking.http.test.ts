@@ -6,6 +6,7 @@ import {
   ministryParticipation,
   shiftRequirement,
 } from '@church/db';
+import { m } from '@church/i18n/messages';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -56,7 +57,7 @@ const authorityGuard = {
 
 const DOUBLE_BOOKED_REFUSAL = {
   error: 'HARD_CONSTRAINT_VIOLATION',
-  message: 'Volunteer is already assigned to another overlapping shift',
+  message: m.error_hard_constraint_violation(),
 };
 
 let app: FastifyTypedInstance;

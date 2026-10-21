@@ -416,7 +416,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await overlapDialog.getByTestId('create-cycle-button').click();
 
   await expect(overlapDialog.getByTestId('cycle-create-error')).toContainText(
-    'Cycle overlaps an existing cycle',
+    'Este ciclo se sobrepõe a um ciclo existente.',
   );
   await overlapDialog.getByRole('button', { name: 'Close' }).click();
 

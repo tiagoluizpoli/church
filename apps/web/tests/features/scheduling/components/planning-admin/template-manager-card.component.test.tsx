@@ -69,7 +69,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
 
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
-    expect(row).toHaveTextContent('Sunday');
+    expect(row).toHaveTextContent('Domingo');
     expect(row).toHaveTextContent('2');
     expect(
       within(row).getByRole('button', { name: 'Edit' }),

@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import type { TemplateLibraryTableRow } from './planning-admin.types';
 import { toTemplateLibraryTableRow } from './planning-admin.utils';
 import { useTemplateManagerCard } from './planning-admin-context';
@@ -38,7 +39,7 @@ export function TemplateManagerCard({
   } = useTemplateManagerCard();
 
   const rows: TemplateLibraryTableRow[] = templates.map((template) =>
-    toTemplateLibraryTableRow({ template }),
+    toTemplateLibraryTableRow({ template, locale: getLocale() }),
   );
 
   function startEditTemplate({ templateId }: StartEditTemplateInput): void {

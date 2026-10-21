@@ -20,14 +20,12 @@ import {
   listEventsQuerySchema,
   scheduleBuilderDataResponseSchema,
 } from '../dtos/event.dto';
+import { refuse } from '../utils/refuse';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-const FUNCTION_FORBIDDEN_MESSAGE = 'Scheduling leadership required';
-const NOT_FOUND_MESSAGE = 'Resource not found';
 
 interface ScheduleBuilderQuery {
   eventId: string;
@@ -123,10 +121,7 @@ export class EventController implements FastifyController {
           return reply.send(eventMapper.scheduleBuilderToResponse(data));
         } catch (error) {
           if (error instanceof NotFoundError) {
-            return reply.status(404).send({
-              error: 'NOT_FOUND',
-              message: NOT_FOUND_MESSAGE,
-            });
+            return refuse({ reply, request, code: 'NOT_FOUND' });
           }
           throw error;
         }
@@ -194,10 +189,7 @@ export class EventController implements FastifyController {
     });
     if (decision.allowed) return false;
 
-    reply.status(403).send({
-      error: 'FORBIDDEN',
-      message: FUNCTION_FORBIDDEN_MESSAGE,
-    });
+    refuse({ reply, request, code: 'FORBIDDEN' });
     return true;
   }
 
@@ -213,10 +205,7 @@ export class EventController implements FastifyController {
     });
     if (decision.allowed) return false;
 
-    reply.status(404).send({
-      error: 'NOT_FOUND',
-      message: NOT_FOUND_MESSAGE,
-    });
+    refuse({ reply, request, code: 'NOT_FOUND' });
     return true;
   }
 }

@@ -116,7 +116,7 @@ describe('createActiveChurchPreValidation', () => {
 
     expect(reply.status).toHaveBeenCalledWith(403);
     expect(reply.send).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Volunteer profile not found' }),
+      expect.objectContaining({ error: 'FORBIDDEN' }),
     );
   });
 
@@ -316,7 +316,7 @@ describe('createActiveChurchPreValidation', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'No active Church membership found',
+      message: 'Você não tem permissão para fazer isso.',
     });
     await app.close();
   });

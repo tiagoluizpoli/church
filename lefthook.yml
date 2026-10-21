@@ -9,6 +9,14 @@ pre-commit:
       run: bun run lint:fix:files -- {staged_files}
       stage_fixed: true
 
+post-merge:
+  jobs:
+    # A merge that changes dependencies leaves node_modules (and postinstall output) stale.
+    - name: install
+      files: git diff --name-only ORIG_HEAD HEAD
+      glob: "bun.lock"
+      run: bun install
+
 pre-push:
   parallel: true
   jobs:

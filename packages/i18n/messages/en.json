@@ -38,5 +38,10 @@
   "error_resend_daily_cap_exceeded": "The daily resend limit for this invitation was reached.",
   "error_invalid_invitation_role": "One or more Roles do not belong to this Ministry.",
   "error_validation_error": "Some of the information is invalid.",
-  "error_validation_duplicate_headcount": "Each Sector and Role can appear only once in the Usual setup. Remove the repeated entry."
+  "error_validation_duplicate_headcount": "Each Sector and Role can appear only once in the Usual setup. Remove the repeated entry.",
+  "error_unauthorized": "Authentication required.",
+  "error_forbidden": "You do not have permission to do that.",
+  "error_active_church_selection_required": "Select an active Church to continue.",
+  "error_rate_limited": "Too many attempts. Try again in a moment.",
+  "error_invitation_unavailable": "This invitation is not available."
 }

@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { parseTimeOfDay } from '@church/time';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -60,6 +60,7 @@ import {
   usualSetupMapper,
   usualSetupResponseSchema,
 } from '../dtos/usual-setup.dto';
+import { refuse } from '../utils/refuse';
 import {
   dateFromCalendarDayString,
   dateFromInstantString,
@@ -95,14 +96,9 @@ const manualPlanningEventBodySchema = createEventBodySchema.omit({
 
 const updatePlanningEventBodySchema = manualPlanningEventBodySchema.partial();
 
-const NOT_FOUND_RESPONSE = {
-  error: 'NOT_FOUND',
-  message: 'Resource not found',
-};
-
 const notFoundResponseSchema = z.object({
-  error: z.literal('NOT_FOUND'),
-  message: z.literal('Resource not found'),
+  error: z.string(),
+  message: z.string(),
 });
 
 type ManualPlanningEventBody = z.infer<typeof manualPlanningEventBodySchema>;
@@ -119,6 +115,7 @@ interface ChurchAdminControllerDependencies {
 }
 
 interface NestedObjectOperationInput<T> {
+  request: FastifyRequest;
   reply: FastifyReply;
   operation: () => Promise<T>;
 }
@@ -167,10 +164,7 @@ export class ChurchAdminController implements FastifyController {
         userId: UserId.from(request.userId),
       });
       if (!authorized) {
-        return reply.status(403).send({
-          error: 'FORBIDDEN',
-          message: 'Church admin role required',
-        });
+        return refuse(reply, request, 'FORBIDDEN');
       }
     });
 
@@ -506,6 +500,7 @@ export class ChurchAdminController implements FastifyController {
           typeof createEventTimeBlockBodySchema
         >;
         const eventTimeBlock = await this.withNestedNotFound({
+          request,
           reply,
           operation: () =>
             this.planningEventManager.createEventTimeBlock({
@@ -546,6 +541,7 @@ export class ChurchAdminController implements FastifyController {
           typeof updateEventTimeBlockBodySchema
         >;
         const eventTimeBlock = await this.withNestedNotFound({
+          request,
           reply,
           operation: () =>
             this.planningEventManager.updateEventTimeBlock({
@@ -580,6 +576,7 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId, eventTimeBlockId } =
           request.params as PlanningEventTimeBlockRouteParams;
         const deleted = await this.withNestedNotFound({
+          request,
           reply,
           operation: async () => {
             await this.planningEventManager.deleteEventTimeBlock({
@@ -691,6 +688,7 @@ export class ChurchAdminController implements FastifyController {
   }
 
   private async withNestedNotFound<T>({
+    request,
     reply,
     operation,
   }: NestedObjectOperationInput<T>): Promise<T | undefined> {
@@ -698,7 +696,7 @@ export class ChurchAdminController implements FastifyController {
       return await operation();
     } catch (error) {
       if (error instanceof NotFoundError) {
-        reply.status(404).send(NOT_FOUND_RESPONSE);
+        refuse(reply, request, 'NOT_FOUND');
         return undefined;
       }
       throw error;

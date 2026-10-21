@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { type Instant, parseInstant } from '@church/time';
 import {
   afterAll,
@@ -187,7 +188,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
   });
 
@@ -237,7 +238,7 @@ describe('Volunteer availability-check confirm (DL3-HT-09)', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
   });
 });

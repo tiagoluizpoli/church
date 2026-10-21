@@ -38,5 +38,10 @@
   "error_resend_daily_cap_exceeded": "O limite diário de reenvios deste convite foi atingido.",
   "error_invalid_invitation_role": "Uma ou mais funções não pertencem a este ministério.",
   "error_validation_error": "Algumas informações são inválidas.",
-  "error_validation_duplicate_headcount": "Cada setor e função pode aparecer só uma vez na configuração padrão. Remova a entrada repetida."
+  "error_validation_duplicate_headcount": "Cada setor e função pode aparecer só uma vez na configuração padrão. Remova a entrada repetida.",
+  "error_unauthorized": "Autenticação necessária.",
+  "error_forbidden": "Você não tem permissão para fazer isso.",
+  "error_active_church_selection_required": "Escolha uma Igreja ativa para continuar.",
+  "error_rate_limited": "Muitas tentativas. Tente novamente em instantes.",
+  "error_invitation_unavailable": "Este convite não está disponível."
 }

@@ -34,6 +34,7 @@ import {
   splitShiftsBodySchema,
   updateShiftBodySchema,
 } from '../dtos/participation.dto';
+import { refuse } from '../utils/refuse';
 import { optionalDateFromInstantString } from '../utils/request-time';
 
 interface CycleParticipationRouteParams {
@@ -78,11 +79,6 @@ interface DenyAuthorityDecisionInput {
   reply: FastifyReply;
   allowed: boolean;
 }
-
-const NOT_FOUND_RESPONSE = {
-  error: 'NOT_FOUND',
-  message: 'Resource not found',
-};
 
 type SplitShiftsBody = z.infer<typeof splitShiftsBodySchema>;
 type SetInclusionsBody = z.infer<typeof setInclusionsBodySchema>;
@@ -613,13 +609,10 @@ export class PrepareController implements FastifyController {
       userId: UserId.from(request.userId),
     });
     if (!functionDecision.allowed) {
-      reply.status(403).send({
-        error: 'FORBIDDEN',
-        message: 'Not permitted to manage ministry schedules',
-      });
+      refuse(reply, request, 'FORBIDDEN');
       return true;
     }
-    reply.status(404).send(NOT_FOUND_RESPONSE);
+    refuse(reply, request, 'NOT_FOUND');
     return true;
   }
 }

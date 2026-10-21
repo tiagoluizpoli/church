@@ -240,7 +240,7 @@ describe('Prepare route refusals', () => {
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toEqual({
       error: 'NOT_FOUND',
-      message: 'Resource not found',
+      message: m.error_not_found(),
     });
     expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
     expectNoPrepareWork();
@@ -414,7 +414,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
     expect(participationManager.splitShifts).not.toHaveBeenCalled();
   });
@@ -546,7 +546,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: 'FORBIDDEN',
-      message: 'Not permitted to manage ministry schedules',
+      message: m.error_forbidden(),
     });
     expect(participationManager.listScheduleSummaries).not.toHaveBeenCalled();
   });

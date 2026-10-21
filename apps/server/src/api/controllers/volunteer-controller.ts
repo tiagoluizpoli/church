@@ -1,7 +1,7 @@
 import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { instantSchema, toDate } from '@church/time';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   AssignmentId,
@@ -38,6 +38,7 @@ import {
   setUnavailableShiftsBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
+import { refuse } from '../utils/refuse';
 
 interface MinistryRouteParams {
   ministryId: string;
@@ -67,18 +68,14 @@ interface VolunteerControllerDependencies {
 }
 
 interface PrivateObjectOperationInput<T> {
+  request: FastifyRequest;
   reply: FastifyReply;
   operation: () => Promise<T>;
 }
 
-const NOT_FOUND_RESPONSE = {
-  error: 'NOT_FOUND',
-  message: 'Resource not found',
-};
-
 const notFoundResponseSchema = z.object({
-  error: z.literal('NOT_FOUND'),
-  message: z.literal('Resource not found'),
+  error: z.string(),
+  message: z.string(),
 });
 
 export class VolunteerController implements FastifyController {
@@ -186,7 +183,7 @@ export class VolunteerController implements FastifyController {
             error instanceof IsolationBreachError ||
             error instanceof NotFoundError
           ) {
-            return reply.status(404).send(NOT_FOUND_RESPONSE);
+            return refuse(reply, request, 'NOT_FOUND');
           }
           throw error;
         }
@@ -234,6 +231,7 @@ export class VolunteerController implements FastifyController {
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
         const detail = await this.withPrivateObjectNotFound({
+          request,
           reply,
           operation: () =>
             this.volunteerManager.getAvailabilityCheck({
@@ -271,6 +269,7 @@ export class VolunteerController implements FastifyController {
           typeof setUnavailableShiftsBodySchema
         >;
         const detail = await this.withPrivateObjectNotFound({
+          request,
           reply,
           operation: () =>
             this.volunteerManager.setUnavailableShifts({
@@ -303,6 +302,7 @@ export class VolunteerController implements FastifyController {
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
         const confirmed = await this.withPrivateObjectNotFound({
+          request,
           reply,
           operation: () =>
             this.volunteerManager.confirmAvailabilityCheck({
@@ -339,6 +339,7 @@ export class VolunteerController implements FastifyController {
             typeof respondToAssignmentBodySchema
           >;
           const result = await this.withPrivateObjectNotFound({
+            request,
             reply,
             operation: () =>
               this.volunteerManager.respondToAssignment({
@@ -371,6 +372,7 @@ export class VolunteerController implements FastifyController {
         async (request, reply) => {
           const { assignmentId } = request.params as AssignmentRouteParams;
           const cancelled = await this.withPrivateObjectNotFound({
+            request,
             reply,
             operation: async () => {
               await this.volunteerManager.cancelOwnAssignment({
@@ -439,7 +441,7 @@ export class VolunteerController implements FastifyController {
           });
         } catch (error) {
           if (error instanceof NotFoundError) {
-            return reply.status(404).send(NOT_FOUND_RESPONSE);
+            return refuse(reply, request, 'NOT_FOUND');
           }
           throw error;
         }
@@ -469,6 +471,7 @@ export class VolunteerController implements FastifyController {
   }
 
   private async withPrivateObjectNotFound<T>({
+    request,
     reply,
     operation,
   }: PrivateObjectOperationInput<T>): Promise<T | undefined> {
@@ -480,7 +483,7 @@ export class VolunteerController implements FastifyController {
         error instanceof AssignmentAccessDeniedError ||
         error instanceof NotFoundError
       ) {
-        reply.status(404).send(NOT_FOUND_RESPONSE);
+        refuse(reply, request, 'NOT_FOUND');
         return undefined;
       }
       throw error;

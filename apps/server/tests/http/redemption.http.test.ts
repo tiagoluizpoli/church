@@ -395,11 +395,11 @@ describe('Church invitation redemption HTTP boundary', () => {
     }
 
     expect(unavailableBodies).toEqual([
-      '{"error":"INVITATION_UNAVAILABLE"}',
-      '{"error":"INVITATION_UNAVAILABLE"}',
-      '{"error":"INVITATION_UNAVAILABLE"}',
-      '{"error":"INVITATION_UNAVAILABLE"}',
-      '{"error":"INVITATION_UNAVAILABLE"}',
+      '{"error":"INVITATION_UNAVAILABLE","message":"Este convite não está disponível."}',
+      '{"error":"INVITATION_UNAVAILABLE","message":"Este convite não está disponível."}',
+      '{"error":"INVITATION_UNAVAILABLE","message":"Este convite não está disponível."}',
+      '{"error":"INVITATION_UNAVAILABLE","message":"Este convite não está disponível."}',
+      '{"error":"INVITATION_UNAVAILABLE","message":"Este convite não está disponível."}',
     ]);
   });
 

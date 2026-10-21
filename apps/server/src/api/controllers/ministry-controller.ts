@@ -110,7 +110,7 @@ export class MinistryController implements FastifyController {
           !capabilities.isChurchAdmin &&
           capabilities.ledMinistries.length === 0
         ) {
-          refuse(reply, request, 'FORBIDDEN');
+          refuse({ reply, request, code: 'FORBIDDEN' });
           return;
         }
         const ministries = capabilities.isChurchAdmin
@@ -227,7 +227,7 @@ export class MinistryController implements FastifyController {
       userId: UserId.from(request.userId),
     });
     if (decision.allowed) return false;
-    refuse(reply, request, 'FORBIDDEN');
+    refuse({ reply, request, code: 'FORBIDDEN' });
     return true;
   }
 }

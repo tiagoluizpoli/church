@@ -164,7 +164,7 @@ export class ChurchAdminController implements FastifyController {
         userId: UserId.from(request.userId),
       });
       if (!authorized) {
-        return refuse(reply, request, 'FORBIDDEN');
+        return refuse({ reply, request, code: 'FORBIDDEN' });
       }
     });
 
@@ -696,7 +696,7 @@ export class ChurchAdminController implements FastifyController {
       return await operation();
     } catch (error) {
       if (error instanceof NotFoundError) {
-        refuse(reply, request, 'NOT_FOUND');
+        refuse({ reply, request, code: 'NOT_FOUND' });
         return undefined;
       }
       throw error;

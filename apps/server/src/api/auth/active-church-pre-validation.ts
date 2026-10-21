@@ -37,7 +37,7 @@ export function createActiveChurchPreValidation(
     const headers = headersFromRequest(request);
     const session = await auth.api.getSession({ headers }).catch(() => null);
     if (!session?.user) {
-      return refuse(reply, request, 'UNAUTHORIZED');
+      return refuse({ reply, request, code: 'UNAUTHORIZED' });
     }
 
     const userId = UserId.from(session.user.id);
@@ -52,17 +52,21 @@ export function createActiveChurchPreValidation(
     });
 
     if (resolution.status === 'selection_required') {
-      return refuse(reply, request, 'ACTIVE_CHURCH_SELECTION_REQUIRED');
+      return refuse({
+        reply,
+        request,
+        code: 'ACTIVE_CHURCH_SELECTION_REQUIRED',
+      });
     }
 
     if (resolution.status === 'no_membership') {
       // A stale active organization, if any, was already cleared by
       // resolveActiveChurchAndPersist above.
-      return refuse(reply, request, 'FORBIDDEN');
+      return refuse({ reply, request, code: 'FORBIDDEN' });
     }
 
     if (requireVolunteer && !resolution.hasVolunteerMembership) {
-      return refuse(reply, request, 'FORBIDDEN');
+      return refuse({ reply, request, code: 'FORBIDDEN' });
     }
 
     request.userId = session.user.id;

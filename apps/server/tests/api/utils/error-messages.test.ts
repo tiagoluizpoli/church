@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  domainErrorMessage,
+  VALIDATION_REASON_MESSAGES,
+} from '@/api/utils/error-messages';
+import { ERROR_TABLE, errorStatus } from '@/api/utils/error-table';
+import {
   DuplicateHeadcountError,
   VALIDATION_REASONS,
 } from '@/domain/errors/duplicate-headcount';
-import { ERROR_MAP } from '@/main/fastify/error-map';
-import {
-  domainErrorMessage,
-  ERROR_MESSAGES,
-  VALIDATION_REASON_MESSAGES,
-} from '@/main/fastify/error-messages';
 
 // Codes thrown by the domain that never become an HTTP response.
 const NEVER_HTTP = [
@@ -25,22 +24,22 @@ const NEVER_HTTP = [
   'PENDING_MINISTRY_INVITATION_NOT_FOUND',
 ];
 
-describe('error catalog coverage', () => {
+describe('error table coverage', () => {
   it.each(
-    Object.keys(ERROR_MAP),
-  )('%s has a message in both locales', (code) => {
-    const message = ERROR_MESSAGES[code];
-    expect(message).toBeDefined();
-    expect(message?.({}, { locale: 'en' })).not.toBe('');
-    expect(message?.({}, { locale: 'pt-BR' })).not.toBe('');
+    Object.entries(ERROR_TABLE),
+  )('%s has a status and a message in both locales', (_code, entry) => {
+    expect(entry.status).toBeGreaterThanOrEqual(400);
+    expect(entry.message({}, { locale: 'en' })).not.toBe('');
+    expect(entry.message({}, { locale: 'pt-BR' })).not.toBe('');
   });
 
   it.each(VALIDATION_REASONS)('reason %s has a message', (reason) => {
     expect(VALIDATION_REASON_MESSAGES[reason]).toBeDefined();
   });
 
-  it('never-HTTP codes are not mapped to a status', () => {
-    for (const code of NEVER_HTTP) expect(ERROR_MAP[code]).toBeUndefined();
+  it('never-HTTP codes have no entry', () => {
+    for (const code of NEVER_HTTP)
+      expect(errorStatus({ code })).toBeUndefined();
   });
 });
 

@@ -183,7 +183,7 @@ export class VolunteerController implements FastifyController {
             error instanceof IsolationBreachError ||
             error instanceof NotFoundError
           ) {
-            return refuse(reply, request, 'NOT_FOUND');
+            return refuse({ reply, request, code: 'NOT_FOUND' });
           }
           throw error;
         }
@@ -441,7 +441,7 @@ export class VolunteerController implements FastifyController {
           });
         } catch (error) {
           if (error instanceof NotFoundError) {
-            return refuse(reply, request, 'NOT_FOUND');
+            return refuse({ reply, request, code: 'NOT_FOUND' });
           }
           throw error;
         }
@@ -483,7 +483,7 @@ export class VolunteerController implements FastifyController {
         error instanceof AssignmentAccessDeniedError ||
         error instanceof NotFoundError
       ) {
-        refuse(reply, request, 'NOT_FOUND');
+        refuse({ reply, request, code: 'NOT_FOUND' });
         return undefined;
       }
       throw error;

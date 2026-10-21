@@ -18,9 +18,9 @@ import pino from 'pino';
 import PinoPretty from 'pino-pretty';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
-import { ERROR_MAP } from './error-map';
-import { domainErrorMessage } from './error-messages';
-import { requestLocale } from './request-locale';
+import { domainErrorMessage } from '../../api/utils/error-messages';
+import { errorStatus } from '../../api/utils/error-table';
+import { requestLocale } from '../../api/utils/request-locale';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
@@ -128,9 +128,9 @@ export async function createFastify() {
 
   app.setErrorHandler((error, request, reply) => {
     const locale = requestLocale(request);
+    const genericError = m.common_generic_error({}, { locale });
     if (error instanceof DomainError) {
-      const mapped = ERROR_MAP[error.code];
-      const status = mapped?.status ?? 500;
+      const status = errorStatus({ code: error.code }) ?? 500;
       request.log.warn(
         { code: error.code, message: error.message },
         'DomainError',
@@ -141,7 +141,7 @@ export async function createFastify() {
       }
       return reply.status(status).send({
         error: error.code,
-        message: message ?? m.common_generic_error({}, { locale }),
+        message: message ?? genericError,
       });
     }
 
@@ -160,14 +160,14 @@ export async function createFastify() {
       );
       return reply.code(500).send({
         error: 'INTERNAL_SERVER_ERROR',
-        message: m.common_generic_error({}, { locale }),
+        message: genericError,
       });
     }
 
     request.log.error({ err: error, url: request.url }, 'Unhandled error');
     return reply.status(500).send({
       error: 'INTERNAL_SERVER_ERROR',
-      message: m.common_generic_error({}, { locale }),
+      message: genericError,
     });
   });
 

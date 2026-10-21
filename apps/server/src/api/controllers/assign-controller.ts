@@ -581,10 +581,10 @@ export class AssignController implements FastifyController {
       userId: UserId.from(request.userId),
     });
     if (!functionDecision.allowed) {
-      refuse(reply, request, 'FORBIDDEN');
+      refuse({ reply, request, code: 'FORBIDDEN' });
       return true;
     }
-    refuse(reply, request, 'NOT_FOUND');
+    refuse({ reply, request, code: 'NOT_FOUND' });
     return true;
   }
 }

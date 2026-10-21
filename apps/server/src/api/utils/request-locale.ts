@@ -1,11 +1,17 @@
 import { appConfig } from '@church/app-config';
 import { isLocale, type Locale } from '@church/i18n/runtime';
 
-/** The locale cookie's valid value, else the default locale. */
-export function requestLocale(request: {
+interface RequestLocaleInput {
   headers: { cookie?: string };
-}): Locale {
-  for (const part of (request.headers.cookie ?? '').split(';')) {
+}
+
+interface RecipientLocaleInput {
+  recipient: { userId: string };
+}
+
+/** The locale cookie's valid value, else the default locale. */
+export function requestLocale({ headers }: RequestLocaleInput): Locale {
+  for (const part of (headers.cookie ?? '').split(';')) {
     const [name, ...rest] = part.trim().split('=');
     const value = rest.join('=');
     if (name === appConfig.localeCookieName && isLocale(value)) return value;
@@ -14,6 +20,6 @@ export function requestLocale(request: {
 }
 
 /** The one plug-in point for a future per-user locale setting. */
-export function recipientLocale(_recipient: { userId: string }): Locale {
+export function recipientLocale(_input: RecipientLocaleInput): Locale {
   return appConfig.defaultLocale;
 }

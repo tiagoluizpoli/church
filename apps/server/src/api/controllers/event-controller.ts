@@ -121,7 +121,7 @@ export class EventController implements FastifyController {
           return reply.send(eventMapper.scheduleBuilderToResponse(data));
         } catch (error) {
           if (error instanceof NotFoundError) {
-            return refuse(reply, request, 'NOT_FOUND');
+            return refuse({ reply, request, code: 'NOT_FOUND' });
           }
           throw error;
         }
@@ -189,7 +189,7 @@ export class EventController implements FastifyController {
     });
     if (decision.allowed) return false;
 
-    refuse(reply, request, 'FORBIDDEN');
+    refuse({ reply, request, code: 'FORBIDDEN' });
     return true;
   }
 
@@ -205,7 +205,7 @@ export class EventController implements FastifyController {
     });
     if (decision.allowed) return false;
 
-    refuse(reply, request, 'NOT_FOUND');
+    refuse({ reply, request, code: 'NOT_FOUND' });
     return true;
   }
 }

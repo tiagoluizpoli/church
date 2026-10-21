@@ -48,7 +48,7 @@ async function requireSession(
     .catch(() => null);
   if (!session?.user) {
     // FastifyReply is thenable: send without awaiting, return a plain value.
-    refuse(reply, request, 'UNAUTHORIZED');
+    refuse({ reply, request, code: 'UNAUTHORIZED' });
     return null;
   }
   return {
@@ -173,7 +173,7 @@ export class ActiveChurchController implements FastifyController {
         });
 
         if (resolution.status !== 'resolved') {
-          return refuse(reply, request, 'FORBIDDEN');
+          return refuse({ reply, request, code: 'FORBIDDEN' });
         }
 
         await auth.api

@@ -1,12 +1,12 @@
 import { appConfig } from '@church/app-config';
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
-import { REFUSAL_STATUS, refuse } from '@/api/utils/refuse';
-import { ERROR_MESSAGES } from '@/main/fastify/error-messages';
+import type { RefusalCode } from '@/api/utils/error-table';
+import { refuse } from '@/api/utils/refuse';
 
 const app = Fastify();
-app.get('/:code', (request, reply) =>
-  refuse(reply, request, (request.params as { code: string }).code as never),
+app.get<{ Params: { code: RefusalCode } }>('/:code', (request, reply) =>
+  refuse({ reply, request, code: request.params.code }),
 );
 
 const cookie = (locale: string) => `${appConfig.localeCookieName}=${locale}`;
@@ -58,9 +58,5 @@ describe('refuse', () => {
     expect(ptRes.statusCode).toBe(status);
     expect(ptRes.json()).toEqual({ error: code, message: pt });
     expect(enRes.json()).toEqual({ error: code, message: en });
-  });
-
-  it.each(Object.keys(REFUSAL_STATUS))('%s has a catalog entry', (code) => {
-    expect(ERROR_MESSAGES[code]).toBeDefined();
   });
 });

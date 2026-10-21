@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { describe, expect, it } from 'vitest';
-import { recipientLocale, requestLocale } from '@/main/fastify/request-locale';
+import { recipientLocale, requestLocale } from '@/api/utils/request-locale';
 
 const COOKIE = appConfig.localeCookieName;
 
@@ -27,6 +27,8 @@ describe('requestLocale', () => {
 
 describe('recipientLocale', () => {
   it('returns the default locale', () => {
-    expect(recipientLocale({ userId: 'u1' })).toBe(appConfig.defaultLocale);
+    expect(recipientLocale({ recipient: { userId: 'u1' } })).toBe(
+      appConfig.defaultLocale,
+    );
   });
 });

@@ -2,52 +2,31 @@ import { screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { expect } from 'vitest';
 
-const MONTH_SHORT_NAMES = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
+// Tests render in pt-BR (see tests/setup/locale.ts); these names match that locale.
 const MONTH_FULL_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
 ];
 
 const WEEKDAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
+  'domingo',
+  'segunda-feira',
+  'terça-feira',
+  'quarta-feira',
+  'quinta-feira',
+  'sexta-feira',
+  'sábado',
 ];
-
-const ORDINAL_SUFFIXES: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' };
-
-function ordinal(day: number): string {
-  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
-  return `${day}${ORDINAL_SUFFIXES[day % 10] ?? 'th'}`;
-}
 
 interface PickCalendarDateInput {
   user: UserEvent;
@@ -67,12 +46,13 @@ export async function pickCalendarDate({
   const [year, month, day] = date.split('-').map(Number);
   const weekday =
     WEEKDAY_NAMES[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
-  const dayLabel = `${weekday}, ${MONTH_FULL_NAMES[month - 1]} ${ordinal(day)}, ${year}`;
+  const dayLabel = `${weekday}, ${day} de ${MONTH_FULL_NAMES[month - 1]} de ${year}`;
 
   await user.click(trigger);
+  // Select by the option's value (0-based month index) to avoid locale text matching.
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Choose the Month' }),
-    MONTH_SHORT_NAMES[month - 1],
+    String(month - 1),
   );
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Choose the Year' }),

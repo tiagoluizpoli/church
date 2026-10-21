@@ -44,16 +44,11 @@ export function pickerLocale({
   locale,
 }: PickerLocaleInput): PickerLocaleResult {
   const fmt = new Intl.DateTimeFormat(locale, {
-    month: 'long',
+    month: 'short',
     timeZone: 'UTC',
   });
   return {
     locale: DATEFNS_LOCALE[locale],
-    formatters: {
-      formatMonthDropdown: (date: Date) => {
-        const s = fmt.format(date);
-        return s.charAt(0).toUpperCase() + s.slice(1);
-      },
-    },
+    formatters: { formatMonthDropdown: (date: Date) => fmt.format(date) },
   };
 }

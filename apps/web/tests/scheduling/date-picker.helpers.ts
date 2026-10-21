@@ -1,50 +1,29 @@
 import type { Locator, Page } from '@playwright/test';
 
-const MONTH_SHORT_NAMES = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-] as const;
-
-const ORDINAL_SUFFIXES: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' };
-
-function ordinal(day: number): string {
-  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
-  return `${day}${ORDINAL_SUFFIXES[day % 10] ?? 'th'}`;
-}
-
+// App defaults to pt-BR (appConfig.defaultLocale); these names match that locale.
 const WEEKDAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
+  'domingo',
+  'segunda-feira',
+  'terça-feira',
+  'quarta-feira',
+  'quinta-feira',
+  'sexta-feira',
+  'sábado',
 ];
 
 const MONTH_FULL_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
 ];
 
 interface FillDatePickerFieldInput {
@@ -65,14 +44,14 @@ export async function fillDatePickerField({
   const [year, month, day] = date.split('-').map(Number);
   const target = new Date(Date.UTC(year, month - 1, day));
   const weekday = WEEKDAY_NAMES[target.getUTCDay()];
-  const dayLabel = `${weekday}, ${MONTH_FULL_NAMES[month - 1]} ${ordinal(day)}, ${year}`;
+  const dayLabel = `${weekday}, ${day} de ${MONTH_FULL_NAMES[month - 1]} de ${year}`;
 
   await trigger.click();
 
   const popover = page.locator('[data-slot="popover-content"]');
   await popover
     .getByRole('combobox', { name: 'Choose the Month' })
-    .selectOption({ label: MONTH_SHORT_NAMES[month - 1] });
+    .selectOption({ value: String(month - 1) });
   await popover
     .getByRole('combobox', { name: 'Choose the Year' })
     .selectOption({ label: String(year) });

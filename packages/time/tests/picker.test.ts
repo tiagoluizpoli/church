@@ -27,28 +27,20 @@ describe('picker bridge', () => {
 });
 
 describe('pickerLocale', () => {
-  it('returns January as "Janeiro" for pt-BR', () => {
+  it('returns "ago." for August in pt-BR (short month abbreviation)', () => {
     const result = pickerLocale({ locale: 'pt-BR' });
-    // January 2027 — using UTC date so the ambient TZ never shifts the month.
-    const jan = new Date(Date.UTC(2027, 0, 1));
-    expect(result.formatters.formatMonthDropdown(jan)).toBe('Janeiro');
+    const aug = new Date(Date.UTC(2027, 7, 1));
+    expect(result.formatters.formatMonthDropdown(aug)).toBe('ago.');
   });
 
-  it('returns July as "Julho" for pt-BR', () => {
-    const result = pickerLocale({ locale: 'pt-BR' });
-    const jul = new Date(Date.UTC(2027, 6, 1));
-    expect(result.formatters.formatMonthDropdown(jul)).toBe('Julho');
-  });
-
-  it('returns January as "January" for en', () => {
+  it('returns "Aug" for August in en', () => {
     const result = pickerLocale({ locale: 'en' });
-    const jan = new Date(Date.UTC(2027, 0, 1));
-    expect(result.formatters.formatMonthDropdown(jan)).toBe('January');
+    const aug = new Date(Date.UTC(2027, 7, 1));
+    expect(result.formatters.formatMonthDropdown(aug)).toBe('Aug');
   });
 
   it('returns the date-fns ptBR locale object for pt-BR', () => {
     const result = pickerLocale({ locale: 'pt-BR' });
-    // Verify it's a Locale object with the right locale code.
     expect(result.locale.code).toBe('pt-BR');
   });
 

@@ -16,7 +16,7 @@ const AUTH_ERROR_MESSAGES = new Map<string, () => string>(
 );
 
 interface AuthErrorMessageInput {
-  error: { code?: string };
+  error: { code?: string; message?: string };
 }
 
 export function authErrorMessage({ error }: AuthErrorMessageInput): string {

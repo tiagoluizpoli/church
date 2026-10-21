@@ -270,7 +270,9 @@ describe('the chained-invitation redemption route', () => {
     await user.type(codeInput, '123456');
     await user.click(screen.getByRole('button', { name: 'Join' }));
 
-    expect(await screen.findByText(m.common_generic_error())).toBeVisible();
+    expect(
+      await screen.findByText(m.common_generic_error_title()),
+    ).toBeVisible();
     expect(codeInput.value).toBe('123456');
     expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
   });

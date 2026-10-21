@@ -53,7 +53,7 @@ describe('DatePickerField', () => {
     await user.click(screen.getByTestId('date-field'));
 
     const months = screen.getByRole('combobox', { name: 'Choose the Month' });
-    expect(months).toHaveTextContent('ago.');
+    expect(months).toHaveTextContent('Ago.');
     expect(months).not.toHaveTextContent('Aug');
     expect(screen.getByText('dom')).toBeInTheDocument();
   });

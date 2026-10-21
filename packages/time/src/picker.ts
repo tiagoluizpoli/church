@@ -1,5 +1,6 @@
 import { enUS, ptBR } from 'date-fns/locale';
 import type { CalendarDay } from './brands';
+import { capitalize } from './capitalize';
 import type { Locale } from './display';
 
 /**
@@ -32,11 +33,13 @@ export interface PickerLocaleInput {
   locale: Locale;
 }
 
+export interface PickerFormatters {
+  formatMonthDropdown: (date: Date) => string;
+}
+
 export interface PickerLocaleResult {
   locale: typeof enUS | typeof ptBR;
-  formatters: {
-    formatMonthDropdown: (date: Date) => string;
-  };
+  formatters: PickerFormatters;
 }
 
 /** Locale and month-dropdown formatter for react-day-picker, keyed by the seam's Locale. */
@@ -49,6 +52,8 @@ export function pickerLocale({
   });
   return {
     locale: DATEFNS_LOCALE[locale],
-    formatters: { formatMonthDropdown: (date: Date) => fmt.format(date) },
+    formatters: {
+      formatMonthDropdown: (date: Date) => capitalize(fmt.format(date)),
+    },
   };
 }

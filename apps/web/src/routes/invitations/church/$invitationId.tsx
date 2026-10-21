@@ -79,7 +79,7 @@ function describeRedemptionOutcome({
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
   if (outcome.kind === 'retryable-failure') {
     return {
-      title: m.common_generic_error(),
+      title: m.common_generic_error_title(),
       description:
         "Your account was created, but we couldn't finish adding you to the Ministry yet. Try again.",
       canRetry: true,

@@ -1,17 +1,5 @@
 import { appConfig } from '@church/app-config';
-import {
-  defineCustomClientStrategy,
-  getLocale,
-  isLocale,
-  setLocale,
-} from '@church/i18n/runtime';
-
-// Returns appConfig.defaultLocale when no cookie is set, making pt-BR the
-// default rather than the Paraglide baseLocale ('en').
-defineCustomClientStrategy('custom-default', {
-  getLocale: () => appConfig.defaultLocale,
-  setLocale: () => {},
-});
+import { getLocale, isLocale, setLocale } from '@church/i18n/runtime';
 
 export function initLocale(): void {
   const params = new URLSearchParams(window.location.search);

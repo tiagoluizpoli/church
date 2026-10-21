@@ -42,7 +42,7 @@ export default function SignInForm({
             toast.success('Sign in successful');
           },
           onError: (error) => {
-            toast.error(authErrorMessage(error.error.code));
+            toast.error(authErrorMessage({ error: error.error }));
           },
         },
       );

@@ -1,5 +1,10 @@
-import { calendarDaysBetween, weekdayIndex } from './arithmetic';
+import {
+  calendarDaysBetween,
+  type WeekdayIndex,
+  weekdayIndex,
+} from './arithmetic';
 import type { CalendarDay, Instant, TimeOfDay } from './brands';
+import { capitalize } from './capitalize';
 import { now } from './clock';
 import { today, toTimeOfDay, toTimeOfDaySeconds } from './conversion';
 
@@ -8,6 +13,10 @@ export type Locale = 'en' | 'pt-BR';
 
 export interface CalendarDayFormatInput {
   day: CalendarDay;
+}
+
+export interface CalendarDayLocaleInput extends CalendarDayFormatInput {
+  locale: Locale;
 }
 
 interface CalendarDayParts {
@@ -32,49 +41,46 @@ export function formatCalendarDay({ day }: CalendarDayFormatInput): string {
 export function formatCalendarDayWithWeekday({
   day,
   locale,
-}: CalendarDayFormatInput & { locale: Locale }): string {
+}: CalendarDayLocaleInput): string {
   return `${formatWeekday({ day, locale })}, ${formatCalendarDay({ day })}`;
 }
 
 // UTC anchor date that falls on Sunday (weekday index 0); adding the index gives the right weekday.
 // Using Date.UTC avoids any ambient-timezone shift of the reference day.
-function weekdayAnchorDate(index: 0 | 1 | 2 | 3 | 4 | 5 | 6): Date {
+function weekdayAnchorDate(index: WeekdayIndex): Date {
   return new Date(Date.UTC(2024, 0, 7 + index));
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+interface WeekdayNameInput {
+  index: WeekdayIndex;
+  locale: Locale;
+  style: 'long' | 'short';
+}
+
+function weekdayName({ index, locale, style }: WeekdayNameInput): string {
+  const raw = new Intl.DateTimeFormat(locale, {
+    weekday: style,
+    timeZone: 'UTC',
+  }).format(weekdayAnchorDate(index));
+  return capitalize(raw);
 }
 
 /** `Monday` / `Segunda-feira`. Weekdays always start with a capital letter. */
-export function formatWeekday({
-  day,
-  locale,
-}: CalendarDayFormatInput & { locale: Locale }): string {
-  const idx = weekdayIndex({ day }) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  const raw = new Intl.DateTimeFormat(locale, {
-    weekday: 'long',
-    timeZone: 'UTC',
-  }).format(weekdayAnchorDate(idx));
-  return capitalize(raw);
+export function formatWeekday({ day, locale }: CalendarDayLocaleInput): string {
+  return weekdayName({ index: weekdayIndex({ day }), locale, style: 'long' });
 }
 
 /** `Mon` / `Seg.`. Short weekdays always start with a capital letter. */
 export function formatWeekdayShort({
   day,
   locale,
-}: CalendarDayFormatInput & { locale: Locale }): string {
-  const idx = weekdayIndex({ day }) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  const raw = new Intl.DateTimeFormat(locale, {
-    weekday: 'short',
-    timeZone: 'UTC',
-  }).format(weekdayAnchorDate(idx));
-  return capitalize(raw);
+}: CalendarDayLocaleInput): string {
+  return weekdayName({ index: weekdayIndex({ day }), locale, style: 'short' });
 }
 
 export interface WeekdayByIndexInput {
   /** 0 (Sunday) … 6 (Saturday). */
-  index: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  index: WeekdayIndex;
   locale: Locale;
 }
 
@@ -83,11 +89,7 @@ export function formatWeekdayOfIndex({
   index,
   locale,
 }: WeekdayByIndexInput): string {
-  const raw = new Intl.DateTimeFormat(locale, {
-    weekday: 'long',
-    timeZone: 'UTC',
-  }).format(weekdayAnchorDate(index));
-  return capitalize(raw);
+  return weekdayName({ index, locale, style: 'long' });
 }
 
 // shortcut: fixed lists for plural weekdays; Intl has no plural-weekday API, per ADR-0003 amendment.

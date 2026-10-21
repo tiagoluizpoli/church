@@ -68,7 +68,7 @@ function describeAcceptFailure({
   }
   if (outcome.kind === 'retryable-failure') {
     return {
-      title: m.common_generic_error(),
+      title: m.common_generic_error_title(),
       description: "We couldn't finish adding you to the Ministry. Try again.",
       canRetry: true,
     };

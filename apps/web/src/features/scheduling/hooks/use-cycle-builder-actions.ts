@@ -332,7 +332,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage(error, m.common_generic_error())}`,
+        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage(error, m.common_reassignment_failed())}`,
         tone: 'error',
       });
       return;
@@ -345,7 +345,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage(error, m.common_generic_error())}. Reassign ${sourceName} by hand.`,
+        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage(error, m.common_reassignment_failed())}. Reassign ${sourceName} by hand.`,
         tone: 'error',
       });
       return;

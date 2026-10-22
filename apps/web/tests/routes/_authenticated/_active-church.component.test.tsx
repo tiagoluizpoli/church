@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -150,7 +151,9 @@ describe('the Active Church guard (_active-church)', () => {
       // A link into the other Church asks once, then switches for real.
       await act(() => router.history.push('/cycles?church=church-2'));
       await user.click(
-        await screen.findByRole('button', { name: /switch to tokyo church/i }),
+        await screen.findByRole('button', {
+          name: m.switch_church_switch({ churchName: 'Tokyo Church' }),
+        }),
       );
 
       await waitFor(() => {

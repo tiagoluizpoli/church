@@ -166,7 +166,10 @@ export class MinistryParticipation extends Entity<
     confirmBelowFull,
   }: PublishParticipationInput): void {
     if (this.state !== 'assigning') {
-      throw new IllegalStateTransitionError(this.state, 'published');
+      throw new IllegalStateTransitionError({
+        from: this.state,
+        to: 'published',
+      });
     }
 
     if (completionPercent < 100 && !confirmBelowFull) {
@@ -182,7 +185,7 @@ export class MinistryParticipation extends Entity<
     requiredCurrent: ParticipationState,
   ): void {
     if (this.state !== requiredCurrent) {
-      throw new IllegalStateTransitionError(this.state, next);
+      throw new IllegalStateTransitionError({ from: this.state, to: next });
     }
 
     this._props.state = next;

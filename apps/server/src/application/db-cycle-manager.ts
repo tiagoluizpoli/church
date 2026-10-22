@@ -124,7 +124,10 @@ export class DbCycleManager implements ICycleManager {
       });
 
       if (cycle.state === 'past') {
-        throw new IllegalStateTransitionError(cycle.state, 'sent');
+        throw new IllegalStateTransitionError({
+          from: cycle.state,
+          to: 'sent',
+        });
       }
 
       cycle.send();

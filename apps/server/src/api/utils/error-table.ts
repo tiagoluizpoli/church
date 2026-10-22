@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 
+// named-parameters-ignore: Paraglide generated message signature (inputs, options)
 export type ErrorMessage = (
   inputs: Record<string, never>,
   options: { locale: Locale },

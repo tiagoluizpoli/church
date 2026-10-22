@@ -80,7 +80,7 @@ export class Cycle extends Entity<CycleProps, CycleId> {
 
   send(): void {
     if (this.state !== 'draft') {
-      throw new IllegalStateTransitionError(this.state, 'sent');
+      throw new IllegalStateTransitionError({ from: this.state, to: 'sent' });
     }
 
     this._props.state = 'sent';
@@ -89,7 +89,7 @@ export class Cycle extends Entity<CycleProps, CycleId> {
 
   markPast(): void {
     if (this.state === 'past') {
-      throw new IllegalStateTransitionError(this.state, 'past');
+      throw new IllegalStateTransitionError({ from: this.state, to: 'past' });
     }
 
     this._props.state = 'past';
@@ -98,11 +98,14 @@ export class Cycle extends Entity<CycleProps, CycleId> {
 
   assertCanReopenEvent({ eventState }: CycleCanReopenEventInput): void {
     if (this.state !== 'sent') {
-      throw new IllegalStateTransitionError(this.state, 'reopen_event');
+      throw new IllegalStateTransitionError({
+        from: this.state,
+        to: 'reopen_event',
+      });
     }
 
     if (eventState === 'cancelled' || eventState === 'past') {
-      throw new IllegalStateTransitionError(eventState, 'draft');
+      throw new IllegalStateTransitionError({ from: eventState, to: 'draft' });
     }
   }
 

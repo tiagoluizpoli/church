@@ -487,7 +487,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const currentEvent = await this.getCycleEvent({ input, tx });
 
       if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
-        throw new IllegalStateTransitionError(currentEvent.status, 'update');
+        throw new IllegalStateTransitionError({
+          from: currentEvent.status,
+          to: 'update',
+        });
       }
 
       if (input.start) {
@@ -648,7 +651,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const event = await this.getCycleEvent({ input, tx });
 
     if (cycle.state === 'sent' && event.status !== 'draft') {
-      throw new IllegalStateTransitionError(event.status, action);
+      throw new IllegalStateTransitionError({ from: event.status, to: action });
     }
 
     return event;
@@ -704,7 +707,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const currentEvent = await this.getCycleEvent({ input, tx });
 
       if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
-        throw new IllegalStateTransitionError(currentEvent.status, 'cancel');
+        throw new IllegalStateTransitionError({
+          from: currentEvent.status,
+          to: 'cancel',
+        });
       }
 
       // Delete and cancel are distinct operations, split on the event's
@@ -737,7 +743,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     churchTimeZone,
   }: EnsureCycleWritableInput): Promise<Cycle> {
     if (cycle.state === 'past') {
-      throw new IllegalStateTransitionError(cycle.state, 'mutate');
+      throw new IllegalStateTransitionError({
+        from: cycle.state,
+        to: 'mutate',
+      });
     }
 
     const churchToday = today({ instant: now(), timeZone: churchTimeZone });
@@ -748,7 +757,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         cycleId: cycle.id,
         state: 'past',
       });
-      throw new IllegalStateTransitionError('past', 'mutate');
+      throw new IllegalStateTransitionError({ from: 'past', to: 'mutate' });
     }
 
     return cycle;

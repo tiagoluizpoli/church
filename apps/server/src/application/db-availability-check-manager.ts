@@ -199,7 +199,10 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     });
 
     if (participation.state === 'preparing') {
-      throw new IllegalStateTransitionError(participation.state, 'resend');
+      throw new IllegalStateTransitionError({
+        from: participation.state,
+        to: 'resend',
+      });
     }
 
     const event = await this.eventRepository.getEvent({

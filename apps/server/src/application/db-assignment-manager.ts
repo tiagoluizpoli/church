@@ -236,10 +236,10 @@ export class DbAssignmentManager implements IAssignmentManager {
       );
 
     if (!hasMembership) {
-      throw new HardConstraintError(
-        'NOT_IN_MINISTRY',
-        'Volunteer does not belong to the requested ministry',
-      );
+      throw new HardConstraintError({
+        reason: 'NOT_IN_MINISTRY',
+        message: 'Volunteer does not belong to the requested ministry',
+      });
     }
 
     const hasQualification =
@@ -271,10 +271,10 @@ export class DbAssignmentManager implements IAssignmentManager {
           isActiveAssignmentStatus(assignment.status),
       )
     ) {
-      throw new HardConstraintError(
-        'DUPLICATE_ASSIGNMENT',
-        'Volunteer is already assigned to this shift',
-      );
+      throw new HardConstraintError({
+        reason: 'DUPLICATE_ASSIGNMENT',
+        message: 'Volunteer is already assigned to this shift',
+      });
     }
 
     const unavailableShifts =
@@ -311,10 +311,10 @@ export class DbAssignmentManager implements IAssignmentManager {
         isActiveAssignmentStatus(assignment.status),
     );
     if (hasOverlapConflict) {
-      throw new HardConstraintError(
-        'DUPLICATE_ASSIGNMENT',
-        'Volunteer is already assigned to another overlapping shift',
-      );
+      throw new HardConstraintError({
+        reason: 'DUPLICATE_ASSIGNMENT',
+        message: 'Volunteer is already assigned to another overlapping shift',
+      });
     }
 
     const assignment = await this.assignmentRepo.create({

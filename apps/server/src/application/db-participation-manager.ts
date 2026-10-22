@@ -1474,7 +1474,10 @@ function sortEligibleVolunteers(
 
 function ensurePrepare({ participation, action }: EnsurePrepareInput): void {
   if (participation.state !== 'preparing') {
-    throw new IllegalStateTransitionError(participation.state, action);
+    throw new IllegalStateTransitionError({
+      from: participation.state,
+      to: action,
+    });
   }
 }
 

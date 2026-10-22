@@ -2,13 +2,11 @@ import { Avatar as AvatarPrimitive } from '@base-ui/react/avatar';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-function Avatar({
-  className,
-  size = 'default',
-  ...props
-}: AvatarPrimitive.Root.Props & {
+type AvatarProps = AvatarPrimitive.Root.Props & {
   size?: 'default' | 'sm' | 'lg';
-}) {
+};
+
+function Avatar({ className, size = 'default', ...props }: AvatarProps) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"

@@ -26,14 +26,16 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   );
 }
 
+type SelectTriggerProps = SelectPrimitive.Trigger.Props & {
+  size?: 'sm' | 'default';
+};
+
 function SelectTrigger({
   className,
   size = 'default',
   children,
   ...props
-}: SelectPrimitive.Trigger.Props & {
-  size?: 'sm' | 'default';
-}) {
+}: SelectTriggerProps) {
   // Honour the surrounding `FormControlSizeProvider` the way `Input`/`Button`
   // do, so a Select inside a touch surface reaches 44px without each call site
   // hand-forcing a wrapper div.

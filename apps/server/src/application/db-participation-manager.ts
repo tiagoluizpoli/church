@@ -70,6 +70,11 @@ import {
 } from '../domain/errors';
 import { ShiftSplitter } from '../domain/services/shift-splitter';
 
+interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
+  eventId: EventWithEventTimeBlocks['event']['id'];
+  tx?: TransactionContext;
+}
+
 interface EnsurePrepareInput {
   participation: MinistryParticipation;
   action: string;
@@ -1031,10 +1036,7 @@ export class DbParticipationManager implements IParticipationManager {
   }
 
   private async getOrCreateParticipation(
-    input: GetCycleParticipationInput & {
-      eventId: EventWithEventTimeBlocks['event']['id'];
-      tx?: TransactionContext;
-    },
+    input: GetOrCreateParticipationInput,
   ): Promise<MinistryParticipation> {
     const existing = await this.participationRepository.findByMinistryEvent({
       churchId: input.churchId,

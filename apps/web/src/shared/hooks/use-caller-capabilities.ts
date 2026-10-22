@@ -8,6 +8,9 @@ export interface CallerCapabilities {
   hasVolunteerMembership: boolean;
 }
 
+export const isAdminOrLeader = (capabilities: CallerCapabilities) =>
+  capabilities.isChurchAdmin || capabilities.leadsMinistries;
+
 export interface CallerCapabilitiesState extends CallerCapabilities {
   isResolving: boolean;
 }

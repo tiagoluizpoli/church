@@ -9,7 +9,10 @@ import {
 import * as React from 'react';
 import { MobileDrawer } from './mobile-drawer';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
+import {
+  isAdminOrLeader,
+  useCallerCapabilities,
+} from '@/shared/hooks/use-caller-capabilities';
 
 export interface CommandPaletteProps {
   open: boolean;
@@ -38,9 +41,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const { isChurchAdmin, leadsMinistries } = useCallerCapabilities();
-  const canSeeScheduling = isChurchAdmin || leadsMinistries;
-  const commands: CommandItem[] = canSeeScheduling
+  const commands: CommandItem[] = isAdminOrLeader(useCallerCapabilities())
     ? [...BASE_COMMANDS, SCHEDULING_COMMAND]
     : BASE_COMMANDS;
 

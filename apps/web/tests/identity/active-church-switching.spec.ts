@@ -96,7 +96,9 @@ test.describe('#67 — Active Church selection and switching', () => {
     // Church-scoped nav, not inside `UserMenu` (the User-identity menu).
     await page
       .getByTestId('sidebar')
-      .getByRole('button', { name: m.nav_switch_church() })
+      .getByRole('button', {
+        name: m.nav_switch_church({}, { locale: 'pt-BR' }),
+      })
       .click();
     await expect(page).toHaveURL(/\/select-church(\?.*)?$/);
 
@@ -106,7 +108,9 @@ test.describe('#67 — Active Church selection and switching', () => {
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
     // The URL commits before the code-split dashboard chunk renders.
     await expect(
-      page.getByRole('heading', { name: 'Select an Active Church' }),
+      page.getByRole('heading', {
+        name: m.select_church_title({}, { locale: 'pt-BR' }),
+      }),
     ).toBeHidden();
 
     expect(
@@ -125,7 +129,9 @@ test.describe('#67 — Active Church selection and switching', () => {
     // in-app control from which Church A's Cycle data was ever
     // reachable, so its absence here is exactly what "no remnant" requires.
     await expect(
-      page.getByTestId('sidebar').getByRole('link', { name: m.nav_cycles() }),
+      page
+        .getByTestId('sidebar')
+        .getByRole('link', { name: m.nav_cycles({}, { locale: 'pt-BR' }) }),
     ).not.toBeVisible();
 
     const bodyText = await page.locator('body').innerText();

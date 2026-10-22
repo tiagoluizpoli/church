@@ -45,8 +45,16 @@ describe('no-access route (F10)', () => {
     ).toBeVisible();
   });
 
-  it('calls sign out when the Sign out button is clicked', async () => {
-    renderRoute({ initialPath: '/no-access' });
+  it('signs out and navigates to /login when the Sign out button is clicked', async () => {
+    vi.mocked(authClient.signOut).mockImplementation((async ({
+      fetchOptions,
+    }: {
+      fetchOptions: { onSuccess: () => void };
+    }) => {
+      getSession.mockResolvedValue({ data: null });
+      fetchOptions.onSuccess();
+    }) as never);
+    const { router } = renderRoute({ initialPath: '/no-access' });
 
     await screen.findByText(m.no_access_title());
 
@@ -56,5 +64,6 @@ describe('no-access route (F10)', () => {
     );
 
     await waitFor(() => expect(authClient.signOut).toHaveBeenCalled());
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
   });
 });

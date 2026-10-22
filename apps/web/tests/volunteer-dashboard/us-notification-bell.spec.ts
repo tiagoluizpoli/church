@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadVolunteerDashboardJourney } from '@/tests/fixtures/journeys/volunteer-dashboard';
@@ -11,7 +12,9 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
   await signInPersonaPage({ page, persona: journey.personas.volunteer });
   await page.goto('/dashboard');
 
-  const bellTrigger = page.getByRole('button', { name: 'Notifications' });
+  const bellTrigger = page.getByRole('button', {
+    name: m.notification_bell_label({}, { locale: 'pt-BR' }),
+  });
   await expect(bellTrigger).toBeVisible();
 
   // The journey owns the Volunteer's only notification, so the unread count

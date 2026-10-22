@@ -13,7 +13,10 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
-vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+vi.mock('@/shared/hooks/use-caller-capabilities', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/shared/hooks/use-caller-capabilities')
+  >()),
   useCallerCapabilities: vi.fn(),
 }));
 

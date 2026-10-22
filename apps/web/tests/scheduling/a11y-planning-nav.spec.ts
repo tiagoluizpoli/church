@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadCycleAccessJourney } from '@/tests/fixtures/journeys/planning-admin';
@@ -38,7 +39,9 @@ test('breadcrumb marks the exact-match page as current, not every ancestor link'
   const nav = page.getByRole('navigation', { name: 'breadcrumb' });
   await expect(nav).toBeVisible();
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
-  await expect(nav.locator('[aria-current="page"]')).toHaveText('Cycles');
+  await expect(nav.locator('[aria-current="page"]')).toHaveText(
+    m.nav_cycles({}, { locale: 'pt-BR' }),
+  );
 });
 
 test('breadcrumb never marks an ancestor link as the current page (regression: TanStack Router prefix-match aria-current)', async ({

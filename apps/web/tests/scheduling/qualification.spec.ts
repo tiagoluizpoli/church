@@ -89,8 +89,7 @@ test.describe('a plain Volunteer', () => {
 
     await page.goto('/cycles');
 
-    // The planning-admin guard redirects a non-admin/leader to "/", which
-    // the index route forwards to "/dashboard".
-    await expect(page).toHaveURL(/\/(dashboard)?$/, { timeout: 15_000 });
+    // The guard redirects to "/", which redirects to /dashboard until Spec 31.
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
   });
 });

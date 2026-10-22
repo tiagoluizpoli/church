@@ -13,7 +13,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import * as React from 'react';
-import { useCallerRoles } from '../shared/hooks/use-caller-roles';
+import { useCallerCapabilities } from '../shared/hooks/use-caller-capabilities';
 import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
@@ -203,7 +203,8 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { canSeeScheduling } = useCallerRoles();
+  const { isChurchAdmin, leadsMinistries } = useCallerCapabilities();
+  const canSeeScheduling = isChurchAdmin || leadsMinistries;
   const navItems: NavItem[] = canSeeScheduling
     ? [...BASE_NAV_ITEMS, SCHEDULING_NAV_ITEM]
     : BASE_NAV_ITEMS;

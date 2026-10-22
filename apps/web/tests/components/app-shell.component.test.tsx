@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@/components/app-shell';
-import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
+import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const parked = vi.hoisted(() => ({ on: true }));
@@ -42,11 +42,11 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/shared/hooks/use-caller-roles', () => ({
-  useCallerRoles: vi.fn(),
+vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+  useCallerCapabilities: vi.fn(),
 }));
 
-const mockedUseCallerRoles = vi.mocked(useCallerRoles);
+const mockedUseCallerCapabilities = vi.mocked(useCallerCapabilities);
 
 // CommandPalette (rendered but closed by default) probes viewport width on
 // mount; jsdom has no real matchMedia implementation.
@@ -87,8 +87,10 @@ describe('AppShell role-scoped navigation', () => {
   });
 
   it('shows only Dashboard and Availability for a Volunteer-only caller', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -109,8 +111,10 @@ describe('AppShell role-scoped navigation', () => {
     'TeamLeader',
     'admin',
   ])('additionally shows Scheduling for a %s caller', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockPathname = '/scheduling';
@@ -132,8 +136,10 @@ describe('AppShell role-scoped navigation', () => {
   });
 
   it('keeps Scheduling children visible and navigable when a different section is active', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockPathname = '/dashboard';
@@ -150,8 +156,10 @@ describe('AppShell role-scoped navigation', () => {
   });
 
   it('marks Scheduling as the current section on a child page outside /scheduling', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockPathname = '/cycles';
@@ -169,8 +177,10 @@ describe('AppShell role-scoped navigation', () => {
     false,
     true,
   ])('never renders Shifts, Alerts, Profile, or Todos when canSeeScheduling is %s', (canSeeScheduling) => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: canSeeScheduling,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -184,8 +194,10 @@ describe('AppShell role-scoped navigation', () => {
   });
 
   it('shows a caller-supplied breadcrumb override in place of the raw id segment', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockPathname = '/cycles/cycle-1';
@@ -204,8 +216,10 @@ describe('AppShell role-scoped navigation', () => {
   });
 
   it('hides an opaque id segment from breadcrumbs when no override is supplied', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockPathname = '/cycles/cycle-1';
@@ -226,8 +240,10 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
   });
 
   it('renders a connector element for each child nav item under its parent section', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -244,8 +260,10 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
   });
 
   it('keeps the remaining scheduling navigation items navigable and highlighted', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockPathname = '/schedules';
@@ -286,8 +304,10 @@ describe('AppShell desktop sidebar collapse (#219, right-sized from desktop-layo
   });
 
   it('flips the toggle label and collapsed markup on each click, round-tripping back to expanded', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -328,8 +348,10 @@ describe('AppShell responsive visibility contract (#219, right-sized from mobile
   });
 
   it('hides the desktop sidebar and shows the mobile shell below md, and the reverse above it', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -351,8 +373,10 @@ describe('AppShell responsive visibility contract (#219, right-sized from mobile
 
   it('only links to routes that exist in the bottom nav and drawer for a Volunteer-only caller', async () => {
     const VOLUNTEER_ALLOWED_HREFS = ['/dashboard', '/availability'];
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -373,8 +397,10 @@ describe('AppShell responsive visibility contract (#219, right-sized from mobile
   });
 
   it('sizes bottom-nav and drawer links at or above the 44px touch-target minimum', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -408,8 +434,10 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
   });
 
   it('opens the command palette on Ctrl+K and closes it on a second press', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -426,8 +454,10 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
 
   it('shows no Search button and ignores Ctrl+K while the palette is parked', async () => {
     parked.on = false;
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
 
@@ -453,8 +483,10 @@ describe('AppShell Switch Church control', () => {
   });
 
   it('navigates to select-church with the full path, query, and hash preserved as the redirect target', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockPathname = '/cycles';
@@ -474,8 +506,10 @@ describe('AppShell Switch Church control', () => {
   });
 
   it('navigates to select-church from the mobile drawer and closes the drawer', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockHref = '/dashboard';
@@ -495,8 +529,10 @@ describe('AppShell Switch Church control', () => {
   });
 
   it('keeps the Switch Church control reachable and functional when the sidebar is collapsed', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     mockHref = '/dashboard';

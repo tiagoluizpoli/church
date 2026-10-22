@@ -114,7 +114,7 @@ test.describe('#67 — Active Church selection and switching', () => {
 
     // AC3 — Church A's real name/identifiers appear nowhere in the
     // rendered page. This dual member has no Ministry (nor Church-admin)
-    // access in Church B, so `useCallerRoles`' `scheduling-capability` query
+    // access in Church B, so `useCallerCapabilities`' `scheduling-capability` query
     // — cleared and refetched fresh by `clearActiveChurchScopedCache` on
     // every switch (`active-church-switch.ts`) — resolves
     // `canAccessScheduling: false` for B, and `AppShell` omits the whole

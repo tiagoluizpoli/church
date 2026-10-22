@@ -45,5 +45,12 @@
   "error_forbidden": "Você não tem permissão para fazer isso.",
   "error_active_church_selection_required": "Escolha uma Igreja ativa para continuar.",
   "error_rate_limited": "Muitas tentativas. Tente novamente em instantes.",
-  "error_invitation_unavailable": "Este convite não está disponível."
+  "error_invitation_unavailable": "Este convite não está disponível.",
+  "nav_my_schedule": "Minha escala",
+  "nav_ministries": "Ministérios",
+  "nav_people": "Pessoas",
+  "nav_invitations": "Convites",
+  "shell_coming_soon": "Em breve.",
+  "shell_no_access": "Você não tem acesso a esta página.",
+  "shell_not_serving": "Você ainda não serve em nenhum ministério."
 }

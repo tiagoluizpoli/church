@@ -39,15 +39,15 @@ export class AssignmentAudit extends Entity<
   AssignmentAuditId
 > {
   constructor({ props, id, createdAt, updatedAt }: AssignmentAuditInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         occurredAt: props.occurredAt ?? now(),
       } as unknown as AssignmentAuditProps,
-      id as AssignmentAuditId,
+      id: id as AssignmentAuditId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

@@ -68,15 +68,15 @@ export class Event extends Entity<EventProps, EventId> {
             ministryId: undefined,
             cycleId: props.ministryId,
           };
-    super(
-      {
+    super({
+      props: {
         ...normalizedProps,
         status: props.status ?? 'draft',
       } as EventProps,
-      id as EventId,
+      id: id as EventId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

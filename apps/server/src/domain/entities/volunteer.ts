@@ -31,15 +31,15 @@ export interface VolunteerInput {
 
 export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
   constructor({ props, id, createdAt, updatedAt }: VolunteerInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         status: props.status ?? 'active',
       } as VolunteerProps,
-      id as VolunteerId,
+      id: id as VolunteerId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

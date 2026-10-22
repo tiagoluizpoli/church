@@ -54,12 +54,12 @@ export class VolunteerNotification extends Entity<
   VolunteerNotificationId
 > {
   constructor({ props, id, createdAt, updatedAt }: VolunteerNotificationInput) {
-    super(
-      props as VolunteerNotificationProps,
-      id as VolunteerNotificationId,
+    super({
+      props: props as VolunteerNotificationProps,
+      id: id as VolunteerNotificationId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

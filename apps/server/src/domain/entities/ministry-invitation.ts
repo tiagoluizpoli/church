@@ -56,12 +56,12 @@ export class MinistryInvitation extends Entity<
   MinistryInvitationId
 > {
   constructor({ props, id, createdAt, updatedAt }: MinistryInvitationInput) {
-    super(
-      props as MinistryInvitationProps,
-      id as MinistryInvitationId,
+    super({
+      props: props as MinistryInvitationProps,
+      id: id as MinistryInvitationId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

@@ -117,16 +117,16 @@ export class MinistryParticipation extends Entity<
   MinistryParticipationId
 > {
   constructor({ props, id, createdAt, updatedAt }: MinistryParticipationInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         state: props.state ?? 'preparing',
         touchedAt: props.touchedAt ?? null,
       } as MinistryParticipationProps,
-      id as MinistryParticipationId,
+      id: id as MinistryParticipationId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

@@ -55,17 +55,17 @@ export class MinistryMembership extends Entity<
   MinistryMembershipId
 > {
   constructor({ props, id, createdAt, updatedAt }: MinistryMembershipInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         ministryAccessLevel: props.ministryAccessLevel ?? 'volunteer',
         status: props.status ?? 'active',
         joinedAt: props.joinedAt ?? now(),
       } as unknown as MinistryMembershipProps,
-      id as MinistryMembershipId,
+      id: id as MinistryMembershipId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

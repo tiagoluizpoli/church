@@ -45,16 +45,16 @@ export class EventTimeBlock extends Entity<
     ) {
       throw new InvalidDateRangeError();
     }
-    super(
-      {
+    super({
+      props: {
         ...props,
         status: props.status ?? 'active',
         requirements: props.requirements ?? [],
       } as unknown as EventTimeBlockProps,
-      id as EventTimeBlockId,
+      id: id as EventTimeBlockId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

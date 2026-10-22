@@ -19,15 +19,15 @@ export interface ChurchInput {
 
 export class Church extends Entity<ChurchProps, ChurchId> {
   constructor({ props, id, createdAt, updatedAt }: ChurchInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         timezone: props.timezone ?? 'UTC',
       } as ChurchProps,
-      id as ChurchId,
+      id: id as ChurchId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get name(): string {

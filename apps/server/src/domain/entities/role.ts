@@ -16,7 +16,12 @@ export interface RoleInput {
 
 export class Role extends Entity<RoleProps, RoleId> {
   constructor({ props, id, createdAt, updatedAt }: RoleInput) {
-    super(props as RoleProps, id as RoleId, createdAt, updatedAt);
+    super({
+      props: props as RoleProps,
+      id: id as RoleId,
+      createdAt,
+      updatedAt,
+    });
   }
 
   get churchId(): ChurchId {

@@ -45,16 +45,16 @@ export interface AssignmentInput {
 
 export class Assignment extends Entity<AssignmentProps, AssignmentId> {
   constructor({ props, id, createdAt, updatedAt }: AssignmentInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         status: props.status ?? 'draft',
         assignedAt: props.assignedAt ?? now(),
       } as unknown as AssignmentProps,
-      id as AssignmentId,
+      id: id as AssignmentId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

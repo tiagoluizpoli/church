@@ -15,7 +15,7 @@ export interface SectorInput {
 
 export class Sector extends Entity<SectorProps, SectorId> {
   constructor({ props, id, createdAt }: SectorInput) {
-    super(props as SectorProps, id as SectorId, createdAt);
+    super({ props: props as SectorProps, id: id as SectorId, createdAt });
   }
 
   get churchId(): ChurchId {

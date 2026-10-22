@@ -41,12 +41,12 @@ export class ShiftRequirement extends Entity<
     if (props.peopleNeeded < 1) {
       throw new InvalidRequiredCountError();
     }
-    super(
-      props as ShiftRequirementProps,
-      id as ShiftRequirementId,
+    super({
+      props: props as ShiftRequirementProps,
+      id: id as ShiftRequirementId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

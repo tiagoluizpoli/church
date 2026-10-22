@@ -27,15 +27,15 @@ export interface MinistryInput {
 
 export class Ministry extends Entity<MinistryProps, MinistryId> {
   constructor({ props, id, createdAt, updatedAt }: MinistryInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         defaultDirection: props.defaultDirection ?? 'all_out',
       } as MinistryProps,
-      id as MinistryId,
+      id: id as MinistryId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

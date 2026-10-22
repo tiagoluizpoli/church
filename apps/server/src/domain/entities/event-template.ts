@@ -23,17 +23,17 @@ export class EventTemplate extends Entity<EventTemplateProps, EventTemplateId> {
       throw new InvalidWeekdayError();
     }
 
-    super(
-      {
+    super({
+      props: {
         ...props,
         blocks: [...props.blocks].sort(
           (left, right) => left.order - right.order,
         ),
       } as EventTemplateProps,
-      id as EventTemplateId,
+      id: id as EventTemplateId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

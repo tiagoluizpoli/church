@@ -69,6 +69,7 @@
     "dns:stop": "bun tooling/worktree/dev-dns.ts stop",
     "validate:date-time-seam": "bun tooling/validation/date-time-seam-guards.ts",
     "validate:test-placement": "bun tooling/validation/test-placement-guard.ts",
+    "validate:named-parameters": "bun tooling/validation/named-parameters-guard.ts",
     "validate:affected": "bun tooling/validation/affected.ts",
     "validate": "bun tooling/validation/validate.ts",
     "push:safe": "bash tooling/git-safe-push.sh",

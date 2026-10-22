@@ -30,7 +30,7 @@ const BASE_COMMANDS: CommandItem[] = [
 
 const SCHEDULING_COMMAND: CommandItem = {
   label: 'Scheduling',
-  to: '/scheduling',
+  to: '/schedules',
   icon: CalendarClock,
 };
 

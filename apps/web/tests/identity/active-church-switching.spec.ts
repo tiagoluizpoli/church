@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, type Page, test } from '@playwright/test';
 import { loadActiveChurchSwitchingJourney } from '@/tests/fixtures/journeys/active-church-switching';
 import {
@@ -95,7 +96,7 @@ test.describe('#67 — Active Church selection and switching', () => {
     // Church-scoped nav, not inside `UserMenu` (the User-identity menu).
     await page
       .getByTestId('sidebar')
-      .getByRole('button', { name: 'Switch Church' })
+      .getByRole('button', { name: m.nav_switch_church() })
       .click();
     await expect(page).toHaveURL(/\/select-church(\?.*)?$/);
 
@@ -124,7 +125,7 @@ test.describe('#67 — Active Church selection and switching', () => {
     // in-app control from which Church A's Cycle data was ever
     // reachable, so its absence here is exactly what "no remnant" requires.
     await expect(
-      page.getByTestId('sidebar').getByRole('link', { name: 'Cycles' }),
+      page.getByTestId('sidebar').getByRole('link', { name: m.nav_cycles() }),
     ).not.toBeVisible();
 
     const bodyText = await page.locator('body').innerText();

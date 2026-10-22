@@ -2,13 +2,10 @@ import { volunteerNotification } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, count, desc, eq, isNull, lt } from 'drizzle-orm';
 import type {
-  ChurchId,
-  VolunteerId,
-  VolunteerNotificationId,
-} from '../../domain/branded-ids';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type {
+  CountUnreadVolunteerNotificationsInput,
   CreateVolunteerNotificationInput,
+  MarkAllVolunteerNotificationsReadInput,
+  MarkVolunteerNotificationReadInput,
   VolunteerNotificationListInput,
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
@@ -30,12 +27,8 @@ export class DrizzleVolunteerNotificationRepository
 
   private readonly db: AnyDrizzleDb;
 
-  async create(
-    churchId: ChurchId,
-    input: CreateVolunteerNotificationInput,
-    tx?: TransactionContext,
-  ) {
-    const [row] = await getClient(this.db, tx)
+  async create({ churchId, tx, ...input }: CreateVolunteerNotificationInput) {
+    const [row] = await getClient({ db: this.db, tx })
       .insert(volunteerNotification)
       .values({
         churchId,
@@ -58,18 +51,18 @@ export class DrizzleVolunteerNotificationRepository
     return mapVolunteerNotification(row);
   }
 
-  async listByVolunteer(
-    churchId: ChurchId,
-    input: VolunteerNotificationListInput,
-    tx?: TransactionContext,
-  ): Promise<VolunteerNotificationListResult> {
+  async listByVolunteer({
+    churchId,
+    tx,
+    ...input
+  }: VolunteerNotificationListInput): Promise<VolunteerNotificationListResult> {
     const limit = Math.max(1, input.limit);
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select()
       .from(volunteerNotification)
       .where(
         and(
-          withChurchIsolation(volunteerNotification, churchId),
+          withChurchIsolation({ table: volunteerNotification, churchId }),
           eq(volunteerNotification.volunteerId, input.volunteerId),
           input.cursor
             ? lt(volunteerNotification.createdAt, input.cursor)
@@ -89,17 +82,17 @@ export class DrizzleVolunteerNotificationRepository
     };
   }
 
-  async countUnread(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<number> {
-    const [row] = await getClient(this.db, tx)
+  async countUnread({
+    churchId,
+    volunteerId,
+    tx,
+  }: CountUnreadVolunteerNotificationsInput): Promise<number> {
+    const [row] = await getClient({ db: this.db, tx })
       .select({ count: count() })
       .from(volunteerNotification)
       .where(
         and(
-          withChurchIsolation(volunteerNotification, churchId),
+          withChurchIsolation({ table: volunteerNotification, churchId }),
           eq(volunteerNotification.volunteerId, volunteerId),
           isNull(volunteerNotification.readAt),
         ),
@@ -108,20 +101,20 @@ export class DrizzleVolunteerNotificationRepository
     return row?.count ?? 0;
   }
 
-  async markRead(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    notificationId: VolunteerNotificationId,
-    tx?: TransactionContext,
-  ): Promise<Date | null> {
+  async markRead({
+    churchId,
+    volunteerId,
+    notificationId,
+    tx,
+  }: MarkVolunteerNotificationReadInput): Promise<Date | null> {
     const readAt = nowAsDate();
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .update(volunteerNotification)
       .set({ readAt })
       .where(
         and(
           eq(volunteerNotification.id, notificationId),
-          withChurchIsolation(volunteerNotification, churchId),
+          withChurchIsolation({ table: volunteerNotification, churchId }),
           eq(volunteerNotification.volunteerId, volunteerId),
         ),
       )
@@ -130,17 +123,17 @@ export class DrizzleVolunteerNotificationRepository
     return row ? readAt : null;
   }
 
-  async markAllRead(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<number> {
-    const result = await getClient(this.db, tx)
+  async markAllRead({
+    churchId,
+    volunteerId,
+    tx,
+  }: MarkAllVolunteerNotificationsReadInput): Promise<number> {
+    const result = await getClient({ db: this.db, tx })
       .update(volunteerNotification)
       .set({ readAt: nowAsDate() })
       .where(
         and(
-          withChurchIsolation(volunteerNotification, churchId),
+          withChurchIsolation({ table: volunteerNotification, churchId }),
           eq(volunteerNotification.volunteerId, volunteerId),
           isNull(volunteerNotification.readAt),
         ),

@@ -1,6 +1,10 @@
 import { NotFoundError } from '@church/core';
 import type { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
-import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type {
+  GetRoleByIdInput,
+  ListRolesByMinistryInput,
+  RoleRepository,
+} from '@/domain/contracts/infrastructure/role.repository';
 import { Role } from '@/domain/entities/role';
 import { runRoleRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/role.contract-spec';
 
@@ -37,7 +41,7 @@ class MockRoleRepository implements RoleRepository {
     this.roles.set(r3.id, r3);
   }
 
-  async getById(churchId: ChurchId, id: RoleId): Promise<Role> {
+  async getById({ churchId, id }: GetRoleByIdInput): Promise<Role> {
     const role = this.roles.get(id);
     if (!role || role.churchId !== churchId) {
       throw new NotFoundError('Role not found');
@@ -45,10 +49,10 @@ class MockRoleRepository implements RoleRepository {
     return role;
   }
 
-  async listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-  ): Promise<Role[]> {
+  async listByMinistry({
+    churchId,
+    ministryId,
+  }: ListRolesByMinistryInput): Promise<Role[]> {
     const list = Array.from(this.roles.values()).filter(
       (r) => r.churchId === churchId && r.ministryId === ministryId,
     );

@@ -18,10 +18,10 @@ describe('DrizzleVolunteerRepository (extra coverage)', () => {
     const repo = new DrizzleVolunteerRepository({ db: schedulingTestDb });
 
     await expect(
-      repo.getById(
-        ChurchId.from(seed.churchAId),
-        VolunteerId.from('99999999-9999-4999-8999-999999999999'),
-      ),
+      repo.getById({
+        churchId: ChurchId.from(seed.churchAId),
+        id: VolunteerId.from('99999999-9999-4999-8999-999999999999'),
+      }),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -29,7 +29,10 @@ describe('DrizzleVolunteerRepository (extra coverage)', () => {
     const seed = await seedSchedulingPhase3Base();
     const repo = new DrizzleVolunteerRepository({ db: schedulingTestDb });
 
-    const result = await repo.listByIds(ChurchId.from(seed.churchAId), []);
+    const result = await repo.listByIds({
+      churchId: ChurchId.from(seed.churchAId),
+      ids: [],
+    });
     expect(result).toEqual([]);
   });
 });

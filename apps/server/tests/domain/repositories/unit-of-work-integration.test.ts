@@ -17,6 +17,9 @@ describe('User Story 4: UnitOfWork Integration', () => {
         // Run the callback passing the transaction context
         return fn(mockTxContext);
       },
+      async runWith({ work }) {
+        return this.run(work);
+      },
     };
 
     // 2. Define Mock repositories that keep track of the transaction context they received

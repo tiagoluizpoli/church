@@ -34,7 +34,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     input: ClaimPendingOutboxMessagesInput,
   ): Promise<OutboxMessage[]> {
     const { limit, now, tx } = input;
-    const client = getClient(this.db, tx);
+    const client = getClient({ db: this.db, tx });
     const claimable = await client
       .select({ id: outboxMessage.id })
       .from(outboxMessage)
@@ -60,7 +60,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
 
   async markSent(input: MarkOutboxMessageSentInput): Promise<void> {
     const { id, providerMessageId, sentAt, tx } = input;
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .update(outboxMessage)
       .set({ status: 'sent', providerMessageId, sentAt })
       .where(eq(outboxMessage.id, id));
@@ -68,7 +68,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
 
   async markFailed(input: MarkOutboxMessageFailedInput): Promise<void> {
     const { id, lastError, attempts, status, scheduledFor, tx } = input;
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .update(outboxMessage)
       .set({ status, attempts, lastError, scheduledFor })
       .where(eq(outboxMessage.id, id));
@@ -78,12 +78,12 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     input: FindLatestOutboxStatusForMinistryInvitationInput,
   ): Promise<OutboxMessageStatus | null> {
     const { churchId, ministryInvitationId, tx } = input;
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select({ status: outboxMessage.status })
       .from(outboxMessage)
       .where(
         and(
-          withChurchIsolation(outboxMessage, churchId),
+          withChurchIsolation({ table: outboxMessage, churchId }),
           inArray(outboxMessage.kind, [
             'invitation.chained',
             'invitation.ministry',

@@ -46,6 +46,11 @@ import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface HydrateMinistryInvitationInput {
+  row: typeof ministryInvitation.$inferSelect;
+  tx?: TransactionContext;
+}
+
 interface DrizzleMinistryInvitationRepositoryInput {
   db: AnyDrizzleDb;
   config: AppConfig;
@@ -64,14 +69,14 @@ export class DrizzleMinistryInvitationRepository
 
   async acquireMintLock(input: AcquireMintLockInput): Promise<void> {
     const { ministryId, email, tx } = input;
-    await getClient(this.db, tx).execute(
+    await getClient({ db: this.db, tx }).execute(
       sql`select pg_advisory_xact_lock(hashtext(${`${ministryId}:${email}`}))`,
     );
   }
 
   async acquireResendLock(input: AcquireResendLockInput): Promise<void> {
     const { ministryInvitationId, tx } = input;
-    await getClient(this.db, tx).execute(
+    await getClient({ db: this.db, tx }).execute(
       sql`select pg_advisory_xact_lock(hashtext(${ministryInvitationId}))`,
     );
   }
@@ -80,7 +85,7 @@ export class DrizzleMinistryInvitationRepository
     input: FindChurchMemberByEmailInput,
   ): Promise<UserId | null> {
     const { churchId, email, tx } = input;
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select({ userId: member.userId })
       .from(member)
       .innerJoin(user, eq(user.id, member.userId))
@@ -91,12 +96,12 @@ export class DrizzleMinistryInvitationRepository
 
   async findPendingByInvitee(input: FindPendingByInviteeInput) {
     const { churchId, ministryId, inviteeUserId, tx } = input;
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(ministryInvitation)
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.ministryId, ministryId),
           eq(ministryInvitation.inviteeUserId, inviteeUserId),
           eq(ministryInvitation.status, 'pending'),
@@ -104,19 +109,19 @@ export class DrizzleMinistryInvitationRepository
       )
       .limit(1);
     if (!row) return null;
-    return this.hydrate(row);
+    return this.hydrate({ row });
   }
 
   async findPendingByChurchInvitation(
     input: FindPendingByChurchInvitationInput,
   ) {
     const { churchId, ministryId, churchInvitationId, tx } = input;
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(ministryInvitation)
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.ministryId, ministryId),
           eq(ministryInvitation.churchInvitationId, churchInvitationId),
           eq(ministryInvitation.status, 'pending'),
@@ -124,18 +129,18 @@ export class DrizzleMinistryInvitationRepository
       )
       .limit(1);
     if (!row) return null;
-    return this.hydrate(row);
+    return this.hydrate({ row });
   }
 
   async findPendingById(input: FindPendingByIdInput) {
     const { churchId, ministryId, ministryInvitationId, tx } = input;
     if (!isValidUuid(ministryInvitationId)) return null;
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(ministryInvitation)
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.ministryId, ministryId),
           eq(ministryInvitation.id, ministryInvitationId),
           eq(ministryInvitation.status, 'pending'),
@@ -143,31 +148,31 @@ export class DrizzleMinistryInvitationRepository
       )
       .limit(1);
     if (!row) return null;
-    return this.hydrate(row);
+    return this.hydrate({ row });
   }
 
   async findById(input: FindByIdInput) {
     const { churchId, ministryInvitationId, tx } = input;
     if (!isValidUuid(ministryInvitationId)) return null;
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(ministryInvitation)
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.id, ministryInvitationId),
         ),
       )
       .limit(1);
     if (!row) return null;
-    return this.hydrate(row, tx);
+    return this.hydrate({ row, tx });
   }
 
   async resolveRecipientEmail(
     input: ResolveRecipientEmailInput,
   ): Promise<string> {
     const { ministryInvitation: invitation, tx } = input;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
 
     if (invitation.inviteeUserId) {
       const [row] = await db
@@ -260,7 +265,7 @@ export class DrizzleMinistryInvitationRepository
     tx,
   }: FindMinistryInvitationContextInput): Promise<MinistryInvitationContext | null> {
     if (!isValidUuid(ministryInvitationId)) return null;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const rows = await db
       .select({
         invitation: ministryInvitation,
@@ -317,7 +322,7 @@ export class DrizzleMinistryInvitationRepository
     tx,
   }: IsInvitationAddressedToUserInput): Promise<boolean> {
     if (invitation.inviteeUserId) return invitation.inviteeUserId === userId;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select({ id: user.id })
       .from(churchInvitation)
@@ -336,7 +341,7 @@ export class DrizzleMinistryInvitationRepository
     input: HasActiveMinistryMembershipInput,
   ): Promise<boolean> {
     const { churchId, ministryId, userId, tx } = input;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select({ id: ministryMembership.id })
       .from(ministryMembership)
@@ -357,7 +362,7 @@ export class DrizzleMinistryInvitationRepository
     input: FindPendingChurchInvitationByEmailInput,
   ): Promise<ChurchInvitationSummary | null> {
     const { churchId, email, tx } = input;
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select({
         id: churchInvitation.id,
         expiresAt: churchInvitation.expiresAt,
@@ -384,7 +389,7 @@ export class DrizzleMinistryInvitationRepository
       milliseconds: this.churchInvitationTtlMs,
     });
     const expiresAt = toDate({ instant: expiresAtInstant });
-    await getClient(this.db, tx).insert(churchInvitation).values({
+    await getClient({ db: this.db, tx }).insert(churchInvitation).values({
       id,
       organizationId: churchId,
       email,
@@ -408,7 +413,7 @@ export class DrizzleMinistryInvitationRepository
       expiresAt,
       tx,
     } = input;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
 
     const [row] = await db
       .insert(ministryInvitation)
@@ -439,19 +444,19 @@ export class DrizzleMinistryInvitationRepository
 
   async refreshExpiry(input: RefreshMinistryInvitationExpiryInput) {
     const { churchId, ministryInvitation: invitation, expiresAt, tx } = input;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .update(ministryInvitation)
       .set({ expiresAt })
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.id, invitation.id),
         ),
       )
       .returning();
     if (!row) throw new Error('Ministry invitation not found for refresh');
-    return this.hydrate(row);
+    return this.hydrate({ row });
   }
 
   async applyResend(input: ApplyResendInput) {
@@ -462,7 +467,7 @@ export class DrizzleMinistryInvitationRepository
       throttle,
       tx,
     } = input;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .update(ministryInvitation)
       .set({
@@ -473,18 +478,18 @@ export class DrizzleMinistryInvitationRepository
       })
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.id, invitation.id),
         ),
       )
       .returning();
     if (!row) throw new Error('Ministry invitation not found for resend');
-    return this.hydrate(row);
+    return this.hydrate({ row });
   }
 
   async enqueueOutboxMessage(input: EnqueueOutboxMessageInput): Promise<void> {
     const { churchId, kind, payload, correlationId, scheduledFor, tx } = input;
-    await getClient(this.db, tx).insert(outboxMessage).values({
+    await getClient({ db: this.db, tx }).insert(outboxMessage).values({
       churchId,
       kind,
       payload,
@@ -493,11 +498,8 @@ export class DrizzleMinistryInvitationRepository
     });
   }
 
-  private async hydrate(
-    row: typeof ministryInvitation.$inferSelect,
-    tx?: TransactionContext,
-  ) {
-    const roleRows = await getClient(this.db, tx)
+  private async hydrate({ row, tx }: HydrateMinistryInvitationInput) {
+    const roleRows = await getClient({ db: this.db, tx })
       .select({ roleId: ministryInvitationRole.roleId })
       .from(ministryInvitationRole)
       .where(eq(ministryInvitationRole.ministryInvitationId, row.id));

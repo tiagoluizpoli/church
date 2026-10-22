@@ -1,9 +1,11 @@
 import { NotFoundError } from '@church/core';
 import { role } from '@church/db';
 import { and, asc, eq } from 'drizzle-orm';
-import type { ChurchId, MinistryId, RoleId } from '../../domain/branded-ids';
-import type { RoleRepository } from '../../domain/contracts/infrastructure/role.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import type {
+  GetRoleByIdInput,
+  ListRolesByMinistryInput,
+  RoleRepository,
+} from '../../domain/contracts/infrastructure/role.repository';
 import type { Role } from '../../domain/entities/role';
 import { mapRole } from '../mappers/role.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
@@ -20,34 +22,32 @@ export class DrizzleRoleRepository implements RoleRepository {
 
   private readonly db: AnyDrizzleDb;
 
-  async getById(
-    churchId: ChurchId,
-    id: RoleId,
-    tx?: TransactionContext,
-  ): Promise<Role> {
+  async getById({ churchId, id, tx }: GetRoleByIdInput): Promise<Role> {
     if (!isValidUuid(id)) {
       throw new NotFoundError(`Role not found: ${id}`);
     }
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select()
       .from(role)
-      .where(and(eq(role.id, id), withChurchIsolation(role, churchId)));
+      .where(
+        and(eq(role.id, id), withChurchIsolation({ table: role, churchId })),
+      );
     if (!row) throw new NotFoundError(`Role not found: ${id}`);
     return mapRole(row);
   }
 
-  async listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<Role[]> {
-    const rows = await getClient(this.db, tx)
+  async listByMinistry({
+    churchId,
+    ministryId,
+    tx,
+  }: ListRolesByMinistryInput): Promise<Role[]> {
+    const rows = await getClient({ db: this.db, tx })
       .select()
       .from(role)
       .where(
         and(
-          withChurchIsolation(role, churchId),
+          withChurchIsolation({ table: role, churchId }),
           eq(role.ministryId, ministryId),
         ),
       )

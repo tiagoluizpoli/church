@@ -38,7 +38,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
       return [];
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .insert(shift)
       .values(
@@ -62,14 +62,14 @@ export class DrizzleShiftRepository implements ShiftRepository {
       throw new NotFoundError(`Shift not found: ${input.shiftId}`);
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .select()
       .from(shift)
       .where(
         and(
           eq(shift.id, input.shiftId),
-          withChurchIsolation(shift, input.churchId),
+          withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       );
 
@@ -83,14 +83,14 @@ export class DrizzleShiftRepository implements ShiftRepository {
   async listByParticipation(
     input: ListShiftsByParticipationInput,
   ): Promise<Shift[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(shift)
       .where(
         and(
           eq(shift.participationId, input.participationId),
-          withChurchIsolation(shift, input.churchId),
+          withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       )
       .orderBy(asc(shift.startTime));
@@ -101,7 +101,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
   async listByEventTimeBlock(
     input: ListShiftsByEventTimeBlockInput,
   ): Promise<Shift[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(shift)
@@ -109,7 +109,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
         and(
           eq(shift.participationId, input.participationId),
           eq(shift.eventTimeBlockId, input.eventTimeBlockId),
-          withChurchIsolation(shift, input.churchId),
+          withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       )
       .orderBy(asc(shift.startTime));
@@ -118,7 +118,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
   }
 
   async update(input: UpdateShiftInput): Promise<Shift> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .update(shift)
       .set({
@@ -131,7 +131,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
       .where(
         and(
           eq(shift.id, input.shiftId),
-          withChurchIsolation(shift, input.churchId),
+          withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       )
       .returning();
@@ -144,13 +144,13 @@ export class DrizzleShiftRepository implements ShiftRepository {
   }
 
   async deleteById(input: DeleteShiftInput): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     await db
       .delete(shift)
       .where(
         and(
           eq(shift.id, input.shiftId),
-          withChurchIsolation(shift, input.churchId),
+          withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       );
   }
@@ -158,14 +158,14 @@ export class DrizzleShiftRepository implements ShiftRepository {
   async deleteByEventTimeBlock(
     input: DeleteShiftsByEventTimeBlockInput,
   ): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     await db
       .delete(shift)
       .where(
         and(
           eq(shift.participationId, input.participationId),
           eq(shift.eventTimeBlockId, input.eventTimeBlockId),
-          withChurchIsolation(shift, input.churchId),
+          withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       );
   }
@@ -173,7 +173,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
   async upsertRequirement(
     input: UpsertShiftRequirementInput,
   ): Promise<ShiftRequirement> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [existing] = await db
       .select()
       .from(shiftRequirement)
@@ -182,7 +182,10 @@ export class DrizzleShiftRepository implements ShiftRepository {
           eq(shiftRequirement.shiftId, input.shiftId),
           eq(shiftRequirement.roleId, input.roleId),
           eq(shiftRequirement.sectorId, input.sectorId),
-          withChurchIsolation(shiftRequirement, input.churchId),
+          withChurchIsolation({
+            table: shiftRequirement,
+            churchId: input.churchId,
+          }),
         ),
       )
       .limit(1);
@@ -228,7 +231,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
   async listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,
   ): Promise<ShiftRequirement[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select({ requirement: shiftRequirement, sectorName: sector.name })
       .from(shiftRequirement)
@@ -236,7 +239,10 @@ export class DrizzleShiftRepository implements ShiftRepository {
       .where(
         and(
           eq(shiftRequirement.participationId, input.participationId),
-          withChurchIsolation(shiftRequirement, input.churchId),
+          withChurchIsolation({
+            table: shiftRequirement,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -251,15 +257,18 @@ export class DrizzleShiftRepository implements ShiftRepository {
   async getRequirementForShift(
     input: GetRequirementForShiftInput,
   ): Promise<ShiftRequirement> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const requirementShiftJoin = eq(shift.id, shiftRequirement.shiftId);
     const requirementSectorJoin = eq(sector.id, shiftRequirement.sectorId);
     const requirementConditions = [
       eq(shiftRequirement.id, input.shiftRequirementId),
       eq(shiftRequirement.shiftId, input.shiftId),
       eq(shiftRequirement.participationId, shift.participationId),
-      withChurchIsolation(shiftRequirement, input.churchId),
-      withChurchIsolation(shift, input.churchId),
+      withChurchIsolation({
+        table: shiftRequirement,
+        churchId: input.churchId,
+      }),
+      withChurchIsolation({ table: shift, churchId: input.churchId }),
     ];
     const requirementPredicate = and(...requirementConditions);
     const [row] = await db

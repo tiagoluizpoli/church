@@ -1,6 +1,6 @@
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
-  RunTransactionOptions,
+  RunTransactionInput,
+  TransactionWork,
   UnitOfWork,
 } from '../../domain/contracts/infrastructure/unit-of-work';
 import {
@@ -20,13 +20,14 @@ export class DrizzleUnitOfWork implements UnitOfWork {
 
   private readonly db: AnyDrizzleDb;
 
-  async run<T>(
-    fn: (tx: TransactionContext) => Promise<T>,
-    options?: RunTransactionOptions,
-  ): Promise<T> {
+  async run<T>(work: TransactionWork<T>): Promise<T> {
+    return this.runWith({ work });
+  }
+
+  async runWith<T>({ work, ...options }: RunTransactionInput<T>): Promise<T> {
     return this.db.transaction(async (tx) => {
       const ctx = new DrizzleTransactionContext({ tx });
-      return fn(asTxContext(ctx));
+      return work(asTxContext(ctx));
     }, options);
   }
 }

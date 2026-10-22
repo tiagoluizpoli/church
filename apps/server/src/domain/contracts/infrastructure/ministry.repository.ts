@@ -14,24 +14,30 @@ export interface UpdateMinistryDefaultDirectionInput {
 }
 
 export interface MinistryRepository {
-  getById(
-    churchId: ChurchId,
-    id: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<Ministry>;
+  getById(input: GetMinistryByIdInput): Promise<Ministry>;
 
-  listByChurch(
-    churchId: ChurchId,
-    tx?: TransactionContext,
-  ): Promise<Ministry[]>;
+  listByChurch(input: ListMinistriesByChurchInput): Promise<Ministry[]>;
 
-  getSettings(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<MinistrySettings>;
+  getSettings(input: GetMinistrySettingsInput): Promise<MinistrySettings>;
 
   updateDefaultDirection(
     input: UpdateMinistryDefaultDirectionInput,
   ): Promise<Ministry>;
+}
+
+export interface GetMinistryByIdInput {
+  churchId: ChurchId;
+  id: MinistryId;
+  tx?: TransactionContext;
+}
+
+export interface ListMinistriesByChurchInput {
+  churchId: ChurchId;
+  tx?: TransactionContext;
+}
+
+export interface GetMinistrySettingsInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
 }

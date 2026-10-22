@@ -44,13 +44,13 @@ export class DrizzleEventRepository implements EventRepository {
     id: EventId,
     tx?: TransactionContext,
   ): Promise<MinistryId> {
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select({ ministryId: ministryParticipation.ministryId })
       .from(ministryParticipation)
       .where(
         and(
           eq(ministryParticipation.eventId, id),
-          withChurchIsolation(ministryParticipation, churchId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
         ),
       )
       .limit(1);
@@ -66,11 +66,13 @@ export class DrizzleEventRepository implements EventRepository {
     if (!isValidUuid(id)) {
       throw new NotFoundError(`Event not found: ${id}`);
     }
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select()
       .from(event)
-      .where(and(eq(event.id, id), withChurchIsolation(event, churchId)));
+      .where(
+        and(eq(event.id, id), withChurchIsolation({ table: event, churchId })),
+      );
     if (!row) throw new NotFoundError(`Event not found: ${id}`);
     return mapEvent(row);
   }
@@ -80,7 +82,7 @@ export class DrizzleEventRepository implements EventRepository {
     id: EventId,
     tx?: TransactionContext,
   ): Promise<EventWithEventTimeBlocks> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const ev = await this.getById(churchId, id, tx);
 
     const eventTimeBlockRows = await db
@@ -89,7 +91,7 @@ export class DrizzleEventRepository implements EventRepository {
       .where(
         and(
           eq(eventTimeBlock.eventId, id),
-          withChurchIsolation(eventTimeBlock, churchId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       );
 
@@ -121,9 +123,9 @@ export class DrizzleEventRepository implements EventRepository {
     status?: EventStatus,
     tx?: TransactionContext,
   ): Promise<Event[]> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const conditions = [
-      withChurchIsolation(event, churchId),
+      withChurchIsolation({ table: event, churchId }),
       eq(ministryParticipation.ministryId, ministryId),
     ];
     if (status != null) conditions.push(eq(event.status, status));
@@ -144,7 +146,7 @@ export class DrizzleEventRepository implements EventRepository {
     input: CreateEventInput,
     tx?: TransactionContext,
   ): Promise<Event> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .insert(event)
       .values({
@@ -169,7 +171,7 @@ export class DrizzleEventRepository implements EventRepository {
     input: UpdateEventInput,
     tx?: TransactionContext,
   ): Promise<Event> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .update(event)
       .set({
@@ -178,7 +180,9 @@ export class DrizzleEventRepository implements EventRepository {
         ...(input.end !== undefined ? { end: input.end } : {}),
         updatedAt: nowAsDate(),
       })
-      .where(and(eq(event.id, id), withChurchIsolation(event, churchId)))
+      .where(
+        and(eq(event.id, id), withChurchIsolation({ table: event, churchId })),
+      )
       .returning();
     if (!row) throw new NotFoundError(`Event not found: ${id}`);
     return mapEvent(row);
@@ -190,12 +194,14 @@ export class DrizzleEventRepository implements EventRepository {
     input: UpdateEventStatusInput,
     tx?: TransactionContext,
   ): Promise<void> {
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .update(event)
       .set({
         status: input.status,
         updatedAt: nowAsDate(),
       })
-      .where(and(eq(event.id, id), withChurchIsolation(event, churchId)));
+      .where(
+        and(eq(event.id, id), withChurchIsolation({ table: event, churchId })),
+      );
   }
 }

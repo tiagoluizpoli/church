@@ -228,12 +228,12 @@ export class DbAssignmentManager implements IAssignmentManager {
       tx,
     });
     const hasMembership =
-      await this.volunteerRepository.hasMembershipInMinistry(
-        input.churchId,
-        input.volunteerId,
-        participation.ministryId,
+      await this.volunteerRepository.hasMembershipInMinistry({
+        churchId: input.churchId,
+        volunteerId: input.volunteerId,
+        ministryId: participation.ministryId,
         tx,
-      );
+      });
 
     if (!hasMembership) {
       throw new HardConstraintError(
@@ -243,13 +243,13 @@ export class DbAssignmentManager implements IAssignmentManager {
     }
 
     const hasQualification =
-      await this.volunteerRepository.hasRoleQualification(
-        input.churchId,
-        input.volunteerId,
-        participation.ministryId,
+      await this.volunteerRepository.hasRoleQualification({
+        churchId: input.churchId,
+        volunteerId: input.volunteerId,
+        ministryId: participation.ministryId,
         roleId,
         tx,
-      );
+      });
     const existingShiftAssignments = await this.assignmentRepo.listByShift(
       input.churchId,
       shift.id,

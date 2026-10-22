@@ -126,10 +126,10 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       throw new InsufficientInvitationAuthorityError();
     }
 
-    const ministryRoles = await this.roleRepository.listByMinistry(
+    const ministryRoles = await this.roleRepository.listByMinistry({
       churchId,
       ministryId,
-    );
+    });
     const validRoleIds = new Set(ministryRoles.map((role) => role.id));
     if (!roleIds.every((roleId) => validRoleIds.has(roleId))) {
       throw new InvalidInvitationRoleError();
@@ -396,7 +396,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     const { churchId, ministryId, callerId } = input;
 
     try {
-      await this.ministryRepository.getById(churchId, ministryId);
+      await this.ministryRepository.getById({ churchId, id: ministryId });
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw new MinistryInvitationNotFoundError();

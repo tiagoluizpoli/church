@@ -31,7 +31,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     if (!isValidUuid(id)) {
       throw new NotFoundError(`Church not found: ${id}`);
     }
-    const [row] = await getClient(this.db)
+    const [row] = await getClient({ db: this.db })
       .select(churchJoinShape)
       .from(church)
       .innerJoin(organization, eq(organization.id, church.id))
@@ -41,7 +41,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
   }
 
   async getBySlug({ slug }: GetChurchBySlugInput): Promise<Church> {
-    const [row] = await getClient(this.db)
+    const [row] = await getClient({ db: this.db })
       .select(churchJoinShape)
       .from(church)
       .innerJoin(organization, eq(organization.id, church.id))
@@ -56,7 +56,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
    * equals the Church id (spec §4.5).
    */
   async listAdminEmails({ id }: ListChurchAdminEmailsInput): Promise<string[]> {
-    const rows = await getClient(this.db)
+    const rows = await getClient({ db: this.db })
       .select({ email: user.email })
       .from(member)
       .innerJoin(user, eq(user.id, member.userId))

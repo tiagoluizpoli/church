@@ -36,7 +36,8 @@ export function runVolunteerNotificationRepositoryContractTests(
     });
 
     it('should create a volunteer notification', async () => {
-      const created = await repo.create(TEST_CHURCH_ID, {
+      const created = await repo.create({
+        churchId: TEST_CHURCH_ID,
         volunteerId: TEST_VOLUNTEER_ID,
         type: TEST_TYPE,
         title: 'Assignment updated',
@@ -56,7 +57,8 @@ export function runVolunteerNotificationRepositoryContractTests(
     });
 
     it('should list volunteer notifications newest first', async () => {
-      const result = await repo.listByVolunteer(TEST_CHURCH_ID, {
+      const result = await repo.listByVolunteer({
+        churchId: TEST_CHURCH_ID,
         volunteerId: TEST_VOLUNTEER_ID,
         limit: 10,
       });
@@ -70,7 +72,8 @@ export function runVolunteerNotificationRepositoryContractTests(
     });
 
     it('should page volunteer notifications by cursor', async () => {
-      const firstPage = await repo.listByVolunteer(TEST_CHURCH_ID, {
+      const firstPage = await repo.listByVolunteer({
+        churchId: TEST_CHURCH_ID,
         volunteerId: TEST_VOLUNTEER_ID,
         limit: 1,
       });
@@ -81,7 +84,8 @@ export function runVolunteerNotificationRepositoryContractTests(
         '2024-06-02T12:00:00.000Z',
       );
 
-      const secondPage = await repo.listByVolunteer(TEST_CHURCH_ID, {
+      const secondPage = await repo.listByVolunteer({
+        churchId: TEST_CHURCH_ID,
         volunteerId: TEST_VOLUNTEER_ID,
         cursor: firstPage.nextCursor,
         limit: 1,
@@ -93,21 +97,25 @@ export function runVolunteerNotificationRepositoryContractTests(
     });
 
     it('should count only unread notifications for volunteer', async () => {
-      const count = await repo.countUnread(TEST_CHURCH_ID, TEST_VOLUNTEER_ID);
+      const count = await repo.countUnread({
+        churchId: TEST_CHURCH_ID,
+        volunteerId: TEST_VOLUNTEER_ID,
+      });
 
       expect(count).toBe(1);
     });
 
     it('should mark a notification as read', async () => {
-      const readAt = await repo.markRead(
-        TEST_CHURCH_ID,
-        TEST_VOLUNTEER_ID,
-        FIRST_NOTIFICATION_ID,
-      );
+      const readAt = await repo.markRead({
+        churchId: TEST_CHURCH_ID,
+        volunteerId: TEST_VOLUNTEER_ID,
+        notificationId: FIRST_NOTIFICATION_ID,
+      });
 
       expect(readAt).toBeInstanceOf(Date);
 
-      const result = await repo.listByVolunteer(TEST_CHURCH_ID, {
+      const result = await repo.listByVolunteer({
+        churchId: TEST_CHURCH_ID,
         volunteerId: TEST_VOLUNTEER_ID,
         limit: 10,
       });
@@ -119,18 +127,27 @@ export function runVolunteerNotificationRepositoryContractTests(
     });
 
     it('should mark all unread notifications as read for one volunteer only', async () => {
-      const updatedCount = await repo.markAllRead(
-        TEST_CHURCH_ID,
-        TEST_VOLUNTEER_ID,
-      );
+      const updatedCount = await repo.markAllRead({
+        churchId: TEST_CHURCH_ID,
+        volunteerId: TEST_VOLUNTEER_ID,
+      });
 
       expect(updatedCount).toBe(1);
-      expect(await repo.countUnread(TEST_CHURCH_ID, TEST_VOLUNTEER_ID)).toBe(0);
-      expect(await repo.countUnread(TEST_CHURCH_ID, OTHER_VOLUNTEER_ID)).toBe(
-        1,
-      );
+      expect(
+        await repo.countUnread({
+          churchId: TEST_CHURCH_ID,
+          volunteerId: TEST_VOLUNTEER_ID,
+        }),
+      ).toBe(0);
+      expect(
+        await repo.countUnread({
+          churchId: TEST_CHURCH_ID,
+          volunteerId: OTHER_VOLUNTEER_ID,
+        }),
+      ).toBe(1);
 
-      const otherVolunteerResult = await repo.listByVolunteer(TEST_CHURCH_ID, {
+      const otherVolunteerResult = await repo.listByVolunteer({
+        churchId: TEST_CHURCH_ID,
         volunteerId: OTHER_VOLUNTEER_ID,
         limit: 10,
       });

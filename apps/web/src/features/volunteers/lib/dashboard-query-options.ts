@@ -42,7 +42,12 @@ function readStorageValue<T>(key: string): T | undefined {
   }
 }
 
-function writeStorageValue<T>(key: string, value: T): void {
+interface WriteStorageValueInput<T> {
+  key: string;
+  value: T;
+}
+
+function writeStorageValue<T>({ key, value }: WriteStorageValueInput<T>): void {
   if (!canUseStorage()) {
     return;
   }
@@ -62,10 +67,15 @@ export function getDashboardSnapshotQueryConfig(isOnline: boolean) {
   } as const;
 }
 
-export function getMinistryScheduleQueryConfig(
-  ministryId: string | undefined,
-  isOnline: boolean,
-) {
+export interface GetMinistryScheduleQueryConfigInput {
+  ministryId: string | undefined;
+  isOnline: boolean;
+}
+
+export function getMinistryScheduleQueryConfig({
+  ministryId,
+  isOnline,
+}: GetMinistryScheduleQueryConfigInput) {
   return {
     gcTime: GC_TIME_MS,
     initialData: isOnline
@@ -98,7 +108,7 @@ export function readCachedDashboardSnapshot(): DashboardSnapshot | undefined {
 export function writeCachedDashboardSnapshot(
   snapshot: DashboardSnapshot,
 ): void {
-  writeStorageValue(DASHBOARD_SNAPSHOT_STORAGE_KEY, snapshot);
+  writeStorageValue({ key: DASHBOARD_SNAPSHOT_STORAGE_KEY, value: snapshot });
 }
 
 export function readCachedNotificationInbox():
@@ -112,7 +122,7 @@ export function readCachedNotificationInbox():
 export function writeCachedNotificationInbox(
   state: CachedNotificationInboxState,
 ): void {
-  writeStorageValue(DASHBOARD_NOTIFICATIONS_STORAGE_KEY, state);
+  writeStorageValue({ key: DASHBOARD_NOTIFICATIONS_STORAGE_KEY, value: state });
 }
 
 export function readCachedMinistrySchedule(
@@ -127,12 +137,17 @@ export function readCachedMinistrySchedule(
   );
 }
 
-export function writeCachedMinistrySchedule(
-  ministryId: string,
-  schedule: DashboardMinistrySchedule,
-): void {
-  writeStorageValue(
-    `${MINISTRY_SCHEDULE_STORAGE_KEY_PREFIX}:${ministryId}`,
-    schedule,
-  );
+export interface WriteCachedMinistryScheduleInput {
+  ministryId: string;
+  schedule: DashboardMinistrySchedule;
+}
+
+export function writeCachedMinistrySchedule({
+  ministryId,
+  schedule,
+}: WriteCachedMinistryScheduleInput): void {
+  writeStorageValue({
+    key: `${MINISTRY_SCHEDULE_STORAGE_KEY_PREFIX}:${ministryId}`,
+    value: schedule,
+  });
 }

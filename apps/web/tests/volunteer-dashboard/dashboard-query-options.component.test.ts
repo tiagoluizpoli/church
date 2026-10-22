@@ -59,7 +59,10 @@ describe('dashboard query options', () => {
       }),
     );
 
-    const config = getMinistryScheduleQueryConfig('ministry-1', true);
+    const config = getMinistryScheduleQueryConfig({
+      ministryId: 'ministry-1',
+      isOnline: true,
+    });
 
     expect(config.initialData).toBeUndefined();
     expect(config.placeholderData?.()).toMatchObject({

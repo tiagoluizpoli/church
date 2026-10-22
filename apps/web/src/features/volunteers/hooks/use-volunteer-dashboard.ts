@@ -31,10 +31,15 @@ export interface AssignmentResponseMutationInput {
   response: 'confirmed' | 'declined';
 }
 
-function shouldKeepExpandedGroup(
-  groups: DashboardAssignmentGroup[],
-  expandedEventId: string | undefined,
-): boolean {
+interface ShouldKeepExpandedGroupInput {
+  groups: DashboardAssignmentGroup[];
+  expandedEventId: string | undefined;
+}
+
+function shouldKeepExpandedGroup({
+  groups,
+  expandedEventId,
+}: ShouldKeepExpandedGroupInput): boolean {
   return expandedEventId
     ? groups.some((group) => group.eventId === expandedEventId)
     : false;
@@ -159,7 +164,12 @@ export function useVolunteerDashboard({
       return;
     }
 
-    if (shouldKeepExpandedGroup(assignmentGroups, expandedAssignmentEventId)) {
+    if (
+      shouldKeepExpandedGroup({
+        groups: assignmentGroups,
+        expandedEventId: expandedAssignmentEventId,
+      })
+    ) {
       return;
     }
 
@@ -189,7 +199,10 @@ export function useVolunteerDashboard({
   const ministryScheduleQuery = useQuery({
     queryKey: ['ministry-schedule', selectedMinistryId],
     queryFn: () => volunteerApi.getMinistrySchedule(selectedMinistryId ?? ''),
-    ...getMinistryScheduleQueryConfig(selectedMinistryId, isOnline),
+    ...getMinistryScheduleQueryConfig({
+      ministryId: selectedMinistryId,
+      isOnline,
+    }),
     enabled: selectedMinistryId != null,
   });
 
@@ -206,7 +219,10 @@ export function useVolunteerDashboard({
       return;
     }
 
-    writeCachedMinistrySchedule(selectedMinistryId, ministryScheduleQuery.data);
+    writeCachedMinistrySchedule({
+      ministryId: selectedMinistryId,
+      schedule: ministryScheduleQuery.data,
+    });
   }, [ministryScheduleQuery.data, selectedMinistryId]);
 
   const invalidateVolunteerDashboard = async () => {

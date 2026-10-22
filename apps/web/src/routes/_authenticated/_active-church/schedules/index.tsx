@@ -16,6 +16,10 @@ import { MinistryPrepareList } from '@/features/scheduling/components/prepare/mi
 import { StatPill } from '@/features/scheduling/components/prepare/stat-pill';
 import { adminApi } from '@/utils/api-instances';
 
+interface CycleIdRef {
+  cycleId: string;
+}
+
 export const Route = createFileRoute(
   '/_authenticated/_active-church/schedules/',
 )({
@@ -53,8 +57,7 @@ function PrepareMinistryListRoute() {
     ministries.length === eventsQueries.length &&
     eventsQueries.every((query) => query.isSuccess);
 
-  const eventsByMinistryId: Record<string, { cycleId: string }[] | undefined> =
-    {};
+  const eventsByMinistryId: Record<string, CycleIdRef[] | undefined> = {};
   ministries.forEach((ministry, index) => {
     eventsByMinistryId[ministry.id] = eventsQueries[index]?.data?.events;
   });

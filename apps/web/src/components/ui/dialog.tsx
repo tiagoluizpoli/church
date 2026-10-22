@@ -38,14 +38,16 @@ function DialogOverlay({
   );
 }
 
+type DialogContentProps = DialogPrimitive.Popup.Props & {
+  showCloseButton?: boolean;
+};
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
   ...props
-}: DialogPrimitive.Popup.Props & {
-  showCloseButton?: boolean;
-}) {
+}: DialogContentProps) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -88,14 +90,16 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
+type DialogFooterProps = React.ComponentProps<'div'> & {
+  showCloseButton?: boolean;
+};
+
 function DialogFooter({
   className,
   showCloseButton = false,
   children,
   ...props
-}: React.ComponentProps<'div'> & {
-  showCloseButton?: boolean;
-}) {
+}: DialogFooterProps) {
   return (
     <div
       data-slot="dialog-footer"

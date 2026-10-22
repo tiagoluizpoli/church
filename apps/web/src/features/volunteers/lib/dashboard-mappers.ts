@@ -118,12 +118,12 @@ export function mapAvailabilityEvent(
   };
 }
 
+interface AvailabilityEventTimeBlocksData {
+  eventTimeBlocks: AvailabilityEventTimeBlockViewModel[];
+}
+
 export function mapAvailabilityEventTimeBlocks(
-  data:
-    | {
-        eventTimeBlocks: AvailabilityEventTimeBlockViewModel[];
-      }
-    | undefined,
+  data: AvailabilityEventTimeBlocksData | undefined,
 ): AvailabilityEventTimeBlockViewModel[] {
   return data?.eventTimeBlocks ?? [];
 }

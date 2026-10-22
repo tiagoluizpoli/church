@@ -18,6 +18,7 @@ and task ordering.
 | Complete test suite | `bun run test` |
 | Seed contracts (every recipe, refusals) | `bun run test:seeds` |
 | Test placement guard | `bun run validate:test-placement` |
+| Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
@@ -51,6 +52,18 @@ live in the owning project's `tests/` directory at the path that mirrors
 `@/tests/…` and server seeds as `@/seeds/…`; a relative import only for a file
 in the same folder. `bun run lint` and every `validate:affected` run the
 guard (`bun run validate:test-placement`) and fail otherwise.
+
+## Named parameters
+
+`bun run validate:named-parameters` (`tooling/validation/named-parameters-guard.ts`)
+enforces constitution VII on `apps/*/src` and `packages/*/src`, skipping
+generated files and `tests/`. It fails on a function, method, constructor,
+interface method signature or function type with more than one parameter, and
+on an inline object type in a parameter, variable, return or `as` position.
+`bun run lint` and every `validate:affected` run it. A function passed directly
+to a dependency's API is exempt; a named function whose signature a framework
+controls carries `// named-parameters-ignore: <reason>` directly above its
+declaration. Details: [ADR-0010](../adr/0010-mechanical-rules-enforced-by-tooling.md).
 
 ## Seed impact
 
@@ -316,7 +329,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
 | Atomic commits are small and focused | Constitution | Judgement | — | Review: "focused" is a judgement about intent |
 | VI. Specifications traverse `specifications-list.md` | Constitution | Judgement | — | Review: a planning process, not repository content |
-| VII. Named object parameters: at most one parameter, named `interface`/`type` shapes, no inline object types | Constitution, backend, ADR-0010 | Mechanical | Validation guard | Enforced: named-parameter guard in `tooling/validation/` ([#539](https://github.com/tiagoluizpoli/church/issues/539), turned on by [#547](https://github.com/tiagoluizpoli/church/issues/547)) |
+| VII. Named object parameters: at most one parameter, named `interface`/`type` shapes, no inline object types | Constitution, backend, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:named-parameters`, part of `lint` ([#539](https://github.com/tiagoluizpoli/church/issues/539), turned on by [#547](https://github.com/tiagoluizpoli/church/issues/547)) |
 | Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
 | Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |

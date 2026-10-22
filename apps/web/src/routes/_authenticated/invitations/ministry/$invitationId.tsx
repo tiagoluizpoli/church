@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, parseInstant } from '@church/time';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -20,8 +20,8 @@ import type {
   DeclineMinistryInvitation200,
   GetMinistryInvitationStatus200,
 } from '@/infrastructure/api/churchAPI.schemas';
-import { authClient } from '@/lib/auth-client';
 import { useContinueToChurch } from '@/shared/hooks/use-continue-to-church';
+import { useSignOut } from '@/shared/hooks/use-sign-out';
 import { randomId } from '@/shared/utils/id';
 import { redemptionApi } from '@/utils/api-instances';
 
@@ -95,7 +95,7 @@ function describeDeclineFailure({
 }
 
 function MinistryInvitationRoute() {
-  const queryClient = useQueryClient();
+  const signOut = useSignOut();
   const { invitationId } = Route.useParams();
   const navigate = useNavigate();
   const [idempotencyKey] = useState(() => randomId());
@@ -141,16 +141,9 @@ function MinistryInvitationRoute() {
   });
 
   const handleSwitchAccount = (): void => {
-    authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          queryClient.removeQueries({ queryKey: ['caller-capabilities'] });
-          navigate({
-            to: '/login',
-            search: { redirect: `/invitations/ministry/${invitationId}` },
-          });
-        },
-      },
+    signOut({
+      to: '/login',
+      search: { redirect: `/invitations/ministry/${invitationId}` },
     });
   };
 

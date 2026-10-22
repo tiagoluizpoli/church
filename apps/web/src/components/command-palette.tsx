@@ -9,7 +9,10 @@ import {
 import * as React from 'react';
 import { MobileDrawer } from './mobile-drawer';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
+import {
+  isAdminOrLeader,
+  useCallerCapabilities,
+} from '@/shared/hooks/use-caller-capabilities';
 
 export interface CommandPaletteProps {
   open: boolean;
@@ -30,7 +33,7 @@ const BASE_COMMANDS: CommandItem[] = [
 
 const SCHEDULING_COMMAND: CommandItem = {
   label: 'Scheduling',
-  to: '/scheduling',
+  to: '/schedules',
   icon: CalendarClock,
 };
 
@@ -38,8 +41,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const { canSeeScheduling } = useCallerRoles();
-  const commands: CommandItem[] = canSeeScheduling
+  const commands: CommandItem[] = isAdminOrLeader(useCallerCapabilities())
     ? [...BASE_COMMANDS, SCHEDULING_COMMAND]
     : BASE_COMMANDS;
 

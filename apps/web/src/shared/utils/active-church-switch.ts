@@ -54,7 +54,6 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
   { pattern: /^\/availability$/, policy: 'fallback' },
   { pattern: /^\/notifications$/, policy: 'fallback' },
   { pattern: /^\/volunteer\/availability$/, policy: 'fallback' },
-  { pattern: /^\/scheduling\/?$/, policy: 'fallback' },
   {
     pattern: /^\/cycles\/?$/,
     policy: 'preserve',

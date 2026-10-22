@@ -60,14 +60,8 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
   const journey = loadPlanningAdminJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.admin });
 
-  // Entry point 1: the capability index. A ChurchAdmin may enter the one
-  // church-planning workspace, rather than being redirected from a global
-  // Scheduling route.
-  await page.goto('/scheduling');
-  await expect(
-    page.getByRole('link', { name: 'Open church planning' }),
-  ).toBeVisible();
-  await page.getByRole('link', { name: 'Open church planning' }).click();
+  // Entry point 1: the cycles list. A ChurchAdmin navigates directly to /cycles.
+  await page.goto('/cycles');
   await expect(page).toHaveURL(/\/cycles/);
 
   // Entry point 2: the cycle itself — the one canonical form.

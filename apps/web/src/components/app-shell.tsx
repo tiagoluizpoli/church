@@ -1,19 +1,31 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
+  CalendarCheck,
   CalendarClock,
   CalendarRange,
   ChevronLeft,
   ChevronRight,
   Clock,
-  LayoutDashboard,
+  House,
+  Layers,
+  LayoutTemplate,
+  Mail,
   Menu,
   Search,
+  Users,
   UsersRound,
 } from 'lucide-react';
 import * as React from 'react';
-import { useCallerRoles } from '../shared/hooks/use-caller-roles';
+import { useCallerCapabilitiesScope } from '../shared/components/caller-capabilities-scope';
+import {
+  type CallerCapabilities,
+  isAdminOrLeader,
+  useCallerCapabilities,
+} from '../shared/hooks/use-caller-capabilities';
 import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
@@ -28,12 +40,14 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { activeChurchApi } from '@/utils/api-instances';
 
 export interface BreadcrumbSegmentOverride {
   segment: string;
@@ -44,34 +58,27 @@ interface AppShellProps {
   children: React.ReactNode;
   breadcrumbOverrides?: BreadcrumbSegmentOverride[];
 }
-
 interface NavIconProps {
   className?: string;
 }
 
-interface NavItem {
-  label: string;
+type NavGroup = 'home' | 'serving' | 'scheduling' | 'church';
+
+interface NavEntry {
+  group: NavGroup;
+  label: () => string;
   to: string;
   icon: React.ComponentType<NavIconProps>;
-  children?: NavItem[];
+  isVisible: (capabilities: CallerCapabilities) => boolean;
 }
 
 interface IsOpaqueIdSegmentInput {
   segment: string;
 }
 
-interface IsActivePathInput {
+interface IsEntryActiveInput {
   pathname: string;
-  target: string;
-}
-
-interface IsNavItemActiveInput {
-  pathname: string;
-  item: NavItem;
-}
-
-interface ToBreadcrumbLabelInput {
-  segment: string;
+  entry: NavEntry;
 }
 
 interface ResolveBreadcrumbLabelInput {
@@ -85,58 +92,134 @@ interface BreadcrumbItemModel {
   isLast: boolean;
 }
 
-interface ActiveNavBranch {
-  item: NavItem | null;
-  child: NavItem | null;
-}
-
-interface FindActiveNavBranchInput {
-  pathname: string;
-  items: NavItem[];
-}
-
-interface NavLabelInput {
-  itemLabel: string;
-  childLabel: string | null;
-}
-
 interface GetSelectChurchDestinationInput {
   destination: string;
 }
 
-const BASE_NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Availability', to: '/availability', icon: Clock },
-];
-
-const SCHEDULING_NAV_ITEM: NavItem = {
-  label: 'Scheduling',
-  to: '/scheduling',
-  icon: CalendarClock,
-  children: [
-    {
-      label: 'Cycles',
-      to: '/cycles',
-      icon: CalendarRange,
-    },
-    { label: 'Schedules', to: '/schedules', icon: UsersRound },
-  ],
-};
-
-function isActivePath({ pathname, target }: IsActivePathInput): boolean {
-  return pathname === target || pathname.startsWith(`${target}/`);
+interface NavListProps {
+  groups: NavGroupModel[];
+  pathname: string;
+  variant: 'sidebar' | 'collapsed' | 'drawer';
+  onNavigate?: () => void;
 }
 
-// Cycles and Schedules live outside /scheduling, so a section is also active
-// on any of its children's pages.
-function isNavItemActive({ pathname, item }: IsNavItemActiveInput): boolean {
-  return (
-    isActivePath({ pathname, target: item.to }) ||
-    Boolean(
-      item.children?.some((child) =>
-        isActivePath({ pathname, target: child.to }),
-      ),
-    )
+interface NavGroupModel {
+  group: NavGroup;
+  entries: NavEntry[];
+}
+
+// The one nav list: add or retarget an entry here. Order is render order.
+const NAV_ENTRIES: NavEntry[] = [
+  {
+    group: 'home',
+    label: () => m.nav_home(),
+    to: '/',
+    icon: House,
+    isVisible: () => true,
+  },
+  {
+    group: 'serving',
+    label: () => m.nav_my_schedule(),
+    to: '/my-schedule',
+    icon: CalendarCheck,
+    isVisible: (c) => c.hasVolunteerMembership,
+  },
+  {
+    group: 'serving',
+    label: () => m.nav_availability(),
+    to: '/availability',
+    icon: Clock,
+    isVisible: (c) => c.hasVolunteerMembership,
+  },
+  {
+    group: 'scheduling',
+    label: () => m.nav_schedules(),
+    to: '/schedules',
+    icon: UsersRound,
+    isVisible: isAdminOrLeader,
+  },
+  {
+    group: 'scheduling',
+    label: () => m.nav_cycles(),
+    to: '/cycles',
+    icon: CalendarRange,
+    isVisible: (c) => c.isChurchAdmin,
+  },
+  {
+    group: 'scheduling',
+    label: () => m.nav_event_templates(),
+    to: '/event-templates',
+    icon: LayoutTemplate,
+    isVisible: (c) => c.isChurchAdmin,
+  },
+  {
+    group: 'church',
+    label: () => m.nav_ministries(),
+    to: '/ministries',
+    icon: Layers,
+    isVisible: isAdminOrLeader,
+  },
+  {
+    group: 'church',
+    label: () => m.nav_people(),
+    to: '/people',
+    icon: Users,
+    isVisible: isAdminOrLeader,
+  },
+  {
+    group: 'church',
+    label: () => m.nav_invitations(),
+    to: '/invitations',
+    icon: Mail,
+    isVisible: isAdminOrLeader,
+  },
+];
+
+const GROUP_ORDER: NavGroup[] = ['home', 'serving', 'scheduling', 'church'];
+
+// Home has no heading.
+const GROUP_HEADINGS: Record<NavGroup, (() => string) | null> = {
+  home: null,
+  serving: () => m.nav_group_serving(),
+  scheduling: () => m.nav_group_scheduling(),
+  church: () => m.nav_group_church(),
+};
+
+// Pages that light up an entry besides its own path: Home's page is still
+// /dashboard until Spec 31, Availability redirects into /volunteer/availability.
+const EXTRA_ACTIVE_PATHS: Record<string, string[]> = {
+  '/': ['/dashboard'],
+  '/availability': ['/volunteer/availability'],
+};
+
+// Static URL segment -> catalog label. A spec adding a segment adds it here.
+const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
+  dashboard: () => m.breadcrumb_dashboard(),
+  availability: () => m.nav_availability(),
+  notifications: () => m.breadcrumb_notifications(),
+  cycles: () => m.nav_cycles(),
+  new: () => m.breadcrumb_new(),
+  'event-templates': () => m.nav_event_templates(),
+  schedules: () => m.nav_schedules(),
+  assign: () => m.breadcrumb_assign(),
+  volunteer: () => m.breadcrumb_volunteer(),
+  'my-schedule': () => m.nav_my_schedule(),
+  ministries: () => m.nav_ministries(),
+  people: () => m.nav_people(),
+  invitations: () => m.nav_invitations(),
+  ministry: () => m.breadcrumb_ministry(),
+};
+
+function isEntryActive({ pathname, entry }: IsEntryActiveInput): boolean {
+  if (entry.to === '/' && pathname === '/') {
+    return true;
+  }
+  const targets = [
+    ...(entry.to === '/' ? [] : [entry.to]),
+    ...(EXTRA_ACTIVE_PATHS[entry.to] ?? []),
+  ];
+  return targets.some(
+    (target) => pathname === target || pathname.startsWith(`${target}/`),
   );
 }
 
@@ -144,7 +227,12 @@ function isOpaqueIdSegment({ segment }: IsOpaqueIdSegmentInput): boolean {
   return /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(segment);
 }
 
-function toBreadcrumbLabel({ segment }: ToBreadcrumbLabelInput): string {
+function toBreadcrumbLabel({ segment }: IsOpaqueIdSegmentInput): string {
+  const mapped = BREADCRUMB_SEGMENT_LABELS[segment];
+  if (mapped) {
+    return mapped();
+  }
+  // Unmapped static segment: visible English on purpose, so the gap shows.
   const normalized = segment.replace(/[-_]/g, ' ');
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
@@ -165,34 +253,130 @@ function resolveBreadcrumbLabel({
   return toBreadcrumbLabel({ segment });
 }
 
-function findActiveNavBranch({
-  pathname,
-  items,
-}: FindActiveNavBranchInput): ActiveNavBranch {
-  for (const item of items) {
-    if (!isNavItemActive({ pathname, item })) {
-      continue;
-    }
-
-    const activeChild =
-      item.children?.find((child) =>
-        isActivePath({ pathname, target: child.to }),
-      ) ?? null;
-
-    return { item, child: activeChild };
-  }
-
-  return { item: null, child: null };
+interface ChurchNameProps {
+  name: string | null;
 }
 
-function formatNavLabel({ itemLabel, childLabel }: NavLabelInput): string {
-  return childLabel ? `${itemLabel}: ${childLabel}` : itemLabel;
+function ChurchName({ name }: ChurchNameProps) {
+  return name === null ? (
+    <Skeleton data-testid="church-name-skeleton" className="h-5 w-28" />
+  ) : (
+    <span className="block truncate font-semibold text-[1.05rem] tracking-tight">
+      {name}
+    </span>
+  );
 }
 
 function getSelectChurchDestination({
   destination,
 }: GetSelectChurchDestinationInput): string {
   return `/select-church?redirect=${encodeURIComponent(destination)}`;
+}
+
+// One render for the desktop sidebar (expanded or icon-only) and the drawer.
+function NavList({ groups, pathname, variant, onNavigate }: NavListProps) {
+  return (
+    <nav
+      className={
+        variant === 'collapsed'
+          ? 'flex-1 space-y-0.5 px-2 py-5'
+          : variant === 'sidebar'
+            ? 'flex-1 space-y-1 px-3 py-5'
+            : 'flex flex-col space-y-1'
+      }
+    >
+      {groups.map(({ group, entries }) => {
+        const heading = GROUP_HEADINGS[group];
+        return (
+          <div key={group} className="space-y-1">
+            {heading && variant !== 'collapsed' ? (
+              <p className="px-3 pt-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                {heading()}
+              </p>
+            ) : null}
+            {entries.map((entry) => {
+              const isActive = isEntryActive({ pathname, entry });
+              const Icon = entry.icon;
+              const label = entry.label();
+
+              if (variant === 'collapsed') {
+                return (
+                  <Tooltip key={entry.to}>
+                    <TooltipTrigger
+                      render={
+                        <Link
+                          to={entry.to}
+                          aria-current={isActive ? 'page' : undefined}
+                          aria-label={label}
+                          className={`radius-icon mx-auto flex h-10 w-10 shrink-0 items-center justify-center transition-colors ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          }`}
+                        />
+                      }
+                    >
+                      <Icon className="h-4.5 w-4.5 shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{label}</TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              if (variant === 'sidebar') {
+                return (
+                  <Link
+                    key={entry.to}
+                    to={entry.to}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`radius-surface flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent ${
+                      isActive
+                        ? 'font-semibold text-primary'
+                        : 'font-medium text-sidebar-foreground/78 hover:text-sidebar-accent-foreground'
+                    }`}
+                  >
+                    <Icon
+                      className={`h-4.5 w-4.5 shrink-0 ${
+                        isActive ? 'text-primary' : 'text-sidebar-foreground/60'
+                      }`}
+                    />
+                    <span className="overflow-hidden whitespace-nowrap">
+                      {label}
+                    </span>
+                  </Link>
+                );
+              }
+
+              return (
+                <Link
+                  key={entry.to}
+                  to={entry.to}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={onNavigate}
+                  className={`radius-surface flex h-12 items-center gap-3 border px-4 py-3 font-medium text-base transition-colors ${
+                    isActive
+                      ? 'border-primary/15 bg-primary/11 font-semibold text-foreground'
+                      : 'border-sidebar-border/55 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                >
+                  <span
+                    className={`radius-icon flex h-9 w-9 shrink-0 items-center justify-center ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background/80 text-muted-foreground'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                  </span>
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
+    </nav>
+  );
 }
 
 export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
@@ -203,21 +387,29 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { canSeeScheduling } = useCallerRoles();
-  const navItems: NavItem[] = canSeeScheduling
-    ? [...BASE_NAV_ITEMS, SCHEDULING_NAV_ITEM]
-    : BASE_NAV_ITEMS;
-  const activeBranch = findActiveNavBranch({
-    pathname: location.pathname,
-    items: navItems,
+  const capabilities = useCallerCapabilities();
+  const visibleEntries = NAV_ENTRIES.filter((entry) =>
+    entry.isVisible(capabilities),
+  );
+  const navGroups: NavGroupModel[] = GROUP_ORDER.flatMap((group) => {
+    const entries = visibleEntries.filter((entry) => entry.group === group);
+    return entries.length > 0 ? [{ group, entries }] : [];
   });
-  const currentSectionLabel = activeBranch.item
-    ? formatNavLabel({
-        itemLabel: activeBranch.item.label,
-        childLabel: activeBranch.child?.label ?? null,
-      })
-    : null;
-  const mobileSubtitle = currentSectionLabel ?? 'Calm scheduling';
+  const mobileSubtitle =
+    visibleEntries
+      .find((entry) => isEntryActive({ pathname: location.pathname, entry }))
+      ?.label() ?? null;
+  // Same query key as /select-church, so the cache is shared.
+  const churchScope = useCallerCapabilitiesScope();
+  const { data: churchOptions } = useQuery({
+    queryKey: ['active-church', 'options'],
+    queryFn: () => activeChurchApi.listActiveChurchOptions(),
+  });
+  const churches = churchOptions?.churches ?? [];
+  const churchName =
+    churches.find((church) => church.churchId === churchScope?.churchId)
+      ?.name ?? null;
+  const canSwitchChurch = churches.length >= 2;
   const selectChurchDestination = getSelectChurchDestination({
     destination: location.href,
   });
@@ -254,7 +446,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
     [breadcrumbOverrides],
   );
   const breadcrumbs: BreadcrumbItemModel[] = [
-    { label: 'Home', to: '/', isLast: pathSegments.length === 0 },
+    { label: m.nav_home(), to: '/', isLast: pathSegments.length === 0 },
     ...pathSegments.flatMap((segment, index) => {
       const label = resolveBreadcrumbLabel({
         segment,
@@ -300,12 +492,12 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
             <CalendarClock className="h-5 w-5" />
           </div>
           <div className="space-y-0.5">
-            <span className="block font-semibold text-[1.05rem] tracking-tight">
-              Church CRM
-            </span>
-            <span className="block text-muted-foreground text-xs">
-              {mobileSubtitle}
-            </span>
+            <ChurchName name={churchName} />
+            {mobileSubtitle ? (
+              <span className="block text-muted-foreground text-xs">
+                {mobileSubtitle}
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -328,7 +520,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
             data-testid="mobile-drawer-trigger"
             onClick={() => setIsDrawerOpen(true)}
             className="radius-icon flex h-11 w-11 items-center justify-center border border-sidebar-border bg-background/80 p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            aria-label="Open menu"
+            aria-label={m.nav_open_menu()}
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -352,12 +544,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
                 <CalendarClock className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
-                <span className="block font-semibold text-[1.05rem] tracking-tight">
-                  Church CRM
-                </span>
-                <span className="block text-muted-foreground text-xs">
-                  Scheduling workspace
-                </span>
+                <ChurchName name={churchName} />
               </div>
             </div>
           ) : (
@@ -367,206 +554,33 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
           )}
         </div>
 
-        <div className={isCollapsed ? 'px-2 py-3' : 'px-3 py-3'}>
-          <button
-            type="button"
-            onClick={handleSwitchChurch}
-            className="radius-surface flex h-10 w-full items-center justify-center border border-sidebar-border bg-sidebar-accent/60 px-3 font-medium text-sidebar-foreground text-sm transition-colors hover:bg-sidebar-accent"
-          >
-            <span className={isCollapsed ? 'sr-only' : undefined}>
-              Switch Church
-            </span>
-            {isCollapsed ? <UsersRound className="size-4" /> : null}
-          </button>
-        </div>
+        {canSwitchChurch ? (
+          <div className={isCollapsed ? 'px-2 py-3' : 'px-3 py-3'}>
+            <button
+              type="button"
+              onClick={handleSwitchChurch}
+              className="radius-surface flex h-10 w-full items-center justify-center border border-sidebar-border bg-sidebar-accent/60 px-3 font-medium text-sidebar-foreground text-sm transition-colors hover:bg-sidebar-accent"
+            >
+              <span className={isCollapsed ? 'sr-only' : undefined}>
+                {m.nav_switch_church()}
+              </span>
+              {isCollapsed ? <UsersRound className="size-4" /> : null}
+            </button>
+          </div>
+        ) : null}
 
         {/* Sidebar Nav */}
         <TooltipProvider delay={120}>
-          <nav
-            className={`flex-1 py-5 ${isCollapsed ? 'space-y-0.5 px-2' : 'space-y-1 px-3'}`}
-          >
-            {navItems.map((item) => {
-              const isActive = isNavItemActive({
-                pathname: location.pathname,
-                item,
-              });
-              const activeChild =
-                item.children?.find((child) =>
-                  isActivePath({
-                    pathname: location.pathname,
-                    target: child.to,
-                  }),
-                ) ?? null;
-              const tooltipLabel = formatNavLabel({
-                itemLabel: item.label,
-                childLabel: activeChild?.label ?? null,
-              });
-              const Icon = item.icon;
-
-              // Collapsed rail: parent is a perfect square icon button (no
-              // stacked padding from both `nav` and the link, which used to
-              // push the 36px icon wider than the 64px collapsed rail).
-              const collapsedParentLink = (
-                <Link
-                  to={item.to}
-                  aria-current={isActive ? 'page' : undefined}
-                  aria-label={tooltipLabel}
-                  className={`radius-icon mx-auto flex h-10 w-10 shrink-0 items-center justify-center transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : item.children
-                        ? 'bg-sidebar-accent/70 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                        : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  }`}
-                >
-                  <Icon className="h-4.5 w-4.5 shrink-0" />
-                </Link>
-              );
-
-              // No bg/border pill for the expanded state — active is
-              // conveyed by icon + text color/weight only, per hover still
-              // gets a light bg for interaction feedback (a different,
-              // transient state, not the persistent "selected" look).
-              const expandedParentLink = (
-                <Link
-                  to={item.to}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`radius-surface flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent ${
-                    isActive
-                      ? 'font-semibold text-primary'
-                      : 'font-medium text-sidebar-foreground/78 hover:text-sidebar-accent-foreground'
-                  }`}
-                >
-                  <Icon
-                    className={`h-4.5 w-4.5 shrink-0 ${
-                      isActive ? 'text-primary' : 'text-sidebar-foreground/60'
-                    }`}
-                  />
-                  <motion.span
-                    initial={false}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    className="overflow-hidden whitespace-nowrap"
-                  >
-                    {item.label}
-                  </motion.span>
-                </Link>
-              );
-
-              const childRow = (child: NavItem) => {
-                const isChildActive = isActivePath({
-                  pathname: location.pathname,
-                  target: child.to,
-                });
-                const ChildIcon = child.icon;
-                return (
-                  <Link
-                    key={child.to}
-                    to={child.to}
-                    aria-current={isChildActive ? 'page' : undefined}
-                    className={`radius-surface flex items-center gap-2 px-2.5 py-2 text-sm transition-colors hover:bg-sidebar-accent ${
-                      isChildActive
-                        ? 'font-semibold text-primary'
-                        : 'font-medium text-sidebar-foreground/70 hover:text-sidebar-accent-foreground'
-                    }`}
-                  >
-                    <ChildIcon
-                      className={`h-3.5 w-3.5 shrink-0 ${
-                        isChildActive
-                          ? 'text-primary'
-                          : 'text-sidebar-foreground/55'
-                      }`}
-                    />
-                    <span className="whitespace-nowrap">{child.label}</span>
-                  </Link>
-                );
-              };
-
-              const showChildren = Boolean(item.children);
-
-              return (
-                <div key={item.to} className={isCollapsed ? 'mb-1' : undefined}>
-                  {isCollapsed ? (
-                    <Tooltip>
-                      <TooltipTrigger render={collapsedParentLink} />
-                      <TooltipContent side="right">
-                        {tooltipLabel}
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    expandedParentLink
-                  )}
-
-                  {showChildren && isCollapsed ? (
-                    <div className="mt-0.5 flex flex-col items-center gap-0.5">
-                      {item.children?.map((child) => {
-                        const isChildActive = isActivePath({
-                          pathname: location.pathname,
-                          target: child.to,
-                        });
-                        const ChildIcon = child.icon;
-                        return (
-                          <Tooltip key={child.to}>
-                            <TooltipTrigger
-                              render={
-                                <Link
-                                  to={child.to}
-                                  aria-current={
-                                    isChildActive ? 'page' : undefined
-                                  }
-                                  aria-label={child.label}
-                                  className={`radius-icon flex h-7 w-7 shrink-0 items-center justify-center transition-colors ${
-                                    isChildActive
-                                      ? 'bg-primary text-primary-foreground'
-                                      : 'bg-background/60 text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                                  }`}
-                                />
-                              }
-                            >
-                              <ChildIcon className="h-3.5 w-3.5 shrink-0" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              {child.label}
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-
-                  {showChildren && !isCollapsed ? (
-                    // Parent icon center: link px-3 (12px) + half of the
-                    // h-4.5 (18px) icon = 21px = left-5.25. The line starts
-                    // at top-0 (the wrapper's own top, flush with the
-                    // parent row's bottom edge) rather than reaching up to
-                    // touch the icon itself — an 11px gap, same rule
-                    // applied on the child side: each stub stops 11px
-                    // short of the child icon's left edge (child icon
-                    // center = wrapper pl-8 (32px) + child link px-2.5
-                    // (10px) + half of h-3.5 (14px) = 49px, icon left edge
-                    // = 42px, so the stub — starting at local -11px / outer
-                    // 21px — runs to w-2.5 (10px), landing at outer 31px,
-                    // 11px shy of 42). Same gap everywhere, deliberately
-                    // consistent rather than flush.
-                    <div className="relative mb-1 space-y-0.5 pl-8">
-                      <div className="absolute top-0 bottom-4 left-5.25 w-px bg-sidebar-foreground/25" />
-                      {item.children?.map((child) => (
-                        <div key={child.to} className="relative">
-                          <div className="absolute top-1/2 -left-2.75 h-px w-2.5 -translate-y-1/2 bg-sidebar-foreground/25" />
-                          {childRow(child)}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </nav>
+          <NavList
+            groups={navGroups}
+            pathname={location.pathname}
+            variant={isCollapsed ? 'collapsed' : 'sidebar'}
+          />
         </TooltipProvider>
       </motion.aside>
 
       {/* 3. Main Content Container */}
-      <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Desktop Topbar */}
         <header className="relative hidden h-16 shrink-0 items-center justify-between border-border/70 border-b bg-background/92 px-(--workspace-pad-x) backdrop-blur md:flex">
           {/* Sidebar toggle + Breadcrumbs */}
@@ -576,7 +590,9 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
               data-testid="sidebar-toggle"
               onClick={handleToggle}
               className="radius-icon flex h-8 w-8 shrink-0 items-center justify-center border border-border bg-card/88 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={
+                isCollapsed ? m.nav_expand_sidebar() : m.nav_collapse_sidebar()
+              }
             >
               {isCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
@@ -644,142 +660,43 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
         </main>
       </div>
 
-      {/* 4. Mobile Bottom Navigation Bar */}
-      <nav
-        data-testid="mobile-bottom-nav"
-        className="fixed right-0 bottom-0 left-0 z-40 flex h-16 items-center justify-around border-sidebar-border border-t bg-sidebar/96 px-2 backdrop-blur md:hidden"
-      >
-        {navItems.map((item) => {
-          const isActive = isNavItemActive({
-            pathname: location.pathname,
-            item,
-          });
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`radius-surface flex h-12 min-w-20 flex-col items-center justify-center px-2 text-xs transition-colors ${
-                isActive
-                  ? 'bg-primary/10 font-semibold text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="mb-0.5 h-5 w-5 shrink-0" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
       {/* 5. Mobile Drawer Menu */}
       <MobileDrawer
         open={isDrawerOpen}
         onOpenChange={handleDrawerOpenChange}
-        title="Navigation"
-        description="Move between your core workflows."
+        title={m.shell_drawer_title()}
+        description={m.shell_drawer_description()}
       >
         <div className="flex flex-col space-y-4">
-          <div className="flex items-center justify-between border-sidebar-border border-b pb-2">
-            <div className="space-y-0.5">
-              <span className="block font-semibold text-lg">Navigation</span>
-              <span className="block text-muted-foreground text-xs">
-                Move between your core workflows.
-              </span>
-            </div>
+          <div className="flex justify-end border-sidebar-border border-b pb-2">
             <ModeToggle />
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              handleSwitchChurch();
-              setIsDrawerOpen(false);
-            }}
-            className="radius-surface flex h-12 items-center gap-3 border border-sidebar-border/55 px-4 py-3 font-medium text-base text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <UsersRound className="size-4 shrink-0" />
-            Switch Church
-          </button>
+          {canSwitchChurch ? (
+            <button
+              type="button"
+              onClick={() => {
+                handleSwitchChurch();
+                setIsDrawerOpen(false);
+              }}
+              className="radius-surface flex h-12 items-center gap-3 border border-sidebar-border/55 px-4 py-3 font-medium text-base text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <UsersRound className="size-4 shrink-0" />
+              {m.nav_switch_church()}
+            </button>
+          ) : null}
 
-          <nav className="flex flex-col space-y-1">
-            {navItems.map((item) => {
-              const isActive = isNavItemActive({
-                pathname: location.pathname,
-                item,
-              });
-              const Icon = item.icon;
-              return (
-                <div key={item.to}>
-                  <Link
-                    to={item.to}
-                    onClick={() => setIsDrawerOpen(false)}
-                    className={`radius-surface flex h-12 items-center gap-3 border px-4 py-3 font-medium text-base transition-colors ${
-                      isActive
-                        ? 'border-primary/15 bg-primary/11 font-semibold text-foreground'
-                        : 'border-sidebar-border/55 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
-                    <span
-                      className={`radius-icon flex h-9 w-9 shrink-0 items-center justify-center ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-background/80 text-muted-foreground'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                    </span>
-                    <span>{item.label}</span>
-                  </Link>
-
-                  {item.children ? (
-                    <div className="relative mt-0.5 space-y-0.5 pl-10">
-                      <div
-                        data-nav-connector-rail
-                        aria-hidden="true"
-                        className="absolute top-0 bottom-2 left-5 w-px bg-sidebar-foreground/20"
-                      />
-                      {item.children.map((child) => {
-                        const isChildActive = isActivePath({
-                          pathname: location.pathname,
-                          target: child.to,
-                        });
-                        const ChildIcon = child.icon;
-                        return (
-                          <div
-                            key={child.to}
-                            data-nav-child
-                            className="relative"
-                          >
-                            <div
-                              data-nav-connector
-                              aria-hidden="true"
-                              className="absolute top-1/2 -left-5 h-px w-3 -translate-y-1/2 bg-sidebar-foreground/20"
-                            />
-                            <Link
-                              to={child.to}
-                              onClick={() => setIsDrawerOpen(false)}
-                              className={`radius-surface flex h-11 items-center gap-2 border px-3 py-2 font-medium text-sm transition-colors ${
-                                isChildActive
-                                  ? 'border-primary/15 bg-primary/11 font-semibold text-foreground'
-                                  : 'border-sidebar-border/55 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                              }`}
-                            >
-                              <ChildIcon className="h-3.5 w-3.5 shrink-0" />
-                              <span>{child.label}</span>
-                            </Link>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </nav>
+          <NavList
+            groups={navGroups}
+            pathname={location.pathname}
+            variant="drawer"
+            onNavigate={() => setIsDrawerOpen(false)}
+          />
 
           <div className="flex items-center justify-between border-sidebar-border border-t pt-4">
-            <span className="text-muted-foreground text-sm">Account</span>
+            <span className="text-muted-foreground text-sm">
+              {m.shell_account()}
+            </span>
             <UserMenu />
           </div>
         </div>

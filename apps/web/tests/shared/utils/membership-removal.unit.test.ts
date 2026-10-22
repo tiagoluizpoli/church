@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { describe, expect, it } from 'vitest';
 import {
   membershipRemovedMessage,
@@ -29,7 +30,7 @@ describe('membershipRemovedMessage', () => {
     const message = membershipRemovedMessage({ churchName: 'Igreja Central' });
 
     expect(message).toBe(
-      'You no longer have access to Igreja Central. Your Church Membership was removed.',
+      m.no_access_removed_from({ churchName: 'Igreja Central' }),
     );
   });
 });

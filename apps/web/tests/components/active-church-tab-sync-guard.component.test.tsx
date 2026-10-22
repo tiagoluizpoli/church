@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -36,9 +37,13 @@ describe('ActiveChurchTabSyncGuard', () => {
     });
 
     const dialog = await screen.findByTestId('active-church-tab-sync-dialog');
-    expect(dialog).toHaveTextContent('Igreja Central');
+    expect(dialog).toHaveTextContent(
+      m.church_switch_sync_body({ churchName: 'Igreja Central' }),
+    );
 
-    await user.click(screen.getByTestId('active-church-tab-sync-continue'));
+    await user.click(
+      screen.getByRole('button', { name: m.church_switch_sync_continue() }),
+    );
 
     expect(
       screen.queryByTestId('active-church-tab-sync-dialog'),

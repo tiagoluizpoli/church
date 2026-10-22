@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -7,7 +8,6 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
-import { CROSS_CHURCH_ACCESS_DENIED_MESSAGE } from '@/shared/utils/cross-church-link';
 import {
   membershipRemovedMessage,
   removedFromSearchSchema,
@@ -43,7 +43,7 @@ function RouteComponent() {
 
   useEffect(() => {
     if (search.accessDenied) {
-      toast.info(CROSS_CHURCH_ACCESS_DENIED_MESSAGE);
+      toast.info(m.switch_church_access_denied());
     }
   }, [search.accessDenied]);
 

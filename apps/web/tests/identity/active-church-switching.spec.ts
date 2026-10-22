@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, type Page, test } from '@playwright/test';
 import { loadActiveChurchSwitchingJourney } from '@/tests/fixtures/journeys/active-church-switching';
 import {
@@ -95,7 +96,9 @@ test.describe('#67 — Active Church selection and switching', () => {
     // Church-scoped nav, not inside `UserMenu` (the User-identity menu).
     await page
       .getByTestId('sidebar')
-      .getByRole('button', { name: 'Switch Church' })
+      .getByRole('button', {
+        name: m.nav_switch_church({}, { locale: 'pt-BR' }),
+      })
       .click();
     await expect(page).toHaveURL(/\/select-church(\?.*)?$/);
 
@@ -105,7 +108,9 @@ test.describe('#67 — Active Church selection and switching', () => {
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
     // The URL commits before the code-split dashboard chunk renders.
     await expect(
-      page.getByRole('heading', { name: 'Select an Active Church' }),
+      page.getByRole('heading', {
+        name: m.select_church_title({}, { locale: 'pt-BR' }),
+      }),
     ).toBeHidden();
 
     expect(
@@ -114,7 +119,7 @@ test.describe('#67 — Active Church selection and switching', () => {
 
     // AC3 — Church A's real name/identifiers appear nowhere in the
     // rendered page. This dual member has no Ministry (nor Church-admin)
-    // access in Church B, so `useCallerRoles`' `scheduling-capability` query
+    // access in Church B, so `useCallerCapabilities`' `scheduling-capability` query
     // — cleared and refetched fresh by `clearActiveChurchScopedCache` on
     // every switch (`active-church-switch.ts`) — resolves
     // `canAccessScheduling: false` for B, and `AppShell` omits the whole
@@ -124,7 +129,9 @@ test.describe('#67 — Active Church selection and switching', () => {
     // in-app control from which Church A's Cycle data was ever
     // reachable, so its absence here is exactly what "no remnant" requires.
     await expect(
-      page.getByTestId('sidebar').getByRole('link', { name: 'Cycles' }),
+      page
+        .getByTestId('sidebar')
+        .getByRole('link', { name: m.nav_cycles({}, { locale: 'pt-BR' }) }),
     ).not.toBeVisible();
 
     const bodyText = await page.locator('body').innerText();

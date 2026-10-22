@@ -256,25 +256,28 @@ export class DbVolunteerManager implements IVolunteerManager {
     // Availability tasks: future events with incomplete availability
     const availabilityTasksNested = await Promise.all(
       ministries.map(async (ministry) => {
-        const events = await this.eventRepo.listByMinistry(
+        const events = await this.eventRepo.listByMinistry({
           churchId,
-          ministry.id as MinistryId,
-        );
+          ministryId: ministry.id as MinistryId,
+        });
         return Promise.all(
           events.map(
             async (event): Promise<DashboardAvailabilityTask | null> => {
               if (compareInstants({ left: event.start, right: now }) <= 0)
                 return null;
               const eventWithEventTimeBlocks =
-                await this.eventRepo.getWithEventTimeBlocks(churchId, event.id);
+                await this.eventRepo.getWithEventTimeBlocks({
+                  churchId,
+                  eventId: event.id,
+                });
               if (eventWithEventTimeBlocks.eventTimeBlocks.length === 0)
                 return null;
               const entries =
-                await this.unavailableShiftRepo.listByVolunteerForEvent(
+                await this.unavailableShiftRepo.listByVolunteerForEvent({
                   churchId,
                   volunteerId,
-                  event.id,
-                );
+                  eventId: event.id,
+                });
               const completionState = availabilityCompletionState(
                 entries,
                 eventWithEventTimeBlocks.eventTimeBlocks,
@@ -334,7 +337,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     );
     const eventIds = [...new Set(participations.map((item) => item.eventId))];
     const events = await Promise.all(
-      eventIds.map((eventId) => this.eventRepo.getById(churchId, eventId)),
+      eventIds.map((eventId) => this.eventRepo.getById({ churchId, eventId })),
     );
     const eventsById = new Map(
       events.map((event) => [event.id as string, event]),
@@ -547,7 +550,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     ]);
     const eventData = await Promise.all(
       participations.map(async (participation) => ({
-        event: await this.eventRepo.getById(churchId, participation.eventId),
+        event: await this.eventRepo.getById({
+          churchId,
+          eventId: participation.eventId,
+        }),
         shifts: await this.shiftRepo.listByParticipation({
           churchId,
           participationId: participation.id,
@@ -556,10 +562,10 @@ export class DbVolunteerManager implements IVolunteerManager {
           churchId,
           participationId: participation.id,
         }),
-        assignments: await this.assignmentRepo.listByParticipation(
+        assignments: await this.assignmentRepo.listByParticipation({
           churchId,
-          participation.id,
-        ),
+          participationId: participation.id,
+        }),
       })),
     );
     const assignments = eventData
@@ -815,27 +821,31 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: RespondToAssignmentInput,
   ): Promise<Assignment> {
     const { assignmentId, churchId, volunteerId, response, reason } = input;
-    const assignment = await this.assignmentRepo.getById(
+    const assignment = await this.assignmentRepo.getById({
       churchId,
       assignmentId,
-    );
+    });
     if (assignment.volunteerId !== volunteerId) {
       throw new AssignmentAccessDeniedError();
     }
     const status = response === 'accepted' ? 'confirmed' : 'declined';
-    await this.assignmentRepo.updateStatus(churchId, assignmentId, {
-      status,
-      reason,
+    await this.assignmentRepo.updateStatus({
+      churchId,
+      assignmentId,
+      input: {
+        status,
+        reason,
+      },
     });
-    return this.assignmentRepo.getById(churchId, assignmentId);
+    return this.assignmentRepo.getById({ churchId, assignmentId });
   }
 
   async cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void> {
     const { assignmentId, churchId, volunteerId } = input;
-    const assignment = await this.assignmentRepo.getById(
+    const assignment = await this.assignmentRepo.getById({
       churchId,
       assignmentId,
-    );
+    });
     if (assignment.volunteerId !== volunteerId) {
       throw new AssignmentAccessDeniedError();
     }
@@ -856,7 +866,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     }
 
     await this.notifyLeadersOfCancellation({ churchId, assignment });
-    await this.assignmentRepo.deleteById(churchId, assignmentId);
+    await this.assignmentRepo.deleteById({ churchId, assignmentId });
   }
 
   private async notifyLeadersOfCancellation(
@@ -871,7 +881,10 @@ export class DbVolunteerManager implements IVolunteerManager {
       churchId,
       participationId: assignment.participationId,
     });
-    const event = await this.eventRepo.getById(churchId, participation.eventId);
+    const event = await this.eventRepo.getById({
+      churchId,
+      eventId: participation.eventId,
+    });
     const leaders =
       await this.availabilityCheckRepo.listMinistryLeaderVolunteerIds({
         churchId,
@@ -942,10 +955,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     volunteerId,
     churchId,
   }: GetPublishedScheduleInput): Promise<Assignment[]> {
-    const assignments = await this.assignmentRepo.listByVolunteer(
+    const assignments = await this.assignmentRepo.listByVolunteer({
       churchId,
       volunteerId,
-    );
+    });
     const participationIds = [
       ...new Set(
         assignments

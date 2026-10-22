@@ -33,33 +33,41 @@ describe('User Story 4: Transaction Context Type Safety', () => {
 
       // 2. EventRepository
       const eventRepo = {} as EventRepository;
-      eventRepo.create(churchId, {} as any, tx);
-      eventRepo.updateStatus(
+      eventRepo.create({ churchId, input: {} as any, tx });
+      eventRepo.updateStatus({
         churchId,
-        'event-1' as EventId,
-        { status: 'scheduled' },
+        eventId: 'event-1' as EventId,
+        input: { status: 'scheduled' },
         tx,
-      );
+      });
 
       // 3. EventTimeBlockRepository
       const eventTimeBlockRepo = {} as EventTimeBlockRepository;
-      eventTimeBlockRepo.create(churchId, {} as any, tx);
-      eventTimeBlockRepo.deleteByEvent(churchId, 'event-1' as EventId, tx);
+      eventTimeBlockRepo.create({ churchId, input: {} as any, tx });
+      eventTimeBlockRepo.deleteByEvent({
+        churchId,
+        eventId: 'event-1' as EventId,
+        tx,
+      });
 
       // 4. AssignmentRepository
       const assignmentRepo = {} as AssignmentRepository;
       assignmentRepo.create({ churchId, input: {} as any, tx });
-      assignmentRepo.updateStatus(
+      assignmentRepo.updateStatus({
         churchId,
-        'assignment-1' as AssignmentId,
-        {} as any,
+        assignmentId: 'assignment-1' as AssignmentId,
+        input: {} as any,
         tx,
-      );
-      assignmentRepo.deleteByEvent(churchId, 'event-1' as EventId, tx);
+      });
+      assignmentRepo.deleteByEvent({
+        churchId,
+        eventId: 'event-1' as EventId,
+        tx,
+      });
 
       // 5. AssignmentAuditRepository
       const auditRepo = {} as AssignmentAuditRepository;
-      auditRepo.create(churchId, {} as any, tx);
+      auditRepo.create({ churchId, input: {} as any, tx });
     }
   });
 });

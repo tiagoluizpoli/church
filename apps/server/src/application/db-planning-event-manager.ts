@@ -523,9 +523,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           end: newStart,
         });
         const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent(
-          input.churchId,
-          input.eventId,
-          tx,
+          { churchId: input.churchId, eventId: input.eventId, tx },
         );
 
         // Sequential await is required here: node-postgres emits deprecation
@@ -534,10 +532,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         // a distinct row, we must process them sequentially to preserve the
         // single-connection model used by the transaction client.
         for (const eventTimeBlock of eventTimeBlocks) {
-          await this.eventTimeBlockRepository.update(
-            input.churchId,
-            eventTimeBlock.id,
-            {
+          await this.eventTimeBlockRepository.update({
+            churchId: input.churchId,
+            eventTimeBlockId: eventTimeBlock.id,
+            input: {
               startTime: toDate({
                 instant: addMilliseconds({
                   instant: eventTimeBlock.startTime,
@@ -552,7 +550,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               }),
             },
             tx,
-          );
+          });
         }
       }
 
@@ -568,16 +566,16 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     return this.unitOfWork.run(async (tx) => {
       await this.ensureWritableEvent({ input, church, action: 'update', tx });
 
-      return this.eventTimeBlockRepository.create(
-        input.churchId,
-        {
+      return this.eventTimeBlockRepository.create({
+        churchId: input.churchId,
+        input: {
           eventId: input.eventId,
           startTime: input.startTime,
           endTime: input.endTime,
           label: input.label,
         },
         tx,
-      );
+      });
     });
   }
 
@@ -594,16 +592,16 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
-      return this.eventTimeBlockRepository.update(
-        input.churchId,
-        input.eventTimeBlockId,
-        {
+      return this.eventTimeBlockRepository.update({
+        churchId: input.churchId,
+        eventTimeBlockId: input.eventTimeBlockId,
+        input: {
           startTime: input.startTime,
           endTime: input.endTime,
           label: input.label,
         },
         tx,
-      );
+      });
     });
   }
 
@@ -620,21 +618,21 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
-      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent(
-        input.churchId,
-        input.eventId,
+      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+        churchId: input.churchId,
+        eventId: input.eventId,
         tx,
-      );
+      });
 
       if (eventTimeBlocks.length <= 1) {
         throw new LastRemainingEventTimeBlockError();
       }
 
-      await this.eventTimeBlockRepository.deleteById(
-        input.churchId,
-        input.eventTimeBlockId,
+      await this.eventTimeBlockRepository.deleteById({
+        churchId: input.churchId,
+        eventTimeBlockId: input.eventTimeBlockId,
         tx,
-      );
+      });
     });
   }
 
@@ -681,11 +679,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   }: LoadWritableEventTimeBlockInput): Promise<EventTimeBlock> {
     await this.ensureWritableEvent({ input, church, action, tx });
 
-    const eventTimeBlock = await this.eventTimeBlockRepository.getById(
-      input.churchId,
-      input.eventTimeBlockId,
+    const eventTimeBlock = await this.eventTimeBlockRepository.getById({
+      churchId: input.churchId,
+      eventTimeBlockId: input.eventTimeBlockId,
       tx,
-    );
+    });
 
     if (eventTimeBlock.eventId !== input.eventId) {
       throw new NotFoundError(

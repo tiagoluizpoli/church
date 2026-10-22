@@ -1,16 +1,14 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 
 import { compareInstants, parseInstant } from '@church/time';
-import type {
-  AssignmentId,
-  ChurchId,
-  EventId,
-  UserId,
-} from '@/domain/branded-ids';
+import type { AssignmentId, ChurchId, UserId } from '@/domain/branded-ids';
 import type {
   AssignmentAuditLogEntry,
   AssignmentAuditRepository,
-  CreateAssignmentAuditInput,
+  CreateAssignmentAuditRepositoryInput,
+  ListAuditByActorInput,
+  ListAuditByChurchInput,
+  ListAuditByEventInput,
 } from '@/domain/contracts/infrastructure/assignment-audit.repository';
 import { AssignmentAudit } from '@/domain/entities/assignment-audit';
 import { runAssignmentAuditRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/assignment-audit.contract-spec';
@@ -45,10 +43,10 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
     this.audits.set(au2.id, au2);
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateAssignmentAuditInput,
-  ): Promise<AssignmentAudit> {
+  async create({
+    churchId,
+    input,
+  }: CreateAssignmentAuditRepositoryInput): Promise<AssignmentAudit> {
     const id = `audit-gen-${this.idCounter++}` as any;
     const au = new AssignmentAudit({
       props: {
@@ -65,7 +63,9 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
     return au;
   }
 
-  async listByChurch(churchId: ChurchId): Promise<AssignmentAudit[]> {
+  async listByChurch({
+    churchId,
+  }: ListAuditByChurchInput): Promise<AssignmentAudit[]> {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId)
       .sort((a, b) =>
@@ -73,10 +73,10 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
       );
   }
 
-  async listByActor(
-    churchId: ChurchId,
-    actorId: UserId,
-  ): Promise<AssignmentAudit[]> {
+  async listByActor({
+    churchId,
+    actorId,
+  }: ListAuditByActorInput): Promise<AssignmentAudit[]> {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId && au.actorId === actorId)
       .sort((a, b) =>
@@ -89,8 +89,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
   }
 
   async listByEvent(
-    _churchId: ChurchId,
-    _eventId: EventId,
+    _input: ListAuditByEventInput,
   ): Promise<AssignmentAuditLogEntry[]> {
     return [];
   }

@@ -6,20 +6,26 @@ import type {
   ChurchId,
   EventId,
   EventTimeBlockId,
-  MinistryParticipationId,
   RoleId,
-  ShiftId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type {
   AssignmentRepository,
+  AssignmentsByEventInput,
+  AssignmentsByEventTimeBlockInput,
+  CountAssignmentsByVolunteerInRangeInput,
   CreateAssignmentRepositoryInput,
-  UpdateAssignmentStatusInput,
+  FindAssignmentByEventTimeBlockAndVolunteerInput,
+  GetAssignmentInput,
+  ListAssignmentsByParticipationInput,
+  ListAssignmentsByRangeInput,
+  ListAssignmentsByShiftInput,
+  ListAssignmentsByVolunteerInput,
+  ListAssignmentsByVolunteerInRangeInput,
+  ListAssignmentsByVolunteersInput,
+  UpdateAssignmentStatusRepositoryInput,
 } from '@/domain/contracts/infrastructure/assignment.repository';
-import {
-  Assignment,
-  type AssignmentStatus,
-} from '@/domain/entities/assignment';
+import { Assignment } from '@/domain/entities/assignment';
 import { runAssignmentRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/assignment.contract-spec';
 
 class MockAssignmentRepository implements AssignmentRepository {
@@ -96,7 +102,10 @@ class MockAssignmentRepository implements AssignmentRepository {
     return a;
   }
 
-  async getById(churchId: ChurchId, id: AssignmentId): Promise<Assignment> {
+  async getById({
+    churchId,
+    assignmentId: id,
+  }: GetAssignmentInput): Promise<Assignment> {
     const a = this.assignments.get(id);
     if (!a || a.churchId !== churchId) {
       throw new NotFoundError('Assignment not found');
@@ -104,11 +113,11 @@ class MockAssignmentRepository implements AssignmentRepository {
     return a;
   }
 
-  async findByEventTimeBlockAndVolunteer(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    volunteerId: VolunteerId,
-  ): Promise<Assignment | null> {
+  async findByEventTimeBlockAndVolunteer({
+    churchId,
+    eventTimeBlockId,
+    volunteerId,
+  }: FindAssignmentByEventTimeBlockAndVolunteerInput): Promise<Assignment | null> {
     for (const a of this.assignments.values()) {
       if (
         a.churchId === churchId &&
@@ -121,19 +130,19 @@ class MockAssignmentRepository implements AssignmentRepository {
     return null;
   }
 
-  async listByEventTimeBlock(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-  ): Promise<Assignment[]> {
+  async listByEventTimeBlock({
+    churchId,
+    eventTimeBlockId,
+  }: AssignmentsByEventTimeBlockInput): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.eventTimeBlockId === eventTimeBlockId,
     );
   }
 
-  async listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-  ): Promise<Assignment[]> {
+  async listByEvent({
+    churchId,
+    eventId,
+  }: AssignmentsByEventInput): Promise<Assignment[]> {
     if (eventId === ('66666666-6666-6666-6666-666666666661' as EventId)) {
       return Array.from(this.assignments.values()).filter(
         (a) => a.churchId === churchId,
@@ -142,71 +151,67 @@ class MockAssignmentRepository implements AssignmentRepository {
     return [];
   }
 
-  async listByVolunteer(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-  ): Promise<Assignment[]> {
+  async listByVolunteer({
+    churchId,
+    volunteerId,
+  }: ListAssignmentsByVolunteerInput): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.volunteerId === volunteerId,
     );
   }
 
-  async listByParticipation(
-    churchId: ChurchId,
-    participationId: MinistryParticipationId,
-  ): Promise<Assignment[]> {
+  async listByParticipation({
+    churchId,
+    participationId,
+  }: ListAssignmentsByParticipationInput): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.participationId === participationId,
     );
   }
 
-  async listByShift(
-    churchId: ChurchId,
-    shiftId: ShiftId,
-  ): Promise<Assignment[]> {
+  async listByShift({
+    churchId,
+    shiftId,
+  }: ListAssignmentsByShiftInput): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.shiftId === shiftId,
     );
   }
 
-  async listByVolunteers(
-    churchId: ChurchId,
-    volunteerIds: VolunteerId[],
-  ): Promise<Assignment[]> {
+  async listByVolunteers({
+    churchId,
+    volunteerIds,
+  }: ListAssignmentsByVolunteersInput): Promise<Assignment[]> {
     const volunteerIdSet = new Set(volunteerIds);
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && volunteerIdSet.has(a.volunteerId),
     );
   }
 
-  async listByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    _startTime: Date,
-    _endTime: Date,
-  ): Promise<Assignment[]> {
+  async listByVolunteerInRange({
+    churchId,
+    volunteerId,
+  }: ListAssignmentsByVolunteerInRangeInput): Promise<Assignment[]> {
     // For mock/test range queries, event-time-block-1 has startTime in June 2024
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.volunteerId === volunteerId,
     );
   }
 
-  async listByRange(
-    churchId: ChurchId,
-    _startTime: Date,
-    _endTime: Date,
-  ): Promise<Assignment[]> {
+  async listByRange({
+    churchId,
+  }: ListAssignmentsByRangeInput): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId,
     );
   }
 
-  async updateStatus(
-    churchId: ChurchId,
-    id: AssignmentId,
-    input: UpdateAssignmentStatusInput,
-  ): Promise<void> {
-    const a = await this.getById(churchId, id);
+  async updateStatus({
+    churchId,
+    assignmentId: id,
+    input,
+  }: UpdateAssignmentStatusRepositoryInput): Promise<void> {
+    const a = await this.getById({ churchId, assignmentId: id });
     const props = (a as any)._props;
     props.status = input.status;
     if (input.reason !== undefined) {
@@ -215,13 +220,11 @@ class MockAssignmentRepository implements AssignmentRepository {
     (a as any)._updatedAt = new Date();
   }
 
-  async countByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    _startTime: Date,
-    _endTime: Date,
-    statusFilter?: AssignmentStatus[],
-  ): Promise<number> {
+  async countByVolunteerInRange({
+    churchId,
+    volunteerId,
+    statusFilter,
+  }: CountAssignmentsByVolunteerInRangeInput): Promise<number> {
     let list = Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.volunteerId === volunteerId,
     );
@@ -231,16 +234,16 @@ class MockAssignmentRepository implements AssignmentRepository {
     return list.length;
   }
 
-  async deleteByEvent(_churchId: ChurchId, eventId: EventId): Promise<void> {
+  async deleteByEvent({ eventId }: AssignmentsByEventInput): Promise<void> {
     if (eventId === ('66666666-6666-6666-6666-666666666661' as EventId)) {
       this.assignments.clear();
     }
   }
 
-  async listDeclinedByEventTimeBlock(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-  ): Promise<Assignment[]> {
+  async listDeclinedByEventTimeBlock({
+    churchId,
+    eventTimeBlockId,
+  }: AssignmentsByEventTimeBlockInput): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) =>
         a.churchId === churchId &&
@@ -249,7 +252,10 @@ class MockAssignmentRepository implements AssignmentRepository {
     );
   }
 
-  async deleteById(churchId: ChurchId, id: AssignmentId): Promise<void> {
+  async deleteById({
+    churchId,
+    assignmentId: id,
+  }: GetAssignmentInput): Promise<void> {
     const a = this.assignments.get(id);
     if (a && a.churchId === churchId) {
       this.assignments.delete(id);

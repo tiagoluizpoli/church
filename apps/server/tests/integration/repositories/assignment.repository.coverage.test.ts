@@ -116,15 +116,18 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     });
     expect(createdViaShiftId.shiftId).toBe(shiftRow.id);
     expect(createdViaShiftId.participationId).toBe(graph.participation.id);
-    const retrieved = await repo.getById(churchId, createdViaShiftId.id);
+    const retrieved = await repo.getById({
+      churchId,
+      assignmentId: createdViaShiftId.id,
+    });
     expect(retrieved.shiftRequirementId).toBe(requirement.id);
     expect(retrieved.roleId).toBe(roleRow.id);
     await schedulingTestDb
       .delete(shiftRequirement)
       .where(eq(shiftRequirement.id, requirement.id));
-    await expect(repo.getById(churchId, createdViaShiftId.id)).rejects.toThrow(
-      'Assignment not found',
-    );
+    await expect(
+      repo.getById({ churchId, assignmentId: createdViaShiftId.id }),
+    ).rejects.toThrow('Assignment not found');
   });
 
   it('binds the explicit requirement when two Shifts share one event time block', async () => {
@@ -174,21 +177,21 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
-    const found = await repo.findByEventTimeBlockAndVolunteer(
+    const found = await repo.findByEventTimeBlockAndVolunteer({
       churchId,
-      EventTimeBlockId.from(graph.eventTimeBlock.id),
-      VolunteerId.from(seed.adminVolunteerId),
-    );
+      eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+      volunteerId: VolunteerId.from(seed.adminVolunteerId),
+    });
     expect(found).toBeNull();
   });
 
   it('listByVolunteers returns [] for an empty id list without querying', async () => {
     const seed = await seedSchedulingPhase3Base();
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
-    const result = await repo.listByVolunteers(
-      ChurchId.from(seed.churchAId),
-      [],
-    );
+    const result = await repo.listByVolunteers({
+      churchId: ChurchId.from(seed.churchAId),
+      volunteerIds: [],
+    });
     expect(result).toEqual([]);
   });
 
@@ -229,8 +232,12 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
       },
     });
 
-    await repo.updateStatus(churchId, created.id, { status: 'confirmed' });
-    const updated = await repo.getById(churchId, created.id);
+    await repo.updateStatus({
+      churchId,
+      assignmentId: created.id,
+      input: { status: 'confirmed' },
+    });
+    const updated = await repo.getById({ churchId, assignmentId: created.id });
     expect(updated.status).toBe('confirmed');
     expect(updated.reason).toBeUndefined();
   });
@@ -242,7 +249,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     const churchId = ChurchId.from(seed.churchAId);
 
     await expect(
-      repo.deleteByEvent(churchId, EventId.from(graph.event.id)),
+      repo.deleteByEvent({ churchId, eventId: EventId.from(graph.event.id) }),
     ).resolves.toBeUndefined();
   });
 });

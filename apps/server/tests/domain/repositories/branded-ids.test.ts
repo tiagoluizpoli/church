@@ -15,15 +15,15 @@ describe('User Story 3: Branded IDs Isolation Type Safety', () => {
       const assignmentRepo = {} as AssignmentRepository;
 
       // Normal invocation should compile
-      assignmentRepo.getById(churchId, assignmentId);
+      assignmentRepo.getById({ churchId, assignmentId });
 
       // Swapping IDs should cause compile-time error
       // @ts-expect-error - Expected AssignmentId, but got VolunteerId
-      assignmentRepo.getById(churchId, volunteerId);
+      assignmentRepo.getById({ churchId, assignmentId: volunteerId });
 
       // Swapping IDs should cause compile-time error
       // @ts-expect-error - Expected AssignmentId, but got ChurchId
-      assignmentRepo.getById(churchId, churchId);
+      assignmentRepo.getById({ churchId, assignmentId: churchId });
     }
   });
 });

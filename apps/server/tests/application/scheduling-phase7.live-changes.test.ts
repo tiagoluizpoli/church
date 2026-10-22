@@ -146,10 +146,10 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     });
 
     await expect(
-      managers.assignmentRepo.getById(
-        ChurchId.from(seed.churchAId),
-        AssignmentId.from(assignment.id),
-      ),
+      managers.assignmentRepo.getById({
+        churchId: ChurchId.from(seed.churchAId),
+        assignmentId: AssignmentId.from(assignment.id),
+      }),
     ).rejects.toBeInstanceOf(NotFoundError);
 
     const completionAfterCancel =
@@ -248,10 +248,10 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       }),
     ).rejects.toBeInstanceOf(AssignmentAccessDeniedError);
 
-    const stillAssigned = await managers.assignmentRepo.getById(
-      ChurchId.from(seed.churchAId),
-      AssignmentId.from(assignment.id),
-    );
+    const stillAssigned = await managers.assignmentRepo.getById({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: AssignmentId.from(assignment.id),
+    });
     expect(stillAssigned.volunteerId).toBe(owner.volunteer.id);
   });
 
@@ -341,10 +341,10 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     expect(reassigned.shiftId).toBe(shift.id);
 
     await expect(
-      managers.assignmentRepo.getById(
-        ChurchId.from(seed.churchAId),
-        AssignmentId.from(assignment.id),
-      ),
+      managers.assignmentRepo.getById({
+        churchId: ChurchId.from(seed.churchAId),
+        assignmentId: AssignmentId.from(assignment.id),
+      }),
     ).rejects.toBeInstanceOf(NotFoundError);
 
     expect(managers.notificationSpy.notifyVolunteer.mock.calls).toContainEqual([
@@ -431,10 +431,10 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       }),
     ).rejects.toBeInstanceOf(CancelWindowClosedError);
 
-    const stillAssigned = await managers.assignmentRepo.getById(
-      ChurchId.from(seed.churchAId),
-      AssignmentId.from(assignment.id),
-    );
+    const stillAssigned = await managers.assignmentRepo.getById({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: AssignmentId.from(assignment.id),
+    });
     expect(stillAssigned.volunteerId).toBe(volunteerA.volunteer.id);
   });
 });
@@ -693,10 +693,10 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     });
 
     await expect(
-      managers.assignmentRepo.getById(
-        ChurchId.from(seed.churchAId),
-        AssignmentId.from(assignmentWithActor.id),
-      ),
+      managers.assignmentRepo.getById({
+        churchId: ChurchId.from(seed.churchAId),
+        assignmentId: AssignmentId.from(assignmentWithActor.id),
+      }),
     ).rejects.toBeInstanceOf(NotFoundError);
 
     // The `assignment_audit.assignment_id` FK is ON DELETE CASCADE, so the
@@ -781,10 +781,10 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         actorId: UserId.from(seed.adminUserId),
       });
 
-    const stored = await managers.assignmentRepo.getById(
-      ChurchId.from(seed.churchAId),
-      reassigned.id,
-    );
+    const stored = await managers.assignmentRepo.getById({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: reassigned.id,
+    });
     expect(stored).toMatchObject({
       shiftId: shift.id,
       roleId: roleRow.id,

@@ -15,25 +15,25 @@ import {
   lt,
   type SQL,
 } from 'drizzle-orm';
-import type {
-  AssignmentId,
-  ChurchId,
-  EventId,
-  EventTimeBlockId,
-  MinistryParticipationId,
-  ShiftId,
-  VolunteerId,
-} from '../../domain/branded-ids';
+import type { ChurchId, VolunteerId } from '../../domain/branded-ids';
 import type {
   AssignmentRepository,
+  AssignmentsByEventInput,
+  AssignmentsByEventTimeBlockInput,
+  CountAssignmentsByVolunteerInRangeInput,
   CreateAssignmentRepositoryInput,
-  UpdateAssignmentStatusInput,
+  FindAssignmentByEventTimeBlockAndVolunteerInput,
+  GetAssignmentInput,
+  ListAssignmentsByParticipationInput,
+  ListAssignmentsByRangeInput,
+  ListAssignmentsByShiftInput,
+  ListAssignmentsByVolunteerInput,
+  ListAssignmentsByVolunteerInRangeInput,
+  ListAssignmentsByVolunteersInput,
+  UpdateAssignmentStatusRepositoryInput,
 } from '../../domain/contracts/infrastructure/assignment.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type {
-  Assignment,
-  AssignmentStatus,
-} from '../../domain/entities/assignment';
+import type { Assignment } from '../../domain/entities/assignment';
 import { mapAssignment } from '../mappers/assignment.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -49,6 +49,12 @@ interface ListRangeInput {
   tx?: TransactionContext;
 }
 
+interface RowsInput {
+  churchId: ChurchId;
+  conditions: SQL[];
+  tx?: TransactionContext;
+}
+
 export class DrizzleAssignmentRepository implements AssignmentRepository {
   constructor({ db }: DrizzleAssignmentRepositoryInput) {
     this.db = db;
@@ -56,11 +62,11 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
 
   private readonly db: AnyDrizzleDb;
 
-  private async rows(
-    churchId: ChurchId,
-    conditions: SQL[],
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
+  private async rows({
+    churchId,
+    conditions,
+    tx,
+  }: RowsInput): Promise<Assignment[]> {
     const rows = await getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
@@ -142,64 +148,65 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     });
   }
 
-  async getById(
-    churchId: ChurchId,
-    id: AssignmentId,
-    tx?: TransactionContext,
-  ): Promise<Assignment> {
-    if (!isValidUuid(id))
-      throw new NotFoundError(`Assignment not found: ${id}`);
+  async getById({
+    churchId,
+    assignmentId,
+    tx,
+  }: GetAssignmentInput): Promise<Assignment> {
+    if (!isValidUuid(assignmentId))
+      throw new NotFoundError(`Assignment not found: ${assignmentId}`);
     const [result] = await getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
       .where(
         and(
-          eq(assignment.id, id),
+          eq(assignment.id, assignmentId),
           withChurchIsolation({ table: assignment, churchId }),
         ),
       );
-    if (!result) throw new NotFoundError(`Assignment not found: ${id}`);
+    if (!result)
+      throw new NotFoundError(`Assignment not found: ${assignmentId}`);
     return mapAssignment({
       row: result.assignment,
       eventTimeBlockId: result.eventTimeBlockId,
     });
   }
 
-  async findByEventTimeBlockAndVolunteer(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<Assignment | null> {
-    const rows = await this.rows(
+  async findByEventTimeBlockAndVolunteer({
+    churchId,
+    eventTimeBlockId,
+    volunteerId,
+    tx,
+  }: FindAssignmentByEventTimeBlockAndVolunteerInput): Promise<Assignment | null> {
+    const rows = await this.rows({
       churchId,
-      [
+      conditions: [
         eq(shift.eventTimeBlockId, eventTimeBlockId),
         eq(assignment.volunteerId, volunteerId),
       ],
       tx,
-    );
+    });
     return rows[0] ?? null;
   }
 
-  listByEventTimeBlock(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
-    return this.rows(
+  listByEventTimeBlock({
+    churchId,
+    eventTimeBlockId,
+    tx,
+  }: AssignmentsByEventTimeBlockInput): Promise<Assignment[]> {
+    return this.rows({
       churchId,
-      [eq(shift.eventTimeBlockId, eventTimeBlockId)],
+      conditions: [eq(shift.eventTimeBlockId, eventTimeBlockId)],
       tx,
-    );
+    });
   }
 
-  async listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
+  async listByEvent({
+    churchId,
+    eventId,
+    tx,
+  }: AssignmentsByEventInput): Promise<Assignment[]> {
     const rows = await getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
@@ -219,54 +226,62 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     );
   }
 
-  listByParticipation(
-    churchId: ChurchId,
-    participationId: MinistryParticipationId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
-    return this.rows(
+  listByParticipation({
+    churchId,
+    participationId,
+    tx,
+  }: ListAssignmentsByParticipationInput): Promise<Assignment[]> {
+    return this.rows({
       churchId,
-      [eq(assignment.participationId, participationId)],
+      conditions: [eq(assignment.participationId, participationId)],
       tx,
-    );
+    });
   }
 
-  listByShift(
-    churchId: ChurchId,
-    shiftId: ShiftId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
-    return this.rows(churchId, [eq(assignment.shiftId, shiftId)], tx);
+  listByShift({
+    churchId,
+    shiftId,
+    tx,
+  }: ListAssignmentsByShiftInput): Promise<Assignment[]> {
+    return this.rows({
+      churchId,
+      conditions: [eq(assignment.shiftId, shiftId)],
+      tx,
+    });
   }
 
-  listByVolunteer(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
-    return this.rows(churchId, [eq(assignment.volunteerId, volunteerId)], tx);
+  listByVolunteer({
+    churchId,
+    volunteerId,
+    tx,
+  }: ListAssignmentsByVolunteerInput): Promise<Assignment[]> {
+    return this.rows({
+      churchId,
+      conditions: [eq(assignment.volunteerId, volunteerId)],
+      tx,
+    });
   }
 
-  async listByVolunteers(
-    churchId: ChurchId,
-    volunteerIds: VolunteerId[],
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
+  async listByVolunteers({
+    churchId,
+    volunteerIds,
+    tx,
+  }: ListAssignmentsByVolunteersInput): Promise<Assignment[]> {
     if (volunteerIds.length === 0) return [];
-    return this.rows(
+    return this.rows({
       churchId,
-      [inArray(assignment.volunteerId, volunteerIds)],
+      conditions: [inArray(assignment.volunteerId, volunteerIds)],
       tx,
-    );
+    });
   }
 
-  listByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    startTime: Date,
-    endTime: Date,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
+  listByVolunteerInRange({
+    churchId,
+    volunteerId,
+    startTime,
+    endTime,
+    tx,
+  }: ListAssignmentsByVolunteerInRangeInput): Promise<Assignment[]> {
     // Overlap, not "starts inside": catches earlier-starting Shifts and lets back-to-back ones through.
     return this.listRange({
       churchId,
@@ -279,12 +294,12 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     });
   }
 
-  listByRange(
-    churchId: ChurchId,
-    startTime: Date,
-    endTime: Date,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
+  listByRange({
+    churchId,
+    startTime,
+    endTime,
+    tx,
+  }: ListAssignmentsByRangeInput): Promise<Assignment[]> {
     return this.listRange({
       churchId,
       timeCondition: between(shift.startTime, startTime, endTime),
@@ -316,31 +331,31 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     );
   }
 
-  async updateStatus(
-    churchId: ChurchId,
-    id: AssignmentId,
-    input: UpdateAssignmentStatusInput,
-    tx?: TransactionContext,
-  ): Promise<void> {
+  async updateStatus({
+    churchId,
+    assignmentId,
+    input,
+    tx,
+  }: UpdateAssignmentStatusRepositoryInput): Promise<void> {
     await getClient({ db: this.db, tx })
       .update(assignment)
       .set({ status: input.status, reason: input.reason ?? null })
       .where(
         and(
-          eq(assignment.id, id),
+          eq(assignment.id, assignmentId),
           withChurchIsolation({ table: assignment, churchId }),
         ),
       );
   }
 
-  async countByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    startTime: Date,
-    endTime: Date,
-    statusFilter?: AssignmentStatus[],
-    tx?: TransactionContext,
-  ): Promise<number> {
+  async countByVolunteerInRange({
+    churchId,
+    volunteerId,
+    startTime,
+    endTime,
+    statusFilter,
+    tx,
+  }: CountAssignmentsByVolunteerInRangeInput): Promise<number> {
     const conditions: SQL[] = [
       withChurchIsolation({ table: assignment, churchId }),
       eq(assignment.volunteerId, volunteerId),
@@ -357,11 +372,11 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     return result?.cnt ?? 0;
   }
 
-  async deleteByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<void> {
+  async deleteByEvent({
+    churchId,
+    eventId,
+    tx,
+  }: AssignmentsByEventInput): Promise<void> {
     const rows = await getClient({ db: this.db, tx })
       .select({ id: assignment.id })
       .from(assignment)
@@ -384,33 +399,33 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       );
   }
 
-  async deleteById(
-    churchId: ChurchId,
-    id: AssignmentId,
-    tx?: TransactionContext,
-  ): Promise<void> {
+  async deleteById({
+    churchId,
+    assignmentId,
+    tx,
+  }: GetAssignmentInput): Promise<void> {
     await getClient({ db: this.db, tx })
       .delete(assignment)
       .where(
         and(
-          eq(assignment.id, id),
+          eq(assignment.id, assignmentId),
           withChurchIsolation({ table: assignment, churchId }),
         ),
       );
   }
 
-  listDeclinedByEventTimeBlock(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
-    return this.rows(
+  listDeclinedByEventTimeBlock({
+    churchId,
+    eventTimeBlockId,
+    tx,
+  }: AssignmentsByEventTimeBlockInput): Promise<Assignment[]> {
+    return this.rows({
       churchId,
-      [
+      conditions: [
         eq(shift.eventTimeBlockId, eventTimeBlockId),
         eq(assignment.status, 'declined'),
       ],
       tx,
-    );
+    });
   }
 }

@@ -20,62 +20,61 @@ export interface UpdateEventTimeBlockInput {
   label?: string;
 }
 
+export interface GetEventTimeBlockInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface EventTimeBlocksByEventInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  tx?: TransactionContext;
+}
+
+export interface CreateEventTimeBlockRepositoryInput {
+  churchId: ChurchId;
+  input: CreateEventTimeBlockInput;
+  tx?: TransactionContext;
+}
+
+export interface UpdateEventTimeBlockRepositoryInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  input: UpdateEventTimeBlockInput;
+  tx?: TransactionContext;
+}
+
+export interface FindOverlappingEventTimeBlocksInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  startTime: Date;
+  endTime: Date;
+  excludeEventTimeBlockId?: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface CountActiveAssignmentsInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  roleId: RoleId;
+  tx?: TransactionContext;
+}
+
 export interface EventTimeBlockRepository {
-  getById(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock>;
-
-  listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock[]>;
-
+  getById(input: GetEventTimeBlockInput): Promise<EventTimeBlock>;
+  listByEvent(input: EventTimeBlocksByEventInput): Promise<EventTimeBlock[]>;
   /** Create a single event time block. */
-  create(
-    churchId: ChurchId,
-    input: CreateEventTimeBlockInput,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock>;
-
+  create(input: CreateEventTimeBlockRepositoryInput): Promise<EventTimeBlock>;
   /** Update event time block time and/or label. */
-  update(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    input: UpdateEventTimeBlockInput,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock>;
-
+  update(input: UpdateEventTimeBlockRepositoryInput): Promise<EventTimeBlock>;
   /** Delete a single event time block by id. */
-  deleteById(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    tx?: TransactionContext,
-  ): Promise<void>;
-
+  deleteById(input: GetEventTimeBlockInput): Promise<void>;
   /** Find event time blocks in the same event whose time range overlaps the given range. */
   findOverlapping(
-    churchId: ChurchId,
-    eventId: EventId,
-    startTime: Date,
-    endTime: Date,
-    excludeEventTimeBlockId?: EventTimeBlockId,
-    tx?: TransactionContext,
+    input: FindOverlappingEventTimeBlocksInput,
   ): Promise<EventTimeBlock[]>;
-
-  deleteByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<void>;
-
+  deleteByEvent(input: EventTimeBlocksByEventInput): Promise<void>;
   /** Count active assignments for a given event time block/role pair. */
-  countActiveAssignments(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    roleId: RoleId,
-    tx?: TransactionContext,
-  ): Promise<number>;
+  countActiveAssignments(input: CountActiveAssignmentsInput): Promise<number>;
 }

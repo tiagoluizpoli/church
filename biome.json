@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "plugins": ["./tooling/biome/date-time-seam.grit"],
+  "plugins": [
+    "./tooling/biome/date-time-seam.grit",
+    "./tooling/biome/no-whole-config.grit"
+  ],
   "vcs": {
     "enabled": false,
     "clientKind": "git",

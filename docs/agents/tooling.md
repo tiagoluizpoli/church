@@ -349,7 +349,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Fix lint, format and type errors; suppressions need user permission | Tooling | Judgement | — | Review: whether permission was given is not in the code; VII and date-time suppressions have their own guards |
 | Finish the phase, run targeted tests and affected validation before review | Tooling | Judgement | — | Review: a working process |
 | Server classes get config as the constructor's `config` field; only `main/di/`, scripts and seeds import `@church/app-config`; domain functions never read config | Backend | Mechanical | Biome rule | Follow-up [#554](https://github.com/tiagoluizpoli/church/issues/554) |
-| A class copies the config values it uses into `private readonly` fields and does not keep `config` | Backend | Mechanical | Grit plugin | Follow-up [#555](https://github.com/tiagoluizpoli/church/issues/555) |
+| A class copies the config values it uses into `private readonly` fields and does not keep `config` | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-whole-config.grit` |
 | Tenancy is enforced with `church_id` | Backend | Judgement | — | Review: whether a query must be church-scoped depends on the data |
 | Credential-sensitive and sensitive operations stay on the server | Backend, frontend | Judgement | — | Review: "sensitive" is a judgement |
 | Web imports flow `shared → features → app` | Frontend | Mechanical | Biome rule | Follow-up [#556](https://github.com/tiagoluizpoli/church/issues/556) |

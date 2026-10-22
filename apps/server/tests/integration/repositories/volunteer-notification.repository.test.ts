@@ -24,7 +24,8 @@ describe('DrizzleVolunteerNotificationRepository', () => {
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
-    const created = await repo.create(churchId, {
+    const created = await repo.create({
+      churchId,
       volunteerId,
       type: 'schedule_published',
       title: 'Schedule published',
@@ -49,7 +50,8 @@ describe('DrizzleVolunteerNotificationRepository', () => {
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
     for (let i = 0; i < 3; i++) {
-      await repo.create(churchId, {
+      await repo.create({
+        churchId,
         volunteerId,
         type: 'assignment_added',
         title: `Notification ${i}`,
@@ -58,7 +60,8 @@ describe('DrizzleVolunteerNotificationRepository', () => {
       });
     }
 
-    const firstPage = await repo.listByVolunteer(churchId, {
+    const firstPage = await repo.listByVolunteer({
+      churchId,
       volunteerId,
       limit: 2,
     });
@@ -66,7 +69,8 @@ describe('DrizzleVolunteerNotificationRepository', () => {
     expect(firstPage.nextCursor).toBeDefined();
     expect(firstPage.items[0]?.title).toBe('Notification 2');
 
-    const secondPage = await repo.listByVolunteer(churchId, {
+    const secondPage = await repo.listByVolunteer({
+      churchId,
       volunteerId,
       limit: 2,
       cursor: firstPage.nextCursor,
@@ -84,7 +88,8 @@ describe('DrizzleVolunteerNotificationRepository', () => {
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
-    await repo.create(churchId, {
+    await repo.create({
+      churchId,
       volunteerId,
       type: 'assignment_added',
       title: 'Only one',
@@ -92,7 +97,8 @@ describe('DrizzleVolunteerNotificationRepository', () => {
       payload: {},
     });
 
-    const page = await repo.listByVolunteer(churchId, {
+    const page = await repo.listByVolunteer({
+      churchId,
       volunteerId,
       limit: 0,
     });
@@ -107,14 +113,16 @@ describe('DrizzleVolunteerNotificationRepository', () => {
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
-    const n1 = await repo.create(churchId, {
+    const n1 = await repo.create({
+      churchId,
       volunteerId,
       type: 'assignment_added',
       title: 'One',
       body: 'body',
       payload: {},
     });
-    await repo.create(churchId, {
+    await repo.create({
+      churchId,
       volunteerId,
       type: 'assignment_added',
       title: 'Two',
@@ -122,26 +130,32 @@ describe('DrizzleVolunteerNotificationRepository', () => {
       payload: {},
     });
 
-    expect(await repo.countUnread(churchId, volunteerId)).toBe(2);
+    expect(await repo.countUnread({ churchId, volunteerId })).toBe(2);
 
-    const readAt = await repo.markRead(churchId, volunteerId, n1.id);
-    expect(readAt).toBeInstanceOf(Date);
-    expect(await repo.countUnread(churchId, volunteerId)).toBe(1);
-
-    // Marking an unknown notification returns null.
-    const missing = await repo.markRead(
+    const readAt = await repo.markRead({
       churchId,
       volunteerId,
-      VolunteerNotificationId.from('99999999-9999-4999-8999-999999999999'),
-    );
+      notificationId: n1.id,
+    });
+    expect(readAt).toBeInstanceOf(Date);
+    expect(await repo.countUnread({ churchId, volunteerId })).toBe(1);
+
+    // Marking an unknown notification returns null.
+    const missing = await repo.markRead({
+      churchId,
+      volunteerId,
+      notificationId: VolunteerNotificationId.from(
+        '99999999-9999-4999-8999-999999999999',
+      ),
+    });
     expect(missing).toBeNull();
 
-    const updatedCount = await repo.markAllRead(churchId, volunteerId);
+    const updatedCount = await repo.markAllRead({ churchId, volunteerId });
     expect(updatedCount).toBe(1);
-    expect(await repo.countUnread(churchId, volunteerId)).toBe(0);
+    expect(await repo.countUnread({ churchId, volunteerId })).toBe(0);
 
     // Nothing left to mark; rowCount is 0.
-    expect(await repo.markAllRead(churchId, volunteerId)).toBe(0);
+    expect(await repo.markAllRead({ churchId, volunteerId })).toBe(0);
   });
 
   it('countUnread and markAllRead return 0 when there are no notifications at all', async () => {
@@ -152,7 +166,7 @@ describe('DrizzleVolunteerNotificationRepository', () => {
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
-    expect(await repo.countUnread(churchId, volunteerId)).toBe(0);
-    expect(await repo.markAllRead(churchId, volunteerId)).toBe(0);
+    expect(await repo.countUnread({ churchId, volunteerId })).toBe(0);
+    expect(await repo.markAllRead({ churchId, volunteerId })).toBe(0);
   });
 });

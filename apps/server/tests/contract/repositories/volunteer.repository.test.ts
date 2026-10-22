@@ -3,15 +3,27 @@ import { parseInstant } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
-  RoleId,
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type {
+  FindVolunteerByUserIdGloballyInput,
+  FindVolunteerByUserIdInput,
+  GetVolunteerByIdInput,
+  HasLeadershipInMinistryInput,
+  HasMembershipInMinistryInput,
+  HasRoleQualificationInput,
+  ListLedMinistriesInput,
+  ListMemberMinistryIdsInput,
+  ListMinistryMembershipsInput,
+  ListQualifiedVolunteersForRoleInput,
+  ListVolunteersByIdsInput,
+  ListVolunteersByMinistryInput,
   MinistryMembership,
+  UpdateVolunteerStatusInput,
   VolunteerRepository,
 } from '@/domain/contracts/infrastructure/volunteer.repository';
-import { Volunteer, type VolunteerStatus } from '@/domain/entities/volunteer';
+import { Volunteer } from '@/domain/entities/volunteer';
 import { runVolunteerRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/volunteer.contract-spec';
 
 class MockVolunteerRepository implements VolunteerRepository {
@@ -58,7 +70,7 @@ class MockVolunteerRepository implements VolunteerRepository {
     );
   }
 
-  async getById(churchId: ChurchId, id: VolunteerId): Promise<Volunteer> {
+  async getById({ churchId, id }: GetVolunteerByIdInput): Promise<Volunteer> {
     const v = this.volunteers.get(id);
     if (!v || v.churchId !== churchId) {
       throw new NotFoundError('Volunteer not found');
@@ -66,10 +78,10 @@ class MockVolunteerRepository implements VolunteerRepository {
     return v;
   }
 
-  async findByUserId(
-    churchId: ChurchId,
-    userId: UserId,
-  ): Promise<Volunteer | null> {
+  async findByUserId({
+    churchId,
+    userId,
+  }: FindVolunteerByUserIdInput): Promise<Volunteer | null> {
     for (const v of this.volunteers.values()) {
       if (v.churchId === churchId && v.userId === userId && !v.isRetired) {
         return v;
@@ -78,10 +90,10 @@ class MockVolunteerRepository implements VolunteerRepository {
     return null;
   }
 
-  async listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-  ): Promise<Volunteer[]> {
+  async listByMinistry({
+    churchId,
+    ministryId,
+  }: ListVolunteersByMinistryInput): Promise<Volunteer[]> {
     const list: Volunteer[] = [];
     for (const v of this.volunteers.values()) {
       if (
@@ -94,31 +106,29 @@ class MockVolunteerRepository implements VolunteerRepository {
     return list;
   }
 
-  async hasMembershipInMinistry(
-    _churchId: ChurchId,
-    volunteerId: VolunteerId,
-    ministryId: MinistryId,
-  ): Promise<boolean> {
+  async hasMembershipInMinistry({
+    volunteerId,
+    ministryId,
+  }: HasMembershipInMinistryInput): Promise<boolean> {
     return this.memberships.has(`${volunteerId}:${ministryId}`);
   }
 
-  async hasRoleQualification(
-    _churchId: ChurchId,
-    volunteerId: VolunteerId,
-    ministryId: MinistryId,
-    roleId: RoleId,
-  ): Promise<boolean> {
+  async hasRoleQualification({
+    volunteerId,
+    ministryId,
+    roleId,
+  }: HasRoleQualificationInput): Promise<boolean> {
     return (
       this.memberships.has(`${volunteerId}:${ministryId}`) &&
       this.qualifications.has(`${volunteerId}:${roleId}`)
     );
   }
 
-  async listQualifiedForRole(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    roleId: RoleId,
-  ): Promise<Volunteer[]> {
+  async listQualifiedForRole({
+    churchId,
+    ministryId,
+    roleId,
+  }: ListQualifiedVolunteersForRoleInput): Promise<Volunteer[]> {
     const list: Volunteer[] = [];
     for (const v of this.volunteers.values()) {
       if (
@@ -132,12 +142,12 @@ class MockVolunteerRepository implements VolunteerRepository {
     return list;
   }
 
-  async updateStatus(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    status: VolunteerStatus,
-  ): Promise<void> {
-    const v = await this.getById(churchId, volunteerId);
+  async updateStatus({
+    churchId,
+    volunteerId,
+    status,
+  }: UpdateVolunteerStatusInput): Promise<void> {
+    const v = await this.getById({ churchId, id: volunteerId });
     if (status === 'active') {
       v.activate();
     } else if (status === 'inactive') {
@@ -147,41 +157,40 @@ class MockVolunteerRepository implements VolunteerRepository {
     }
   }
 
-  async findByUserIdGlobally(userId: UserId): Promise<Volunteer | null> {
+  async findByUserIdGlobally({
+    userId,
+  }: FindVolunteerByUserIdGloballyInput): Promise<Volunteer | null> {
     for (const v of this.volunteers.values()) {
       if (v.userId === userId && !v.isRetired) return v;
     }
     return null;
   }
 
-  async hasLeadershipInMinistry(
-    _churchId: ChurchId,
-    volunteerId: VolunteerId,
-    ministryId: MinistryId,
-  ): Promise<boolean> {
+  async hasLeadershipInMinistry({
+    volunteerId,
+    ministryId,
+  }: HasLeadershipInMinistryInput): Promise<boolean> {
     return this.memberships.has(`${volunteerId}:${ministryId}:leader`);
   }
 
   async listLedMinistries(
-    _churchId: ChurchId,
-    _volunteerId: VolunteerId,
+    _input: ListLedMinistriesInput,
   ): Promise<{ ministryId: MinistryId; ministryName: string }[]> {
     return [];
   }
 
-  async listByIds(
-    churchId: ChurchId,
-    ids: VolunteerId[],
-  ): Promise<Volunteer[]> {
+  async listByIds({
+    churchId,
+    ids,
+  }: ListVolunteersByIdsInput): Promise<Volunteer[]> {
     return ids
       .map((id) => this.volunteers.get(id))
       .filter((v): v is Volunteer => v != null && v.churchId === churchId);
   }
 
-  async listMemberMinistryIds(
-    _churchId: ChurchId,
-    volunteerId: VolunteerId,
-  ): Promise<MinistryId[]> {
+  async listMemberMinistryIds({
+    volunteerId,
+  }: ListMemberMinistryIdsInput): Promise<MinistryId[]> {
     const results: MinistryId[] = [];
     for (const key of this.memberships) {
       const [vid, mid] = key.split(':');
@@ -191,8 +200,7 @@ class MockVolunteerRepository implements VolunteerRepository {
   }
 
   async listMinistryMemberships(
-    _churchId: ChurchId,
-    _ministryId: MinistryId,
+    _input: ListMinistryMembershipsInput,
   ): Promise<MinistryMembership[]> {
     return [];
   }

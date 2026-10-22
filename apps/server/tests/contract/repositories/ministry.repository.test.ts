@@ -1,6 +1,9 @@
 import { NotFoundError } from '@church/core';
 import type { ChurchId, MinistryId } from '@/domain/branded-ids';
 import type {
+  GetMinistryByIdInput,
+  GetMinistrySettingsInput,
+  ListMinistriesByChurchInput,
   MinistryRepository,
   UpdateMinistryDefaultDirectionInput,
 } from '@/domain/contracts/infrastructure/ministry.repository';
@@ -37,7 +40,7 @@ class MockMinistryRepository implements MinistryRepository {
     this.ministries.set(min3.id, min3);
   }
 
-  async getById(churchId: ChurchId, id: MinistryId): Promise<Ministry> {
+  async getById({ churchId, id }: GetMinistryByIdInput): Promise<Ministry> {
     const min = this.ministries.get(id);
     if (!min || min.churchId !== churchId) {
       throw new NotFoundError('Ministry not found');
@@ -45,18 +48,20 @@ class MockMinistryRepository implements MinistryRepository {
     return min;
   }
 
-  async listByChurch(churchId: ChurchId): Promise<Ministry[]> {
+  async listByChurch({
+    churchId,
+  }: ListMinistriesByChurchInput): Promise<Ministry[]> {
     const list = Array.from(this.ministries.values()).filter(
       (m) => m.churchId === churchId,
     );
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async getSettings(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-  ): Promise<MinistrySettings> {
-    const min = await this.getById(churchId, ministryId);
+  async getSettings({
+    churchId,
+    ministryId,
+  }: GetMinistrySettingsInput): Promise<MinistrySettings> {
+    const min = await this.getById({ churchId, id: ministryId });
     return {
       defaultDirection: min.defaultDirection,
     };
@@ -65,7 +70,10 @@ class MockMinistryRepository implements MinistryRepository {
   async updateDefaultDirection(
     input: UpdateMinistryDefaultDirectionInput,
   ): Promise<Ministry> {
-    const current = await this.getById(input.churchId, input.ministryId);
+    const current = await this.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
     const updated = new Ministry(
       {
         churchId: current.churchId,

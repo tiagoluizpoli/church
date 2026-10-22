@@ -8,7 +8,10 @@ import type {
   VolunteerNotificationId,
 } from '@/domain/branded-ids';
 import type {
+  CountUnreadVolunteerNotificationsInput,
   CreateVolunteerNotificationInput,
+  MarkAllVolunteerNotificationsReadInput,
+  MarkVolunteerNotificationReadInput,
   VolunteerNotificationListInput,
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
@@ -97,10 +100,10 @@ class MockVolunteerNotificationRepository
     }
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateVolunteerNotificationInput,
-  ): Promise<VolunteerNotification> {
+  async create({
+    churchId,
+    ...input
+  }: CreateVolunteerNotificationInput): Promise<VolunteerNotification> {
     const notification = this.createNotification({
       id: `notification-gen-${this.idCounter++}` as VolunteerNotificationId,
       churchId,
@@ -123,10 +126,10 @@ class MockVolunteerNotificationRepository
     return notification;
   }
 
-  async listByVolunteer(
-    churchId: ChurchId,
-    input: VolunteerNotificationListInput,
-  ): Promise<VolunteerNotificationListResult> {
+  async listByVolunteer({
+    churchId,
+    ...input
+  }: VolunteerNotificationListInput): Promise<VolunteerNotificationListResult> {
     const matching = Array.from(this.notifications.values())
       .filter(
         (notification) =>
@@ -147,10 +150,10 @@ class MockVolunteerNotificationRepository
     };
   }
 
-  async countUnread(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-  ): Promise<number> {
+  async countUnread({
+    churchId,
+    volunteerId,
+  }: CountUnreadVolunteerNotificationsInput): Promise<number> {
     return Array.from(this.notifications.values()).filter(
       (notification) =>
         notification.churchId === churchId &&
@@ -159,11 +162,11 @@ class MockVolunteerNotificationRepository
     ).length;
   }
 
-  async markRead(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    notificationId: VolunteerNotificationId,
-  ): Promise<Date | null> {
+  async markRead({
+    churchId,
+    volunteerId,
+    notificationId,
+  }: MarkVolunteerNotificationReadInput): Promise<Date | null> {
     const notification = this.notifications.get(notificationId);
     const readAtDate = new Date();
     const readAt = fromDate({ date: readAtDate });
@@ -197,10 +200,10 @@ class MockVolunteerNotificationRepository
     return readAtDate;
   }
 
-  async markAllRead(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-  ): Promise<number> {
+  async markAllRead({
+    churchId,
+    volunteerId,
+  }: MarkAllVolunteerNotificationsReadInput): Promise<number> {
     let updatedCount = 0;
 
     for (const notification of this.notifications.values()) {

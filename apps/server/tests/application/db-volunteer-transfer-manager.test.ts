@@ -143,6 +143,9 @@ function createHarness(overrides: HarnessOverrides = {}) {
     async run(fn) {
       return fn({} as TransactionContext);
     },
+    async runWith({ work }) {
+      return this.run(work);
+    },
   };
 
   const manager = new DbVolunteerTransferManager({

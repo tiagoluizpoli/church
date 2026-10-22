@@ -25,7 +25,7 @@ export class DrizzleSecurityLogRepository implements SecurityLogRepository {
     now,
     tx,
   }: RecordIdentityMismatchInput): Promise<void> {
-    await getClient(this.db, tx).insert(securityLog).values({
+    await getClient({ db: this.db, tx }).insert(securityLog).values({
       churchId,
       ministryInvitationId,
       actorId,

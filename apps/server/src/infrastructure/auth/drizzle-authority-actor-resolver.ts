@@ -84,7 +84,7 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
     input: ResolveAuthorityActorInput,
   ): Promise<AuthorityActor> {
     const { userId, activeChurchId, tx } = input;
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
 
     const [churchMembership, volunteerId] = await Promise.all([
       this.findChurchMembership({ db, churchId: activeChurchId, userId }),

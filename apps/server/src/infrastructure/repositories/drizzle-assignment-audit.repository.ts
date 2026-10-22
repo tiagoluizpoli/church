@@ -42,7 +42,7 @@ export class DrizzleAssignmentAuditRepository
     input: CreateAssignmentAuditInput,
     tx?: TransactionContext,
   ): Promise<AssignmentAudit> {
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .insert(assignmentAudit)
       .values({
         churchId,
@@ -68,7 +68,7 @@ export class DrizzleAssignmentAuditRepository
     input: ListAuditByCycleInput,
     tx?: TransactionContext,
   ): Promise<AssignmentAudit[]> {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select({
         id: assignmentAudit.id,
         churchId: assignmentAudit.churchId,
@@ -88,7 +88,10 @@ export class DrizzleAssignmentAuditRepository
       .innerJoin(event, eq(ministryParticipation.eventId, event.id))
       .where(
         and(
-          withChurchIsolation(assignmentAudit, input.churchId),
+          withChurchIsolation({
+            table: assignmentAudit,
+            churchId: input.churchId,
+          }),
           eq(event.cycleId, input.cycleId),
           eq(ministryParticipation.ministryId, input.ministryId),
         ),
@@ -101,10 +104,10 @@ export class DrizzleAssignmentAuditRepository
     churchId: ChurchId,
     tx?: TransactionContext,
   ): Promise<AssignmentAudit[]> {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select()
       .from(assignmentAudit)
-      .where(withChurchIsolation(assignmentAudit, churchId))
+      .where(withChurchIsolation({ table: assignmentAudit, churchId }))
       .orderBy(desc(assignmentAudit.timestamp));
     return rows.map(mapAssignmentAudit);
   }
@@ -114,12 +117,12 @@ export class DrizzleAssignmentAuditRepository
     actorId: UserId,
     tx?: TransactionContext,
   ): Promise<AssignmentAudit[]> {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select()
       .from(assignmentAudit)
       .where(
         and(
-          withChurchIsolation(assignmentAudit, churchId),
+          withChurchIsolation({ table: assignmentAudit, churchId }),
           eq(assignmentAudit.actorId, actorId),
         ),
       )
@@ -132,7 +135,7 @@ export class DrizzleAssignmentAuditRepository
     eventId: EventId,
     tx?: TransactionContext,
   ): Promise<AssignmentAuditLogEntry[]> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const volunteerUser = aliasedTable(user, 'volunteer_user');
     const actorUser = aliasedTable(user, 'actor_user');
 
@@ -163,7 +166,7 @@ export class DrizzleAssignmentAuditRepository
       .leftJoin(actorUser, eq(assignmentAudit.actorId, actorUser.id))
       .where(
         and(
-          withChurchIsolation(assignmentAudit, churchId),
+          withChurchIsolation({ table: assignmentAudit, churchId }),
           eq(eventTimeBlock.eventId, eventId),
         ),
       )

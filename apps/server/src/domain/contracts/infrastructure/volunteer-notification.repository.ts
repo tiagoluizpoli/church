@@ -15,6 +15,7 @@ import type {
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateVolunteerNotificationInput {
+  churchId: ChurchId;
   volunteerId: VolunteerId;
   cycleId?: CycleId;
   ministryId?: MinistryId;
@@ -24,12 +25,15 @@ export interface CreateVolunteerNotificationInput {
   title: string;
   body: string;
   payload: VolunteerNotificationPayload;
+  tx?: TransactionContext;
 }
 
 export interface VolunteerNotificationListInput {
   volunteerId: VolunteerId;
+  churchId: ChurchId;
   cursor?: Date;
   limit: number;
+  tx?: TransactionContext;
 }
 
 export interface VolunteerNotificationListResult {
@@ -39,33 +43,35 @@ export interface VolunteerNotificationListResult {
 
 export interface VolunteerNotificationRepository {
   create(
-    churchId: ChurchId,
     input: CreateVolunteerNotificationInput,
-    tx?: TransactionContext,
   ): Promise<VolunteerNotification>;
 
   listByVolunteer(
-    churchId: ChurchId,
     input: VolunteerNotificationListInput,
-    tx?: TransactionContext,
   ): Promise<VolunteerNotificationListResult>;
 
-  countUnread(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<number>;
+  countUnread(input: CountUnreadVolunteerNotificationsInput): Promise<number>;
 
-  markRead(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    notificationId: VolunteerNotificationId,
-    tx?: TransactionContext,
-  ): Promise<Date | null>;
+  markRead(input: MarkVolunteerNotificationReadInput): Promise<Date | null>;
 
-  markAllRead(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<number>;
+  markAllRead(input: MarkAllVolunteerNotificationsReadInput): Promise<number>;
+}
+
+export interface CountUnreadVolunteerNotificationsInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  tx?: TransactionContext;
+}
+
+export interface MarkVolunteerNotificationReadInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  notificationId: VolunteerNotificationId;
+  tx?: TransactionContext;
+}
+
+export interface MarkAllVolunteerNotificationsReadInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  tx?: TransactionContext;
 }

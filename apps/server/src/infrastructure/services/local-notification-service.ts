@@ -34,7 +34,8 @@ export class LocalNotificationService implements NotificationService {
 
   async notifyVolunteer(event: VolunteerScheduleNotification): Promise<void> {
     console.log('[NotificationService] Volunteer inbox notification:', event);
-    await this.volunteerNotificationRepo.create(event.churchId as ChurchId, {
+    await this.volunteerNotificationRepo.create({
+      churchId: event.churchId as ChurchId,
       volunteerId: event.volunteerId as VolunteerId,
       cycleId: event.cycleId,
       ministryId: event.ministryId,

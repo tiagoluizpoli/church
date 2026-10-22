@@ -73,7 +73,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     auditAction,
     tx,
   }: AcceptMinistryInvitationInput): Promise<VolunteerId> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [invitationRow] = await db
       .select({
         status: ministryInvitation.status,
@@ -84,7 +84,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       .from(ministryInvitation)
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.id, ministryInvitationId),
         ),
       )
@@ -96,11 +96,11 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     // checkpoints): no new grant, no second audit/outbox row — just hand
     // back the Volunteer this same User already holds from that commit.
     if (invitationRow.status === 'accepted') {
-      const acceptor = await this.volunteerRepository.findByUserId(
+      const acceptor = await this.volunteerRepository.findByUserId({
         churchId,
         userId,
         tx,
-      );
+      });
       if (acceptor) return acceptor.id;
       throw new PendingMinistryInvitationNotFoundError();
     }
@@ -117,7 +117,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       .from(ministryInvitationRole)
       .where(
         and(
-          withChurchIsolation(ministryInvitationRole, churchId),
+          withChurchIsolation({ table: ministryInvitationRole, churchId }),
           eq(ministryInvitationRole.ministryInvitationId, ministryInvitationId),
         ),
       );
@@ -129,11 +129,11 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       invitationRoles,
     });
 
-    const existingVolunteer = await this.volunteerRepository.findByUserId(
+    const existingVolunteer = await this.volunteerRepository.findByUserId({
       churchId,
       userId,
       tx,
-    );
+    });
     // Spec §7.5: an active Volunteer profile in another Church makes the
     // one-active-profile rule refuse the Ministry half. Thrown before any
     // write, so Church Membership (granted earlier) stands and the invitation
@@ -142,7 +142,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     // backstop under this check.
     if (!existingVolunteer) {
       const activeElsewhere =
-        await this.volunteerRepository.findByUserIdGlobally(userId, tx);
+        await this.volunteerRepository.findByUserIdGlobally({ userId, tx });
       if (activeElsewhere && activeElsewhere.churchId !== churchId) {
         throw new CrossChurchVolunteerConflictError({
           sourceChurchId: activeElsewhere.churchId,
@@ -184,7 +184,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       .set({ status: 'accepted', acceptedAt })
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.id, ministryInvitationId),
           eq(ministryInvitation.status, 'pending'),
         ),
@@ -222,13 +222,13 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     correlationId,
     tx,
   }: DeclineMinistryInvitationInput): Promise<void> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [declined] = await db
       .update(ministryInvitation)
       .set({ status: 'rejected' })
       .where(
         and(
-          withChurchIsolation(ministryInvitation, churchId),
+          withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.id, ministryInvitationId),
           eq(ministryInvitation.status, 'pending'),
         ),
@@ -253,7 +253,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     recordedAt,
     tx,
   }: RecordChurchOnlyPartialAcceptanceInput): Promise<void> {
-    await getClient(this.db, tx).insert(identityAudit).values({
+    await getClient({ db: this.db, tx }).insert(identityAudit).values({
       churchId,
       ministryInvitationId,
       actorId: userId,
@@ -294,7 +294,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       .from(ministryMembership)
       .where(
         and(
-          withChurchIsolation(ministryMembership, churchId),
+          withChurchIsolation({ table: ministryMembership, churchId }),
           eq(ministryMembership.volunteerId, volunteerId),
           eq(ministryMembership.ministryId, ministryId),
           eq(ministryMembership.status, 'active'),
@@ -351,7 +351,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       .from(ministry)
       .where(
         and(
-          withChurchIsolation(ministry, churchId),
+          withChurchIsolation({ table: ministry, churchId }),
           eq(ministry.id, ministryId),
         ),
       )
@@ -365,7 +365,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       .from(role)
       .where(
         and(
-          withChurchIsolation(role, churchId),
+          withChurchIsolation({ table: role, churchId }),
           eq(role.ministryId, ministryId),
           inArray(role.id, roleIds),
         ),

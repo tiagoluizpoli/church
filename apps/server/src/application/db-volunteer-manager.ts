@@ -242,11 +242,11 @@ export class DbVolunteerManager implements IVolunteerManager {
     const { volunteerId, churchId } = input;
     const now = nowInstant();
 
-    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds(
+    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds({
       churchId,
       volunteerId,
-    );
-    const allMinistries = await this.ministryRepo.listByChurch(churchId);
+    });
+    const allMinistries = await this.ministryRepo.listByChurch({ churchId });
     const ministries = allMinistries
       .filter((m) => memberMinistryIds.includes(m.id as MinistryId))
       .map((m) => ({ id: m.id as string, name: m.name }));
@@ -381,7 +381,10 @@ export class DbVolunteerManager implements IVolunteerManager {
       const ministry = ministryById.get(participation.ministryId as string);
       if (!event || !ministry) continue;
 
-      const role = await this.roleRepo.getById(churchId, assignment.roleId);
+      const role = await this.roleRepo.getById({
+        churchId,
+        id: assignment.roleId,
+      });
       const timingState: 'in_progress' | 'upcoming' =
         compareInstants({ left: shift.startTime, right: now }) <= 0
           ? 'in_progress'
@@ -446,8 +449,9 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     const [unreadNotificationCount, notificationPreviewResult] =
       await Promise.all([
-        this.notificationRepo.countUnread(churchId, volunteerId),
-        this.notificationRepo.listByVolunteer(churchId, {
+        this.notificationRepo.countUnread({ churchId, volunteerId }),
+        this.notificationRepo.listByVolunteer({
+          churchId,
           volunteerId,
           limit: NOTIFICATION_PREVIEW_LIMIT,
         }),
@@ -524,22 +528,22 @@ export class DbVolunteerManager implements IVolunteerManager {
   ): Promise<MinistrySchedule> {
     const { churchId, ministryId, volunteerId } = input;
 
-    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds(
+    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds({
       churchId,
       volunteerId,
-    );
+    });
     if (!memberMinistryIds.includes(ministryId)) {
       throw new IsolationBreachError();
     }
 
     const [ministry, participations, roles] = await Promise.all([
-      this.ministryRepo.getById(churchId, ministryId),
+      this.ministryRepo.getById({ churchId, id: ministryId }),
       this.participationRepo.listByMinistry({
         churchId,
         ministryId,
         state: 'published',
       }),
-      this.roleRepo.listByMinistry(churchId, ministryId),
+      this.roleRepo.listByMinistry({ churchId, ministryId }),
     ]);
     const eventData = await Promise.all(
       participations.map(async (participation) => ({
@@ -564,10 +568,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     const volunteerIds = [
       ...new Set(assignments.map((item) => item.volunteerId)),
     ];
-    const volunteers = await this.volunteerRepo.listByIds(
+    const volunteers = await this.volunteerRepo.listByIds({
       churchId,
-      volunteerIds,
-    );
+      ids: volunteerIds,
+    });
     const roleNames = new Map(
       roles.map((role) => [role.id as string, role.name]),
     );
@@ -905,7 +909,8 @@ export class DbVolunteerManager implements IVolunteerManager {
       cursor,
       limit = DEFAULT_NOTIFICATION_LIMIT,
     } = input;
-    return this.notificationRepo.listByVolunteer(churchId, {
+    return this.notificationRepo.listByVolunteer({
+      churchId,
       volunteerId,
       cursor,
       limit,
@@ -914,11 +919,11 @@ export class DbVolunteerManager implements IVolunteerManager {
 
   async markNotificationRead(input: MarkNotificationReadInput): Promise<void> {
     const { notificationId, volunteerId, churchId } = input;
-    const readAt = await this.notificationRepo.markRead(
+    const readAt = await this.notificationRepo.markRead({
       churchId,
       volunteerId,
       notificationId,
-    );
+    });
     if (!readAt) {
       throw new NotFoundError('Resource not found');
     }
@@ -927,7 +932,10 @@ export class DbVolunteerManager implements IVolunteerManager {
   async markAllNotificationsRead(
     input: MarkAllNotificationsReadInput,
   ): Promise<void> {
-    await this.notificationRepo.markAllRead(input.churchId, input.volunteerId);
+    await this.notificationRepo.markAllRead({
+      churchId: input.churchId,
+      volunteerId: input.volunteerId,
+    });
   }
 
   private async listPublishedAssignmentsForVolunteer({

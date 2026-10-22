@@ -3,15 +3,19 @@ import type { Role } from '../../entities/role';
 import type { TransactionContext } from './transaction-context';
 
 export interface RoleRepository {
-  getById(
-    churchId: ChurchId,
-    id: RoleId,
-    tx?: TransactionContext,
-  ): Promise<Role>;
+  getById(input: GetRoleByIdInput): Promise<Role>;
 
-  listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<Role[]>;
+  listByMinistry(input: ListRolesByMinistryInput): Promise<Role[]>;
+}
+
+export interface GetRoleByIdInput {
+  churchId: ChurchId;
+  id: RoleId;
+  tx?: TransactionContext;
+}
+
+export interface ListRolesByMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
 }

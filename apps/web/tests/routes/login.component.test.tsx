@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
@@ -91,7 +92,7 @@ describe('the sign-in route (login)', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/no-access');
     });
-    expect(await screen.findByText('No Church access')).toBeVisible();
+    expect(await screen.findByText(m.no_access_title())).toBeVisible();
   });
 
   it('falls back to the dashboard when the redirect target is rejected', async () => {

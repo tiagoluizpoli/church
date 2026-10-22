@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -47,6 +48,6 @@ describe('the session guard (_authenticated)', () => {
 
     renderRoute({ initialPath: '/no-access' });
 
-    expect(await screen.findByText('No Church access')).toBeInTheDocument();
+    expect(await screen.findByText(m.no_access_title())).toBeInTheDocument();
   });
 });

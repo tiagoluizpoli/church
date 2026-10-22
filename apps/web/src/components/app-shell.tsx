@@ -56,7 +56,7 @@ export interface BreadcrumbSegmentOverride {
 interface AppShellProps {
   children: React.ReactNode;
   breadcrumbOverrides?: BreadcrumbSegmentOverride[];
-  notificationBell?: React.ReactNode;
+  notificationBell: React.ReactNode;
 }
 interface NavIconProps {
   className?: string;

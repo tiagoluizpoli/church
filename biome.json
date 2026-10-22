@@ -351,11 +351,11 @@
                 "patterns": [
                   {
                     "group": ["**/features/**"],
-                    "message": "shared/ → features/ import forbidden (Bulletproof React layering: shared → features → routes)."
+                    "message": "shared/ → features/ import forbidden (Bulletproof React layering: shared → features → app)."
                   },
                   {
                     "group": ["**/routes/**"],
-                    "message": "shared/ → routes/ import forbidden (Bulletproof React layering: shared → features → routes)."
+                    "message": "shared/ → routes/ import forbidden (Bulletproof React layering: shared → features → app)."
                   }
                 ],
                 "paths": {
@@ -379,7 +379,7 @@
                 "patterns": [
                   {
                     "group": ["**/routes/**"],
-                    "message": "features/ → routes/ import forbidden (Bulletproof React layering: shared → features → routes)."
+                    "message": "features/ → routes/ import forbidden (Bulletproof React layering: shared → features → app)."
                   }
                 ],
                 "paths": {

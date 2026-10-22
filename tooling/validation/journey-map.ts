@@ -522,8 +522,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   },
   // #218 — the notification bell (header, every page) and the /notifications
-  // inbox page, proven end to end by this one spec. Moved to volunteers
-  // feature in #559.
+  // inbox page, proven end to end by this one spec.
   {
     sourcePathPrefix:
       'apps/web/src/features/volunteers/components/notification-bell.tsx',

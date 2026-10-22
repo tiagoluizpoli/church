@@ -22,11 +22,11 @@ export interface AvailabilityTaskViewModel {
   completionState: 'missing' | 'partial' | 'complete';
 }
 
-function completionLabel({
-  completionState,
-}: {
+interface CompletionLabelInput {
   completionState: AvailabilityTaskViewModel['completionState'];
-}): string {
+}
+
+function completionLabel({ completionState }: CompletionLabelInput): string {
   if (completionState === 'partial') {
     return 'Partial';
   }

@@ -44,6 +44,11 @@ export interface VolunteerPoolItem extends PoolVolunteer {
   workloadCount: number;
 }
 
+export interface UseVolunteerPoolInput {
+  volunteers: PoolVolunteer[];
+  assignments: PoolAssignment[];
+}
+
 /**
  * Sidebar filter + sort logic. Sort order:
  *   availability tier (available → partial → unavailable → no_response)
@@ -54,10 +59,10 @@ export interface VolunteerPoolItem extends PoolVolunteer {
  * `qualifiedRoleNames`), the same basis "group by role" uses — not on who is
  * currently assigned to the role. `'all'` is the no-filter sentinel.
  */
-export function useVolunteerPool(
-  volunteers: PoolVolunteer[],
-  assignments: PoolAssignment[],
-) {
+export function useVolunteerPool({
+  volunteers,
+  assignments,
+}: UseVolunteerPoolInput) {
   const [nameFilter, setNameFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
 

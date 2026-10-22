@@ -1,14 +1,6 @@
 /** The search param a link uses to name the Church it targets. */
 export const CROSS_CHURCH_LINK_SEARCH_PARAM = 'church';
 
-/**
- * Shown when a deep link targets a Church the caller has no Membership in.
- * Deliberately generic — it must not confirm or deny that the linked
- * resource exists in that Church (spec.md §1.5).
- */
-export const CROSS_CHURCH_ACCESS_DENIED_MESSAGE =
-  "That link isn't available to your account. You're still working in your current Church.";
-
 export type CrossChurchLinkDecision =
   | { kind: 'passthrough' }
   | { kind: 'auto-select'; churchId: string }

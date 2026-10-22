@@ -1,6 +1,6 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CROSS_CHURCH_ACCESS_DENIED_MESSAGE } from '@/shared/utils/cross-church-link';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
@@ -57,7 +57,7 @@ describe('dashboard route', () => {
     await screen.findByText('Volunteer dashboard stub');
     await waitFor(() => {
       expect(toastInfo).toHaveBeenCalledWith(
-        expect.stringContaining('Old Church'),
+        m.no_access_removed_from({ churchName: 'Old Church' }),
       );
     });
   });
@@ -74,9 +74,7 @@ describe('dashboard route', () => {
 
     await screen.findByText('Volunteer dashboard stub');
     await waitFor(() => {
-      expect(toastInfo).toHaveBeenCalledWith(
-        CROSS_CHURCH_ACCESS_DENIED_MESSAGE,
-      );
+      expect(toastInfo).toHaveBeenCalledWith(m.switch_church_access_denied());
     });
   });
 });

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowRight, Building2, CircleAlert } from 'lucide-react';
@@ -76,20 +77,21 @@ function CrossChurchConfirmCard({
             <Building2 className="size-5" />
           </div>
           <h1 className="mt-5 text-balance font-semibold text-2xl tracking-tight">
-            This link opens another Church
+            {m.switch_church_title()}
           </h1>
           <p className="mt-3 text-pretty text-foreground/75 leading-6">
-            You're currently working in <strong>{currentChurchName}</strong>.
-            The requested page belongs to <strong>{targetChurchName}</strong>.
+            {m.switch_church_currently_in({
+              currentChurchName,
+              targetChurchName,
+            })}
           </p>
           <p className="mt-4 text-muted-foreground text-sm">
-            Switching clears Church-scoped cached data before the page opens.
-            Your membership will be verified again.
+            {m.switch_church_detail()}
           </p>
           {isSwitchError ? (
             <div className="mt-4 flex items-start gap-3 rounded-lg bg-destructive/8 p-3">
               <CircleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
-              <p className="text-sm">Couldn't switch Church. Try again.</p>
+              <p className="text-sm">{m.switch_church_switch_error()}</p>
             </div>
           ) : null}
           <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -98,10 +100,10 @@ function CrossChurchConfirmCard({
               onClick={onStay}
               disabled={isSwitchPending}
             >
-              Stay in {currentChurchName}
+              {m.switch_church_stay({ churchName: currentChurchName })}
             </Button>
             <Button onClick={onSwitch} disabled={isSwitchPending}>
-              Switch to {targetChurchName}
+              {m.switch_church_switch({ churchName: targetChurchName })}
               <ArrowRight />
             </Button>
           </div>
@@ -185,7 +187,9 @@ function SwitchChurchConfirmRoute() {
   if (optionsQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
-        <p className="text-muted-foreground text-sm">Loading…</p>
+        <p className="text-muted-foreground text-sm">
+          {m.switch_church_loading()}
+        </p>
       </div>
     );
   }
@@ -194,7 +198,7 @@ function SwitchChurchConfirmRoute() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
         <p className="text-muted-foreground text-sm">
-          Couldn't load your Churches. Try reloading the page.
+          {m.switch_church_load_error()}
         </p>
       </div>
     );

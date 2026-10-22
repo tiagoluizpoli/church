@@ -41,11 +41,13 @@ export const DASHBOARD_SECTION_OPTIONS = [
 
 const DEFAULT_DASHBOARD_TAB_ID: DashboardTabId = 'upcoming-assignments';
 
+interface ResolveInitialTabIdInput {
+  initialSection: VolunteerDashboardProps['initialSection'];
+}
+
 function resolveInitialTabId({
   initialSection,
-}: {
-  initialSection: VolunteerDashboardProps['initialSection'];
-}): DashboardTabId {
+}: ResolveInitialTabIdInput): DashboardTabId {
   if (initialSection === 'availability') {
     return 'availability-needed';
   }

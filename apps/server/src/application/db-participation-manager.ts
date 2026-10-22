@@ -145,6 +145,13 @@ interface ListEligibleForShiftsInput {
   tx?: TransactionContext;
 }
 
+interface ListQualifiedVolunteersForShiftInput {
+  churchId: ListEligibleVolunteersInput['churchId'];
+  participation: MinistryParticipation;
+  requirements: ShiftRequirement[];
+  tx?: TransactionContext;
+}
+
 interface BuildBuilderEventViewInput {
   eventGroup: EventWithEventTimeBlocks;
   participation: MinistryParticipation;
@@ -1156,12 +1163,7 @@ export class DbParticipationManager implements IParticipationManager {
     participation,
     requirements,
     tx,
-  }: {
-    churchId: ListEligibleVolunteersInput['churchId'];
-    participation: MinistryParticipation;
-    requirements: ShiftRequirement[];
-    tx?: TransactionContext;
-  }) {
+  }: ListQualifiedVolunteersForShiftInput) {
     const volunteersById = new Map<
       string,
       Awaited<ReturnType<VolunteerRepository['listQualifiedForRole']>>[number]
@@ -1548,17 +1550,19 @@ function buildEventView({
   };
 }
 
+interface RangesOverlapInput {
+  startTime: Instant;
+  endTime: Instant;
+  otherStartTime: Instant;
+  otherEndTime: Instant;
+}
+
 function rangesOverlap({
   startTime,
   endTime,
   otherStartTime,
   otherEndTime,
-}: {
-  startTime: Instant;
-  endTime: Instant;
-  otherStartTime: Instant;
-  otherEndTime: Instant;
-}): boolean {
+}: RangesOverlapInput): boolean {
   return (
     compareInstants({ left: startTime, right: otherEndTime }) < 0 &&
     compareInstants({ left: endTime, right: otherStartTime }) > 0
@@ -1569,11 +1573,13 @@ function isActiveAssignmentStatus(status: string): boolean {
   return status === 'draft' || status === 'pending' || status === 'confirmed';
 }
 
+interface BuildDoubleBookedWarningInput {
+  assignmentId: string;
+}
+
 function buildDoubleBookedWarning({
   assignmentId,
-}: {
-  assignmentId: string;
-}): ConflictIssue {
+}: BuildDoubleBookedWarningInput): ConflictIssue {
   return {
     type: 'DOUBLE_BOOKED',
     details: 'Volunteer is already assigned to another overlapping shift',

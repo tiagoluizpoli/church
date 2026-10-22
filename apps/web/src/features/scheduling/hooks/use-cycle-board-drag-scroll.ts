@@ -8,13 +8,12 @@ export interface DragScrollState {
   captureElement: HTMLDivElement;
 }
 
-const clearDrag = ({
-  dragState,
-  pointerId,
-}: {
+interface ClearDragInput {
   dragState: React.RefObject<DragScrollState | null>;
   pointerId: number;
-}): void => {
+}
+
+const clearDrag = ({ dragState, pointerId }: ClearDragInput): void => {
   const captureElement = dragState.current?.captureElement;
   dragState.current = null;
   captureElement?.classList.remove('select-none');

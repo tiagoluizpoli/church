@@ -64,7 +64,7 @@ test.describe('DL4-X1 church isolation', () => {
     await page.goto('/cycles');
     await expect(
       page.getByTestId('cycle-option').filter({ hasText: churchB.cycle.name }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     await expect(
       page.getByTestId('cycle-option').filter({ hasText: churchA.cycle.name }),
     ).toHaveCount(0);

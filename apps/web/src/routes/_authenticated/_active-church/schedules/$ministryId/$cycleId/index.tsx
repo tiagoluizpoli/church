@@ -207,6 +207,7 @@ type EditSessionAction =
  * every mutation's `onSuccess`. `selectedDate`/`nameQuery`/`timeWindowFilter`/
  * `confirmSendOpen` stay outside this reducer — they're genuinely
  * independent UI state, not part of the edit session. */
+// named-parameters-ignore: React useReducer calls reducers as (state, action)
 function editSessionReducer(
   state: EditSessionState,
   action: EditSessionAction,

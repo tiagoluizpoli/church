@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { formatRecency, parseInstant } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,11 +19,7 @@ import {
   type ActiveChurchArea,
   switchActiveChurch,
 } from '@/shared/utils/active-church-switch';
-import {
-  MEMBERSHIP_REMOVED_PREFIX,
-  MEMBERSHIP_REMOVED_SUFFIX,
-  removedFromSearchSchema,
-} from '@/shared/utils/membership-removal';
+import { removedFromSearchSchema } from '@/shared/utils/membership-removal';
 import { activeChurchApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/_authenticated/select-church')({
@@ -33,9 +30,9 @@ export const Route = createFileRoute('/_authenticated/select-church')({
   component: SelectChurchRoute,
 });
 
-const AREA_LABELS: Record<string, string> = {
-  dashboard: 'Dashboard',
-  scheduling: 'Scheduling',
+const AREA_LABELS: Record<string, () => string> = {
+  dashboard: m.select_church_area_dashboard,
+  scheduling: m.select_church_area_scheduling,
 };
 
 interface FormatLastOpenedInput {
@@ -47,7 +44,7 @@ function formatLastOpened({
   lastOpenedAt,
   timeZone,
 }: FormatLastOpenedInput): string {
-  if (!lastOpenedAt) return 'Never opened';
+  if (!lastOpenedAt) return m.select_church_never_opened();
   return formatRecency({
     instant: parseInstant({ value: lastOpenedAt }),
     timeZone,
@@ -74,7 +71,9 @@ interface AccessLabelInput {
 }
 
 function accessLabel({ accessLevel }: AccessLabelInput): string {
-  return accessLevel === 'admin' ? 'Church Admin' : 'Church Member';
+  return accessLevel === 'admin'
+    ? m.select_church_access_admin()
+    : m.select_church_access_member();
 }
 
 interface AreasLabelInput {
@@ -96,7 +95,9 @@ interface NavigateAfterChurchSelectionInput {
 }
 
 function areasLabel({ availableAreas }: AreasLabelInput): string {
-  return availableAreas.map((area) => AREA_LABELS[area] ?? area).join(', ');
+  return availableAreas
+    .map((area) => (AREA_LABELS[area] ?? (() => area))())
+    .join(', ');
 }
 
 function SelectChurchRoute() {
@@ -152,10 +153,10 @@ function SelectChurchRoute() {
             </div>
             <div>
               <p className="font-semibold text-[1.05rem] tracking-tight">
-                Church CRM
+                {m.select_church_app_name()}
               </p>
               <p className="text-muted-foreground text-xs">
-                Scheduling workspace
+                {m.select_church_app_subtitle()}
               </p>
             </div>
           </div>
@@ -166,17 +167,18 @@ function SelectChurchRoute() {
             onClick={() => signOut()}
           >
             <LogOut />
-            Sign out
+            {m.user_menu_sign_out()}
           </Button>
         </header>
 
         <section className="px-5 py-6 md:px-8">
           <h1 className="text-balance font-semibold text-2xl tracking-tight">
-            Select an Active Church
+            {m.select_church_title()}
           </h1>
           <p className="mt-2 max-w-2xl text-pretty text-muted-foreground text-sm">
-            {userName ? `${userName}, y` : 'Y'}our account belongs to several
-            Churches. Compare access before continuing.
+            {userName
+              ? m.select_church_intro_named({ name: userName })
+              : m.select_church_intro()}
           </p>
         </section>
 
@@ -184,34 +186,28 @@ function SelectChurchRoute() {
           <div className="flex items-start gap-3 border-border border-y bg-amber-500/8 px-5 py-4 md:px-8">
             <TriangleAlert className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-500" />
             <p className="text-sm">
-              {MEMBERSHIP_REMOVED_PREFIX}
-              <strong>{removedFrom}</strong>
-              {MEMBERSHIP_REMOVED_SUFFIX}
+              {m.no_access_removed_from({ churchName: removedFrom })}
             </p>
           </div>
         ) : null}
 
         {optionsQuery.isLoading ? (
           <p className="px-5 pb-8 text-muted-foreground text-sm md:px-8">
-            Loading your Churches…
+            {m.select_church_loading()}
           </p>
         ) : null}
 
         {optionsQuery.isError ? (
           <div className="flex items-start gap-3 border-border border-y bg-destructive/8 px-5 py-4 md:px-8">
             <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-            <p className="text-sm">
-              Couldn't load your Churches. Try reloading the page.
-            </p>
+            <p className="text-sm">{m.select_church_load_error()}</p>
           </div>
         ) : null}
 
         {selectMutation.isError ? (
           <div className="flex items-start gap-3 border-border border-y bg-destructive/8 px-5 py-4 md:px-8">
             <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-            <p className="text-sm">
-              Couldn't switch Church. Try selecting it again.
-            </p>
+            <p className="text-sm">{m.select_church_switch_error()}</p>
           </div>
         ) : null}
 
@@ -256,10 +252,10 @@ function SelectChurchRoute() {
             <div className="hidden overflow-x-auto border-border border-y md:block">
               <div className="min-w-[760px]">
                 <div className="grid grid-cols-[minmax(15rem,1.4fr)_minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(12rem,1fr)_3rem] bg-muted/50 px-8 py-2.5 font-medium text-muted-foreground text-xs">
-                  <span>Church</span>
-                  <span>Church access</span>
-                  <span>Available areas</span>
-                  <span>Last opened</span>
+                  <span>{m.select_church_col_church()}</span>
+                  <span>{m.select_church_col_access()}</span>
+                  <span>{m.select_church_col_areas()}</span>
+                  <span>{m.select_church_col_last_opened()}</span>
                   <span />
                 </div>
                 {churches.map((church) => (
@@ -315,7 +311,7 @@ function SelectChurchRoute() {
         ) : null}
 
         <footer className="px-5 py-4 text-muted-foreground text-sm md:px-8">
-          Active Church controls every protected request and cached result.
+          {m.select_church_footer()}
         </footer>
       </main>
     </div>

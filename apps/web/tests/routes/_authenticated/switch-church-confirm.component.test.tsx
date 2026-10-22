@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -82,11 +83,15 @@ describe('switch-church-confirm route', () => {
   it('names the current and target Church before switching', async () => {
     renderConfirm('/switch-church-confirm?target=church-b&redirect=%2Fcycles');
 
+    expect(await screen.findByText(m.switch_church_title())).toBeVisible();
     expect(
-      await screen.findByText('This link opens another Church'),
+      screen.getByText(
+        m.switch_church_currently_in({
+          currentChurchName: 'Igreja Central',
+          targetChurchName: 'Comunidade Esperança',
+        }),
+      ),
     ).toBeVisible();
-    expect(screen.getByText('Igreja Central')).toBeVisible();
-    expect(screen.getByText('Comunidade Esperança')).toBeVisible();
   });
 
   it('switches to the target Church and lands on the exact requested destination on confirm', async () => {
@@ -102,9 +107,11 @@ describe('switch-church-confirm route', () => {
       '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
-    await screen.findByText('This link opens another Church');
+    await screen.findByText(m.switch_church_title());
     await user.click(
-      screen.getByRole('button', { name: /switch to comunidade esperança/i }),
+      screen.getByRole('button', {
+        name: m.switch_church_switch({ churchName: 'Comunidade Esperança' }),
+      }),
     );
 
     await waitFor(() => {
@@ -133,9 +140,11 @@ describe('switch-church-confirm route', () => {
       '/switch-church-confirm?target=church-b&redirect=%2Fcycles%2Fcycle-1',
     );
 
-    await screen.findByText('This link opens another Church');
+    await screen.findByText(m.switch_church_title());
     await user.click(
-      screen.getByRole('button', { name: /switch to comunidade esperança/i }),
+      screen.getByRole('button', {
+        name: m.switch_church_switch({ churchName: 'Comunidade Esperança' }),
+      }),
     );
 
     await waitFor(() => {
@@ -153,9 +162,11 @@ describe('switch-church-confirm route', () => {
       '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
-    await screen.findByText('This link opens another Church');
+    await screen.findByText(m.switch_church_title());
     await user.click(
-      screen.getByRole('button', { name: /stay in igreja central/i }),
+      screen.getByRole('button', {
+        name: m.switch_church_stay({ churchName: 'Igreja Central' }),
+      }),
     );
 
     await waitFor(() => {
@@ -185,9 +196,7 @@ describe('switch-church-confirm route', () => {
     renderConfirm('/switch-church-confirm?target=church-b&redirect=%2Fcycles');
 
     expect(
-      await screen.findByText(
-        "Couldn't load your Churches. Try reloading the page.",
-      ),
+      await screen.findByText(m.switch_church_load_error()),
     ).toBeInTheDocument();
     expect(selectActiveChurch).not.toHaveBeenCalled();
   });

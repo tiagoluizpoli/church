@@ -45,5 +45,11 @@
   "error_forbidden": "Você não tem permissão para fazer isso.",
   "error_active_church_selection_required": "Escolha uma Igreja ativa para continuar.",
   "error_rate_limited": "Muitas tentativas. Tente novamente em instantes.",
-  "error_invitation_unavailable": "Este convite não está disponível."
+  "error_invitation_unavailable": "Este convite não está disponível.",
+  "user_menu_sign_out": "Sair",
+  "user_menu_sign_in": "Entrar",
+  "user_menu_account_label": "Menu da conta de {name}",
+  "no_access_title": "Sem acesso à Igreja",
+  "no_access_generic_body": "Sua conta não está vinculada a uma Igreja ativa. Peça ao administrador para restaurar o acesso.",
+  "no_access_sign_out": "Sair"
 }

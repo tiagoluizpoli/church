@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { authClient } from '@/lib/auth-client';
+import { useSignOut } from '@/shared/hooks/use-sign-out';
 import {
   type ActiveChurchArea,
   switchActiveChurch,
@@ -104,6 +104,7 @@ function SelectChurchRoute() {
   const { redirect, removedFrom } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const signOut = useSignOut();
 
   const optionsQuery = useQuery({
     queryKey: ['active-church', 'options'],
@@ -162,18 +163,7 @@ function SelectChurchRoute() {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    queryClient.removeQueries({
-                      queryKey: ['caller-capabilities'],
-                    });
-                    navigate({ to: '/login' });
-                  },
-                },
-              });
-            }}
+            onClick={() => signOut()}
           >
             <LogOut />
             Sign out

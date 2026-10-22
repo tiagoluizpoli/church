@@ -45,5 +45,11 @@
   "error_forbidden": "You do not have permission to do that.",
   "error_active_church_selection_required": "Select an active Church to continue.",
   "error_rate_limited": "Too many attempts. Try again in a moment.",
-  "error_invitation_unavailable": "This invitation is not available."
+  "error_invitation_unavailable": "This invitation is not available.",
+  "user_menu_sign_out": "Sign out",
+  "user_menu_sign_in": "Sign in",
+  "user_menu_account_label": "Account menu for {name}",
+  "no_access_title": "No Church access",
+  "no_access_generic_body": "Your account isn't currently linked to an active Church. Ask a Church admin to restore your Church Membership.",
+  "no_access_sign_out": "Sign out"
 }

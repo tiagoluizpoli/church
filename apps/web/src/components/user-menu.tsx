@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { m } from '@church/i18n/messages';
+import { Link } from '@tanstack/react-router';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth-client';
+import { useSignOut } from '@/shared/hooks/use-sign-out';
 
 interface GetInitialsInput {
   name: string;
@@ -28,9 +29,8 @@ function getInitials({ name }: GetInitialsInput): string {
 }
 
 export default function UserMenu() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data: session, isPending } = authClient.useSession();
+  const signOut = useSignOut();
 
   if (isPending) {
     return <Skeleton className="h-9 w-24" />;
@@ -39,7 +39,7 @@ export default function UserMenu() {
   if (!session) {
     return (
       <Link to="/login">
-        <Button variant="outline">Sign In</Button>
+        <Button variant="outline">{m.user_menu_sign_in()}</Button>
       </Link>
     );
   }
@@ -50,7 +50,7 @@ export default function UserMenu() {
         render={
           <button
             type="button"
-            aria-label={`Account menu for ${session.user.name}`}
+            aria-label={m.user_menu_account_label({ name: session.user.name })}
             className="radius-icon flex h-9 w-9 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
           />
         }
@@ -72,24 +72,8 @@ export default function UserMenu() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    queryClient.removeQueries({
-                      queryKey: ['caller-capabilities'],
-                    });
-                    navigate({
-                      to: '/',
-                    });
-                  },
-                },
-              });
-            }}
-          >
-            Sign Out
+          <DropdownMenuItem variant="destructive" onClick={() => signOut('/')}>
+            {m.user_menu_sign_out()}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

@@ -101,10 +101,15 @@ function eventTimeBlockKey({
   return `${startTime}::${endTime}`;
 }
 
-function availabilityCompletionState(
-  entries: UnavailableShift[],
-  eventTimeBlocks: EventTimeBlock[],
-): 'missing' | 'partial' | 'complete' {
+interface AvailabilityCompletionStateInput {
+  entries: UnavailableShift[];
+  eventTimeBlocks: EventTimeBlock[];
+}
+
+function availabilityCompletionState({
+  entries,
+  eventTimeBlocks,
+}: AvailabilityCompletionStateInput): 'missing' | 'partial' | 'complete' {
   if (eventTimeBlocks.length === 0) return 'missing';
   const matchingKeys = new Set(
     entries.map((e) =>
@@ -173,6 +178,11 @@ function scheduleVolunteerName(name: string | undefined): string | undefined {
   const [firstName, ...rest] = name.trim().split(/\s+/);
   const lastName = rest.at(-1);
   return lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName;
+}
+
+interface ResolveCheckDetailInput {
+  context: CheckContext;
+  input: GetAvailabilityCheckInput;
 }
 
 interface DbVolunteerManagerDependencies {
@@ -278,10 +288,10 @@ export class DbVolunteerManager implements IVolunteerManager {
                   volunteerId,
                   eventId: event.id,
                 });
-              const completionState = availabilityCompletionState(
+              const completionState = availabilityCompletionState({
                 entries,
-                eventWithEventTimeBlocks.eventTimeBlocks,
-              );
+                eventTimeBlocks: eventWithEventTimeBlocks.eventTimeBlocks,
+              });
               if (completionState === 'complete') return null;
               return {
                 eventId: event.id as string,
@@ -669,10 +679,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     return context;
   }
 
-  private async resolveCheckDetail(
-    context: CheckContext,
-    input: GetAvailabilityCheckInput,
-  ): Promise<VolunteerAvailabilityCheckDetail> {
+  private async resolveCheckDetail({
+    context,
+    input,
+  }: ResolveCheckDetailInput): Promise<VolunteerAvailabilityCheckDetail> {
     const [shifts, unavailableShifts] = await Promise.all([
       this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
@@ -759,7 +769,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail> {
     const context = await this.getOwnedCheckContext(input);
-    return this.resolveCheckDetail(context, input);
+    return this.resolveCheckDetail({ context, input });
   }
 
   async setUnavailableShifts(
@@ -796,7 +806,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       });
     });
 
-    return this.resolveCheckDetail(context, input);
+    return this.resolveCheckDetail({ context, input });
   }
 
   async confirmAvailabilityCheck(

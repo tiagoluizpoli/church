@@ -17,6 +17,12 @@ export interface CreateActiveChurchPreValidationInput {
   requireVolunteer?: boolean;
 }
 
+// named-parameters-ignore: Fastify preValidation hook signature (request, reply)
+type ActiveChurchPreValidation = (
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => Promise<FastifyReply | undefined>;
+
 /**
  * The one Active-Church resolution every protected controller registers as
  * its `preValidation` hook — replaces the six duplicated hooks that each
@@ -27,12 +33,10 @@ export interface CreateActiveChurchPreValidationInput {
  */
 export function createActiveChurchPreValidation(
   input: CreateActiveChurchPreValidationInput,
-): (
-  request: FastifyRequest,
-  reply: FastifyReply,
-) => Promise<FastifyReply | undefined> {
+): ActiveChurchPreValidation {
   const { resolver, requireVolunteer = false } = input;
 
+  // named-parameters-ignore: Fastify preValidation hook signature (request, reply)
   return async (request, reply) => {
     const headers = headersFromRequest(request);
     const session = await auth.api.getSession({ headers }).catch(() => null);

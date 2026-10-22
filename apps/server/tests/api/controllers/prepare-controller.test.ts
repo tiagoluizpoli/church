@@ -439,7 +439,10 @@ describe('Prepare participation routes', () => {
 
   it('POST /api/v1/prepare/participations/:id/ask-availability returns 409 for wrong state', async () => {
     availabilityCheckManager.askAvailability.mockRejectedValue(
-      new IllegalStateTransitionError('availability_requested', 'ask'),
+      new IllegalStateTransitionError({
+        from: 'availability_requested',
+        to: 'ask',
+      }),
     );
 
     const response = await app.inject({

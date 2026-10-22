@@ -5,6 +5,7 @@ interface ErrorMessageOptions {
   locale: Locale;
 }
 
+// named-parameters-ignore: Paraglide generated message signature (inputs, options)
 export type ErrorMessage = (
   inputs: Record<string, never>,
   options: ErrorMessageOptions,

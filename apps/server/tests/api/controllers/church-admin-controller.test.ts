@@ -225,7 +225,7 @@ describe('Church admin planning routes', () => {
     expect(forbidden.statusCode).toBe(403);
 
     cycleManager.sendCycle.mockRejectedValueOnce(
-      new IllegalStateTransitionError('sent', 'sent'),
+      new IllegalStateTransitionError({ from: 'sent', to: 'sent' }),
     );
     const conflict = await app.inject({
       method: 'POST',
@@ -411,7 +411,7 @@ describe('Church admin planning routes', () => {
     expect(success.json()).toMatchObject({ label: 'Worship' });
 
     planningEventManager.createEventTimeBlock.mockRejectedValueOnce(
-      new IllegalStateTransitionError('scheduled', 'update'),
+      new IllegalStateTransitionError({ from: 'scheduled', to: 'update' }),
     );
     const locked = await app.inject({
       method: 'POST',
@@ -470,7 +470,7 @@ describe('Church admin planning routes', () => {
     expect(notFound.statusCode).toBe(404);
 
     planningEventManager.updateEventTimeBlock.mockRejectedValueOnce(
-      new IllegalStateTransitionError('scheduled', 'update'),
+      new IllegalStateTransitionError({ from: 'scheduled', to: 'update' }),
     );
     const locked = await app.inject({
       method: 'PATCH',

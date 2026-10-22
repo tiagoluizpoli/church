@@ -125,6 +125,7 @@ export class PrepareController implements FastifyController {
     this.authorityGuard = authorityGuard;
   }
 
+  // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
   registerRoutes(
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,

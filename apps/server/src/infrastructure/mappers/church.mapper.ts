@@ -59,15 +59,15 @@ export interface ChurchWithOrganizationRow {
 }
 
 export function mapChurch(record: ChurchWithOrganizationRow): Church {
-  return new Church(
-    {
+  return new Church({
+    props: {
       name: record.organization.name,
       slug: toChurchSlug({ rawSlug: record.organization.slug }),
       timezone: record.church.timezone,
       settings: toChurchSettings({ rawSettings: record.church.settings }),
     },
-    toChurchId({ rawId: record.church.id }),
-    record.organization.createdAt,
-    record.organization.createdAt,
-  );
+    id: toChurchId({ rawId: record.church.id }),
+    createdAt: record.organization.createdAt,
+    updatedAt: record.organization.createdAt,
+  });
 }

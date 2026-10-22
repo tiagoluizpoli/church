@@ -8,30 +8,30 @@ class MockRoleRepository implements RoleRepository {
   private roles = new Map<string, Role>();
 
   constructor() {
-    const r1 = new Role(
-      {
+    const r1 = new Role({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         name: 'Usher',
       },
-      '55555555-5555-5555-5555-555555555551' as RoleId,
-    );
-    const r2 = new Role(
-      {
+      id: '55555555-5555-5555-5555-555555555551' as RoleId,
+    });
+    const r2 = new Role({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         name: 'Greeter',
       },
-      '55555555-5555-5555-5555-555555555552' as RoleId,
-    );
-    const r3 = new Role(
-      {
+      id: '55555555-5555-5555-5555-555555555552' as RoleId,
+    });
+    const r3 = new Role({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         ministryId: '33333333-3333-3333-3333-333333333332' as MinistryId,
         name: 'Teacher',
       },
-      'role-3' as RoleId,
-    );
+      id: 'role-3' as RoleId,
+    });
     this.roles.set(r1.id, r1);
     this.roles.set(r2.id, r2);
     this.roles.set(r3.id, r3);

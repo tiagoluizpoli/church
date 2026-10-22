@@ -24,17 +24,19 @@ export interface EventTimeBlockProps {
   requirements: ShiftRequirement[];
 }
 
+export interface EventTimeBlockInput {
+  props: Omit<LooseProps<EventTimeBlockProps>, 'status' | 'requirements'> &
+    Partial<Pick<LooseProps<EventTimeBlockProps>, 'status' | 'requirements'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class EventTimeBlock extends Entity<
   EventTimeBlockProps,
   EventTimeBlockId
 > {
-  constructor(
-    props: Omit<LooseProps<EventTimeBlockProps>, 'status' | 'requirements'> &
-      Partial<Pick<LooseProps<EventTimeBlockProps>, 'status' | 'requirements'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: EventTimeBlockInput) {
     if (
       compareInstants({
         left: props.startTime as Instant,

@@ -17,14 +17,16 @@ export interface MinistryProps {
   deletedAt?: Instant;
 }
 
+export interface MinistryInput {
+  props: Omit<LooseProps<MinistryProps>, 'defaultDirection'> &
+    Partial<Pick<LooseProps<MinistryProps>, 'defaultDirection'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Ministry extends Entity<MinistryProps, MinistryId> {
-  constructor(
-    props: Omit<LooseProps<MinistryProps>, 'defaultDirection'> &
-      Partial<Pick<LooseProps<MinistryProps>, 'defaultDirection'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: MinistryInput) {
     super(
       {
         ...props,

@@ -25,6 +25,11 @@ export interface MinistryParticipationProps {
   touchedAt: Instant | null;
 }
 
+export interface MinistryParticipationTransitionInput {
+  next: ParticipationState;
+  requiredCurrent: ParticipationState;
+}
+
 export interface MinistryParticipationInput {
   props: Omit<LooseProps<MinistryParticipationProps>, 'state' | 'touchedAt'> &
     Partial<
@@ -154,11 +159,17 @@ export class MinistryParticipation extends Entity<
   }
 
   askAvailability(): void {
-    this.transitionTo('availability_requested', 'preparing');
+    this.transitionTo({
+      next: 'availability_requested',
+      requiredCurrent: 'preparing',
+    });
   }
 
   startAssigning(): void {
-    this.transitionTo('assigning', 'availability_requested');
+    this.transitionTo({
+      next: 'assigning',
+      requiredCurrent: 'availability_requested',
+    });
   }
 
   publish({
@@ -177,10 +188,10 @@ export class MinistryParticipation extends Entity<
     this._updatedAt = toDate({ instant: now() });
   }
 
-  private transitionTo(
-    next: ParticipationState,
-    requiredCurrent: ParticipationState,
-  ): void {
+  private transitionTo({
+    next,
+    requiredCurrent,
+  }: MinistryParticipationTransitionInput): void {
     if (this.state !== requiredCurrent) {
       throw new IllegalStateTransitionError(this.state, next);
     }

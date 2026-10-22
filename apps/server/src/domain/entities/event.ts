@@ -35,21 +35,23 @@ export interface EventWithEventTimeBlocks {
   eventTimeBlocks: EventTimeBlock[];
 }
 
+export interface EventInput {
+  props:
+    | (Omit<LooseProps<EventProps>, 'status'> &
+        Partial<Pick<LooseProps<EventProps>, 'status'>>)
+    | (Omit<
+        LooseProps<EventProps>,
+        'cycleId' | 'sourceTemplateId' | 'status'
+      > & {
+        ministryId: MinistryId | string;
+      } & Partial<Pick<LooseProps<EventProps>, 'status'>>);
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Event extends Entity<EventProps, EventId> {
-  constructor(
-    props:
-      | (Omit<LooseProps<EventProps>, 'status'> &
-          Partial<Pick<LooseProps<EventProps>, 'status'>>)
-      | (Omit<
-          LooseProps<EventProps>,
-          'cycleId' | 'sourceTemplateId' | 'status'
-        > & {
-          ministryId: MinistryId | string;
-        } & Partial<Pick<LooseProps<EventProps>, 'status'>>),
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: EventInput) {
     if (
       compareInstants({
         left: props.start as Instant,

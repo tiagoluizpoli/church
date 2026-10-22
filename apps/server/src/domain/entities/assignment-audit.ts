@@ -26,17 +26,19 @@ export interface AssignmentAuditProps {
   overrideConflictTypes?: SoftConflictType[];
 }
 
+export interface AssignmentAuditInput {
+  props: Omit<LooseProps<AssignmentAuditProps>, 'occurredAt'> &
+    Partial<Pick<LooseProps<AssignmentAuditProps>, 'occurredAt'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class AssignmentAudit extends Entity<
   AssignmentAuditProps,
   AssignmentAuditId
 > {
-  constructor(
-    props: Omit<LooseProps<AssignmentAuditProps>, 'occurredAt'> &
-      Partial<Pick<LooseProps<AssignmentAuditProps>, 'occurredAt'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: AssignmentAuditInput) {
     super(
       {
         ...props,

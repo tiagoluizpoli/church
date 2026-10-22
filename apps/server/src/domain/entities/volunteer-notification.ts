@@ -42,16 +42,18 @@ export interface VolunteerNotificationProps {
   readAt?: Instant;
 }
 
+export interface VolunteerNotificationInput {
+  props: LooseProps<VolunteerNotificationProps>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class VolunteerNotification extends Entity<
   VolunteerNotificationProps,
   VolunteerNotificationId
 > {
-  constructor(
-    props: LooseProps<VolunteerNotificationProps>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: VolunteerNotificationInput) {
     super(
       props as VolunteerNotificationProps,
       id as VolunteerNotificationId,

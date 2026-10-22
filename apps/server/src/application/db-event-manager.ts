@@ -231,8 +231,8 @@ export class DbEventManager implements IEventManager {
       const visibleRequirements = requirements.filter(
         (requirement) => requirement.eventTimeBlockId === eventTimeBlock.id,
       );
-      return new EventTimeBlock(
-        {
+      return new EventTimeBlock({
+        props: {
           churchId: eventTimeBlock.churchId,
           eventId: eventTimeBlock.eventId,
           sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
@@ -242,10 +242,10 @@ export class DbEventManager implements IEventManager {
           status: eventTimeBlock.status,
           requirements: visibleRequirements,
         },
-        eventTimeBlock.id,
-        eventTimeBlock.createdAt,
-        eventTimeBlock.updatedAt,
-      );
+        id: eventTimeBlock.id,
+        createdAt: eventTimeBlock.createdAt,
+        updatedAt: eventTimeBlock.updatedAt,
+      });
     });
   }
 }

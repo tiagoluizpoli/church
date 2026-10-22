@@ -34,25 +34,27 @@ export interface MinistryMembershipProps {
   joinedAt: Instant;
 }
 
+export interface MinistryMembershipInput {
+  props: Omit<
+    LooseProps<MinistryMembershipProps>,
+    'ministryAccessLevel' | 'status' | 'joinedAt'
+  > &
+    Partial<
+      Pick<
+        LooseProps<MinistryMembershipProps>,
+        'ministryAccessLevel' | 'status' | 'joinedAt'
+      >
+    >;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class MinistryMembership extends Entity<
   MinistryMembershipProps,
   MinistryMembershipId
 > {
-  constructor(
-    props: Omit<
-      LooseProps<MinistryMembershipProps>,
-      'ministryAccessLevel' | 'status' | 'joinedAt'
-    > &
-      Partial<
-        Pick<
-          LooseProps<MinistryMembershipProps>,
-          'ministryAccessLevel' | 'status' | 'joinedAt'
-        >
-      >,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: MinistryMembershipInput) {
     super(
       {
         ...props,

@@ -182,16 +182,16 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
               .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
               .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
 
-            return mapEventTimeBlock(
-              eventTimeBlockRow,
-              requirementRows.map(({ requirement, sectorName }) =>
+            return mapEventTimeBlock({
+              row: eventTimeBlockRow,
+              requirements: requirementRows.map(({ requirement, sectorName }) =>
                 mapShiftRequirement({
                   row: requirement,
                   sectorName,
                   eventTimeBlockId: eventTimeBlockRow.id,
                 }),
               ),
-            );
+            });
           }),
         );
 

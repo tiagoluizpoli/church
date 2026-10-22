@@ -26,16 +26,18 @@ export interface ShiftRequirementProps {
   notes?: string;
 }
 
+export interface ShiftRequirementInput {
+  props: LooseProps<ShiftRequirementProps>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class ShiftRequirement extends Entity<
   ShiftRequirementProps,
   ShiftRequirementId
 > {
-  constructor(
-    props: LooseProps<ShiftRequirementProps>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: ShiftRequirementInput) {
     if (props.peopleNeeded < 1) {
       throw new InvalidRequiredCountError();
     }

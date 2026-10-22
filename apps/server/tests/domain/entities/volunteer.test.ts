@@ -3,7 +3,9 @@ import { Volunteer } from '@/domain/entities/volunteer';
 
 describe('Volunteer Entity', () => {
   it('constructs with minimum props', () => {
-    const volunteer = new Volunteer({ churchId: 'c1', userId: 'u1' });
+    const volunteer = new Volunteer({
+      props: { churchId: 'c1', userId: 'u1' },
+    });
 
     expect(volunteer.churchId).toBe('c1');
     expect(volunteer.userId).toBe('u1');
@@ -12,7 +14,9 @@ describe('Volunteer Entity', () => {
   });
 
   it('handles mutations correctly', () => {
-    const volunteer = new Volunteer({ churchId: 'c1', userId: 'u1' });
+    const volunteer = new Volunteer({
+      props: { churchId: 'c1', userId: 'u1' },
+    });
 
     expect(volunteer.status).toBe('active');
 

@@ -5,9 +5,11 @@ import { MinistryMembership } from '@/domain/entities/ministry-membership';
 describe('MinistryMembership Entity', () => {
   it('constructs with minimum props', () => {
     const mv = new MinistryMembership({
-      churchId: 'c1',
-      volunteerId: 'v1',
-      ministryId: 'm1',
+      props: {
+        churchId: 'c1',
+        volunteerId: 'v1',
+        ministryId: 'm1',
+      },
     });
 
     expect(mv.churchId).toBe('c1');
@@ -20,9 +22,11 @@ describe('MinistryMembership Entity', () => {
 
   it('handles mutations correctly', () => {
     const mv = new MinistryMembership({
-      churchId: 'c1',
-      volunteerId: 'v1',
-      ministryId: 'm1',
+      props: {
+        churchId: 'c1',
+        volunteerId: 'v1',
+        ministryId: 'm1',
+      },
     });
 
     mv.promote('leader');

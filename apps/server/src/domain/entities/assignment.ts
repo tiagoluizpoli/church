@@ -35,14 +35,16 @@ export interface AssignmentProps {
   assignedBy?: UserId;
 }
 
+export interface AssignmentInput {
+  props: Omit<LooseProps<AssignmentProps>, 'status' | 'assignedAt'> &
+    Partial<Pick<LooseProps<AssignmentProps>, 'status' | 'assignedAt'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Assignment extends Entity<AssignmentProps, AssignmentId> {
-  constructor(
-    props: Omit<LooseProps<AssignmentProps>, 'status' | 'assignedAt'> &
-      Partial<Pick<LooseProps<AssignmentProps>, 'status' | 'assignedAt'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: AssignmentInput) {
     super(
       {
         ...props,

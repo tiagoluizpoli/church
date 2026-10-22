@@ -9,14 +9,16 @@ export interface ChurchProps {
   settings?: Record<string, unknown>;
 }
 
+export interface ChurchInput {
+  props: Omit<LooseProps<ChurchProps>, 'timezone'> &
+    Partial<Pick<LooseProps<ChurchProps>, 'timezone'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Church extends Entity<ChurchProps, ChurchId> {
-  constructor(
-    props: Omit<LooseProps<ChurchProps>, 'timezone'> &
-      Partial<Pick<LooseProps<ChurchProps>, 'timezone'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
+  constructor({ props, id, createdAt, updatedAt }: ChurchInput) {
     super(
       {
         ...props,

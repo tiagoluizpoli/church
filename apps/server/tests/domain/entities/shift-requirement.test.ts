@@ -5,13 +5,15 @@ import { InvalidRequiredCountError } from '@/domain/errors/invalid-required-coun
 describe('ShiftRequirement Entity', () => {
   it('constructs with valid props', () => {
     const req = new ShiftRequirement({
-      churchId: 'c1',
-      eventTimeBlockId: 't1',
-      participationId: 'p1',
-      roleId: 'r1',
-      sectorId: 'sector1',
-      sectorName: 'Palco',
-      peopleNeeded: 2,
+      props: {
+        churchId: 'c1',
+        eventTimeBlockId: 't1',
+        participationId: 'p1',
+        roleId: 'r1',
+        sectorId: 'sector1',
+        sectorName: 'Palco',
+        peopleNeeded: 2,
+      },
     });
 
     expect(req.churchId).toBe('c1');
@@ -24,14 +26,16 @@ describe('ShiftRequirement Entity', () => {
 
   it('exposes optional shiftId and notes when supplied', () => {
     const req = new ShiftRequirement({
-      churchId: 'c1',
-      eventTimeBlockId: 't1',
-      shiftId: 's1',
-      roleId: 'r1',
-      sectorId: 'sector1',
-      sectorName: 'Palco',
-      peopleNeeded: 1,
-      notes: 'front row',
+      props: {
+        churchId: 'c1',
+        eventTimeBlockId: 't1',
+        shiftId: 's1',
+        roleId: 'r1',
+        sectorId: 'sector1',
+        sectorName: 'Palco',
+        peopleNeeded: 1,
+        notes: 'front row',
+      },
     });
 
     expect(req.shiftId).toBe('s1');
@@ -41,24 +45,28 @@ describe('ShiftRequirement Entity', () => {
   it('throws InvalidRequiredCountError on construction if count < 1', () => {
     expect(() => {
       new ShiftRequirement({
-        churchId: 'c1',
-        eventTimeBlockId: 't1',
-        roleId: 'r1',
-        sectorId: 'sector1',
-        sectorName: 'Palco',
-        peopleNeeded: 0,
+        props: {
+          churchId: 'c1',
+          eventTimeBlockId: 't1',
+          roleId: 'r1',
+          sectorId: 'sector1',
+          sectorName: 'Palco',
+          peopleNeeded: 0,
+        },
       });
     }).toThrow(InvalidRequiredCountError);
   });
 
   it('updates count with valid value', () => {
     const req = new ShiftRequirement({
-      churchId: 'c1',
-      eventTimeBlockId: 't1',
-      roleId: 'r1',
-      sectorId: 'sector1',
-      sectorName: 'Palco',
-      peopleNeeded: 2,
+      props: {
+        churchId: 'c1',
+        eventTimeBlockId: 't1',
+        roleId: 'r1',
+        sectorId: 'sector1',
+        sectorName: 'Palco',
+        peopleNeeded: 2,
+      },
     });
 
     req.updateCount(5);
@@ -67,12 +75,14 @@ describe('ShiftRequirement Entity', () => {
 
   it('throws InvalidRequiredCountError on update if count < 1', () => {
     const req = new ShiftRequirement({
-      churchId: 'c1',
-      eventTimeBlockId: 't1',
-      roleId: 'r1',
-      sectorId: 'sector1',
-      sectorName: 'Palco',
-      peopleNeeded: 2,
+      props: {
+        churchId: 'c1',
+        eventTimeBlockId: 't1',
+        roleId: 'r1',
+        sectorId: 'sector1',
+        sectorName: 'Palco',
+        peopleNeeded: 2,
+      },
     });
 
     expect(() => {

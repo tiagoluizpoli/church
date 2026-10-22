@@ -22,6 +22,11 @@ interface EventTemplateGraphRow {
   blocks: Array<typeof templateTimeBlock.$inferSelect>;
 }
 
+interface MapTemplateGraphInput {
+  template: typeof eventTemplate.$inferSelect;
+  tx?: CreateEventTemplateInput['tx'];
+}
+
 interface DrizzleEventTemplateRepositoryInput {
   db: AnyDrizzleDb;
 }
@@ -195,10 +200,9 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     );
   }
 
-  private async mapTemplateGraph(input: {
-    template: typeof eventTemplate.$inferSelect;
-    tx?: CreateEventTemplateInput['tx'];
-  }): Promise<EventTemplate> {
+  private async mapTemplateGraph(
+    input: MapTemplateGraphInput,
+  ): Promise<EventTemplate> {
     const db = getClient(this.db, input.tx);
     const blocks = await db
       .select()

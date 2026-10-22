@@ -63,6 +63,35 @@ const headcountValueSchema = z
   .string()
   .regex(/^[1-9]\d*$/, 'Enter a whole number of people needed, at least 1.');
 
+export interface ToggleInclusionInput {
+  participationId: string;
+  eventTimeBlockId: string;
+  checked: boolean;
+}
+
+export interface SplitFormChangeInput {
+  eventTimeBlockId: string;
+  nextForm: SplitFormState;
+}
+
+export interface SplitShiftsInput {
+  participationId: string;
+  eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
+}
+
+export interface HeadcountChangeInput {
+  shiftId: string;
+  sectorId: string;
+  roleId: string;
+  value: string;
+}
+
+export interface SaveHeadcountsInput {
+  participationId: string;
+  eventTimeBlockId: string;
+  headcountSavesByShift: HeadcountSavesForShift[];
+}
+
 export interface PrepareEventTimeBlockListProps {
   events: GetCycleParticipation200EventsItem[];
   ministryId: string;
@@ -74,30 +103,11 @@ export interface PrepareEventTimeBlockListProps {
   pendingHeadcountEventTimeBlockId: string | null;
   pendingSplitEventTimeBlockId: string | null;
   pendingInclusionEventTimeBlockId: string | null;
-  onToggleInclusion: (input: {
-    participationId: string;
-    eventTimeBlockId: string;
-    checked: boolean;
-  }) => void;
-  onSplitFormChange: (input: {
-    eventTimeBlockId: string;
-    nextForm: SplitFormState;
-  }) => void;
-  onSplitShifts: (input: {
-    participationId: string;
-    eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
-  }) => void;
-  onHeadcountChange: (input: {
-    shiftId: string;
-    sectorId: string;
-    roleId: string;
-    value: string;
-  }) => void;
-  onSaveHeadcounts: (input: {
-    participationId: string;
-    eventTimeBlockId: string;
-    headcountSavesByShift: HeadcountSavesForShift[];
-  }) => void;
+  onToggleInclusion: (input: ToggleInclusionInput) => void;
+  onSplitFormChange: (input: SplitFormChangeInput) => void;
+  onSplitShifts: (input: SplitShiftsInput) => void;
+  onHeadcountChange: (input: HeadcountChangeInput) => void;
+  onSaveHeadcounts: (input: SaveHeadcountsInput) => void;
 }
 
 interface FlatEventTimeBlockRow {

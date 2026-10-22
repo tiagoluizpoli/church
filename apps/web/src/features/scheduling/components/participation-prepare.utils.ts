@@ -195,13 +195,15 @@ export function getEventTimeBlockHeadcountRows({
   }));
 }
 
+export interface ValidateManualSpansInput {
+  eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
+  spans: ManualSpanDraft[];
+}
+
 export function validateManualSpans({
   eventTimeBlockView,
   spans,
-}: {
-  eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
-  spans: ManualSpanDraft[];
-}): string | null {
+}: ValidateManualSpansInput): string | null {
   const eventTimeBlockStart = parseInstant({
     value: eventTimeBlockView.eventTimeBlock.startTime,
   });
@@ -274,15 +276,17 @@ const PARTICIPATION_STATE_LABELS: Record<
   published: 'Published',
 };
 
+export interface ParticipationStateLabelInput {
+  state: GetCycleParticipation200EventsItem['participation']['state'];
+}
+
 /** Humanizes a raw `MinistryParticipation.state` enum for display. A
  * lifecycle label, not a staffing signal — never uses the green/amber/red
  * status vocabulary (DESIGN.md reserves that strictly for staffing %/
  * confirmation state). */
 export function participationStateLabel({
   state,
-}: {
-  state: GetCycleParticipation200EventsItem['participation']['state'];
-}): string {
+}: ParticipationStateLabelInput): string {
   return PARTICIPATION_STATE_LABELS[state];
 }
 
@@ -301,13 +305,15 @@ export function countShifts(
   );
 }
 
+export interface ToScheduleKeyInput {
+  ministryId: string;
+  cycleId: string;
+}
+
 export function toScheduleKey({
   ministryId,
   cycleId,
-}: {
-  ministryId: string;
-  cycleId: string;
-}): string {
+}: ToScheduleKeyInput): string {
   return `${ministryId}:${cycleId}`;
 }
 
@@ -316,6 +322,13 @@ export interface MinistryPrepareSummaryRow {
   ministryName: string;
   eventCount: number;
   eventTimeBlockCount: number;
+}
+
+export interface BuildMinistryPrepareSummaryInput {
+  ministries: { id: string; name: string }[];
+  sentCycleIds: string[];
+  eventsByMinistryId: Record<string, { cycleId: string }[] | undefined>;
+  eventTimeBlockCountByMinistryAndCycle: Record<string, number>;
 }
 
 /** Aggregates per-ministry event/time block counts for the ministry-list landing
@@ -329,12 +342,7 @@ export function buildMinistryPrepareSummary({
   sentCycleIds,
   eventsByMinistryId,
   eventTimeBlockCountByMinistryAndCycle,
-}: {
-  ministries: { id: string; name: string }[];
-  sentCycleIds: string[];
-  eventsByMinistryId: Record<string, { cycleId: string }[] | undefined>;
-  eventTimeBlockCountByMinistryAndCycle: Record<string, number>;
-}): MinistryPrepareSummaryRow[] {
+}: BuildMinistryPrepareSummaryInput): MinistryPrepareSummaryRow[] {
   const sentCycleIdSet = new Set(sentCycleIds);
 
   return ministries.map((ministry) => {
@@ -390,6 +398,11 @@ export function buildEventTimeBlockDayMarkers({
   return markers;
 }
 
+export interface FilterEventTimeBlocksByNameInput {
+  events: GetCycleParticipation200EventsItem[];
+  query: string;
+}
+
 /** Client-side, already-fetched-data-only time block filters (FR-010) — never
  * issue network requests. Both drop an event entirely once it has zero
  * matching time blocks, so the day-grouped time block list only shows groups with
@@ -397,10 +410,7 @@ export function buildEventTimeBlockDayMarkers({
 export function filterEventTimeBlocksByName({
   events,
   query,
-}: {
-  events: GetCycleParticipation200EventsItem[];
-  query: string;
-}): GetCycleParticipation200EventsItem[] {
+}: FilterEventTimeBlocksByNameInput): GetCycleParticipation200EventsItem[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return events;
 
@@ -454,13 +464,12 @@ export function isTimeWindowFilterEmpty(filter: TimeWindowFilter): boolean {
   return !filter.start && !filter.end;
 }
 
-function isWithinWindow({
-  minutes,
-  filter,
-}: {
+interface IsWithinWindowInput {
   minutes: number;
   filter: TimeWindowFilter;
-}): boolean {
+}
+
+function isWithinWindow({ minutes, filter }: IsWithinWindowInput): boolean {
   if (filter.start && minutes < toMinutesSinceMidnight(filter.start)) {
     return false;
   }

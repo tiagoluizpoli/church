@@ -9,11 +9,11 @@ import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
 import { authErrorMessage } from '@/lib/auth-error-message';
 
-export default function SignUpForm({
-  onSwitchToSignIn,
-}: {
+interface SignUpFormProps {
   onSwitchToSignIn: () => void;
-}) {
+}
+
+export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
   const navigate = useNavigate({
     from: '/',
   });

@@ -131,8 +131,8 @@ describe('volunteerMapper', () => {
   describe('assignmentsToResponse', () => {
     it('maps assignments with optional fields present', () => {
       const assignedAt = parseInstant({ value: '2026-01-01T00:00:00.000Z' });
-      const assignment = new Assignment(
-        {
+      const assignment = new Assignment({
+        props: {
           churchId: 'c1',
           eventTimeBlockId: 's1',
           participationId: 'p1',
@@ -145,8 +145,8 @@ describe('volunteerMapper', () => {
           assignedAt,
           assignedBy: 'u1',
         },
-        'a1',
-      );
+        id: 'a1',
+      });
 
       const response = volunteerMapper.assignmentsToResponse([assignment]);
 
@@ -169,16 +169,16 @@ describe('volunteerMapper', () => {
     });
 
     it('maps assignments with optional fields absent', () => {
-      const assignment = new Assignment(
-        {
+      const assignment = new Assignment({
+        props: {
           churchId: 'c1',
           eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
           shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
-        'a1',
-      );
+        id: 'a1',
+      });
 
       const response = volunteerMapper.assignmentsToResponse([assignment]);
 
@@ -198,16 +198,16 @@ describe('volunteerMapper', () => {
 
   describe('assignmentToResponse', () => {
     it('maps a single assignment', () => {
-      const assignment = new Assignment(
-        {
+      const assignment = new Assignment({
+        props: {
           churchId: 'c1',
           eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
           shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
-        'a1',
-      );
+        id: 'a1',
+      });
 
       const response = volunteerMapper.assignmentToResponse(assignment);
 

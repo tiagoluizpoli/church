@@ -12,13 +12,13 @@ class MockChurchRepository implements ChurchRepository {
   private churches = new Map<string, Church>();
 
   constructor() {
-    const church1 = new Church(
-      {
+    const church1 = new Church({
+      props: {
         name: 'First Church',
         slug: 'first-church' as ChurchSlug,
       },
-      '11111111-1111-1111-1111-111111111111' as ChurchId,
-    );
+      id: '11111111-1111-1111-1111-111111111111' as ChurchId,
+    });
     this.churches.set(church1.id, church1);
   }
 

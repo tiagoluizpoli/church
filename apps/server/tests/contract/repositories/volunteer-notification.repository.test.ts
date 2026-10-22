@@ -242,7 +242,7 @@ class MockVolunteerNotificationRepository
     createdAt,
     ...props
   }: SeedNotificationInput): VolunteerNotification {
-    return new VolunteerNotification(props, props.id, createdAt);
+    return new VolunteerNotification({ props, id: props.id, createdAt });
   }
 }
 

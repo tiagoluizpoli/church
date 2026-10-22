@@ -16,10 +16,10 @@ export function mapMinistry(row: MinistryRow): Ministry {
     deletedAt: row.deletedAt ? fromDate({ date: row.deletedAt }) : undefined,
   };
 
-  return new Ministry(
+  return new Ministry({
     props,
-    row.id as MinistryId,
-    row.createdAt,
-    row.updatedAt,
-  );
+    id: row.id as MinistryId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
 }

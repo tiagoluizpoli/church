@@ -72,7 +72,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
         ),
       );
     return rows.map((row) =>
-      mapAssignment(row.assignment, row.eventTimeBlockId),
+      mapAssignment({
+        row: row.assignment,
+        eventTimeBlockId: row.eventTimeBlockId,
+      }),
     );
   }
 
@@ -133,7 +136,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       })
       .returning();
     if (!row) throw new Error('Assignment insert failed');
-    return mapAssignment(row, targetShift.eventTimeBlockId);
+    return mapAssignment({
+      row,
+      eventTimeBlockId: targetShift.eventTimeBlockId,
+    });
   }
 
   async getById(
@@ -154,7 +160,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
         ),
       );
     if (!result) throw new NotFoundError(`Assignment not found: ${id}`);
-    return mapAssignment(result.assignment, result.eventTimeBlockId);
+    return mapAssignment({
+      row: result.assignment,
+      eventTimeBlockId: result.eventTimeBlockId,
+    });
   }
 
   async findByEventTimeBlockAndVolunteer(
@@ -203,7 +212,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
         ),
       );
     return rows.map((row) =>
-      mapAssignment(row.assignment, row.eventTimeBlockId),
+      mapAssignment({
+        row: row.assignment,
+        eventTimeBlockId: row.eventTimeBlockId,
+      }),
     );
   }
 
@@ -297,7 +309,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
       .where(and(...conditions));
     return rows.map((row) =>
-      mapAssignment(row.assignment, row.eventTimeBlockId),
+      mapAssignment({
+        row: row.assignment,
+        eventTimeBlockId: row.eventTimeBlockId,
+      }),
     );
   }
 

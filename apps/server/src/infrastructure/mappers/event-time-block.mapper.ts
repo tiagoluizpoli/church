@@ -13,10 +13,15 @@ import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
 
 type EventTimeBlockRow = InferSelectModel<typeof eventTimeBlock>;
 
-export function mapEventTimeBlock(
-  row: EventTimeBlockRow,
-  requirements: ShiftRequirement[] = [],
-): EventTimeBlock {
+export interface MapEventTimeBlockInput {
+  row: EventTimeBlockRow;
+  requirements?: ShiftRequirement[];
+}
+
+export function mapEventTimeBlock({
+  row,
+  requirements = [],
+}: MapEventTimeBlockInput): EventTimeBlock {
   const props: EventTimeBlockProps = {
     churchId: row.churchId as ChurchId,
     eventId: row.eventId as EventId,
@@ -30,10 +35,10 @@ export function mapEventTimeBlock(
     requirements,
   };
 
-  return new EventTimeBlock(
+  return new EventTimeBlock({
     props,
-    row.id as EventTimeBlockId,
-    row.createdAt,
-    row.createdAt,
-  );
+    id: row.id as EventTimeBlockId,
+    createdAt: row.createdAt,
+    updatedAt: row.createdAt,
+  });
 }

@@ -59,7 +59,9 @@ export class DrizzleUnavailableShiftRepository
           ...conditions,
         ),
       );
-    return rows.map((row) => mapUnavailableShift(row.unavailableShift, row));
+    return rows.map((row) =>
+      mapUnavailableShift({ row: row.unavailableShift, joined: row }),
+    );
   }
 
   async listByVolunteerForEvent(
@@ -93,7 +95,9 @@ export class DrizzleUnavailableShiftRepository
           eq(eventTimeBlock.eventId, eventId),
         ),
       );
-    return rows.map((row) => mapUnavailableShift(row.unavailableShift, row));
+    return rows.map((row) =>
+      mapUnavailableShift({ row: row.unavailableShift, joined: row }),
+    );
   }
 
   async listByVolunteers(

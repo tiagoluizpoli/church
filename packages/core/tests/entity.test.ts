@@ -18,7 +18,7 @@ class MockEntity extends Entity<MockProps> {
 
 describe('Entity Base Class', () => {
   it('generates a UUID automatically if not provided', () => {
-    const entity = new MockEntity({ name: 'Test', count: 1 });
+    const entity = new MockEntity({ props: { name: 'Test', count: 1 } });
     expect(entity.id).toBeDefined();
     expect(typeof entity.id).toBe('string');
     // UUID v4 format check
@@ -29,12 +29,12 @@ describe('Entity Base Class', () => {
 
   it('uses explicit ID if provided', () => {
     const id = '123e4567-e89b-12d3-a456-426614174000';
-    const entity = new MockEntity({ name: 'Test', count: 1 }, id);
+    const entity = new MockEntity({ props: { name: 'Test', count: 1 }, id });
     expect(entity.id).toBe(id);
   });
 
   it('sets createdAt and updatedAt defaults if not provided', () => {
-    const entity = new MockEntity({ name: 'Test', count: 1 });
+    const entity = new MockEntity({ props: { name: 'Test', count: 1 } });
     expect(entity.createdAt).toBeInstanceOf(Date);
     expect(entity.updatedAt).toBeInstanceOf(Date);
     expect(entity.createdAt.getTime()).toBeCloseTo(
@@ -46,12 +46,11 @@ describe('Entity Base Class', () => {
   it('uses explicit timestamps if provided', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
     const updatedAt = new Date('2026-01-02T00:00:00Z');
-    const entity = new MockEntity(
-      { name: 'Test', count: 1 },
-      undefined,
+    const entity = new MockEntity({
+      props: { name: 'Test', count: 1 },
       createdAt,
       updatedAt,
-    );
+    });
     expect(entity.createdAt).toBe(createdAt);
     expect(entity.updatedAt).toBe(updatedAt);
   });
@@ -60,25 +59,31 @@ describe('Entity Base Class', () => {
     const id = '123e4567-e89b-12d3-a456-426614174000';
 
     it('returns true when comparing with another entity of the same ID', () => {
-      const e1 = new MockEntity({ name: 'Test 1', count: 1 }, id);
-      const e2 = new MockEntity({ name: 'Test 2', count: 2 }, id); // Props don't matter, only ID
+      const e1 = new MockEntity({ props: { name: 'Test 1', count: 1 }, id });
+      const e2 = new MockEntity({ props: { name: 'Test 2', count: 2 }, id }); // Props don't matter, only ID
       expect(e1.equals(e2)).toBe(true);
     });
 
     it('returns false when comparing with another entity of a different ID', () => {
-      const e1 = new MockEntity({ name: 'Test', count: 1 }, 'id-1');
-      const e2 = new MockEntity({ name: 'Test', count: 1 }, 'id-2');
+      const e1 = new MockEntity({
+        props: { name: 'Test', count: 1 },
+        id: 'id-1',
+      });
+      const e2 = new MockEntity({
+        props: { name: 'Test', count: 1 },
+        id: 'id-2',
+      });
       expect(e1.equals(e2)).toBe(false);
     });
 
     it('returns false when comparing with null or undefined', () => {
-      const e1 = new MockEntity({ name: 'Test', count: 1 });
+      const e1 = new MockEntity({ props: { name: 'Test', count: 1 } });
       expect(e1.equals(null as unknown as Entity<MockProps>)).toBe(false);
       expect(e1.equals(undefined)).toBe(false);
     });
 
     it('returns false when comparing with a non-entity object', () => {
-      const e1 = new MockEntity({ name: 'Test', count: 1 }, id);
+      const e1 = new MockEntity({ props: { name: 'Test', count: 1 }, id });
       // biome-ignore lint/style/useNamingConvention: _id mirrors Entity private field for test
       const notAnEntity = { _id: id } as unknown as Entity<MockProps>;
       expect(e1.equals(notAnEntity)).toBe(false);

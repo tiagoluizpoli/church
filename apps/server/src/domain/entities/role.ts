@@ -7,14 +7,21 @@ export interface RoleProps {
   name: string;
 }
 
+export interface RoleInput {
+  props: LooseProps<RoleProps>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Role extends Entity<RoleProps, RoleId> {
-  constructor(
-    props: LooseProps<RoleProps>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(props as RoleProps, id as RoleId, createdAt, updatedAt);
+  constructor({ props, id, createdAt, updatedAt }: RoleInput) {
+    super({
+      props: props as RoleProps,
+      id: id as RoleId,
+      createdAt,
+      updatedAt,
+    });
   }
 
   get churchId(): ChurchId {

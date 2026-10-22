@@ -69,7 +69,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         ),
       );
     if (!row) throw new NotFoundError(`Volunteer not found: ${id}`);
-    return mapVolunteer(row);
+    return mapVolunteer({ row });
   }
 
   async findByUserId({
@@ -88,7 +88,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           withActiveVolunteer(volunteer),
         ),
       );
-    return row ? mapVolunteer(row) : null;
+    return row ? mapVolunteer({ row }) : null;
   }
 
   async listByMinistry({
@@ -110,7 +110,9 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       )
       .innerJoin(user, eq(user.id, volunteer.userId))
       .where(withChurchIsolation({ table: volunteer, churchId }));
-    return rows.map((r) => mapVolunteer(r.volunteer, r.userName));
+    return rows.map((r) =>
+      mapVolunteer({ row: r.volunteer, name: r.userName }),
+    );
   }
 
   async hasMembershipInMinistry({
@@ -208,7 +210,9 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       )
       .innerJoin(user, eq(user.id, volunteer.userId))
       .where(withChurchIsolation({ table: volunteer, churchId }));
-    return rows.map((r) => mapVolunteer(r.volunteer, r.userName));
+    return rows.map((r) =>
+      mapVolunteer({ row: r.volunteer, name: r.userName }),
+    );
   }
 
   async updateStatus({
@@ -246,7 +250,9 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         ),
       )
       .limit(1);
-    return row ? mapVolunteer(row.volunteer, row.userName) : null;
+    return row
+      ? mapVolunteer({ row: row.volunteer, name: row.userName })
+      : null;
   }
 
   async hasLeadershipInMinistry({
@@ -316,7 +322,9 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           inArray(volunteer.id, ids),
         ),
       );
-    return rows.map((r) => mapVolunteer(r.volunteer, r.userName));
+    return rows.map((r) =>
+      mapVolunteer({ row: r.volunteer, name: r.userName }),
+    );
   }
 
   async listMemberMinistryIds({

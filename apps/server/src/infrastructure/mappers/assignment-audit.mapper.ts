@@ -20,5 +20,5 @@ export function mapAssignmentAudit(row: AssignmentAuditRow): AssignmentAudit {
     occurredAt: fromDate({ date: row.timestamp }),
   };
 
-  return new AssignmentAudit(props, row.id as AssignmentAuditId);
+  return new AssignmentAudit({ props, id: row.id as AssignmentAuditId });
 }

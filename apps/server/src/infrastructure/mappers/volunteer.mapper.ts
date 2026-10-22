@@ -7,10 +7,12 @@ import { Volunteer } from '../../domain/entities/volunteer';
 
 type VolunteerRow = InferSelectModel<typeof volunteer>;
 
-export function mapVolunteer(
-  row: VolunteerRow,
-  name?: string | null,
-): Volunteer {
+export interface MapVolunteerInput {
+  row: VolunteerRow;
+  name?: string | null;
+}
+
+export function mapVolunteer({ row, name }: MapVolunteerInput): Volunteer {
   const props: VolunteerProps = {
     churchId: row.churchId as ChurchId,
     userId: row.userId as UserId,
@@ -22,10 +24,10 @@ export function mapVolunteer(
     name: name ?? undefined,
   };
 
-  return new Volunteer(
+  return new Volunteer({
     props,
-    row.id as VolunteerId,
-    row.createdAt,
-    row.updatedAt,
-  );
+    id: row.id as VolunteerId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
 }

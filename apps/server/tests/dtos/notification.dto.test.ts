@@ -4,8 +4,8 @@ import { notificationMapper } from '@/api/dtos/notification.dto';
 import { VolunteerNotification } from '@/domain/entities/volunteer-notification';
 
 function createFullNotification() {
-  return new VolunteerNotification(
-    {
+  return new VolunteerNotification({
+    props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       volunteerId: '22222222-2222-2222-2222-222222222222',
       cycleId: '33333333-3333-3333-3333-333333333333',
@@ -18,14 +18,14 @@ function createFullNotification() {
       payload: { assignmentId: '66666666-6666-6666-6666-666666666666' },
       readAt: parseInstant({ value: '2026-07-01T00:00:00.000Z' }),
     },
-    '77777777-7777-7777-7777-777777777777',
-    new Date('2026-06-30T00:00:00.000Z'),
-  );
+    id: '77777777-7777-7777-7777-777777777777',
+    createdAt: new Date('2026-06-30T00:00:00.000Z'),
+  });
 }
 
 function createMinimalNotification() {
-  return new VolunteerNotification(
-    {
+  return new VolunteerNotification({
+    props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       volunteerId: '22222222-2222-2222-2222-222222222222',
       type: 'schedule_published',
@@ -33,9 +33,9 @@ function createMinimalNotification() {
       body: 'Your schedule is ready',
       payload: {},
     },
-    '88888888-8888-8888-8888-888888888888',
-    new Date('2026-06-30T00:00:00.000Z'),
-  );
+    id: '88888888-8888-8888-8888-888888888888',
+    createdAt: new Date('2026-06-30T00:00:00.000Z'),
+  });
 }
 
 describe('notificationMapper', () => {

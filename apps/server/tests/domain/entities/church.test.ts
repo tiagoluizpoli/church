@@ -3,7 +3,9 @@ import { Church } from '@/domain/entities/church';
 
 describe('Church Entity', () => {
   it('constructs with minimum props and provides defaults', () => {
-    const church = new Church({ name: 'Grace Church', slug: 'grace-church' });
+    const church = new Church({
+      props: { name: 'Grace Church', slug: 'grace-church' },
+    });
 
     expect(church.name).toBe('Grace Church');
     expect(church.slug).toBe('grace-church');
@@ -16,10 +18,12 @@ describe('Church Entity', () => {
   it('constructs with full props', () => {
     const settings = { theme: 'dark' };
     const church = new Church({
-      name: 'Grace Church',
-      slug: 'grace',
-      timezone: 'America/New_York',
-      settings,
+      props: {
+        name: 'Grace Church',
+        slug: 'grace',
+        timezone: 'America/New_York',
+        settings,
+      },
     });
 
     expect(church.timezone).toBe('America/New_York');

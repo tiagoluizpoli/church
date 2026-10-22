@@ -3,7 +3,9 @@ import { Ministry } from '@/domain/entities/ministry';
 
 describe('Ministry Entity', () => {
   it('constructs with minimum props', () => {
-    const ministry = new Ministry({ churchId: 'c1', name: 'Worship' });
+    const ministry = new Ministry({
+      props: { churchId: 'c1', name: 'Worship' },
+    });
 
     expect(ministry.churchId).toBe('c1');
     expect(ministry.name).toBe('Worship');
@@ -13,7 +15,9 @@ describe('Ministry Entity', () => {
   });
 
   it('handles soft deletion', () => {
-    const ministry = new Ministry({ churchId: 'c1', name: 'Worship' });
+    const ministry = new Ministry({
+      props: { churchId: 'c1', name: 'Worship' },
+    });
     const originalUpdatedAt = ministry.updatedAt;
 
     expect(ministry.deletedAt).toBeUndefined();

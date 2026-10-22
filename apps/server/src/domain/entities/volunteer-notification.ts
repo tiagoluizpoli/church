@@ -42,22 +42,24 @@ export interface VolunteerNotificationProps {
   readAt?: Instant;
 }
 
+export interface VolunteerNotificationInput {
+  props: LooseProps<VolunteerNotificationProps>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class VolunteerNotification extends Entity<
   VolunteerNotificationProps,
   VolunteerNotificationId
 > {
-  constructor(
-    props: LooseProps<VolunteerNotificationProps>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(
-      props as VolunteerNotificationProps,
-      id as VolunteerNotificationId,
+  constructor({ props, id, createdAt, updatedAt }: VolunteerNotificationInput) {
+    super({
+      props: props as VolunteerNotificationProps,
+      id: id as VolunteerNotificationId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

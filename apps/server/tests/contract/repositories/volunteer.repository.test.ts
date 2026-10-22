@@ -32,31 +32,31 @@ class MockVolunteerRepository implements VolunteerRepository {
   private qualifications = new Set<string>(); // "volunteerId:roleId"
 
   constructor() {
-    const v1 = new Volunteer(
-      {
+    const v1 = new Volunteer({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         userId: '22222222-2222-2222-2222-222222222221' as UserId,
         status: 'active',
       },
-      '44444444-4444-4444-4444-444444444441' as VolunteerId,
-    );
-    const v2 = new Volunteer(
-      {
+      id: '44444444-4444-4444-4444-444444444441' as VolunteerId,
+    });
+    const v2 = new Volunteer({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         userId: '22222222-2222-2222-2222-222222222222' as UserId,
         status: 'active',
       },
-      '44444444-4444-4444-4444-444444444442' as VolunteerId,
-    );
-    const v3Retired = new Volunteer(
-      {
+      id: '44444444-4444-4444-4444-444444444442' as VolunteerId,
+    });
+    const v3Retired = new Volunteer({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         userId: '22222222-2222-2222-2222-222222222223' as UserId,
         status: 'active',
         leftAt: parseInstant({ value: '2024-01-01T00:00:00Z' }),
       },
-      '44444444-4444-4444-4444-444444444443' as VolunteerId,
-    );
+      id: '44444444-4444-4444-4444-444444444443' as VolunteerId,
+    });
 
     this.volunteers.set(v1.id, v1);
     this.volunteers.set(v2.id, v2);

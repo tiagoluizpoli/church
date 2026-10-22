@@ -14,27 +14,27 @@ class MockMinistryRepository implements MinistryRepository {
   private ministries = new Map<string, Ministry>();
 
   constructor() {
-    const min1 = new Ministry(
-      {
+    const min1 = new Ministry({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         name: 'Youth Ministry',
       },
-      '33333333-3333-3333-3333-333333333331' as MinistryId,
-    );
-    const min2 = new Ministry(
-      {
+      id: '33333333-3333-3333-3333-333333333331' as MinistryId,
+    });
+    const min2 = new Ministry({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         name: 'Adult Ministry',
       },
-      '33333333-3333-3333-3333-333333333332' as MinistryId,
-    );
-    const min3 = new Ministry(
-      {
+      id: '33333333-3333-3333-3333-333333333332' as MinistryId,
+    });
+    const min3 = new Ministry({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111112' as ChurchId,
         name: 'Other Ministry',
       },
-      'ministry-3' as MinistryId,
-    );
+      id: 'ministry-3' as MinistryId,
+    });
     this.ministries.set(min1.id, min1);
     this.ministries.set(min2.id, min2);
     this.ministries.set(min3.id, min3);
@@ -74,15 +74,15 @@ class MockMinistryRepository implements MinistryRepository {
       churchId: input.churchId,
       id: input.ministryId,
     });
-    const updated = new Ministry(
-      {
+    const updated = new Ministry({
+      props: {
         churchId: current.churchId,
         name: current.name,
         description: current.description,
         defaultDirection: input.defaultDirection,
       },
-      current.id,
-    );
+      id: current.id,
+    });
     this.ministries.set(updated.id, updated);
     return updated;
   }

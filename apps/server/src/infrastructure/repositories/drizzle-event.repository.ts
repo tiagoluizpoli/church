@@ -110,7 +110,7 @@ export class DrizzleEventRepository implements EventRepository {
             eventTimeBlockId: eventTimeBlockRow.id,
           }),
         );
-        return mapEventTimeBlock(eventTimeBlockRow, requirements);
+        return mapEventTimeBlock({ row: eventTimeBlockRow, requirements });
       }),
     );
 

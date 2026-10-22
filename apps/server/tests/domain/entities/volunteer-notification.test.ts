@@ -16,7 +16,7 @@ describe('VolunteerNotification', () => {
   };
 
   it('defaults creation time and exposes properties', () => {
-    const notification = new VolunteerNotification(props);
+    const notification = new VolunteerNotification({ props });
 
     expect(notification.churchId).toBe('church-1');
     expect(notification.volunteerId).toBe('volunteer-1');
@@ -33,8 +33,10 @@ describe('VolunteerNotification', () => {
 
   it('exposes an optional cycleId when supplied', () => {
     const notification = new VolunteerNotification({
-      ...props,
-      cycleId: 'cycle-1',
+      props: {
+        ...props,
+        cycleId: 'cycle-1',
+      },
     });
 
     expect(notification.cycleId).toBe('cycle-1');
@@ -43,11 +45,10 @@ describe('VolunteerNotification', () => {
   it('preserves supplied creation and read times', () => {
     const createdAt = new Date('2026-07-01T10:00:00Z');
     const readAt = parseInstant({ value: '2026-07-01T11:00:00Z' });
-    const notification = new VolunteerNotification(
-      { ...props, readAt },
-      undefined,
+    const notification = new VolunteerNotification({
+      props: { ...props, readAt },
       createdAt,
-    );
+    });
 
     expect(notification.createdAt).toBe(createdAt);
     expect(notification.readAt).toBe(readAt);

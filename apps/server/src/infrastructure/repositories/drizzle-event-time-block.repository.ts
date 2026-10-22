@@ -49,16 +49,16 @@ export class DrizzleEventTimeBlockRepository
       .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
       .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
-    return mapEventTimeBlock(
-      eventTimeBlockRow,
-      reqRows.map(({ requirement, sectorName }) =>
+    return mapEventTimeBlock({
+      row: eventTimeBlockRow,
+      requirements: reqRows.map(({ requirement, sectorName }) =>
         mapShiftRequirement({
           row: requirement,
           sectorName,
           eventTimeBlockId: eventTimeBlockRow.id,
         }),
       ),
-    );
+    });
   }
 
   async getById(
@@ -139,7 +139,7 @@ export class DrizzleEventTimeBlockRepository
         })),
       );
     }
-    return mapEventTimeBlock(row, []);
+    return mapEventTimeBlock({ row, requirements: [] });
   }
 
   async update(
@@ -206,7 +206,7 @@ export class DrizzleEventTimeBlockRepository
       .select()
       .from(eventTimeBlock)
       .where(and(...conditions));
-    return rows.map((r) => mapEventTimeBlock(r, []));
+    return rows.map((r) => mapEventTimeBlock({ row: r, requirements: [] }));
   }
 
   async deleteByEvent(

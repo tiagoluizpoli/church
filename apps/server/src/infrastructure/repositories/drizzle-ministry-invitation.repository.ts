@@ -302,7 +302,10 @@ export class DrizzleMinistryInvitationRepository
       churchInvitationEmail: first.churchInvitationEmail,
     });
     return {
-      ministryInvitation: mapMinistryInvitation(first.invitation, roleIds),
+      ministryInvitation: mapMinistryInvitation({
+        row: first.invitation,
+        roleIds,
+      }),
       churchInvitationStatus: (first.churchInvitationStatus ?? undefined) as
         | 'pending'
         | 'accepted'
@@ -439,7 +442,7 @@ export class DrizzleMinistryInvitationRepository
       );
     }
 
-    return mapMinistryInvitation(row, roleIds);
+    return mapMinistryInvitation({ row, roleIds });
   }
 
   async refreshExpiry(input: RefreshMinistryInvitationExpiryInput) {
@@ -503,9 +506,9 @@ export class DrizzleMinistryInvitationRepository
       .select({ roleId: ministryInvitationRole.roleId })
       .from(ministryInvitationRole)
       .where(eq(ministryInvitationRole.ministryInvitationId, row.id));
-    return mapMinistryInvitation(
+    return mapMinistryInvitation({
       row,
-      roleRows.map((r) => r.roleId as RoleId),
-    );
+      roleIds: roleRows.map((r) => r.roleId as RoleId),
+    });
   }
 }

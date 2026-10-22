@@ -352,7 +352,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | A class copies the config values it uses into `private readonly` fields and does not keep `config` | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-whole-config.grit` |
 | Tenancy is enforced with `church_id` | Backend | Judgement | — | Review: whether a query must be church-scoped depends on the data |
 | Credential-sensitive and sensitive operations stay on the server | Backend, frontend | Judgement | — | Review: "sensitive" is a judgement |
-| Web imports flow `shared → features → app` | Frontend | Mechanical | Biome rule | Follow-up [#556](https://github.com/tiagoluizpoli/church/issues/556) |
+| Web imports flow `shared → features → app` | Frontend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
 | UI is built from shadcn components where one exists | Frontend | Judgement | — | Review: whether a component fits is a design call |
 | The web reads `appConfig` by direct import | Frontend | Judgement | — | Review: states the allowed path; there is no fixed pattern to forbid |
 | Parked UI is gated at the mount point, not with CSS | Frontend | Judgement | — | Review: hiding by CSS has many shapes |

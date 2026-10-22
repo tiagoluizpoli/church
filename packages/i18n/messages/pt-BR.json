@@ -52,5 +52,11 @@
   "nav_invitations": "Convites",
   "shell_coming_soon": "Em breve.",
   "shell_no_access": "Você não tem acesso a esta página.",
-  "shell_not_serving": "Você ainda não serve em nenhum ministério."
+  "shell_not_serving": "Você ainda não serve em nenhum ministério.",
+  "user_menu_sign_out": "Sair",
+  "user_menu_sign_in": "Entrar",
+  "user_menu_account_label": "Menu da conta de {name}",
+  "no_access_title": "Sem acesso à Igreja",
+  "no_access_generic_body": "Sua conta não está vinculada a uma Igreja ativa. Peça ao administrador para restaurar o acesso.",
+  "no_access_sign_out": "Sair"
 }

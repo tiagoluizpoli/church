@@ -52,5 +52,11 @@
   "nav_invitations": "Invitations",
   "shell_coming_soon": "Coming soon.",
   "shell_no_access": "You don't have access to this page.",
-  "shell_not_serving": "You don't serve in a Ministry yet."
+  "shell_not_serving": "You don't serve in a Ministry yet.",
+  "user_menu_sign_out": "Sign out",
+  "user_menu_sign_in": "Sign in",
+  "user_menu_account_label": "Account menu for {name}",
+  "no_access_title": "No Church access",
+  "no_access_generic_body": "Your account isn't currently linked to an active Church. Ask a Church admin to restore your Church Membership.",
+  "no_access_sign_out": "Sign out"
 }

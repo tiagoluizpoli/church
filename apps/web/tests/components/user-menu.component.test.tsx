@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -32,7 +33,7 @@ function renderUserMenu() {
   );
 }
 
-describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
+describe('UserMenu (F8)', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -53,10 +54,28 @@ describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
 
     renderUserMenu();
 
-    expect(screen.getByRole('link', { name: 'Sign In' })).toHaveAttribute(
-      'href',
-      '/login',
+    expect(
+      screen.getByRole('link', { name: m.user_menu_sign_in() }),
+    ).toHaveAttribute('href', '/login');
+  });
+
+  it('shows name and email in the menu label', async () => {
+    mockedUseSession.mockReturnValue({
+      data: { user: { name: 'Ana Admin', email: 'ana@example.com' } },
+      isPending: false,
+    } as never);
+
+    renderUserMenu();
+
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.user_menu_account_label({ name: 'Ana Admin' }),
+      }),
     );
+
+    expect(await screen.findByText('Ana Admin')).toBeVisible();
+    expect(screen.getByText('ana@example.com')).toBeVisible();
   });
 
   it('renders exactly one menu item — Sign Out — with no Church/Local Time control', async () => {
@@ -70,18 +89,20 @@ describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
     const user = userEvent.setup();
     await user.click(
       screen.getByRole('button', {
-        name: 'Account menu for Ana Church Admin',
+        name: m.user_menu_account_label({ name: 'Ana Church Admin' }),
       }),
     );
 
     const menuItems = await screen.findAllByRole('menuitem');
-    expect(menuItems.map((item) => item.textContent)).toEqual(['Sign Out']);
+    expect(menuItems.map((item) => item.textContent)).toEqual([
+      m.user_menu_sign_out(),
+    ]);
     expect(
       screen.queryByRole('menuitem', { name: /Church Time|Local Time/ }),
     ).not.toBeInTheDocument();
   });
 
-  it('signs out and offers no Church/Local Time affordance anywhere in the menu on click', async () => {
+  it('calls sign out when the Sign Out menu item is clicked', async () => {
     mockedUseSession.mockReturnValue({
       data: { user: { name: 'Leo Leader', email: 'leo@example.com' } },
       isPending: false,
@@ -91,9 +112,13 @@ describe('UserMenu (#219, right-sized from timezone.spec.ts)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Account menu for Leo Leader' }),
+      screen.getByRole('button', {
+        name: m.user_menu_account_label({ name: 'Leo Leader' }),
+      }),
     );
-    await user.click(await screen.findByRole('menuitem', { name: 'Sign Out' }));
+    await user.click(
+      await screen.findByRole('menuitem', { name: m.user_menu_sign_out() }),
+    );
 
     await waitFor(() =>
       expect(authClient.signOut).toHaveBeenCalledWith(

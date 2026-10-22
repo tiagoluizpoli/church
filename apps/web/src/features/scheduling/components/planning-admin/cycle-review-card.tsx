@@ -85,6 +85,7 @@ type DialogAction =
  * `confirmDeleteEventTimeBlockId`) modeled one mutually-exclusive "which dialog is
  * open" concept — nothing stopped two being non-null at once. This
  * discriminated-union reducer makes that exclusivity structural. */
+// named-parameters-ignore: React useReducer calls reducers as (state, action)
 function dialogReducer(state: DialogState, action: DialogAction): DialogState {
   switch (action.type) {
     case 'edit-event':

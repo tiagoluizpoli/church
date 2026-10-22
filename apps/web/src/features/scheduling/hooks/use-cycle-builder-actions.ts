@@ -105,7 +105,12 @@ interface ReportInput {
   tone: 'success' | 'error';
 }
 
-function errorMessage(error: unknown, fallback: string): string {
+interface ErrorMessageInput {
+  error: unknown;
+  fallback: string;
+}
+
+function errorMessage({ error, fallback }: ErrorMessageInput): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
@@ -230,7 +235,10 @@ export function useCycleBuilderActions({
       });
       return true;
     } catch (error) {
-      const message = errorMessage(error, m.common_assignment_failed());
+      const message = errorMessage({
+        error,
+        fallback: m.common_assignment_failed(),
+      });
       setFailedWrites((current) => [
         ...current,
         {
@@ -318,7 +326,7 @@ export function useCycleBuilderActions({
         await deleteAssignment.mutateAsync(source.id);
       } catch (error) {
         report({
-          message: `${sourceName} was assigned here, but the previous assignment could not be removed — they are now in both: ${errorMessage(error, m.common_removal_failed())}`,
+          message: `${sourceName} was assigned here, but the previous assignment could not be removed — they are now in both: ${errorMessage({ error, fallback: m.common_removal_failed() })}`,
           tone: 'error',
         });
       }
@@ -332,7 +340,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage(error, m.common_reassignment_failed())}`,
+        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage({ error, fallback: m.common_reassignment_failed() })}`,
         tone: 'error',
       });
       return;
@@ -345,7 +353,7 @@ export function useCycleBuilderActions({
       });
     } catch (error) {
       report({
-        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage(error, m.common_reassignment_failed())}. Reassign ${sourceName} by hand.`,
+        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage({ error, fallback: m.common_reassignment_failed() })}. Reassign ${sourceName} by hand.`,
         tone: 'error',
       });
       return;
@@ -456,7 +464,7 @@ export function useCycleBuilderActions({
       return true;
     } catch (error) {
       report({
-        message: `Could not remove ${volunteerName}: ${errorMessage(error, m.common_removal_failed())}`,
+        message: `Could not remove ${volunteerName}: ${errorMessage({ error, fallback: m.common_removal_failed() })}`,
         tone: 'error',
       });
       return false;

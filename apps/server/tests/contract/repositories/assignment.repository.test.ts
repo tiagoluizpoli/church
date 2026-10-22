@@ -27,8 +27,8 @@ class MockAssignmentRepository implements AssignmentRepository {
   private idCounter = 1;
 
   constructor() {
-    const a1 = new Assignment(
-      {
+    const a1 = new Assignment({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventTimeBlockId:
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -37,10 +37,10 @@ class MockAssignmentRepository implements AssignmentRepository {
         shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         status: 'confirmed',
       },
-      '99999999-9999-9999-9999-999999999991' as AssignmentId,
-    );
-    const a2 = new Assignment(
-      {
+      id: '99999999-9999-9999-9999-999999999991' as AssignmentId,
+    });
+    const a2 = new Assignment({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventTimeBlockId:
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -50,10 +50,10 @@ class MockAssignmentRepository implements AssignmentRepository {
         status: 'declined',
         reason: 'Sick',
       },
-      '99999999-9999-9999-9999-999999999992' as AssignmentId,
-    );
-    const a3 = new Assignment(
-      {
+      id: '99999999-9999-9999-9999-999999999992' as AssignmentId,
+    });
+    const a3 = new Assignment({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventTimeBlockId:
           '77777777-7777-7777-7777-777777777772' as EventTimeBlockId,
@@ -62,8 +62,8 @@ class MockAssignmentRepository implements AssignmentRepository {
         shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         status: 'confirmed',
       },
-      '99999999-9999-9999-9999-999999999993' as AssignmentId,
-    );
+      id: '99999999-9999-9999-9999-999999999993' as AssignmentId,
+    });
 
     this.assignments.set(a1.id, a1);
     this.assignments.set(a2.id, a2);
@@ -75,8 +75,8 @@ class MockAssignmentRepository implements AssignmentRepository {
     input,
   }: CreateAssignmentRepositoryInput): Promise<Assignment> {
     const id = `assignment-gen-${this.idCounter++}` as AssignmentId;
-    const a = new Assignment(
-      {
+    const a = new Assignment({
+      props: {
         churchId,
         eventTimeBlockId:
           input.eventTimeBlockId ??
@@ -91,7 +91,7 @@ class MockAssignmentRepository implements AssignmentRepository {
         assignedBy: input.assignedBy,
       },
       id,
-    );
+    });
     this.assignments.set(a.id, a);
     return a;
   }

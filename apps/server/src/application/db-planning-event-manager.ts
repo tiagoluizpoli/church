@@ -316,7 +316,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       churchId,
       tx,
     });
-    const ministries = await this.ministryRepository.listByChurch(churchId, tx);
+    const ministries = await this.ministryRepository.listByChurch({
+      churchId,
+      tx,
+    });
 
     const profilesByMinistry = new Map<string, ProfileSeederEntry[]>();
     for (const profile of profiles) {

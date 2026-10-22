@@ -36,9 +36,9 @@ export function mapVolunteerNotification(
     readAt: row.readAt ? fromDate({ date: row.readAt }) : undefined,
   };
 
-  return new VolunteerNotification(
+  return new VolunteerNotification({
     props,
-    row.id as VolunteerNotificationId,
-    row.createdAt,
-  );
+    id: row.id as VolunteerNotificationId,
+    createdAt: row.createdAt,
+  });
 }

@@ -55,7 +55,7 @@ export class DrizzleAvailabilityCheckRepository
   async listActiveMemberships(
     input: ListActiveMembershipsInput,
   ): Promise<ActiveMinistryMembership[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select({
         ministryMembershipId: ministryMembership.id,
@@ -69,7 +69,10 @@ export class DrizzleAvailabilityCheckRepository
         and(
           eq(ministryMembership.ministryId, input.ministryId),
           eq(ministryMembership.status, 'active'),
-          withChurchIsolation(ministryMembership, input.churchId),
+          withChurchIsolation({
+            table: ministryMembership,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -83,10 +86,13 @@ export class DrizzleAvailabilityCheckRepository
   async listByCycle(
     input: ListChecksByCycleInput,
   ): Promise<AvailabilityCheck[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const conditions = [
       eq(availabilityCheck.cycleId, input.cycleId),
-      withChurchIsolation(availabilityCheck, input.churchId),
+      withChurchIsolation({
+        table: availabilityCheck,
+        churchId: input.churchId,
+      }),
     ];
 
     if (input.ministryMembershipIds && input.ministryMembershipIds.length > 0) {
@@ -111,7 +117,7 @@ export class DrizzleAvailabilityCheckRepository
       return [];
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .insert(availabilityCheck)
       .values(
@@ -139,7 +145,7 @@ export class DrizzleAvailabilityCheckRepository
   }
 
   async getCheckContext(input: GetCheckContextInput): Promise<CheckContext> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select(this.contextSelection())
       .from(availabilityCheck)
@@ -153,7 +159,10 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
-          withChurchIsolation(availabilityCheck, input.churchId),
+          withChurchIsolation({
+            table: availabilityCheck,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -175,7 +184,7 @@ export class DrizzleAvailabilityCheckRepository
   async listByVolunteer(
     input: ListChecksByVolunteerInput,
   ): Promise<CheckContext[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select(this.contextSelection())
       .from(availabilityCheck)
@@ -189,7 +198,10 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(ministryMembership.volunteerId, input.volunteerId),
-          withChurchIsolation(availabilityCheck, input.churchId),
+          withChurchIsolation({
+            table: availabilityCheck,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -204,7 +216,7 @@ export class DrizzleAvailabilityCheckRepository
   }
 
   async listCheckShifts(input: ListCheckShiftsInput): Promise<CheckShiftRow[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select({
         shiftId: shift.id,
@@ -234,7 +246,10 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
-          withChurchIsolation(availabilityCheck, input.churchId),
+          withChurchIsolation({
+            table: availabilityCheck,
+            churchId: input.churchId,
+          }),
         ),
       )
       .orderBy(shift.startTime);
@@ -254,7 +269,7 @@ export class DrizzleAvailabilityCheckRepository
   ): Promise<MinistryLeaderRow[]> {
     if (input.ministryIds.length === 0) return [];
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select({
         ministryId: ministryMembership.ministryId,
@@ -266,7 +281,10 @@ export class DrizzleAvailabilityCheckRepository
           inArray(ministryMembership.ministryId, input.ministryIds),
           eq(ministryMembership.ministryAccessLevel, 'leader'),
           eq(ministryMembership.status, 'active'),
-          withChurchIsolation(ministryMembership, input.churchId),
+          withChurchIsolation({
+            table: ministryMembership,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -277,14 +295,17 @@ export class DrizzleAvailabilityCheckRepository
   }
 
   async confirm(input: ConfirmCheckInput): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     await db
       .update(availabilityCheck)
       .set({ state: 'confirmed', confirmedAt: input.confirmedAt })
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
-          withChurchIsolation(availabilityCheck, input.churchId),
+          withChurchIsolation({
+            table: availabilityCheck,
+            churchId: input.churchId,
+          }),
         ),
       );
   }

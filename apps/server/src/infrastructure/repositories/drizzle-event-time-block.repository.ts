@@ -49,16 +49,16 @@ export class DrizzleEventTimeBlockRepository
       .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
       .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
-    return mapEventTimeBlock(
-      eventTimeBlockRow,
-      reqRows.map(({ requirement, sectorName }) =>
+    return mapEventTimeBlock({
+      row: eventTimeBlockRow,
+      requirements: reqRows.map(({ requirement, sectorName }) =>
         mapShiftRequirement({
           row: requirement,
           sectorName,
           eventTimeBlockId: eventTimeBlockRow.id,
         }),
       ),
-    );
+    });
   }
 
   async getById(
@@ -69,14 +69,14 @@ export class DrizzleEventTimeBlockRepository
     if (!isValidUuid(id)) {
       throw new NotFoundError(`EventTimeBlock not found: ${id}`);
     }
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select()
       .from(eventTimeBlock)
       .where(
         and(
           eq(eventTimeBlock.id, id),
-          withChurchIsolation(eventTimeBlock, churchId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       );
     if (!row) throw new NotFoundError(`EventTimeBlock not found: ${id}`);
@@ -88,14 +88,14 @@ export class DrizzleEventTimeBlockRepository
     eventId: EventId,
     tx?: TransactionContext,
   ): Promise<EventTimeBlock[]> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const rows = await db
       .select()
       .from(eventTimeBlock)
       .where(
         and(
           eq(eventTimeBlock.eventId, eventId),
-          withChurchIsolation(eventTimeBlock, churchId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       );
     return Promise.all(rows.map((r) => this.fetchWithRequirements(db, r)));
@@ -106,7 +106,7 @@ export class DrizzleEventTimeBlockRepository
     input: CreateEventTimeBlockInput,
     tx?: TransactionContext,
   ): Promise<EventTimeBlock> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .insert(eventTimeBlock)
       .values({
@@ -124,7 +124,7 @@ export class DrizzleEventTimeBlockRepository
       .where(
         and(
           eq(ministryParticipation.eventId, input.eventId),
-          withChurchIsolation(ministryParticipation, churchId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
         ),
       );
     if (participations.length) {
@@ -139,7 +139,7 @@ export class DrizzleEventTimeBlockRepository
         })),
       );
     }
-    return mapEventTimeBlock(row, []);
+    return mapEventTimeBlock({ row, requirements: [] });
   }
 
   async update(
@@ -148,7 +148,7 @@ export class DrizzleEventTimeBlockRepository
     input: UpdateEventTimeBlockInput,
     tx?: TransactionContext,
   ): Promise<EventTimeBlock> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .update(eventTimeBlock)
       .set({
@@ -161,7 +161,7 @@ export class DrizzleEventTimeBlockRepository
       .where(
         and(
           eq(eventTimeBlock.id, id),
-          withChurchIsolation(eventTimeBlock, churchId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       )
       .returning();
@@ -174,12 +174,12 @@ export class DrizzleEventTimeBlockRepository
     id: EventTimeBlockId,
     tx?: TransactionContext,
   ): Promise<void> {
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .delete(eventTimeBlock)
       .where(
         and(
           eq(eventTimeBlock.id, id),
-          withChurchIsolation(eventTimeBlock, churchId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       );
   }
@@ -192,9 +192,9 @@ export class DrizzleEventTimeBlockRepository
     excludeEventTimeBlockId?: EventTimeBlockId,
     tx?: TransactionContext,
   ): Promise<EventTimeBlock[]> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const conditions = [
-      withChurchIsolation(eventTimeBlock, churchId),
+      withChurchIsolation({ table: eventTimeBlock, churchId }),
       eq(eventTimeBlock.eventId, eventId),
       // overlap: existing.start < new.end AND existing.end > new.start
       lt(eventTimeBlock.startTime, endTime),
@@ -206,7 +206,7 @@ export class DrizzleEventTimeBlockRepository
       .select()
       .from(eventTimeBlock)
       .where(and(...conditions));
-    return rows.map((r) => mapEventTimeBlock(r, []));
+    return rows.map((r) => mapEventTimeBlock({ row: r, requirements: [] }));
   }
 
   async deleteByEvent(
@@ -214,12 +214,12 @@ export class DrizzleEventTimeBlockRepository
     eventId: EventId,
     tx?: TransactionContext,
   ): Promise<void> {
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .delete(eventTimeBlock)
       .where(
         and(
           eq(eventTimeBlock.eventId, eventId),
-          withChurchIsolation(eventTimeBlock, churchId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       );
   }
@@ -230,14 +230,14 @@ export class DrizzleEventTimeBlockRepository
     roleId: RoleId,
     tx?: TransactionContext,
   ): Promise<number> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [result] = await db
       .select({ cnt: count() })
       .from(assignment)
       .innerJoin(shift, eq(assignment.shiftId, shift.id))
       .where(
         and(
-          withChurchIsolation(assignment, churchId),
+          withChurchIsolation({ table: assignment, churchId }),
           eq(shift.eventTimeBlockId, eventTimeBlockId),
           eq(assignment.roleId, roleId),
           inArray(assignment.status, ['pending', 'confirmed']),

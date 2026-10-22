@@ -30,29 +30,29 @@ function buildParticipation(): MinistryParticipation {
 }
 
 function buildEvent(): Event {
-  return new Event(
-    {
+  return new Event({
+    props: {
       churchId: 'church-1',
       cycleId: 'cycle-1',
       title: 'Sunday Service',
       start: parseInstant({ value: '2026-05-15T09:00:00Z' }),
       end: parseInstant({ value: '2026-05-15T11:00:00Z' }),
     },
-    'event-1',
-  );
+    id: 'event-1',
+  });
 }
 
 function buildEventTimeBlock(): EventTimeBlock {
-  return new EventTimeBlock(
-    {
+  return new EventTimeBlock({
+    props: {
       churchId: 'church-1',
       eventId: 'event-1',
       startTime: parseInstant({ value: '2026-05-15T09:00:00Z' }),
       endTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
       label: 'Event time block A',
     },
-    'event-time-block-1',
-  );
+    id: 'event-time-block-1',
+  });
 }
 
 function buildShift(label?: string): Shift {
@@ -118,8 +118,8 @@ describe('participationMapper', () => {
 
   describe('requirementToResponse', () => {
     it('maps a requirement with shiftId, participationId, sectorId, and notes present', () => {
-      const requirement = new ShiftRequirement(
-        {
+      const requirement = new ShiftRequirement({
+        props: {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           shiftId: 'shift-1',
@@ -130,8 +130,8 @@ describe('participationMapper', () => {
           peopleNeeded: 2,
           notes: 'arrive early',
         },
-        'req-1',
-      );
+        id: 'req-1',
+      });
 
       expect(participationMapper.requirementToResponse(requirement)).toEqual({
         id: 'req-1',
@@ -146,8 +146,8 @@ describe('participationMapper', () => {
     });
 
     it('maps a requirement with shiftId, participationId, sectorId, and notes absent', () => {
-      const requirement = new ShiftRequirement(
-        {
+      const requirement = new ShiftRequirement({
+        props: {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
@@ -155,8 +155,8 @@ describe('participationMapper', () => {
           sectorName: 'Palco',
           peopleNeeded: 1,
         },
-        'req-2',
-      );
+        id: 'req-2',
+      });
 
       expect(participationMapper.requirementToResponse(requirement)).toEqual({
         id: 'req-2',
@@ -201,8 +201,8 @@ describe('participationMapper', () => {
       const event = buildEvent();
       const eventTimeBlock = buildEventTimeBlock();
       const shift = buildShift('Morning Shift');
-      const requirement = new ShiftRequirement(
-        {
+      const requirement = new ShiftRequirement({
+        props: {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           shiftId: 'shift-1',
@@ -212,8 +212,8 @@ describe('participationMapper', () => {
           sectorName: 'Palco',
           peopleNeeded: 1,
         },
-        'req-1',
-      );
+        id: 'req-1',
+      });
 
       const populatedEventTimeBlockView: ParticipationEventTimeBlockView = {
         eventTimeBlock,

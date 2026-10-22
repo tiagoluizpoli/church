@@ -28,7 +28,7 @@ export class DrizzleCycleRepository implements CycleRepository {
   private readonly db: AnyDrizzleDb;
 
   async create(input: CreateCycleInput): Promise<Cycle> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .insert(cycle)
       .values({
@@ -48,8 +48,10 @@ export class DrizzleCycleRepository implements CycleRepository {
   }
 
   async list(input: ListCyclesInput): Promise<Cycle[]> {
-    const db = getClient(this.db, input.tx);
-    const conditions = [withChurchIsolation(cycle, input.churchId)];
+    const db = getClient({ db: this.db, tx: input.tx });
+    const conditions = [
+      withChurchIsolation({ table: cycle, churchId: input.churchId }),
+    ];
 
     if (input.state) {
       conditions.push(eq(cycle.state, input.state));
@@ -69,14 +71,14 @@ export class DrizzleCycleRepository implements CycleRepository {
       throw new NotFoundError(`Cycle not found: ${input.cycleId}`);
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .select()
       .from(cycle)
       .where(
         and(
           eq(cycle.id, input.cycleId),
-          withChurchIsolation(cycle, input.churchId),
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
         ),
       );
 
@@ -88,13 +90,13 @@ export class DrizzleCycleRepository implements CycleRepository {
   }
 
   async findOverlapping(input: FindOverlappingCyclesInput): Promise<Cycle[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(cycle)
       .where(
         and(
-          withChurchIsolation(cycle, input.churchId),
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
           lt(cycle.startDate, input.endDate),
           gt(cycle.endDate, input.startDate),
         ),
@@ -104,7 +106,7 @@ export class DrizzleCycleRepository implements CycleRepository {
   }
 
   async updateState(input: UpdateCycleStateInput): Promise<Cycle> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .update(cycle)
       .set({
@@ -114,7 +116,7 @@ export class DrizzleCycleRepository implements CycleRepository {
       .where(
         and(
           eq(cycle.id, input.cycleId),
-          withChurchIsolation(cycle, input.churchId),
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
         ),
       )
       .returning();
@@ -127,7 +129,7 @@ export class DrizzleCycleRepository implements CycleRepository {
   }
 
   async acquireChurchLock(input: AcquireCycleChurchLockInput): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
 
     await db.execute(
       sql`select pg_advisory_xact_lock(hashtext(${input.churchId}))`,

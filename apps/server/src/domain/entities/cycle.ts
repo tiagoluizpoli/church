@@ -55,7 +55,7 @@ export class Cycle extends Entity<CycleProps, CycleId> {
       throw new InvalidDateRangeError();
     }
 
-    super(normalizedProps, id as CycleId, createdAt, updatedAt);
+    super({ props: normalizedProps, id: id as CycleId, createdAt, updatedAt });
   }
 
   get churchId(): ChurchId {

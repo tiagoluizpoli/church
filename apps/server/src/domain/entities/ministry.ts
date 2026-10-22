@@ -17,23 +17,25 @@ export interface MinistryProps {
   deletedAt?: Instant;
 }
 
+export interface MinistryInput {
+  props: Omit<LooseProps<MinistryProps>, 'defaultDirection'> &
+    Partial<Pick<LooseProps<MinistryProps>, 'defaultDirection'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Ministry extends Entity<MinistryProps, MinistryId> {
-  constructor(
-    props: Omit<LooseProps<MinistryProps>, 'defaultDirection'> &
-      Partial<Pick<LooseProps<MinistryProps>, 'defaultDirection'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(
-      {
+  constructor({ props, id, createdAt, updatedAt }: MinistryInput) {
+    super({
+      props: {
         ...props,
         defaultDirection: props.defaultDirection ?? 'all_out',
       } as MinistryProps,
-      id as MinistryId,
+      id: id as MinistryId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

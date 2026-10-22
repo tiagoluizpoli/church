@@ -7,9 +7,15 @@ export interface SectorProps {
   name: string;
 }
 
+export interface SectorInput {
+  props: LooseProps<SectorProps>;
+  id?: string;
+  createdAt?: Date;
+}
+
 export class Sector extends Entity<SectorProps, SectorId> {
-  constructor(props: LooseProps<SectorProps>, id?: string, createdAt?: Date) {
-    super(props as SectorProps, id as SectorId, createdAt);
+  constructor({ props, id, createdAt }: SectorInput) {
+    super({ props: props as SectorProps, id: id as SectorId, createdAt });
   }
 
   get churchId(): ChurchId {

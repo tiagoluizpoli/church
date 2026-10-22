@@ -87,16 +87,16 @@ describe('assignMapper', () => {
 
   describe('assignmentResultToResponse', () => {
     const buildAssignment = () =>
-      new Assignment(
-        {
+      new Assignment({
+        props: {
           churchId: 'c1',
           eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
           shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         },
-        'a1',
-      );
+        id: 'a1',
+      });
 
     it('maps a result with empty warnings', () => {
       const assignment = buildAssignment();

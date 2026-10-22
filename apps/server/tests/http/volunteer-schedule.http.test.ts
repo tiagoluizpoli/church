@@ -73,8 +73,8 @@ beforeEach(() => {
 describe('Volunteer published schedule route', () => {
   it('GET /api/v1/volunteer/schedule returns only published assignments', async () => {
     volunteerManager.getPublishedSchedule.mockResolvedValue([
-      new Assignment(
-        {
+      new Assignment({
+        props: {
           churchId: '11111111-1111-1111-1111-111111111111',
           eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
           participationId: '22222222-2222-2222-8222-222222222222',
@@ -84,8 +84,8 @@ describe('Volunteer published schedule route', () => {
           shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
           status: 'confirmed',
         },
-        'assign-1',
-      ),
+        id: 'assign-1',
+      }),
     ]);
 
     const response = await app.inject({

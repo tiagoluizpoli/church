@@ -23,12 +23,12 @@ export class DrizzleSectorRepository implements SectorRepository {
   private readonly db: AnyDrizzleDb;
 
   async listByMinistry(input: ListSectorsByMinistryInput): Promise<Sector[]> {
-    const rows = await getClient(this.db, input.tx)
+    const rows = await getClient({ db: this.db, tx: input.tx })
       .select()
       .from(sector)
       .where(
         and(
-          withChurchIsolation(sector, input.churchId),
+          withChurchIsolation({ table: sector, churchId: input.churchId }),
           eq(sector.ministryId, input.ministryId),
         ),
       )
@@ -40,13 +40,13 @@ export class DrizzleSectorRepository implements SectorRepository {
     if (!isValidUuid(input.sectorId)) {
       throw new NotFoundError(`Sector not found: ${input.sectorId}`);
     }
-    const [row] = await getClient(this.db, input.tx)
+    const [row] = await getClient({ db: this.db, tx: input.tx })
       .select()
       .from(sector)
       .where(
         and(
           eq(sector.id, input.sectorId),
-          withChurchIsolation(sector, input.churchId),
+          withChurchIsolation({ table: sector, churchId: input.churchId }),
         ),
       );
     if (!row) throw new NotFoundError(`Sector not found: ${input.sectorId}`);

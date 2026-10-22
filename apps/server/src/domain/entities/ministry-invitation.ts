@@ -44,22 +44,24 @@ export interface MinistryInvitationProps {
  * lazily against `expiresAt` at read time (redemption's concern, not
  * minting's), matching Better Auth rather than diverging from it.
  */
+export interface MinistryInvitationInput {
+  props: LooseProps<MinistryInvitationProps>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class MinistryInvitation extends Entity<
   MinistryInvitationProps,
   MinistryInvitationId
 > {
-  constructor(
-    props: LooseProps<MinistryInvitationProps>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(
-      props as MinistryInvitationProps,
-      id as MinistryInvitationId,
+  constructor({ props, id, createdAt, updatedAt }: MinistryInvitationInput) {
+    super({
+      props: props as MinistryInvitationProps,
+      id: id as MinistryInvitationId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

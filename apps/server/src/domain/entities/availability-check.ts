@@ -32,15 +32,15 @@ export class AvailabilityCheck extends Entity<
   AvailabilityCheckId
 > {
   constructor({ props, id, createdAt, updatedAt }: AvailabilityCheckInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         state: props.state ?? 'pending',
       } as AvailabilityCheckProps,
-      id as AvailabilityCheckId,
+      id: id as AvailabilityCheckId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

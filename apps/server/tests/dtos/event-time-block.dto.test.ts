@@ -10,8 +10,8 @@ import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 describe('eventTimeBlockMapper', () => {
   describe('requirementToResponse', () => {
     it('maps a requirement with sectorId and notes present', () => {
-      const requirement = new ShiftRequirement(
-        {
+      const requirement = new ShiftRequirement({
+        props: {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
@@ -20,8 +20,8 @@ describe('eventTimeBlockMapper', () => {
           peopleNeeded: 3,
           notes: 'bring a friend',
         },
-        'req-1',
-      );
+        id: 'req-1',
+      });
 
       const response = eventTimeBlockMapper.requirementToResponse(requirement);
 
@@ -36,8 +36,8 @@ describe('eventTimeBlockMapper', () => {
     });
 
     it('maps a requirement with sectorId and notes absent', () => {
-      const requirement = new ShiftRequirement(
-        {
+      const requirement = new ShiftRequirement({
+        props: {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
@@ -45,8 +45,8 @@ describe('eventTimeBlockMapper', () => {
           sectorName: 'Palco',
           peopleNeeded: 1,
         },
-        'req-2',
-      );
+        id: 'req-2',
+      });
 
       const response = eventTimeBlockMapper.requirementToResponse(requirement);
 
@@ -65,8 +65,8 @@ describe('eventTimeBlockMapper', () => {
     it('maps an event time block with a label and non-empty requirements', () => {
       const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
       const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
-      const requirement = new ShiftRequirement(
-        {
+      const requirement = new ShiftRequirement({
+        props: {
           churchId: 'church-1',
           eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
@@ -74,10 +74,10 @@ describe('eventTimeBlockMapper', () => {
           sectorName: 'Palco',
           peopleNeeded: 2,
         },
-        'req-1',
-      );
-      const eventTimeBlock = new EventTimeBlock(
-        {
+        id: 'req-1',
+      });
+      const eventTimeBlock = new EventTimeBlock({
+        props: {
           churchId: 'church-1',
           eventId: 'event-1',
           startTime,
@@ -85,8 +85,8 @@ describe('eventTimeBlockMapper', () => {
           label: 'Morning Event time block',
           requirements: [requirement],
         },
-        'event-time-block-1',
-      );
+        id: 'event-time-block-1',
+      });
 
       const response = eventTimeBlockMapper.toResponse(eventTimeBlock);
 
@@ -117,15 +117,15 @@ describe('eventTimeBlockMapper', () => {
     it('maps an event time block with no label and empty requirements', () => {
       const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
       const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
-      const eventTimeBlock = new EventTimeBlock(
-        {
+      const eventTimeBlock = new EventTimeBlock({
+        props: {
           churchId: 'church-1',
           eventId: 'event-1',
           startTime,
           endTime,
         },
-        'event-time-block-2',
-      );
+        id: 'event-time-block-2',
+      });
 
       const response = eventTimeBlockMapper.toResponse(eventTimeBlock);
 
@@ -152,16 +152,16 @@ describe('eventTimeBlockMapper', () => {
     it('maps a non-empty list of event time blocks', () => {
       const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
       const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
-      const eventTimeBlock = new EventTimeBlock(
-        {
+      const eventTimeBlock = new EventTimeBlock({
+        props: {
           churchId: 'church-1',
           eventId: 'event-1',
           startTime,
           endTime,
           label: 'Event time block A',
         },
-        'event-time-block-3',
-      );
+        id: 'event-time-block-3',
+      });
 
       const response = eventTimeBlockMapper.listToResponse([eventTimeBlock]);
 

@@ -43,7 +43,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   private readonly db: AnyDrizzleDb;
 
   async createEvent(input: CreatePlanningEventInput): Promise<Event> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .insert(event)
       .values({
@@ -67,7 +67,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   }
 
   async updateEvent(input: UpdatePlanningEventInput): Promise<Event> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .update(event)
       .set({
@@ -86,7 +86,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .where(
         and(
           eq(event.id, input.eventId),
-          withChurchIsolation(event, input.churchId),
+          withChurchIsolation({ table: event, churchId: input.churchId }),
         ),
       )
       .returning();
@@ -103,13 +103,13 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       throw new NotFoundError(`Event not found: ${input.eventId}`);
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .delete(event)
       .where(
         and(
           eq(event.id, input.eventId),
-          withChurchIsolation(event, input.churchId),
+          withChurchIsolation({ table: event, churchId: input.churchId }),
         ),
       )
       .returning();
@@ -124,14 +124,14 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       throw new NotFoundError(`Event not found: ${input.eventId}`);
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .select()
       .from(event)
       .where(
         and(
           eq(event.id, input.eventId),
-          withChurchIsolation(event, input.churchId),
+          withChurchIsolation({ table: event, churchId: input.churchId }),
         ),
       );
 
@@ -145,14 +145,14 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   async listCycleEvents(
     input: ListCycleEventsInput,
   ): Promise<EventWithEventTimeBlocks[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const eventRows = await db
       .select()
       .from(event)
       .where(
         and(
           eq(event.cycleId, input.cycleId),
-          withChurchIsolation(event, input.churchId),
+          withChurchIsolation({ table: event, churchId: input.churchId }),
         ),
       )
       .orderBy(asc(event.start));
@@ -165,7 +165,10 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           .where(
             and(
               eq(eventTimeBlock.eventId, eventRow.id),
-              withChurchIsolation(eventTimeBlock, input.churchId),
+              withChurchIsolation({
+                table: eventTimeBlock,
+                churchId: input.churchId,
+              }),
             ),
           )
           .orderBy(asc(eventTimeBlock.startTime));
@@ -182,16 +185,16 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
               .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
               .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
 
-            return mapEventTimeBlock(
-              eventTimeBlockRow,
-              requirementRows.map(({ requirement, sectorName }) =>
+            return mapEventTimeBlock({
+              row: eventTimeBlockRow,
+              requirements: requirementRows.map(({ requirement, sectorName }) =>
                 mapShiftRequirement({
                   row: requirement,
                   sectorName,
                   eventTimeBlockId: eventTimeBlockRow.id,
                 }),
               ),
-            );
+            });
           }),
         );
 
@@ -206,7 +209,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   async createEventTimeBlock(
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [eventTimeBlockRow] = await db
       .insert(eventTimeBlock)
       .values({
@@ -229,11 +232,13 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   async seedParticipations(
     input: SeedPlanningParticipationsInput,
   ): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const ministries = await db
       .select({ id: ministry.id })
       .from(ministry)
-      .where(withChurchIsolation(ministry, input.churchId));
+      .where(
+        withChurchIsolation({ table: ministry, churchId: input.churchId }),
+      );
 
     if (ministries.length === 0) {
       return;

@@ -21,23 +21,25 @@ export interface VolunteerProps {
   name?: string;
 }
 
+export interface VolunteerInput {
+  props: Omit<LooseProps<VolunteerProps>, 'status'> &
+    Partial<Pick<LooseProps<VolunteerProps>, 'status'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
-  constructor(
-    props: Omit<LooseProps<VolunteerProps>, 'status'> &
-      Partial<Pick<LooseProps<VolunteerProps>, 'status'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(
-      {
+  constructor({ props, id, createdAt, updatedAt }: VolunteerInput) {
+    super({
+      props: {
         ...props,
         status: props.status ?? 'active',
       } as VolunteerProps,
-      id as VolunteerId,
+      id: id as VolunteerId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

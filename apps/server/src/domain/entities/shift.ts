@@ -52,7 +52,12 @@ export class Shift extends Entity<ShiftProps, ShiftId> {
       eventTimeBlockBounds,
     });
 
-    super(props as ShiftProps, id as ShiftId, createdAt, updatedAt);
+    super({
+      props: props as ShiftProps,
+      id: id as ShiftId,
+      createdAt,
+      updatedAt,
+    });
   }
 
   get churchId(): ChurchId {

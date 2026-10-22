@@ -5,11 +5,13 @@ import { Assignment } from '@/domain/entities/assignment';
 describe('Assignment Entity', () => {
   it('constructs with valid props and defaults', () => {
     const assignment = new Assignment({
-      churchId: 'c1',
-      eventTimeBlockId: 't1',
-      volunteerId: 'v1',
-      roleId: 'r1',
-      shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
+      props: {
+        churchId: 'c1',
+        eventTimeBlockId: 't1',
+        volunteerId: 'v1',
+        roleId: 'r1',
+        shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
+      },
     });
 
     expect(assignment.churchId).toBe('c1');
@@ -22,11 +24,13 @@ describe('Assignment Entity', () => {
 
   it('handles mutations correctly', () => {
     const assignment = new Assignment({
-      churchId: 'c1',
-      eventTimeBlockId: 't1',
-      volunteerId: 'v1',
-      roleId: 'r1',
-      shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
+      props: {
+        churchId: 'c1',
+        eventTimeBlockId: 't1',
+        volunteerId: 'v1',
+        roleId: 'r1',
+        shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
+      },
     });
 
     expect(assignment.status).toBe('draft');

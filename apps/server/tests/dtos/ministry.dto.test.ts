@@ -9,15 +9,15 @@ import { Ministry } from '@/domain/entities/ministry';
 describe('ministryMapper', () => {
   describe('toResponse', () => {
     it('maps a ministry with description present', () => {
-      const ministry = new Ministry(
-        {
+      const ministry = new Ministry({
+        props: {
           churchId: 'c1',
           name: 'Worship',
           description: 'Music team',
           defaultDirection: 'all_in',
         },
-        'm1',
-      );
+        id: 'm1',
+      });
 
       const response = ministryMapper.toResponse(ministry);
 
@@ -35,13 +35,13 @@ describe('ministryMapper', () => {
     });
 
     it('maps a ministry with description absent', () => {
-      const ministry = new Ministry(
-        {
+      const ministry = new Ministry({
+        props: {
           churchId: 'c1',
           name: 'Ushers',
         },
-        'm2',
-      );
+        id: 'm2',
+      });
 
       const response = ministryMapper.toResponse(ministry);
 
@@ -52,11 +52,14 @@ describe('ministryMapper', () => {
 
   describe('toResponseList', () => {
     it('maps a list of ministries', () => {
-      const ministry1 = new Ministry({ churchId: 'c1', name: 'Worship' }, 'm1');
-      const ministry2 = new Ministry(
-        { churchId: 'c1', name: 'Ushers', description: 'Greeters' },
-        'm2',
-      );
+      const ministry1 = new Ministry({
+        props: { churchId: 'c1', name: 'Worship' },
+        id: 'm1',
+      });
+      const ministry2 = new Ministry({
+        props: { churchId: 'c1', name: 'Ushers', description: 'Greeters' },
+        id: 'm2',
+      });
 
       const response = ministryMapper.toResponseList([ministry1, ministry2]);
 

@@ -16,7 +16,7 @@ const props = {
 
 describe('Event Entity', () => {
   it('constructs as church-owned cycle event', () => {
-    const event = new Event(props);
+    const event = new Event({ props });
 
     expect(event.churchId).toBe('c1');
     expect(event.cycleId).toBe('pc1');
@@ -38,7 +38,7 @@ describe('Event Entity', () => {
   });
 
   it('moves through cycle-driven states without event publishing', () => {
-    const event = new Event(props);
+    const event = new Event({ props });
 
     event.markScheduled();
     expect(event.status).toBe('scheduled');
@@ -50,7 +50,7 @@ describe('Event Entity', () => {
   });
 
   it('rejects an invalid date range', () => {
-    expect(() => new Event({ ...props, start: props.end })).toThrow(
+    expect(() => new Event({ props: { ...props, start: props.end } })).toThrow(
       InvalidDateRangeError,
     );
   });

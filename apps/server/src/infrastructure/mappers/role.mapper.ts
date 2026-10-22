@@ -13,5 +13,5 @@ export function mapRole(row: RoleRow): Role {
     name: row.name,
   };
 
-  return new Role(props, row.id as RoleId);
+  return new Role({ props, id: row.id as RoleId });
 }

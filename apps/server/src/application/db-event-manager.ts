@@ -117,18 +117,18 @@ export class DbEventManager implements IEventManager {
     ] = await Promise.all([
       this.eventTimeBlockRepo.listByEvent({ churchId, eventId }),
       this.assignmentRepo.listByParticipation({ churchId, participationId }),
-      this.volunteerRepo.listByMinistry(churchId, ministryId),
-      this.roleRepo.listByMinistry(churchId, ministryId),
+      this.volunteerRepo.listByMinistry({ churchId, ministryId }),
+      this.roleRepo.listByMinistry({ churchId, ministryId }),
       this.shiftRepo.listByParticipation({ churchId, participationId }),
       this.shiftRepo.listRequirementsByParticipation({
         churchId,
         participationId,
       }),
     ]);
-    const memberships = await this.volunteerRepo.listMinistryMemberships(
+    const memberships = await this.volunteerRepo.listMinistryMemberships({
       churchId,
       ministryId,
-    );
+    });
     const rawVolunteers = volunteersInMinistry;
     const membershipByVolunteerId = new Map(
       memberships.map((membership) => [membership.volunteerId, membership]),
@@ -231,8 +231,8 @@ export class DbEventManager implements IEventManager {
       const visibleRequirements = requirements.filter(
         (requirement) => requirement.eventTimeBlockId === eventTimeBlock.id,
       );
-      return new EventTimeBlock(
-        {
+      return new EventTimeBlock({
+        props: {
           churchId: eventTimeBlock.churchId,
           eventId: eventTimeBlock.eventId,
           sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
@@ -242,10 +242,10 @@ export class DbEventManager implements IEventManager {
           status: eventTimeBlock.status,
           requirements: visibleRequirements,
         },
-        eventTimeBlock.id,
-        eventTimeBlock.createdAt,
-        eventTimeBlock.updatedAt,
-      );
+        id: eventTimeBlock.id,
+        createdAt: eventTimeBlock.createdAt,
+        updatedAt: eventTimeBlock.updatedAt,
+      });
     });
   }
 }

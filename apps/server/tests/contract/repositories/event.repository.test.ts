@@ -32,8 +32,8 @@ class MockEventRepository implements EventRepository {
   private idCounter = 1;
 
   constructor() {
-    const e1 = new Event(
-      {
+    const e1 = new Event({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         title: 'Youth Gathering',
@@ -41,10 +41,10 @@ class MockEventRepository implements EventRepository {
         end: parseInstant({ value: '2024-06-05T12:00:00Z' }),
         status: 'draft',
       },
-      '66666666-6666-6666-6666-666666666661' as EventId,
-    );
-    const e2 = new Event(
-      {
+      id: '66666666-6666-6666-6666-666666666661' as EventId,
+    });
+    const e2 = new Event({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         title: 'Sunday Service',
@@ -52,8 +52,8 @@ class MockEventRepository implements EventRepository {
         end: parseInstant({ value: '2024-06-04T12:00:00Z' }),
         status: 'scheduled',
       },
-      '66666666-6666-6666-6666-666666666662' as EventId,
-    );
+      id: '66666666-6666-6666-6666-666666666662' as EventId,
+    });
 
     this.events.set(e1.id, e1);
     this.events.set(e2.id, e2);
@@ -66,8 +66,8 @@ class MockEventRepository implements EventRepository {
       '33333333-3333-3333-3333-333333333331' as MinistryId,
     );
 
-    const req = new ShiftRequirement(
-      {
+    const req = new ShiftRequirement({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventTimeBlockId:
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -76,11 +76,11 @@ class MockEventRepository implements EventRepository {
         sectorName: 'Palco',
         peopleNeeded: 1,
       },
-      '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
-    );
+      id: '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
+    });
 
-    const eventTimeBlock = new EventTimeBlock(
-      {
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: e1.id,
         startTime: e1.start,
@@ -88,8 +88,8 @@ class MockEventRepository implements EventRepository {
         status: 'active',
         requirements: [req],
       },
-      '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
-    );
+      id: '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
+    });
 
     this.eventTimeBlocks.set(e1.id, [eventTimeBlock]);
   }
@@ -143,8 +143,8 @@ class MockEventRepository implements EventRepository {
     input,
   }: CreateEventRepositoryInput): Promise<Event> {
     const id = `event-gen-${this.idCounter++}` as EventId;
-    const e = new Event(
-      {
+    const e = new Event({
+      props: {
         churchId,
         cycleId: input.cycleId,
         sourceTemplateId: input.sourceTemplateId,
@@ -156,7 +156,7 @@ class MockEventRepository implements EventRepository {
         status: input.status ?? 'draft',
       },
       id,
-    );
+    });
     this.events.set(e.id, e);
     this.ministries.set(
       e.id,
@@ -187,8 +187,8 @@ class MockEventRepository implements EventRepository {
     input,
   }: UpdateEventRepositoryInput): Promise<Event> {
     const e = await this.getById({ churchId, eventId: id });
-    const updated = new Event(
-      {
+    const updated = new Event({
+      props: {
         churchId: e.churchId,
         cycleId: e.cycleId as CycleId,
         title: input.title ?? e.title,
@@ -198,8 +198,8 @@ class MockEventRepository implements EventRepository {
         end: input.end ? fromDate({ date: input.end }) : e.end,
         status: e.status,
       },
-      e.id,
-    );
+      id: e.id,
+    });
     this.events.set(updated.id, updated);
     return updated;
   }

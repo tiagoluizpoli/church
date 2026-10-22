@@ -30,12 +30,12 @@ export class ParticipationEventTimeBlockInclusion extends Entity<
     createdAt,
     updatedAt,
   }: ParticipationEventTimeBlockInclusionInput) {
-    super(
-      props as ParticipationEventTimeBlockInclusionProps,
-      id as ParticipationEventTimeBlockInclusionId,
+    super({
+      props: props as ParticipationEventTimeBlockInclusionProps,
+      id: id as ParticipationEventTimeBlockInclusionId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

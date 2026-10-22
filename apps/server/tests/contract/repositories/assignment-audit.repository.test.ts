@@ -18,26 +18,26 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
   private idCounter = 1;
 
   constructor() {
-    const au1 = new AssignmentAudit(
-      {
+    const au1 = new AssignmentAudit({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
         actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'created',
         occurredAt: parseInstant({ value: '2024-06-01T10:00:00Z' }),
       },
-      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1' as any,
-    );
-    const au2 = new AssignmentAudit(
-      {
+      id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1' as any,
+    });
+    const au2 = new AssignmentAudit({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
         actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'status_change',
         occurredAt: parseInstant({ value: '2024-06-01T11:00:00Z' }),
       },
-      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2' as any,
-    );
+      id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2' as any,
+    });
 
     this.audits.set(au1.id, au1);
     this.audits.set(au2.id, au2);
@@ -48,8 +48,8 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
     input,
   }: CreateAssignmentAuditRepositoryInput): Promise<AssignmentAudit> {
     const id = `audit-gen-${this.idCounter++}` as any;
-    const au = new AssignmentAudit(
-      {
+    const au = new AssignmentAudit({
+      props: {
         churchId,
         assignmentId: input.assignmentId,
         actorId: input.actorId,
@@ -58,7 +58,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
         overrideConflictTypes: input.overrideConflictTypes,
       },
       id,
-    );
+    });
     this.audits.set(au.id, au);
     return au;
   }

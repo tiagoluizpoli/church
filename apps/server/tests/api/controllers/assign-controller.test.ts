@@ -301,8 +301,8 @@ describe('Assign routes', () => {
 
   it('POST /api/v1/assign/shifts/:id/assignments returns 201 with warnings', async () => {
     assignmentManager.createParticipationAssignment.mockResolvedValue({
-      assignment: new Assignment(
-        {
+      assignment: new Assignment({
+        props: {
           churchId: '11111111-1111-1111-1111-111111111111',
           eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
           participationId: '22222222-2222-2222-8222-222222222222',
@@ -312,8 +312,8 @@ describe('Assign routes', () => {
           shiftRequirementId: '88888888-8888-8888-8888-888888888888',
           status: 'pending',
         },
-        'assign-1',
-      ),
+        id: 'assign-1',
+      }),
       warnings: [
         {
           type: 'NOT_QUALIFIED',
@@ -480,8 +480,8 @@ describe('Assign routes', () => {
 
   it('PATCH /api/v1/assign/assignments/:id/reassign returns 200 with the new assignment', async () => {
     assignmentManager.reassignParticipationAssignment.mockResolvedValue(
-      new Assignment(
-        {
+      new Assignment({
+        props: {
           churchId: '11111111-1111-1111-1111-111111111111',
           eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
           participationId: '22222222-2222-2222-8222-222222222222',
@@ -491,8 +491,8 @@ describe('Assign routes', () => {
           shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
           status: 'pending',
         },
-        'assign-2',
-      ),
+        id: 'assign-2',
+      }),
     );
 
     const response = await app.inject({

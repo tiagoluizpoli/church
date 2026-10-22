@@ -67,13 +67,21 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     conditions,
     tx,
   }: RowsInput): Promise<Assignment[]> {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
-      .where(and(withChurchIsolation(assignment, churchId), ...conditions));
+      .where(
+        and(
+          withChurchIsolation({ table: assignment, churchId }),
+          ...conditions,
+        ),
+      );
     return rows.map((row) =>
-      mapAssignment(row.assignment, row.eventTimeBlockId),
+      mapAssignment({
+        row: row.assignment,
+        eventTimeBlockId: row.eventTimeBlockId,
+      }),
     );
   }
 
@@ -82,7 +90,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     input,
     tx,
   }: CreateAssignmentRepositoryInput): Promise<Assignment> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     if (!input.shiftId && !input.eventTimeBlockId) {
       throw new Error(
         'Assignment creation requires either shiftId or eventTimeBlockId',
@@ -92,8 +100,8 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     const conditions = [
       eq(shiftRequirement.id, input.shiftRequirementId),
       eq(shiftRequirement.participationId, shift.participationId),
-      withChurchIsolation(shiftRequirement, churchId),
-      withChurchIsolation(shift, churchId),
+      withChurchIsolation({ table: shiftRequirement, churchId }),
+      withChurchIsolation({ table: shift, churchId }),
     ];
     if (input.shiftId) {
       const requestedShift = eq(shift.id, input.shiftId);
@@ -134,7 +142,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       })
       .returning();
     if (!row) throw new Error('Assignment insert failed');
-    return mapAssignment(row, targetShift.eventTimeBlockId);
+    return mapAssignment({
+      row,
+      eventTimeBlockId: targetShift.eventTimeBlockId,
+    });
   }
 
   async getById({
@@ -144,19 +155,22 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
   }: GetAssignmentInput): Promise<Assignment> {
     if (!isValidUuid(assignmentId))
       throw new NotFoundError(`Assignment not found: ${assignmentId}`);
-    const [result] = await getClient(this.db, tx)
+    const [result] = await getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
       .where(
         and(
           eq(assignment.id, assignmentId),
-          withChurchIsolation(assignment, churchId),
+          withChurchIsolation({ table: assignment, churchId }),
         ),
       );
     if (!result)
       throw new NotFoundError(`Assignment not found: ${assignmentId}`);
-    return mapAssignment(result.assignment, result.eventTimeBlockId);
+    return mapAssignment({
+      row: result.assignment,
+      eventTimeBlockId: result.eventTimeBlockId,
+    });
   }
 
   async findByEventTimeBlockAndVolunteer({
@@ -193,19 +207,22 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     eventId,
     tx,
   }: AssignmentsByEventInput): Promise<Assignment[]> {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
       .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .where(
         and(
-          withChurchIsolation(assignment, churchId),
+          withChurchIsolation({ table: assignment, churchId }),
           eq(eventTimeBlock.eventId, eventId),
         ),
       );
     return rows.map((row) =>
-      mapAssignment(row.assignment, row.eventTimeBlockId),
+      mapAssignment({
+        row: row.assignment,
+        eventTimeBlockId: row.eventTimeBlockId,
+      }),
     );
   }
 
@@ -297,17 +314,20 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     tx,
   }: ListRangeInput): Promise<Assignment[]> {
     const conditions: SQL[] = [
-      withChurchIsolation(assignment, churchId),
+      withChurchIsolation({ table: assignment, churchId }),
       timeCondition,
     ];
     if (volunteerId) conditions.push(eq(assignment.volunteerId, volunteerId));
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
       .where(and(...conditions));
     return rows.map((row) =>
-      mapAssignment(row.assignment, row.eventTimeBlockId),
+      mapAssignment({
+        row: row.assignment,
+        eventTimeBlockId: row.eventTimeBlockId,
+      }),
     );
   }
 
@@ -317,13 +337,13 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     input,
     tx,
   }: UpdateAssignmentStatusRepositoryInput): Promise<void> {
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .update(assignment)
       .set({ status: input.status, reason: input.reason ?? null })
       .where(
         and(
           eq(assignment.id, assignmentId),
-          withChurchIsolation(assignment, churchId),
+          withChurchIsolation({ table: assignment, churchId }),
         ),
       );
   }
@@ -337,14 +357,14 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     tx,
   }: CountAssignmentsByVolunteerInRangeInput): Promise<number> {
     const conditions: SQL[] = [
-      withChurchIsolation(assignment, churchId),
+      withChurchIsolation({ table: assignment, churchId }),
       eq(assignment.volunteerId, volunteerId),
       between(shift.startTime, startTime, endTime),
     ];
     if (statusFilter?.length) {
       conditions.push(inArray(assignment.status, statusFilter));
     }
-    const [result] = await getClient(this.db, tx)
+    const [result] = await getClient({ db: this.db, tx })
       .select({ cnt: count() })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
@@ -357,19 +377,19 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     eventId,
     tx,
   }: AssignmentsByEventInput): Promise<void> {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select({ id: assignment.id })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
       .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .where(
         and(
-          withChurchIsolation(assignment, churchId),
+          withChurchIsolation({ table: assignment, churchId }),
           eq(eventTimeBlock.eventId, eventId),
         ),
       );
     if (rows.length === 0) return;
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .delete(assignment)
       .where(
         inArray(
@@ -384,12 +404,12 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     assignmentId,
     tx,
   }: GetAssignmentInput): Promise<void> {
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .delete(assignment)
       .where(
         and(
           eq(assignment.id, assignmentId),
-          withChurchIsolation(assignment, churchId),
+          withChurchIsolation({ table: assignment, churchId }),
         ),
       );
   }

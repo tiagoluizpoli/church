@@ -34,12 +34,12 @@ export class TemplateTimeBlock extends Entity<
       throw new InvalidTimeRangeError('Start time must not equal end time');
     }
 
-    super(
-      props as TemplateTimeBlockProps,
-      id as TemplateTimeBlockId,
+    super({
+      props: props as TemplateTimeBlockProps,
+      id: id as TemplateTimeBlockId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

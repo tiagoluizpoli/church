@@ -10,9 +10,13 @@ export interface RunTransactionOptions {
   isolationLevel?: TransactionIsolationLevel;
 }
 
+export type TransactionWork<T> = (tx: TransactionContext) => Promise<T>;
+
+export interface RunTransactionInput<T> extends RunTransactionOptions {
+  work: TransactionWork<T>;
+}
+
 export interface UnitOfWork {
-  run<T>(
-    fn: (tx: TransactionContext) => Promise<T>,
-    options?: RunTransactionOptions,
-  ): Promise<T>;
+  run<T>(work: TransactionWork<T>): Promise<T>;
+  runWith<T>(input: RunTransactionInput<T>): Promise<T>;
 }

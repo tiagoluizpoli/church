@@ -9,12 +9,14 @@ describe('EventTimeBlock Entity', () => {
     const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
 
     const eventTimeBlock = new EventTimeBlock({
-      churchId: 'c1',
-      eventId: 'e1',
-      sourceTemplateTimeBlockId: 'tb1',
-      startTime,
-      endTime,
-      label: 'Morning Event time block',
+      props: {
+        churchId: 'c1',
+        eventId: 'e1',
+        sourceTemplateTimeBlockId: 'tb1',
+        startTime,
+        endTime,
+        label: 'Morning Event time block',
+      },
     });
 
     expect(eventTimeBlock.churchId).toBe('c1');
@@ -31,10 +33,12 @@ describe('EventTimeBlock Entity', () => {
     const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
 
     const eventTimeBlock = new EventTimeBlock({
-      churchId: 'c1',
-      eventId: 'e1',
-      startTime,
-      endTime,
+      props: {
+        churchId: 'c1',
+        eventId: 'e1',
+        startTime,
+        endTime,
+      },
     });
 
     expect(eventTimeBlock.status).toBe('active');
@@ -49,10 +53,12 @@ describe('EventTimeBlock Entity', () => {
 
     expect(() => {
       new EventTimeBlock({
-        churchId: 'c1',
-        eventId: 'e1',
-        startTime,
-        endTime,
+        props: {
+          churchId: 'c1',
+          eventId: 'e1',
+          startTime,
+          endTime,
+        },
       });
     }).toThrow(InvalidDateRangeError);
   });

@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
+export interface EntityInput<T, Id extends string = string> {
+  props: T;
+  id?: Id;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 /**
  * Base abstract class for all Domain Entities.
  * Enforces the presence of an ID, creation/update timestamps, and encapsulated properties.
@@ -10,7 +17,7 @@ export abstract class Entity<T, Id extends string = string> {
   protected readonly _createdAt: Date;
   protected _updatedAt: Date;
 
-  constructor(props: T, id?: Id, createdAt?: Date, updatedAt?: Date) {
+  constructor({ props, id, createdAt, updatedAt }: EntityInput<T, Id>) {
     this._id = id ?? (randomUUID() as Id);
     this._props = props;
     this._createdAt = createdAt ?? new Date();

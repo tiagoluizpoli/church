@@ -35,24 +35,26 @@ export interface AssignmentProps {
   assignedBy?: UserId;
 }
 
+export interface AssignmentInput {
+  props: Omit<LooseProps<AssignmentProps>, 'status' | 'assignedAt'> &
+    Partial<Pick<LooseProps<AssignmentProps>, 'status' | 'assignedAt'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Assignment extends Entity<AssignmentProps, AssignmentId> {
-  constructor(
-    props: Omit<LooseProps<AssignmentProps>, 'status' | 'assignedAt'> &
-      Partial<Pick<LooseProps<AssignmentProps>, 'status' | 'assignedAt'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(
-      {
+  constructor({ props, id, createdAt, updatedAt }: AssignmentInput) {
+    super({
+      props: {
         ...props,
         status: props.status ?? 'draft',
         assignedAt: props.assignedAt ?? now(),
       } as unknown as AssignmentProps,
-      id as AssignmentId,
+      id: id as AssignmentId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

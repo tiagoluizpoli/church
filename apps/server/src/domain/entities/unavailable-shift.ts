@@ -44,12 +44,12 @@ export class UnavailableShift extends Entity<
     ) {
       throw new InvalidTimeRangeError();
     }
-    super(
-      props as UnavailableShiftProps,
-      id as UnavailableShiftId,
+    super({
+      props: props as UnavailableShiftProps,
+      id: id as UnavailableShiftId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

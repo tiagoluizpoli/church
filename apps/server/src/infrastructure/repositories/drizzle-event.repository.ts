@@ -44,13 +44,13 @@ export class DrizzleEventRepository implements EventRepository {
     eventId,
     tx,
   }: GetEventInput): Promise<MinistryId> {
-    const [row] = await getClient(this.db, tx)
+    const [row] = await getClient({ db: this.db, tx })
       .select({ ministryId: ministryParticipation.ministryId })
       .from(ministryParticipation)
       .where(
         and(
           eq(ministryParticipation.eventId, eventId),
-          withChurchIsolation(ministryParticipation, churchId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
         ),
       )
       .limit(1);
@@ -63,11 +63,16 @@ export class DrizzleEventRepository implements EventRepository {
     if (!isValidUuid(eventId)) {
       throw new NotFoundError(`Event not found: ${eventId}`);
     }
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select()
       .from(event)
-      .where(and(eq(event.id, eventId), withChurchIsolation(event, churchId)));
+      .where(
+        and(
+          eq(event.id, eventId),
+          withChurchIsolation({ table: event, churchId }),
+        ),
+      );
     if (!row) throw new NotFoundError(`Event not found: ${eventId}`);
     return mapEvent(row);
   }
@@ -77,7 +82,7 @@ export class DrizzleEventRepository implements EventRepository {
     eventId,
     tx,
   }: GetEventInput): Promise<EventWithEventTimeBlocks> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const ev = await this.getById({ churchId, eventId, tx });
 
     const eventTimeBlockRows = await db
@@ -86,7 +91,7 @@ export class DrizzleEventRepository implements EventRepository {
       .where(
         and(
           eq(eventTimeBlock.eventId, eventId),
-          withChurchIsolation(eventTimeBlock, churchId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       );
 
@@ -105,7 +110,7 @@ export class DrizzleEventRepository implements EventRepository {
             eventTimeBlockId: eventTimeBlockRow.id,
           }),
         );
-        return mapEventTimeBlock(eventTimeBlockRow, requirements);
+        return mapEventTimeBlock({ row: eventTimeBlockRow, requirements });
       }),
     );
 
@@ -118,9 +123,9 @@ export class DrizzleEventRepository implements EventRepository {
     status,
     tx,
   }: ListEventsByMinistryInput): Promise<Event[]> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const conditions = [
-      withChurchIsolation(event, churchId),
+      withChurchIsolation({ table: event, churchId }),
       eq(ministryParticipation.ministryId, ministryId),
     ];
     if (status != null) conditions.push(eq(event.status, status));
@@ -141,7 +146,7 @@ export class DrizzleEventRepository implements EventRepository {
     input,
     tx,
   }: CreateEventRepositoryInput): Promise<Event> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .insert(event)
       .values({
@@ -166,7 +171,7 @@ export class DrizzleEventRepository implements EventRepository {
     input,
     tx,
   }: UpdateEventRepositoryInput): Promise<Event> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .update(event)
       .set({
@@ -175,7 +180,12 @@ export class DrizzleEventRepository implements EventRepository {
         ...(input.end !== undefined ? { end: input.end } : {}),
         updatedAt: nowAsDate(),
       })
-      .where(and(eq(event.id, eventId), withChurchIsolation(event, churchId)))
+      .where(
+        and(
+          eq(event.id, eventId),
+          withChurchIsolation({ table: event, churchId }),
+        ),
+      )
       .returning();
     if (!row) throw new NotFoundError(`Event not found: ${eventId}`);
     return mapEvent(row);
@@ -187,12 +197,17 @@ export class DrizzleEventRepository implements EventRepository {
     input,
     tx,
   }: UpdateEventStatusRepositoryInput): Promise<void> {
-    await getClient(this.db, tx)
+    await getClient({ db: this.db, tx })
       .update(event)
       .set({
         status: input.status,
         updatedAt: nowAsDate(),
       })
-      .where(and(eq(event.id, eventId), withChurchIsolation(event, churchId)));
+      .where(
+        and(
+          eq(event.id, eventId),
+          withChurchIsolation({ table: event, churchId }),
+        ),
+      );
   }
 }

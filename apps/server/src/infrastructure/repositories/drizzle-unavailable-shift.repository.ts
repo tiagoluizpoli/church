@@ -44,7 +44,7 @@ export class DrizzleUnavailableShiftRepository
     conditions,
     tx,
   }: RowsInput): Promise<UnavailableShift[]> {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select({
         unavailableShift,
         volunteerId: ministryMembership.volunteerId,
@@ -62,9 +62,14 @@ export class DrizzleUnavailableShiftRepository
       )
       .innerJoin(shift, eq(shift.id, unavailableShift.shiftId))
       .where(
-        and(withChurchIsolation(unavailableShift, churchId), ...conditions),
+        and(
+          withChurchIsolation({ table: unavailableShift, churchId }),
+          ...conditions,
+        ),
       );
-    return rows.map((row) => mapUnavailableShift(row.unavailableShift, row));
+    return rows.map((row) =>
+      mapUnavailableShift({ row: row.unavailableShift, joined: row }),
+    );
   }
 
   async listByVolunteerForEvent({
@@ -75,7 +80,7 @@ export class DrizzleUnavailableShiftRepository
   }: ListUnavailableShiftsByVolunteerForEventInput): Promise<
     UnavailableShift[]
   > {
-    const rows = await getClient(this.db, tx)
+    const rows = await getClient({ db: this.db, tx })
       .select({
         unavailableShift,
         volunteerId: ministryMembership.volunteerId,
@@ -95,12 +100,14 @@ export class DrizzleUnavailableShiftRepository
       .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .where(
         and(
-          withChurchIsolation(unavailableShift, churchId),
+          withChurchIsolation({ table: unavailableShift, churchId }),
           eq(ministryMembership.volunteerId, volunteerId),
           eq(eventTimeBlock.eventId, eventId),
         ),
       );
-    return rows.map((row) => mapUnavailableShift(row.unavailableShift, row));
+    return rows.map((row) =>
+      mapUnavailableShift({ row: row.unavailableShift, joined: row }),
+    );
   }
 
   async listByVolunteers({
@@ -131,15 +138,16 @@ export class DrizzleUnavailableShiftRepository
   async replaceUnavailableShiftsForCheck(
     input: ReplaceUnavailableShiftsForCheckInput,
   ): Promise<void> {
-    const client = getClient(this.db, input.tx);
-    await client
-      .delete(unavailableShift)
-      .where(
-        and(
-          withChurchIsolation(unavailableShift, input.churchId),
-          eq(unavailableShift.availabilityCheckId, input.availabilityCheckId),
-        ),
-      );
+    const client = getClient({ db: this.db, tx: input.tx });
+    await client.delete(unavailableShift).where(
+      and(
+        withChurchIsolation({
+          table: unavailableShift,
+          churchId: input.churchId,
+        }),
+        eq(unavailableShift.availabilityCheckId, input.availabilityCheckId),
+      ),
+    );
 
     if (input.shiftIds.length === 0) return;
 

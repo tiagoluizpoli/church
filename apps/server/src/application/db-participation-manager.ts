@@ -252,7 +252,10 @@ export class DbParticipationManager implements IParticipationManager {
   async getCycleParticipation(
     input: GetCycleParticipationInput,
   ): Promise<CycleParticipationView> {
-    await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
     await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
@@ -312,7 +315,10 @@ export class DbParticipationManager implements IParticipationManager {
   async getCycleBuilderData(
     input: GetCycleBuilderDataInput,
   ): Promise<CycleBuilderView> {
-    await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
     await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
@@ -323,11 +329,11 @@ export class DbParticipationManager implements IParticipationManager {
         cycleId: input.cycleId,
         tx,
       });
-      const roles = await this.roleRepository.listByMinistry(
-        input.churchId,
-        input.ministryId,
+      const roles = await this.roleRepository.listByMinistry({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
         tx,
-      );
+      });
       // One membership read for the whole cycle: every event in it belongs to
       // the same ministry, so hoisting this out of the loop keeps it O(1).
       const membershipInfoByVolunteerId =
@@ -628,7 +634,7 @@ export class DbParticipationManager implements IParticipationManager {
     if (headcounts.length === 0) return;
     const [sectors, roles] = await Promise.all([
       this.sectorRepository.listByMinistry({ churchId, ministryId, tx }),
-      this.roleRepository.listByMinistry(churchId, ministryId, tx),
+      this.roleRepository.listByMinistry({ churchId, ministryId, tx }),
     ]);
     const sectorIds = new Set<string>(sectors.map((sector) => sector.id));
     const roleIds = new Set<string>(roles.map((role) => role.id));
@@ -691,12 +697,18 @@ export class DbParticipationManager implements IParticipationManager {
   }
 
   async getUsualSetup(input: GetUsualSetupInput): Promise<UsualSetup[]> {
-    await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
     return this.usualSetupRepository.listByMinistry(input);
   }
 
   async upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]> {
-    await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
     // Validate every entry through the domain entity before persisting.
     for (const entry of input.entries) {
       void new UsualSetup({
@@ -760,11 +772,11 @@ export class DbParticipationManager implements IParticipationManager {
       );
       const qualifiedVolunteers =
         shiftRequirements.length === 0
-          ? await this.volunteerRepository.listByMinistry(
-              input.churchId,
-              participation.ministryId,
+          ? await this.volunteerRepository.listByMinistry({
+              churchId: input.churchId,
+              ministryId: participation.ministryId,
               tx,
-            )
+            })
           : await this.listQualifiedVolunteersForShift({
               churchId: input.churchId,
               participation,
@@ -851,7 +863,10 @@ export class DbParticipationManager implements IParticipationManager {
   }
 
   async publishCycle(input: PublishCycleInput): Promise<PublishCycleView> {
-    await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
     await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
@@ -984,7 +999,10 @@ export class DbParticipationManager implements IParticipationManager {
   async listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryView[]> {
-    await this.ministryRepository.getById(input.churchId, input.ministryId);
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
 
     const rows = await this.participationRepository.listScheduleSummaries({
       churchId: input.churchId,
@@ -1117,11 +1135,11 @@ export class DbParticipationManager implements IParticipationManager {
   }: ListVolunteerMembershipInfoInput): Promise<
     Map<string, VolunteerMembershipInfo>
   > {
-    const memberships = await this.volunteerRepository.listMinistryMemberships(
+    const memberships = await this.volunteerRepository.listMinistryMemberships({
       churchId,
       ministryId,
       tx,
-    );
+    });
     return new Map(
       memberships.map((membership) => [
         membership.volunteerId as string,
@@ -1150,12 +1168,12 @@ export class DbParticipationManager implements IParticipationManager {
     >();
 
     for (const requirement of requirements) {
-      const volunteers = await this.volunteerRepository.listQualifiedForRole(
+      const volunteers = await this.volunteerRepository.listQualifiedForRole({
         churchId,
-        participation.ministryId,
-        requirement.roleId,
+        ministryId: participation.ministryId,
+        roleId: requirement.roleId,
         tx,
-      );
+      });
       for (const volunteer of volunteers) {
         volunteersById.set(volunteer.id as string, volunteer);
       }
@@ -1195,12 +1213,12 @@ export class DbParticipationManager implements IParticipationManager {
       if (volunteersByRole.has(roleKey)) {
         continue;
       }
-      const volunteers = await this.volunteerRepository.listQualifiedForRole(
+      const volunteers = await this.volunteerRepository.listQualifiedForRole({
         churchId,
-        participation.ministryId,
-        requirement.roleId,
+        ministryId: participation.ministryId,
+        roleId: requirement.roleId,
         tx,
-      );
+      });
       volunteersByRole.set(roleKey, volunteers);
     }
 
@@ -1210,11 +1228,11 @@ export class DbParticipationManager implements IParticipationManager {
         (requirementsByShift.get(shift.id as string) ?? []).length === 0,
     );
     const volunteersInMinistry = needsMinistryWide
-      ? await this.volunteerRepository.listByMinistry(
+      ? await this.volunteerRepository.listByMinistry({
           churchId,
-          participation.ministryId,
+          ministryId: participation.ministryId,
           tx,
-        )
+        })
       : [];
 
     // Union of everyone who could appear so unavailable shifts/assignments load once.

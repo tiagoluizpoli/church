@@ -71,7 +71,7 @@ export class DrizzleVolunteerTransferRepository
     sourceChurchId,
     now,
   }: GetTransferImpactInput): Promise<TransferImpact> {
-    const db = getClient(this.db);
+    const db = getClient({ db: this.db });
     const [activeProfile] = await db
       .select({ id: volunteer.id })
       .from(volunteer)
@@ -131,7 +131,7 @@ export class DrizzleVolunteerTransferRepository
     correlationId,
     tx,
   }: ExecuteVolunteerTransferInput): Promise<ExecuteVolunteerTransferOutcome> {
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
 
     // 1. Idempotent replay short-circuits before anything is read or locked —
     //    the unique (userId, ministryInvitationId) row is the key (§8.6).
@@ -199,7 +199,10 @@ export class DrizzleVolunteerTransferRepository
       .from(ministryInvitation)
       .where(
         and(
-          withChurchIsolation(ministryInvitation, destinationChurchId),
+          withChurchIsolation({
+            table: ministryInvitation,
+            churchId: destinationChurchId,
+          }),
           eq(ministryInvitation.id, ministryInvitationId),
         ),
       )
@@ -334,7 +337,10 @@ export class DrizzleVolunteerTransferRepository
       .from(ministryInvitationRole)
       .where(
         and(
-          withChurchIsolation(ministryInvitationRole, destinationChurchId),
+          withChurchIsolation({
+            table: ministryInvitationRole,
+            churchId: destinationChurchId,
+          }),
           eq(ministryInvitationRole.ministryInvitationId, ministryInvitationId),
         ),
       );
@@ -357,7 +363,10 @@ export class DrizzleVolunteerTransferRepository
       .set({ status: 'accepted', acceptedAt: confirmedAt })
       .where(
         and(
-          withChurchIsolation(ministryInvitation, destinationChurchId),
+          withChurchIsolation({
+            table: ministryInvitation,
+            churchId: destinationChurchId,
+          }),
           eq(ministryInvitation.id, ministryInvitationId),
           eq(ministryInvitation.status, 'pending'),
         ),
@@ -404,7 +413,7 @@ export class DrizzleVolunteerTransferRepository
     volunteerId,
     correlationId,
   }: GetTransferDigestDetailsInput): Promise<TransferDigestDetails> {
-    const db = getClient(this.db);
+    const db = getClient({ db: this.db });
 
     const [ministryRow] = await db
       .select({ name: ministry.name })
@@ -412,7 +421,7 @@ export class DrizzleVolunteerTransferRepository
       .where(
         and(
           eq(ministry.id, ministryId),
-          withChurchIsolation(ministry, churchId),
+          withChurchIsolation({ table: ministry, churchId }),
         ),
       );
     if (!ministryRow) {
@@ -429,7 +438,7 @@ export class DrizzleVolunteerTransferRepository
       .where(
         and(
           eq(volunteer.id, volunteerId),
-          withChurchIsolation(volunteer, churchId),
+          withChurchIsolation({ table: volunteer, churchId }),
         ),
       );
     if (!volunteerRow) {

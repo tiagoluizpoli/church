@@ -39,8 +39,8 @@ const IDEMPOTENCY_KEY = '66666666-6666-4666-8666-666666666666';
 const NOW = new Date('2026-09-15T12:00:00.000Z');
 
 function pendingInvitation(): MinistryInvitation {
-  return new MinistryInvitation(
-    {
+  return new MinistryInvitation({
+    props: {
       churchId: DESTINATION_CHURCH_ID,
       ministryId: MinistryId.from('77777777-7777-4777-8777-777777777777'),
       inviteeUserId: USER_ID,
@@ -50,8 +50,8 @@ function pendingInvitation(): MinistryInvitation {
       expiresAt: parseInstant({ value: '2026-12-01T00:00:00.000Z' }),
       roleIds: [],
     },
-    MINISTRY_INVITATION_ID,
-  );
+    id: MINISTRY_INVITATION_ID,
+  });
 }
 
 interface HarnessOverrides {
@@ -142,6 +142,9 @@ function createHarness(overrides: HarnessOverrides = {}) {
   const unitOfWork: UnitOfWork = {
     async run(fn) {
       return fn({} as TransactionContext);
+    },
+    async runWith({ work }) {
+      return this.run(work);
     },
   };
 

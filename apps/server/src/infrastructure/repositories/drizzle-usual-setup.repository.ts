@@ -25,14 +25,14 @@ export class DrizzleUsualSetupRepository implements UsualSetupRepository {
   async listByMinistry(
     input: ListUsualSetupByMinistryInput,
   ): Promise<UsualSetup[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(usualSetup)
       .where(
         and(
           eq(usualSetup.ministryId, input.ministryId),
-          withChurchIsolation(usualSetup, input.churchId),
+          withChurchIsolation({ table: usualSetup, churchId: input.churchId }),
         ),
       );
 
@@ -42,11 +42,13 @@ export class DrizzleUsualSetupRepository implements UsualSetupRepository {
   async listByChurch(
     input: ListUsualSetupsByChurchInput,
   ): Promise<UsualSetup[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(usualSetup)
-      .where(withChurchIsolation(usualSetup, input.churchId));
+      .where(
+        withChurchIsolation({ table: usualSetup, churchId: input.churchId }),
+      );
 
     return rows.map(mapUsualSetup);
   }
@@ -54,14 +56,14 @@ export class DrizzleUsualSetupRepository implements UsualSetupRepository {
   async replaceForMinistry(
     input: ReplaceUsualSetupInput,
   ): Promise<UsualSetup[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
 
     await db
       .delete(usualSetup)
       .where(
         and(
           eq(usualSetup.ministryId, input.ministryId),
-          withChurchIsolation(usualSetup, input.churchId),
+          withChurchIsolation({ table: usualSetup, churchId: input.churchId }),
         ),
       );
 

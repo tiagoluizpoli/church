@@ -21,5 +21,10 @@ export function mapEvent(row: EventRow): Event {
     status: row.status as EventProps['status'],
   };
 
-  return new Event(props, row.id as EventId, row.createdAt, row.updatedAt);
+  return new Event({
+    props,
+    id: row.id as EventId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
 }

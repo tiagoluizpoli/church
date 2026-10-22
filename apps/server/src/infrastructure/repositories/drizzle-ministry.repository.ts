@@ -2,12 +2,13 @@ import { NotFoundError } from '@church/core';
 import { ministry } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, eq } from 'drizzle-orm';
-import type { ChurchId, MinistryId } from '../../domain/branded-ids';
 import type {
+  GetMinistryByIdInput,
+  GetMinistrySettingsInput,
+  ListMinistriesByChurchInput,
   MinistryRepository,
   UpdateMinistryDefaultDirectionInput,
 } from '../../domain/contracts/infrastructure/ministry.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   Ministry,
   MinistrySettings,
@@ -27,15 +28,11 @@ export class DrizzleMinistryRepository implements MinistryRepository {
 
   private readonly db: AnyDrizzleDb;
 
-  async getById(
-    churchId: ChurchId,
-    id: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<Ministry> {
+  async getById({ churchId, id, tx }: GetMinistryByIdInput): Promise<Ministry> {
     if (!isValidUuid(id)) {
       throw new NotFoundError(`Ministry not found: ${id}`);
     }
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select()
       .from(ministry)
@@ -46,31 +43,31 @@ export class DrizzleMinistryRepository implements MinistryRepository {
     return mapMinistry(row);
   }
 
-  async listByChurch(
-    churchId: ChurchId,
-    tx?: TransactionContext,
-  ): Promise<Ministry[]> {
-    const rows = await getClient(this.db, tx)
+  async listByChurch({
+    churchId,
+    tx,
+  }: ListMinistriesByChurchInput): Promise<Ministry[]> {
+    const rows = await getClient({ db: this.db, tx })
       .select()
       .from(ministry)
-      .where(withChurchIsolation(ministry, churchId))
+      .where(withChurchIsolation({ table: ministry, churchId }))
       .orderBy(asc(ministry.name));
     return rows.filter((r) => r.deletedAt == null).map(mapMinistry);
   }
 
-  async getSettings(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<MinistrySettings> {
-    const m = await this.getById(churchId, ministryId, tx);
+  async getSettings({
+    churchId,
+    ministryId,
+    tx,
+  }: GetMinistrySettingsInput): Promise<MinistrySettings> {
+    const m = await this.getById({ churchId, id: ministryId, tx });
     return { defaultDirection: m.defaultDirection };
   }
 
   async updateDefaultDirection(
     input: UpdateMinistryDefaultDirectionInput,
   ): Promise<Ministry> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .update(ministry)
       .set({
@@ -80,7 +77,7 @@ export class DrizzleMinistryRepository implements MinistryRepository {
       .where(
         and(
           eq(ministry.id, input.ministryId),
-          withChurchIsolation(ministry, input.churchId),
+          withChurchIsolation({ table: ministry, churchId: input.churchId }),
         ),
       )
       .returning();

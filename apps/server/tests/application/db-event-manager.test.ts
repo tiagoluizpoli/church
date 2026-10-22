@@ -54,16 +54,16 @@ const ownShiftId = 'shift-own' as ShiftId;
 const foreignShiftId = 'shift-foreign' as ShiftId;
 
 function buildEvent(): Event {
-  return new Event(
-    {
+  return new Event({
+    props: {
       churchId,
       cycleId: 'cycle-1',
       title: 'Sunday Service',
       start: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
       end: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
     },
-    eventId,
-  );
+    id: eventId,
+  });
 }
 
 function buildParticipation(
@@ -129,11 +129,12 @@ function createRepos(): Repos {
     getById: vi.fn(),
     listByEvent: vi.fn(async () => []),
     create: vi.fn(
-      async ({ input }) => new EventTimeBlock({ ...input, churchId }),
+      async ({ input }) =>
+        new EventTimeBlock({ props: { ...input, churchId } }),
     ),
     update: vi.fn(async ({ eventTimeBlockId: id, input }) => {
-      const eventTimeBlock = new EventTimeBlock(
-        {
+      const eventTimeBlock = new EventTimeBlock({
+        props: {
           churchId,
           eventId,
           startTime:
@@ -145,7 +146,7 @@ function createRepos(): Repos {
           label: input.label,
         },
         id,
-      );
+      });
       return eventTimeBlock;
     }),
     deleteById: vi.fn(async () => undefined),
@@ -272,8 +273,14 @@ describe('DbEventManager', () => {
       const kidsId = '66666666-6666-4666-8666-666666666661' as SectorId;
       const maternalId = '66666666-6666-4666-8666-666666666662' as SectorId;
       vi.mocked(repos.sectorRepo.listByMinistry).mockResolvedValue([
-        new Sector({ churchId, ministryId, name: 'Kids' }, kidsId),
-        new Sector({ churchId, ministryId, name: 'Maternal' }, maternalId),
+        new Sector({
+          props: { churchId, ministryId, name: 'Kids' },
+          id: kidsId,
+        }),
+        new Sector({
+          props: { churchId, ministryId, name: 'Maternal' },
+          id: maternalId,
+        }),
       ]);
 
       const result = await createManager(repos).getScheduleBuilderData({
@@ -414,23 +421,28 @@ describe('DbEventManager', () => {
         }),
       ]);
       const volunteers = [
-        new Volunteer(
-          { churchId, userId: 'u-leader', name: 'Leader' },
-          leaderId,
-        ),
-        new Volunteer(
-          { churchId, userId: 'u-a', name: 'Team A Vol' },
-          teamAVolunteerId,
-        ),
-        new Volunteer(
-          { churchId, userId: 'u-b', name: 'Team B Vol' },
-          teamBVolunteerId,
-        ),
+        new Volunteer({
+          props: { churchId, userId: 'u-leader', name: 'Leader' },
+          id: leaderId,
+        }),
+        new Volunteer({
+          props: { churchId, userId: 'u-a', name: 'Team A Vol' },
+          id: teamAVolunteerId,
+        }),
+        new Volunteer({
+          props: { churchId, userId: 'u-b', name: 'Team B Vol' },
+          id: teamBVolunteerId,
+        }),
       ];
       vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue(
         volunteers,
       );
-      const roles = [new Role({ churchId, ministryId, name: 'Usher' }, roleId)];
+      const roles = [
+        new Role({
+          props: { churchId, ministryId, name: 'Usher' },
+          id: roleId,
+        }),
+      ];
       vi.mocked(repos.roleRepo.listByMinistry).mockResolvedValue(roles);
       const unavailableShifts = [
         new UnavailableShift({
@@ -507,7 +519,10 @@ describe('DbEventManager', () => {
         }),
       ]);
       vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue([
-        new Volunteer({ churchId, userId: 'u-leader' }, leaderId),
+        new Volunteer({
+          props: { churchId, userId: 'u-leader' },
+          id: leaderId,
+        }),
       ]);
 
       const result = await createManager(repos).getScheduleBuilderData({
@@ -530,8 +545,8 @@ describe('DbEventManager', () => {
     it('scopes requirements, assignments and unavailable shifts to the selected participation', async () => {
       const repos = createRepos();
       const selectedParticipation = buildParticipation();
-      const ownRequirement = new ShiftRequirement(
-        {
+      const ownRequirement = new ShiftRequirement({
+        props: {
           churchId,
           eventTimeBlockId,
           participationId,
@@ -541,10 +556,10 @@ describe('DbEventManager', () => {
           sectorName: 'Kids',
           peopleNeeded: 2,
         },
-        'requirement-own' as never,
-      );
-      const foreignRequirement = new ShiftRequirement(
-        {
+        id: 'requirement-own' as never,
+      });
+      const foreignRequirement = new ShiftRequirement({
+        props: {
           churchId,
           eventTimeBlockId,
           participationId: 'participation-foreign' as never,
@@ -554,18 +569,18 @@ describe('DbEventManager', () => {
           sectorName: 'Maternal',
           peopleNeeded: 1,
         },
-        'requirement-foreign' as never,
-      );
-      const eventTimeBlock = new EventTimeBlock(
-        {
+        id: 'requirement-foreign' as never,
+      });
+      const eventTimeBlock = new EventTimeBlock({
+        props: {
           churchId,
           eventId,
           startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
           endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
           requirements: [ownRequirement, foreignRequirement],
         },
-        eventTimeBlockId,
-      );
+        id: eventTimeBlockId,
+      });
       const ownShift = new Shift({
         props: {
           churchId,
@@ -577,8 +592,8 @@ describe('DbEventManager', () => {
         id: ownShiftId,
       });
       const assignments = [
-        new Assignment(
-          {
+        new Assignment({
+          props: {
             churchId,
             eventTimeBlockId,
             participationId,
@@ -586,8 +601,8 @@ describe('DbEventManager', () => {
             roleId,
             shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
           },
-          'assignment-1',
-        ),
+          id: 'assignment-1',
+        }),
       ];
 
       vi.mocked(repos.eventTimeBlockRepo.listByEvent).mockResolvedValue([
@@ -597,10 +612,10 @@ describe('DbEventManager', () => {
         repos.ministryParticipationRepo.findByMinistryEvent,
       ).mockResolvedValue(selectedParticipation);
       vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue([
-        new Volunteer(
-          { churchId, userId: 'u-leader', name: 'Leader' },
-          leaderId,
-        ),
+        new Volunteer({
+          props: { churchId, userId: 'u-leader', name: 'Leader' },
+          id: leaderId,
+        }),
       ]);
       vi.mocked(repos.assignmentRepo.listByParticipation).mockResolvedValue(
         assignments,

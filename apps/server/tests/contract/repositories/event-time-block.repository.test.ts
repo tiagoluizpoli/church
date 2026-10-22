@@ -28,8 +28,8 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
   private idCounter = 1;
 
   constructor() {
-    const req = new ShiftRequirement(
-      {
+    const req = new ShiftRequirement({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventTimeBlockId:
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -38,11 +38,11 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         sectorName: 'Palco',
         peopleNeeded: 1,
       },
-      '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
-    );
+      id: '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
+    });
 
-    const eventTimeBlock = new EventTimeBlock(
-      {
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: '66666666-6666-6666-6666-666666666661' as EventId,
         startTime: parseInstant({ value: '2024-06-05T10:00:00Z' }),
@@ -50,8 +50,8 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         status: 'active',
         requirements: [req],
       },
-      '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
-    );
+      id: '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
+    });
 
     this.eventTimeBlocks.set(eventTimeBlock.id, eventTimeBlock);
   }
@@ -101,8 +101,8 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     input,
   }: CreateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
     const id = `event-time-block-gen-${this.idCounter++}` as EventTimeBlockId;
-    const eventTimeBlock = new EventTimeBlock(
-      {
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
         churchId,
         eventId: input.eventId,
         startTime: fromDate({ date: input.startTime }),
@@ -112,7 +112,7 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         requirements: [],
       },
       id,
-    );
+    });
     this.eventTimeBlocks.set(eventTimeBlock.id, eventTimeBlock);
     return eventTimeBlock;
   }
@@ -123,8 +123,8 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     input,
   }: UpdateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
     const existing = await this.getById({ churchId, eventTimeBlockId: id });
-    const updated = new EventTimeBlock(
-      {
+    const updated = new EventTimeBlock({
+      props: {
         churchId: existing.churchId,
         eventId: existing.eventId,
         startTime: input.startTime
@@ -137,8 +137,8 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         status: existing.status,
         requirements: existing.requirements,
       },
-      existing.id,
-    );
+      id: existing.id,
+    });
     this.eventTimeBlocks.set(updated.id, updated);
     return updated;
   }

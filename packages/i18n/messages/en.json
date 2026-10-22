@@ -80,5 +80,10 @@
   "breadcrumb_new": "New",
   "breadcrumb_assign": "Assign",
   "breadcrumb_volunteer": "Volunteer",
-  "breadcrumb_ministry": "Ministry"
+  "breadcrumb_ministry": "Ministry",
+  "mode_toggle_label": "Toggle theme",
+  "mode_toggle_light": "Light",
+  "mode_toggle_dark": "Dark",
+  "mode_toggle_system": "System",
+  "notification_bell_label": "Notifications"
 }

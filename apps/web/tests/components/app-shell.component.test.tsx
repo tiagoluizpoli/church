@@ -45,7 +45,10 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+vi.mock('@/shared/hooks/use-caller-capabilities', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/shared/hooks/use-caller-capabilities')
+  >()),
   useCallerCapabilities: vi.fn(),
 }));
 
@@ -138,9 +141,9 @@ const SERVING = [m.nav_my_schedule(), m.nav_availability()];
 const SCHEDULES = [m.nav_schedules()];
 const CHURCH_LEADER = [m.nav_ministries(), m.nav_people(), m.nav_invitations()];
 const ADMIN_SCHEDULING = [
+  m.nav_schedules(),
   m.nav_cycles(),
   m.nav_event_templates(),
-  m.nav_schedules(),
 ];
 const HEADINGS = [
   m.nav_group_serving(),

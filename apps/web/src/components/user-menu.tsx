@@ -72,7 +72,10 @@ export default function UserMenu() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onClick={() => signOut('/')}>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => signOut({ to: '/' })}
+          >
             {m.user_menu_sign_out()}
           </DropdownMenuItem>
         </DropdownMenuGroup>

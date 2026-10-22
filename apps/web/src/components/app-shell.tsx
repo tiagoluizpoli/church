@@ -23,6 +23,7 @@ import * as React from 'react';
 import { useCallerCapabilitiesScope } from '../shared/components/caller-capabilities-scope';
 import {
   type CallerCapabilities,
+  isAdminOrLeader,
   useCallerCapabilities,
 } from '../shared/hooks/use-caller-capabilities';
 import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
@@ -107,9 +108,6 @@ interface NavGroupModel {
   entries: NavEntry[];
 }
 
-const isAdminOrLeader = (c: CallerCapabilities) =>
-  c.isChurchAdmin || c.leadsMinistries;
-
 // The one nav list: add or retarget an entry here. Order is render order.
 const NAV_ENTRIES: NavEntry[] = [
   {
@@ -135,6 +133,13 @@ const NAV_ENTRIES: NavEntry[] = [
   },
   {
     group: 'scheduling',
+    label: () => m.nav_schedules(),
+    to: '/schedules',
+    icon: UsersRound,
+    isVisible: isAdminOrLeader,
+  },
+  {
+    group: 'scheduling',
     label: () => m.nav_cycles(),
     to: '/cycles',
     icon: CalendarRange,
@@ -146,13 +151,6 @@ const NAV_ENTRIES: NavEntry[] = [
     to: '/event-templates',
     icon: LayoutTemplate,
     isVisible: (c) => c.isChurchAdmin,
-  },
-  {
-    group: 'scheduling',
-    label: () => m.nav_schedules(),
-    to: '/schedules',
-    icon: UsersRound,
-    isVisible: isAdminOrLeader,
   },
   {
     group: 'church',
@@ -229,7 +227,7 @@ function isOpaqueIdSegment({ segment }: IsOpaqueIdSegmentInput): boolean {
   return /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(segment);
 }
 
-function toBreadcrumbLabel({ segment }: { segment: string }): string {
+function toBreadcrumbLabel({ segment }: IsOpaqueIdSegmentInput): string {
   const mapped = BREADCRUMB_SEGMENT_LABELS[segment];
   if (mapped) {
     return mapped();
@@ -670,15 +668,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
         description={m.shell_drawer_description()}
       >
         <div className="flex flex-col space-y-4">
-          <div className="flex items-center justify-between border-sidebar-border border-b pb-2">
-            <div className="space-y-0.5">
-              <span className="block font-semibold text-lg">
-                {m.shell_drawer_title()}
-              </span>
-              <span className="block text-muted-foreground text-xs">
-                {m.shell_drawer_description()}
-              </span>
-            </div>
+          <div className="flex justify-end border-sidebar-border border-b pb-2">
             <ModeToggle />
           </div>
 

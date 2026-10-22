@@ -10,16 +10,14 @@ import type {
   SectorId,
 } from '@/domain/branded-ids';
 import type {
-  CreateEventInput,
+  CreateEventRepositoryInput,
   EventRepository,
-  UpdateEventInput,
-  UpdateEventStatusInput,
+  GetEventInput,
+  ListEventsByMinistryInput,
+  UpdateEventRepositoryInput,
+  UpdateEventStatusRepositoryInput,
 } from '@/domain/contracts/infrastructure/event.repository';
-import {
-  Event,
-  type EventStatus,
-  type EventWithEventTimeBlocks,
-} from '@/domain/entities/event';
+import { Event, type EventWithEventTimeBlocks } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import {
   ShiftRequirement,
@@ -96,7 +94,7 @@ class MockEventRepository implements EventRepository {
     this.eventTimeBlocks.set(e1.id, [eventTimeBlock]);
   }
 
-  async getById(churchId: ChurchId, id: EventId): Promise<Event> {
+  async getById({ churchId, eventId: id }: GetEventInput): Promise<Event> {
     const e = this.events.get(id);
     if (!e || e.churchId !== churchId) {
       throw new NotFoundError('Event not found');
@@ -104,27 +102,30 @@ class MockEventRepository implements EventRepository {
     return e;
   }
 
-  async getWithEventTimeBlocks(
-    churchId: ChurchId,
-    id: EventId,
-  ): Promise<EventWithEventTimeBlocks> {
-    const event = await this.getById(churchId, id);
+  async getWithEventTimeBlocks({
+    churchId,
+    eventId: id,
+  }: GetEventInput): Promise<EventWithEventTimeBlocks> {
+    const event = await this.getById({ churchId, eventId: id });
     const eventTimeBlocks = this.eventTimeBlocks.get(id) ?? [];
     return { event, eventTimeBlocks };
   }
 
-  async getMinistryId(churchId: ChurchId, id: EventId): Promise<MinistryId> {
-    await this.getById(churchId, id);
+  async getMinistryId({
+    churchId,
+    eventId: id,
+  }: GetEventInput): Promise<MinistryId> {
+    await this.getById({ churchId, eventId: id });
     const ministryId = this.ministries.get(id);
     if (!ministryId) throw new NotFoundError('Participation not found');
     return ministryId;
   }
 
-  async listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    status?: EventStatus,
-  ): Promise<Event[]> {
+  async listByMinistry({
+    churchId,
+    ministryId,
+    status,
+  }: ListEventsByMinistryInput): Promise<Event[]> {
     let list = Array.from(this.events.values()).filter(
       (e) =>
         e.churchId === churchId && this.ministries.get(e.id) === ministryId,
@@ -137,7 +138,10 @@ class MockEventRepository implements EventRepository {
     );
   }
 
-  async create(churchId: ChurchId, input: CreateEventInput): Promise<Event> {
+  async create({
+    churchId,
+    input,
+  }: CreateEventRepositoryInput): Promise<Event> {
     const id = `event-gen-${this.idCounter++}` as EventId;
     const e = new Event(
       {
@@ -161,12 +165,12 @@ class MockEventRepository implements EventRepository {
     return e;
   }
 
-  async updateStatus(
-    churchId: ChurchId,
-    id: EventId,
-    input: UpdateEventStatusInput,
-  ): Promise<void> {
-    const e = await this.getById(churchId, id);
+  async updateStatus({
+    churchId,
+    eventId: id,
+    input,
+  }: UpdateEventStatusRepositoryInput): Promise<void> {
+    const e = await this.getById({ churchId, eventId: id });
     if (input.status === 'scheduled') {
       e.markScheduled();
     } else if (input.status === 'cancelled') {
@@ -177,12 +181,12 @@ class MockEventRepository implements EventRepository {
     this.events.set(e.id, e);
   }
 
-  async update(
-    churchId: ChurchId,
-    id: EventId,
-    input: UpdateEventInput,
-  ): Promise<Event> {
-    const e = await this.getById(churchId, id);
+  async update({
+    churchId,
+    eventId: id,
+    input,
+  }: UpdateEventRepositoryInput): Promise<Event> {
+    const e = await this.getById({ churchId, eventId: id });
     const updated = new Event(
       {
         churchId: e.churchId,

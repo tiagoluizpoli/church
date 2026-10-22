@@ -18,10 +18,10 @@ describe('DrizzleEventRepository (extra coverage)', () => {
     const repo = new DrizzleEventRepository({ db: schedulingTestDb });
 
     await expect(
-      repo.getById(
-        ChurchId.from(seed.churchAId),
-        EventId.from('99999999-9999-4999-8999-999999999999'),
-      ),
+      repo.getById({
+        churchId: ChurchId.from(seed.churchAId),
+        eventId: EventId.from('99999999-9999-4999-8999-999999999999'),
+      }),
     ).rejects.toThrow(NotFoundError);
   });
 });

@@ -42,39 +42,45 @@ export interface ListAuditByCycleInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
+  tx?: TransactionContext;
+}
+
+export interface CreateAssignmentAuditRepositoryInput {
+  churchId: ChurchId;
+  input: CreateAssignmentAuditInput;
+  tx?: TransactionContext;
+}
+
+export interface ListAuditByChurchInput {
+  churchId: ChurchId;
+  tx?: TransactionContext;
+}
+
+export interface ListAuditByActorInput {
+  churchId: ChurchId;
+  actorId: UserId;
+  tx?: TransactionContext;
+}
+
+export interface ListAuditByEventInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  tx?: TransactionContext;
 }
 
 export interface AssignmentAuditRepository {
-  create(
-    churchId: ChurchId,
-    input: CreateAssignmentAuditInput,
-    tx?: TransactionContext,
-  ): Promise<AssignmentAudit>;
+  create(input: CreateAssignmentAuditRepositoryInput): Promise<AssignmentAudit>;
 
   /** Cycle-wide audit entries for one ministry's participations, church-isolated. */
-  listByCycle(
-    input: ListAuditByCycleInput,
-    tx?: TransactionContext,
-  ): Promise<AssignmentAudit[]>;
+  listByCycle(input: ListAuditByCycleInput): Promise<AssignmentAudit[]>;
 
-  listByChurch(
-    churchId: ChurchId,
-    tx?: TransactionContext,
-  ): Promise<AssignmentAudit[]>;
+  listByChurch(input: ListAuditByChurchInput): Promise<AssignmentAudit[]>;
 
-  listByActor(
-    churchId: ChurchId,
-    actorId: UserId,
-    tx?: TransactionContext,
-  ): Promise<AssignmentAudit[]>;
+  listByActor(input: ListAuditByActorInput): Promise<AssignmentAudit[]>;
 
   /**
    * List enriched audit entries for all assignments within an event,
    * joined with volunteer / event time block / role / actor display fields.
    */
-  listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<AssignmentAuditLogEntry[]>;
+  listByEvent(input: ListAuditByEventInput): Promise<AssignmentAuditLogEntry[]>;
 }

@@ -115,8 +115,8 @@ export class DbEventManager implements IEventManager {
       shifts,
       requirements,
     ] = await Promise.all([
-      this.eventTimeBlockRepo.listByEvent(churchId, eventId),
-      this.assignmentRepo.listByParticipation(churchId, participationId),
+      this.eventTimeBlockRepo.listByEvent({ churchId, eventId }),
+      this.assignmentRepo.listByParticipation({ churchId, participationId }),
       this.volunteerRepo.listByMinistry(churchId, ministryId),
       this.roleRepo.listByMinistry(churchId, ministryId),
       this.shiftRepo.listByParticipation({ churchId, participationId }),
@@ -138,10 +138,10 @@ export class DbEventManager implements IEventManager {
     const participationShiftIds = new Set(shifts.map((shift) => shift.id));
     const rawUnavailableShifts =
       allVolunteerIds.length > 0
-        ? await this.unavailableShiftRepo.listByVolunteers(
+        ? await this.unavailableShiftRepo.listByVolunteers({
             churchId,
-            allVolunteerIds,
-          )
+            volunteerIds: allVolunteerIds,
+          })
         : [];
     const unavailableShifts = rawUnavailableShifts.filter((unavailableShift) =>
       participationShiftIds.has(unavailableShift.shiftId),
@@ -154,7 +154,7 @@ export class DbEventManager implements IEventManager {
     return {
       events: [
         {
-          event: await this.eventRepo.getById(churchId, eventId),
+          event: await this.eventRepo.getById({ churchId, eventId }),
           eventTimeBlocks: this.scopeEventTimeBlocks({
             eventTimeBlocks,
             requirements,
@@ -178,18 +178,18 @@ export class DbEventManager implements IEventManager {
   }
 
   async listEvents(input: ListEventsInput): Promise<Event[]> {
-    return this.eventRepo.listByMinistry(
-      input.churchId,
-      input.ministryId,
-      input.status,
-    );
+    return this.eventRepo.listByMinistry({
+      churchId: input.churchId,
+      ministryId: input.ministryId,
+      status: input.status,
+    });
   }
 
   private async resolveScheduleBuilderScope(
     input: ResolveScheduleBuilderScopeInput,
   ): Promise<ScheduleBuilderScope> {
     const { churchId, eventId, userId, ministryId } = input;
-    await this.eventRepo.getById(churchId, eventId);
+    await this.eventRepo.getById({ churchId, eventId });
 
     const participation = ministryId
       ? await this.ministryParticipationRepo.findByMinistryEvent({

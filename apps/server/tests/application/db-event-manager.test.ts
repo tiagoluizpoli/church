@@ -129,9 +129,9 @@ function createRepos(): Repos {
     getById: vi.fn(),
     listByEvent: vi.fn(async () => []),
     create: vi.fn(
-      async (_churchId, input) => new EventTimeBlock({ ...input, churchId }),
+      async ({ input }) => new EventTimeBlock({ ...input, churchId }),
     ),
-    update: vi.fn(async (_churchId, id, input) => {
+    update: vi.fn(async ({ eventTimeBlockId: id, input }) => {
       const eventTimeBlock = new EventTimeBlock(
         {
           churchId,
@@ -655,10 +655,10 @@ describe('DbEventManager', () => {
       expect(result.unavailableShifts).toHaveLength(1);
       expect(unavailableShift.shiftId).toBe(ownShiftId);
       expect(repos.assignmentRepo.listByEvent).not.toHaveBeenCalled();
-      expect(repos.assignmentRepo.listByParticipation).toHaveBeenCalledWith(
+      expect(repos.assignmentRepo.listByParticipation).toHaveBeenCalledWith({
         churchId,
-        selectedParticipation.id,
-      );
+        participationId: selectedParticipation.id,
+      });
     });
 
     it('skips the availability bulk lookup when the selected Ministry has no visible volunteers', async () => {
@@ -693,11 +693,11 @@ describe('DbEventManager', () => {
       });
 
       expect(result).toBe(events);
-      expect(repos.eventRepo.listByMinistry).toHaveBeenCalledWith(
+      expect(repos.eventRepo.listByMinistry).toHaveBeenCalledWith({
         churchId,
         ministryId,
-        'scheduled',
-      );
+        status: 'scheduled',
+      });
     });
   });
 });

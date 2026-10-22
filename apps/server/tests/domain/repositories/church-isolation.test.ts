@@ -63,39 +63,39 @@ describe('User Story 3: Church Isolation Type Safety', () => {
 
       // 5. EventRepository
       const eventRepo = {} as EventRepository;
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      eventRepo.getById('plain-string', 'event-1' as EventId);
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      eventRepo.getById({ churchId: 'plain-string', eventId: 'event-1' as EventId });
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       eventRepo.listByMinistryInRange('plain-string', 'ministry-1' as MinistryId, new Date(), new Date());
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      eventRepo.create('plain-string', {} as any);
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      eventRepo.updateStatus('plain-string', 'event-1' as EventId, { status: 'published' });
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      eventRepo.create({ churchId: 'plain-string', input: {} as any });
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      eventRepo.updateStatus({ churchId: 'plain-string', eventId: 'event-1' as EventId, input: { status: 'published' } });
 
       // 6. EventTimeBlockRepository
       const eventTimeBlockRepo = {} as EventTimeBlockRepository;
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      eventTimeBlockRepo.getById('plain-string', 'event-time-block-1' as EventTimeBlockId);
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      eventTimeBlockRepo.listByEvent('plain-string', 'event-1' as EventId);
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      eventTimeBlockRepo.create('plain-string', {} as any);
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      eventTimeBlockRepo.deleteByEvent('plain-string', 'event-1' as EventId);
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      eventTimeBlockRepo.getById({ churchId: 'plain-string', eventTimeBlockId: 'event-time-block-1' as EventTimeBlockId });
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      eventTimeBlockRepo.listByEvent({ churchId: 'plain-string', eventId: 'event-1' as EventId });
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      eventTimeBlockRepo.create({ churchId: 'plain-string', input: {} as any });
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      eventTimeBlockRepo.deleteByEvent({ churchId: 'plain-string', eventId: 'event-1' as EventId });
 
       // 7. AssignmentRepository
       const assignmentRepo = {} as AssignmentRepository;
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      assignmentRepo.getById('plain-string', 'assignment-1' as AssignmentId);
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      assignmentRepo.getById({ churchId: 'plain-string', assignmentId: 'assignment-1' as AssignmentId });
       // @ts-expect-error - churchId must be branded ChurchId, not a plain string
       assignmentRepo.create({ churchId: 'plain-string', input: {} as any });
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      assignmentRepo.updateStatus('plain-string', 'assignment-1' as AssignmentId, {} as any);
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      assignmentRepo.updateStatus({ churchId: 'plain-string', assignmentId: 'assignment-1' as AssignmentId, input: {} as any });
 
       // 8. AssignmentAuditRepository
       const auditRepo = {} as AssignmentAuditRepository;
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      auditRepo.create('plain-string', {} as any);
+      // @ts-expect-error - churchId must be branded ChurchId, not a plain string
+      auditRepo.create({ churchId: 'plain-string', input: {} as any });
     }
   });
 });

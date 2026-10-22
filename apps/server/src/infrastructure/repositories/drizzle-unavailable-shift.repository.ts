@@ -6,10 +6,12 @@ import {
   unavailableShift,
 } from '@church/db';
 import { and, eq, inArray, type SQL } from 'drizzle-orm';
-import type { ChurchId, EventId, VolunteerId } from '../../domain/branded-ids';
+import type { ChurchId } from '../../domain/branded-ids';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   ListUnavailableShiftsByCheckInput,
+  ListUnavailableShiftsByVolunteerForEventInput,
+  ListUnavailableShiftsByVolunteersInput,
   ReplaceUnavailableShiftsForCheckInput,
   UnavailableShiftRepository,
 } from '../../domain/contracts/infrastructure/unavailable-shift.repository';
@@ -22,6 +24,12 @@ interface DrizzleUnavailableShiftRepositoryInput {
   db: AnyDrizzleDb;
 }
 
+interface RowsInput {
+  churchId: ChurchId;
+  conditions: SQL[];
+  tx?: TransactionContext;
+}
+
 export class DrizzleUnavailableShiftRepository
   implements UnavailableShiftRepository
 {
@@ -31,11 +39,11 @@ export class DrizzleUnavailableShiftRepository
 
   private readonly db: AnyDrizzleDb;
 
-  private async rows(
-    churchId: ChurchId,
-    conditions: SQL[],
-    tx?: TransactionContext,
-  ): Promise<UnavailableShift[]> {
+  private async rows({
+    churchId,
+    conditions,
+    tx,
+  }: RowsInput): Promise<UnavailableShift[]> {
     const rows = await getClient(this.db, tx)
       .select({
         unavailableShift,
@@ -59,12 +67,14 @@ export class DrizzleUnavailableShiftRepository
     return rows.map((row) => mapUnavailableShift(row.unavailableShift, row));
   }
 
-  async listByVolunteerForEvent(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<UnavailableShift[]> {
+  async listByVolunteerForEvent({
+    churchId,
+    volunteerId,
+    eventId,
+    tx,
+  }: ListUnavailableShiftsByVolunteerForEventInput): Promise<
+    UnavailableShift[]
+  > {
     const rows = await getClient(this.db, tx)
       .select({
         unavailableShift,
@@ -93,27 +103,29 @@ export class DrizzleUnavailableShiftRepository
     return rows.map((row) => mapUnavailableShift(row.unavailableShift, row));
   }
 
-  async listByVolunteers(
-    churchId: ChurchId,
-    volunteerIds: VolunteerId[],
-    tx?: TransactionContext,
-  ): Promise<UnavailableShift[]> {
+  async listByVolunteers({
+    churchId,
+    volunteerIds,
+    tx,
+  }: ListUnavailableShiftsByVolunteersInput): Promise<UnavailableShift[]> {
     if (volunteerIds.length === 0) return [];
-    return this.rows(
+    return this.rows({
       churchId,
-      [inArray(ministryMembership.volunteerId, volunteerIds)],
+      conditions: [inArray(ministryMembership.volunteerId, volunteerIds)],
       tx,
-    );
+    });
   }
 
   async listUnavailableShiftsByCheck(
     input: ListUnavailableShiftsByCheckInput,
   ): Promise<UnavailableShift[]> {
-    return this.rows(
-      input.churchId,
-      [eq(unavailableShift.availabilityCheckId, input.availabilityCheckId)],
-      input.tx,
-    );
+    return this.rows({
+      churchId: input.churchId,
+      conditions: [
+        eq(unavailableShift.availabilityCheckId, input.availabilityCheckId),
+      ],
+      tx: input.tx,
+    });
   }
 
   async replaceUnavailableShiftsForCheck(

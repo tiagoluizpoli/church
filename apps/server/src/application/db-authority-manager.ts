@@ -200,20 +200,20 @@ export class DbAuthorityManager implements IAuthorityManager {
   }
 
   async canManageEvent(input: CanManageEventInput): Promise<boolean> {
-    const ministryId = await this.eventRepository.getMinistryId(
-      input.churchId,
-      input.eventId,
-    );
+    const ministryId = await this.eventRepository.getMinistryId({
+      churchId: input.churchId,
+      eventId: input.eventId,
+    });
     return this.canManageMinistry({ ...input, ministryId });
   }
 
   async canManageEventTimeBlock(
     input: CanManageEventTimeBlockInput,
   ): Promise<boolean> {
-    const eventTimeBlock = await this.eventTimeBlockRepository.getById(
-      input.churchId,
-      input.eventTimeBlockId,
-    );
+    const eventTimeBlock = await this.eventTimeBlockRepository.getById({
+      churchId: input.churchId,
+      eventTimeBlockId: input.eventTimeBlockId,
+    });
     return this.canManageEvent({ ...input, eventId: eventTimeBlock.eventId });
   }
 

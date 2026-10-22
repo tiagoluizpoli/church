@@ -1383,19 +1383,12 @@ describe('Phase 3 planning managers', () => {
     );
     const updateSpy = vi
       .spyOn(eventTimeBlockRepository, 'update')
-      .mockImplementation(
-        (eventTimeBlockChurchId, eventTimeBlockId, input, tx) => {
-          if (eventTimeBlockId === failingEventTimeBlock.id) {
-            throw new Error('Simulated mid-cascade failure');
-          }
-          return realUpdate(
-            eventTimeBlockChurchId,
-            eventTimeBlockId,
-            input,
-            tx,
-          );
-        },
-      );
+      .mockImplementation((input) => {
+        if (input.eventTimeBlockId === failingEventTimeBlock.id) {
+          throw new Error('Simulated mid-cascade failure');
+        }
+        return realUpdate(input);
+      });
 
     await expect(
       eventManager.updateEvent({

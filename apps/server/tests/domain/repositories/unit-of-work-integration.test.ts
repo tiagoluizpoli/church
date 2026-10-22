@@ -23,7 +23,7 @@ describe('User Story 4: UnitOfWork Integration', () => {
     const txRecords: TransactionContext[] = [];
 
     const mockAssignmentRepo: Partial<AssignmentRepository> = {
-      async updateStatus(_churchId, _id, _input, tx) {
+      async updateStatus({ tx }) {
         if (tx) {
           txRecords.push(tx);
         }
@@ -31,7 +31,7 @@ describe('User Story 4: UnitOfWork Integration', () => {
     };
 
     const mockAuditRepo: Partial<AssignmentAuditRepository> = {
-      async create(_churchId, _input, tx) {
+      async create({ tx }) {
         if (tx) {
           txRecords.push(tx);
         }
@@ -45,22 +45,22 @@ describe('User Story 4: UnitOfWork Integration', () => {
 
     await mockUnitOfWork.run(async (tx) => {
       // Both operations share the same transaction context
-      await mockAssignmentRepo.updateStatus?.(
+      await mockAssignmentRepo.updateStatus?.({
         churchId,
         assignmentId,
-        { status: 'confirmed' },
+        input: { status: 'confirmed' },
         tx,
-      );
-      await mockAuditRepo.create?.(
+      });
+      await mockAuditRepo.create?.({
         churchId,
-        {
+        input: {
           assignmentId,
           actorId: 'user-1' as any,
           action: 'status_change',
           reason: 'Confirmed by user',
         },
         tx,
-      );
+      });
     });
 
     // 4. Verify that both repository operations received the correct transaction context

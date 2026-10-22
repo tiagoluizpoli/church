@@ -8,9 +8,13 @@ import type {
   SectorId,
 } from '@/domain/branded-ids';
 import type {
-  CreateEventTimeBlockInput,
+  CountActiveAssignmentsInput,
+  CreateEventTimeBlockRepositoryInput,
   EventTimeBlockRepository,
-  UpdateEventTimeBlockInput,
+  EventTimeBlocksByEventInput,
+  FindOverlappingEventTimeBlocksInput,
+  GetEventTimeBlockInput,
+  UpdateEventTimeBlockRepositoryInput,
 } from '@/domain/contracts/infrastructure/event-time-block.repository';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import {
@@ -52,10 +56,10 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     this.eventTimeBlocks.set(eventTimeBlock.id, eventTimeBlock);
   }
 
-  async getById(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-  ): Promise<EventTimeBlock> {
+  async getById({
+    churchId,
+    eventTimeBlockId: id,
+  }: GetEventTimeBlockInput): Promise<EventTimeBlock> {
     const eventTimeBlock = this.eventTimeBlocks.get(id);
     if (!eventTimeBlock || eventTimeBlock.churchId !== churchId) {
       throw new NotFoundError('Event time block not found');
@@ -63,16 +67,19 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     return eventTimeBlock;
   }
 
-  async listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-  ): Promise<EventTimeBlock[]> {
+  async listByEvent({
+    churchId,
+    eventId,
+  }: EventTimeBlocksByEventInput): Promise<EventTimeBlock[]> {
     return Array.from(this.eventTimeBlocks.values()).filter(
       (s) => s.churchId === churchId && s.eventId === eventId,
     );
   }
 
-  async deleteByEvent(churchId: ChurchId, eventId: EventId): Promise<void> {
+  async deleteByEvent({
+    churchId,
+    eventId,
+  }: EventTimeBlocksByEventInput): Promise<void> {
     for (const eventTimeBlock of Array.from(this.eventTimeBlocks.values())) {
       if (
         eventTimeBlock.churchId === churchId &&
@@ -84,17 +91,15 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
   }
 
   async countActiveAssignments(
-    _churchId: ChurchId,
-    _eventTimeBlockId: EventTimeBlockId,
-    _roleId: RoleId,
+    _input: CountActiveAssignmentsInput,
   ): Promise<number> {
     return 0;
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateEventTimeBlockInput,
-  ): Promise<EventTimeBlock> {
+  async create({
+    churchId,
+    input,
+  }: CreateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
     const id = `event-time-block-gen-${this.idCounter++}` as EventTimeBlockId;
     const eventTimeBlock = new EventTimeBlock(
       {
@@ -112,12 +117,12 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     return eventTimeBlock;
   }
 
-  async update(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    input: UpdateEventTimeBlockInput,
-  ): Promise<EventTimeBlock> {
-    const existing = await this.getById(churchId, id);
+  async update({
+    churchId,
+    eventTimeBlockId: id,
+    input,
+  }: UpdateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
+    const existing = await this.getById({ churchId, eventTimeBlockId: id });
     const updated = new EventTimeBlock(
       {
         churchId: existing.churchId,
@@ -138,20 +143,23 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     return updated;
   }
 
-  async deleteById(churchId: ChurchId, id: EventTimeBlockId): Promise<void> {
+  async deleteById({
+    churchId,
+    eventTimeBlockId: id,
+  }: GetEventTimeBlockInput): Promise<void> {
     const eventTimeBlock = this.eventTimeBlocks.get(id);
     if (eventTimeBlock && eventTimeBlock.churchId === churchId) {
       this.eventTimeBlocks.delete(id);
     }
   }
 
-  async findOverlapping(
-    churchId: ChurchId,
-    eventId: EventId,
-    startTime: Date,
-    endTime: Date,
-    excludeEventTimeBlockId?: EventTimeBlockId,
-  ): Promise<EventTimeBlock[]> {
+  async findOverlapping({
+    churchId,
+    eventId,
+    startTime,
+    endTime,
+    excludeEventTimeBlockId,
+  }: FindOverlappingEventTimeBlocksInput): Promise<EventTimeBlock[]> {
     return Array.from(this.eventTimeBlocks.values()).filter(
       (eventTimeBlock) =>
         eventTimeBlock.churchId === churchId &&

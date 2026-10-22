@@ -9,17 +9,14 @@ import {
 } from '@church/db';
 import { and, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
 import type {
-  ChurchId,
-  EventId,
-  EventTimeBlockId,
-  RoleId,
-} from '../../domain/branded-ids';
-import type {
-  CreateEventTimeBlockInput,
+  CountActiveAssignmentsInput,
+  CreateEventTimeBlockRepositoryInput,
   EventTimeBlockRepository,
-  UpdateEventTimeBlockInput,
+  EventTimeBlocksByEventInput,
+  FindOverlappingEventTimeBlocksInput,
+  GetEventTimeBlockInput,
+  UpdateEventTimeBlockRepositoryInput,
 } from '../../domain/contracts/infrastructure/event-time-block.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { EventTimeBlock } from '../../domain/entities/event-time-block';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
@@ -28,6 +25,11 @@ import type { AnyDrizzleDb } from './types';
 
 interface DrizzleEventTimeBlockRepositoryInput {
   db: AnyDrizzleDb;
+}
+
+interface FetchWithRequirementsInput {
+  db: AnyDrizzleDb;
+  eventTimeBlockRow: typeof eventTimeBlock.$inferSelect;
 }
 
 export class DrizzleEventTimeBlockRepository
@@ -39,10 +41,10 @@ export class DrizzleEventTimeBlockRepository
 
   private readonly db: AnyDrizzleDb;
 
-  private async fetchWithRequirements(
-    db: AnyDrizzleDb,
-    eventTimeBlockRow: typeof eventTimeBlock.$inferSelect,
-  ): Promise<EventTimeBlock> {
+  private async fetchWithRequirements({
+    db,
+    eventTimeBlockRow,
+  }: FetchWithRequirementsInput): Promise<EventTimeBlock> {
     const reqRows = await db
       .select({ requirement: shiftRequirement, sectorName: sector.name })
       .from(shiftRequirement)
@@ -61,13 +63,13 @@ export class DrizzleEventTimeBlockRepository
     );
   }
 
-  async getById(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock> {
-    if (!isValidUuid(id)) {
-      throw new NotFoundError(`EventTimeBlock not found: ${id}`);
+  async getById({
+    churchId,
+    eventTimeBlockId,
+    tx,
+  }: GetEventTimeBlockInput): Promise<EventTimeBlock> {
+    if (!isValidUuid(eventTimeBlockId)) {
+      throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlockId}`);
     }
     const db = getClient(this.db, tx);
     const [row] = await db
@@ -75,19 +77,20 @@ export class DrizzleEventTimeBlockRepository
       .from(eventTimeBlock)
       .where(
         and(
-          eq(eventTimeBlock.id, id),
+          eq(eventTimeBlock.id, eventTimeBlockId),
           withChurchIsolation(eventTimeBlock, churchId),
         ),
       );
-    if (!row) throw new NotFoundError(`EventTimeBlock not found: ${id}`);
-    return this.fetchWithRequirements(db, row);
+    if (!row)
+      throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlockId}`);
+    return this.fetchWithRequirements({ db, eventTimeBlockRow: row });
   }
 
-  async listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock[]> {
+  async listByEvent({
+    churchId,
+    eventId,
+    tx,
+  }: EventTimeBlocksByEventInput): Promise<EventTimeBlock[]> {
     const db = getClient(this.db, tx);
     const rows = await db
       .select()
@@ -98,14 +101,16 @@ export class DrizzleEventTimeBlockRepository
           withChurchIsolation(eventTimeBlock, churchId),
         ),
       );
-    return Promise.all(rows.map((r) => this.fetchWithRequirements(db, r)));
+    return Promise.all(
+      rows.map((r) => this.fetchWithRequirements({ db, eventTimeBlockRow: r })),
+    );
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateEventTimeBlockInput,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock> {
+  async create({
+    churchId,
+    input,
+    tx,
+  }: CreateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
     const db = getClient(this.db, tx);
     const [row] = await db
       .insert(eventTimeBlock)
@@ -142,12 +147,12 @@ export class DrizzleEventTimeBlockRepository
     return mapEventTimeBlock(row, []);
   }
 
-  async update(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    input: UpdateEventTimeBlockInput,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock> {
+  async update({
+    churchId,
+    eventTimeBlockId,
+    input,
+    tx,
+  }: UpdateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
     const db = getClient(this.db, tx);
     const [row] = await db
       .update(eventTimeBlock)
@@ -160,38 +165,39 @@ export class DrizzleEventTimeBlockRepository
       })
       .where(
         and(
-          eq(eventTimeBlock.id, id),
+          eq(eventTimeBlock.id, eventTimeBlockId),
           withChurchIsolation(eventTimeBlock, churchId),
         ),
       )
       .returning();
-    if (!row) throw new NotFoundError(`EventTimeBlock not found: ${id}`);
-    return this.fetchWithRequirements(db, row);
+    if (!row)
+      throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlockId}`);
+    return this.fetchWithRequirements({ db, eventTimeBlockRow: row });
   }
 
-  async deleteById(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    tx?: TransactionContext,
-  ): Promise<void> {
+  async deleteById({
+    churchId,
+    eventTimeBlockId,
+    tx,
+  }: GetEventTimeBlockInput): Promise<void> {
     await getClient(this.db, tx)
       .delete(eventTimeBlock)
       .where(
         and(
-          eq(eventTimeBlock.id, id),
+          eq(eventTimeBlock.id, eventTimeBlockId),
           withChurchIsolation(eventTimeBlock, churchId),
         ),
       );
   }
 
-  async findOverlapping(
-    churchId: ChurchId,
-    eventId: EventId,
-    startTime: Date,
-    endTime: Date,
-    excludeEventTimeBlockId?: EventTimeBlockId,
-    tx?: TransactionContext,
-  ): Promise<EventTimeBlock[]> {
+  async findOverlapping({
+    churchId,
+    eventId,
+    startTime,
+    endTime,
+    excludeEventTimeBlockId,
+    tx,
+  }: FindOverlappingEventTimeBlocksInput): Promise<EventTimeBlock[]> {
     const db = getClient(this.db, tx);
     const conditions = [
       withChurchIsolation(eventTimeBlock, churchId),
@@ -209,11 +215,11 @@ export class DrizzleEventTimeBlockRepository
     return rows.map((r) => mapEventTimeBlock(r, []));
   }
 
-  async deleteByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<void> {
+  async deleteByEvent({
+    churchId,
+    eventId,
+    tx,
+  }: EventTimeBlocksByEventInput): Promise<void> {
     await getClient(this.db, tx)
       .delete(eventTimeBlock)
       .where(
@@ -224,12 +230,12 @@ export class DrizzleEventTimeBlockRepository
       );
   }
 
-  async countActiveAssignments(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    roleId: RoleId,
-    tx?: TransactionContext,
-  ): Promise<number> {
+  async countActiveAssignments({
+    churchId,
+    eventTimeBlockId,
+    roleId,
+    tx,
+  }: CountActiveAssignmentsInput): Promise<number> {
     const db = getClient(this.db, tx);
     const [result] = await db
       .select({ cnt: count() })

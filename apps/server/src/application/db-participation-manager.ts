@@ -364,11 +364,11 @@ export class DbParticipationManager implements IParticipationManager {
               participationId: participation.id,
               tx,
             }),
-            this.assignmentRepository.listByParticipation(
-              input.churchId,
-              participation.id,
+            this.assignmentRepository.listByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
               tx,
-            ),
+            }),
           ]);
 
         // Query B — eligible volunteers batched over all this participation's
@@ -566,11 +566,11 @@ export class DbParticipationManager implements IParticipationManager {
       });
       ensurePrepare({ participation, action: 'update_shift' });
 
-      const eventTimeBlock = await this.eventTimeBlockRepository.getById(
-        input.churchId,
-        shift.eventTimeBlockId,
+      const eventTimeBlock = await this.eventTimeBlockRepository.getById({
+        churchId: input.churchId,
+        eventTimeBlockId: shift.eventTimeBlockId,
         tx,
-      );
+      });
 
       shift.updateBounds({
         startTime: input.startTime
@@ -779,16 +779,16 @@ export class DbParticipationManager implements IParticipationManager {
         });
       const volunteerIds = qualifiedVolunteers.map((volunteer) => volunteer.id);
       const [unavailableShifts, assignments] = await Promise.all([
-        this.unavailableShiftRepository.listByVolunteers(
-          input.churchId,
+        this.unavailableShiftRepository.listByVolunteers({
+          churchId: input.churchId,
           volunteerIds,
           tx,
-        ),
-        this.assignmentRepository.listByVolunteers(
-          input.churchId,
+        }),
+        this.assignmentRepository.listByVolunteers({
+          churchId: input.churchId,
           volunteerIds,
           tx,
-        ),
+        }),
       ]);
       const activeAssignments = assignments.filter((assignment) =>
         isActiveAssignmentStatus(assignment.status),
@@ -949,11 +949,11 @@ export class DbParticipationManager implements IParticipationManager {
       eventId: participation.eventId,
       tx,
     });
-    const assignments = await this.assignmentRepository.listByParticipation(
+    const assignments = await this.assignmentRepository.listByParticipation({
       churchId,
-      participation.id,
+      participationId: participation.id,
       tx,
-    );
+    });
     const volunteerIds = [
       ...new Set(
         assignments
@@ -1036,11 +1036,11 @@ export class DbParticipationManager implements IParticipationManager {
     eventTimeBlockId,
     tx,
   }: ResolveParticipationEventTimeBlockInput): Promise<EventTimeBlock> {
-    const eventTimeBlock = await this.eventTimeBlockRepository.getById(
+    const eventTimeBlock = await this.eventTimeBlockRepository.getById({
       churchId,
       eventTimeBlockId,
       tx,
-    );
+    });
 
     // Another Event's EventTimeBlock is as missing as an unknown one.
     if (eventTimeBlock.eventId !== participation.eventId) {
@@ -1061,11 +1061,11 @@ export class DbParticipationManager implements IParticipationManager {
         participationId,
         tx,
       }),
-      this.assignmentRepository.listByParticipation(
+      this.assignmentRepository.listByParticipation({
         churchId,
         participationId,
         tx,
-      ),
+      }),
     ]);
     const peopleNeeded = requirements.reduce(
       (sum, requirement) => sum + requirement.peopleNeeded,
@@ -1232,12 +1232,16 @@ export class DbParticipationManager implements IParticipationManager {
     );
 
     const [unavailableShifts, assignments] = await Promise.all([
-      this.unavailableShiftRepository.listByVolunteers(
+      this.unavailableShiftRepository.listByVolunteers({
         churchId,
         volunteerIds,
         tx,
-      ),
-      this.assignmentRepository.listByVolunteers(churchId, volunteerIds, tx),
+      }),
+      this.assignmentRepository.listByVolunteers({
+        churchId,
+        volunteerIds,
+        tx,
+      }),
     ]);
     const activeAssignments = assignments.filter((assignment) =>
       isActiveAssignmentStatus(assignment.status),

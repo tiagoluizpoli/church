@@ -97,26 +97,35 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);
 
-    const published = await repo.create(churchId, {
-      assignmentId,
-      actorId,
-      action: 'event_published',
+    const published = await repo.create({
+      churchId,
+      input: {
+        assignmentId,
+        actorId,
+        action: 'event_published',
+      },
     });
     expect(published.action).toBe('status_change');
     expect(published.reason).toBeUndefined();
 
-    const cancelled = await repo.create(churchId, {
-      assignmentId,
-      actorId,
-      action: 'event_cancelled',
+    const cancelled = await repo.create({
+      churchId,
+      input: {
+        assignmentId,
+        actorId,
+        action: 'event_cancelled',
+      },
     });
     expect(cancelled.action).toBe('status_change');
 
-    const created = await repo.create(churchId, {
-      assignmentId,
-      actorId,
-      action: 'created',
-      reason: 'initial assignment',
+    const created = await repo.create({
+      churchId,
+      input: {
+        assignmentId,
+        actorId,
+        action: 'created',
+        reason: 'initial assignment',
+      },
     });
     expect(created.action).toBe('created');
     expect(created.reason).toBe('initial assignment');
@@ -134,28 +143,34 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);
 
-    await repo.create(churchId, { assignmentId, actorId, action: 'created' });
-    await repo.create(churchId, {
-      assignmentId,
-      actorId,
-      action: 'status_change',
+    await repo.create({
+      churchId,
+      input: { assignmentId, actorId, action: 'created' },
+    });
+    await repo.create({
+      churchId,
+      input: {
+        assignmentId,
+        actorId,
+        action: 'status_change',
+      },
     });
 
-    const byChurch = await repo.listByChurch(churchId);
+    const byChurch = await repo.listByChurch({ churchId });
     expect(byChurch.map((audit) => audit.action)).toEqual([
       'status_change',
       'created',
     ]);
 
-    const byActor = await repo.listByActor(churchId, actorId);
+    const byActor = await repo.listByActor({ churchId, actorId });
     expect(byActor.map((audit) => audit.action)).toEqual([
       'status_change',
       'created',
     ]);
 
-    const otherChurchAudits = await repo.listByChurch(
-      ChurchId.from(seed.churchBId),
-    );
+    const otherChurchAudits = await repo.listByChurch({
+      churchId: ChurchId.from(seed.churchBId),
+    });
     expect(otherChurchAudits).toEqual([]);
   });
 
@@ -181,14 +196,20 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);
 
-    await repo.create(churchId, {
-      assignmentId,
-      actorId,
-      action: 'created',
-      reason: 'assigned',
+    await repo.create({
+      churchId,
+      input: {
+        assignmentId,
+        actorId,
+        action: 'created',
+        reason: 'assigned',
+      },
     });
 
-    const entries = await repo.listByEvent(churchId, EventId.from(event.id));
+    const entries = await repo.listByEvent({
+      churchId,
+      eventId: EventId.from(event.id),
+    });
     expect(entries).toHaveLength(1);
     const entry = entries[0];
     expect(entry?.action).toBe('created');
@@ -215,9 +236,15 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     const actorId = UserId.from(seed.adminUserId);
 
     // No `reason` passed in.
-    await repo.create(churchId, { assignmentId, actorId, action: 'created' });
+    await repo.create({
+      churchId,
+      input: { assignmentId, actorId, action: 'created' },
+    });
 
-    const entries = await repo.listByEvent(churchId, EventId.from(event.id));
+    const entries = await repo.listByEvent({
+      churchId,
+      eventId: EventId.from(event.id),
+    });
     expect(entries).toHaveLength(1);
     expect(entries[0]?.reason).toBeNull();
   });

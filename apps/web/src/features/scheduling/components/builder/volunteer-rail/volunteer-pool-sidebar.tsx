@@ -113,7 +113,7 @@ export function VolunteerPoolSidebar({
     setNameFilter,
     setRoleFilter,
     sortedFilteredVolunteers,
-  } = useVolunteerPool(volunteers, assignments);
+  } = useVolunteerPool({ volunteers, assignments });
   const focusPartition = useMemo(
     () =>
       focusedVolunteerIds

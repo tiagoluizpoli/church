@@ -73,10 +73,15 @@ function buildInitialResponses(
   ) as EventTimeBlockResponseMap;
 }
 
-function hasAnsweredEveryEventTimeBlock(
-  eventTimeBlocks: AvailabilityEventTimeBlockViewModel[],
-  responses: EventTimeBlockResponseMap,
-): boolean {
+interface HasAnsweredEveryEventTimeBlockInput {
+  eventTimeBlocks: AvailabilityEventTimeBlockViewModel[];
+  responses: EventTimeBlockResponseMap;
+}
+
+function hasAnsweredEveryEventTimeBlock({
+  eventTimeBlocks,
+  responses,
+}: HasAnsweredEveryEventTimeBlockInput): boolean {
   return eventTimeBlocks.every(
     (eventTimeBlock) => responses[eventTimeBlock.eventTimeBlockId] != null,
   );
@@ -103,7 +108,7 @@ export function AvailabilityForm({
     isEditable &&
     isOnline &&
     eventTimeBlocks.length > 0 &&
-    hasAnsweredEveryEventTimeBlock(eventTimeBlocks, responses) &&
+    hasAnsweredEveryEventTimeBlock({ eventTimeBlocks, responses }) &&
     saveState !== 'saving';
 
   const handleSave = () => {

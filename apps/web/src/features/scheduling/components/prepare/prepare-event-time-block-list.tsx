@@ -245,6 +245,11 @@ function summarizeEventTimeBlock(
   return `${eventTimeBlockView.shifts.length} ${shiftLabel} · ${totalHeadcount} people needed`;
 }
 
+interface SetEventTimeBlockExpandedInput {
+  eventTimeBlockId: string;
+  expanded: boolean;
+}
+
 /** Flat, day-grouped time block list — fully supersedes `ParticipationEventCard`'s
  * old nested-card rendering role (research.md R2): a day header row, then
  * inset event/time block rows, no card-in-card. Inclusion checkbox persists
@@ -279,10 +284,10 @@ export function PrepareEventTimeBlockList({
   const [expandedEventTimeBlockIds, setExpandedEventTimeBlockIds] = useState<
     Set<string>
   >(new Set());
-  const setEventTimeBlockExpanded = (
-    eventTimeBlockId: string,
-    expanded: boolean,
-  ) =>
+  const setEventTimeBlockExpanded = ({
+    eventTimeBlockId,
+    expanded,
+  }: SetEventTimeBlockExpandedInput) =>
     setExpandedEventTimeBlockIds((current) => {
       const next = new Set(current);
       if (expanded) {
@@ -403,16 +408,19 @@ export function PrepareEventTimeBlockList({
                       eventTimeBlockView.eventTimeBlock.id,
                     )}
                     onToggleExpanded={() =>
-                      setEventTimeBlockExpanded(
-                        eventTimeBlockView.eventTimeBlock.id,
-                        !expandedEventTimeBlockIds.has(
+                      setEventTimeBlockExpanded({
+                        eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
+                        expanded: !expandedEventTimeBlockIds.has(
                           eventTimeBlockView.eventTimeBlock.id,
                         ),
-                      )
+                      })
                     }
                     onToggleInclusion={(input) => {
                       if (input.checked) {
-                        setEventTimeBlockExpanded(input.eventTimeBlockId, true);
+                        setEventTimeBlockExpanded({
+                          eventTimeBlockId: input.eventTimeBlockId,
+                          expanded: true,
+                        });
                       }
                       onToggleInclusion(input);
                     }}

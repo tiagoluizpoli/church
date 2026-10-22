@@ -292,3 +292,78 @@ the modified files and repair every finding in the same phase. Fix lint,
 format, and type errors directly—suppression directives require explicit user
 permission. Install Playwright's pinned Chromium with `bunx playwright install
 chromium` when its executable is absent.
+
+## Rule inventory
+
+Every rule in the [constitution](../../.specify/memory/constitution.md),
+`docs/agents/*` and `docs/adr/*`, and how it is held (ADR-0010). A mechanical
+rule is a fixed pattern a tool can decide; it names its cheapest check type
+and either the check that enforces it or the follow-up issue that will add
+one. A judgement rule stays with review, for the reason given. Add a row when
+a rule is added; a new mechanical rule lands with its check or an issue.
+
+| Rule | Source | Kind | Check type | Status |
+| --- | --- | --- | --- | --- |
+| I. Features start from a domain definition and planning | Constitution | Judgement | — | Review: whether planning was adequate is not a code pattern |
+| II. Fastify + OpenAPI + orval at API boundaries, Zod for runtime validation, Drizzle for database access | Constitution, backend | Judgement | — | Review: which boundary needs which tool depends on what the code does |
+| II. No `any` | Constitution | Mechanical | Biome rule | Enforced: `suspicious/noExplicitAny` |
+| II. End-to-end type safety | Constitution | Mechanical | tsc setting | Enforced: `strict` and `noUncheckedIndexedAccess` in `@church/config/tsconfig.base.json`, `bun run typecheck` |
+| III. Local dependencies come from the root `docker-compose.yml` | Constitution, ADR-0005 | Mechanical | Validation guard | Enforced: the `db:*` scripts drive only the primary checkout's Compose file (`tooling/worktree/shared-compose.sh`) |
+| IV. Variables are declared in Varlock `.env.schema` files and validated by `@church/env` | Constitution, ADR-0005 | Judgement | — | Review: whether a new variable is declared in the right schema is a design call |
+| IV. Only Varlock loads values: no `--env-file`, no `dotenv`, no package value files | Constitution, tooling, ADR-0005 | Mechanical | Validation guard | Enforced: `tooling/tests/env/legacy-env-loading.test.ts` (`test:validation`), and `env:local` refuses package value files |
+| IV. Never commit secrets | Constitution | Judgement | — | Review: a secret is not a fixed pattern |
+| V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files; `lint` in CI |
+| V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
+| Atomic commits are small and focused | Constitution | Judgement | — | Review: "focused" is a judgement about intent |
+| VI. Specifications traverse `specifications-list.md` | Constitution | Judgement | — | Review: a planning process, not repository content |
+| VII. Named object parameters: at most one parameter, named `interface`/`type` shapes, no inline object types | Constitution, backend, ADR-0010 | Mechanical | Validation guard | Enforced: named-parameter guard in `tooling/validation/` ([#539](https://github.com/tiagoluizpoli/church/issues/539), turned on by [#547](https://github.com/tiagoluizpoli/church/issues/547)) |
+| Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
+| Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
+| Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |
+| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Follow-up [#548](https://github.com/tiagoluizpoli/church/issues/548) |
+| `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |
+| Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Follow-up [#549](https://github.com/tiagoluizpoli/church/issues/549) |
+| Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |
+| A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Follow-up [#550](https://github.com/tiagoluizpoli/church/issues/550) |
+| A constitution amendment updates its dependent templates | Constitution | Judgement | — | Review: which templates depend on a change is a judgement |
+| `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Follow-up [#551](https://github.com/tiagoluizpoli/church/issues/551) |
+| Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |
+| Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
+| Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
+| Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
+| No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
+| The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Follow-up [#553](https://github.com/tiagoluizpoli/church/issues/553) |
+| Fix lint, format and type errors; suppressions need user permission | Tooling | Judgement | — | Review: whether permission was given is not in the code; VII and date-time suppressions have their own guards |
+| Finish the phase, run targeted tests and affected validation before review | Tooling | Judgement | — | Review: a working process |
+| Server classes get config as the constructor's `config` field; only `main/di/`, scripts and seeds import `@church/app-config`; domain functions never read config | Backend | Mechanical | Biome rule | Follow-up [#554](https://github.com/tiagoluizpoli/church/issues/554) |
+| A class copies the config values it uses into `private readonly` fields and does not keep `config` | Backend | Mechanical | Grit plugin | Follow-up [#555](https://github.com/tiagoluizpoli/church/issues/555) |
+| Tenancy is enforced with `church_id` | Backend | Judgement | — | Review: whether a query must be church-scoped depends on the data |
+| Credential-sensitive and sensitive operations stay on the server | Backend, frontend | Judgement | — | Review: "sensitive" is a judgement |
+| Web imports flow `shared → features → app` | Frontend | Mechanical | Biome rule | Follow-up [#556](https://github.com/tiagoluizpoli/church/issues/556) |
+| UI is built from shadcn components where one exists | Frontend | Judgement | — | Review: whether a component fits is a design call |
+| The web reads `appConfig` by direct import | Frontend | Judgement | — | Review: states the allowed path; there is no fixed pattern to forbid |
+| Parked UI is gated at the mount point, not with CSS | Frontend | Judgement | — | Review: hiding by CSS has many shapes |
+| Component tests flip parked switches with `withAllParkedOn` | Frontend | Judgement | — | Review: a mock of `@church/app-config` may stub other values for other reasons |
+| Read `CONTEXT.md` and the relevant ADRs; use the glossary's terms; flag ADR conflicts | Domain | Judgement | — | Review: vocabulary and conflicts need meaning |
+| Issues go through `gh`; triage roles map to the label table | Issue tracker, triage labels | Judgement | — | Review: agent workflow, leaves nothing in the repository to check |
+| Guidance routes compose by scenario | Routing conformance | Judgement | — | Review: session behaviour, not repository content |
+| Events are church-owned; per-ministry state lives on `MinistryParticipation` | ADR-0001 | Judgement | — | Review: domain model; the schema and types carry it |
+| A `Shift` lies within its `TimeSlot`; requirements, assignments and availability attach to a `Shift` | ADR-0002 | Judgement | — | Review: domain invariant, held by domain code and its tests |
+| Only `@church/time` imports `date-fns`/`date-fns-tz` | ADR-0003 | Mechanical | Biome rule | Enforced: `noRestrictedImports` in `biome.json` |
+| No bare `new Date`, wall-clock accessors, `.toISOString()`, `toLocale*` or `Intl.DateTimeFormat` outside the seam | ADR-0003 | Mechanical | Grit plugin | Enforced: `tooling/biome/date-time-seam.grit`, with its fixture test |
+| No `biome-ignore` of the seam rules; no `p`/`P` format tokens outside the seam | ADR-0003 | Mechanical | Validation guard | Enforced: `bun run validate:date-time-seam` (`test:validation`) |
+| CI runs under a non-UTC, non-Brazil `TZ` | ADR-0003 | Mechanical | Validation guard | Enforced: `TZ: Asia/Kolkata` in `.github/workflows/ci.yml` |
+| The seam's format functions take no format string or options bag; `locale` only on word outputs | ADR-0003 | Mechanical | tsc setting | Enforced: the `@church/time` signatures, `bun run typecheck` |
+| `useTimezone()` is the only source of the church timezone on the web | ADR-0003 | Judgement | — | Review: a timezone value can arrive in many shapes |
+| `components/ui/calendar.tsx` is never hand-edited | ADR-0003 | Judgement | — | Review: a re-run of `shadcn add` changes it legitimately, and a tool cannot tell that from a hand edit |
+| Playwright discovers only `*.spec.ts`; Vitest owns `*.test.ts(x)` | ADR-0004 | Mechanical | Validation guard | Enforced: `apps/web/tests/e2e-discovery-boundary.unit.test.ts` |
+| A Playwright spec covers a critical journey | ADR-0004 | Judgement | — | Review: "critical journey" is a judgement |
+| Every Playwright spec has a `JOURNEY_MAP` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Follow-up [#557](https://github.com/tiagoluizpoli/church/issues/557) |
+| A failing E2E spec gets exactly one retry in CI | ADR-0004 | Mechanical | Validation guard | Enforced: `retries` in `apps/web/playwright.config.ts` |
+| Daily and release gates; no direct pushes to `develop` or `master` | ADR-0004 | Mechanical | Validation guard | Enforced: `.github/workflows/ci.yml` and branch protection |
+| Each worktree has its own databases, ports and URL set | ADR-0005 | Mechanical | Validation guard | Enforced: `env:local` and `db:bootstrap` generate them |
+| Application seed data lives in `apps/server/seeds`, built from shared builders | ADR-0006 | Judgement | — | Review: "reusable construction" and "application-specific" need meaning |
+| Every `SlotRequirement` names one Sector and one Role; eligibility is Role-only | ADR-0007 | Judgement | — | Review: domain model, held by the schema and domain code |
+| Notifications reach Church Members through sinks; transactional emails go to addresses; the notifier core has no church concepts | ADR-0008 | Judgement | — | Review: "church concepts" covers names and fields, not only imports |
+| `AuthorityService` is the only authorization gatekeeper; 401/403/404 by case | ADR-0009 | Judgement | — | Review: what counts as an inline check, and which status a case needs, are judgements |
+| Mechanical rules fail `lint`; this inventory lists them | ADR-0010 | Judgement | — | Review: deciding whether a new rule is mechanical is itself a judgement |

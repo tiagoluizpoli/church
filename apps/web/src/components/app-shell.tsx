@@ -1,5 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
@@ -19,6 +20,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import * as React from 'react';
+import { useCallerCapabilitiesScope } from '../shared/components/caller-capabilities-scope';
 import {
   type CallerCapabilities,
   useCallerCapabilities,
@@ -37,12 +39,14 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { activeChurchApi } from '@/utils/api-instances';
 
 export interface BreadcrumbSegmentOverride {
   segment: string;
@@ -251,6 +255,20 @@ function resolveBreadcrumbLabel({
   return toBreadcrumbLabel({ segment });
 }
 
+interface ChurchNameProps {
+  name: string | null;
+}
+
+function ChurchName({ name }: ChurchNameProps) {
+  return name === null ? (
+    <Skeleton data-testid="church-name-skeleton" className="h-5 w-28" />
+  ) : (
+    <span className="block truncate font-semibold text-[1.05rem] tracking-tight">
+      {name}
+    </span>
+  );
+}
+
 function getSelectChurchDestination({
   destination,
 }: GetSelectChurchDestinationInput): string {
@@ -383,6 +401,17 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
     visibleEntries
       .find((entry) => isEntryActive({ pathname: location.pathname, entry }))
       ?.label() ?? null;
+  // Same query key as /select-church, so the cache is shared.
+  const churchScope = useCallerCapabilitiesScope();
+  const { data: churchOptions } = useQuery({
+    queryKey: ['active-church', 'options'],
+    queryFn: () => activeChurchApi.listActiveChurchOptions(),
+  });
+  const churches = churchOptions?.churches ?? [];
+  const churchName =
+    churches.find((church) => church.churchId === churchScope?.churchId)
+      ?.name ?? null;
+  const canSwitchChurch = churches.length >= 2;
   const selectChurchDestination = getSelectChurchDestination({
     destination: location.href,
   });
@@ -465,9 +494,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
             <CalendarClock className="h-5 w-5" />
           </div>
           <div className="space-y-0.5">
-            <span className="block font-semibold text-[1.05rem] tracking-tight">
-              Church CRM
-            </span>
+            <ChurchName name={churchName} />
             {mobileSubtitle ? (
               <span className="block text-muted-foreground text-xs">
                 {mobileSubtitle}
@@ -519,12 +546,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
                 <CalendarClock className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
-                <span className="block font-semibold text-[1.05rem] tracking-tight">
-                  Church CRM
-                </span>
-                <span className="block text-muted-foreground text-xs">
-                  Scheduling workspace
-                </span>
+                <ChurchName name={churchName} />
               </div>
             </div>
           ) : (
@@ -534,18 +556,20 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
           )}
         </div>
 
-        <div className={isCollapsed ? 'px-2 py-3' : 'px-3 py-3'}>
-          <button
-            type="button"
-            onClick={handleSwitchChurch}
-            className="radius-surface flex h-10 w-full items-center justify-center border border-sidebar-border bg-sidebar-accent/60 px-3 font-medium text-sidebar-foreground text-sm transition-colors hover:bg-sidebar-accent"
-          >
-            <span className={isCollapsed ? 'sr-only' : undefined}>
-              {m.nav_switch_church()}
-            </span>
-            {isCollapsed ? <UsersRound className="size-4" /> : null}
-          </button>
-        </div>
+        {canSwitchChurch ? (
+          <div className={isCollapsed ? 'px-2 py-3' : 'px-3 py-3'}>
+            <button
+              type="button"
+              onClick={handleSwitchChurch}
+              className="radius-surface flex h-10 w-full items-center justify-center border border-sidebar-border bg-sidebar-accent/60 px-3 font-medium text-sidebar-foreground text-sm transition-colors hover:bg-sidebar-accent"
+            >
+              <span className={isCollapsed ? 'sr-only' : undefined}>
+                {m.nav_switch_church()}
+              </span>
+              {isCollapsed ? <UsersRound className="size-4" /> : null}
+            </button>
+          </div>
+        ) : null}
 
         {/* Sidebar Nav */}
         <TooltipProvider delay={120}>
@@ -658,17 +682,19 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
             <ModeToggle />
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              handleSwitchChurch();
-              setIsDrawerOpen(false);
-            }}
-            className="radius-surface flex h-12 items-center gap-3 border border-sidebar-border/55 px-4 py-3 font-medium text-base text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <UsersRound className="size-4 shrink-0" />
-            {m.nav_switch_church()}
-          </button>
+          {canSwitchChurch ? (
+            <button
+              type="button"
+              onClick={() => {
+                handleSwitchChurch();
+                setIsDrawerOpen(false);
+              }}
+              className="radius-surface flex h-12 items-center gap-3 border border-sidebar-border/55 px-4 py-3 font-medium text-base text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <UsersRound className="size-4 shrink-0" />
+              {m.nav_switch_church()}
+            </button>
+          ) : null}
 
           <NavList
             groups={navGroups}

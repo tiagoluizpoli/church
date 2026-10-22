@@ -1,10 +1,12 @@
 import { m } from '@church/i18n/messages';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@/components/app-shell';
+import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
+import { activeChurchApiMock } from '@/tests/setup/active-church';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const parked = vi.hoisted(() => ({ on: true }));
@@ -47,6 +49,11 @@ vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
   useCallerCapabilities: vi.fn(),
 }));
 
+vi.mock('@/utils/api-instances', async () => {
+  const { activeChurchApiMock } = await import('@/tests/setup/active-church');
+  return { activeChurchApi: activeChurchApiMock };
+});
+
 const mockedUseCallerCapabilities = vi.mocked(useCallerCapabilities);
 
 // CommandPalette (rendered but closed by default) probes viewport width on
@@ -63,6 +70,36 @@ window.matchMedia =
     removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }));
+
+function church(churchId: string, name: string) {
+  return {
+    churchId,
+    name,
+    timezone: 'UTC',
+    accessLevel: 'church_admin',
+    availableAreas: ['dashboard'],
+    lastOpenedAt: null,
+  };
+}
+
+const CHURCH_A = church('church-1', 'Igreja Esperança');
+const CHURCH_B = church('church-2', 'Igreja Graça');
+
+function asChurches(...churches: ReturnType<typeof church>[]) {
+  activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({ churches });
+}
+
+function renderShell() {
+  return renderWithProviders(
+    <CallerCapabilitiesScopeProvider churchId="church-1" userId="user-1">
+      <AppShell>content</AppShell>
+    </CallerCapabilitiesScopeProvider>,
+  );
+}
+
+beforeEach(() => {
+  asChurches(CHURCH_A);
+});
 
 function navLabels(landmark: HTMLElement): (string | undefined)[] {
   return within(landmark)
@@ -170,7 +207,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   }) => {
     asPersona(persona);
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     const sidebar = screen.getByTestId('sidebar');
     expect(navLabels(sidebar)).toEqual(labels);
@@ -190,7 +227,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   ])('shows only Home while capabilities are %s', (_state, persona) => {
     asPersona(persona);
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(navLabels(screen.getByTestId('sidebar'))).toEqual([HOME]);
   });
@@ -198,7 +235,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   it('has no mobile bottom bar', () => {
     asPersona();
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(screen.queryByTestId('mobile-bottom-nav')).not.toBeInTheDocument();
   });
@@ -207,7 +244,7 @@ describe('AppShell flat nav per persona (F7)', () => {
     asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles/cycle-1/edit';
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     const current = (nav: HTMLElement) =>
       within(nav)
@@ -224,7 +261,7 @@ describe('AppShell flat nav per persona (F7)', () => {
     asPersona();
     mockPathname = pathname;
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(
       within(screen.getByTestId('sidebar')).getByRole('link', { name: HOME }),
@@ -235,7 +272,7 @@ describe('AppShell flat nav per persona (F7)', () => {
     asPersona({ hasVolunteerMembership: true });
     mockPathname = '/volunteer/availability';
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(
       within(screen.getByTestId('sidebar')).getByRole('link', {
@@ -247,7 +284,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   it('targets Home at / and never shows a Dashboard entry', () => {
     asPersona();
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(
       within(screen.getByTestId('sidebar')).getByRole('link', { name: HOME }),
@@ -258,7 +295,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   it('keeps translated accessible names on icon-only entries when collapsed, with headings hidden', async () => {
     asPersona({ isChurchAdmin: true, hasVolunteerMembership: true });
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
     await userEvent.setup().click(screen.getByTestId('sidebar-toggle'));
 
     const sidebar = screen.getByTestId('sidebar');
@@ -276,7 +313,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   it('sizes drawer links at or above the 44px touch-target minimum', async () => {
     asPersona({ isChurchAdmin: true });
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
     await userEvent.setup().click(screen.getByTestId('mobile-drawer-trigger'));
 
     for (const link of within(await findDrawerNav()).getAllByRole('link')) {
@@ -287,7 +324,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   it('names the menu button in pt-BR', () => {
     asPersona();
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(
       screen.getByRole('button', { name: m.nav_open_menu() }),
@@ -316,7 +353,7 @@ describe('AppShell flat nav per persona (F7)', () => {
     asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles/cycle-1';
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     const breadcrumbs = screen.getByTestId('breadcrumbs');
     expect(within(breadcrumbs).getByText(m.nav_cycles())).toBeVisible();
@@ -334,7 +371,7 @@ describe('AppShell desktop sidebar collapse', () => {
   it('flips the toggle label and collapsed markup on each click, round-tripping back to expanded', async () => {
     asPersona();
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
     const user = userEvent.setup();
     const toggle = screen.getByTestId('sidebar-toggle');
     const sidebar = screen.getByTestId('sidebar');
@@ -342,21 +379,21 @@ describe('AppShell desktop sidebar collapse', () => {
     expect(screen.getByRole('button', { name: m.nav_collapse_sidebar() })).toBe(
       toggle,
     );
-    expect(within(sidebar).getByText('Church CRM')).toBeVisible();
+    expect(await within(sidebar).findByText(CHURCH_A.name)).toBeVisible();
 
     await user.click(toggle);
 
     expect(screen.getByRole('button', { name: m.nav_expand_sidebar() })).toBe(
       toggle,
     );
-    expect(within(sidebar).queryByText('Church CRM')).not.toBeInTheDocument();
+    expect(within(sidebar).queryByText(CHURCH_A.name)).not.toBeInTheDocument();
 
     await user.click(toggle);
 
     expect(screen.getByRole('button', { name: m.nav_collapse_sidebar() })).toBe(
       toggle,
     );
-    expect(within(sidebar).getByText('Church CRM')).toBeVisible();
+    expect(await within(sidebar).findByText(CHURCH_A.name)).toBeVisible();
   });
 });
 
@@ -364,7 +401,7 @@ describe('AppShell responsive visibility contract', () => {
   it('hides the desktop sidebar and shows the mobile header below md, and the reverse above it', () => {
     asPersona();
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(screen.getByTestId('sidebar').className).toContain('md:flex');
     expect(screen.getByTestId('sidebar').className).toContain('hidden');
@@ -385,7 +422,7 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
   it('opens the command palette on Ctrl+K and closes it on a second press', async () => {
     asPersona();
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
 
@@ -400,7 +437,7 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
     parked.on = false;
     asPersona();
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
 
     expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
     const event = new KeyboardEvent('keydown', {
@@ -423,13 +460,14 @@ describe('AppShell Switch Church control', () => {
 
   it('navigates to select-church with the full path, query, and hash preserved as the redirect target', async () => {
     asPersona({ isChurchAdmin: true });
+    asChurches(CHURCH_A, CHURCH_B);
     mockPathname = '/cycles';
     mockHref = '/cycles?view=board#upcoming';
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
     const user = userEvent.setup();
     await user.click(
-      within(screen.getByTestId('sidebar')).getByRole('button', {
+      await within(screen.getByTestId('sidebar')).findByRole('button', {
         name: m.nav_switch_church(),
       }),
     );
@@ -441,15 +479,18 @@ describe('AppShell Switch Church control', () => {
 
   it('navigates to select-church from the mobile drawer and closes the drawer', async () => {
     asPersona();
+    asChurches(CHURCH_A, CHURCH_B);
     mockHref = '/dashboard';
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
     const user = userEvent.setup();
     await user.click(screen.getByTestId('mobile-drawer-trigger'));
     const drawer = await screen.findByTestId('mobile-drawer-content');
 
     await user.click(
-      within(drawer).getByRole('button', { name: m.nav_switch_church() }),
+      await within(drawer).findByRole('button', {
+        name: m.nav_switch_church(),
+      }),
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
@@ -459,16 +500,16 @@ describe('AppShell Switch Church control', () => {
 
   it('keeps the Switch Church control reachable and functional when the sidebar is collapsed', async () => {
     asPersona();
+    asChurches(CHURCH_A, CHURCH_B);
     mockHref = '/dashboard';
 
-    renderWithProviders(<AppShell>content</AppShell>);
+    renderShell();
     const user = userEvent.setup();
     await user.click(screen.getByTestId('sidebar-toggle'));
 
-    const switchChurchButton = within(screen.getByTestId('sidebar')).getByRole(
-      'button',
-      { name: m.nav_switch_church() },
-    );
+    const switchChurchButton = await within(
+      screen.getByTestId('sidebar'),
+    ).findByRole('button', { name: m.nav_switch_church() });
     expect(
       switchChurchButton.querySelector('.lucide-users-round'),
     ).not.toBeNull();
@@ -478,5 +519,76 @@ describe('AppShell Switch Church control', () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/select-church?redirect=%2Fdashboard',
     });
+  });
+});
+
+describe('AppShell Church header (F9)', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('names the Active Church, hides the switch control with one Church, and drops the old product strings', async () => {
+    asPersona();
+    renderShell();
+
+    const sidebar = screen.getByTestId('sidebar');
+    expect(await within(sidebar).findByText(CHURCH_A.name)).toBeVisible();
+    expect(
+      within(sidebar).queryByRole('button', { name: m.nav_switch_church() }),
+    ).toBeNull();
+    expect(screen.queryByText('Church CRM')).toBeNull();
+    expect(screen.queryByText('Scheduling workspace')).toBeNull();
+  });
+
+  it('names the Church matching the route context, not the first option', async () => {
+    asPersona();
+    asChurches(CHURCH_B, CHURCH_A);
+    renderShell();
+
+    const sidebar = screen.getByTestId('sidebar');
+    expect(await within(sidebar).findByText(CHURCH_A.name)).toBeVisible();
+    expect(within(sidebar).queryByText(CHURCH_B.name)).toBeNull();
+  });
+
+  it('shows the switch control with two Churches', async () => {
+    asPersona();
+    asChurches(CHURCH_A, CHURCH_B);
+    renderShell();
+
+    expect(
+      await within(screen.getByTestId('sidebar')).findByRole('button', {
+        name: m.nav_switch_church(),
+      }),
+    ).toBeVisible();
+  });
+
+  it('shows no switch control, name or old strings while loading', () => {
+    asPersona();
+    activeChurchApiMock.listActiveChurchOptions.mockReturnValue(
+      new Promise(() => {}),
+    );
+    renderShell();
+
+    const sidebar = screen.getByTestId('sidebar');
+    expect(
+      within(sidebar).queryByRole('button', { name: m.nav_switch_church() }),
+    ).toBeNull();
+    expect(within(sidebar).getByTestId('church-name-skeleton')).toBeVisible();
+    expect(screen.queryByText('Church CRM')).toBeNull();
+  });
+
+  it('shows no switch control when the options call fails', async () => {
+    asPersona();
+    activeChurchApiMock.listActiveChurchOptions.mockRejectedValue(
+      new Error('boom'),
+    );
+    renderShell();
+
+    await waitFor(() =>
+      expect(activeChurchApiMock.listActiveChurchOptions).toHaveBeenCalled(),
+    );
+    expect(
+      screen.queryByRole('button', { name: m.nav_switch_church() }),
+    ).toBeNull();
   });
 });

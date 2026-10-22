@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useNavigate } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
@@ -81,7 +82,7 @@ export function NotificationBell() {
       <>
         <button
           type="button"
-          aria-label="Notifications"
+          aria-label={m.notification_bell_label()}
           onClick={() => setOpen(true)}
           className="radius-icon relative flex h-11 w-11 items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         >
@@ -95,7 +96,7 @@ export function NotificationBell() {
         <MobileDrawer
           open={open}
           onOpenChange={setOpen}
-          title="Notifications"
+          title={m.notification_bell_label()}
           description="Recent updates and reminders."
         >
           {inboxContent}
@@ -107,7 +108,7 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        aria-label="Notifications"
+        aria-label={m.notification_bell_label()}
         className="radius-icon relative flex h-8 w-8 items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       >
         <Bell className="h-4 w-4" />

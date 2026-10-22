@@ -80,5 +80,10 @@
   "breadcrumb_new": "Novo",
   "breadcrumb_assign": "Atribuir",
   "breadcrumb_volunteer": "Voluntário",
-  "breadcrumb_ministry": "Ministério"
+  "breadcrumb_ministry": "Ministério",
+  "mode_toggle_label": "Alternar tema",
+  "mode_toggle_light": "Claro",
+  "mode_toggle_dark": "Escuro",
+  "mode_toggle_system": "Sistema",
+  "notification_bell_label": "Notificações"
 }

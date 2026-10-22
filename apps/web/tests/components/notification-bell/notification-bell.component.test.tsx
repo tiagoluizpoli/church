@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -101,10 +102,14 @@ describe('NotificationBell', () => {
 
     expect(screen.queryByText('Assignment updated')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(
+      screen.getByRole('button', { name: m.notification_bell_label() }),
+    );
     expect(screen.getByText('Assignment updated')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(
+      screen.getByRole('button', { name: m.notification_bell_label() }),
+    );
     expect(screen.queryByText('Assignment updated')).not.toBeInTheDocument();
   });
 
@@ -131,7 +136,9 @@ describe('NotificationBell', () => {
     );
 
     renderWithProviders(<NotificationBell />);
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(
+      screen.getByRole('button', { name: m.notification_bell_label() }),
+    );
     await user.click(screen.getByText('Assignment updated'));
 
     expect(markRead).toHaveBeenCalledWith('notification-1');
@@ -151,7 +158,9 @@ describe('NotificationBell', () => {
     mockedUseNotificationInbox.mockReturnValue(createInboxHookResult());
 
     renderWithProviders(<NotificationBell />);
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(
+      screen.getByRole('button', { name: m.notification_bell_label() }),
+    );
 
     expect(screen.getByRole('link', { name: 'View all' })).toHaveAttribute(
       'href',

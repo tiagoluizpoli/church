@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -74,132 +75,227 @@ async function findDrawerNav(): Promise<HTMLElement> {
   return within(drawer).getByRole('navigation');
 }
 
+interface PersonaInput {
+  isChurchAdmin?: boolean;
+  leadsMinistries?: boolean;
+  hasVolunteerMembership?: boolean;
+  isResolving?: boolean;
+}
+
+function asPersona({
+  isChurchAdmin = false,
+  leadsMinistries = false,
+  hasVolunteerMembership = false,
+  isResolving = false,
+}: PersonaInput = {}) {
+  mockedUseCallerCapabilities.mockReturnValue({
+    isChurchAdmin,
+    leadsMinistries,
+    hasVolunteerMembership,
+    isResolving,
+  });
+}
+
+const HOME = m.nav_home();
+const SERVING = [m.nav_my_schedule(), m.nav_availability()];
+const SCHEDULES = [m.nav_schedules()];
+const CHURCH_LEADER = [m.nav_ministries(), m.nav_people(), m.nav_invitations()];
+const ADMIN_SCHEDULING = [
+  m.nav_cycles(),
+  m.nav_event_templates(),
+  m.nav_schedules(),
+];
+const HEADINGS = [
+  m.nav_group_serving(),
+  m.nav_group_scheduling(),
+  m.nav_group_church(),
+];
+
 // h-12 = 12 * 4px = 48px against this repo's unmodified default Tailwind
-// spacing scale (`--spacing: 0.25rem`, see src/index.css — no override),
-// at or above the 44px touch-target minimum.
+// spacing scale, at or above the 44px touch-target minimum.
 const TOUCH_TARGET_HEIGHT_CLASS = /\bh-12\b/;
 
-describe('AppShell role-scoped navigation', () => {
+const PERSONAS: {
+  name: string;
+  persona: PersonaInput;
+  labels: string[];
+  headings: string[];
+}[] = [
+  { name: 'plain member', persona: {}, labels: [HOME], headings: [] },
+  {
+    name: 'Volunteer',
+    persona: { hasVolunteerMembership: true },
+    labels: [HOME, ...SERVING],
+    headings: [m.nav_group_serving()],
+  },
+  {
+    name: 'leader only',
+    persona: { leadsMinistries: true },
+    labels: [HOME, ...SCHEDULES, ...CHURCH_LEADER],
+    headings: [m.nav_group_scheduling(), m.nav_group_church()],
+  },
+  {
+    name: 'leader who serves',
+    persona: { leadsMinistries: true, hasVolunteerMembership: true },
+    labels: [HOME, ...SERVING, ...SCHEDULES, ...CHURCH_LEADER],
+    headings: HEADINGS,
+  },
+  {
+    name: 'admin who does not serve',
+    persona: { isChurchAdmin: true },
+    labels: [HOME, ...ADMIN_SCHEDULING, ...CHURCH_LEADER],
+    headings: [m.nav_group_scheduling(), m.nav_group_church()],
+  },
+  {
+    name: 'admin who serves',
+    persona: { isChurchAdmin: true, hasVolunteerMembership: true },
+    labels: [HOME, ...SERVING, ...ADMIN_SCHEDULING, ...CHURCH_LEADER],
+    headings: HEADINGS,
+  },
+];
+
+describe('AppShell flat nav per persona (F7)', () => {
   afterEach(() => {
     vi.clearAllMocks();
     mockPathname = '/dashboard';
     mockHref = '/dashboard';
   });
 
-  it('shows only Dashboard and Availability for a Volunteer-only caller', () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+  it.each(
+    PERSONAS,
+  )('shows the right entries and headings for $name, same in sidebar and drawer', async ({
+    persona,
+    labels,
+    headings,
+  }) => {
+    asPersona(persona);
 
     renderWithProviders(<AppShell>content</AppShell>);
 
-    expect(navLabels(screen.getByTestId('sidebar'))).toEqual([
-      'Dashboard',
-      'Availability',
-    ]);
-    expect(navLabels(screen.getByTestId('mobile-bottom-nav'))).toEqual([
-      'Dashboard',
-      'Availability',
-    ]);
+    const sidebar = screen.getByTestId('sidebar');
+    expect(navLabels(sidebar)).toEqual(labels);
+    for (const heading of HEADINGS) {
+      expect(within(sidebar).queryByText(heading) !== null).toBe(
+        headings.includes(heading),
+      );
+    }
+
+    await userEvent.setup().click(screen.getByTestId('mobile-drawer-trigger'));
+    expect(navLabels(await findDrawerNav())).toEqual(labels);
   });
 
   it.each([
-    'leader',
-    'TeamLeader',
-    'admin',
-  ])('additionally shows Scheduling for a %s caller', () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
-    mockPathname = '/scheduling';
+    ['loading', { isResolving: true }],
+    ['error', {}],
+  ])('shows only Home while capabilities are %s', (_state, persona) => {
+    asPersona(persona);
 
     renderWithProviders(<AppShell>content</AppShell>);
 
-    expect(navLabels(screen.getByTestId('sidebar'))).toEqual([
-      'Dashboard',
-      'Availability',
-      'Scheduling',
-      'Cycles',
-      'Schedules',
-    ]);
-    expect(navLabels(screen.getByTestId('mobile-bottom-nav'))).toEqual([
-      'Dashboard',
-      'Availability',
-      'Scheduling',
-    ]);
+    expect(navLabels(screen.getByTestId('sidebar'))).toEqual([HOME]);
   });
 
-  it('keeps Scheduling children visible and navigable when a different section is active', () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
-    mockPathname = '/dashboard';
+  it('has no mobile bottom bar', () => {
+    asPersona();
 
     renderWithProviders(<AppShell>content</AppShell>);
 
-    expect(navLabels(screen.getByTestId('sidebar'))).toEqual([
-      'Dashboard',
-      'Availability',
-      'Scheduling',
-      'Cycles',
-      'Schedules',
-    ]);
+    expect(screen.queryByTestId('mobile-bottom-nav')).not.toBeInTheDocument();
   });
 
-  it('marks Scheduling as the current section on a child page outside /scheduling', () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
-    mockPathname = '/cycles';
+  it('marks the entry active on a nested path, in sidebar and drawer', async () => {
+    asPersona({ isChurchAdmin: true });
+    mockPathname = '/cycles/cycle-1/edit';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    const current = (nav: HTMLElement) =>
+      within(nav)
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('aria-current') === 'page')
+        .map((link) => link.textContent?.trim());
+    expect(current(screen.getByTestId('sidebar'))).toEqual([m.nav_cycles()]);
+
+    await userEvent.setup().click(screen.getByTestId('mobile-drawer-trigger'));
+    expect(current(await findDrawerNav())).toEqual([m.nav_cycles()]);
+  });
+
+  it.each(['/', '/dashboard'])('marks Home active on %s', (pathname) => {
+    asPersona();
+    mockPathname = pathname;
 
     renderWithProviders(<AppShell>content</AppShell>);
 
     expect(
-      within(screen.getByTestId('mobile-bottom-nav')).getByRole('link', {
-        name: 'Scheduling',
-      }),
-    ).toHaveClass('font-semibold');
+      within(screen.getByTestId('sidebar')).getByRole('link', { name: HOME }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
-  it.each([
-    false,
-    true,
-  ])('never renders Shifts, Alerts, Profile, or Todos when canSeeScheduling is %s', (canSeeScheduling) => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: canSeeScheduling,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+  it('marks Availability active on /volunteer/availability', () => {
+    asPersona({ hasVolunteerMembership: true });
+    mockPathname = '/volunteer/availability';
 
     renderWithProviders(<AppShell>content</AppShell>);
 
-    for (const staleLabel of ['Shifts', 'Alerts', 'Profile', 'Todos']) {
-      expect(screen.queryAllByRole('link', { name: staleLabel })).toHaveLength(
-        0,
-      );
+    expect(
+      within(screen.getByTestId('sidebar')).getByRole('link', {
+        name: m.nav_availability(),
+      }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('targets Home at / and never shows a Dashboard entry', () => {
+    asPersona();
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    expect(
+      within(screen.getByTestId('sidebar')).getByRole('link', { name: HOME }),
+    ).toHaveAttribute('href', '/');
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+  });
+
+  it('keeps translated accessible names on icon-only entries when collapsed, with headings hidden', async () => {
+    asPersona({ isChurchAdmin: true, hasVolunteerMembership: true });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    await userEvent.setup().click(screen.getByTestId('sidebar-toggle'));
+
+    const sidebar = screen.getByTestId('sidebar');
+    for (const heading of HEADINGS) {
+      expect(within(sidebar).queryByText(heading)).not.toBeInTheDocument();
+    }
+    expect(
+      within(sidebar).getByRole('link', { name: m.nav_cycles() }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: m.nav_expand_sidebar() }),
+    ).toBeInTheDocument();
+  });
+
+  it('sizes drawer links at or above the 44px touch-target minimum', async () => {
+    asPersona({ isChurchAdmin: true });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    await userEvent.setup().click(screen.getByTestId('mobile-drawer-trigger'));
+
+    for (const link of within(await findDrawerNav()).getAllByRole('link')) {
+      expect(link.className).toMatch(TOUCH_TARGET_HEIGHT_CLASS);
     }
   });
 
+  it('names the menu button in pt-BR', () => {
+    asPersona();
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    expect(
+      screen.getByRole('button', { name: m.nav_open_menu() }),
+    ).toBeInTheDocument();
+  });
+
   it('shows a caller-supplied breadcrumb override in place of the raw id segment', () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles/cycle-1';
 
     renderWithProviders(
@@ -211,92 +307,24 @@ describe('AppShell role-scoped navigation', () => {
     );
 
     const breadcrumbs = screen.getByTestId('breadcrumbs');
-    expect(within(breadcrumbs).getByText('Cycles')).toBeVisible();
+    expect(within(breadcrumbs).getByText(HOME)).toBeVisible();
+    expect(within(breadcrumbs).getByText(m.nav_cycles())).toBeVisible();
     expect(within(breadcrumbs).getByText('August 2026')).toBeVisible();
   });
 
   it('hides an opaque id segment from breadcrumbs when no override is supplied', () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles/cycle-1';
 
     renderWithProviders(<AppShell>content</AppShell>);
 
     const breadcrumbs = screen.getByTestId('breadcrumbs');
-    expect(within(breadcrumbs).getByText('Cycles')).toBeVisible();
+    expect(within(breadcrumbs).getByText(m.nav_cycles())).toBeVisible();
     expect(within(breadcrumbs).queryByText('cycle-1')).not.toBeInTheDocument();
   });
 });
 
-describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-    mockPathname = '/dashboard';
-    mockHref = '/dashboard';
-  });
-
-  it('renders a connector element for each child nav item under its parent section', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
-
-    renderWithProviders(<AppShell>content</AppShell>);
-    const user = userEvent.setup();
-    await user.click(screen.getByTestId('mobile-drawer-trigger'));
-
-    const drawerNav = await findDrawerNav();
-    const childLink = within(drawerNav).getByRole('link', { name: 'Cycles' });
-    const childRow = childLink.closest('[data-nav-child]');
-
-    expect(childRow).not.toBeNull();
-    expect(childRow?.querySelector('[data-nav-connector]')).not.toBeNull();
-  });
-
-  it('keeps the remaining scheduling navigation items navigable and highlighted', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
-    mockPathname = '/schedules';
-
-    renderWithProviders(<AppShell>content</AppShell>);
-    const user = userEvent.setup();
-    await user.click(screen.getByTestId('mobile-drawer-trigger'));
-
-    const drawerNav = await findDrawerNav();
-
-    expect(navLabels(drawerNav)).toEqual([
-      'Dashboard',
-      'Availability',
-      'Scheduling',
-      'Cycles',
-      'Schedules',
-    ]);
-
-    const prepareLink = within(drawerNav).getByRole('link', {
-      name: 'Schedules',
-    });
-    expect(prepareLink).toHaveClass('font-semibold');
-    expect(prepareLink).toHaveAttribute('href', '/schedules');
-
-    const cyclesLink = within(drawerNav).getByRole('link', {
-      name: 'Cycles',
-    });
-    expect(cyclesLink).not.toHaveClass('font-semibold');
-    expect(cyclesLink).toHaveAttribute('href', '/cycles');
-  });
-});
-
-describe('AppShell desktop sidebar collapse (#219, right-sized from desktop-layout.spec.ts)', () => {
+describe('AppShell desktop sidebar collapse', () => {
   afterEach(() => {
     vi.clearAllMocks();
     mockPathname = '/dashboard';
@@ -304,124 +332,45 @@ describe('AppShell desktop sidebar collapse (#219, right-sized from desktop-layo
   });
 
   it('flips the toggle label and collapsed markup on each click, round-tripping back to expanded', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona();
 
     renderWithProviders(<AppShell>content</AppShell>);
     const user = userEvent.setup();
     const toggle = screen.getByTestId('sidebar-toggle');
-
     const sidebar = screen.getByTestId('sidebar');
 
-    // Expanded: full title block, toggle offers to collapse.
-    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBe(
+    expect(screen.getByRole('button', { name: m.nav_collapse_sidebar() })).toBe(
       toggle,
     );
     expect(within(sidebar).getByText('Church CRM')).toBeVisible();
 
     await user.click(toggle);
 
-    // Collapsed: title block replaced by the icon-only header, toggle now
-    // offers to expand — the same signal desktop-layout.spec.ts inferred
-    // from the sidebar's animated boundingBox width.
-    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBe(toggle);
+    expect(screen.getByRole('button', { name: m.nav_expand_sidebar() })).toBe(
+      toggle,
+    );
     expect(within(sidebar).queryByText('Church CRM')).not.toBeInTheDocument();
 
     await user.click(toggle);
 
-    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBe(
+    expect(screen.getByRole('button', { name: m.nav_collapse_sidebar() })).toBe(
       toggle,
     );
     expect(within(sidebar).getByText('Church CRM')).toBeVisible();
   });
 });
 
-describe('AppShell responsive visibility contract (#219, right-sized from mobile-layout.spec.ts)', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-    mockPathname = '/dashboard';
-    mockHref = '/dashboard';
-  });
-
-  it('hides the desktop sidebar and shows the mobile shell below md, and the reverse above it', () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+describe('AppShell responsive visibility contract', () => {
+  it('hides the desktop sidebar and shows the mobile header below md, and the reverse above it', () => {
+    asPersona();
 
     renderWithProviders(<AppShell>content</AppShell>);
 
-    // jsdom has no real breakpoint layout, so this asserts the Tailwind
-    // class contract each element ships (hidden below/above `md`) rather
-    // than a rendered boundingBox — the same source that made the real
-    // browser hide/show them.
     expect(screen.getByTestId('sidebar').className).toContain('md:flex');
     expect(screen.getByTestId('sidebar').className).toContain('hidden');
     expect(screen.getByTestId('mobile-top-header').className).toContain(
       'md:hidden',
     );
-    expect(screen.getByTestId('mobile-bottom-nav').className).toContain(
-      'md:hidden',
-    );
-  });
-
-  it('only links to routes that exist in the bottom nav and drawer for a Volunteer-only caller', async () => {
-    const VOLUNTEER_ALLOWED_HREFS = ['/dashboard', '/availability'];
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
-
-    renderWithProviders(<AppShell>content</AppShell>);
-    const user = userEvent.setup();
-
-    for (const link of within(
-      screen.getByTestId('mobile-bottom-nav'),
-    ).getAllByRole('link')) {
-      expect(VOLUNTEER_ALLOWED_HREFS).toContain(link.getAttribute('href'));
-    }
-
-    await user.click(screen.getByTestId('mobile-drawer-trigger'));
-    const drawerNav = await findDrawerNav();
-    for (const link of within(drawerNav).getAllByRole('link')) {
-      expect(VOLUNTEER_ALLOWED_HREFS).toContain(link.getAttribute('href'));
-    }
-  });
-
-  it('sizes bottom-nav and drawer links at or above the 44px touch-target minimum', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
-
-    renderWithProviders(<AppShell>content</AppShell>);
-    const user = userEvent.setup();
-
-    // jsdom has no layout engine, so boundingBox() (what mobile-layout.spec.ts
-    // used) can't be reproduced here — this asserts the Tailwind height class
-    // that actually produced that pixel size in the real browser instead
-    // (TOUCH_TARGET_HEIGHT_CLASS above).
-    for (const link of within(
-      screen.getByTestId('mobile-bottom-nav'),
-    ).getAllByRole('link')) {
-      expect(link.className).toMatch(TOUCH_TARGET_HEIGHT_CLASS);
-    }
-
-    await user.click(screen.getByTestId('mobile-drawer-trigger'));
-    const drawerNav = await findDrawerNav();
-    for (const link of within(drawerNav).getAllByRole('link')) {
-      expect(link.className).toMatch(TOUCH_TARGET_HEIGHT_CLASS);
-    }
   });
 });
 
@@ -434,12 +383,7 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
   });
 
   it('opens the command palette on Ctrl+K and closes it on a second press', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona();
 
     renderWithProviders(<AppShell>content</AppShell>);
 
@@ -454,12 +398,7 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
 
   it('shows no Search button and ignores Ctrl+K while the palette is parked', async () => {
     parked.on = false;
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona();
 
     renderWithProviders(<AppShell>content</AppShell>);
 
@@ -483,12 +422,7 @@ describe('AppShell Switch Church control', () => {
   });
 
   it('navigates to select-church with the full path, query, and hash preserved as the redirect target', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: true,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles';
     mockHref = '/cycles?view=board#upcoming';
 
@@ -496,7 +430,7 @@ describe('AppShell Switch Church control', () => {
     const user = userEvent.setup();
     await user.click(
       within(screen.getByTestId('sidebar')).getByRole('button', {
-        name: 'Switch Church',
+        name: m.nav_switch_church(),
       }),
     );
 
@@ -506,12 +440,7 @@ describe('AppShell Switch Church control', () => {
   });
 
   it('navigates to select-church from the mobile drawer and closes the drawer', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona();
     mockHref = '/dashboard';
 
     renderWithProviders(<AppShell>content</AppShell>);
@@ -520,7 +449,7 @@ describe('AppShell Switch Church control', () => {
     const drawer = await screen.findByTestId('mobile-drawer-content');
 
     await user.click(
-      within(drawer).getByRole('button', { name: 'Switch Church' }),
+      within(drawer).getByRole('button', { name: m.nav_switch_church() }),
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
@@ -529,12 +458,7 @@ describe('AppShell Switch Church control', () => {
   });
 
   it('keeps the Switch Church control reachable and functional when the sidebar is collapsed', async () => {
-    mockedUseCallerCapabilities.mockReturnValue({
-      isChurchAdmin: false,
-      leadsMinistries: false,
-      hasVolunteerMembership: false,
-      isResolving: false,
-    });
+    asPersona();
     mockHref = '/dashboard';
 
     renderWithProviders(<AppShell>content</AppShell>);
@@ -543,7 +467,7 @@ describe('AppShell Switch Church control', () => {
 
     const switchChurchButton = within(screen.getByTestId('sidebar')).getByRole(
       'button',
-      { name: 'Switch Church' },
+      { name: m.nav_switch_church() },
     );
     expect(
       switchChurchButton.querySelector('.lucide-users-round'),

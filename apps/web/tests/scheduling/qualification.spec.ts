@@ -81,16 +81,16 @@ test.describe('qualification governs candidacy', () => {
 });
 
 test.describe('a plain Volunteer', () => {
-  test('sees no Scheduling work', async ({ page }, testInfo) => {
+  test('is refused by the planning-admin guard and lands on Home', async ({
+    page,
+  }, testInfo) => {
     const journey = loadAssignQualificationJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.volunteer });
 
-    await page.goto('/scheduling');
-    await expect(page.getByTestId('scheduling-capability-index')).toBeVisible({
-      timeout: 15_000,
-    });
-    await expect(
-      page.getByText('No Scheduling work is available'),
-    ).toBeVisible();
+    await page.goto('/cycles');
+
+    // The planning-admin guard redirects a non-admin/leader to "/", which
+    // the index route forwards to "/dashboard".
+    await expect(page).toHaveURL(/\/(dashboard)?$/, { timeout: 15_000 });
   });
 });

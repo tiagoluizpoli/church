@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CommandPalette } from '@/components/command-palette';
-import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
+import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: { children: ReactNode; to: string }) => (
@@ -13,8 +13,8 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
-vi.mock('@/shared/hooks/use-caller-roles', () => ({
-  useCallerRoles: vi.fn(),
+vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+  useCallerCapabilities: vi.fn(),
 }));
 
 // The desktop dialog path (isDesktop === true) is what search.spec.ts drove
@@ -30,7 +30,7 @@ window.matchMedia = ((query: string) => ({
   dispatchEvent: vi.fn(),
 })) as unknown as typeof window.matchMedia;
 
-const mockedUseCallerRoles = vi.mocked(useCallerRoles);
+const mockedUseCallerCapabilities = vi.mocked(useCallerCapabilities);
 
 describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
   afterEach(() => {
@@ -38,8 +38,10 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
   });
 
   it('filters commands by query and shows a "Go to X" link for each match', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     const onOpenChange = vi.fn();
@@ -60,8 +62,10 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
   });
 
   it('shows "No results found" when the query matches nothing', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     render(<CommandPalette open onOpenChange={vi.fn()} />);
@@ -76,8 +80,10 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
   });
 
   it('closes and navigates when a result is clicked', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     const onOpenChange = vi.fn();
@@ -90,8 +96,10 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
   });
 
   it('closes on Escape', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     const onOpenChange = vi.fn();
@@ -104,8 +112,10 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
   });
 
   it('only lists Scheduling for a caller who can see it', async () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: true,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: true,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     render(<CommandPalette open onOpenChange={vi.fn()} />);
@@ -116,8 +126,10 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
   });
 
   it('renders nothing when closed', () => {
-    mockedUseCallerRoles.mockReturnValue({
-      canSeeScheduling: false,
+    mockedUseCallerCapabilities.mockReturnValue({
+      isChurchAdmin: false,
+      leadsMinistries: false,
+      hasVolunteerMembership: false,
       isResolving: false,
     });
     const { container } = render(

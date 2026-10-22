@@ -45,5 +45,12 @@
   "error_forbidden": "You do not have permission to do that.",
   "error_active_church_selection_required": "Select an active Church to continue.",
   "error_rate_limited": "Too many attempts. Try again in a moment.",
-  "error_invitation_unavailable": "This invitation is not available."
+  "error_invitation_unavailable": "This invitation is not available.",
+  "nav_my_schedule": "My schedule",
+  "nav_ministries": "Ministries",
+  "nav_people": "People",
+  "nav_invitations": "Invitations",
+  "shell_coming_soon": "Coming soon.",
+  "shell_no_access": "You don't have access to this page.",
+  "shell_not_serving": "You don't serve in a Ministry yet."
 }

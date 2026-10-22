@@ -87,12 +87,10 @@ export interface UpdateTemplateParams {
 
 interface CreatePlanningMutationInput<TVariables, TResult> {
   mutationFn: (variables: TVariables) => Promise<TResult>;
-  invalidateQueryKeys?:
-    | QueryKey[]
-    | ((data: TResult, variables: TVariables) => QueryKey[]);
-  successMessage?: string | ((data: TResult, variables: TVariables) => string);
-  onSuccess?: (data: TResult, variables: TVariables) => void | Promise<void>;
-  onError?: (error: Error, variables: TVariables) => void;
+  invalidateQueryKeys?: QueryKey[] | ((data: TResult) => QueryKey[]);
+  successMessage?: string | ((data: TResult) => string);
+  onSuccess?: (data: TResult) => void | Promise<void>;
+  onError?: (error: Error) => void;
   queryClient: QueryClient;
 }
 
@@ -106,30 +104,30 @@ function usePlanningMutation<TVariables, TResult>({
 }: CreatePlanningMutationInput<TVariables, TResult>) {
   return useMutation({
     mutationFn,
-    onSuccess: async (data, variables) => {
+    onSuccess: async (data) => {
       if (invalidateQueryKeys) {
         const keys =
           typeof invalidateQueryKeys === 'function'
-            ? invalidateQueryKeys(data, variables)
+            ? invalidateQueryKeys(data)
             : invalidateQueryKeys;
         await Promise.all(
           keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
         );
       }
       if (onSuccess) {
-        await onSuccess(data, variables);
+        await onSuccess(data);
       }
       if (successMessage) {
         const message =
           typeof successMessage === 'function'
-            ? successMessage(data, variables)
+            ? successMessage(data)
             : successMessage;
         toast.success(message);
       }
     },
-    onError: (error, variables) => {
+    onError: (error) => {
       if (onError) {
-        onError(error as Error, variables);
+        onError(error as Error);
       } else {
         toast.error(getErrorMessage({ error }));
       }

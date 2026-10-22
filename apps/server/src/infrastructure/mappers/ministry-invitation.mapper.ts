@@ -14,10 +14,15 @@ import type { MinistryAccessLevel } from '../../domain/entities/ministry-members
 
 type MinistryInvitationRow = InferSelectModel<typeof ministryInvitation>;
 
-export function mapMinistryInvitation(
-  row: MinistryInvitationRow,
-  roleIds: RoleId[] = [],
-): MinistryInvitation {
+export interface MapMinistryInvitationInput {
+  row: MinistryInvitationRow;
+  roleIds?: RoleId[];
+}
+
+export function mapMinistryInvitation({
+  row,
+  roleIds = [],
+}: MapMinistryInvitationInput): MinistryInvitation {
   const props: MinistryInvitationProps = {
     churchId: row.churchId as ChurchId,
     ministryId: row.ministryId as MinistryId,
@@ -39,10 +44,10 @@ export function mapMinistryInvitation(
       : undefined,
   };
 
-  return new MinistryInvitation(
+  return new MinistryInvitation({
     props,
-    row.id as MinistryInvitationId,
-    row.createdAt,
-    row.updatedAt,
-  );
+    id: row.id as MinistryInvitationId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
 }

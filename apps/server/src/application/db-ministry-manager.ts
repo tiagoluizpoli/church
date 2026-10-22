@@ -23,18 +23,18 @@ export class DbMinistryManager implements IMinistryManager {
   }
 
   async listByChurch(churchId: ChurchId): Promise<Ministry[]> {
-    return this.ministryRepo.listByChurch(churchId);
+    return this.ministryRepo.listByChurch({ churchId });
   }
 
   async listByLeader(input: ListMinistriesByLeaderInput): Promise<Ministry[]> {
     const { leaderId, churchId } = input;
-    const ledMinistries = await this.volunteerRepo.listLedMinistries(
+    const ledMinistries = await this.volunteerRepo.listLedMinistries({
       churchId,
-      leaderId,
-    );
+      volunteerId: leaderId,
+    });
     const ministries = await Promise.all(
       ledMinistries.map((lm) =>
-        this.ministryRepo.getById(churchId, lm.ministryId),
+        this.ministryRepo.getById({ churchId, id: lm.ministryId }),
       ),
     );
     return ministries;

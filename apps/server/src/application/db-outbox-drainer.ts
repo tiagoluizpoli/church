@@ -136,14 +136,17 @@ export class DbOutboxDrainer implements IOutboxDrainer {
 
     const [church, ministry, email] = await Promise.all([
       this.churchRepository.getById({ id: message.churchId }),
-      this.ministryRepository.getById(message.churchId, invitation.ministryId),
+      this.ministryRepository.getById({
+        churchId: message.churchId,
+        id: invitation.ministryId,
+      }),
       this.invitationRepository.resolveRecipientEmail({
         ministryInvitation: invitation,
       }),
     ]);
     const roles = await Promise.all(
       invitation.roleIds.map((roleId) =>
-        this.roleRepository.getById(message.churchId, roleId),
+        this.roleRepository.getById({ churchId: message.churchId, id: roleId }),
       ),
     );
 
@@ -177,7 +180,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     }
     const [church, ministry, email] = await Promise.all([
       this.churchRepository.getById({ id: message.churchId }),
-      this.ministryRepository.getById(message.churchId, invitation.ministryId),
+      this.ministryRepository.getById({
+        churchId: message.churchId,
+        id: invitation.ministryId,
+      }),
       this.invitationRepository.resolveRecipientEmail({
         ministryInvitation: invitation,
       }),

@@ -100,6 +100,7 @@ export class RedemptionController implements FastifyController {
     return isRateLimited({ key, windowMs, maxRequests });
   }
 
+  // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
   registerRoutes(
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
@@ -436,6 +437,7 @@ export class RedemptionController implements FastifyController {
    * — the invitation's own `kind`, not the URL used to reach it, decides
    * whether the chained pair is rejected alongside it (spec §7.3).
    */
+  // named-parameters-ignore: Fastify route handler signature (request, reply); bound as a route handler
   private async handleDecline(
     request: FastifyRequest,
     reply: FastifyReply,

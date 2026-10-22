@@ -124,6 +124,9 @@ function createHarness({
       const transaction = {} as TransactionContext;
       return fn(transaction);
     },
+    async runWith({ work }) {
+      return this.run(work);
+    },
   };
   const securityLogRepository: SecurityLogRepository = {
     recordIdentityMismatch: vi.fn(),

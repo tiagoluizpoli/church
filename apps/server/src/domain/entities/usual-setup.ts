@@ -64,7 +64,12 @@ export class UsualSetup extends Entity<UsualSetupProps, UsualSetupId> {
     assertValidShiftSplit({ shiftSplit: props.shiftSplit });
     assertValidHeadcounts({ headcounts: props.headcounts });
 
-    super(props as UsualSetupProps, id as UsualSetupId, createdAt, updatedAt);
+    super({
+      props: props as UsualSetupProps,
+      id: id as UsualSetupId,
+      createdAt,
+      updatedAt,
+    });
   }
 
   get churchId(): ChurchId {

@@ -29,6 +29,11 @@ interface BuildStatusResponseInput {
   resolution: ActiveChurchResolution;
 }
 
+interface RequireSessionInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+}
+
 interface AuthenticatedSession {
   userId: string;
   activeOrganizationId: string | null;
@@ -39,10 +44,10 @@ interface AuthenticatedSession {
  * exists yet, so this replaces the three verbatim `getSession` + 401 blocks
  * that would otherwise open each handler.
  */
-async function requireSession(
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<AuthenticatedSession | null> {
+async function requireSession({
+  request,
+  reply,
+}: RequireSessionInput): Promise<AuthenticatedSession | null> {
   const session = await auth.api
     .getSession({ headers: headersFromRequest(request) })
     .catch(() => null);
@@ -82,6 +87,7 @@ export class ActiveChurchController implements FastifyController {
     this.selectionManager = selectionManager;
   }
 
+  // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
   registerRoutes(
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
@@ -102,7 +108,7 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession(request, reply);
+        const session = await requireSession({ request, reply });
         if (!session) return;
 
         const resolution = await resolveActiveChurchAndPersist({
@@ -133,7 +139,7 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession(request, reply);
+        const session = await requireSession({ request, reply });
         if (!session) return;
 
         const options = await this.selectionManager.listSelectableChurches({
@@ -161,7 +167,7 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession(request, reply);
+        const session = await requireSession({ request, reply });
         if (!session) return;
 
         const body = request.body as z.infer<

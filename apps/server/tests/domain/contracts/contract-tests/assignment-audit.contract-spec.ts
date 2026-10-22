@@ -18,15 +18,15 @@ export function runAssignmentAuditRepositoryContractTests(
     });
 
     it('should create an assignment audit', async () => {
-      const created = await repo.create(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        {
+      const created = await repo.create({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        input: {
           assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
           actorId: '22222222-2222-2222-2222-222222222221' as UserId,
           action: 'status_change',
           reason: 'Test audit creation',
         },
-      );
+      });
 
       expect(created).toBeDefined();
       expect(created.id).toBeDefined();
@@ -34,18 +34,18 @@ export function runAssignmentAuditRepositoryContractTests(
     });
 
     it('should list audits by church newest-first', async () => {
-      const list = await repo.listByChurch(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-      );
+      const list = await repo.listByChurch({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+      });
       expect(list.length).toBeGreaterThanOrEqual(2);
       expect(list[0]?.id).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2');
     });
 
     it('should list audits by actor newest-first', async () => {
-      const list = await repo.listByActor(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '22222222-2222-2222-2222-222222222221' as UserId,
-      );
+      const list = await repo.listByActor({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        actorId: '22222222-2222-2222-2222-222222222221' as UserId,
+      });
       expect(list.length).toBeGreaterThanOrEqual(2);
       expect(list[0]?.id).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2');
     });

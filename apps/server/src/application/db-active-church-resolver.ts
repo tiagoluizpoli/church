@@ -70,10 +70,10 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
     // Membership listed here can't be revoked out from under the actor
     // lookup below within the same transaction, closing the check-then-use
     // gap between "how many Churches" and "resolve against that Church".
-    return this.unitOfWork.run(
-      (tx) => this.resolveWithNoActiveOrganization({ userId, tx }),
-      { isolationLevel: 'repeatable read' },
-    );
+    return this.unitOfWork.runWith({
+      work: (tx) => this.resolveWithNoActiveOrganization({ userId, tx }),
+      isolationLevel: 'repeatable read',
+    });
   }
 
   private async resolveWithNoActiveOrganization(
@@ -153,10 +153,10 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
       id: formerChurchId,
     });
 
-    const resolution = await this.unitOfWork.run(
-      (tx) => this.resolveWithNoActiveOrganization({ userId, tx }),
-      { isolationLevel: 'repeatable read' },
-    );
+    const resolution = await this.unitOfWork.runWith({
+      work: (tx) => this.resolveWithNoActiveOrganization({ userId, tx }),
+      isolationLevel: 'repeatable read',
+    });
 
     return { ...resolution, membershipRemovedFrom: formerChurch.name };
   }

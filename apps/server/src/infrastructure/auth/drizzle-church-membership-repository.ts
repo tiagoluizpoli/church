@@ -35,7 +35,7 @@ export class DrizzleChurchMembershipRepository
   async listByUserId(
     input: ListChurchMembershipsByUserIdInput,
   ): Promise<ChurchMembershipSummary[]> {
-    const rows = await getClient(this.db, input.tx)
+    const rows = await getClient({ db: this.db, tx: input.tx })
       .select({ organizationId: member.organizationId, role: member.role })
       .from(member)
       .where(eq(member.userId, input.userId));
@@ -49,7 +49,7 @@ export class DrizzleChurchMembershipRepository
   async listComparisonsByUserId(
     input: ListChurchMembershipsByUserIdInput,
   ): Promise<ChurchMembershipComparison[]> {
-    const rows = await getClient(this.db, input.tx)
+    const rows = await getClient({ db: this.db, tx: input.tx })
       .select({
         organizationId: member.organizationId,
         role: member.role,
@@ -72,7 +72,7 @@ export class DrizzleChurchMembershipRepository
   }
 
   async touchOpened(input: TouchChurchMembershipOpenedInput): Promise<void> {
-    await getClient(this.db, input.tx)
+    await getClient({ db: this.db, tx: input.tx })
       .update(member)
       .set({ lastOpenedAt: nowAsDate() })
       .where(

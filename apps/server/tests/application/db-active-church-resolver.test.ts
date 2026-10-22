@@ -40,7 +40,7 @@ function actorWithoutMembership(activeChurchId: ChurchId): AuthorityActor {
 const actorRepository = { resolveActor: vi.fn() };
 const membershipRepository = { listByUserId: vi.fn(), touchOpened: vi.fn() };
 const churchRepository = { getById: vi.fn() };
-const unitOfWork = { run: vi.fn() };
+const unitOfWork = { runWith: vi.fn() };
 const FAKE_TX = { brand: 'fake-tx' } as never;
 
 function createResolver(): DbActiveChurchResolver {
@@ -54,11 +54,11 @@ function createResolver(): DbActiveChurchResolver {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  // `run` executes its callback against one shared fake transaction — proves
+  // `runWith` executes its callback against one shared fake transaction — proves
   // the caller threads that same `tx` through every repository call it makes
   // inside the callback, the way `repeatable read` requires for one snapshot.
-  unitOfWork.run.mockImplementation((fn: (tx: unknown) => unknown) =>
-    fn(FAKE_TX),
+  unitOfWork.runWith.mockImplementation(
+    ({ work }: { work: (tx: unknown) => unknown }) => work(FAKE_TX),
   );
 });
 
@@ -215,7 +215,8 @@ describe('DbActiveChurchResolver', () => {
       hasVolunteerMembership: false,
       autoSelected: true,
     });
-    expect(unitOfWork.run).toHaveBeenCalledWith(expect.any(Function), {
+    expect(unitOfWork.runWith).toHaveBeenCalledWith({
+      work: expect.any(Function),
       isolationLevel: 'repeatable read',
     });
     expect(membershipRepository.listByUserId).toHaveBeenCalledWith({

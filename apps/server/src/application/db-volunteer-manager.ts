@@ -101,10 +101,15 @@ function eventTimeBlockKey({
   return `${startTime}::${endTime}`;
 }
 
-function availabilityCompletionState(
-  entries: UnavailableShift[],
-  eventTimeBlocks: EventTimeBlock[],
-): 'missing' | 'partial' | 'complete' {
+interface AvailabilityCompletionStateInput {
+  entries: UnavailableShift[];
+  eventTimeBlocks: EventTimeBlock[];
+}
+
+function availabilityCompletionState({
+  entries,
+  eventTimeBlocks,
+}: AvailabilityCompletionStateInput): 'missing' | 'partial' | 'complete' {
   if (eventTimeBlocks.length === 0) return 'missing';
   const matchingKeys = new Set(
     entries.map((e) =>
@@ -175,6 +180,11 @@ function scheduleVolunteerName(name: string | undefined): string | undefined {
   return lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName;
 }
 
+interface ResolveCheckDetailInput {
+  context: CheckContext;
+  input: GetAvailabilityCheckInput;
+}
+
 interface DbVolunteerManagerDependencies {
   volunteerRepo: VolunteerRepository;
   assignmentRepo: AssignmentRepository;
@@ -242,11 +252,11 @@ export class DbVolunteerManager implements IVolunteerManager {
     const { volunteerId, churchId } = input;
     const now = nowInstant();
 
-    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds(
+    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds({
       churchId,
       volunteerId,
-    );
-    const allMinistries = await this.ministryRepo.listByChurch(churchId);
+    });
+    const allMinistries = await this.ministryRepo.listByChurch({ churchId });
     const ministries = allMinistries
       .filter((m) => memberMinistryIds.includes(m.id as MinistryId))
       .map((m) => ({ id: m.id as string, name: m.name }));
@@ -256,29 +266,32 @@ export class DbVolunteerManager implements IVolunteerManager {
     // Availability tasks: future events with incomplete availability
     const availabilityTasksNested = await Promise.all(
       ministries.map(async (ministry) => {
-        const events = await this.eventRepo.listByMinistry(
+        const events = await this.eventRepo.listByMinistry({
           churchId,
-          ministry.id as MinistryId,
-        );
+          ministryId: ministry.id as MinistryId,
+        });
         return Promise.all(
           events.map(
             async (event): Promise<DashboardAvailabilityTask | null> => {
               if (compareInstants({ left: event.start, right: now }) <= 0)
                 return null;
               const eventWithEventTimeBlocks =
-                await this.eventRepo.getWithEventTimeBlocks(churchId, event.id);
+                await this.eventRepo.getWithEventTimeBlocks({
+                  churchId,
+                  eventId: event.id,
+                });
               if (eventWithEventTimeBlocks.eventTimeBlocks.length === 0)
                 return null;
               const entries =
-                await this.unavailableShiftRepo.listByVolunteerForEvent(
+                await this.unavailableShiftRepo.listByVolunteerForEvent({
                   churchId,
                   volunteerId,
-                  event.id,
-                );
-              const completionState = availabilityCompletionState(
+                  eventId: event.id,
+                });
+              const completionState = availabilityCompletionState({
                 entries,
-                eventWithEventTimeBlocks.eventTimeBlocks,
-              );
+                eventTimeBlocks: eventWithEventTimeBlocks.eventTimeBlocks,
+              });
               if (completionState === 'complete') return null;
               return {
                 eventId: event.id as string,
@@ -334,7 +347,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     );
     const eventIds = [...new Set(participations.map((item) => item.eventId))];
     const events = await Promise.all(
-      eventIds.map((eventId) => this.eventRepo.getById(churchId, eventId)),
+      eventIds.map((eventId) => this.eventRepo.getById({ churchId, eventId })),
     );
     const eventsById = new Map(
       events.map((event) => [event.id as string, event]),
@@ -381,7 +394,10 @@ export class DbVolunteerManager implements IVolunteerManager {
       const ministry = ministryById.get(participation.ministryId as string);
       if (!event || !ministry) continue;
 
-      const role = await this.roleRepo.getById(churchId, assignment.roleId);
+      const role = await this.roleRepo.getById({
+        churchId,
+        id: assignment.roleId,
+      });
       const timingState: 'in_progress' | 'upcoming' =
         compareInstants({ left: shift.startTime, right: now }) <= 0
           ? 'in_progress'
@@ -446,8 +462,9 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     const [unreadNotificationCount, notificationPreviewResult] =
       await Promise.all([
-        this.notificationRepo.countUnread(churchId, volunteerId),
-        this.notificationRepo.listByVolunteer(churchId, {
+        this.notificationRepo.countUnread({ churchId, volunteerId }),
+        this.notificationRepo.listByVolunteer({
+          churchId,
           volunteerId,
           limit: NOTIFICATION_PREVIEW_LIMIT,
         }),
@@ -524,26 +541,29 @@ export class DbVolunteerManager implements IVolunteerManager {
   ): Promise<MinistrySchedule> {
     const { churchId, ministryId, volunteerId } = input;
 
-    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds(
+    const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds({
       churchId,
       volunteerId,
-    );
+    });
     if (!memberMinistryIds.includes(ministryId)) {
       throw new IsolationBreachError();
     }
 
     const [ministry, participations, roles] = await Promise.all([
-      this.ministryRepo.getById(churchId, ministryId),
+      this.ministryRepo.getById({ churchId, id: ministryId }),
       this.participationRepo.listByMinistry({
         churchId,
         ministryId,
         state: 'published',
       }),
-      this.roleRepo.listByMinistry(churchId, ministryId),
+      this.roleRepo.listByMinistry({ churchId, ministryId }),
     ]);
     const eventData = await Promise.all(
       participations.map(async (participation) => ({
-        event: await this.eventRepo.getById(churchId, participation.eventId),
+        event: await this.eventRepo.getById({
+          churchId,
+          eventId: participation.eventId,
+        }),
         shifts: await this.shiftRepo.listByParticipation({
           churchId,
           participationId: participation.id,
@@ -552,10 +572,10 @@ export class DbVolunteerManager implements IVolunteerManager {
           churchId,
           participationId: participation.id,
         }),
-        assignments: await this.assignmentRepo.listByParticipation(
+        assignments: await this.assignmentRepo.listByParticipation({
           churchId,
-          participation.id,
-        ),
+          participationId: participation.id,
+        }),
       })),
     );
     const assignments = eventData
@@ -564,10 +584,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     const volunteerIds = [
       ...new Set(assignments.map((item) => item.volunteerId)),
     ];
-    const volunteers = await this.volunteerRepo.listByIds(
+    const volunteers = await this.volunteerRepo.listByIds({
       churchId,
-      volunteerIds,
-    );
+      ids: volunteerIds,
+    });
     const roleNames = new Map(
       roles.map((role) => [role.id as string, role.name]),
     );
@@ -659,10 +679,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     return context;
   }
 
-  private async resolveCheckDetail(
-    context: CheckContext,
-    input: GetAvailabilityCheckInput,
-  ): Promise<VolunteerAvailabilityCheckDetail> {
+  private async resolveCheckDetail({
+    context,
+    input,
+  }: ResolveCheckDetailInput): Promise<VolunteerAvailabilityCheckDetail> {
     const [shifts, unavailableShifts] = await Promise.all([
       this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
@@ -749,7 +769,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail> {
     const context = await this.getOwnedCheckContext(input);
-    return this.resolveCheckDetail(context, input);
+    return this.resolveCheckDetail({ context, input });
   }
 
   async setUnavailableShifts(
@@ -786,7 +806,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       });
     });
 
-    return this.resolveCheckDetail(context, input);
+    return this.resolveCheckDetail({ context, input });
   }
 
   async confirmAvailabilityCheck(
@@ -811,27 +831,31 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: RespondToAssignmentInput,
   ): Promise<Assignment> {
     const { assignmentId, churchId, volunteerId, response, reason } = input;
-    const assignment = await this.assignmentRepo.getById(
+    const assignment = await this.assignmentRepo.getById({
       churchId,
       assignmentId,
-    );
+    });
     if (assignment.volunteerId !== volunteerId) {
       throw new AssignmentAccessDeniedError();
     }
     const status = response === 'accepted' ? 'confirmed' : 'declined';
-    await this.assignmentRepo.updateStatus(churchId, assignmentId, {
-      status,
-      reason,
+    await this.assignmentRepo.updateStatus({
+      churchId,
+      assignmentId,
+      input: {
+        status,
+        reason,
+      },
     });
-    return this.assignmentRepo.getById(churchId, assignmentId);
+    return this.assignmentRepo.getById({ churchId, assignmentId });
   }
 
   async cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void> {
     const { assignmentId, churchId, volunteerId } = input;
-    const assignment = await this.assignmentRepo.getById(
+    const assignment = await this.assignmentRepo.getById({
       churchId,
       assignmentId,
-    );
+    });
     if (assignment.volunteerId !== volunteerId) {
       throw new AssignmentAccessDeniedError();
     }
@@ -852,7 +876,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     }
 
     await this.notifyLeadersOfCancellation({ churchId, assignment });
-    await this.assignmentRepo.deleteById(churchId, assignmentId);
+    await this.assignmentRepo.deleteById({ churchId, assignmentId });
   }
 
   private async notifyLeadersOfCancellation(
@@ -867,7 +891,10 @@ export class DbVolunteerManager implements IVolunteerManager {
       churchId,
       participationId: assignment.participationId,
     });
-    const event = await this.eventRepo.getById(churchId, participation.eventId);
+    const event = await this.eventRepo.getById({
+      churchId,
+      eventId: participation.eventId,
+    });
     const leaders =
       await this.availabilityCheckRepo.listMinistryLeaderVolunteerIds({
         churchId,
@@ -905,7 +932,8 @@ export class DbVolunteerManager implements IVolunteerManager {
       cursor,
       limit = DEFAULT_NOTIFICATION_LIMIT,
     } = input;
-    return this.notificationRepo.listByVolunteer(churchId, {
+    return this.notificationRepo.listByVolunteer({
+      churchId,
       volunteerId,
       cursor,
       limit,
@@ -914,11 +942,11 @@ export class DbVolunteerManager implements IVolunteerManager {
 
   async markNotificationRead(input: MarkNotificationReadInput): Promise<void> {
     const { notificationId, volunteerId, churchId } = input;
-    const readAt = await this.notificationRepo.markRead(
+    const readAt = await this.notificationRepo.markRead({
       churchId,
       volunteerId,
       notificationId,
-    );
+    });
     if (!readAt) {
       throw new NotFoundError('Resource not found');
     }
@@ -927,17 +955,20 @@ export class DbVolunteerManager implements IVolunteerManager {
   async markAllNotificationsRead(
     input: MarkAllNotificationsReadInput,
   ): Promise<void> {
-    await this.notificationRepo.markAllRead(input.churchId, input.volunteerId);
+    await this.notificationRepo.markAllRead({
+      churchId: input.churchId,
+      volunteerId: input.volunteerId,
+    });
   }
 
   private async listPublishedAssignmentsForVolunteer({
     volunteerId,
     churchId,
   }: GetPublishedScheduleInput): Promise<Assignment[]> {
-    const assignments = await this.assignmentRepo.listByVolunteer(
+    const assignments = await this.assignmentRepo.listByVolunteer({
       churchId,
       volunteerId,
-    );
+    });
     const participationIds = [
       ...new Set(
         assignments

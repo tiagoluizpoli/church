@@ -19,10 +19,11 @@ export function runEventTimeBlockRepositoryContractTests(
     });
 
     it('should retrieve an event time block by ID with nested requirements', async () => {
-      const found = await repo.getById(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
-      );
+      const found = await repo.getById({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        eventTimeBlockId:
+          '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
+      });
       expect(found).toBeDefined();
       expect(found.id).toBe('77777777-7777-7777-7777-777777777771');
       expect(found.requirements.length).toBe(1);
@@ -33,32 +34,32 @@ export function runEventTimeBlockRepositoryContractTests(
 
     it('should throw NotFoundError if event time block is not found by ID', async () => {
       await expect(
-        repo.getById(
-          '11111111-1111-1111-1111-111111111111' as ChurchId,
-          'non-existent' as EventTimeBlockId,
-        ),
+        repo.getById({
+          churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+          eventTimeBlockId: 'non-existent' as EventTimeBlockId,
+        }),
       ).rejects.toThrow(NotFoundError);
     });
 
     it('should list event time blocks by event with nested requirements', async () => {
-      const list = await repo.listByEvent(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '66666666-6666-6666-6666-666666666661' as EventId,
-      );
+      const list = await repo.listByEvent({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        eventId: '66666666-6666-6666-6666-666666666661' as EventId,
+      });
       expect(list.length).toBe(1);
       expect(list[0]?.id).toBe('77777777-7777-7777-7777-777777777771');
       expect(list[0]?.requirements.length).toBe(1);
     });
 
     it('should delete event time blocks by event', async () => {
-      await repo.deleteByEvent(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '66666666-6666-6666-6666-666666666661' as EventId,
-      );
-      const list = await repo.listByEvent(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        '66666666-6666-6666-6666-666666666661' as EventId,
-      );
+      await repo.deleteByEvent({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        eventId: '66666666-6666-6666-6666-666666666661' as EventId,
+      });
+      const list = await repo.listByEvent({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        eventId: '66666666-6666-6666-6666-666666666661' as EventId,
+      });
       expect(list.length).toBe(0);
     });
   });

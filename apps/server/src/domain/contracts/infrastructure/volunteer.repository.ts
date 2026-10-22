@@ -28,86 +28,45 @@ export interface MinistryMembership {
 }
 
 export interface VolunteerRepository {
-  getById(
-    churchId: ChurchId,
-    id: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<Volunteer>;
+  getById(input: GetVolunteerByIdInput): Promise<Volunteer>;
 
-  findByUserId(
-    churchId: ChurchId,
-    userId: UserId,
-    tx?: TransactionContext,
-  ): Promise<Volunteer | null>;
+  findByUserId(input: FindVolunteerByUserIdInput): Promise<Volunteer | null>;
 
-  listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<Volunteer[]>;
+  listByMinistry(input: ListVolunteersByMinistryInput): Promise<Volunteer[]>;
 
   hasMembershipInMinistry(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
+    input: HasMembershipInMinistryInput,
   ): Promise<boolean>;
 
-  hasRoleQualification(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    ministryId: MinistryId,
-    roleId: RoleId,
-    tx?: TransactionContext,
-  ): Promise<boolean>;
+  hasRoleQualification(input: HasRoleQualificationInput): Promise<boolean>;
 
   listQualifiedForRole(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    roleId: RoleId,
-    tx?: TransactionContext,
+    input: ListQualifiedVolunteersForRoleInput,
   ): Promise<Volunteer[]>;
 
-  updateStatus(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    status: VolunteerStatus,
-    tx?: TransactionContext,
-  ): Promise<void>;
+  updateStatus(input: UpdateVolunteerStatusInput): Promise<void>;
 
   /** Find a volunteer by their auth userId without knowing the churchId. */
   findByUserIdGlobally(
-    userId: UserId,
-    tx?: TransactionContext,
+    input: FindVolunteerByUserIdGloballyInput,
   ): Promise<Volunteer | null>;
 
   /** Check if a volunteer holds a leadership role in the given ministry. */
   hasLeadershipInMinistry(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
+    input: HasLeadershipInMinistryInput,
   ): Promise<boolean>;
 
   /** List every ministry in which the volunteer is a leader. */
   listLedMinistries(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
+    input: ListLedMinistriesInput,
   ): Promise<VolunteerLeadership[]>;
 
   /** Bulk-fetch volunteers by a list of ids (all within the same church). */
-  listByIds(
-    churchId: ChurchId,
-    ids: VolunteerId[],
-    tx?: TransactionContext,
-  ): Promise<Volunteer[]>;
+  listByIds(input: ListVolunteersByIdsInput): Promise<Volunteer[]>;
 
   /** List all ministry IDs where the volunteer is an active member. */
   listMemberMinistryIds(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
+    input: ListMemberMinistryIdsInput,
   ): Promise<MinistryId[]>;
 
   /**
@@ -115,9 +74,7 @@ export interface VolunteerRepository {
    * a ministry. Used for candidate eligibility in the builder.
    */
   listMinistryMemberships(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
+    input: ListMinistryMembershipsInput,
   ): Promise<MinistryMembership[]>;
 
   /**
@@ -130,6 +87,89 @@ export interface VolunteerRepository {
 }
 
 export interface ListActiveLeaderEmailsInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
+}
+
+export interface GetVolunteerByIdInput {
+  churchId: ChurchId;
+  id: VolunteerId;
+  tx?: TransactionContext;
+}
+
+export interface FindVolunteerByUserIdInput {
+  churchId: ChurchId;
+  userId: UserId;
+  tx?: TransactionContext;
+}
+
+export interface ListVolunteersByMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
+}
+
+export interface HasMembershipInMinistryInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
+}
+
+export interface HasRoleQualificationInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  ministryId: MinistryId;
+  roleId: RoleId;
+  tx?: TransactionContext;
+}
+
+export interface ListQualifiedVolunteersForRoleInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  roleId: RoleId;
+  tx?: TransactionContext;
+}
+
+export interface UpdateVolunteerStatusInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  status: VolunteerStatus;
+  tx?: TransactionContext;
+}
+
+export interface FindVolunteerByUserIdGloballyInput {
+  userId: UserId;
+  tx?: TransactionContext;
+}
+
+export interface HasLeadershipInMinistryInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
+}
+
+export interface ListLedMinistriesInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  tx?: TransactionContext;
+}
+
+export interface ListVolunteersByIdsInput {
+  churchId: ChurchId;
+  ids: VolunteerId[];
+  tx?: TransactionContext;
+}
+
+export interface ListMemberMinistryIdsInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  tx?: TransactionContext;
+}
+
+export interface ListMinistryMembershipsInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   tx?: TransactionContext;

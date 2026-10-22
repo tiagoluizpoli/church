@@ -64,13 +64,15 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
 }
 
+type DropdownMenuLabelProps = MenuPrimitive.GroupLabel.Props & {
+  inset?: boolean;
+};
+
 function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: MenuPrimitive.GroupLabel.Props & {
-  inset?: boolean;
-}) {
+}: DropdownMenuLabelProps) {
   return (
     <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
@@ -84,15 +86,17 @@ function DropdownMenuLabel({
   );
 }
 
+type DropdownMenuItemProps = MenuPrimitive.Item.Props & {
+  inset?: boolean;
+  variant?: 'default' | 'destructive';
+};
+
 function DropdownMenuItem({
   className,
   inset,
   variant = 'default',
   ...props
-}: MenuPrimitive.Item.Props & {
-  inset?: boolean;
-  variant?: 'default' | 'destructive';
-}) {
+}: DropdownMenuItemProps) {
   return (
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
@@ -111,14 +115,16 @@ function DropdownMenuSub({ ...props }: MenuPrimitive.SubmenuRoot.Props) {
   return <MenuPrimitive.SubmenuRoot data-slot="dropdown-menu-sub" {...props} />;
 }
 
+type DropdownMenuSubTriggerProps = MenuPrimitive.SubmenuTrigger.Props & {
+  inset?: boolean;
+};
+
 function DropdownMenuSubTrigger({
   className,
   inset,
   children,
   ...props
-}: MenuPrimitive.SubmenuTrigger.Props & {
-  inset?: boolean;
-}) {
+}: DropdownMenuSubTriggerProps) {
   return (
     <MenuPrimitive.SubmenuTrigger
       data-slot="dropdown-menu-sub-trigger"
@@ -159,15 +165,17 @@ function DropdownMenuSubContent({
   );
 }
 
+type DropdownMenuCheckboxItemProps = MenuPrimitive.CheckboxItem.Props & {
+  inset?: boolean;
+};
+
 function DropdownMenuCheckboxItem({
   className,
   children,
   checked,
   inset,
   ...props
-}: MenuPrimitive.CheckboxItem.Props & {
-  inset?: boolean;
-}) {
+}: DropdownMenuCheckboxItemProps) {
   return (
     <MenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
@@ -201,14 +209,16 @@ function DropdownMenuRadioGroup({ ...props }: MenuPrimitive.RadioGroup.Props) {
   );
 }
 
+type DropdownMenuRadioItemProps = MenuPrimitive.RadioItem.Props & {
+  inset?: boolean;
+};
+
 function DropdownMenuRadioItem({
   className,
   children,
   inset,
   ...props
-}: MenuPrimitive.RadioItem.Props & {
-  inset?: boolean;
-}) {
+}: DropdownMenuRadioItemProps) {
   return (
     <MenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"

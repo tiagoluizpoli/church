@@ -34,12 +34,12 @@ const minimalEventProps = {
 
 describe('eventMapper.toResponse', () => {
   it('maps an event with all optional fields present', () => {
-    const event = new Event(
-      fullEventProps,
-      'event-1',
-      new Date('2026-01-01T00:00:00Z'),
-      new Date('2026-01-02T00:00:00Z'),
-    );
+    const event = new Event({
+      props: fullEventProps,
+      id: 'event-1',
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-02T00:00:00Z'),
+    });
 
     const response = eventMapper.toResponse(event);
 
@@ -66,12 +66,12 @@ describe('eventMapper.toResponse', () => {
   });
 
   it('maps an event with all optional fields absent', () => {
-    const event = new Event(
-      minimalEventProps,
-      'event-2',
-      new Date('2026-01-03T00:00:00Z'),
-      new Date('2026-01-03T00:00:00Z'),
-    );
+    const event = new Event({
+      props: minimalEventProps,
+      id: 'event-2',
+      createdAt: new Date('2026-01-03T00:00:00Z'),
+      updatedAt: new Date('2026-01-03T00:00:00Z'),
+    });
 
     const response = eventMapper.toResponse(event);
 
@@ -98,8 +98,8 @@ describe('eventMapper.listToResponse', () => {
   });
 
   it('maps multiple events preserving order', () => {
-    const eventA = new Event(fullEventProps, 'event-a');
-    const eventB = new Event(minimalEventProps, 'event-b');
+    const eventA = new Event({ props: fullEventProps, id: 'event-a' });
+    const eventB = new Event({ props: minimalEventProps, id: 'event-b' });
 
     const response = eventMapper.listToResponse([eventA, eventB]);
 
@@ -111,10 +111,10 @@ describe('eventMapper.listToResponse', () => {
 
 describe('eventMapper.scheduleBuilderToResponse', () => {
   it('maps a fully populated schedule builder payload', () => {
-    const event = new Event(fullEventProps, 'event-1');
+    const event = new Event({ props: fullEventProps, id: 'event-1' });
 
-    const requirementWithExtras = new ShiftRequirement(
-      {
+    const requirementWithExtras = new ShiftRequirement({
+      props: {
         churchId: 'church-1',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-1',
@@ -123,10 +123,10 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         peopleNeeded: 2,
         notes: 'Bring instruments',
       },
-      'req-1',
-    );
-    const requirementWithoutExtras = new ShiftRequirement(
-      {
+      id: 'req-1',
+    });
+    const requirementWithoutExtras = new ShiftRequirement({
+      props: {
         churchId: 'church-1',
         eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-2',
@@ -134,11 +134,11 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         sectorName: 'Palco',
         peopleNeeded: 1,
       },
-      'req-2',
-    );
+      id: 'req-2',
+    });
 
-    const eventTimeBlock = new EventTimeBlock(
-      {
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
         churchId: 'church-1',
         eventId: 'event-1',
         startTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
@@ -146,11 +146,11 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         label: 'Worship Set',
         requirements: [requirementWithExtras, requirementWithoutExtras],
       },
-      'event-time-block-1',
-    );
+      id: 'event-time-block-1',
+    });
 
-    const assignmentWithExtras = new Assignment(
-      {
+    const assignmentWithExtras = new Assignment({
+      props: {
         churchId: 'church-1',
         eventTimeBlockId: 'event-time-block-1',
         participationId: 'participation-1',
@@ -162,10 +162,10 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         assignedBy: 'user-1',
         assignedAt: parseInstant({ value: '2026-01-10T00:00:00Z' }),
       },
-      'assignment-1',
-    );
-    const assignmentWithoutExtras = new Assignment(
-      {
+      id: 'assignment-1',
+    });
+    const assignmentWithoutExtras = new Assignment({
+      props: {
         churchId: 'church-1',
         eventTimeBlockId: 'event-time-block-1',
         volunteerId: 'volunteer-2',
@@ -173,8 +173,8 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
         assignedAt: parseInstant({ value: '2026-01-11T00:00:00Z' }),
       },
-      'assignment-2',
-    );
+      id: 'assignment-2',
+    });
 
     const unavailableShift = new UnavailableShift({
       props: {
@@ -346,16 +346,16 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
   });
 
   it('maps an event with event time blocks that have no requirements', () => {
-    const event = new Event(minimalEventProps, 'event-2');
-    const eventTimeBlock = new EventTimeBlock(
-      {
+    const event = new Event({ props: minimalEventProps, id: 'event-2' });
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
         churchId: 'church-2',
         eventId: 'event-2',
         startTime: parseInstant({ value: '2026-05-16T10:00:00Z' }),
         endTime: parseInstant({ value: '2026-05-16T11:00:00Z' }),
       },
-      'event-time-block-2',
-    );
+      id: 'event-time-block-2',
+    });
 
     const data: ScheduleBuilderData = {
       events: [{ event, eventTimeBlocks: [eventTimeBlock] }],

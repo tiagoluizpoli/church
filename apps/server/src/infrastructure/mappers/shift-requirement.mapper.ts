@@ -40,5 +40,5 @@ export function mapShiftRequirement({
     notes: row.notes ?? undefined,
   };
 
-  return new ShiftRequirement(props, row.id as ShiftRequirementId);
+  return new ShiftRequirement({ props, id: row.id as ShiftRequirementId });
 }

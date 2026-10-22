@@ -9,17 +9,17 @@ import {
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, eq } from 'drizzle-orm';
-import type { ChurchId, EventId, MinistryId } from '../../domain/branded-ids';
+import type { MinistryId } from '../../domain/branded-ids';
 import type {
-  CreateEventInput,
+  CreateEventRepositoryInput,
   EventRepository,
-  UpdateEventInput,
-  UpdateEventStatusInput,
+  GetEventInput,
+  ListEventsByMinistryInput,
+  UpdateEventRepositoryInput,
+  UpdateEventStatusRepositoryInput,
 } from '../../domain/contracts/infrastructure/event.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   Event,
-  EventStatus,
   EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
 import { mapEvent } from '../mappers/event.mapper';
@@ -39,57 +39,59 @@ export class DrizzleEventRepository implements EventRepository {
 
   private readonly db: AnyDrizzleDb;
 
-  async getMinistryId(
-    churchId: ChurchId,
-    id: EventId,
-    tx?: TransactionContext,
-  ): Promise<MinistryId> {
-    const [row] = await getClient(this.db, tx)
+  async getMinistryId({
+    churchId,
+    eventId,
+    tx,
+  }: GetEventInput): Promise<MinistryId> {
+    const [row] = await getClient({ db: this.db, tx })
       .select({ ministryId: ministryParticipation.ministryId })
       .from(ministryParticipation)
       .where(
         and(
-          eq(ministryParticipation.eventId, id),
-          withChurchIsolation(ministryParticipation, churchId),
+          eq(ministryParticipation.eventId, eventId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
         ),
       )
       .limit(1);
-    if (!row) throw new NotFoundError(`Event participation not found: ${id}`);
+    if (!row)
+      throw new NotFoundError(`Event participation not found: ${eventId}`);
     return row.ministryId as MinistryId;
   }
 
-  async getById(
-    churchId: ChurchId,
-    id: EventId,
-    tx?: TransactionContext,
-  ): Promise<Event> {
-    if (!isValidUuid(id)) {
-      throw new NotFoundError(`Event not found: ${id}`);
+  async getById({ churchId, eventId, tx }: GetEventInput): Promise<Event> {
+    if (!isValidUuid(eventId)) {
+      throw new NotFoundError(`Event not found: ${eventId}`);
     }
-    const db = getClient(this.db, tx);
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select()
       .from(event)
-      .where(and(eq(event.id, id), withChurchIsolation(event, churchId)));
-    if (!row) throw new NotFoundError(`Event not found: ${id}`);
+      .where(
+        and(
+          eq(event.id, eventId),
+          withChurchIsolation({ table: event, churchId }),
+        ),
+      );
+    if (!row) throw new NotFoundError(`Event not found: ${eventId}`);
     return mapEvent(row);
   }
 
-  async getWithEventTimeBlocks(
-    churchId: ChurchId,
-    id: EventId,
-    tx?: TransactionContext,
-  ): Promise<EventWithEventTimeBlocks> {
-    const db = getClient(this.db, tx);
-    const ev = await this.getById(churchId, id, tx);
+  async getWithEventTimeBlocks({
+    churchId,
+    eventId,
+    tx,
+  }: GetEventInput): Promise<EventWithEventTimeBlocks> {
+    const db = getClient({ db: this.db, tx });
+    const ev = await this.getById({ churchId, eventId, tx });
 
     const eventTimeBlockRows = await db
       .select()
       .from(eventTimeBlock)
       .where(
         and(
-          eq(eventTimeBlock.eventId, id),
-          withChurchIsolation(eventTimeBlock, churchId),
+          eq(eventTimeBlock.eventId, eventId),
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
       );
 
@@ -108,22 +110,22 @@ export class DrizzleEventRepository implements EventRepository {
             eventTimeBlockId: eventTimeBlockRow.id,
           }),
         );
-        return mapEventTimeBlock(eventTimeBlockRow, requirements);
+        return mapEventTimeBlock({ row: eventTimeBlockRow, requirements });
       }),
     );
 
     return { event: ev, eventTimeBlocks };
   }
 
-  async listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    status?: EventStatus,
-    tx?: TransactionContext,
-  ): Promise<Event[]> {
-    const db = getClient(this.db, tx);
+  async listByMinistry({
+    churchId,
+    ministryId,
+    status,
+    tx,
+  }: ListEventsByMinistryInput): Promise<Event[]> {
+    const db = getClient({ db: this.db, tx });
     const conditions = [
-      withChurchIsolation(event, churchId),
+      withChurchIsolation({ table: event, churchId }),
       eq(ministryParticipation.ministryId, ministryId),
     ];
     if (status != null) conditions.push(eq(event.status, status));
@@ -139,12 +141,12 @@ export class DrizzleEventRepository implements EventRepository {
     return rows.map(({ event: row }) => mapEvent(row));
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateEventInput,
-    tx?: TransactionContext,
-  ): Promise<Event> {
-    const db = getClient(this.db, tx);
+  async create({
+    churchId,
+    input,
+    tx,
+  }: CreateEventRepositoryInput): Promise<Event> {
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .insert(event)
       .values({
@@ -163,13 +165,13 @@ export class DrizzleEventRepository implements EventRepository {
     return mapEvent(row);
   }
 
-  async update(
-    churchId: ChurchId,
-    id: EventId,
-    input: UpdateEventInput,
-    tx?: TransactionContext,
-  ): Promise<Event> {
-    const db = getClient(this.db, tx);
+  async update({
+    churchId,
+    eventId,
+    input,
+    tx,
+  }: UpdateEventRepositoryInput): Promise<Event> {
+    const db = getClient({ db: this.db, tx });
     const [row] = await db
       .update(event)
       .set({
@@ -178,24 +180,34 @@ export class DrizzleEventRepository implements EventRepository {
         ...(input.end !== undefined ? { end: input.end } : {}),
         updatedAt: nowAsDate(),
       })
-      .where(and(eq(event.id, id), withChurchIsolation(event, churchId)))
+      .where(
+        and(
+          eq(event.id, eventId),
+          withChurchIsolation({ table: event, churchId }),
+        ),
+      )
       .returning();
-    if (!row) throw new NotFoundError(`Event not found: ${id}`);
+    if (!row) throw new NotFoundError(`Event not found: ${eventId}`);
     return mapEvent(row);
   }
 
-  async updateStatus(
-    churchId: ChurchId,
-    id: EventId,
-    input: UpdateEventStatusInput,
-    tx?: TransactionContext,
-  ): Promise<void> {
-    await getClient(this.db, tx)
+  async updateStatus({
+    churchId,
+    eventId,
+    input,
+    tx,
+  }: UpdateEventStatusRepositoryInput): Promise<void> {
+    await getClient({ db: this.db, tx })
       .update(event)
       .set({
         status: input.status,
         updatedAt: nowAsDate(),
       })
-      .where(and(eq(event.id, id), withChurchIsolation(event, churchId)));
+      .where(
+        and(
+          eq(event.id, eventId),
+          withChurchIsolation({ table: event, churchId }),
+        ),
+      );
   }
 }

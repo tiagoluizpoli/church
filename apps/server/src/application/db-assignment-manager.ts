@@ -96,7 +96,10 @@ export class DbAssignmentManager implements IAssignmentManager {
   }
 
   async getAssignment(input: GetAssignmentInput): Promise<Assignment> {
-    return this.assignmentRepo.getById(input.churchId, input.assignmentId);
+    return this.assignmentRepo.getById({
+      churchId: input.churchId,
+      assignmentId: input.assignmentId,
+    });
   }
 
   async createParticipationAssignment(
@@ -110,16 +113,16 @@ export class DbAssignmentManager implements IAssignmentManager {
   async deleteAssignment(input: DeleteAssignmentInput): Promise<void> {
     const { assignmentId, churchId, actorId } = input;
     await this.unitOfWork.run(async (tx) => {
-      await this.auditRepo.create(
+      await this.auditRepo.create({
         churchId,
-        {
+        input: {
           assignmentId,
           actorId,
           action: 'deleted',
         },
         tx,
-      );
-      await this.assignmentRepo.deleteById(churchId, assignmentId, tx);
+      });
+      await this.assignmentRepo.deleteById({ churchId, assignmentId, tx });
     });
   }
 
@@ -128,11 +131,11 @@ export class DbAssignmentManager implements IAssignmentManager {
   ): Promise<Assignment> {
     const { nextAssignment, previousVolunteerId } = await this.unitOfWork.run(
       async (tx): Promise<ReassignTransactionResult> => {
-        const currentAssignment = await this.assignmentRepo.getById(
-          input.churchId,
-          input.assignmentId,
+        const currentAssignment = await this.assignmentRepo.getById({
+          churchId: input.churchId,
+          assignmentId: input.assignmentId,
           tx,
-        );
+        });
         if (!currentAssignment.shiftId) {
           throw new Error('Assignment is missing a shift reference');
         }
@@ -151,20 +154,20 @@ export class DbAssignmentManager implements IAssignmentManager {
           throw new Error('Assignment is missing a participation reference');
         }
 
-        await this.assignmentRepo.deleteById(
-          input.churchId,
-          currentAssignment.id,
+        await this.assignmentRepo.deleteById({
+          churchId: input.churchId,
+          assignmentId: currentAssignment.id,
           tx,
-        );
-        await this.auditRepo.create(
-          input.churchId,
-          {
+        });
+        await this.auditRepo.create({
+          churchId: input.churchId,
+          input: {
             assignmentId: nextAssignmentResult.assignment.id,
             actorId: input.actorId,
             action: 'updated',
           },
           tx,
-        );
+        });
 
         return {
           nextAssignment: nextAssignmentResult.assignment,
@@ -228,33 +231,33 @@ export class DbAssignmentManager implements IAssignmentManager {
       tx,
     });
     const hasMembership =
-      await this.volunteerRepository.hasMembershipInMinistry(
-        input.churchId,
-        input.volunteerId,
-        participation.ministryId,
+      await this.volunteerRepository.hasMembershipInMinistry({
+        churchId: input.churchId,
+        volunteerId: input.volunteerId,
+        ministryId: participation.ministryId,
         tx,
-      );
+      });
 
     if (!hasMembership) {
-      throw new HardConstraintError(
-        'NOT_IN_MINISTRY',
-        'Volunteer does not belong to the requested ministry',
-      );
+      throw new HardConstraintError({
+        reason: 'NOT_IN_MINISTRY',
+        message: 'Volunteer does not belong to the requested ministry',
+      });
     }
 
     const hasQualification =
-      await this.volunteerRepository.hasRoleQualification(
-        input.churchId,
-        input.volunteerId,
-        participation.ministryId,
+      await this.volunteerRepository.hasRoleQualification({
+        churchId: input.churchId,
+        volunteerId: input.volunteerId,
+        ministryId: participation.ministryId,
         roleId,
         tx,
-      );
-    const existingShiftAssignments = await this.assignmentRepo.listByShift(
-      input.churchId,
-      shift.id,
+      });
+    const existingShiftAssignments = await this.assignmentRepo.listByShift({
+      churchId: input.churchId,
+      shiftId: shift.id,
       tx,
-    );
+    });
 
     const warnings: CreateParticipationAssignmentResult['warnings'] = [];
     if (!hasQualification) {
@@ -271,26 +274,26 @@ export class DbAssignmentManager implements IAssignmentManager {
           isActiveAssignmentStatus(assignment.status),
       )
     ) {
-      throw new HardConstraintError(
-        'DUPLICATE_ASSIGNMENT',
-        'Volunteer is already assigned to this shift',
-      );
+      throw new HardConstraintError({
+        reason: 'DUPLICATE_ASSIGNMENT',
+        message: 'Volunteer is already assigned to this shift',
+      });
     }
 
     const unavailableShifts =
-      await this.unavailableShiftRepository.listByVolunteers(
-        input.churchId,
-        [input.volunteerId],
+      await this.unavailableShiftRepository.listByVolunteers({
+        churchId: input.churchId,
+        volunteerIds: [input.volunteerId],
         tx,
-      );
+      });
     const overlappingAssignments =
-      await this.assignmentRepo.listByVolunteerInRange(
-        input.churchId,
-        input.volunteerId,
-        toDate({ instant: shift.startTime }),
-        toDate({ instant: shift.endTime }),
+      await this.assignmentRepo.listByVolunteerInRange({
+        churchId: input.churchId,
+        volunteerId: input.volunteerId,
+        startTime: toDate({ instant: shift.startTime }),
+        endTime: toDate({ instant: shift.endTime }),
         tx,
-      );
+      });
 
     if (
       unavailableShifts.some(
@@ -311,10 +314,10 @@ export class DbAssignmentManager implements IAssignmentManager {
         isActiveAssignmentStatus(assignment.status),
     );
     if (hasOverlapConflict) {
-      throw new HardConstraintError(
-        'DUPLICATE_ASSIGNMENT',
-        'Volunteer is already assigned to another overlapping shift',
-      );
+      throw new HardConstraintError({
+        reason: 'DUPLICATE_ASSIGNMENT',
+        message: 'Volunteer is already assigned to another overlapping shift',
+      });
     }
 
     const assignment = await this.assignmentRepo.create({
@@ -341,15 +344,15 @@ export class DbAssignmentManager implements IAssignmentManager {
       });
     }
 
-    await this.auditRepo.create(
-      input.churchId,
-      {
+    await this.auditRepo.create({
+      churchId: input.churchId,
+      input: {
         assignmentId: assignment.id,
         actorId: input.actorId,
         action: 'created',
       },
       tx,
-    );
+    });
 
     return {
       assignment,

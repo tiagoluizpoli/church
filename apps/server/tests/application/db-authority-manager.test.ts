@@ -193,10 +193,10 @@ describe('DbAuthorityManager', () => {
     await expect(
       manager.canManageEvent({ churchId, eventId, userId }),
     ).resolves.toBe(true);
-    expect(eventRepository.getMinistryId).toHaveBeenCalledWith(
+    expect(eventRepository.getMinistryId).toHaveBeenCalledWith({
       churchId,
       eventId,
-    );
+    });
   });
 
   it('canManageEvent denies for a Ministry owned by a different actor', async () => {
@@ -221,14 +221,14 @@ describe('DbAuthorityManager', () => {
     await expect(
       manager.canManageEventTimeBlock({ churchId, eventTimeBlockId, userId }),
     ).resolves.toBe(true);
-    expect(eventTimeBlockRepository.getById).toHaveBeenCalledWith(
+    expect(eventTimeBlockRepository.getById).toHaveBeenCalledWith({
       churchId,
       eventTimeBlockId,
-    );
-    expect(eventRepository.getMinistryId).toHaveBeenCalledWith(
+    });
+    expect(eventRepository.getMinistryId).toHaveBeenCalledWith({
       churchId,
       eventId,
-    );
+    });
   });
 
   it('preserves simultaneous admin, actual leadership and serving capacities without Roles', async () => {

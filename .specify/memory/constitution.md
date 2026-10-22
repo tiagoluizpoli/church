@@ -1,10 +1,17 @@
 <!--
 ## Sync Impact Report
+- Version change: 1.7.1 → 1.8.0
+- Modified principle: VII. Explicit Parameter Contracts
+- Updated: at most one parameter with no exception for transaction handles, signals or options; interface signatures and function types included; enforced by `bun run validate:named-parameters` in `lint` (ADR 0010, #538, #547)
+
 - Version change: 1.7.0 → 1.7.1
 - Modified principle: Core Rules — Shared config package
 - Updated: `@church/app-config` may hold its Zod schema (validated once at module load, #434)
-- Previous: 1.6.0 → 1.7.0, Monorepo Boundaries
+
+- Version change: 1.6.0 → 1.7.0
+- Modified principle: Core Rules — Monorepo Boundaries
 - Updated: `@church/app-config` is the one allowed application-specific package (plain shared config data, #434)
+
 - Templates requiring updates: None; existing Constitution Check is generic
 - Follow-up TODOs: None
 -->
@@ -40,14 +47,17 @@ commit passes quality gates (linting, conventional commits).
 When planning or specifying a feature (e.g., via the `speckit.specify` or `speckit.plan` commands), the process MUST begin by locating the feature's `manual-planning/[xxxx]-feature/specifications-list.md` file. The specification and plan must traverse and analyze all related documentation files linked within that list to establish maximum context before proceeding.
 
 ### VII. Explicit Parameter Contracts
-Application functions, methods, constructors, and call-facing handlers MUST receive inputs through a
-single object parameter when they require data. The object shape MUST use a separately declared,
-descriptively named `interface` or `type`. Inline object typing is forbidden in modified application
-code, including parameter declarations, variable annotations, return annotations, joined record shapes,
-and type assertions or casts such as `value as { ... }`. Zero-argument functions and framework or
-collection callbacks whose signatures are controlled by an external API are exempt from the single
-object parameter requirement, but any additional object typing in modified code MUST still use a named
-type. Existing violations encountered in modified code MUST be corrected as part of the change.
+Application functions, methods, constructors, and call-facing handlers MUST take at most one
+parameter, with no exception for transaction handles, signals or options. When they need data, it
+arrives through a single object parameter. Interface method signatures and function types are
+included. The object shape MUST use a separately declared, descriptively named `interface` or `type`.
+Inline object typing is forbidden in modified application code, including parameter declarations,
+variable annotations, return annotations, joined record shapes, and type assertions or casts such as
+`value as { ... }`. Framework or collection callbacks whose signatures are controlled by an external
+API are exempt from the single-parameter requirement, but any additional object typing in modified code
+MUST still use a named type. Existing violations encountered in modified code MUST be corrected as part
+of the change. Enforced by `bun run validate:named-parameters`, part of `bun run lint`
+([ADR 0010](../../docs/adr/0010-mechanical-rules-enforced-by-tooling.md)).
 
 ## Technology Stack
 
@@ -81,4 +91,4 @@ type. Existing violations encountered in modified code MUST be corrected as part
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.7.1 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-10-13
+**Version**: 1.8.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-10-22

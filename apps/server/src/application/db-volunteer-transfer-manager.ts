@@ -232,8 +232,9 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
       return { status: 'unavailable' };
     }
 
-    const activeProfile =
-      await this.volunteerRepository.findByUserIdGlobally(userId);
+    const activeProfile = await this.volunteerRepository.findByUserIdGlobally({
+      userId,
+    });
     if (
       !activeProfile ||
       activeProfile.churchId === ministryInvitation.churchId

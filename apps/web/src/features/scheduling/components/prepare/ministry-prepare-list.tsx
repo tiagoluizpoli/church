@@ -6,9 +6,13 @@ import { Card } from '@/components/ui/card';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
+export interface SelectMinistryInput {
+  ministryId: string;
+}
+
 export interface MinistryPrepareListProps {
   rows: MinistryPrepareSummaryRow[];
-  onSelectMinistry: (input: { ministryId: string }) => void;
+  onSelectMinistry: (input: SelectMinistryInput) => void;
 }
 
 const MINISTRY_TABLE_COLUMNS: DataTableColumn[] = [
@@ -23,15 +27,17 @@ const DEFAULT_SORT_DESCRIPTOR: SortDescriptor = {
   direction: 'ascending',
 };
 
+interface CompareRowsInput {
+  left: MinistryPrepareSummaryRow;
+  right: MinistryPrepareSummaryRow;
+  sortDescriptor: SortDescriptor;
+}
+
 function compareRows({
   left,
   right,
   sortDescriptor,
-}: {
-  left: MinistryPrepareSummaryRow;
-  right: MinistryPrepareSummaryRow;
-  sortDescriptor: SortDescriptor;
-}): number {
+}: CompareRowsInput): number {
   const direction = sortDescriptor.direction === 'descending' ? -1 : 1;
 
   switch (sortDescriptor.column) {

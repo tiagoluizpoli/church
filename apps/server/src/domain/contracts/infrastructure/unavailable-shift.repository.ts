@@ -21,20 +21,28 @@ export interface ReplaceUnavailableShiftsForCheckInput {
   tx?: TransactionContext;
 }
 
+export interface ListUnavailableShiftsByVolunteerForEventInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  eventId: EventId;
+  tx?: TransactionContext;
+}
+
+export interface ListUnavailableShiftsByVolunteersInput {
+  churchId: ChurchId;
+  volunteerIds: VolunteerId[];
+  tx?: TransactionContext;
+}
+
 /** Unavailable shifts: existence of a row = volunteer unavailable for that shift. */
 export interface UnavailableShiftRepository {
   listByVolunteerForEvent(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    eventId: EventId,
-    tx?: TransactionContext,
+    input: ListUnavailableShiftsByVolunteerForEventInput,
   ): Promise<UnavailableShift[]>;
 
   /** Bulk-fetch unavailable shifts for a set of volunteers. */
   listByVolunteers(
-    churchId: ChurchId,
-    volunteerIds: VolunteerId[],
-    tx?: TransactionContext,
+    input: ListUnavailableShiftsByVolunteersInput,
   ): Promise<UnavailableShift[]>;
 
   listUnavailableShiftsByCheck(

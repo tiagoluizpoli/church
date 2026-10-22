@@ -34,105 +34,118 @@ export interface UpdateAssignmentStatusInput {
   reason?: string;
 }
 
+export interface GetAssignmentInput {
+  churchId: ChurchId;
+  assignmentId: AssignmentId;
+  tx?: TransactionContext;
+}
+
+export interface FindAssignmentByEventTimeBlockAndVolunteerInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  volunteerId: VolunteerId;
+  tx?: TransactionContext;
+}
+
+export interface AssignmentsByEventTimeBlockInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface AssignmentsByEventInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  tx?: TransactionContext;
+}
+
+export interface ListAssignmentsByParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  tx?: TransactionContext;
+}
+
+export interface ListAssignmentsByShiftInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  tx?: TransactionContext;
+}
+
+export interface ListAssignmentsByVolunteerInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  tx?: TransactionContext;
+}
+
+export interface ListAssignmentsByVolunteersInput {
+  churchId: ChurchId;
+  volunteerIds: VolunteerId[];
+  tx?: TransactionContext;
+}
+
+export interface ListAssignmentsByVolunteerInRangeInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  startTime: Date;
+  endTime: Date;
+  tx?: TransactionContext;
+}
+
+export interface ListAssignmentsByRangeInput {
+  churchId: ChurchId;
+  startTime: Date;
+  endTime: Date;
+  tx?: TransactionContext;
+}
+
+export interface UpdateAssignmentStatusRepositoryInput {
+  churchId: ChurchId;
+  assignmentId: AssignmentId;
+  input: UpdateAssignmentStatusInput;
+  tx?: TransactionContext;
+}
+
+export interface CountAssignmentsByVolunteerInRangeInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  startTime: Date;
+  endTime: Date;
+  statusFilter?: AssignmentStatus[];
+  tx?: TransactionContext;
+}
+
 export interface AssignmentRepository {
   create(input: CreateAssignmentRepositoryInput): Promise<Assignment>;
-
-  getById(
-    churchId: ChurchId,
-    id: AssignmentId,
-    tx?: TransactionContext,
-  ): Promise<Assignment>;
-
+  getById(input: GetAssignmentInput): Promise<Assignment>;
   findByEventTimeBlockAndVolunteer(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
+    input: FindAssignmentByEventTimeBlockAndVolunteerInput,
   ): Promise<Assignment | null>;
-
   listByEventTimeBlock(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    tx?: TransactionContext,
+    input: AssignmentsByEventTimeBlockInput,
   ): Promise<Assignment[]>;
-
-  listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]>;
-
+  listByEvent(input: AssignmentsByEventInput): Promise<Assignment[]>;
   listByParticipation(
-    churchId: ChurchId,
-    participationId: MinistryParticipationId,
-    tx?: TransactionContext,
+    input: ListAssignmentsByParticipationInput,
   ): Promise<Assignment[]>;
-
-  listByShift(
-    churchId: ChurchId,
-    shiftId: ShiftId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]>;
-
+  listByShift(input: ListAssignmentsByShiftInput): Promise<Assignment[]>;
   listByVolunteer(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    tx?: TransactionContext,
+    input: ListAssignmentsByVolunteerInput,
   ): Promise<Assignment[]>;
-
   listByVolunteers(
-    churchId: ChurchId,
-    volunteerIds: VolunteerId[],
-    tx?: TransactionContext,
+    input: ListAssignmentsByVolunteersInput,
   ): Promise<Assignment[]>;
-
   /** A Volunteer's Assignments whose Shift overlaps `[startTime, endTime)`; touching ends don't overlap. */
   listByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    startTime: Date,
-    endTime: Date,
-    tx?: TransactionContext,
+    input: ListAssignmentsByVolunteerInRangeInput,
   ): Promise<Assignment[]>;
-
-  listByRange(
-    churchId: ChurchId,
-    startTime: Date,
-    endTime: Date,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]>;
-
-  updateStatus(
-    churchId: ChurchId,
-    id: AssignmentId,
-    input: UpdateAssignmentStatusInput,
-    tx?: TransactionContext,
-  ): Promise<void>;
-
+  listByRange(input: ListAssignmentsByRangeInput): Promise<Assignment[]>;
+  updateStatus(input: UpdateAssignmentStatusRepositoryInput): Promise<void>;
   countByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    startTime: Date,
-    endTime: Date,
-    statusFilter?: AssignmentStatus[],
-    tx?: TransactionContext,
+    input: CountAssignmentsByVolunteerInRangeInput,
   ): Promise<number>;
-
-  deleteByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<void>;
-
-  deleteById(
-    churchId: ChurchId,
-    id: AssignmentId,
-    tx?: TransactionContext,
-  ): Promise<void>;
-
+  deleteByEvent(input: AssignmentsByEventInput): Promise<void>;
+  deleteById(input: GetAssignmentInput): Promise<void>;
   listDeclinedByEventTimeBlock(
-    churchId: ChurchId,
-    eventTimeBlockId: EventTimeBlockId,
-    tx?: TransactionContext,
+    input: AssignmentsByEventTimeBlockInput,
   ): Promise<Assignment[]>;
 }

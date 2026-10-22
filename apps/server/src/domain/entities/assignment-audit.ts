@@ -26,26 +26,28 @@ export interface AssignmentAuditProps {
   overrideConflictTypes?: SoftConflictType[];
 }
 
+export interface AssignmentAuditInput {
+  props: Omit<LooseProps<AssignmentAuditProps>, 'occurredAt'> &
+    Partial<Pick<LooseProps<AssignmentAuditProps>, 'occurredAt'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class AssignmentAudit extends Entity<
   AssignmentAuditProps,
   AssignmentAuditId
 > {
-  constructor(
-    props: Omit<LooseProps<AssignmentAuditProps>, 'occurredAt'> &
-      Partial<Pick<LooseProps<AssignmentAuditProps>, 'occurredAt'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(
-      {
+  constructor({ props, id, createdAt, updatedAt }: AssignmentAuditInput) {
+    super({
+      props: {
         ...props,
         occurredAt: props.occurredAt ?? now(),
       } as unknown as AssignmentAuditProps,
-      id as AssignmentAuditId,
+      id: id as AssignmentAuditId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {

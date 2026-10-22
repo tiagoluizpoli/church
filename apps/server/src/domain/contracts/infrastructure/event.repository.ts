@@ -33,49 +33,47 @@ export interface UpdateEventInput {
   end?: Date;
 }
 
+export interface GetEventInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  tx?: TransactionContext;
+}
+
+export interface ListEventsByMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  status?: EventStatus;
+  tx?: TransactionContext;
+}
+
+export interface CreateEventRepositoryInput {
+  churchId: ChurchId;
+  input: CreateEventInput;
+  tx?: TransactionContext;
+}
+
+export interface UpdateEventStatusRepositoryInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  input: UpdateEventStatusInput;
+  tx?: TransactionContext;
+}
+
+export interface UpdateEventRepositoryInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  input: UpdateEventInput;
+  tx?: TransactionContext;
+}
+
 export interface EventRepository {
-  getMinistryId(
-    churchId: ChurchId,
-    id: EventId,
-    tx?: TransactionContext,
-  ): Promise<MinistryId>;
-
-  getById(
-    churchId: ChurchId,
-    id: EventId,
-    tx?: TransactionContext,
-  ): Promise<Event>;
-
+  getMinistryId(input: GetEventInput): Promise<MinistryId>;
+  getById(input: GetEventInput): Promise<Event>;
   getWithEventTimeBlocks(
-    churchId: ChurchId,
-    id: EventId,
-    tx?: TransactionContext,
+    input: GetEventInput,
   ): Promise<EventWithEventTimeBlocks>;
-
-  listByMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    status?: EventStatus,
-    tx?: TransactionContext,
-  ): Promise<Event[]>;
-
-  create(
-    churchId: ChurchId,
-    input: CreateEventInput,
-    tx?: TransactionContext,
-  ): Promise<Event>;
-
-  updateStatus(
-    churchId: ChurchId,
-    id: EventId,
-    input: UpdateEventStatusInput,
-    tx?: TransactionContext,
-  ): Promise<void>;
-
-  update(
-    churchId: ChurchId,
-    id: EventId,
-    input: UpdateEventInput,
-    tx?: TransactionContext,
-  ): Promise<Event>;
+  listByMinistry(input: ListEventsByMinistryInput): Promise<Event[]>;
+  create(input: CreateEventRepositoryInput): Promise<Event>;
+  updateStatus(input: UpdateEventStatusRepositoryInput): Promise<void>;
+  update(input: UpdateEventRepositoryInput): Promise<Event>;
 }

@@ -22,6 +22,11 @@ interface EventTemplateGraphRow {
   blocks: Array<typeof templateTimeBlock.$inferSelect>;
 }
 
+interface MapTemplateGraphInput {
+  template: typeof eventTemplate.$inferSelect;
+  tx?: CreateEventTemplateInput['tx'];
+}
+
 interface DrizzleEventTemplateRepositoryInput {
   db: AnyDrizzleDb;
 }
@@ -34,7 +39,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
   private readonly db: AnyDrizzleDb;
 
   async create(input: CreateEventTemplateInput): Promise<EventTemplate> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [templateRow] = await db
       .insert(eventTemplate)
       .values({
@@ -69,7 +74,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
   }
 
   async update(input: UpdateEventTemplateInput): Promise<EventTemplate> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [templateRow] = await db
       .update(eventTemplate)
       .set({
@@ -80,7 +85,10 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .where(
         and(
           eq(eventTemplate.id, input.templateId),
-          withChurchIsolation(eventTemplate, input.churchId),
+          withChurchIsolation({
+            table: eventTemplate,
+            churchId: input.churchId,
+          }),
         ),
       )
       .returning();
@@ -114,23 +122,26 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
   }
 
   async delete(input: DeleteEventTemplateInput): Promise<void> {
-    const db = getClient(this.db, input.tx);
-    await db
-      .delete(eventTemplate)
-      .where(
-        and(
-          eq(eventTemplate.id, input.templateId),
-          withChurchIsolation(eventTemplate, input.churchId),
-        ),
-      );
+    const db = getClient({ db: this.db, tx: input.tx });
+    await db.delete(eventTemplate).where(
+      and(
+        eq(eventTemplate.id, input.templateId),
+        withChurchIsolation({
+          table: eventTemplate,
+          churchId: input.churchId,
+        }),
+      ),
+    );
   }
 
   async list(input: ListEventTemplatesInput): Promise<EventTemplate[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const templateRows = await db
       .select()
       .from(eventTemplate)
-      .where(withChurchIsolation(eventTemplate, input.churchId))
+      .where(
+        withChurchIsolation({ table: eventTemplate, churchId: input.churchId }),
+      )
       .orderBy(asc(eventTemplate.name));
 
     return Promise.all(
@@ -148,14 +159,17 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       throw new NotFoundError(`Event template not found: ${input.templateId}`);
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [templateRow] = await db
       .select()
       .from(eventTemplate)
       .where(
         and(
           eq(eventTemplate.id, input.templateId),
-          withChurchIsolation(eventTemplate, input.churchId),
+          withChurchIsolation({
+            table: eventTemplate,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -174,13 +188,16 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       return [];
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const templateRows = await db
       .select()
       .from(eventTemplate)
       .where(
         and(
-          withChurchIsolation(eventTemplate, input.churchId),
+          withChurchIsolation({
+            table: eventTemplate,
+            churchId: input.churchId,
+          }),
           inArray(eventTemplate.id, input.templateIds),
         ),
       );
@@ -195,11 +212,10 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     );
   }
 
-  private async mapTemplateGraph(input: {
-    template: typeof eventTemplate.$inferSelect;
-    tx?: CreateEventTemplateInput['tx'];
-  }): Promise<EventTemplate> {
-    const db = getClient(this.db, input.tx);
+  private async mapTemplateGraph(
+    input: MapTemplateGraphInput,
+  ): Promise<EventTemplate> {
+    const db = getClient({ db: this.db, tx: input.tx });
     const blocks = await db
       .select()
       .from(templateTimeBlock)

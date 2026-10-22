@@ -32,15 +32,15 @@ export class AvailabilityCheck extends Entity<
   AvailabilityCheckId
 > {
   constructor({ props, id, createdAt, updatedAt }: AvailabilityCheckInput) {
-    super(
-      {
+    super({
+      props: {
         ...props,
         state: props.state ?? 'pending',
       } as AvailabilityCheckProps,
-      id as AvailabilityCheckId,
+      id: id as AvailabilityCheckId,
       createdAt,
       updatedAt,
-    );
+    });
   }
 
   get churchId(): ChurchId {
@@ -66,7 +66,10 @@ export class AvailabilityCheck extends Entity<
   /** Confirm gate: valid even with zero unavailable shifts (FR-019). */
   confirm(): void {
     if (this.state !== 'pending') {
-      throw new IllegalStateTransitionError(this.state, 'confirmed');
+      throw new IllegalStateTransitionError({
+        from: this.state,
+        to: 'confirmed',
+      });
     }
 
     this._props.state = 'confirmed';

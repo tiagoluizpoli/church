@@ -178,6 +178,11 @@ interface ShiftRoleRecommendationsInput {
   index: ShiftAssignmentIndex;
 }
 
+interface ToSuggestionInput {
+  volunteer: CycleBuilderShiftSummary['eligibleVolunteers'][number];
+  status: SuggestedVolunteer['status'];
+}
+
 /**
  * The picker's suggestion groups. Recommending is a stronger claim than
  * listing, so only `ready`/`override` fits reach these groups — `unqualified`
@@ -192,10 +197,10 @@ export function recommendations({
   index,
 }: ShiftRoleRecommendationsInput) {
   const assignedVolunteerIds = assignedVolunteerIdsForShift({ shift });
-  const toSuggestion = (
-    volunteer: (typeof shift.eligibleVolunteers)[number],
-    status: SuggestedVolunteer['status'],
-  ): SuggestedVolunteer => ({
+  const toSuggestion = ({
+    volunteer,
+    status,
+  }: ToSuggestionInput): SuggestedVolunteer => ({
     id: volunteer.volunteerId,
     name: volunteer.volunteerName,
     membership: {
@@ -228,11 +233,13 @@ export function recommendations({
         );
       })
       .slice(0, 5)
-      .map((volunteer) => toSuggestion(volunteer, 'available')),
+      .map((volunteer) => toSuggestion({ volunteer, status: 'available' })),
     needsResponse: eligible
       .filter((volunteer) => !volunteer.isAvailable)
       .slice(0, 5)
-      .map((volunteer) => toSuggestion(volunteer, 'needs_response')),
+      .map((volunteer) =>
+        toSuggestion({ volunteer, status: 'needs_response' }),
+      ),
   };
 }
 

@@ -104,16 +104,17 @@ describe('DrizzleUnavailableShiftRepository', () => {
     expect(unavailableShifts[0]?.shiftId).toBe(shift.id);
     expect(unavailableShifts[0]?.volunteerId).toBe(seed.adminVolunteerId);
 
-    const byVolunteerForEvent = await repo.listByVolunteerForEvent(
+    const byVolunteerForEvent = await repo.listByVolunteerForEvent({
       churchId,
-      VolunteerId.from(seed.adminVolunteerId),
-      EventId.from(event.id),
-    );
+      volunteerId: VolunteerId.from(seed.adminVolunteerId),
+      eventId: EventId.from(event.id),
+    });
     expect(byVolunteerForEvent).toHaveLength(1);
 
-    const byVolunteers = await repo.listByVolunteers(churchId, [
-      VolunteerId.from(seed.adminVolunteerId),
-    ]);
+    const byVolunteers = await repo.listByVolunteers({
+      churchId,
+      volunteerIds: [VolunteerId.from(seed.adminVolunteerId)],
+    });
     expect(byVolunteers).toHaveLength(1);
   });
 
@@ -160,10 +161,10 @@ describe('DrizzleUnavailableShiftRepository', () => {
     const repo = new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     });
-    const result = await repo.listByVolunteers(
-      ChurchId.from(seed.churchAId),
-      [],
-    );
+    const result = await repo.listByVolunteers({
+      churchId: ChurchId.from(seed.churchAId),
+      volunteerIds: [],
+    });
     expect(result).toEqual([]);
   });
 });

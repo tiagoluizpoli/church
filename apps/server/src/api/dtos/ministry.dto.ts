@@ -18,6 +18,8 @@ export const ministryListResponseSchema = z.object({
   ministries: z.array(ministryResponseSchema),
 });
 
+export type MinistryListResponse = z.infer<typeof ministryListResponseSchema>;
+
 export const ministryMapper = {
   toResponse(ministry: Ministry): MinistryResponse {
     return {
@@ -31,7 +33,7 @@ export const ministryMapper = {
     };
   },
 
-  toResponseList(ministries: Ministry[]): { ministries: MinistryResponse[] } {
+  toResponseList(ministries: Ministry[]): MinistryListResponse {
     return { ministries: ministries.map((m) => ministryMapper.toResponse(m)) };
   },
 };

@@ -17,10 +17,15 @@ import { Assignment } from '../../domain/entities/assignment';
 
 type AssignmentRow = InferSelectModel<typeof assignment>;
 
-export function mapAssignment(
-  row: AssignmentRow,
-  eventTimeBlockId?: string,
-): Assignment {
+export interface MapAssignmentInput {
+  row: AssignmentRow;
+  eventTimeBlockId?: string;
+}
+
+export function mapAssignment({
+  row,
+  eventTimeBlockId,
+}: MapAssignmentInput): Assignment {
   const props: AssignmentProps = {
     churchId: row.churchId as ChurchId,
     participationId: row.participationId as MinistryParticipationId,
@@ -35,5 +40,5 @@ export function mapAssignment(
     assignedBy: row.assignedBy ? (row.assignedBy as UserId) : undefined,
   };
 
-  return new Assignment(props, row.id as AssignmentId);
+  return new Assignment({ props, id: row.id as AssignmentId });
 }

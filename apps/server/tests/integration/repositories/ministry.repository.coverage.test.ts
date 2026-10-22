@@ -19,7 +19,10 @@ describe('DrizzleMinistryRepository (extra coverage)', () => {
     const seed = await seedSchedulingPhase3Base();
     const repo = new DrizzleMinistryRepository({ db: schedulingTestDb });
     await expect(
-      repo.getById(ChurchId.from(seed.churchAId), MinistryId.from('nope')),
+      repo.getById({
+        churchId: ChurchId.from(seed.churchAId),
+        id: MinistryId.from('nope'),
+      }),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -36,7 +39,7 @@ describe('DrizzleMinistryRepository (extra coverage)', () => {
     });
     expect(updated.defaultDirection).toBe('all_out');
 
-    const settings = await repo.getSettings(churchId, ministryId);
+    const settings = await repo.getSettings({ churchId, ministryId });
     expect(settings.defaultDirection).toBe('all_out');
 
     await expect(
@@ -53,7 +56,7 @@ describe('DrizzleMinistryRepository (extra coverage)', () => {
     const repo = new DrizzleMinistryRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
-    const before = await repo.listByChurch(churchId);
+    const before = await repo.listByChurch({ churchId });
     expect(before).toHaveLength(1);
 
     await schedulingTestDb
@@ -61,7 +64,7 @@ describe('DrizzleMinistryRepository (extra coverage)', () => {
       .set({ deletedAt: new Date() })
       .where(eq(ministry.id, seed.ministryAId));
 
-    const after = await repo.listByChurch(churchId);
+    const after = await repo.listByChurch({ churchId });
     expect(after).toHaveLength(0);
   });
 });

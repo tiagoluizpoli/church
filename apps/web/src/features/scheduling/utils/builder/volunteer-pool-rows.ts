@@ -45,11 +45,13 @@ interface FlattenPoolRowsInput {
   unavailableOpen: boolean;
 }
 
-function pushCards(
-  rows: PoolRow[],
-  volunteers: VolunteerPoolItem[],
-  section: string,
-): void {
+interface PushCardsInput {
+  rows: PoolRow[];
+  volunteers: VolunteerPoolItem[];
+  section: string;
+}
+
+function pushCards({ rows, volunteers, section }: PushCardsInput): void {
   for (const volunteer of volunteers) {
     rows.push({
       kind: 'card',
@@ -87,7 +89,7 @@ export function flattenPoolRows({
         label: 'Ready',
         count: groups.ready.length,
       });
-      pushCards(rows, groups.ready, 'ready');
+      pushCards({ rows, volunteers: groups.ready, section: 'ready' });
     }
     if (groups.awaiting.length) {
       rows.push({
@@ -96,7 +98,7 @@ export function flattenPoolRows({
         label: 'Awaiting',
         count: groups.awaiting.length,
       });
-      pushCards(rows, groups.awaiting, 'awaiting');
+      pushCards({ rows, volunteers: groups.awaiting, section: 'awaiting' });
     }
     if (groups.unavailable.length) {
       rows.push({
@@ -106,7 +108,12 @@ export function flattenPoolRows({
         count: groups.unavailable.length,
         open: unavailableOpen,
       });
-      if (unavailableOpen) pushCards(rows, groups.unavailable, 'unavailable');
+      if (unavailableOpen)
+        pushCards({
+          rows,
+          volunteers: groups.unavailable,
+          section: 'unavailable',
+        });
     }
     return rows;
   }
@@ -136,7 +143,7 @@ export function flattenPoolRows({
   }
 
   if (!focusedVolunteers) {
-    pushCards(rows, otherVolunteers, 'all');
+    pushCards({ rows, volunteers: otherVolunteers, section: 'all' });
     return rows;
   }
 
@@ -148,7 +155,7 @@ export function flattenPoolRows({
     icon: 'focus',
   });
   if (focusedVolunteers.length) {
-    pushCards(rows, focusedVolunteers, 'focused');
+    pushCards({ rows, volunteers: focusedVolunteers, section: 'focused' });
   } else {
     rows.push({
       kind: 'empty',
@@ -163,7 +170,7 @@ export function flattenPoolRows({
       label: 'Everyone else',
       count: otherVolunteers.length,
     });
-    pushCards(rows, otherVolunteers, 'others');
+    pushCards({ rows, volunteers: otherVolunteers, section: 'others' });
   }
   return rows;
 }

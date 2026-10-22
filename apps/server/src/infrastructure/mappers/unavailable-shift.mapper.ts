@@ -18,10 +18,15 @@ export interface AvailabilityJoinedRow {
   shiftEndTime: Date;
 }
 
-export function mapUnavailableShift(
-  row: UnavailableShiftRow,
-  joined: AvailabilityJoinedRow,
-): UnavailableShift {
+export interface MapUnavailableShiftInput {
+  row: UnavailableShiftRow;
+  joined: AvailabilityJoinedRow;
+}
+
+export function mapUnavailableShift({
+  row,
+  joined,
+}: MapUnavailableShiftInput): UnavailableShift {
   const props: UnavailableShiftProps = {
     churchId: row.churchId as ChurchId,
     availabilityCheckId: row.availabilityCheckId as AvailabilityCheckId,

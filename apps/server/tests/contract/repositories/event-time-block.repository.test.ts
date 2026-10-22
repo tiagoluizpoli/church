@@ -8,9 +8,13 @@ import type {
   SectorId,
 } from '@/domain/branded-ids';
 import type {
-  CreateEventTimeBlockInput,
+  CountActiveAssignmentsInput,
+  CreateEventTimeBlockRepositoryInput,
   EventTimeBlockRepository,
-  UpdateEventTimeBlockInput,
+  EventTimeBlocksByEventInput,
+  FindOverlappingEventTimeBlocksInput,
+  GetEventTimeBlockInput,
+  UpdateEventTimeBlockRepositoryInput,
 } from '@/domain/contracts/infrastructure/event-time-block.repository';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import {
@@ -24,8 +28,8 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
   private idCounter = 1;
 
   constructor() {
-    const req = new ShiftRequirement(
-      {
+    const req = new ShiftRequirement({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventTimeBlockId:
           '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
@@ -34,11 +38,11 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         sectorName: 'Palco',
         peopleNeeded: 1,
       },
-      '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
-    );
+      id: '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
+    });
 
-    const eventTimeBlock = new EventTimeBlock(
-      {
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: '66666666-6666-6666-6666-666666666661' as EventId,
         startTime: parseInstant({ value: '2024-06-05T10:00:00Z' }),
@@ -46,16 +50,16 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         status: 'active',
         requirements: [req],
       },
-      '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
-    );
+      id: '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
+    });
 
     this.eventTimeBlocks.set(eventTimeBlock.id, eventTimeBlock);
   }
 
-  async getById(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-  ): Promise<EventTimeBlock> {
+  async getById({
+    churchId,
+    eventTimeBlockId: id,
+  }: GetEventTimeBlockInput): Promise<EventTimeBlock> {
     const eventTimeBlock = this.eventTimeBlocks.get(id);
     if (!eventTimeBlock || eventTimeBlock.churchId !== churchId) {
       throw new NotFoundError('Event time block not found');
@@ -63,16 +67,19 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
     return eventTimeBlock;
   }
 
-  async listByEvent(
-    churchId: ChurchId,
-    eventId: EventId,
-  ): Promise<EventTimeBlock[]> {
+  async listByEvent({
+    churchId,
+    eventId,
+  }: EventTimeBlocksByEventInput): Promise<EventTimeBlock[]> {
     return Array.from(this.eventTimeBlocks.values()).filter(
       (s) => s.churchId === churchId && s.eventId === eventId,
     );
   }
 
-  async deleteByEvent(churchId: ChurchId, eventId: EventId): Promise<void> {
+  async deleteByEvent({
+    churchId,
+    eventId,
+  }: EventTimeBlocksByEventInput): Promise<void> {
     for (const eventTimeBlock of Array.from(this.eventTimeBlocks.values())) {
       if (
         eventTimeBlock.churchId === churchId &&
@@ -84,20 +91,18 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
   }
 
   async countActiveAssignments(
-    _churchId: ChurchId,
-    _eventTimeBlockId: EventTimeBlockId,
-    _roleId: RoleId,
+    _input: CountActiveAssignmentsInput,
   ): Promise<number> {
     return 0;
   }
 
-  async create(
-    churchId: ChurchId,
-    input: CreateEventTimeBlockInput,
-  ): Promise<EventTimeBlock> {
+  async create({
+    churchId,
+    input,
+  }: CreateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
     const id = `event-time-block-gen-${this.idCounter++}` as EventTimeBlockId;
-    const eventTimeBlock = new EventTimeBlock(
-      {
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
         churchId,
         eventId: input.eventId,
         startTime: fromDate({ date: input.startTime }),
@@ -107,19 +112,19 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         requirements: [],
       },
       id,
-    );
+    });
     this.eventTimeBlocks.set(eventTimeBlock.id, eventTimeBlock);
     return eventTimeBlock;
   }
 
-  async update(
-    churchId: ChurchId,
-    id: EventTimeBlockId,
-    input: UpdateEventTimeBlockInput,
-  ): Promise<EventTimeBlock> {
-    const existing = await this.getById(churchId, id);
-    const updated = new EventTimeBlock(
-      {
+  async update({
+    churchId,
+    eventTimeBlockId: id,
+    input,
+  }: UpdateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
+    const existing = await this.getById({ churchId, eventTimeBlockId: id });
+    const updated = new EventTimeBlock({
+      props: {
         churchId: existing.churchId,
         eventId: existing.eventId,
         startTime: input.startTime
@@ -132,26 +137,29 @@ class MockEventTimeBlockRepository implements EventTimeBlockRepository {
         status: existing.status,
         requirements: existing.requirements,
       },
-      existing.id,
-    );
+      id: existing.id,
+    });
     this.eventTimeBlocks.set(updated.id, updated);
     return updated;
   }
 
-  async deleteById(churchId: ChurchId, id: EventTimeBlockId): Promise<void> {
+  async deleteById({
+    churchId,
+    eventTimeBlockId: id,
+  }: GetEventTimeBlockInput): Promise<void> {
     const eventTimeBlock = this.eventTimeBlocks.get(id);
     if (eventTimeBlock && eventTimeBlock.churchId === churchId) {
       this.eventTimeBlocks.delete(id);
     }
   }
 
-  async findOverlapping(
-    churchId: ChurchId,
-    eventId: EventId,
-    startTime: Date,
-    endTime: Date,
-    excludeEventTimeBlockId?: EventTimeBlockId,
-  ): Promise<EventTimeBlock[]> {
+  async findOverlapping({
+    churchId,
+    eventId,
+    startTime,
+    endTime,
+    excludeEventTimeBlockId,
+  }: FindOverlappingEventTimeBlocksInput): Promise<EventTimeBlock[]> {
     return Array.from(this.eventTimeBlocks.values()).filter(
       (eventTimeBlock) =>
         eventTimeBlock.churchId === churchId &&

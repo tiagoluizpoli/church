@@ -5,10 +5,12 @@ import { AssignmentAudit } from '@/domain/entities/assignment-audit';
 describe('AssignmentAudit Entity', () => {
   it('constructs with valid props', () => {
     const audit = new AssignmentAudit({
-      churchId: 'c1',
-      assignmentId: 'a1',
-      actorId: 'u1',
-      action: 'created',
+      props: {
+        churchId: 'c1',
+        assignmentId: 'a1',
+        actorId: 'u1',
+        action: 'created',
+      },
     });
 
     expect(audit.churchId).toBe('c1');
@@ -20,18 +22,22 @@ describe('AssignmentAudit Entity', () => {
 
   it('constructs with event_published and event_cancelled actions', () => {
     const auditPublished = new AssignmentAudit({
-      churchId: 'c1',
-      assignmentId: 'a1',
-      actorId: 'u1',
-      action: 'event_published',
+      props: {
+        churchId: 'c1',
+        assignmentId: 'a1',
+        actorId: 'u1',
+        action: 'event_published',
+      },
     });
     expect(auditPublished.action).toBe('event_published');
 
     const auditCancelled = new AssignmentAudit({
-      churchId: 'c1',
-      assignmentId: 'a1',
-      actorId: 'u1',
-      action: 'event_cancelled',
+      props: {
+        churchId: 'c1',
+        assignmentId: 'a1',
+        actorId: 'u1',
+        action: 'event_cancelled',
+      },
     });
     expect(auditCancelled.action).toBe('event_cancelled');
   });

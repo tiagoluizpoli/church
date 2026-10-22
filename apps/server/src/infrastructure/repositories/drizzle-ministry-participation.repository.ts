@@ -53,14 +53,17 @@ export class DrizzleMinistryParticipationRepository
       );
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .select()
       .from(ministryParticipation)
       .where(
         and(
           eq(ministryParticipation.id, input.participationId),
-          withChurchIsolation(ministryParticipation, input.churchId),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -76,7 +79,7 @@ export class DrizzleMinistryParticipationRepository
   async findByMinistryEvent(
     input: FindParticipationByMinistryEventInput,
   ): Promise<MinistryParticipation | null> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .select()
       .from(ministryParticipation)
@@ -84,7 +87,10 @@ export class DrizzleMinistryParticipationRepository
         and(
           eq(ministryParticipation.ministryId, input.ministryId),
           eq(ministryParticipation.eventId, input.eventId),
-          withChurchIsolation(ministryParticipation, input.churchId),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
         ),
       )
       .limit(1);
@@ -95,7 +101,7 @@ export class DrizzleMinistryParticipationRepository
   async create(
     input: CreateParticipationInput,
   ): Promise<MinistryParticipation> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .insert(ministryParticipation)
       .values({
@@ -115,14 +121,17 @@ export class DrizzleMinistryParticipationRepository
   async listByEvent(
     input: ListParticipationsByEventInput,
   ): Promise<MinistryParticipation[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(ministryParticipation)
       .where(
         and(
           eq(ministryParticipation.eventId, input.eventId),
-          withChurchIsolation(ministryParticipation, input.churchId),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -132,10 +141,13 @@ export class DrizzleMinistryParticipationRepository
   async listByMinistry(
     input: ListParticipationsByMinistryInput,
   ): Promise<MinistryParticipation[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const conditions = [
       eq(ministryParticipation.ministryId, input.ministryId),
-      withChurchIsolation(ministryParticipation, input.churchId),
+      withChurchIsolation({
+        table: ministryParticipation,
+        churchId: input.churchId,
+      }),
     ];
 
     if (input.state) {
@@ -157,14 +169,17 @@ export class DrizzleMinistryParticipationRepository
       return [];
     }
 
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(ministryParticipation)
       .where(
         and(
           inArray(ministryParticipation.id, input.participationIds),
-          withChurchIsolation(ministryParticipation, input.churchId),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -174,7 +189,7 @@ export class DrizzleMinistryParticipationRepository
   async updateState(
     input: UpdateParticipationStateInput,
   ): Promise<MinistryParticipation> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const [row] = await db
       .update(ministryParticipation)
       .set({
@@ -184,7 +199,10 @@ export class DrizzleMinistryParticipationRepository
       .where(
         and(
           eq(ministryParticipation.id, input.participationId),
-          withChurchIsolation(ministryParticipation, input.churchId),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
         ),
       )
       .returning();
@@ -201,7 +219,7 @@ export class DrizzleMinistryParticipationRepository
   async listInclusions(
     input: ListInclusionsInput,
   ): Promise<ParticipationEventTimeBlockInclusion[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select()
       .from(participationEventTimeBlockInclusion)
@@ -211,10 +229,10 @@ export class DrizzleMinistryParticipationRepository
             participationEventTimeBlockInclusion.participationId,
             input.participationId,
           ),
-          withChurchIsolation(
-            participationEventTimeBlockInclusion,
-            input.churchId,
-          ),
+          withChurchIsolation({
+            table: participationEventTimeBlockInclusion,
+            churchId: input.churchId,
+          }),
         ),
       );
 
@@ -222,44 +240,40 @@ export class DrizzleMinistryParticipationRepository
   }
 
   async replaceInclusions(input: ReplaceInclusionsInput): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
 
     if (input.eventTimeBlockIds.length === 0) {
-      await db
-        .delete(participationEventTimeBlockInclusion)
-        .where(
-          and(
-            eq(
-              participationEventTimeBlockInclusion.participationId,
-              input.participationId,
-            ),
-            withChurchIsolation(
-              participationEventTimeBlockInclusion,
-              input.churchId,
-            ),
-          ),
-        );
-      return;
-    }
-
-    await db
-      .delete(participationEventTimeBlockInclusion)
-      .where(
+      await db.delete(participationEventTimeBlockInclusion).where(
         and(
           eq(
             participationEventTimeBlockInclusion.participationId,
             input.participationId,
           ),
-          withChurchIsolation(
-            participationEventTimeBlockInclusion,
-            input.churchId,
-          ),
-          notInArray(
-            participationEventTimeBlockInclusion.eventTimeBlockId,
-            input.eventTimeBlockIds,
-          ),
+          withChurchIsolation({
+            table: participationEventTimeBlockInclusion,
+            churchId: input.churchId,
+          }),
         ),
       );
+      return;
+    }
+
+    await db.delete(participationEventTimeBlockInclusion).where(
+      and(
+        eq(
+          participationEventTimeBlockInclusion.participationId,
+          input.participationId,
+        ),
+        withChurchIsolation({
+          table: participationEventTimeBlockInclusion,
+          churchId: input.churchId,
+        }),
+        notInArray(
+          participationEventTimeBlockInclusion.eventTimeBlockId,
+          input.eventTimeBlockIds,
+        ),
+      ),
+    );
 
     const existing = await db
       .select({
@@ -272,10 +286,10 @@ export class DrizzleMinistryParticipationRepository
             participationEventTimeBlockInclusion.participationId,
             input.participationId,
           ),
-          withChurchIsolation(
-            participationEventTimeBlockInclusion,
-            input.churchId,
-          ),
+          withChurchIsolation({
+            table: participationEventTimeBlockInclusion,
+            churchId: input.churchId,
+          }),
           inArray(
             participationEventTimeBlockInclusion.eventTimeBlockId,
             input.eventTimeBlockIds,
@@ -299,7 +313,7 @@ export class DrizzleMinistryParticipationRepository
   }
 
   async addInclusion(input: AddInclusionInput): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     await db
       .insert(participationEventTimeBlockInclusion)
       .values({
@@ -311,14 +325,17 @@ export class DrizzleMinistryParticipationRepository
   }
 
   async touch(input: TouchParticipationInput): Promise<void> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
     await db
       .update(ministryParticipation)
       .set({ touchedAt: nowAsDate() })
       .where(
         and(
           eq(ministryParticipation.id, input.participationId),
-          withChurchIsolation(ministryParticipation, input.churchId),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
           isNull(ministryParticipation.touchedAt),
         ),
       );
@@ -327,7 +344,7 @@ export class DrizzleMinistryParticipationRepository
   async listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryRow[]> {
-    const db = getClient(this.db, input.tx);
+    const db = getClient({ db: this.db, tx: input.tx });
 
     const sentCycles = await db
       .select({
@@ -339,7 +356,7 @@ export class DrizzleMinistryParticipationRepository
       .from(cycle)
       .where(
         and(
-          withChurchIsolation(cycle, input.churchId),
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
           eq(cycle.state, 'sent'),
         ),
       )
@@ -370,8 +387,11 @@ export class DrizzleMinistryParticipationRepository
       .innerJoin(event, eq(event.id, ministryParticipation.eventId))
       .where(
         and(
-          withChurchIsolation(ministryParticipation, input.churchId),
-          withChurchIsolation(event, input.churchId),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
+          withChurchIsolation({ table: event, churchId: input.churchId }),
           eq(ministryParticipation.ministryId, input.ministryId),
           inArray(event.cycleId, cycleIds),
         ),
@@ -394,10 +414,10 @@ export class DrizzleMinistryParticipationRepository
             .from(participationEventTimeBlockInclusion)
             .where(
               and(
-                withChurchIsolation(
-                  participationEventTimeBlockInclusion,
-                  input.churchId,
-                ),
+                withChurchIsolation({
+                  table: participationEventTimeBlockInclusion,
+                  churchId: input.churchId,
+                }),
                 inArray(
                   participationEventTimeBlockInclusion.participationId,
                   participationIds,

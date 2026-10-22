@@ -35,13 +35,15 @@ function AlertDialogOverlay({
   );
 }
 
+type AlertDialogContentProps = AlertDialogPrimitive.Popup.Props & {
+  size?: 'default' | 'sm';
+};
+
 function AlertDialogContent({
   className,
   size = 'default',
   ...props
-}: AlertDialogPrimitive.Popup.Props & {
-  size?: 'default' | 'sm';
-}) {
+}: AlertDialogContentProps) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />

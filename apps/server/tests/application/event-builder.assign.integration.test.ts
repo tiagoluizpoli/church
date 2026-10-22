@@ -20,7 +20,7 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { HardConstraintError } from '@/domain/conflict/errors/hard-constraint-error';
-import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { HasMembershipInMinistryInput } from '@/domain/contracts/infrastructure/volunteer.repository';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -261,12 +261,12 @@ class AssignTrackingVolunteerRepository extends DrizzleVolunteerRepository {
     super({ db: schedulingTestDb });
   }
 
-  override async hasMembershipInMinistry(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<boolean> {
+  override async hasMembershipInMinistry({
+    churchId,
+    volunteerId,
+    ministryId,
+    tx,
+  }: HasMembershipInMinistryInput): Promise<boolean> {
     if (!(tx instanceof DrizzleTransactionContext)) {
       throw new Error('Assign membership check did not receive a transaction');
     }
@@ -274,7 +274,12 @@ class AssignTrackingVolunteerRepository extends DrizzleVolunteerRepository {
       sql`SELECT pg_backend_pid() AS "backendPid"`,
     );
     this.onAssignBackendPid(readBackendPid(result));
-    return super.hasMembershipInMinistry(churchId, volunteerId, ministryId, tx);
+    return super.hasMembershipInMinistry({
+      churchId,
+      volunteerId,
+      ministryId,
+      tx,
+    });
   }
 }
 

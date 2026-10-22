@@ -106,16 +106,16 @@ function createUsualSetup(): UsualSetup {
 }
 
 function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
-  return new Ministry(
-    {
+  return new Ministry({
+    props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       name: 'Projection',
       defaultDirection,
     },
-    '33333333-3333-3333-3333-333333333333',
-    new Date('2026-07-01T00:00:00.000Z'),
-    new Date('2026-07-01T00:00:00.000Z'),
-  );
+    id: '33333333-3333-3333-3333-333333333333',
+    createdAt: new Date('2026-07-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-07-01T00:00:00.000Z'),
+  });
 }
 
 beforeAll(async () => {
@@ -225,7 +225,7 @@ describe('Church admin planning routes', () => {
     expect(forbidden.statusCode).toBe(403);
 
     cycleManager.sendCycle.mockRejectedValueOnce(
-      new IllegalStateTransitionError('sent', 'sent'),
+      new IllegalStateTransitionError({ from: 'sent', to: 'sent' }),
     );
     const conflict = await app.inject({
       method: 'POST',
@@ -275,18 +275,18 @@ describe('Church admin planning routes', () => {
     // is only to confirm the HTTP layer doesn't reintroduce reinterpretation
     // between the wire and the manager call.
     planningEventManager.createEvent.mockResolvedValue(
-      new Event(
-        {
+      new Event({
+        props: {
           churchId: '11111111-1111-1111-1111-111111111111',
           cycleId: '22222222-2222-2222-2222-222222222222',
           title: 'Domingo',
           start: parseInstant({ value: '2026-06-28T03:00:00.000Z' }),
           end: parseInstant({ value: '2026-06-29T02:59:59.999Z' }),
         },
-        '33333333-3333-3333-3333-333333333333',
-        new Date('2026-06-01T00:00:00.000Z'),
-        new Date('2026-06-01T00:00:00.000Z'),
-      ),
+        id: '33333333-3333-3333-3333-333333333333',
+        createdAt: new Date('2026-06-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-01T00:00:00.000Z'),
+      }),
     );
 
     const response = await app.inject({
@@ -411,7 +411,7 @@ describe('Church admin planning routes', () => {
     expect(success.json()).toMatchObject({ label: 'Worship' });
 
     planningEventManager.createEventTimeBlock.mockRejectedValueOnce(
-      new IllegalStateTransitionError('scheduled', 'update'),
+      new IllegalStateTransitionError({ from: 'scheduled', to: 'update' }),
     );
     const locked = await app.inject({
       method: 'POST',
@@ -470,7 +470,7 @@ describe('Church admin planning routes', () => {
     expect(notFound.statusCode).toBe(404);
 
     planningEventManager.updateEventTimeBlock.mockRejectedValueOnce(
-      new IllegalStateTransitionError('scheduled', 'update'),
+      new IllegalStateTransitionError({ from: 'scheduled', to: 'update' }),
     );
     const locked = await app.inject({
       method: 'PATCH',

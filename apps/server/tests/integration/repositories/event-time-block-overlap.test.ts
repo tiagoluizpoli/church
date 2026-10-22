@@ -19,43 +19,43 @@ describe('DrizzleEventTimeBlockRepository.findOverlapping (T091)', () => {
   });
 
   it('returns [] when the range does not overlap any event time block', async () => {
-    const result = await repo.findOverlapping(
-      CHURCH,
-      EVENT,
-      new Date('2024-06-05T14:00:00Z'),
-      new Date('2024-06-05T15:00:00Z'),
-    );
+    const result = await repo.findOverlapping({
+      churchId: CHURCH,
+      eventId: EVENT,
+      startTime: new Date('2024-06-05T14:00:00Z'),
+      endTime: new Date('2024-06-05T15:00:00Z'),
+    });
     expect(result).toEqual([]);
   });
 
   it('returns the matching event time block when ranges intersect', async () => {
-    const result = await repo.findOverlapping(
-      CHURCH,
-      EVENT,
-      new Date('2024-06-05T10:00:00Z'),
-      new Date('2024-06-05T12:00:00Z'),
-    );
+    const result = await repo.findOverlapping({
+      churchId: CHURCH,
+      eventId: EVENT,
+      startTime: new Date('2024-06-05T10:00:00Z'),
+      endTime: new Date('2024-06-05T12:00:00Z'),
+    });
     expect(result.map((s) => s.id)).toContain(EVENT_TIME_BLOCK_ID);
   });
 
   it('treats exactly-adjacent ranges as non-overlapping', async () => {
-    const result = await repo.findOverlapping(
-      CHURCH,
-      EVENT,
-      new Date('2024-06-05T11:00:00Z'),
-      new Date('2024-06-05T12:00:00Z'),
-    );
+    const result = await repo.findOverlapping({
+      churchId: CHURCH,
+      eventId: EVENT,
+      startTime: new Date('2024-06-05T11:00:00Z'),
+      endTime: new Date('2024-06-05T12:00:00Z'),
+    });
     expect(result).toEqual([]);
   });
 
   it('excludes the event time block identified by excludeEventTimeBlockId', async () => {
-    const result = await repo.findOverlapping(
-      CHURCH,
-      EVENT,
-      new Date('2024-06-05T09:00:00Z'),
-      new Date('2024-06-05T11:00:00Z'),
-      EVENT_TIME_BLOCK_ID,
-    );
+    const result = await repo.findOverlapping({
+      churchId: CHURCH,
+      eventId: EVENT,
+      startTime: new Date('2024-06-05T09:00:00Z'),
+      endTime: new Date('2024-06-05T11:00:00Z'),
+      excludeEventTimeBlockId: EVENT_TIME_BLOCK_ID,
+    });
     expect(result).toEqual([]);
   });
 });

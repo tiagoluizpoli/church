@@ -1,9 +1,13 @@
 import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 
+interface ErrorMessageOptions {
+  locale: Locale;
+}
+
 export type ErrorMessage = (
   inputs: Record<string, never>,
-  options: { locale: Locale },
+  options: ErrorMessageOptions,
 ) => string;
 
 interface ErrorEntry {
@@ -128,19 +132,25 @@ export function isErrorCode(code: string): code is ErrorCode {
   return Object.hasOwn(ERROR_TABLE, code);
 }
 
+interface ErrorStatusInput {
+  code: string;
+}
+
 /** The HTTP status for a code, or undefined when the code has no entry. */
-export function errorStatus({ code }: { code: string }): number | undefined {
+export function errorStatus({ code }: ErrorStatusInput): number | undefined {
   return isErrorCode(code) ? ERROR_TABLE[code].status : undefined;
+}
+
+interface ErrorMessageInput {
+  code: string;
+  locale: Locale;
 }
 
 /** The catalog text for a code in a locale, or undefined when it has no entry. */
 export function errorMessage({
   code,
   locale,
-}: {
-  code: string;
-  locale: Locale;
-}): string | undefined {
+}: ErrorMessageInput): string | undefined {
   return isErrorCode(code)
     ? ERROR_TABLE[code].message({}, { locale })
     : undefined;

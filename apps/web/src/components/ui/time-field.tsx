@@ -37,6 +37,10 @@ export function TimeField<T extends TimeValue>({
   );
 }
 
+interface PendingDigitsInput {
+  digits: string;
+}
+
 export interface TimeInputProps {
   className?: string;
   /** Rendered inside the field, after the segments — the segments need about
@@ -71,7 +75,7 @@ export function TimeInput({
   const [uncontrolled, setUncontrolled] = useState('');
   const pending = pendingDigits ?? uncontrolled;
 
-  const report = ({ digits }: { digits: string }) => {
+  const report = ({ digits }: PendingDigitsInput) => {
     setUncontrolled(digits);
     onPendingDigitsChange?.(digits);
   };

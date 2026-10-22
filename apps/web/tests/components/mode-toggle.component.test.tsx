@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -38,13 +39,21 @@ describe('ModeToggle standalone (#219, right-sized from theme.spec.ts)', () => {
     );
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Toggle theme' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Dark' }));
+    await user.click(
+      screen.getByRole('button', { name: m.mode_toggle_label() }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: m.mode_toggle_dark() }),
+    );
 
     await waitFor(() => expect(document.documentElement).toHaveClass('dark'));
 
-    await user.click(screen.getByRole('button', { name: 'Toggle theme' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Light' }));
+    await user.click(
+      screen.getByRole('button', { name: m.mode_toggle_label() }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: m.mode_toggle_light() }),
+    );
 
     await waitFor(() =>
       expect(document.documentElement).not.toHaveClass('dark'),
@@ -59,12 +68,16 @@ describe('ModeToggle standalone (#219, right-sized from theme.spec.ts)', () => {
     );
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Toggle theme' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'System' }));
+    await user.click(
+      screen.getByRole('button', { name: m.mode_toggle_label() }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: m.mode_toggle_system() }),
+    );
 
     await waitFor(() =>
       expect(
-        screen.queryByRole('menuitem', { name: 'System' }),
+        screen.queryByRole('menuitem', { name: m.mode_toggle_system() }),
       ).not.toBeInTheDocument(),
     );
   });
@@ -78,7 +91,9 @@ describe('ModeToggle nested inside an open MobileDrawer (US3)', () => {
     expect(drawerContent.className).toContain('z-50');
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Toggle theme' }));
+    await user.click(
+      screen.getByRole('button', { name: m.mode_toggle_label() }),
+    );
 
     const dropdownContent = await waitFor(() => {
       const el = document.querySelector('[data-slot="dropdown-menu-content"]');
@@ -93,8 +108,12 @@ describe('ModeToggle nested inside an open MobileDrawer (US3)', () => {
     renderNestedInOpenDrawer();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Toggle theme' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Dark' }));
+    await user.click(
+      screen.getByRole('button', { name: m.mode_toggle_label() }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: m.mode_toggle_dark() }),
+    );
 
     await waitFor(() => expect(document.documentElement).toHaveClass('dark'));
   });

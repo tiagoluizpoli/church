@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,11 +21,13 @@ export function ActiveChurchTabSyncGuard() {
     <AlertDialog open={pendingSwitch !== null} onOpenChange={() => {}}>
       <AlertDialogContent data-testid="active-church-tab-sync-dialog">
         <AlertDialogHeader>
-          <AlertDialogTitle>Active Church changed</AlertDialogTitle>
+          <AlertDialogTitle>{m.church_switch_sync_title()}</AlertDialogTitle>
           <AlertDialogDescription>
-            Another tab switched the Active Church to{' '}
-            <strong>{pendingSwitch?.churchName}</strong>. This tab paused to
-            avoid acting on stale data.
+            {pendingSwitch
+              ? m.church_switch_sync_body({
+                  churchName: pendingSwitch.churchName,
+                })
+              : null}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -32,7 +35,7 @@ export function ActiveChurchTabSyncGuard() {
             data-testid="active-church-tab-sync-continue"
             onClick={continueSwitch}
           >
-            Continue
+            {m.church_switch_sync_continue()}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

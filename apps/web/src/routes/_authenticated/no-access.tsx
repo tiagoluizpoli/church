@@ -3,11 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSignOut } from '@/shared/hooks/use-sign-out';
-import {
-  MEMBERSHIP_REMOVED_PREFIX,
-  MEMBERSHIP_REMOVED_SUFFIX,
-  removedFromSearchSchema,
-} from '@/shared/utils/membership-removal';
+import { removedFromSearchSchema } from '@/shared/utils/membership-removal';
 
 export const Route = createFileRoute('/_authenticated/no-access')({
   validateSearch: (search) => removedFromSearchSchema.parse(search),
@@ -25,15 +21,9 @@ function NoAccessRoute() {
           {m.no_access_title()}
         </h1>
         <p className="workspace-section-description">
-          {removedFrom ? (
-            <>
-              {MEMBERSHIP_REMOVED_PREFIX}
-              <strong>{removedFrom}</strong>
-              {MEMBERSHIP_REMOVED_SUFFIX}
-            </>
-          ) : (
-            m.no_access_generic_body()
-          )}
+          {removedFrom
+            ? m.no_access_removed_from({ churchName: removedFrom })
+            : m.no_access_generic_body()}
         </p>
         <Button
           type="button"

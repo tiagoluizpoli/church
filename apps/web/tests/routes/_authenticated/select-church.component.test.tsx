@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -55,7 +56,9 @@ describe('select-church route (compare-access selector)', () => {
     const queryKey = ['caller-capabilities', 'u1', 'church-a'];
     queryClient.setQueryData(queryKey, { isChurchAdmin: true });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await user.click(
+      await screen.findByRole('button', { name: m.user_menu_sign_out() }),
+    );
     const options = vi.mocked(authClient.signOut).mock.calls[0]?.[0];
     const onSuccess = options?.fetchOptions?.onSuccess;
     if (!onSuccess) throw new Error('Sign out callback missing');
@@ -92,8 +95,12 @@ describe('select-church route (compare-access selector)', () => {
     expect(await screen.findAllByText('Comunidade Esperança')).not.toHaveLength(
       0,
     );
-    expect(await screen.findAllByText('Church Admin')).not.toHaveLength(0);
-    expect(await screen.findAllByText('Church Member')).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(m.select_church_access_admin()),
+    ).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(m.select_church_access_member()),
+    ).not.toHaveLength(0);
   });
 
   it('selects a Church and navigates to the dashboard on success', async () => {
@@ -152,9 +159,7 @@ describe('select-church route (compare-access selector)', () => {
     await user.click(options[0]);
 
     expect(
-      await screen.findByText(
-        "Couldn't switch Church. Try selecting it again.",
-      ),
+      await screen.findByText(m.select_church_switch_error()),
     ).toBeInTheDocument();
   });
 
@@ -234,8 +239,11 @@ describe('select-church route (compare-access selector)', () => {
 
     renderSelectChurch('/select-church?removedFrom=Igreja+Central');
 
-    expect(await screen.findByText(/no longer have access to/i)).toBeVisible();
-    expect(screen.getByText('Igreja Central')).toBeVisible();
+    expect(
+      await screen.findByText(
+        m.no_access_removed_from({ churchName: 'Igreja Central' }),
+      ),
+    ).toBeVisible();
   });
 
   it('shows no removal notice on a plain, unprompted visit', async () => {
@@ -243,7 +251,11 @@ describe('select-church route (compare-access selector)', () => {
 
     renderSelectChurch();
 
-    await screen.findByText('Select an Active Church');
-    expect(screen.queryByText(/no longer have access to/i)).toBeNull();
+    await screen.findByText(m.select_church_title());
+    expect(
+      screen.queryByText(
+        m.no_access_removed_from({ churchName: 'Igreja Central' }),
+      ),
+    ).toBeNull();
   });
 });

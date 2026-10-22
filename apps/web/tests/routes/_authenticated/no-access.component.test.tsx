@@ -38,8 +38,11 @@ describe('no-access route (F10)', () => {
     renderRoute({ initialPath: '/no-access?removedFrom=Igreja+Central' });
 
     expect(await screen.findByText(m.no_access_title())).toBeVisible();
-    expect(screen.getByText(/no longer have access to/i)).toBeVisible();
-    expect(screen.getByText('Igreja Central')).toBeVisible();
+    expect(
+      screen.getByText(
+        m.no_access_removed_from({ churchName: 'Igreja Central' }),
+      ),
+    ).toBeVisible();
   });
 
   it('calls sign out when the Sign out button is clicked', async () => {

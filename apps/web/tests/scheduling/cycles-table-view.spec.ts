@@ -67,7 +67,10 @@ async function createCycleWithSundayTemplateApplied({
   });
 
   await page.goto(`/cycles/${cycle.id}`);
-  await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
+  // First visit: Vite dev transforms the route's module graph on demand.
+  await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName, {
+    timeout: 15_000,
+  });
   await expect(page.getByTestId('planning-event-card').first()).toBeAttached();
 
   return { journey, cycleName, templateName, monthStart: startDate };

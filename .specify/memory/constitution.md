@@ -3,11 +3,15 @@
 - Version change: 1.7.1 → 1.8.0
 - Modified principle: VII. Explicit Parameter Contracts
 - Updated: at most one parameter with no exception for transaction handles, signals or options; interface signatures and function types included; enforced by `bun run validate:named-parameters` in `lint` (ADR 0010, #538, #547)
-- Previous: 1.7.0 → 1.7.1
+
+- Version change: 1.7.0 → 1.7.1
 - Modified principle: Core Rules — Shared config package
 - Updated: `@church/app-config` may hold its Zod schema (validated once at module load, #434)
-- Previous: 1.6.0 → 1.7.0, Monorepo Boundaries
+
+- Version change: 1.6.0 → 1.7.0
+- Modified principle: Core Rules — Monorepo Boundaries
 - Updated: `@church/app-config` is the one allowed application-specific package (plain shared config data, #434)
+
 - Templates requiring updates: None; existing Constitution Check is generic
 - Follow-up TODOs: None
 -->

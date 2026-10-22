@@ -42,6 +42,12 @@ const I18N_PARITY_STEP = {
   label: 'i18n-parity',
 };
 
+const NAMED_PARAMETERS_STEP = {
+  args: ['run', 'validate:named-parameters'],
+  command: 'bun',
+  label: 'named-parameters',
+};
+
 describe('buildValidationSteps', () => {
   it('skips the test-placement guard for an E2E-only run', () => {
     const { checkLane } = buildValidationSteps({
@@ -60,9 +66,14 @@ describe('buildValidationSteps', () => {
       skipE2e: false,
     });
 
-    expect(steps.checkLane).toEqual([TEST_PLACEMENT_STEP, I18N_PARITY_STEP]);
+    expect(steps.checkLane).toEqual([
+      TEST_PLACEMENT_STEP,
+      I18N_PARITY_STEP,
+      NAMED_PARAMETERS_STEP,
+    ]);
     expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.checkedLabels).toContain('i18n-parity');
+    expect(steps.checkedLabels).toContain('named-parameters');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
   });
@@ -85,6 +96,7 @@ describe('buildValidationSteps', () => {
       },
       TEST_PLACEMENT_STEP,
       I18N_PARITY_STEP,
+      NAMED_PARAMETERS_STEP,
       {
         args: [
           'turbo',

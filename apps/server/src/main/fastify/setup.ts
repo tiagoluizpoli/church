@@ -184,7 +184,6 @@ export async function createFastify() {
   app.route({
     method: ['GET', 'POST'],
     url: '/api/auth/*',
-    // named-parameters-ignore: Fastify route handler signature (request, reply)
     async handler(request, reply) {
       const url = new URL(request.url, `http://${request.headers.host}`);
       const headers = new Headers();

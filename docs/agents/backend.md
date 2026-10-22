@@ -10,8 +10,11 @@ Load for backend, API, database, security, tenancy, or infrastructure work.
   validation, and Drizzle for database access.
 - Enforce Church tenancy with `church_id`. Keep credential-sensitive work on
   the server.
-- Use named object parameters and named object shapes in modified application
-  code, as required by the [constitution](../../.specify/memory/constitution.md).
+- Functions, methods, constructors and function types take at most one
+  parameter: a named object type. Transaction handles, signals and options go
+  inside it. Inline object types are not allowed, as required by the
+  [constitution](../../.specify/memory/constitution.md) VII.
+  `bun run validate:named-parameters` enforces it.
 - Server config is passed in by the composition root as the `config` field of
   the constructor's named object. A root-built class never imports `appConfig`
   from `@church/app-config`.

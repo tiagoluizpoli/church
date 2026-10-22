@@ -116,6 +116,39 @@ ownHelper((a, b) => [a, b]);
     ]);
   });
 
+  it('rejects object-literal methods, call signatures and construct signatures', () => {
+    expect(
+      failuresFor(`interface Input { id: string }
+export const literal = { method(a: Input, b: Input) { return [a, b]; } };
+export interface Callable { (a: Input, b: Input): void }
+export interface Constructable { new (a: Input, b: Input): Input }
+`),
+    ).toEqual([
+      parameterFailure(2, 'method', 2),
+      parameterFailure(3, 'call signature', 2),
+      parameterFailure(4, 'construct signature', 2),
+    ]);
+  });
+
+  it('checks a callback passed to our own helper imported from a workspace package', () => {
+    const files = [
+      {
+        path: 'packages/core/src/each-pair.ts',
+        source: `export function eachPair(handler: (...pair: string[]) => void) { handler('a', 'b'); }
+`,
+      },
+      {
+        path: PATH,
+        source: `import { eachPair } from '@church/core/each-pair';
+eachPair((a, b) => [a, b]);
+`,
+      },
+    ];
+    expect(getNamedParameterFailures({ files })).toEqual([
+      parameterFailure(2, 'arrow function', 2),
+    ]);
+  });
+
   it('accepts a suppression with a reason and rejects one without', () => {
     expect(
       failuresFor(`interface Request { id: string }

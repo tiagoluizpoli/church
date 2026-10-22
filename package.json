@@ -46,7 +46,7 @@
     "db:init": "bun run --cwd apps/server db:init-system",
     "db:clean": "turbo -F @church/db db:clean",
     "db:reseed:dev": "bun run --cwd apps/server db:reseed:dev",
-    "lint": "bun run lint:files -- . && bun run validate:test-placement && bun run validate:i18n-parity",
+    "lint": "bun run lint:files -- . && bun run validate:test-placement && bun run validate:i18n-parity && bun run validate:named-parameters",
     "validate:i18n-parity": "bun tooling/validation/i18n-parity.ts",
     "lint:files": "biome check --no-errors-on-unmatched --files-ignore-unknown=true",
     "lint:fix": "bun run lint:fix:files -- .",

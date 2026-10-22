@@ -1,9 +1,6 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "plugins": [
-    "./tooling/biome/require-named-object-parameters.grit",
-    "./tooling/biome/date-time-seam.grit"
-  ],
+  "plugins": ["./tooling/biome/date-time-seam.grit"],
   "vcs": {
     "enabled": false,
     "clientKind": "git",

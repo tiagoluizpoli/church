@@ -1,7 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { buildValidationSteps } from '../../validation/affected';
 import {
   CRITICAL_SMOKE_SPEC_PATHS,
   JOURNEY_MAP,
@@ -10,6 +18,9 @@ import {
   discoverPlaywrightSpecPaths,
   getJourneyMapFailures,
 } from '../../validation/journey-map-guard';
+import { hasFailure, runLanes } from '../../validation/run-lanes';
+
+const REPO_ROOT = resolve(import.meta.dir, '../../..');
 
 const A = 'tests/identity/a.spec.ts';
 const B = 'tests/scheduling/b.spec.ts';
@@ -240,5 +251,77 @@ describe('journey map repository contract', () => {
         criticalSmokeSpecPaths: CRITICAL_SMOKE_SPEC_PATHS,
       }),
     ).toEqual([]);
+  });
+});
+
+describe('journey map guard in standard validation', () => {
+  const rootScripts: Record<string, string> = JSON.parse(
+    readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'),
+  ).scripts;
+
+  it('is a required step of root lint', () => {
+    expect(rootScripts.lint?.split(' && ')).toContain(
+      'bun run validate:journey-map',
+    );
+  });
+
+  it('fails affected validation of a Playwright-test-only change that drifts', async () => {
+    // A minimal repository: the real guard, metadata and root script, plus one
+    // new spec nobody mapped.
+    const root = mkdtempSync(join(tmpdir(), 'journey-map-lane-test-'));
+    try {
+      for (const file of ['journey-map-guard.ts', 'journey-map.ts']) {
+        mkdirSync(join(root, 'tooling/validation'), { recursive: true });
+        copyFileSync(
+          join(REPO_ROOT, 'tooling/validation', file),
+          join(root, 'tooling/validation', file),
+        );
+      }
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({
+          scripts: {
+            'validate:journey-map': rootScripts['validate:journey-map'],
+          },
+        }),
+      );
+      for (const path of [...REFERENCED_SPEC_PATHS, 'tests/new.spec.ts']) {
+        mkdirSync(dirname(join(root, 'apps/web', path)), { recursive: true });
+        writeFileSync(join(root, 'apps/web', path), '');
+      }
+      const { checkLane } = buildValidationSteps({
+        onlyE2e: false,
+        plan: {
+          e2eSpecPaths: ['tests/new.spec.ts'],
+          journeySelectionReasons: [],
+          lintPaths: [],
+          missingJourneyMappings: [],
+          requiresFullE2e: false,
+          testLayerSelectionReasons: [],
+          testLayers: [],
+          testTargets: [],
+          toolingTestPaths: [],
+          workspaceNames: [],
+          workspaceSelectionReasons: [],
+        },
+        skipE2e: true,
+      });
+      const stderr: string[] = [];
+      const results = await runLanes({
+        cwd: root,
+        lanes: [checkLane.filter(({ label }) => label === 'journey-map')],
+        output: {
+          stderr: ({ text }) => stderr.push(text),
+          stdout: () => {},
+        },
+      });
+      expect(results.map(({ status }) => status)).toEqual(['failed']);
+      expect(hasFailure({ results })).toBe(true);
+      expect(stderr.join('')).toContain(
+        'tests/new.spec.ts: unmapped Playwright spec',
+      );
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
   });
 });

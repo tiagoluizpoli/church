@@ -76,7 +76,9 @@ fails unless each one is referenced by `JOURNEY_MAP` or
 reference in either list names a discovered spec. Paths are web-root-relative
 with the `tests/` prefix. It lists unmapped specs, then stale references, so a
 rename shows both halves; repeated references and overlap between the lists
-are fine. It needs no browser, database or running application. Whether a
+are fine. `bun run lint` and every `validate:affected` run it, so a change that only
+adds, renames or deletes a spec still fails on drift with the same
+diagnostics. It needs no browser, database or running application. Whether a
 mapping's source prefix is accurate stays a review decision
 ([ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md)).
 
@@ -427,7 +429,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `components/ui/calendar.tsx` is never hand-edited | ADR-0003 | Judgement | — | Review: a re-run of `shadcn add` changes it legitimately, and a tool cannot tell that from a hand edit |
 | Playwright discovers only `*.spec.ts`; Vitest owns `*.test.ts(x)` | ADR-0004 | Mechanical | Validation guard | Enforced: `apps/web/tests/e2e-discovery-boundary.unit.test.ts` |
 | A Playwright spec covers a critical journey | ADR-0004 | Judgement | — | Review: "critical journey" is a judgement |
-| Every Playwright spec has a `JOURNEY_MAP` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Follow-up [#557](https://github.com/tiagoluizpoli/church/issues/557) |
+| Every Playwright spec has a `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint` and `validate:affected` ([#557](https://github.com/tiagoluizpoli/church/issues/557)) |
 | A failing E2E spec gets exactly one retry in CI | ADR-0004 | Mechanical | Validation guard | Enforced: `retries` in `apps/web/playwright.config.ts` |
 | Daily and release gates; no direct pushes to `develop` or `master` | ADR-0004 | Mechanical | Validation guard | Enforced: `.github/workflows/ci.yml` and branch protection |
 | Each worktree has its own databases, ports and URL set | ADR-0005 | Mechanical | Validation guard | Enforced: `env:local` and `db:bootstrap` generate them |

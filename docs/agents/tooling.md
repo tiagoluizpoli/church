@@ -333,7 +333,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
 | Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |
-| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Follow-up [#548](https://github.com/tiagoluizpoli/church/issues/548) |
+| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Enforced: root `noRestrictedImports` options in `biome.json` (also bans the bare `server` name until [#549](https://github.com/tiagoluizpoli/church/issues/549)), locked by `tooling/tests/biome/server-import-ban.test.ts`; `apps/fumadocs` is not covered because Biome does not lint it |
 | `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |
 | Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Follow-up [#549](https://github.com/tiagoluizpoli/church/issues/549) |
 | Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |

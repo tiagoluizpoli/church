@@ -172,10 +172,14 @@ describe('date-time seam lint rule', () => {
     for (const override of replacing) {
       const rule = override.linter?.rules?.style
         ?.noRestrictedImports as RestrictedImportsRule;
-      expect(Object.keys(rule.options?.paths ?? {}).sort()).toEqual([
-        'date-fns',
-        'date-fns-tz',
-      ]);
+      const paths = Object.keys(rule.options?.paths ?? {});
+      // packages/time is the seam: its override keeps only the server ban.
+      if (override.includes.includes('packages/time/**')) {
+        expect(paths).not.toContain('date-fns');
+        expect(paths).not.toContain('date-fns-tz');
+      } else {
+        expect(paths.sort()).toEqual(['date-fns', 'date-fns-tz']);
+      }
     }
   });
 });

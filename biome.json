@@ -163,9 +163,24 @@
         "noRestrictedImports": {
           "level": "error",
           "options": {
+            "patterns": [
+              {
+                "group": [
+                  "@church/server/**",
+                  "server/**",
+                  "**/../server",
+                  "**/../server/**",
+                  "**/apps/server",
+                  "**/apps/server/**"
+                ],
+                "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+              }
+            ],
             "paths": {
               "date-fns": "Only @church/time may import date-fns (ADR-0003).",
-              "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+              "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+              "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+              "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
             }
           }
         }
@@ -200,6 +215,24 @@
     }
   },
   "overrides": [
+    {
+      "includes": ["apps/server/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     {
       "includes": ["apps/server/src/api/**"],
       "linter": {
@@ -297,7 +330,28 @@
       "linter": {
         "rules": {
           "style": {
-            "noRestrictedImports": "off"
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/../server",
+                      "**/../server/**",
+                      "**/apps/server",
+                      "**/apps/server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  }
+                ],
+                "paths": {
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                }
+              }
+            }
           }
         }
       }

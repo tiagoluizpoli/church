@@ -20,6 +20,7 @@ and task ordering.
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
+| Journey-map integrity guard | `bun run validate:journey-map` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
@@ -65,6 +66,19 @@ on an inline object type in a parameter, variable, return or `as` position.
 to a dependency's API is exempt; a named function whose signature a framework
 controls carries `// named-parameters-ignore: <reason>` directly above its
 declaration. Details: [ADR-0010](../adr/0010-mechanical-rules-enforced-by-tooling.md).
+
+## Journey map
+
+`bun run validate:journey-map` (`tooling/validation/journey-map-guard.ts`)
+discovers every `.spec.ts` file under `apps/web/tests/`, recursively, and
+fails unless each one is referenced by `JOURNEY_MAP` or
+`CRITICAL_SMOKE_SPEC_PATHS` in `tooling/validation/journey-map.ts`, and each
+reference in either list names a discovered spec. Paths are web-root-relative
+with the `tests/` prefix. It lists unmapped specs, then stale references, so a
+rename shows both halves; repeated references and overlap between the lists
+are fine. It needs no browser, database or running application. Whether a
+mapping's source prefix is accurate stays a review decision
+([ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md)).
 
 ## Seed impact
 

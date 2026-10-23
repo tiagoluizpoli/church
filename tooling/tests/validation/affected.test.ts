@@ -989,6 +989,39 @@ describe('classifyChanges', () => {
   });
 });
 
+describe('tooling test paths', () => {
+  it('selects tooling tests for a change under tooling/', () => {
+    const plan = classifyChanges({
+      changedPaths: ['tooling/validation/affected.ts'],
+    });
+
+    expect(plan.toolingTestPaths).toEqual(['tooling/validation/affected.ts']);
+  });
+
+  it('selects tooling tests for a root-infrastructure change', () => {
+    const plan = classifyChanges({ changedPaths: ['package.json'] });
+
+    expect(plan.toolingTestPaths).toEqual(['package.json']);
+  });
+
+  it('does not select tooling tests for a web-only source change', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/utils/format-volunteer-initials.ts'],
+    });
+
+    expect(plan.toolingTestPaths).toEqual([]);
+  });
+
+  it('selects tooling tests for a deleted tooling path', () => {
+    const plan = classifyChanges({
+      changedPaths: ['tooling/validation/affected.ts'],
+      deletedPaths: ['tooling/validation/affected.ts'],
+    });
+
+    expect(plan.toolingTestPaths).toEqual(['tooling/validation/affected.ts']);
+  });
+});
+
 describe('explainPlan', () => {
   it('renders the base ref, selected workspaces with reasons, and selected journeys with reasons', () => {
     const plan = classifyChanges({
@@ -1032,6 +1065,28 @@ describe('explainPlan', () => {
 
     expect(explanation).toContain('Missing journey mappings');
     expect(explanation).toContain('apps/web/src/routes/dashboard.tsx');
+  });
+
+  it('shows a Tooling tests selected section with the selected paths', () => {
+    const plan = classifyChanges({
+      changedPaths: ['tooling/validation/affected.ts'],
+    });
+
+    const explanation = explainPlan({ baseRef: undefined, plan });
+
+    expect(explanation).toContain('Tooling tests selected:');
+    expect(explanation).toContain('tooling/validation/affected.ts');
+  });
+
+  it('shows (none) in the Tooling tests selected section when no tooling paths changed', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/utils/format-volunteer-initials.ts'],
+    });
+
+    const explanation = explainPlan({ baseRef: undefined, plan });
+
+    expect(explanation).toContain('Tooling tests selected:');
+    expect(explanation).toContain('(none)');
   });
 });
 

@@ -333,6 +333,13 @@ export function buildValidationSteps({
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
       else checkLane.push(...layerSteps);
     }
+    if (plan.toolingTestPaths.length > 0) {
+      checkLane.push({
+        args: ['test', 'tooling'],
+        command: 'bun',
+        label: 'test:tooling',
+      });
+    }
     checkedLabels.push(
       'lint',
       'test-placement',
@@ -341,6 +348,9 @@ export function buildValidationSteps({
       'typecheck',
       ...ALL_TEST_LAYERS,
     );
+    if (plan.toolingTestPaths.length > 0) {
+      checkedLabels.push('test:tooling');
+    }
   }
 
   let e2eLabel = 'test:e2e';
@@ -514,6 +524,13 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
         `      ${reason.detail}${reason.changedPath ? ` <- ${reason.changedPath}` : ''}`,
       );
     }
+  }
+
+  lines.push('', 'Tooling tests selected:');
+  if (plan.toolingTestPaths.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const path of plan.toolingTestPaths) lines.push(`  - ${path}`);
   }
 
   lines.push('', ...explainSeedImpact({ plan }));

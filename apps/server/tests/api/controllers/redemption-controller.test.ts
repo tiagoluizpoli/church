@@ -19,6 +19,7 @@ import type { VolunteerTransferManager } from '@/domain/contracts/application/vo
 import { VerificationCodeError } from '@/domain/errors/verification-code-error';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -52,7 +53,7 @@ const volunteerTransferManager: VolunteerTransferManager = {
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,

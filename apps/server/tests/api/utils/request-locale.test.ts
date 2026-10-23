@@ -1,34 +1,30 @@
-import { appConfig } from '@church/app-config';
 import { describe, expect, it } from 'vitest';
-import { recipientLocale, requestLocale } from '@/api/utils/request-locale';
+import { requestLocale } from '@/api/utils/request-locale';
 
-const COOKIE = appConfig.localeCookieName;
+const COOKIE = 'lang';
+const settings = { localeCookieName: COOKIE, defaultLocale: 'pt-BR' } as const;
 
 describe('requestLocale', () => {
   it('reads a valid locale cookie', () => {
-    expect(requestLocale({ headers: { cookie: `${COOKIE}=en` } })).toBe('en');
+    expect(requestLocale({ cookieHeader: `${COOKIE}=en`, ...settings })).toBe(
+      'en',
+    );
   });
 
   it('finds the cookie among others', () => {
-    const cookie = `a=1; ${COOKIE}=pt-BR; b=2`;
-    expect(requestLocale({ headers: { cookie } })).toBe('pt-BR');
+    const cookieHeader = `a=1; ${COOKIE}=en; b=2`;
+    expect(requestLocale({ cookieHeader, ...settings })).toBe('en');
   });
 
   it('uses the default locale without a cookie', () => {
-    expect(requestLocale({ headers: {} })).toBe(appConfig.defaultLocale);
+    expect(requestLocale({ cookieHeader: undefined, ...settings })).toBe(
+      'pt-BR',
+    );
   });
 
   it('ignores an invalid cookie value', () => {
-    expect(requestLocale({ headers: { cookie: `${COOKIE}=fr` } })).toBe(
-      appConfig.defaultLocale,
-    );
-  });
-});
-
-describe('recipientLocale', () => {
-  it('returns the default locale', () => {
-    expect(recipientLocale({ recipient: { userId: 'u1' } })).toBe(
-      appConfig.defaultLocale,
+    expect(requestLocale({ cookieHeader: `${COOKIE}=fr`, ...settings })).toBe(
+      'pt-BR',
     );
   });
 });

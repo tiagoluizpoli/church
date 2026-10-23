@@ -8,12 +8,13 @@ import {
 } from '@/main/di/composition-root';
 import { registerControllers } from '@/main/fastify/register-controllers';
 import { createFastify } from '@/main/fastify/setup';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 async function registeredRoutes(
   overrides?: Partial<CompositionRootDependencies>,
 ): Promise<string[]> {
   const { controllers } = createCompositionRoot(overrides);
-  const app = await createFastify();
+  const app = await createFastify({ locale: testLocale });
   const routes: string[] = [];
   app.addHook('onRoute', (route) => {
     for (const method of [route.method].flat()) {
@@ -82,7 +83,7 @@ describe('composition root', () => {
         }),
       } as unknown as MinistryInvitationRepository,
     });
-    const app = await createFastify();
+    const app = await createFastify({ locale: testLocale });
     await app.register(
       async (instance) => registerControllers({ app: instance, controllers }),
       { prefix: '/api/v1' },

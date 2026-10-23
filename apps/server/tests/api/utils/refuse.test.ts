@@ -1,13 +1,22 @@
 import { appConfig } from '@church/app-config';
-import Fastify from 'fastify';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { RefusalCode } from '@/api/utils/error-table';
 import { refuse } from '@/api/utils/refuse';
+import { createFastify } from '@/main/fastify/setup';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
-const app = Fastify();
-app.get<{ Params: { code: RefusalCode } }>('/:code', (request, reply) =>
-  refuse({ reply, request, code: request.params.code }),
-);
+vi.mock('@church/auth', () => ({
+  auth: { api: { getSession: vi.fn() } },
+}));
+
+let app: Awaited<ReturnType<typeof createFastify>>;
+beforeAll(async () => {
+  app = await createFastify({ locale: testLocale });
+  app.get<{ Params: { code: RefusalCode } }>('/:code', (request, reply) =>
+    refuse({ reply, request, code: request.params.code }),
+  );
+  await app.ready();
+});
 
 const cookie = (locale: string) => `${appConfig.localeCookieName}=${locale}`;
 

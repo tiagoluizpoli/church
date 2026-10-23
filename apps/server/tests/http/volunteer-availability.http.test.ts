@@ -14,6 +14,7 @@ import { VolunteerController } from '@/api/controllers/volunteer-controller';
 import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -92,7 +93,7 @@ function createCheckDetail(): MockCheckDetail {
 }
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new VolunteerController({
     volunteerManager: volunteerManager as never,
     activeChurchResolver: activeChurchResolver as never,

@@ -15,6 +15,7 @@ import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-trans
 import { ShiftOutOfBoundsError } from '@/domain/errors/shift-out-of-bounds';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -88,7 +89,7 @@ function createShift(): Shift {
 }
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new PrepareController({
     participationManager: participationManager as never,
     availabilityCheckManager: availabilityCheckManager as never,

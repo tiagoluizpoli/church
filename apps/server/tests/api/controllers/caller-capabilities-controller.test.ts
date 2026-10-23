@@ -10,6 +10,7 @@ import {
 import { CallerCapabilitiesController } from '@/api/controllers/caller-capabilities-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -29,7 +30,7 @@ const authorityGuard = { resolveCallerCapabilities: vi.fn() };
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new CallerCapabilitiesController({
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,

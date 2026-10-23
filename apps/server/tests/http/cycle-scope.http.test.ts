@@ -28,6 +28,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 vi.mock('@church/auth', () => ({
@@ -59,7 +60,7 @@ beforeAll(async () => {
     notificationService: createNotificationServiceSpy(),
     unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
   });
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const assign = new AssignController({
     participationManager: managers.participationManager,
     assignmentManager: managers.assignmentManager,

@@ -16,6 +16,7 @@ import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -56,7 +57,7 @@ const VOLUNTEER_ID = '55555555-5555-4555-8555-555555555551';
 const MINISTRY_ID = '66666666-6666-4666-8666-666666666661';
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new VolunteerController({
     volunteerManager: volunteerManager as never,
     activeChurchResolver: activeChurchResolver as never,
@@ -370,7 +371,7 @@ describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
   const body = { response: 'accepted' };
 
   async function buildApp(config: typeof appConfig) {
-    const instance = await createFastify();
+    const instance = await createFastify({ locale: testLocale });
     const controller = new VolunteerController({
       volunteerManager: volunteerManager as never,
       activeChurchResolver: activeChurchResolver as never,

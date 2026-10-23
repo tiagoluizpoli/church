@@ -5,6 +5,7 @@ import { DuplicateHeadcountError } from '@/domain/errors/duplicate-headcount';
 import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -13,7 +14,7 @@ vi.mock('@church/auth', () => ({
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   app.get('/boom/domain', async () => {
     throw new OverlappingCycleError();
   });
@@ -94,7 +95,7 @@ describe('error handler locale', () => {
 describe('error handler logs', () => {
   it('logs the code and the English constructor message', async () => {
     const warn = vi.fn();
-    const logged = await createFastify();
+    const logged = await createFastify({ locale: testLocale });
     logged.addHook('onRequest', async (request) => {
       request.log = { ...request.log, warn } as typeof request.log;
     });

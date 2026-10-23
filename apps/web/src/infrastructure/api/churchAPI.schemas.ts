@@ -81,6 +81,11 @@ export type SelectActiveChurch403 = {
   message: string;
 };
 
+export type SelectActiveChurch500 = {
+  error: string;
+  message: string;
+};
+
 export type CreateCycleBody = {
   /** @minLength 1 */
   name: string;

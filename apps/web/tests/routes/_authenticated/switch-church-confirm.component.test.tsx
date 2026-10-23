@@ -155,6 +155,50 @@ describe('switch-church-confirm route', () => {
     });
   });
 
+  it('keeps the current Active Church and shows the failure when saving the switch fails, then succeeds on retry', async () => {
+    const user = userEvent.setup();
+    selectActiveChurch.mockRejectedValueOnce(
+      new Error('Internal Server Error'),
+    );
+
+    const { router } = renderConfirm(
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
+    );
+
+    await screen.findByText(m.switch_church_title());
+    const switchButton = screen.getByRole('button', {
+      name: m.switch_church_switch({ churchName: 'Comunidade Esperança' }),
+    });
+    await user.click(switchButton);
+
+    expect(
+      await screen.findByText(m.switch_church_switch_error()),
+    ).toBeVisible();
+    expect(router.state.location.pathname).toBe('/switch-church-confirm');
+    expect(
+      screen.getByText(
+        m.switch_church_currently_in({
+          currentChurchName: 'Igreja Central',
+          targetChurchName: 'Comunidade Esperança',
+        }),
+      ),
+    ).toBeVisible();
+    expect(listCycles).not.toHaveBeenCalled();
+
+    selectActiveChurch.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
+    await user.click(switchButton);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/cycles');
+    });
+    expect(selectActiveChurch).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps the current Active Church and returns to the dashboard on cancel', async () => {
     const user = userEvent.setup();
 

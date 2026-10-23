@@ -154,13 +154,65 @@ describe('select-church route (compare-access selector)', () => {
     });
     selectActiveChurch.mockRejectedValue(new Error('network error'));
 
-    renderSelectChurch();
+    const { router } = renderSelectChurch();
     const options = await screen.findAllByText('Igreja Central');
     await user.click(options[0]);
 
     expect(
       await screen.findByText(m.select_church_switch_error()),
     ).toBeInTheDocument();
+    // A first selection that fails leaves selection incomplete: still on the selector.
+    expect(router.state.location.pathname).toBe('/select-church');
+  });
+
+  it('keeps the current Active Church and stays on the selector when saving a switch fails', async () => {
+    const user = userEvent.setup();
+    getSession.mockResolvedValue({
+      data: {
+        user: { id: 'u1', name: 'Dual Member' },
+        session: { activeOrganizationId: 'church-a' },
+      },
+    });
+    listActiveChurchOptions.mockResolvedValue({
+      churches: [
+        {
+          churchId: 'church-a',
+          name: 'Igreja Central',
+          timezone: 'America/Sao_Paulo',
+          accessLevel: 'admin',
+          availableAreas: ['dashboard', 'scheduling'],
+          lastOpenedAt: null,
+        },
+        {
+          churchId: 'church-b',
+          name: 'Comunidade Esperança',
+          timezone: 'UTC',
+          accessLevel: 'member',
+          availableAreas: ['dashboard'],
+          lastOpenedAt: null,
+        },
+      ],
+    });
+    selectActiveChurch.mockRejectedValue(new Error('Internal Server Error'));
+
+    const { router } = renderSelectChurch('/select-church?redirect=%2Fcycles');
+    const options = await screen.findAllByText('Comunidade Esperança');
+    await user.click(options[0]);
+
+    expect(
+      await screen.findByText(m.select_church_switch_error()),
+    ).toBeInTheDocument();
+    expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-b' });
+    expect(router.state.location.pathname).toBe('/select-church');
+    expect(router.state.location.search).toMatchObject({ redirect: '/cycles' });
+    expect(getActiveChurchStatus).not.toHaveBeenCalled();
+    const routeContext = router.state.matches.at(-1)?.context;
+    if (!routeContext || !('session' in routeContext)) {
+      throw new Error('Selector route context has no session');
+    }
+    expect(routeContext.session.data?.session.activeOrganizationId).toBe(
+      'church-a',
+    );
   });
 
   it('navigates to the redirect target when the selected target Church has the required capability', async () => {

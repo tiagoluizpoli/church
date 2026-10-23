@@ -111,6 +111,8 @@ async function withDatabase<T>({
   try {
     return await use(pool);
   } finally {
+    // pool.end() resolves before its client's socket closes, so a later force-drop can still kill that client (57P01).
+    pool.on('error', () => {});
     await pool.end();
   }
 }

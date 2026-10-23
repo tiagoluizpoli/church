@@ -220,4 +220,40 @@ describe('switchActiveChurch', () => {
       unsubscribe();
     }
   });
+
+  it('propagates a rejected selection without broadcasting or navigating', async () => {
+    const { queryClient, selectActiveChurch, navigate } =
+      createSwitchTestDependencies();
+    const selectionError = new Error('session save failed');
+    selectActiveChurch.mockRejectedValue(selectionError);
+    queryClient.setQueryData(['cycles'], { church: 'church-a' });
+    const received: ActiveChurchSwitchedMessage[] = [];
+    const unsubscribe = subscribeToActiveChurchSwitch({
+      onMessage: (message) => received.push(message),
+    });
+
+    try {
+      await expect(
+        switchActiveChurch({
+          availableAreas: ['dashboard'],
+          churchId: 'church-b',
+          churchName: 'Igreja Central',
+          destination: '/dashboard',
+          navigate,
+          queryClient,
+          selectActiveChurch,
+        }),
+      ).rejects.toBe(selectionError);
+
+      // The former Church's data is still evicted; only the switch itself must not happen.
+      expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
+      expect(navigate).not.toHaveBeenCalled();
+      // BroadcastChannel delivers asynchronously; give a stray message time to land.
+      const settleWindow = new Promise((resolve) => setTimeout(resolve, 50));
+      await settleWindow;
+      expect(received).toEqual([]);
+    } finally {
+      unsubscribe();
+    }
+  });
 });

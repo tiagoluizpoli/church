@@ -96,7 +96,9 @@ the API client only with `bun run api:generate`.
 While implementing a ticket, iterate on the existing tests for the behavior
 you are changing, in the workspace that owns it. Run them from the repository
 root through the focused-workspace exception, which keeps the package's own
-task wrapper (its Vitest projects, Varlock and environment):
+task script (its Vitest projects and, for integration, Varlock and managed
+diagnostics). It skips the root `test:unit`'s `TZ=Asia/Kolkata`, so the
+completion gate is still what catches timezone-dependent failures:
 
 ```sh
 bunx turbo -F server test:unit --only -- tests/api/auth/active-church-pre-validation.test.ts
@@ -340,7 +342,7 @@ E2E tests uploads it as the `failure-bundles-<job>-<attempt>` artifact only
 when the job fails; GitHub deletes it after seven days.
 
 Finish the current implementation phase before review. Run focused tests,
-then affected validation, plus the relevant story E2E when one exists; review
+then, once the ticket is complete, affected validation, plus the relevant story E2E when one exists; review
 the modified files and repair every finding in the same phase. Fix lint,
 format, and type errors directly—suppression directives require explicit user
 permission. Install Playwright's pinned Chromium with `bunx playwright install
@@ -387,7 +389,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
 | The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |
 | Fix lint, format and type errors; suppressions need user permission | Tooling | Judgement | — | Review: whether permission was given is not in the code; VII and date-time suppressions have their own guards |
-| Finish the phase, run targeted tests and affected validation before review | Tooling | Judgement | — | Review: a working process |
+| Finish the phase, run focused tests and affected validation before review | Tooling | Judgement | — | Review: a working process |
 | Server classes get config as the constructor's `config` field; only `main/di/`, scripts and seeds import `@church/app-config`; domain functions never read config | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-app-config-import.grit` bans `@church/app-config` value imports and re-exports in server `src` outside `main/di/` and `scripts/`; "domain functions never read config" is enforced only through that import ban |
 | A class copies the config values it uses into `private readonly` fields and does not keep `config` | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-whole-config.grit` |
 | Tenancy is enforced with `church_id` | Backend | Judgement | — | Review: whether a query must be church-scoped depends on the data |

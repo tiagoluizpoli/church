@@ -50,13 +50,7 @@ describe('tooling tests under an inherited git hook environment', () => {
     const before = sentinelState();
 
     const result = Bun.spawnSync(
-      [
-        'bun',
-        'test',
-        'tooling/tests/validation/affected.command.test.ts',
-        '-t',
-        'committed-only clean branch',
-      ],
+      ['bun', 'test', './tooling/tests/fixtures/git-in-temp-dir.fixture.ts'],
       {
         cwd: REPO_ROOT,
         env: {
@@ -69,7 +63,7 @@ describe('tooling tests under an inherited git hook environment', () => {
       },
     );
 
-    expect(result.stderr.toString()).toContain(' 1 pass');
+    expect(result.exitCode).toBe(0);
     expect(sentinelState()).toEqual(before);
   }, 60_000);
 });

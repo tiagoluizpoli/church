@@ -8,6 +8,7 @@ import {
 
 const WEB_ROOT = resolve(import.meta.dir, '../../apps/web');
 const SPEC_NAME_PATTERN = /\.spec\.ts$/;
+const NO_SUCH_SPEC = 'no such Playwright spec under apps/web/tests/';
 
 // Every Playwright spec must be referenced by the union of JOURNEY_MAP and
 // CRITICAL_SMOKE_SPEC_PATHS (#557), and every reference must name a spec that
@@ -29,7 +30,7 @@ export function getJourneyMapFailures({
 
   const unmapped = [...specs]
     .filter((path) => !referenced.has(path))
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
     .map(
       (path) =>
         `${path}: unmapped Playwright spec: add it to JOURNEY_MAP or CRITICAL_SMOKE_SPEC_PATHS in tooling/validation/journey-map.ts`,
@@ -50,15 +51,15 @@ export function getJourneyMapFailures({
     .sort(([a], [b]) => a.localeCompare(b))
     .map(
       ([path, prefixes]) =>
-        `${path}: stale JOURNEY_MAP reference (sourcePathPrefix ${[...prefixes].sort().join(', ')}): no such Playwright spec under apps/web/tests/`,
+        `${path}: stale JOURNEY_MAP reference (sourcePathPrefix ${[...prefixes].sort().join(', ')}): ${NO_SUCH_SPEC}`,
     );
 
   const staleSmoke = [...new Set(criticalSmokeSpecPaths)]
     .filter((path) => !specs.has(path))
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
     .map(
       (path) =>
-        `${path}: stale CRITICAL_SMOKE_SPEC_PATHS reference: no such Playwright spec under apps/web/tests/`,
+        `${path}: stale CRITICAL_SMOKE_SPEC_PATHS reference: ${NO_SUCH_SPEC}`,
     );
 
   return [...unmapped, ...staleMap, ...staleSmoke];
@@ -86,24 +87,31 @@ export function discoverPlaywrightSpecPaths({
 
 if (import.meta.main) {
   const webRootIndex = process.argv.indexOf('--web-root');
-  const webRoot =
-    webRootIndex === -1
-      ? WEB_ROOT
-      : resolve(process.argv[webRootIndex + 1] ?? '');
-  try {
-    const failures = getJourneyMapFailures({
-      specPaths: discoverPlaywrightSpecPaths({ webRoot }),
-      journeyMap: JOURNEY_MAP,
-      criticalSmokeSpecPaths: CRITICAL_SMOKE_SPEC_PATHS,
-    });
-    if (failures.length > 0) {
-      console.error(failures.join('\n'));
-      process.exitCode = 1;
+  let webRoot = WEB_ROOT;
+  if (webRootIndex !== -1) {
+    const webRootArg = process.argv[webRootIndex + 1];
+    if (!webRootArg) {
+      console.error('--web-root needs a directory');
+      process.exit(1);
     }
+    webRoot = resolve(webRootArg);
+  }
+  let specPaths: string[];
+  try {
+    specPaths = discoverPlaywrightSpecPaths({ webRoot });
   } catch (error) {
     console.error(
       `cannot read Playwright specs under ${join(webRoot, 'tests')}: ${error instanceof Error ? error.message : String(error)}`,
     );
+    process.exit(1);
+  }
+  const failures = getJourneyMapFailures({
+    specPaths,
+    journeyMap: JOURNEY_MAP,
+    criticalSmokeSpecPaths: CRITICAL_SMOKE_SPEC_PATHS,
+  });
+  if (failures.length > 0) {
+    console.error(failures.join('\n'));
     process.exitCode = 1;
   }
 }

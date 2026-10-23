@@ -19,6 +19,7 @@ import {
   getJourneyMapFailures,
 } from '../../validation/journey-map-guard';
 import { hasFailure, runLanes } from '../../validation/run-lanes';
+import { makePlan } from './plan';
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
 
@@ -232,6 +233,14 @@ describe('journey map guard command', () => {
     );
   });
 
+  it('fails when --web-root has no value', () => {
+    const result = Bun.spawnSync(['bun', SCRIPT_PATH, '--web-root'], {
+      stderr: 'pipe',
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.toString()).toContain('--web-root needs a directory');
+  });
+
   it('fails explicitly when the tests root is missing', () => {
     rmSync(join(webRoot, 'tests'), { force: true, recursive: true });
     const { exitCode, stderr } = runGuard();
@@ -291,19 +300,7 @@ describe('journey map guard in standard validation', () => {
       }
       const { checkLane } = buildValidationSteps({
         onlyE2e: false,
-        plan: {
-          e2eSpecPaths: ['tests/new.spec.ts'],
-          journeySelectionReasons: [],
-          lintPaths: [],
-          missingJourneyMappings: [],
-          requiresFullE2e: false,
-          testLayerSelectionReasons: [],
-          testLayers: [],
-          testTargets: [],
-          toolingTestPaths: [],
-          workspaceNames: [],
-          workspaceSelectionReasons: [],
-        },
+        plan: makePlan({ e2eSpecPaths: ['tests/new.spec.ts'] }),
         skipE2e: true,
       });
       const stderr: string[] = [];

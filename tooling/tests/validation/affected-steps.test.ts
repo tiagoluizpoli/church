@@ -1,33 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { buildValidationSteps } from '../../validation/affected';
-import type { ValidationPlan } from '../../validation/affected-plan';
-
-interface PlanOverrides {
-  e2eSpecPaths?: string[];
-  lintPaths?: string[];
-  requiresFullE2e?: boolean;
-  testLayers?: ValidationPlan['testLayers'];
-  testTargets?: ValidationPlan['testTargets'];
-  toolingTestPaths?: string[];
-  workspaceNames?: string[];
-}
-
-function makePlan(overrides: PlanOverrides): ValidationPlan {
-  return {
-    e2eSpecPaths: [],
-    journeySelectionReasons: [],
-    lintPaths: [],
-    missingJourneyMappings: [],
-    requiresFullE2e: false,
-    testLayerSelectionReasons: [],
-    testLayers: [],
-    testTargets: [],
-    toolingTestPaths: [],
-    workspaceNames: [],
-    workspaceSelectionReasons: [],
-    ...overrides,
-  };
-}
+import { makePlan } from './plan';
 
 // Existing file, so the deleted-file filter keeps it.
 const LINT_PATH = 'package.json';

@@ -163,6 +163,7 @@ export class ActiveChurchController implements FastifyController {
             200: activeChurchStatusResponseSchema,
             401: errorResponseSchema,
             403: errorResponseSchema,
+            500: errorResponseSchema,
           },
         },
       },
@@ -182,17 +183,11 @@ export class ActiveChurchController implements FastifyController {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
 
-        await auth.api
-          .setActiveOrganization({
-            headers: headersFromRequest(request),
-            body: { organizationId: resolution.churchId },
-          })
-          .catch((error) => {
-            request.log.warn(
-              { err: error },
-              'Failed to persist the selected active organization onto the session',
-            );
-          });
+        // A failed save must reach the standard 500: answering "resolved" would show a Church the session does not scope.
+        await auth.api.setActiveOrganization({
+          headers: headersFromRequest(request),
+          body: { organizationId: resolution.churchId },
+        });
 
         return reply.send(await this.buildStatusResponse({ resolution }));
       },

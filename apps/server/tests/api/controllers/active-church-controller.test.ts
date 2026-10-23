@@ -38,6 +38,7 @@ const selectionManager = {
 let app: FastifyTypedInstance;
 
 const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
+const OTHER_CHURCH_ID = '22222222-2222-4222-8222-222222222222';
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -342,5 +343,36 @@ describe('POST /api/v1/active-church/select', () => {
     expect(mockSetActiveOrganization).toHaveBeenCalledWith(
       expect.objectContaining({ body: { organizationId: CHURCH_ID } }),
     );
+  });
+
+  it('returns the standard 500 without a resolved body when saving the selection onto the session fails', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: 'usr_1' },
+      session: { activeOrganizationId: CHURCH_ID },
+    } as never);
+    selectionManager.selectActiveChurch.mockResolvedValueOnce({
+      status: 'resolved',
+      churchId: OTHER_CHURCH_ID,
+      volunteerId: null,
+      autoSelected: false,
+    });
+    selectionManager.getChurchTimezone.mockResolvedValueOnce('UTC');
+    mockSetActiveOrganization.mockRejectedValueOnce(
+      new Error('session store unavailable'),
+    );
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/active-church/select',
+      payload: { churchId: OTHER_CHURCH_ID },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({
+      error: 'INTERNAL_SERVER_ERROR',
+      message: expect.any(String),
+    });
+    expect(response.body).not.toContain('session store unavailable');
+    expect(response.body).not.toContain(OTHER_CHURCH_ID);
   });
 });

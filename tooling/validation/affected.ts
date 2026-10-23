@@ -6,6 +6,7 @@ import {
   type TestTarget,
   type ValidationPlan,
 } from './affected-plan';
+import { readE2eImportGraph } from './e2e-import-graph';
 import {
   hasFailure,
   type LaneStep,
@@ -603,6 +604,7 @@ if (import.meta.main) {
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
     deletedPaths,
+    e2eImportGraph: readE2eImportGraph(),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,

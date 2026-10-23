@@ -336,6 +336,64 @@
     },
     {
       "includes": [
+        "apps/web/src/components/**",
+        "apps/web/src/hooks/**",
+        "apps/web/src/lib/**",
+        "apps/web/src/utils/**",
+        "apps/web/src/shared/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/features/**"],
+                    "message": "shared/ → features/ import forbidden (Bulletproof React layering: shared → features → app)."
+                  },
+                  {
+                    "group": ["**/routes/**"],
+                    "message": "shared/ → routes/ import forbidden (Bulletproof React layering: shared → features → app)."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/routes/**"],
+                    "message": "features/ → routes/ import forbidden (Bulletproof React layering: shared → features → app)."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
         "**/src/routes/**/*",
         "**/tests/routes/**/*",
         "**/routeTree.gen.ts"

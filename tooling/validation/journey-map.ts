@@ -525,7 +525,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // inbox page, proven end to end by this one spec.
   {
     sourcePathPrefix:
-      'apps/web/src/components/notification-bell/notification-bell.tsx',
+      'apps/web/src/features/volunteers/components/notification-bell.tsx',
     specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
   {

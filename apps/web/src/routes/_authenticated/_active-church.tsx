@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
+import { NotificationBell } from '@/features/volunteers/components/notification-bell';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -154,7 +155,10 @@ function ActiveChurchLayout() {
       userId={session?.data?.user.id ?? null}
     >
       <TimezoneProvider churchTimezone={churchTimezone}>
-        <AppShell breadcrumbOverrides={breadcrumbOverrides}>
+        <AppShell
+          breadcrumbOverrides={breadcrumbOverrides}
+          notificationBell={<NotificationBell />}
+        >
           <Outlet />
         </AppShell>
       </TimezoneProvider>

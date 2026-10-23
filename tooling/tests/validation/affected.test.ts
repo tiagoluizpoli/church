@@ -476,7 +476,7 @@ describe('classifyChanges', () => {
 
   it('selects only the notification-bell journey for the bell, inbox route, and inbox hook', () => {
     for (const changedPath of [
-      'apps/web/src/components/notification-bell/notification-bell.tsx',
+      'apps/web/src/features/volunteers/components/notification-bell.tsx',
       'apps/web/src/routes/_authenticated/_active-church/notifications.tsx',
       'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
       'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',

@@ -1,0 +1,23 @@
+language js
+
+// docs/agents/backend.md: only the composition root (main/di/), scripts and
+// seeds import runtime values from @church/app-config; everything else gets
+// config through a constructor's `config` field. Type-only imports stay legal.
+// Biome overrides cannot scope a plugin, so the scope is matched on $filename
+// here. Covered by no-app-config-import.test.ts.
+or {
+  JsImport(),
+  JsExport()
+} as $hit where {
+  $hit <: contains JsModuleSource() as $src,
+  $src <: r".*@church/app-config.*",
+  // Legal: `import type {...}` or a clause whose specifiers are all inline
+  // `type` specifiers. shortcut: matched on the statement text, not the AST
+  // (Biome's Grit exposes no "absent type token" test); revisit if it misfires.
+  not $hit <: r"(?s)(import|export)\s+type\s.*",
+  not $hit <: r"(?s)(import|export)\s*\{(\s*type\s+\w+(\s+as\s+\w+)?\s*,?)+\s*\}.*",
+  $filename <: r".*apps/server/src/.*",
+  not $filename <: r".*apps/server/src/(main/di|scripts)/.*",
+  not $filename <: r".*/tests/.*",
+  register_diagnostic(span=$hit, message="Only the composition root (main/di/), scripts and seeds import @church/app-config values: a class gets config as its constructor's `config` field and domain functions get values as named params. `import type` is fine (docs/agents/backend.md).")
+}

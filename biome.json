@@ -433,6 +433,17 @@
               "options": {
                 "patterns": [
                   {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/apps/server",
+                      "**/apps/server/**",
+                      "**/../../server",
+                      "**/../../server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  },
+                  {
                     "group": ["**/features/**"],
                     "message": "shared/ → features/ import forbidden (Bulletproof React layering: shared → features → app)."
                   },
@@ -443,7 +454,9 @@
                 ],
                 "paths": {
                   "date-fns": "Only @church/time may import date-fns (ADR-0003).",
-                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
                 }
               }
             }
@@ -461,13 +474,26 @@
               "options": {
                 "patterns": [
                   {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/apps/server",
+                      "**/apps/server/**",
+                      "**/../../server",
+                      "**/../../server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  },
+                  {
                     "group": ["**/routes/**"],
                     "message": "features/ → routes/ import forbidden (Bulletproof React layering: shared → features → app)."
                   }
                 ],
                 "paths": {
                   "date-fns": "Only @church/time may import date-fns (ADR-0003).",
-                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
                 }
               }
             }

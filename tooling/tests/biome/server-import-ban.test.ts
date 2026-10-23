@@ -35,6 +35,7 @@ const config = JSON.parse(
 
 const CLIENT_DIRS = [
   'apps/web/src/features/x',
+  'apps/web/src/shared/x',
   'apps/web/tests/features/x',
   'apps/desktop/src/x',
   'packages/core/src/x',
@@ -153,6 +154,28 @@ describe('server import ban', () => {
     for (const { message } of diagnostics) {
       expect(message).toContain(BOUNDARY);
       expect(message).toContain('apps/web/src/infrastructure/api/');
+    }
+  });
+
+  // An override's options replace earlier ones, so each must restate the ban.
+  it('keeps the server ban in every non-server override that sets restricted-import options', () => {
+    const replacing = config.overrides.filter(
+      (override) =>
+        !override.includes.some((glob) => glob.startsWith('apps/server/')) &&
+        (
+          override.linter?.rules?.style?.noRestrictedImports as
+            | { options?: unknown }
+            | undefined
+        )?.options,
+    );
+    expect(replacing.length).toBeGreaterThan(0);
+    for (const override of replacing) {
+      const options = (
+        override.linter?.rules?.style?.noRestrictedImports as {
+          options: { paths?: Record<string, string> };
+        }
+      ).options;
+      expect(Object.keys(options.paths ?? {})).toContain('@church/server');
     }
   });
 });

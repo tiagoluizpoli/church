@@ -215,6 +215,7 @@ export function classifyChanges({
   const workspaceNames = new Set<string>();
   const testLayers = new Set<TestLayer>();
   const testTargets: TestTarget[] = [];
+  const testTargetPaths = new Set<string>();
   const selectedE2eSpecPaths = new Set(e2eSpecPaths);
   const missingJourneyMappings = new Set<string>();
   const workspaceSelectionReasons: WorkspaceSelectionReason[] = [];
@@ -269,7 +270,10 @@ export function classifyChanges({
     const testTarget = isDeleted
       ? null
       : getTestTarget({ changedPath, workspace });
-    if (testTarget) testTargets.push(testTarget);
+    if (testTarget) {
+      testTargets.push(testTarget);
+      testTargetPaths.add(changedPath);
+    }
 
     addWorkspaceAndDependents({
       changedPath,
@@ -312,6 +316,21 @@ export function classifyChanges({
         detail: 'critical-smoke-fallback',
         specPath,
       });
+    }
+  }
+
+  // A workspace stays narrowed only when its changed test files alone selected it.
+  const wholeLayerWorkspaces = new Set(
+    workspaceSelectionReasons
+      .filter(
+        ({ changedPath, detail }) =>
+          detail !== 'direct' || !testTargetPaths.has(changedPath),
+      )
+      .map(({ workspaceName }) => workspaceName),
+  );
+  for (let i = testTargets.length - 1; i >= 0; i--) {
+    if (wholeLayerWorkspaces.has(testTargets[i].workspaceName)) {
+      testTargets.splice(i, 1);
     }
   }
 

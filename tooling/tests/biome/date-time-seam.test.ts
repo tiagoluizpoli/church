@@ -162,24 +162,36 @@ describe('date-time seam lint rule', () => {
     expect(config.plugins).toContain('./tooling/biome/date-time-seam.grit');
   });
 
+  // An override's options replace the top-level ones rather than merging.
+  const replacing = config.overrides.filter((override) => {
+    const rule = override.linter?.rules?.style?.noRestrictedImports;
+    return typeof rule === 'object' && rule.options !== undefined;
+  });
+  const restrictedPaths = (override: BiomeOverride): string[] =>
+    Object.keys(
+      (
+        override.linter?.rules?.style
+          ?.noRestrictedImports as RestrictedImportsRule
+      ).options?.paths ?? {},
+    );
+  const isSeam = (override: BiomeOverride): boolean =>
+    override.includes.includes('packages/time/**');
+
   it('keeps the date-fns ban in every override that replaces restricted-import options', () => {
-    // An override's options replace the top-level ones rather than merging.
-    const replacing = config.overrides.filter((override) => {
-      const rule = override.linter?.rules?.style?.noRestrictedImports;
-      return typeof rule === 'object' && rule.options !== undefined;
-    });
-    expect(replacing.length).toBeGreaterThan(0);
-    for (const override of replacing) {
-      const rule = override.linter?.rules?.style
-        ?.noRestrictedImports as RestrictedImportsRule;
-      const paths = Object.keys(rule.options?.paths ?? {});
-      // packages/time is the seam: its override keeps only the server ban.
-      if (override.includes.includes('packages/time/**')) {
-        expect(paths).not.toContain('date-fns');
-        expect(paths).not.toContain('date-fns-tz');
-      } else {
-        expect(paths.sort()).toEqual(['date-fns', 'date-fns-tz']);
-      }
+    const outsideSeam = replacing.filter((override) => !isSeam(override));
+    expect(outsideSeam.length).toBeGreaterThan(0);
+    for (const override of outsideSeam) {
+      expect(restrictedPaths(override)).toEqual(
+        expect.arrayContaining(['date-fns', 'date-fns-tz']),
+      );
     }
+  });
+
+  it('lifts the date-fns ban in the packages/time seam', () => {
+    const seam = replacing.find(isSeam);
+    expect(seam).toBeDefined();
+    const paths = restrictedPaths(seam as BiomeOverride);
+    expect(paths).not.toContain('date-fns');
+    expect(paths).not.toContain('date-fns-tz');
   });
 });

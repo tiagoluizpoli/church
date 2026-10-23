@@ -168,8 +168,6 @@
                 "group": [
                   "@church/server/**",
                   "server/**",
-                  "**/../server",
-                  "**/../server/**",
                   "**/apps/server",
                   "**/apps/server/**"
                 ],
@@ -215,6 +213,39 @@
     }
   },
   "overrides": [
+    {
+      "includes": ["apps/web/**", "apps/desktop/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/apps/server",
+                      "**/apps/server/**",
+                      "**/../../server",
+                      "**/../../server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     {
       "includes": ["apps/server/**"],
       "linter": {
@@ -338,8 +369,6 @@
                     "group": [
                       "@church/server/**",
                       "server/**",
-                      "**/../server",
-                      "**/../server/**",
                       "**/apps/server",
                       "**/apps/server/**"
                     ],

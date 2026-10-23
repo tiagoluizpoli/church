@@ -78,8 +78,16 @@ const ALLOWED_FIXTURES: Record<string, string> = {
     "import { app } from '@church/server';\nexport const a = app;\n",
   'apps/server/tests/api/imports-server.test.ts':
     "import { app } from '@church/server';\nexport const a = app;\n",
+  // Guards the packages/time date-fns exemption alongside the server ban.
   'packages/time/src/x/date-fns.ts':
     "import { format } from 'date-fns';\nexport const f = format;\n",
+  // Relative `server` specifiers that stay inside the workspace are not the server.
+  'packages/env/src/sub/a.ts':
+    "import { env } from '../server';\nexport const e = env;\n",
+  'packages/env/src/sub/deeper/a.ts':
+    "import { env } from '../../server';\nexport const e = env;\n",
+  'apps/web/src/a/b.ts':
+    "import { util } from '../server/util';\nexport const u = util;\n",
 };
 
 let workDir = '';
@@ -139,17 +147,12 @@ afterAll(() => {
 });
 
 describe('server import ban', () => {
-  it('flags every banned form outside apps/server with the boundary message, and nothing else', () => {
+  it('flags every banned form outside apps/server with the boundary message naming the orval functions, and nothing else', () => {
     const flagged = diagnostics.map(({ file }) => file).sort();
     expect(flagged).toEqual(Object.keys(BANNED_FIXTURES).sort());
     for (const { message } of diagnostics) {
       expect(message).toContain(BOUNDARY);
+      expect(message).toContain('apps/web/src/infrastructure/api/');
     }
-  });
-
-  it('points the boundary message at the orval-generated functions', () => {
-    expect(diagnostics[0]?.message).toContain(
-      'apps/web/src/infrastructure/api/',
-    );
   });
 });

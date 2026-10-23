@@ -249,7 +249,8 @@ describe('switchActiveChurch', () => {
       expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
       expect(navigate).not.toHaveBeenCalled();
       // BroadcastChannel delivers asynchronously; give a stray message time to land.
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const settleWindow = new Promise((resolve) => setTimeout(resolve, 50));
+      await settleWindow;
       expect(received).toEqual([]);
     } finally {
       unsubscribe();

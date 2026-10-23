@@ -52,7 +52,7 @@ export interface ResolveActiveChurchInput {
 interface ReadResolvedChurchIdInput {
   response: APIResponse;
   name: string;
-  operation: string;
+  operation: 'status' | 'select';
   churchId?: string;
 }
 
@@ -66,10 +66,18 @@ async function readResolvedChurchId({
   const body: unknown = await response.json().catch(() => null);
   const parsed = RESOLVED_ACTIVE_CHURCH_SCHEMA.safeParse(body);
   if (response.ok() && parsed.success) return parsed.data.churchId;
-  const attempted = churchId ? ` for Church ${churchId}` : '';
   throw new Error(
-    `Active Church ${operation} failed for ${name}${attempted} (HTTP ${response.status()}): ${JSON.stringify(body)}`,
+    `${activeChurchFailure({ name, operation, churchId })} (HTTP ${response.status()}): ${JSON.stringify(body)}`,
   );
+}
+
+function activeChurchFailure({
+  name,
+  operation,
+  churchId,
+}: Pick<ReadResolvedChurchIdInput, 'name' | 'operation' | 'churchId'>): string {
+  const attempted = churchId ? ` for Church ${churchId}` : '';
+  return `Active Church ${operation} failed for ${name}${attempted}`;
 }
 
 /**
@@ -89,22 +97,27 @@ export async function resolveActiveChurch({
   name,
 }: ResolveActiveChurchInput): Promise<void> {
   const serverUrl = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
+  const statusResponse = await request.get(
+    `${serverUrl}/api/v1/active-church/status`,
+  );
   const churchId = await readResolvedChurchId({
-    response: await request.get(`${serverUrl}/api/v1/active-church/status`),
+    response: statusResponse,
     name,
     operation: 'status',
   });
+  const selectResponse = await request.post(
+    `${serverUrl}/api/v1/active-church/select`,
+    { data: { churchId } },
+  );
   const selectedChurchId = await readResolvedChurchId({
-    response: await request.post(`${serverUrl}/api/v1/active-church/select`, {
-      data: { churchId },
-    }),
+    response: selectResponse,
     name,
     operation: 'select',
     churchId,
   });
   if (selectedChurchId !== churchId) {
     throw new Error(
-      `Active Church select failed for ${name} for Church ${churchId}: the session selected ${selectedChurchId}`,
+      `${activeChurchFailure({ name, operation: 'select', churchId })}: the session selected ${selectedChurchId}`,
     );
   }
 }

@@ -428,6 +428,39 @@ describe('the Active Church guard (_active-church)', () => {
       expect(listCycles).not.toHaveBeenCalled();
     });
 
+    it('fails the route instead of opening the target Church when saving the auto-select fails', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      getSession.mockResolvedValue({
+        data: { user: { id: 'u1' }, session: { activeOrganizationId: null } },
+      });
+      getActiveChurchStatus.mockResolvedValue({
+        status: 'selection_required',
+      });
+      listActiveChurchOptions.mockResolvedValue({
+        churches: [
+          { churchId: 'church-1', name: 'Igreja Central' },
+          { churchId: 'church-2', name: 'Comunidade Esperança' },
+        ],
+      });
+      const saveFailure = new Error('Request failed with status code 500');
+      selectActiveChurch.mockRejectedValue(saveFailure);
+
+      const { router } = renderWithChurchParam('church-2');
+
+      await waitFor(() => {
+        const failed = router.state.matches.find(
+          (match) => match.status === 'error',
+        );
+        expect(failed?.error).toBe(saveFailure);
+      });
+      expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-2' });
+      expect(screen.queryByTestId('church-time')).not.toBeInTheDocument();
+      expect(listCycles).not.toHaveBeenCalled();
+      consoleError.mockRestore();
+    });
+
     it('keeps the current Active Church and shows a generic access-denied when the caller has no Membership in the target Church', async () => {
       getSession.mockResolvedValue({
         data: {

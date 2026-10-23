@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import {
   afterAll,
   beforeAll,
@@ -370,7 +371,7 @@ describe('POST /api/v1/active-church/select', () => {
     expect(response.statusCode).toBe(500);
     expect(response.json()).toEqual({
       error: 'INTERNAL_SERVER_ERROR',
-      message: expect.any(String),
+      message: m.common_generic_error({}, { locale: testLocale.defaultLocale }),
     });
     expect(response.body).not.toContain('session store unavailable');
     expect(response.body).not.toContain(OTHER_CHURCH_ID);

@@ -87,8 +87,47 @@ its workspace in scope but selects no test file and, when no journey maps it,
 no smoke fallback.
 
 Use root Bun scripts by default. The focused-workspace exception is
-`bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API
-client only with `bun run api:generate`.
+`bunx turbo -F <workspace> <task> --only -- <test path>` (see
+[Test loop and completion gate](#test-loop-and-completion-gate)). Generate
+the API client only with `bun run api:generate`.
+
+## Test loop and completion gate
+
+While implementing a ticket, iterate on the existing tests for the behavior
+you are changing, in the workspace that owns it. Run them from the repository
+root through the focused-workspace exception, which keeps the package's own
+task wrapper (its Vitest projects, Varlock and environment):
+
+```sh
+bunx turbo -F server test:unit --only -- tests/api/auth/active-church-pre-validation.test.ts
+```
+
+`-F` takes the package name (`server`, `web`, `@church/core`, …); the task is
+`test:unit` for unit and component tests or `test:integration` for
+integration tests; the path is relative to that workspace. Integration tasks
+need this worktree's databases (`bun run worktree:bootstrap`). Story E2E keeps
+`bun run test:e2e` and the critical-journey policy of
+[ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md).
+
+Run `bun run validate:affected` once, after the ticket's implementation and
+focused tests are complete and before reporting it done. It is the
+completion gate, not the inner loop: it also selects dependent workspaces,
+seed contracts and critical journeys. Rerun it only after diagnosing and
+repairing a failure, or after a later relevant change invalidates the
+result. One run per ticket is normal and two after a repair; that is an
+expectation, never a cap that lets a failing gate be handed off.
+
+The gate takes minutes. Start it with your shell tool's supported background
+execution and wait for that tool's completion notification or documented
+completion primitive; do not wait with `sleep`, repeated status polling, or
+a monitoring tool your runtime does not provide. Starting the gate is not
+passing it: read its exit status and stage table, and fix every failure
+before handoff. `bun run validate` stays the final handoff or merge gate.
+
+In the next multi-ticket run, record per ticket the affected-gate run count,
+the reason for each rerun, the final outcome, and any waiting failures (sleep
+guard, unsupported monitor calls), and report them as follow-up evidence for
+[#580](https://github.com/tiagoluizpoli/church/issues/580).
 
 Local `test:e2e` runs hold one lock shared by every worktree: a second run
 prints that it is waiting and starts nothing until the first ends (CI skips
@@ -300,7 +339,7 @@ In CI, `setup-church-ci` points `CHURCH_FAILURE_BUNDLES_DIR` at
 E2E tests uploads it as the `failure-bundles-<job>-<attempt>` artifact only
 when the job fails; GitHub deletes it after seven days.
 
-Finish the current implementation phase before review. Run targeted tests,
+Finish the current implementation phase before review. Run focused tests,
 then affected validation, plus the relevant story E2E when one exists; review
 the modified files and repair every finding in the same phase. Fix lint,
 format, and type errors directly—suppression directives require explicit user

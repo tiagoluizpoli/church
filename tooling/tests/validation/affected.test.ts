@@ -3,6 +3,7 @@ import {
   classifyChanges,
   explainPlan,
   formatTimingSummary,
+  isScriptsOnlyAddition,
   parseArguments,
   readSeedImpactTrailers,
 } from '../../validation/affected';
@@ -1451,5 +1452,63 @@ describe('classifyChanges test narrowing', () => {
     expect(plan.testTargets.map(({ workspaceName }) => workspaceName)).toEqual([
       'server',
     ]);
+  });
+});
+
+describe('package.json scripts-only addition', () => {
+  const base = JSON.stringify({
+    dependencies: { a: '1' },
+    scripts: { build: 'x', test: 'y' },
+  });
+  const withHead = (head: object) =>
+    isScriptsOnlyAddition({ base, head: JSON.stringify(head) });
+
+  it('accepts new scripts and nothing else', () => {
+    expect(
+      withHead({
+        dependencies: { a: '1' },
+        scripts: { build: 'x', test: 'y', guard: 'z' },
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects an edited or removed script', () => {
+    expect(
+      withHead({
+        dependencies: { a: '1' },
+        scripts: { build: 'x', test: 'z' },
+      }),
+    ).toBe(false);
+    expect(
+      withHead({ dependencies: { a: '1' }, scripts: { build: 'x' } }),
+    ).toBe(false);
+  });
+
+  it('rejects a dependency change, and unparsable content', () => {
+    expect(
+      withHead({
+        dependencies: { a: '2' },
+        scripts: { build: 'x', test: 'y' },
+      }),
+    ).toBe(false);
+    expect(isScriptsOnlyAddition({ base: '', head: base })).toBe(false);
+  });
+
+  it('selects no workspace layers but keeps tooling tests for a scripts-only addition', () => {
+    const plan = classifyChanges({
+      changedPaths: ['package.json'],
+      packageJsonScriptsOnlyAddition: true,
+    });
+
+    expect(plan.workspaceNames).toEqual([]);
+    expect(plan.testLayers).toEqual([]);
+    expect(plan.toolingTestPaths).toEqual(['package.json']);
+  });
+
+  it('keeps the full workspace selection for any other package.json change', () => {
+    const plan = classifyChanges({ changedPaths: ['package.json'] });
+
+    expect(plan.workspaceNames).toContain('server');
+    expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
   });
 });

@@ -11,6 +11,12 @@ export type TestLayer = 'test:unit' | 'test:integration';
 export interface ClassifyChangesInput {
   changedPaths: string[];
   /**
+   * Root `package.json` differs from the base only by newly added `scripts`
+   * entries (see `isScriptsOnlyAddition`). It then stays a tooling-test input
+   * but is not root infrastructure, so it selects no workspace layers.
+   */
+  packageJsonScriptsOnlyAddition?: boolean;
+  /**
    * The daily gate (task-branch to develop) never requires the full E2E
    * suite — per #210's Implementation Decisions, only a develop-to-master
    * release gate does, and only once #121 is repeatedly green. Set this for
@@ -211,6 +217,28 @@ const SERVER_INTEGRATION_TEST_PATHS = new Set([
   'apps/server/tests/transfer/volunteer-transfer.repository.test.ts',
 ]);
 
+/** True when `head` is `base` plus new `scripts` entries and nothing else. */
+export function isScriptsOnlyAddition({
+  base,
+  head,
+}: {
+  base: string;
+  head: string;
+}): boolean {
+  try {
+    const { scripts: baseScripts = {}, ...baseRest } = JSON.parse(base);
+    const { scripts: headScripts = {}, ...headRest } = JSON.parse(head);
+    return (
+      JSON.stringify(baseRest) === JSON.stringify(headRest) &&
+      Object.entries(baseScripts).every(
+        ([name, command]) => headScripts[name] === command,
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 const TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
 
 export function classifyChanges({
@@ -219,6 +247,7 @@ export function classifyChanges({
   deletedPaths = [],
   e2eImportGraph = {},
   e2eSpecPaths = [],
+  packageJsonScriptsOnlyAddition = false,
   seedImpactAcknowledgements = [],
 }: ClassifyChangesInput): ValidationPlan {
   const deletedPathSet = new Set(deletedPaths);
@@ -247,7 +276,10 @@ export function classifyChanges({
   }
 
   for (const changedPath of changedPaths) {
-    if (ROOT_INFRASTRUCTURE_PATHS.has(changedPath)) {
+    if (
+      ROOT_INFRASTRUCTURE_PATHS.has(changedPath) &&
+      !(changedPath === 'package.json' && packageJsonScriptsOnlyAddition)
+    ) {
       for (const workspace of WORKSPACES) {
         workspaceNames.add(workspace.name);
         workspaceSelectionReasons.push({

@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, existsSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import {
   classifyChanges,
+  isScriptsOnlyAddition,
   type TestLayer,
   type TestTarget,
   type ValidationPlan,
@@ -15,7 +16,7 @@ import {
 } from './run-lanes';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
 
-export { classifyChanges } from './affected-plan';
+export { classifyChanges, isScriptsOnlyAddition } from './affected-plan';
 export { readSeedImpactTrailers };
 
 interface CommandInput {
@@ -34,6 +35,8 @@ interface CollectChangedPathsResult {
   deletedPaths: string[];
   /** Messages of the commits the branch adds over the base. */
   commitMessages: string[];
+  /** Root package.json only gained scripts versus the merge base. */
+  packageJsonScriptsOnlyAddition: boolean;
 }
 
 interface ParseArgumentsInput {
@@ -154,10 +157,28 @@ function collectChangedPaths({
         .split('\0')
     : [];
 
+  let packageJsonScriptsOnlyAddition = false;
+  if (resolvedBaseRef && changedPaths.includes('package.json')) {
+    try {
+      const mergeBase = execFileSync(
+        'git',
+        ['merge-base', resolvedBaseRef, 'HEAD'],
+        { encoding: 'utf8' },
+      ).trim();
+      packageJsonScriptsOnlyAddition = isScriptsOnlyAddition({
+        base: execFileSync('git', ['show', `${mergeBase}:package.json`], {
+          encoding: 'utf8',
+        }),
+        head: readFileSync('package.json', 'utf8'),
+      });
+    } catch {} // base unavailable: keep treating it as root infrastructure
+  }
+
   return {
     baseRef: resolvedBaseRef,
     changedPaths,
     commitMessages,
+    packageJsonScriptsOnlyAddition,
     deletedPaths: changedPaths.filter((path) => !existsSync(path)),
   };
 }
@@ -596,14 +617,20 @@ export function formatTimingSummary({
 
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
-  const { baseRef, changedPaths, commitMessages, deletedPaths } =
-    collectChangedPaths({ baseRef: argumentsResult.baseRef });
+  const {
+    baseRef,
+    changedPaths,
+    commitMessages,
+    deletedPaths,
+    packageJsonScriptsOnlyAddition,
+  } = collectChangedPaths({ baseRef: argumentsResult.baseRef });
   const plan = classifyChanges({
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
     deletedPaths,
     e2eImportGraph: readE2eImportGraph(),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
+    packageJsonScriptsOnlyAddition,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,
       ...readSeedImpactTrailers({ messages: commitMessages }),

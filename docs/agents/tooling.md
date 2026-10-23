@@ -19,6 +19,7 @@ and task ordering.
 | Seed contracts (every recipe, refusals) | `bun run test:seeds` |
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
+| Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
@@ -345,7 +346,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
-| The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Follow-up [#553](https://github.com/tiagoluizpoli/church/issues/553) |
+| The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |
 | Fix lint, format and type errors; suppressions need user permission | Tooling | Judgement | — | Review: whether permission was given is not in the code; VII and date-time suppressions have their own guards |
 | Finish the phase, run targeted tests and affected validation before review | Tooling | Judgement | — | Review: a working process |
 | Server classes get config as the constructor's `config` field; only `main/di/`, scripts and seeds import `@church/app-config`; domain functions never read config | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-app-config-import.grit` bans `@church/app-config` value imports and re-exports in server `src` outside `main/di/` and `scripts/`; "domain functions never read config" is enforced only through that import ban |

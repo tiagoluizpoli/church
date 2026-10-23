@@ -807,14 +807,16 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('does not run E2E merely because a spec is being edited', () => {
+  it('runs only an edited spec, never the full suite', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/tests/scheduling/builder-event-time-block-focus.spec.ts',
       ],
     });
 
-    expect(plan.e2eSpecPaths).toEqual([]);
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
+    ]);
     expect(plan.requiresFullE2e).toBe(false);
   });
 

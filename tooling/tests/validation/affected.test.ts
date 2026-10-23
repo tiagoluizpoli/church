@@ -1220,7 +1220,7 @@ describe('seed impact', () => {
     });
   });
 
-  it('runs the seed contracts beside a changed test file instead of narrowing to it', () => {
+  it('runs the whole server layer, seed contracts included, beside a changed test file', () => {
     const plan = classifyChanges({
       changedPaths: [
         'packages/db/src/schema/volunteer.ts',
@@ -1228,16 +1228,8 @@ describe('seed impact', () => {
       ],
     });
 
-    expect(plan.testTargets).toContainEqual({
-      testLayer: 'test:integration',
-      testPath: 'tests/seeds/',
-      workspaceName: 'server',
-    });
-    expect(plan.testTargets).toContainEqual({
-      testLayer: 'test:integration',
-      testPath: 'tests/application/scheduling-phase6.assign.test.ts',
-      workspaceName: 'server',
-    });
+    expect(plan.testTargets).toEqual([]);
+    expect(plan.seedImpact.contractsSelected).toBe(true);
   });
 
   it('adds no target when the workspace already runs its whole layer', () => {
@@ -1344,5 +1336,63 @@ describe('init-system journey mapping', () => {
     expect(initSystem.missingJourneyMappings).toEqual([]);
     expect(initSystem.e2eSpecPaths).toEqual(provision.e2eSpecPaths);
     expect(initSystem.e2eSpecPaths.length).toBeGreaterThan(0);
+  });
+});
+
+describe('classifyChanges test narrowing', () => {
+  const webTest = 'apps/web/tests/components/foo.component.test.tsx';
+  const webTargets = (plan: ReturnType<typeof classifyChanges>) =>
+    plan.testTargets.filter(({ workspaceName }) => workspaceName === 'web');
+
+  it('runs the whole web layer when a dependency source changes with a web test', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/time/src/display.ts', webTest],
+    });
+
+    expect(webTargets(plan)).toEqual([]);
+  });
+
+  it('runs the whole web layer when web source changes with a web test', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/utils/format-volunteer-initials.ts',
+        webTest,
+      ],
+    });
+
+    expect(webTargets(plan)).toEqual([]);
+  });
+
+  it('keeps web narrowed to the changed files when only web tests changed', () => {
+    const plan = classifyChanges({ changedPaths: [webTest] });
+
+    expect(webTargets(plan)).toEqual([
+      {
+        testLayer: 'test:unit',
+        testPath: 'tests/components/foo.component.test.tsx',
+        workspaceName: 'web',
+      },
+    ]);
+  });
+
+  it('runs the whole web layer when a test helper changes with a web test', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/tests/helpers/render.tsx', webTest],
+    });
+
+    expect(webTargets(plan)).toEqual([]);
+  });
+
+  it('narrows server but runs web whole for a server test plus web source', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/server/tests/application/foo.test.ts',
+        'apps/web/src/utils/format-volunteer-initials.ts',
+      ],
+    });
+
+    expect(plan.testTargets.map(({ workspaceName }) => workspaceName)).toEqual([
+      'server',
+    ]);
   });
 });

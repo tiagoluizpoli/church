@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   fromPickerDate,
@@ -53,5 +54,17 @@ describe('pickerLocale', () => {
   it('returns the date-fns enUS locale object for en', () => {
     const result = pickerLocale({ locale: 'en' });
     expect(result.locale.code).toBe('en-US');
+  });
+});
+
+describe('date-fns locale imports', () => {
+  // The `date-fns/locale` barrel loads every locale (~1.8s per test file).
+  it('takes each locale from its own subpath, never the barrel', () => {
+    const src = new URL('../src/', import.meta.url);
+    for (const file of readdirSync(src)) {
+      expect(readFileSync(new URL(file, src), 'utf8'), file).not.toMatch(
+        /from ['"]date-fns\/locale['"]/,
+      );
+    }
   });
 });

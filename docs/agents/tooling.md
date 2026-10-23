@@ -87,8 +87,49 @@ its workspace in scope but selects no test file and, when no journey maps it,
 no smoke fallback.
 
 Use root Bun scripts by default. The focused-workspace exception is
-`bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API
-client only with `bun run api:generate`.
+`bunx turbo -F <workspace> <task> --only -- <test path>` (see
+[Test loop and completion gate](#test-loop-and-completion-gate)). Generate
+the API client only with `bun run api:generate`.
+
+## Test loop and completion gate
+
+While implementing a ticket, iterate on the existing tests for the behavior
+you are changing, in the workspace that owns it. Run them from the repository
+root through the focused-workspace exception, which keeps the package's own
+task script (its Vitest projects and, for integration, Varlock and managed
+diagnostics). It skips the root `test:unit`'s `TZ=Asia/Kolkata`, so the
+completion gate is still what catches timezone-dependent failures:
+
+```sh
+bunx turbo -F server test:unit --only -- tests/api/auth/active-church-pre-validation.test.ts
+```
+
+`-F` takes the package name (`server`, `web`, `@church/core`, …); the task is
+`test:unit` for unit and component tests or `test:integration` for
+integration tests; the path is relative to that workspace. Integration tasks
+need this worktree's databases (`bun run worktree:bootstrap`). Story E2E keeps
+`bun run test:e2e` and the critical-journey policy of
+[ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md).
+
+Run `bun run validate:affected` once, after the ticket's implementation and
+focused tests are complete and before reporting it done. It is the
+completion gate, not the inner loop: it also selects dependent workspaces,
+seed contracts and critical journeys. Rerun it only after diagnosing and
+repairing a failure, or after a later relevant change invalidates the
+result. One run per ticket is normal and two after a repair; that is an
+expectation, never a cap that lets a failing gate be handed off.
+
+The gate takes minutes. Start it with your shell tool's supported background
+execution and wait for that tool's completion notification or documented
+completion primitive; do not wait with `sleep`, repeated status polling, or
+a monitoring tool your runtime does not provide. Starting the gate is not
+passing it: read its exit status and stage table, and fix every failure
+before handoff. `bun run validate` stays the final handoff or merge gate.
+
+In the next multi-ticket run, record per ticket the affected-gate run count,
+the reason for each rerun, the final outcome, and any waiting failures (sleep
+guard, unsupported monitor calls), and report them as follow-up evidence for
+[#580](https://github.com/tiagoluizpoli/church/issues/580).
 
 Local `test:e2e` runs hold one lock shared by every worktree: a second run
 prints that it is waiting and starts nothing until the first ends (CI skips
@@ -300,8 +341,8 @@ In CI, `setup-church-ci` points `CHURCH_FAILURE_BUNDLES_DIR` at
 E2E tests uploads it as the `failure-bundles-<job>-<attempt>` artifact only
 when the job fails; GitHub deletes it after seven days.
 
-Finish the current implementation phase before review. Run targeted tests,
-then affected validation, plus the relevant story E2E when one exists; review
+Finish the current implementation phase before review. Run focused tests,
+then, once the ticket is complete, affected validation, plus the relevant story E2E when one exists; review
 the modified files and repair every finding in the same phase. Fix lint,
 format, and type errors directly—suppression directives require explicit user
 permission. Install Playwright's pinned Chromium with `bunx playwright install
@@ -348,7 +389,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
 | The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |
 | Fix lint, format and type errors; suppressions need user permission | Tooling | Judgement | — | Review: whether permission was given is not in the code; VII and date-time suppressions have their own guards |
-| Finish the phase, run targeted tests and affected validation before review | Tooling | Judgement | — | Review: a working process |
+| Finish the phase, run focused tests and affected validation before review | Tooling | Judgement | — | Review: a working process |
 | Server classes get config as the constructor's `config` field; only `main/di/`, scripts and seeds import `@church/app-config`; domain functions never read config | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-app-config-import.grit` bans `@church/app-config` value imports and re-exports in server `src` outside `main/di/` and `scripts/`; "domain functions never read config" is enforced only through that import ban |
 | A class copies the config values it uses into `private readonly` fields and does not keep `config` | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-whole-config.grit` |
 | Tenancy is enforced with `church_id` | Backend | Judgement | — | Review: whether a query must be church-scoped depends on the data |

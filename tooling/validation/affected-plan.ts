@@ -224,7 +224,7 @@ export function classifyChanges({
   const deletedPathSet = new Set(deletedPaths);
   const workspaceNames = new Set<string>();
   const testLayers = new Set<TestLayer>();
-  const testTargets: TestTarget[] = [];
+  let testTargets: TestTarget[] = [];
   const testTargetPaths = new Set<string>();
   const selectedE2eSpecPaths = new Set(e2eSpecPaths);
   const missingJourneyMappings = new Set<string>();
@@ -367,11 +367,9 @@ export function classifyChanges({
       )
       .map(({ workspaceName }) => workspaceName),
   );
-  for (let i = testTargets.length - 1; i >= 0; i--) {
-    if (wholeLayerWorkspaces.has(testTargets[i].workspaceName)) {
-      testTargets.splice(i, 1);
-    }
-  }
+  testTargets = testTargets.filter(
+    ({ workspaceName }) => !wholeLayerWorkspaces.has(workspaceName),
+  );
 
   for (const workspaceName of workspaceNames) {
     addTestLayers({ testLayers, workspaceName });

@@ -334,13 +334,6 @@ export function buildValidationSteps({
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
       else checkLane.push(...layerSteps);
     }
-    if (plan.toolingTestPaths.length > 0) {
-      checkLane.push({
-        args: ['test', 'tooling'],
-        command: 'bun',
-        label: 'test:tooling',
-      });
-    }
     checkedLabels.push(
       'lint',
       'test-placement',
@@ -350,6 +343,11 @@ export function buildValidationSteps({
       ...ALL_TEST_LAYERS,
     );
     if (plan.toolingTestPaths.length > 0) {
+      checkLane.push({
+        args: ['test', 'tooling'],
+        command: 'bun',
+        label: 'test:tooling',
+      });
       checkedLabels.push('test:tooling');
     }
   }

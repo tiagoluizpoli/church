@@ -1,4 +1,4 @@
-import type { APIRequestContext } from '@playwright/test';
+import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { z } from 'zod';
 import { assertServedFromPinnedTarget } from './e2e-target';
 import { requiredE2eUrl } from './e2e-urls';
@@ -7,7 +7,10 @@ const AUTH_RESPONSE_SCHEMA = z.object({
   user: z.object({ id: z.string().min(1) }),
 });
 
-const ACTIVE_CHURCH_STATUS_SCHEMA = z.object({ status: z.string() });
+const RESOLVED_ACTIVE_CHURCH_SCHEMA = z.object({
+  status: z.literal('resolved'),
+  churchId: z.string().min(1),
+});
 
 export interface PersonaCredentials {
   email: string;
@@ -46,6 +49,29 @@ export interface ResolveActiveChurchInput {
   name: string;
 }
 
+interface ReadResolvedChurchIdInput {
+  response: APIResponse;
+  name: string;
+  operation: string;
+  churchId?: string;
+}
+
+/** The resolved Church id, or a diagnostic naming persona, operation, HTTP status and attempted Church. */
+async function readResolvedChurchId({
+  response,
+  name,
+  operation,
+  churchId,
+}: ReadResolvedChurchIdInput): Promise<string> {
+  const body: unknown = await response.json().catch(() => null);
+  const parsed = RESOLVED_ACTIVE_CHURCH_SCHEMA.safeParse(body);
+  if (response.ok() && parsed.success) return parsed.data.churchId;
+  const attempted = churchId ? ` for Church ${churchId}` : '';
+  throw new Error(
+    `Active Church ${operation} failed for ${name}${attempted} (HTTP ${response.status()}): ${JSON.stringify(body)}`,
+  );
+}
+
 /**
  * Persists the session's Active Church before the browser uses it: global
  * setup does so for the shared personas before any worker starts, and a
@@ -53,19 +79,32 @@ export interface ResolveActiveChurchInput {
  * unresolved, the first concurrent requests each auto-select it and touch
  * the same Membership row in a repeatable-read transaction, and Postgres
  * fails all but one with a serialization error (500).
+ *
+ * The status call's own auto-select save is best-effort, so a resolved
+ * status proves nothing: the Church is selected explicitly, whose save
+ * failure is a 500.
  */
 export async function resolveActiveChurch({
   request,
   name,
 }: ResolveActiveChurchInput): Promise<void> {
   const serverUrl = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
-  const res = await request.get(`${serverUrl}/api/v1/active-church/status`);
-  const body = res.ok()
-    ? ACTIVE_CHURCH_STATUS_SCHEMA.parse(await res.json())
-    : null;
-  if (body?.status !== 'resolved') {
+  const churchId = await readResolvedChurchId({
+    response: await request.get(`${serverUrl}/api/v1/active-church/status`),
+    name,
+    operation: 'status',
+  });
+  const selectedChurchId = await readResolvedChurchId({
+    response: await request.post(`${serverUrl}/api/v1/active-church/select`, {
+      data: { churchId },
+    }),
+    name,
+    operation: 'select',
+    churchId,
+  });
+  if (selectedChurchId !== churchId) {
     throw new Error(
-      `Active Church did not resolve for ${name} (${res.status()}): ${JSON.stringify(body)}`,
+      `Active Church select failed for ${name} for Church ${churchId}: the session selected ${selectedChurchId}`,
     );
   }
 }

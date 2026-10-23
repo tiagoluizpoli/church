@@ -333,7 +333,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
 | Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |
-| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Follow-up [#548](https://github.com/tiagoluizpoli/church/issues/548) |
+| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Enforced: root `noRestrictedImports` options in `biome.json` (also bans the bare `server` name until [#549](https://github.com/tiagoluizpoli/church/issues/549)), locked by `tooling/tests/biome/server-import-ban.test.ts`; `apps/fumadocs` is not covered because Biome does not lint it. Relative imports: `packages/*` must name `apps/server`; the `apps/web`/`apps/desktop` override bans `../../server` and deeper. shortcut: a glob cannot see file depth, so a client root file (e.g. `vite.config.ts`) importing `../server` slips through and a future `server` folder two or more levels up inside a client would be flagged; move to a resolver-aware check if either happens |
 | `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |
 | Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Follow-up [#549](https://github.com/tiagoluizpoli/church/issues/549) |
 | Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |
@@ -352,7 +352,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | A class copies the config values it uses into `private readonly` fields and does not keep `config` | Backend | Mechanical | Grit plugin | Enforced: `tooling/biome/no-whole-config.grit` |
 | Tenancy is enforced with `church_id` | Backend | Judgement | — | Review: whether a query must be church-scoped depends on the data |
 | Credential-sensitive and sensitive operations stay on the server | Backend, frontend | Judgement | — | Review: "sensitive" is a judgement |
-| Web imports flow `shared → features → app` | Frontend | Mechanical | Biome rule | Follow-up [#556](https://github.com/tiagoluizpoli/church/issues/556) |
+| Web imports flow `shared → features → app` | Frontend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
 | UI is built from shadcn components where one exists | Frontend | Judgement | — | Review: whether a component fits is a design call |
 | The web reads `appConfig` by direct import | Frontend | Judgement | — | Review: states the allowed path; there is no fixed pattern to forbid |
 | Parked UI is gated at the mount point, not with CSS | Frontend | Judgement | — | Review: hiding by CSS has many shapes |

@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NotificationBell } from '@/components/notification-bell/notification-bell';
+import { NotificationBell } from '@/features/volunteers/components/notification-bell';
 import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';
 import { renderWithProviders } from '@/tests/setup/render';
 

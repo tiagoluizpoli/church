@@ -95,7 +95,9 @@ function asChurches(...churches: ReturnType<typeof church>[]) {
 function renderShell() {
   return renderWithProviders(
     <CallerCapabilitiesScopeProvider churchId="church-1" userId="user-1">
-      <AppShell>content</AppShell>
+      <AppShell notificationBell={<span data-testid="bell-slot" />}>
+        content
+      </AppShell>
     </CallerCapabilitiesScopeProvider>,
   );
 }
@@ -235,6 +237,14 @@ describe('AppShell flat nav per persona (F7)', () => {
     expect(navLabels(screen.getByTestId('sidebar'))).toEqual([HOME]);
   });
 
+  it('renders the supplied notification bell slot', () => {
+    asPersona();
+
+    renderShell();
+
+    expect(screen.getAllByTestId('bell-slot').length).toBeGreaterThan(0);
+  });
+
   it('has no mobile bottom bar', () => {
     asPersona();
 
@@ -340,6 +350,7 @@ describe('AppShell flat nav per persona (F7)', () => {
 
     renderWithProviders(
       <AppShell
+        notificationBell={null}
         breadcrumbOverrides={[{ segment: 'cycle-1', label: 'August 2026' }]}
       >
         content

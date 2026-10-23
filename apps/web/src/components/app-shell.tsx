@@ -30,7 +30,6 @@ import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
-import { NotificationBell } from './notification-bell/notification-bell';
 import UserMenu from './user-menu';
 import {
   Breadcrumb,
@@ -57,6 +56,7 @@ export interface BreadcrumbSegmentOverride {
 interface AppShellProps {
   children: React.ReactNode;
   breadcrumbOverrides?: BreadcrumbSegmentOverride[];
+  notificationBell: React.ReactNode;
 }
 interface NavIconProps {
   className?: string;
@@ -379,7 +379,11 @@ function NavList({ groups, pathname, variant, onNavigate }: NavListProps) {
   );
 }
 
-export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
+export function AppShell({
+  children,
+  breadcrumbOverrides,
+  notificationBell,
+}: AppShellProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   // Typed wide: the shipped value is a literal `false`.
@@ -513,7 +517,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
             </button>
           )}
 
-          <NotificationBell />
+          {notificationBell}
 
           <button
             type="button"
@@ -649,7 +653,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
               </button>
             )}
             <ModeToggle />
-            <NotificationBell />
+            {notificationBell}
             <UserMenu />
           </div>
         </header>

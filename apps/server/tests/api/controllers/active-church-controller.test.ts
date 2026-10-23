@@ -10,6 +10,7 @@ import {
 import { ActiveChurchController } from '@/api/controllers/active-church-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -39,7 +40,7 @@ let app: FastifyTypedInstance;
 const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new ActiveChurchController({
     activeChurchResolver: activeChurchResolver as never,
     selectionManager: selectionManager as never,

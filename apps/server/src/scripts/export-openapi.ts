@@ -9,7 +9,12 @@ async function exportOpenApi(): Promise<void> {
   // Parked routes stay in the spec so the generated web client keeps them.
   const root = createCompositionRoot({ config: withAllParkedOn(appConfig) });
 
-  const app = await createFastify();
+  const app = await createFastify({
+    locale: {
+      localeCookieName: appConfig.localeCookieName,
+      defaultLocale: appConfig.defaultLocale,
+    },
+  });
   await app.register(
     async (instance) => {
       await registerControllers({

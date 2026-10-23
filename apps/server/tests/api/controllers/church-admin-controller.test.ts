@@ -19,6 +19,7 @@ import { LastRemainingEventTimeBlockError } from '@/domain/errors/last-remaining
 import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -119,7 +120,7 @@ function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
 }
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new ChurchAdminController({
     cycleManager: cycleManager as never,
     eventTemplateManager: templateManager as never,

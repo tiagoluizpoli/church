@@ -33,6 +33,7 @@ import { CaptureEmailSender } from '@/infrastructure/services/capture-email-send
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -94,7 +95,7 @@ beforeEach(async () => {
     volunteerRepository,
     volunteerTransferRepository,
   });
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,

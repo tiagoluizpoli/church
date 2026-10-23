@@ -2,6 +2,7 @@ import { auth } from '@church/auth';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
 import { m } from '@church/i18n/messages';
+import type { Locale } from '@church/i18n/runtime';
 import fastifyCors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
@@ -27,7 +28,18 @@ import { requestLocale } from '../../api/utils/request-locale';
 type FastifyFactory = (opts?: Record<string, unknown>) => FastifyInstance;
 const createFastifyInstance = Fastify as unknown as FastifyFactory;
 
-export async function createFastify() {
+export interface LocaleSettings {
+  localeCookieName: string;
+  defaultLocale: Locale;
+}
+
+interface CreateFastifyInput {
+  locale: LocaleSettings;
+}
+
+export async function createFastify({
+  locale: localeSettings,
+}: CreateFastifyInput) {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';
 
@@ -60,6 +72,13 @@ export async function createFastify() {
   app.decorateRequest('userId', '');
   app.decorateRequest('volunteerId', '');
   app.decorateRequest('churchId', '');
+  app.decorateRequest('locale', localeSettings.defaultLocale);
+  app.addHook('onRequest', async (request) => {
+    request.locale = requestLocale({
+      cookieHeader: request.headers.cookie,
+      ...localeSettings,
+    });
+  });
 
   await app.register(swagger, {
     openapi: {
@@ -127,7 +146,7 @@ export async function createFastify() {
   }
 
   app.setErrorHandler((error, request, reply) => {
-    const locale = requestLocale(request);
+    const { locale } = request;
     const genericError = m.common_generic_error({}, { locale });
     if (error instanceof DomainError) {
       const status = errorStatus({ code: error.code }) ?? 500;

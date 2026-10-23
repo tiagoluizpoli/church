@@ -11,6 +11,7 @@ import { VolunteerScheduleController } from '@/api/controllers/volunteer-schedul
 import { Assignment } from '@/domain/entities/assignment';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -35,7 +36,7 @@ const activeChurchResolver = {
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify();
+  app = await createFastify({ locale: testLocale });
   const controller = new VolunteerScheduleController({
     volunteerManager: volunteerManager as never,
     activeChurchResolver: activeChurchResolver as never,

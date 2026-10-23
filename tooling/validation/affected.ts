@@ -6,6 +6,7 @@ import {
   type TestTarget,
   type ValidationPlan,
 } from './affected-plan';
+import { readE2eImportGraph } from './e2e-import-graph';
 import {
   hasFailure,
   type LaneStep,
@@ -341,6 +342,14 @@ export function buildValidationSteps({
       'typecheck',
       ...ALL_TEST_LAYERS,
     );
+    if (plan.toolingTestPaths.length > 0) {
+      checkLane.push({
+        args: ['test', 'tooling'],
+        command: 'bun',
+        label: 'test:tooling',
+      });
+      checkedLabels.push('test:tooling');
+    }
   }
 
   let e2eLabel = 'test:e2e';
@@ -516,6 +525,13 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
     }
   }
 
+  lines.push('', 'Tooling tests selected:');
+  if (plan.toolingTestPaths.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const path of plan.toolingTestPaths) lines.push(`  - ${path}`);
+  }
+
   lines.push('', ...explainSeedImpact({ plan }));
 
   if (plan.missingJourneyMappings.length > 0) {
@@ -586,6 +602,7 @@ if (import.meta.main) {
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
     deletedPaths,
+    e2eImportGraph: readE2eImportGraph(),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,

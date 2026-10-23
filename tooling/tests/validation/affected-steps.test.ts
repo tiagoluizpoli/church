@@ -8,6 +8,7 @@ interface PlanOverrides {
   requiresFullE2e?: boolean;
   testLayers?: ValidationPlan['testLayers'];
   testTargets?: ValidationPlan['testTargets'];
+  toolingTestPaths?: string[];
   workspaceNames?: string[];
 }
 
@@ -21,6 +22,7 @@ function makePlan(overrides: PlanOverrides): ValidationPlan {
     testLayerSelectionReasons: [],
     testLayers: [],
     testTargets: [],
+    toolingTestPaths: [],
     workspaceNames: [],
     workspaceSelectionReasons: [],
     ...overrides,
@@ -234,6 +236,35 @@ describe('buildValidationSteps', () => {
     });
 
     expect(steps.e2eSteps).toEqual([]);
+  });
+
+  it('adds the tooling test step when toolingTestPaths is non-empty', () => {
+    const { checkLane, checkedLabels } = buildValidationSteps({
+      onlyE2e: false,
+      plan: makePlan({ toolingTestPaths: ['tooling/validation/affected.ts'] }),
+      skipE2e: false,
+    });
+
+    expect(checkLane).toContainEqual({
+      args: ['test', 'tooling'],
+      command: 'bun',
+      label: 'test:tooling',
+    });
+    expect(checkedLabels).toContain('test:tooling');
+  });
+
+  it('skips the tooling test step when onlyE2e', () => {
+    const { checkLane } = buildValidationSteps({
+      onlyE2e: true,
+      plan: makePlan({ toolingTestPaths: ['tooling/validation/affected.ts'] }),
+      skipE2e: false,
+    });
+
+    expect(checkLane).not.toContainEqual({
+      args: ['test', 'tooling'],
+      command: 'bun',
+      label: 'test:tooling',
+    });
   });
 
   it('plans only E2E with onlyE2e', () => {

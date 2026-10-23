@@ -1,3 +1,4 @@
+import { type E2eImportGraph, selectSpecsReaching } from './e2e-import-graph';
 import { CRITICAL_SMOKE_SPEC_PATHS, JOURNEY_MAP } from './journey-map';
 import {
   assessSeedImpact,
@@ -27,6 +28,8 @@ export interface ClassifyChangesInput {
    */
   deletedPaths?: string[];
   e2eSpecPaths?: string[];
+  /** Web test file imports, so a changed fixture selects the specs reaching it. */
+  e2eImportGraph?: E2eImportGraph;
   /**
    * Reasons from `Seed-Impact: none - <reason>` commit trailers or
    * `--no-seed-impact`: the explicit decision that a seed-relevant change
@@ -45,6 +48,8 @@ export interface ValidationPlan {
   testLayerSelectionReasons: TestLayerSelectionReason[];
   testLayers: TestLayer[];
   testTargets: TestTarget[];
+  /** Changed paths that selected the tooling tests, sorted. Empty = step skipped. */
+  toolingTestPaths: string[];
   workspaceNames: string[];
   workspaceSelectionReasons: WorkspaceSelectionReason[];
 }
@@ -56,7 +61,11 @@ export interface ValidationPlan {
  */
 export interface JourneySelectionReason {
   changedPath: string | null;
-  detail: 'critical-smoke-fallback' | 'explicit' | `mapped:${string}`;
+  detail:
+    | 'critical-smoke-fallback'
+    | 'explicit'
+    | `fixture:${string}`
+    | `mapped:${string}`;
   specPath: string;
 }
 
@@ -208,13 +217,15 @@ export function classifyChanges({
   changedPaths,
   dailyGate = false,
   deletedPaths = [],
+  e2eImportGraph = {},
   e2eSpecPaths = [],
   seedImpactAcknowledgements = [],
 }: ClassifyChangesInput): ValidationPlan {
   const deletedPathSet = new Set(deletedPaths);
   const workspaceNames = new Set<string>();
   const testLayers = new Set<TestLayer>();
-  const testTargets: TestTarget[] = [];
+  let testTargets: TestTarget[] = [];
+  const testTargetPaths = new Set<string>();
   const selectedE2eSpecPaths = new Set(e2eSpecPaths);
   const missingJourneyMappings = new Set<string>();
   const workspaceSelectionReasons: WorkspaceSelectionReason[] = [];
@@ -222,8 +233,18 @@ export function classifyChanges({
   const journeySelectionReasons: JourneySelectionReason[] = e2eSpecPaths.map(
     (specPath) => ({ changedPath: null, detail: 'explicit', specPath }),
   );
+  const toolingTestPaths = new Set<string>();
   let requiresFullE2e = false;
   let hasUnmappedProductionChange = false;
+
+  for (const changedPath of [...changedPaths, ...deletedPaths]) {
+    if (
+      changedPath.startsWith('tooling/') ||
+      ROOT_INFRASTRUCTURE_PATHS.has(changedPath)
+    ) {
+      toolingTestPaths.add(changedPath);
+    }
+  }
 
   for (const changedPath of changedPaths) {
     if (ROOT_INFRASTRUCTURE_PATHS.has(changedPath)) {
@@ -260,6 +281,25 @@ export function classifyChanges({
       }
     }
 
+    if (
+      !isSharedE2eInfrastructure &&
+      !deletedPathSet.has(changedPath) &&
+      changedPath.startsWith('apps/web/tests/') &&
+      !changedPath.includes('.test.')
+    ) {
+      for (const specPath of selectSpecsReaching({
+        changedPath,
+        graph: e2eImportGraph,
+      })) {
+        selectedE2eSpecPaths.add(specPath);
+        journeySelectionReasons.push({
+          changedPath,
+          detail: `fixture:${changedPath}`,
+          specPath,
+        });
+      }
+    }
+
     const workspace = WORKSPACES.find(({ path }) =>
       changedPath.startsWith(path),
     );
@@ -269,7 +309,10 @@ export function classifyChanges({
     const testTarget = isDeleted
       ? null
       : getTestTarget({ changedPath, workspace });
-    if (testTarget) testTargets.push(testTarget);
+    if (testTarget) {
+      testTargets.push(testTarget);
+      testTargetPaths.add(changedPath);
+    }
 
     addWorkspaceAndDependents({
       changedPath,
@@ -315,6 +358,19 @@ export function classifyChanges({
     }
   }
 
+  // A workspace stays narrowed only when its changed test files alone selected it.
+  const wholeLayerWorkspaces = new Set(
+    workspaceSelectionReasons
+      .filter(
+        ({ changedPath, detail }) =>
+          detail !== 'direct' || !testTargetPaths.has(changedPath),
+      )
+      .map(({ workspaceName }) => workspaceName),
+  );
+  testTargets = testTargets.filter(
+    ({ workspaceName }) => !wholeLayerWorkspaces.has(workspaceName),
+  );
+
   for (const workspaceName of workspaceNames) {
     addTestLayers({ testLayers, workspaceName });
   }
@@ -342,6 +398,7 @@ export function classifyChanges({
     testLayerSelectionReasons,
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
+    toolingTestPaths: [...toolingTestPaths].sort(),
     workspaceNames: [...workspaceNames].sort(),
     workspaceSelectionReasons,
   };

@@ -57,13 +57,14 @@ describe('pickerLocale', () => {
   });
 });
 
-describe('date-fns locale imports', () => {
+describe('@church/time source', () => {
   // The `date-fns/locale` barrel loads every locale (~1.8s per test file).
-  it('takes each locale from its own subpath, never the barrel', () => {
+  it('never imports the date-fns/locale barrel, in any form', () => {
     const src = new URL('../src/', import.meta.url);
-    for (const file of readdirSync(src)) {
+    const files = readdirSync(src, { recursive: true, encoding: 'utf8' });
+    for (const file of files.filter((name) => /\.tsx?$/.test(name))) {
       expect(readFileSync(new URL(file, src), 'utf8'), file).not.toMatch(
-        /from ['"]date-fns\/locale['"]/,
+        /['"]date-fns\/locale(\/index(\.js)?)?['"]/,
       );
     }
   });

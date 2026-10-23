@@ -54,6 +54,8 @@ const ALLOWED: Record<string, string> = {
   'reexport-type': "export type { AppConfig } from '@church/app-config';\n",
   'reexport-inline-type':
     "export { type AppConfig } from '@church/app-config';\n",
+  lookalike:
+    "import { appConfig } from '@church/app-config-x';\nexport const x = appConfig;\n",
   'other-package':
     "import { appConfig } from '@church/other';\nexport const x = appConfig;\n",
 };

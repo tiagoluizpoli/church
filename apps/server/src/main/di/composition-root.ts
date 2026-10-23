@@ -1,8 +1,8 @@
 import { appConfig } from '@church/app-config';
 import { db } from '@church/db';
-import type { Locale } from '@church/i18n/runtime';
 import type { FastifyController } from '../../api/contracts/fastify-controller';
 import type { IOutboxDrainer } from '../../domain/contracts/application';
+import type { LocaleSettings } from '../fastify/setup';
 import { buildAuth } from './build-auth';
 import { buildControllers } from './build-controllers';
 import { buildManagers } from './build-managers';
@@ -15,7 +15,7 @@ export type { CompositionRootDependencies } from './dependencies';
 interface CompositionRoot {
   controllers: FastifyController[];
   outboxDrainer: IOutboxDrainer;
-  locale: { localeCookieName: string; defaultLocale: Locale };
+  locale: LocaleSettings;
 }
 
 export function createCompositionRoot(

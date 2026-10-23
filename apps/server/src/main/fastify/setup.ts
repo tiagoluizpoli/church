@@ -70,6 +70,8 @@ export async function createFastify({
   app.setSerializerCompiler(serializerCompiler);
 
   app.decorateRequest('userId', '');
+  app.decorateRequest('volunteerId', '');
+  app.decorateRequest('churchId', '');
   app.decorateRequest('locale', localeSettings.defaultLocale);
   app.addHook('onRequest', async (request) => {
     request.locale = requestLocale({
@@ -77,8 +79,6 @@ export async function createFastify({
       ...localeSettings,
     });
   });
-  app.decorateRequest('volunteerId', '');
-  app.decorateRequest('churchId', '');
 
   await app.register(swagger, {
     openapi: {

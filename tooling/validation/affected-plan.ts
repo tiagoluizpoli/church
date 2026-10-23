@@ -48,6 +48,8 @@ export interface ValidationPlan {
   testLayerSelectionReasons: TestLayerSelectionReason[];
   testLayers: TestLayer[];
   testTargets: TestTarget[];
+  /** Changed paths that selected the tooling tests, sorted. Empty = step skipped. */
+  toolingTestPaths: string[];
   workspaceNames: string[];
   workspaceSelectionReasons: WorkspaceSelectionReason[];
 }
@@ -231,8 +233,18 @@ export function classifyChanges({
   const journeySelectionReasons: JourneySelectionReason[] = e2eSpecPaths.map(
     (specPath) => ({ changedPath: null, detail: 'explicit', specPath }),
   );
+  const toolingTestPaths = new Set<string>();
   let requiresFullE2e = false;
   let hasUnmappedProductionChange = false;
+
+  for (const changedPath of [...changedPaths, ...deletedPaths]) {
+    if (
+      changedPath.startsWith('tooling/') ||
+      ROOT_INFRASTRUCTURE_PATHS.has(changedPath)
+    ) {
+      toolingTestPaths.add(changedPath);
+    }
+  }
 
   for (const changedPath of changedPaths) {
     if (ROOT_INFRASTRUCTURE_PATHS.has(changedPath)) {
@@ -388,6 +400,7 @@ export function classifyChanges({
     testLayerSelectionReasons,
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
+    toolingTestPaths: [...toolingTestPaths].sort(),
     workspaceNames: [...workspaceNames].sort(),
     workspaceSelectionReasons,
   };

@@ -1,34 +1,21 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  type DatabasePurpose,
-  expectedDatabaseName,
-} from '../src/database-target-resolver';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
 import {
   DatabaseProvisioningError,
   provisionDatabases,
 } from '../src/provision-databases';
+import { scratchDatabaseName } from '../src/scratch-database-name';
 
-// Scoped to this worktree so concurrent integration runs in other worktrees
-// never create or drop the same scratch databases.
-// The worktree name is hashed because Postgres truncates identifiers over 63
-// characters, which would make long worktree names collide.
-const WORKTREE_HASH_LENGTH = 12;
-const SCRATCH_WORKTREE = `provision_${createHash('sha256')
-  .update(process.env.CHURCH_WORKTREE ?? 'unspecified')
-  .digest('hex')
-  .slice(0, WORKTREE_HASH_LENGTH)}`;
-const PURPOSES: DatabasePurpose[] = ['development', 'integration', 'e2e'];
-const SCRATCH_DATABASES = PURPOSES.map((purpose) =>
-  expectedDatabaseName({ purpose, worktree: SCRATCH_WORKTREE }),
+const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
+  scratchDatabaseName({ purpose: 'prov', kind }),
 );
 const [DEV_DATABASE = '', INT_DATABASE = '', E2E_DATABASE = ''] =
   SCRATCH_DATABASES;
+const POOL_CLOSE_RACE_ITERATIONS = 100;
 // The first migration creates this enum; an existing one makes it fail.
 const CONFLICTING_TYPE = '"public"."assignment_status"';
 
@@ -82,6 +69,8 @@ async function queryDatabase(
   try {
     return await pool.query(input.sql);
   } finally {
+    // pool.end() resolves before its client's socket closes, so a later force-drop can still kill that client (57P01).
+    pool.on('error', () => {});
     await pool.end();
   }
 }
@@ -224,5 +213,20 @@ describe('provisionDatabases', () => {
 
     expect(failure).toBeInstanceOf(DatabaseProvisioningError);
     expect((failure as DatabaseProvisioningError).step).toBe('validate');
+  });
+
+  it('survives force-drops that race a closing query pool', async () => {
+    for (
+      let iteration = 0;
+      iteration < POOL_CLOSE_RACE_ITERATIONS;
+      iteration++
+    ) {
+      await adminPool.query(
+        `drop database if exists "${DEV_DATABASE}" with (force)`,
+      );
+      await adminPool.query(`create database "${DEV_DATABASE}"`);
+      await queryDatabase({ database: DEV_DATABASE, sql: 'select 1' });
+      await adminPool.query(`drop database "${DEV_DATABASE}" with (force)`);
+    }
   });
 });

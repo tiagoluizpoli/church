@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { scratchDatabaseName } from '@church/db/scratch-database-name';
 import { fromDate, today } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import pg from 'pg';
@@ -16,10 +17,25 @@ const RESEED_COMMAND = join(
   'development',
   'reseed-dev.ts',
 );
-const SCRATCH_WORKTREE = 'reseed_dev_command';
-const SCRATCH_DATABASE = `church_${SCRATCH_WORKTREE}_dev`;
-const SCRATCH_E2E_DATABASE = `church_${SCRATCH_WORKTREE}_e2e`;
-const OTHER_WORKTREE_DATABASE = 'church_reseed_dev_other_dev';
+const WORKTREE = process.env.CHURCH_WORKTREE;
+const SCRATCH_WORKTREE = `${WORKTREE}_reseed`;
+const ABSENT_WORKTREE = `${WORKTREE}_absent`;
+const SCRATCH_DATABASE = scratchDatabaseName({
+  purpose: 'reseed',
+  kind: 'dev',
+});
+const SCRATCH_E2E_DATABASE = scratchDatabaseName({
+  purpose: 'reseed',
+  kind: 'e2e',
+});
+const OTHER_WORKTREE_DATABASE = scratchDatabaseName({
+  purpose: 'other',
+  kind: 'dev',
+});
+const ABSENT_DATABASE = scratchDatabaseName({
+  purpose: 'absent',
+  kind: 'dev',
+});
 const SENTINEL_TABLE = 'reseed_dev_sentinel';
 const PHASE_LINES = [
   '[1/4] reset: ok',
@@ -117,6 +133,8 @@ async function withDatabase<T>({
   try {
     return await use(pool);
   } finally {
+    // pool.end() resolves before its client's socket closes, so a later force-drop can still kill that client (57P01).
+    pool.on('error', () => {});
     await pool.end();
   }
 }
@@ -376,8 +394,8 @@ describe('db:reseed:dev command', () => {
     // A correctly named target whose database was never provisioned passes
     // every refusal check, then fails on the first connection: the reset.
     const result = runReseed({
-      databaseUrl: databaseUrlFor({ database: 'church_reseed_dev_absent_dev' }),
-      worktree: 'reseed_dev_absent',
+      databaseUrl: databaseUrlFor({ database: ABSENT_DATABASE }),
+      worktree: ABSENT_WORKTREE,
     });
 
     expect(result.status).toBe(1);

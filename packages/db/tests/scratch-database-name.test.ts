@@ -46,8 +46,33 @@ describe('scratchDatabaseName', () => {
     expect(first).not.toBe(second);
   });
 
-  it('refuses an identity that cannot fit a hashed purpose within 63 bytes', () => {
-    vi.stubEnv('CHURCH_WORKTREE', 'w'.repeat(52));
+  it.each([
+    'dev',
+    'int',
+    'e2e',
+  ] as const)('fits distinct hashed purposes for a long identity in a %s database', (kind) => {
+    const worktree = 'ticket_602_drop_provision_isolation__7ae1c6a2';
+    vi.stubEnv('CHURCH_WORKTREE', worktree);
+    const first = scratchDatabaseName({ purpose: 'provision', kind });
+    const second = scratchDatabaseName({ purpose: 'reset', kind });
+
+    for (const database of [first, second]) {
+      expect(Buffer.byteLength(database)).toBeLessThanOrEqual(63);
+      expect(database.startsWith(`church_${worktree}_`)).toBe(true);
+      expect(isWorktreeDatabaseName({ database })).toBe(true);
+    }
+    expect(first).not.toBe(second);
+  });
+
+  it('uses a four-character purpose hash when that is all the identity leaves', () => {
+    vi.stubEnv('CHURCH_WORKTREE', 'w'.repeat(47));
+    const database = scratchDatabaseName({ purpose: 'provision', kind: 'int' });
+
+    expect(database).toMatch(/^church_w{47}_[0-9a-f]{4}_int$/);
+  });
+
+  it('refuses an identity that leaves fewer than four purpose hash characters', () => {
+    vi.stubEnv('CHURCH_WORKTREE', 'w'.repeat(48));
     expect(() =>
       scratchDatabaseName({ purpose: 'provision', kind: 'int' }),
     ).toThrow(/63-byte/);

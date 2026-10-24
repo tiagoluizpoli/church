@@ -32,7 +32,7 @@ describe('deriveWorktreeIdentity', () => {
     ['unspecified', 'unspecified__f416648f'],
     [
       'x-very-long-branch-name-that-keeps-going-well-past-the-postgres-limit',
-      'x_very_long_branch_name_that_keeps_go__d28927f2',
+      'x_very_long_branch_name_that_keeps_g__d28927f2',
     ],
   ])('suffixes a hash when the readable form would lose information: %s → %s', (name, identity) => {
     expect(deriveWorktreeIdentity({ name, isPrimary: false })).toBe(identity);
@@ -60,7 +60,7 @@ describe('deriveWorktreeIdentity', () => {
   });
 
   it('keeps the maximum readable identity and hashes the next character', () => {
-    const maximumReadableLength = 47;
+    const maximumReadableLength = 46;
     expect(MAX_IDENTITY_LENGTH).toBe(maximumReadableLength);
     const readable = 'a'.repeat(maximumReadableLength);
     const tooLong = `${readable}a`;

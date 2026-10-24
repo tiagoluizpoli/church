@@ -6,9 +6,9 @@ export const PRIMARY_WORKTREE_IDENTITY = 'develop';
 // and the fallback database targets use when no identity is set (CI).
 const RESERVED_IDENTITIES = new Set([PRIMARY_WORKTREE_IDENTITY, 'unspecified']);
 
-// `church_<identity>_dev` and scratch database names need room within
-// PostgreSQL's 63-byte identifier limit.
-export const MAX_IDENTITY_LENGTH = 47;
+// `church_<identity>__<purpose>_int` reserves four purpose-hash characters
+// within PostgreSQL's 63-byte identifier limit.
+export const MAX_IDENTITY_LENGTH = 46;
 const HASH_LENGTH = 8;
 const HASH_SEPARATOR = '__';
 const MAX_SLUG_LENGTH =

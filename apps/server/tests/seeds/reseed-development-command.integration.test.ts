@@ -17,9 +17,6 @@ const RESEED_COMMAND = join(
   'development',
   'reseed-dev.ts',
 );
-const WORKTREE = process.env.CHURCH_WORKTREE;
-const SCRATCH_WORKTREE = `${WORKTREE}_reseed`;
-const ABSENT_WORKTREE = `${WORKTREE}_absent`;
 const SCRATCH_DATABASE = scratchDatabaseName({
   purpose: 'reseed',
   kind: 'dev',
@@ -36,6 +33,11 @@ const ABSENT_DATABASE = scratchDatabaseName({
   purpose: 'absent',
   kind: 'dev',
 });
+const SCRATCH_WORKTREE = SCRATCH_DATABASE.slice(
+  'church_'.length,
+  -'_dev'.length,
+);
+const ABSENT_WORKTREE = ABSENT_DATABASE.slice('church_'.length, -'_dev'.length);
 const SENTINEL_TABLE = 'reseed_dev_sentinel';
 const PHASE_LINES = [
   '[1/4] reset: ok',

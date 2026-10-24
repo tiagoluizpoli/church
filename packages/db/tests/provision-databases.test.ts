@@ -15,7 +15,13 @@ const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
 );
 const [DEV_DATABASE = '', INT_DATABASE = '', E2E_DATABASE = ''] =
   SCRATCH_DATABASES;
-const POOL_CLOSE_RACE_ITERATIONS = 100;
+const POOL_CLOSE_RACE_DATABASE_COUNT = 10;
+const POOL_CLOSE_RACE_ITERATIONS = 10;
+const POOL_CLOSE_RACE_DATABASES = Array.from(
+  { length: POOL_CLOSE_RACE_DATABASE_COUNT },
+  (_, index) =>
+    scratchDatabaseName({ purpose: `pool_close_race_${index}`, kind: 'dev' }),
+);
 // The first migration creates this enum; an existing one makes it fail.
 const CONFLICTING_TYPE = '"public"."assignment_status"';
 
@@ -52,11 +58,12 @@ const scratchUrls = SCRATCH_DATABASES.map((database) =>
 
 const adminPool = new pg.Pool({
   connectionString: databaseUrlFor({ database: 'postgres' }),
-  max: 1,
+  max: POOL_CLOSE_RACE_DATABASE_COUNT * 2,
 });
 
 interface QueryDatabaseInput extends DatabaseInput {
   sql: string;
+  racePoolClose?: () => Promise<void>;
 }
 
 async function queryDatabase(
@@ -71,7 +78,10 @@ async function queryDatabase(
   } finally {
     // pool.end() resolves before its client's socket closes, so a later force-drop can still kill that client (57P01).
     pool.on('error', () => {});
-    await pool.end();
+    const forceDrop = input.racePoolClose?.();
+    const close = pool.end();
+    await forceDrop;
+    await close;
   }
 }
 
@@ -109,7 +119,7 @@ async function applicationRows(input: DatabaseInput): Promise<number> {
 }
 
 async function dropScratchDatabases(): Promise<void> {
-  for (const database of SCRATCH_DATABASES) {
+  for (const database of [...SCRATCH_DATABASES, ...POOL_CLOSE_RACE_DATABASES]) {
     await adminPool.query(`drop database if exists "${database}" with (force)`);
   }
 }
@@ -221,12 +231,21 @@ describe('provisionDatabases', () => {
       iteration < POOL_CLOSE_RACE_ITERATIONS;
       iteration++
     ) {
-      await adminPool.query(
-        `drop database if exists "${DEV_DATABASE}" with (force)`,
+      await Promise.all(
+        POOL_CLOSE_RACE_DATABASES.map(async (database) => {
+          await adminPool.query(
+            `drop database if exists "${database}" with (force)`,
+          );
+          await adminPool.query(`create database "${database}"`);
+          await queryDatabase({
+            database,
+            sql: 'select 1',
+            racePoolClose: async () => {
+              await adminPool.query(`drop database "${database}" with (force)`);
+            },
+          });
+        }),
       );
-      await adminPool.query(`create database "${DEV_DATABASE}"`);
-      await queryDatabase({ database: DEV_DATABASE, sql: 'select 1' });
-      await adminPool.query(`drop database "${DEV_DATABASE}" with (force)`);
     }
   });
 });

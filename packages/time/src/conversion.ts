@@ -29,8 +29,8 @@ export interface ToInstantInput {
  * - a wall clock repeated by fall-back takes the earlier Instant — 01:30 on
  *   2027-11-07 in America/New_York is 01:30 EDT (`05:30Z`), not EST.
  *
- * Resolved here rather than by date-fns-tz's `fromZonedTime`, whose choice for a
- * repeated wall clock depends on the process TZ.
+ * Resolved from the zone's offsets alone, so the result never depends on the
+ * process TZ.
  */
 export function toInstant({ day, time, timeZone }: ToInstantInput): Instant {
   assertTimeZone({ timeZone });
@@ -98,7 +98,7 @@ export interface InstantInTimeZoneInput {
 
 /** Every read of an Instant's Church Timezone wall clock funnels through
  * here, so `assertTimeZone` and the `Date` bridge are paid once. */
-function wallClock({
+function churchWallClock({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): WallClockFields {
@@ -114,7 +114,7 @@ export function today({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): CalendarDay {
-  const { year, month, day } = wallClock({ instant, timeZone });
+  const { year, month, day } = churchWallClock({ instant, timeZone });
   return `${year}-${month}-${day}` as CalendarDay;
 }
 
@@ -123,7 +123,7 @@ export function toTimeOfDay({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): TimeOfDay {
-  const { hour, minute } = wallClock({ instant, timeZone });
+  const { hour, minute } = churchWallClock({ instant, timeZone });
   return `${hour}:${minute}` as TimeOfDay;
 }
 
@@ -133,6 +133,6 @@ export function toTimeOfDaySeconds({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): string {
-  const { hour, minute, second } = wallClock({ instant, timeZone });
+  const { hour, minute, second } = churchWallClock({ instant, timeZone });
   return `${hour}:${minute}:${second}`;
 }

@@ -60,13 +60,11 @@ export function zoneOffsetMs({ timeZone, epochMs }: ZonedMomentInput): number {
     timeZone,
     epochMs,
   });
-  const wallClockMs = Date.UTC(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour),
-    Number(minute),
-    Number(second),
+  const wallClock = new Date(
+    Date.UTC(2000, 0, 1, Number(hour), Number(minute), Number(second)),
   );
-  return wallClockMs - (epochMs - (((epochMs % 1000) + 1000) % 1000));
+  // Date.UTC reads years 0–99 as 1900–1999; setUTCFullYear takes any year.
+  wallClock.setUTCFullYear(Number(year), Number(month) - 1, Number(day));
+  // The wall clock has whole seconds, so compare against the moment's second.
+  return wallClock.getTime() - Math.floor(epochMs / 1000) * 1000;
 }

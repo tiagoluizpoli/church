@@ -18,6 +18,11 @@ const cases = [
   ['Pacific/Auckland', '2018-09-29T13:59:59.000Z', '2018-09-30 01:59:59', 12],
   ['Pacific/Auckland', '2018-09-29T14:00:00.000Z', '2018-09-30 03:00:00', 13],
   ['UTC', '2027-03-14T07:30:45.999Z', '2027-03-14 07:30:45', 0],
+  // Date.UTC alone would read years 0–99 as 1900–1999.
+  ['UTC', '0050-06-01T12:00:00.000Z', '0050-06-01 12:00:00', 0],
+  ['UTC', '2024-02-29T12:00:00.000Z', '2024-02-29 12:00:00', 0],
+  // A negative epoch with a fractional second truncates toward the earlier second.
+  ['UTC', '1969-12-31T23:59:59.500Z', '1969-12-31 23:59:59', 0],
 ] as const;
 
 describe.each(

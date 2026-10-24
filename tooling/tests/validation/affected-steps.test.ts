@@ -1,33 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { buildValidationSteps } from '../../validation/affected';
-import type { ValidationPlan } from '../../validation/affected-plan';
-
-interface PlanOverrides {
-  e2eSpecPaths?: string[];
-  lintPaths?: string[];
-  requiresFullE2e?: boolean;
-  testLayers?: ValidationPlan['testLayers'];
-  testTargets?: ValidationPlan['testTargets'];
-  toolingTestPaths?: string[];
-  workspaceNames?: string[];
-}
-
-function makePlan(overrides: PlanOverrides): ValidationPlan {
-  return {
-    e2eSpecPaths: [],
-    journeySelectionReasons: [],
-    lintPaths: [],
-    missingJourneyMappings: [],
-    requiresFullE2e: false,
-    testLayerSelectionReasons: [],
-    testLayers: [],
-    testTargets: [],
-    toolingTestPaths: [],
-    workspaceNames: [],
-    workspaceSelectionReasons: [],
-    ...overrides,
-  };
-}
+import { makePlan } from './plan';
 
 // Existing file, so the deleted-file filter keeps it.
 const LINT_PATH = 'package.json';
@@ -48,6 +21,12 @@ const NAMED_PARAMETERS_STEP = {
   args: ['run', 'validate:named-parameters'],
   command: 'bun',
   label: 'named-parameters',
+};
+
+const JOURNEY_MAP_STEP = {
+  args: ['run', 'validate:journey-map'],
+  command: 'bun',
+  label: 'journey-map',
 };
 
 describe('buildValidationSteps', () => {
@@ -72,12 +51,27 @@ describe('buildValidationSteps', () => {
       TEST_PLACEMENT_STEP,
       I18N_PARITY_STEP,
       NAMED_PARAMETERS_STEP,
+      JOURNEY_MAP_STEP,
     ]);
     expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.checkedLabels).toContain('i18n-parity');
     expect(steps.checkedLabels).toContain('named-parameters');
+    expect(steps.checkedLabels).toContain('journey-map');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
+  });
+
+  it('runs the journey-map guard for a Playwright-test-only change', () => {
+    const { checkLane } = buildValidationSteps({
+      onlyE2e: false,
+      plan: makePlan({
+        e2eSpecPaths: ['tests/identity/new-journey.spec.ts'],
+        lintPaths: ['apps/web/tests/identity/new-journey.spec.ts'],
+      }),
+      skipE2e: false,
+    });
+
+    expect(checkLane).toContainEqual(JOURNEY_MAP_STEP);
   });
 
   it('plans lint and typecheck in the first lane', () => {
@@ -99,6 +93,7 @@ describe('buildValidationSteps', () => {
       TEST_PLACEMENT_STEP,
       I18N_PARITY_STEP,
       NAMED_PARAMETERS_STEP,
+      JOURNEY_MAP_STEP,
       {
         args: [
           'turbo',

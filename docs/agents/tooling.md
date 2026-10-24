@@ -20,6 +20,7 @@ and task ordering.
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
+| Journey-map integrity guard | `bun run validate:journey-map` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
@@ -65,6 +66,21 @@ on an inline object type in a parameter, variable, return or `as` position.
 to a dependency's API is exempt; a named function whose signature a framework
 controls carries `// named-parameters-ignore: <reason>` directly above its
 declaration. Details: [ADR-0010](../adr/0010-mechanical-rules-enforced-by-tooling.md).
+
+## Journey map
+
+`bun run validate:journey-map` (`tooling/validation/journey-map-guard.ts`)
+discovers every `.spec.ts` file under `apps/web/tests/`, recursively, and
+fails unless each one is referenced by `JOURNEY_MAP` or
+`CRITICAL_SMOKE_SPEC_PATHS` in `tooling/validation/journey-map.ts`, and each
+reference in either list names a discovered spec. Paths are web-root-relative
+with the `tests/` prefix. It lists unmapped specs, then stale references, so a
+rename shows both halves; repeated references and overlap between the lists
+are fine. `bun run lint` and every `validate:affected` run it, so a change that only
+adds, renames or deletes a spec still fails on drift with the same
+diagnostics. It needs no browser, database or running application. Whether a
+mapping's source prefix is accurate stays a review decision
+([ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md)).
 
 ## Seed impact
 
@@ -413,7 +429,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `components/ui/calendar.tsx` is never hand-edited | ADR-0003 | Judgement | — | Review: a re-run of `shadcn add` changes it legitimately, and a tool cannot tell that from a hand edit |
 | Playwright discovers only `*.spec.ts`; Vitest owns `*.test.ts(x)` | ADR-0004 | Mechanical | Validation guard | Enforced: `apps/web/tests/e2e-discovery-boundary.unit.test.ts` |
 | A Playwright spec covers a critical journey | ADR-0004 | Judgement | — | Review: "critical journey" is a judgement |
-| Every Playwright spec has a `JOURNEY_MAP` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Follow-up [#557](https://github.com/tiagoluizpoli/church/issues/557) |
+| Every Playwright spec has a `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint` and `validate:affected` ([#557](https://github.com/tiagoluizpoli/church/issues/557)) |
 | A failing E2E spec gets exactly one retry in CI | ADR-0004 | Mechanical | Validation guard | Enforced: `retries` in `apps/web/playwright.config.ts` |
 | Daily and release gates; no direct pushes to `develop` or `master` | ADR-0004 | Mechanical | Validation guard | Enforced: `.github/workflows/ci.yml` and branch protection |
 | Each worktree has its own databases, ports and URL set | ADR-0005 | Mechanical | Validation guard | Enforced: `env:local` and `db:bootstrap` generate them |

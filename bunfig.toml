@@ -5,4 +5,5 @@
 env = false
 
 [test]
+preload = ["./tooling/tests/git-env-isolation.preload.ts"]
 pathIgnorePatterns = ["**/e2e/**", "**/*.spec.ts"]

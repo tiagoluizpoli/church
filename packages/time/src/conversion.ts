@@ -1,4 +1,3 @@
-import { formatInTimeZone } from 'date-fns-tz';
 import { addCalendarDays } from './arithmetic';
 import {
   type CalendarDay,
@@ -9,26 +8,11 @@ import {
 import { fromDate, toDate } from './persistence';
 import { assertTimeZone } from './time-zone';
 import { DAY_MS, MINUTE_MS, utcMidnightOf } from './utc-calendar';
-
-interface ZoneOffsetInput {
-  timeZone: string;
-  epochMs: number;
-}
-
-const OFFSET_PATTERN = /^([+-])(\d{2}):(\d{2})$/;
-
-/** The zone's UTC offset at a moment, in ms, east positive. Read back from the
- * formatted offset: date-fns-tz's `getTimezoneOffset` is an hour off in the hour
- * beside a DST transition. */
-function zoneOffsetMs({ timeZone, epochMs }: ZoneOffsetInput): number {
-  const match = OFFSET_PATTERN.exec(
-    formatInTimeZone(new Date(epochMs), timeZone, 'xxx'),
-  );
-  if (!match) return Number.NaN;
-  const [, sign, hours, minutes] = match;
-  const magnitude = (Number(hours) * 60 + Number(minutes)) * MINUTE_MS;
-  return sign === '-' ? -magnitude : magnitude;
-}
+import {
+  type WallClockFields,
+  wallClockFields,
+  zoneOffsetMs,
+} from './wall-clock';
 
 export interface ToInstantInput {
   day: CalendarDay;
@@ -45,8 +29,8 @@ export interface ToInstantInput {
  * - a wall clock repeated by fall-back takes the earlier Instant — 01:30 on
  *   2027-11-07 in America/New_York is 01:30 EDT (`05:30Z`), not EST.
  *
- * Resolved here rather than by date-fns-tz's `fromZonedTime`, whose choice for a
- * repeated wall clock depends on the process TZ.
+ * Resolved from the zone's offsets alone, so the result never depends on the
+ * process TZ.
  */
 export function toInstant({ day, time, timeZone }: ToInstantInput): Instant {
   assertTimeZone({ timeZone });
@@ -112,21 +96,17 @@ export interface InstantInTimeZoneInput {
   timeZone: string;
 }
 
-interface WallClockPartInput {
-  instant: Instant;
-  timeZone: string;
-  pattern: string;
-}
-
 /** Every read of an Instant's Church Timezone wall clock funnels through
  * here, so `assertTimeZone` and the `Date` bridge are paid once. */
-function wallClockPart({
+function churchWallClock({
   instant,
   timeZone,
-  pattern,
-}: WallClockPartInput): string {
+}: InstantInTimeZoneInput): WallClockFields {
   assertTimeZone({ timeZone });
-  return formatInTimeZone(toDate({ instant }), timeZone, pattern);
+  return wallClockFields({
+    timeZone,
+    epochMs: toDate({ instant }).getTime(),
+  });
 }
 
 /** The CalendarDay an Instant falls on in the Church Timezone. */
@@ -134,11 +114,8 @@ export function today({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): CalendarDay {
-  return wallClockPart({
-    instant,
-    timeZone,
-    pattern: 'yyyy-MM-dd',
-  }) as CalendarDay;
+  const { year, month, day } = churchWallClock({ instant, timeZone });
+  return `${year}-${month}-${day}` as CalendarDay;
 }
 
 /** The TimeOfDay an Instant reads as on the Church Timezone's wall clock. */
@@ -146,7 +123,8 @@ export function toTimeOfDay({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): TimeOfDay {
-  return wallClockPart({ instant, timeZone, pattern: 'HH:mm' }) as TimeOfDay;
+  const { hour, minute } = churchWallClock({ instant, timeZone });
+  return `${hour}:${minute}` as TimeOfDay;
 }
 
 /** `HH:mm:ss` on the Church Timezone's wall clock. Not a TimeOfDay: that
@@ -155,5 +133,6 @@ export function toTimeOfDaySeconds({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): string {
-  return wallClockPart({ instant, timeZone, pattern: 'HH:mm:ss' });
+  const { hour, minute, second } = churchWallClock({ instant, timeZone });
+  return `${hour}:${minute}:${second}`;
 }

@@ -7,7 +7,7 @@ export interface AssertTimeZoneInput {
 
 // An IANA name starts with a letter (`UTC`, `America/Sao_Paulo`, `Etc/GMT+3`).
 // Screening the shape first matters: `Intl` also accepts fixed offsets such as
-// `+05:30`, and date-fns-tz reads an empty zone as the process TZ.
+// `+05:30`, which are not Church Timezones.
 const IANA_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/;
 
 // `Intl.supportedValuesOf('timeZone')` is no allowlist: it omits aliases such as

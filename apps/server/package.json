@@ -36,7 +36,6 @@
     "@types/pg": "catalog:",
     "better-auth": "catalog:",
     "date-fns": "^4.1.0",
-    "date-fns-tz": "^3.2.0",
     "drizzle-orm": "catalog:",
     "fastify": "^5.3.3",
     "fastify-type-provider-zod": "^7.0.0",

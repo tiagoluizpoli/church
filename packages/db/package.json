@@ -35,7 +35,6 @@
     "@church/env": "workspace:*",
     "@church/time": "workspace:*",
     "date-fns": "^4.1.0",
-    "date-fns-tz": "^3.2.0",
     "drizzle-orm": "catalog:",
     "pg": "^8.17.1",
     "zod": "catalog:"

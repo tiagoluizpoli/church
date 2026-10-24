@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
+import { scratchDatabaseName } from '../src/scratch-database-name';
 
 const RESET_SCRIPT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -12,8 +13,14 @@ const RESET_SCRIPT = join(
   'scripts',
   'reset-db.ts',
 );
-const SCRATCH_WORKTREE = 'reset-dev-command';
-const SCRATCH_DATABASE = `church_${SCRATCH_WORKTREE}_dev`;
+const SCRATCH_DATABASE = scratchDatabaseName({
+  purpose: 'reset_dev_command',
+  kind: 'dev',
+});
+const SCRATCH_WORKTREE = SCRATCH_DATABASE.slice(
+  'church_'.length,
+  -'_dev'.length,
+);
 const SENTINEL_TABLE = 'reset_dev_sentinel';
 
 interface RunResetInput {
@@ -70,7 +77,21 @@ const adminPool = new pg.Pool({
 
 describe('db:reset:dev command', () => {
   beforeAll(async () => {
-    await adminPool.query(`drop database if exists "${SCRATCH_DATABASE}"`);
+    await adminPool.query(
+      `drop database if exists "${SCRATCH_DATABASE}" with (force)`,
+    );
+    await adminPool.query(`create database "${SCRATCH_DATABASE}"`);
+
+    const stalePool = new pg.Pool({
+      connectionString: databaseUrlFor({ database: SCRATCH_DATABASE }),
+      max: 1,
+    });
+    stalePool.on('error', () => {});
+    await stalePool.query('select 1');
+    await adminPool.query(
+      `drop database if exists "${SCRATCH_DATABASE}" with (force)`,
+    );
+    await stalePool.end();
     await adminPool.query(`create database "${SCRATCH_DATABASE}"`);
   });
 
@@ -95,6 +116,9 @@ describe('db:reset:dev command', () => {
       'select 1 from pg_tables where tablename = $1',
       [SENTINEL_TABLE],
     );
+    // pool.end() resolves before its client's socket closes, so a later
+    // force-drop can still kill that client (57P01).
+    scratchPool.on('error', () => {});
     await scratchPool.end();
 
     expect(result.status).toBe(0);

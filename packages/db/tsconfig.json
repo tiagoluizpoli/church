@@ -4,6 +4,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
     "outDir": "dist",
     "composite": true
   }

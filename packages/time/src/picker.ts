@@ -1,4 +1,5 @@
-import { enUS, ptBR } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale/en-US';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import type { CalendarDay } from './brands';
 import { capitalize } from './capitalize';
 import type { Locale } from './display';

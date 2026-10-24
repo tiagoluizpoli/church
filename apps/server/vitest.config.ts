@@ -93,6 +93,9 @@ export default defineConfig({
         test: {
           name: 'unit',
           env: UNIT_ENV,
+          // No database, so files run in parallel; capped at 2 like apps/web (OOM kills uncapped).
+          fileParallelism: true,
+          maxWorkers: 2,
           include: [
             'tests/api/**/*.test.ts',
             'tests/application/db-active-church-resolver.test.ts',

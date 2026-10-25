@@ -4,7 +4,10 @@ import { resolve } from 'node:path';
 /** The parsed `.github/workflows/ci.yml` the CI lane tests assert on. */
 
 export interface WorkflowStep {
+  id?: string;
+  if?: string;
   name?: string;
+  'timeout-minutes'?: number;
   uses?: string;
   run?: string;
   with?: Record<string, string>;
@@ -24,8 +27,12 @@ export interface WorkflowJob {
     };
   };
   env?: Record<string, string>;
+  if?: string;
+  name?: string;
+  needs?: string[];
   services?: Record<string, WorkflowService>;
   steps: WorkflowStep[];
+  'timeout-minutes'?: number;
 }
 
 export interface Workflow {

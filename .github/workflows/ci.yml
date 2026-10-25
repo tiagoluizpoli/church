@@ -58,11 +58,16 @@ jobs:
       - name: Record job start time
         run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
         run: bun run validate:api-generated
@@ -78,10 +83,28 @@ jobs:
         # instead, concurrently.
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --skip-e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure()
+        shell: bash
+        run: |
+          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — checkout"
+          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — shared setup"
+          else
+            phase="test-command"
+          fi
+          echo "::error::CI failure phase: $phase"
+          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
+          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -149,19 +172,25 @@ jobs:
       - name: Record job start time
         run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       # skip-migrate: this job doesn't know yet whether it needs a database
       # at all — the plan step right below decides that — and migrations
       # need Postgres reachable, which isn't true yet either way.
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        uses: ./.github/actions/setup-church-ci
         with:
           skip-migrate: 'true'
 
       - name: Determine affected plan
         id: plan
+        timeout-minutes: 1
         run: |
           # Written under $RUNNER_TEMP, outside the repo working tree — the
           # later "Browser journeys" step re-runs the same planner, whose
@@ -178,7 +207,9 @@ jobs:
           echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
 
       - name: Run database migrations
+        id: migrate
         if: steps.plan.outputs.needs_e2e == 'true'
+        timeout-minutes: 1
         run: bun run db:migrate
 
       - name: Browser journeys (affected or critical smoke set)
@@ -190,10 +221,32 @@ jobs:
         if: steps.plan.outputs.needs_e2e == 'true'
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --only-e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure()
+        shell: bash
+        run: |
+          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — checkout"
+          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — shared setup"
+          elif [ "${{ steps.plan.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — affected planning"
+          elif [ "${{ steps.migrate.outcome }}" == "failure" ]; then
+            phase="setup/infrastructure — database migration"
+          else
+            phase="test-command"
+          fi
+          echo "::error::CI failure phase: $phase"
+          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
+          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -292,9 +345,14 @@ jobs:
       - name: Record job start time
         run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        uses: ./.github/actions/setup-church-ci
 
       # `bun run validate`'s scripts (tooling/validation/validate.ts), one
       # purpose per step: integration and E2E each resolve their own typed
@@ -312,6 +370,8 @@ jobs:
         run: bun run test:unit
 
       - name: Create and migrate the integration database
+        id: integration-database
+        timeout-minutes: 1
         run: bun run --cwd packages/db db:setup-test
         env:
           DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_int
@@ -324,10 +384,30 @@ jobs:
       - name: Full E2E
         run: bun run test:e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure()
+        shell: bash
+        run: |
+          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — checkout"
+          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — shared setup"
+          elif [ "${{ steps.integration-database.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — integration database"
+          else
+            phase="test-command"
+          fi
+          echo "::error::CI failure phase: $phase"
+          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
+          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -375,9 +455,14 @@ jobs:
       TZ: Asia/Kolkata
 
     steps:
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
         run: bun run validate:api-generated
@@ -394,10 +479,28 @@ jobs:
       - name: Run tests with coverage
         run: bunx turbo test:unit test:integration -- --coverage
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure()
+        shell: bash
+        run: |
+          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — checkout"
+          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — shared setup"
+          else
+            phase="test-command"
+          fi
+          echo "::error::CI failure phase: $phase"
+          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
+          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -455,17 +558,40 @@ jobs:
       TZ: Asia/Kolkata
 
     steps:
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        uses: ./.github/actions/setup-church-ci
 
       - name: Run E2E tests
         run: bun run test:e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure()
+        shell: bash
+        run: |
+          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — checkout"
+          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+            phase="setup/infrastructure — shared setup"
+          else
+            phase="test-command"
+          fi
+          echo "::error::CI failure phase: $phase"
+          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
+          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:

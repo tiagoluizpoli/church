@@ -49,6 +49,10 @@ const SETUP_ACTION = './.github/actions/setup-church-ci';
 const VALUE_FILE_WRITE = /(>>?|tee)\s*\S*\.env\b/;
 const PLAYWRIGHT_IMAGE_REPOSITORY = 'mcr.microsoft.com/playwright';
 const PLAYWRIGHT_IMAGE_PLATFORM = 'noble';
+const CHECKOUT_WORKSPACE_TRUST_COMMAND =
+  'git config --global --add safe.directory "$GITHUB_WORKSPACE"';
+const POSTGRES_HEALTH_COMMAND = 'pg_isready -U postgres';
+const CHECKOUT_TIMEOUT_MINUTES = 2;
 
 function resolvedPlaywrightVersion(): string {
   const lockfile = readFileSync(resolve(ROOT, 'bun.lock'), 'utf8');
@@ -93,6 +97,21 @@ describe('CI E2E lane', () => {
           `/${provisionedPostgresDatabase({ job: job as WorkflowJob })}`,
         );
         expect(url.pathname).toMatch(/^\/church_[a-z0-9-]+_e2e$/);
+      });
+
+      it('trusts its checkout and probes PostgreSQL as the configured user', () => {
+        const steps = job?.steps ?? [];
+        const checkoutIndex = steps.findIndex((step) => step.id === 'checkout');
+        const trustWorkspace = steps[checkoutIndex + 1];
+
+        expect(trustWorkspace).toMatchObject({
+          name: 'Trust the checked-out workspace',
+          run: CHECKOUT_WORKSPACE_TRUST_COMMAND,
+          'timeout-minutes': CHECKOUT_TIMEOUT_MINUTES,
+        });
+        expect(job?.services?.postgres?.options).toContain(
+          `--health-cmd ${POSTGRES_HEALTH_COMMAND}`,
+        );
       });
 
       it('keeps application URLs loopback-only without runtime browser or package installs', () => {

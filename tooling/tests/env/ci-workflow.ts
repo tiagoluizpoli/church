@@ -19,6 +19,7 @@ export interface WorkflowStep {
 
 export interface WorkflowService {
   env?: Record<string, string>;
+  options?: string;
   ports?: string[];
 }
 

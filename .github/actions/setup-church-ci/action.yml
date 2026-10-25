@@ -21,12 +21,10 @@ runs:
   steps:
     - name: Install Bun and Node from mise.toml
       id: toolchain
-      timeout-minutes: 2
       uses: jdx/mise-action@v5
 
     - name: Cache bun dependencies
       id: dependency-cache
-      timeout-minutes: 2
       uses: actions/cache@v4
       with:
         path: ~/.bun/install/cache
@@ -35,13 +33,11 @@ runs:
 
     - name: Install dependencies
       id: dependencies
-      timeout-minutes: 2
       shell: bash
       run: bun install --frozen-lockfile
 
     - name: Keep failure bundles in runner-temporary storage
       id: failure-bundles
-      timeout-minutes: 2
       # ADR-0005: CI has no shared Git directory to keep bundles in; the
       # calling job uploads this directory only when it fails.
       shell: bash
@@ -50,26 +46,28 @@ runs:
     - name: Run database migrations
       id: migrate
       if: inputs.skip-migrate != 'true'
-      timeout-minutes: 1
       shell: bash
       run: bun run db:migrate
 
     - name: Report setup failure phase
       id: report-setup-failure
-      if: failure()
-      timeout-minutes: 2
+      if: failure() || cancelled()
       shell: bash
       run: |
-        if [ "${{ steps.toolchain.outcome }}" != "success" ]; then
+        if [ "${{ steps.toolchain.outcome }}" == "cancelled" ] || [ "${{ steps.dependency-cache.outcome }}" == "cancelled" ] || [ "${{ steps.dependencies.outcome }}" == "cancelled" ] || [ "${{ steps.failure-bundles.outcome }}" == "cancelled" ] || [ "${{ steps.migrate.outcome }}" == "cancelled" ]; then
+          phase="cancelled"
+        elif [ "${{ steps.toolchain.outcome }}" == "failure" ]; then
           phase="toolchain"
-        elif [ "${{ steps.dependency-cache.outcome }}" != "success" ]; then
+        elif [ "${{ steps.dependency-cache.outcome }}" == "failure" ]; then
           phase="dependency cache"
-        elif [ "${{ steps.dependencies.outcome }}" != "success" ]; then
+        elif [ "${{ steps.dependencies.outcome }}" == "failure" ]; then
           phase="dependency installation"
-        elif [ "${{ steps.failure-bundles.outcome }}" != "success" ]; then
+        elif [ "${{ steps.failure-bundles.outcome }}" == "failure" ]; then
           phase="failure-bundle setup"
-        else
+        elif [ "${{ steps.migrate.outcome }}" == "failure" ]; then
           phase="database migration"
+        else
+          phase="test-command"
         fi
         echo "::error::CI failure phase: setup/infrastructure — $phase"
         echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"

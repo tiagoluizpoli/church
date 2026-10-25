@@ -67,6 +67,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
+        timeout-minutes: 11
         uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
@@ -85,12 +86,14 @@ jobs:
 
       - id: report-failure-phase
         name: Report failed phase
-        if: failure()
+        if: failure() || cancelled()
         shell: bash
         run: |
-          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
+            phase="cancelled"
+          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — shared setup"
           else
             phase="test-command"
@@ -184,6 +187,7 @@ jobs:
       # need Postgres reachable, which isn't true yet either way.
       - id: setup
         name: Shared CI setup
+        timeout-minutes: 11
         uses: ./.github/actions/setup-church-ci
         with:
           skip-migrate: 'true'
@@ -203,7 +207,7 @@ jobs:
           plan_file="$RUNNER_TEMP/affected-plan.json"
           bun tooling/validation/affected.ts --dry-run --daily-gate --base "origin/${{ github.base_ref }}" > "$plan_file"
           cat "$plan_file"
-          needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' "$plan_file")
+          needs_e2e=$(bun -e 'const plan = await Bun.file(process.argv[1]).json(); console.log(plan.requiresFullE2e || plan.e2eSpecPaths.length > 0 ? "true" : "false")' "$plan_file")
           echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
 
       - name: Run database migrations
@@ -223,14 +227,16 @@ jobs:
 
       - id: report-failure-phase
         name: Report failed phase
-        if: failure()
+        if: failure() || cancelled()
         shell: bash
         run: |
-          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ] || [ "${{ steps.plan.outcome }}" == "cancelled" ] || [ "${{ steps.migrate.outcome }}" == "cancelled" ]; then
+            phase="cancelled"
+          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — shared setup"
-          elif [ "${{ steps.plan.outcome }}" != "success" ]; then
+          elif [ "${{ steps.plan.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — affected planning"
           elif [ "${{ steps.migrate.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — database migration"
@@ -352,6 +358,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
+        timeout-minutes: 11
         uses: ./.github/actions/setup-church-ci
 
       # `bun run validate`'s scripts (tooling/validation/validate.ts), one
@@ -386,14 +393,16 @@ jobs:
 
       - id: report-failure-phase
         name: Report failed phase
-        if: failure()
+        if: failure() || cancelled()
         shell: bash
         run: |
-          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ] || [ "${{ steps.integration-database.outcome }}" == "cancelled" ]; then
+            phase="cancelled"
+          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — shared setup"
-          elif [ "${{ steps.integration-database.outcome }}" != "success" ]; then
+          elif [ "${{ steps.integration-database.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — integration database"
           else
             phase="test-command"
@@ -462,6 +471,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
+        timeout-minutes: 11
         uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
@@ -481,12 +491,14 @@ jobs:
 
       - id: report-failure-phase
         name: Report failed phase
-        if: failure()
+        if: failure() || cancelled()
         shell: bash
         run: |
-          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
+            phase="cancelled"
+          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — shared setup"
           else
             phase="test-command"
@@ -565,6 +577,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
+        timeout-minutes: 11
         uses: ./.github/actions/setup-church-ci
 
       - name: Run E2E tests
@@ -572,12 +585,14 @@ jobs:
 
       - id: report-failure-phase
         name: Report failed phase
-        if: failure()
+        if: failure() || cancelled()
         shell: bash
         run: |
-          if [ "${{ steps.checkout.outcome }}" != "success" ]; then
+          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
+            phase="cancelled"
+          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" != "success" ]; then
+          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — shared setup"
           else
             phase="test-command"

@@ -15,6 +15,19 @@ interface CompositeAction {
 const SETUP_ACTION = './.github/actions/setup-church-ci';
 const SHARED_SETUP_LIMIT_MINUTES = 2;
 const PLAN_OR_DATABASE_LIMIT_MINUTES = 1;
+const SHARED_SETUP_ACTION_LIMIT_MINUTES = 11;
+const COMPOSITE_STEP_KEYS = new Set([
+  'name',
+  'id',
+  'if',
+  'run',
+  'shell',
+  'uses',
+  'with',
+  'env',
+  'working-directory',
+  'continue-on-error',
+]);
 const TEST_JOBS = [
   'develop-fast',
   'develop-browser',
@@ -39,6 +52,10 @@ function stepWithId({ job, id }: StepInput): WorkflowStep | undefined {
   return job.steps.find((step) => step.id === id);
 }
 
+function outcomeExpression(step: string): string {
+  return `${'$'}{{ steps.${step}.outcome }}`;
+}
+
 describe('CI setup phase bounds and reporting', () => {
   for (const name of TEST_JOBS) {
     const job = workflow.jobs[name] as WorkflowJob;
@@ -49,6 +66,9 @@ describe('CI setup phase bounds and reporting', () => {
           SHARED_SETUP_LIMIT_MINUTES,
         );
         expect(stepWithId({ job, id: 'setup' })?.uses).toBe(SETUP_ACTION);
+        expect(stepWithId({ job, id: 'setup' })?.['timeout-minutes']).toBe(
+          SHARED_SETUP_ACTION_LIMIT_MINUTES,
+        );
         expect(job['timeout-minutes']).toBe(
           name === 'release-gate' || name === 'e2e' ? 20 : 10,
         );
@@ -57,9 +77,10 @@ describe('CI setup phase bounds and reporting', () => {
       it('reports setup failures separately and leaves test commands nonzero', () => {
         const report = stepWithId({ job, id: 'report-failure-phase' });
 
-        expect(report).toMatchObject({ if: 'failure()' });
+        expect(report).toMatchObject({ if: 'failure() || cancelled()' });
         expect(report?.run).toContain('setup/infrastructure');
         expect(report?.run).toContain('test-command');
+        expect(report?.run).toContain('phase="cancelled"');
         expect(report?.run).toContain('exit 1');
         expect(report?.run).toContain('steps.checkout.outcome');
         expect(report?.run).toContain('steps.setup.outcome');
@@ -67,22 +88,39 @@ describe('CI setup phase bounds and reporting', () => {
     });
   }
 
-  it('bounds every shared setup step and reports the failed setup phase', () => {
+  it('uses only GitHub-supported composite step keys and reports the failed setup phase', () => {
     for (const step of setupAction.runs.steps) {
-      const expectedLimit =
-        step.id === 'migrate'
-          ? PLAN_OR_DATABASE_LIMIT_MINUTES
-          : SHARED_SETUP_LIMIT_MINUTES;
+      const unsupportedKeys = Object.keys(step).filter(
+        (key) => !COMPOSITE_STEP_KEYS.has(key),
+      );
 
-      expect(step['timeout-minutes']).toBe(expectedLimit);
+      expect(unsupportedKeys).toEqual([]);
     }
 
     const report = setupAction.runs.steps.find(
       (step) => step.id === 'report-setup-failure',
     );
-    expect(report).toMatchObject({ if: 'failure()' });
+    expect(report).toMatchObject({ if: 'failure() || cancelled()' });
     expect(report?.run).toContain('setup/infrastructure');
     expect(report?.run).toContain('exit 1');
+  });
+
+  it('reports a failed test command when release database setup was skipped', () => {
+    const release = workflow.jobs['release-gate'] as WorkflowJob;
+    const report = stepWithId({ job: release, id: 'report-failure-phase' });
+    const command = (report?.run ?? '')
+      .replaceAll(outcomeExpression('checkout'), 'success')
+      .replaceAll(outcomeExpression('setup'), 'success')
+      .replaceAll(outcomeExpression('integration-database'), 'skipped');
+    const result = Bun.spawnSync(['bash', '-c', command], {
+      env: { ...process.env, GITHUB_STEP_SUMMARY: '/dev/null' },
+      stderr: 'pipe',
+      stdout: 'pipe',
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout.toString()).toContain('test-command');
+    expect(result.stdout.toString()).not.toContain('integration database');
   });
 
   it('bounds planning and database migrations before browser tests', () => {

@@ -111,6 +111,7 @@ describe('CI E2E lane', () => {
             './.github/actions/install-playwright-chromium',
           );
           expect(step.run ?? '').not.toMatch(/\b(apt|playwright install)\b/);
+          expect(step.run ?? '').not.toMatch(/\bjq\b/);
         }
       });
     });

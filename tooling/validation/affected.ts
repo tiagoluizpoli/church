@@ -662,7 +662,7 @@ if (import.meta.main) {
 
   if (argumentsResult.dryRun) {
     // CI redirects --dry-run's stdout to a file and parses it as JSON with
-    // jq (see ci.yml's "Determine affected plan" step) — the explanation
+    // Bun (see ci.yml's "Determine affected plan" step) — the explanation
     // must stay off stdout so that stays valid JSON.
     console.error('');
     console.error(explainPlan({ baseRef, plan }));

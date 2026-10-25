@@ -1,3 +1,4 @@
+// CI evidence for #590: selects this journey in the daily browser job. Not for merge.
 import { expect, test } from '@playwright/test';
 import {
   assignBuilderPath,

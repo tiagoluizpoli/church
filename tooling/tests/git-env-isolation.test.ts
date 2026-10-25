@@ -1,4 +1,11 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
@@ -13,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 const REPO_ROOT = resolve(import.meta.dir, '../..');
 
 let sentinelDir: string;
+let homeDir: string;
 
 function git(args: string[]): string {
   const result = Bun.spawnSync(['git', ...args], {
@@ -35,6 +43,16 @@ function sentinelState() {
 
 beforeEach(() => {
   sentinelDir = mkdtempSync(join(tmpdir(), 'git-env-sentinel-'));
+  homeDir = mkdtempSync(join(tmpdir(), 'git-env-home-'));
+  const hooksDir = join(homeDir, 'hooks');
+  mkdirSync(hooksDir);
+  writeFileSync(
+    join(homeDir, '.gitconfig'),
+    `[commit]\n\tgpgSign = true\n[core]\n\thooksPath = ${hooksDir}\n`,
+  );
+  const hookPath = join(hooksDir, 'pre-commit');
+  writeFileSync(hookPath, '#!/bin/sh\nexit 1\n');
+  chmodSync(hookPath, 0o755);
   git(['init', '--quiet', '-b', 'main']);
   git(['config', 'user.email', 'sentinel@example.com']);
   git(['config', 'user.name', 'Sentinel']);
@@ -42,6 +60,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  rmSync(homeDir, { force: true, recursive: true });
   rmSync(sentinelDir, { force: true, recursive: true });
 });
 
@@ -55,6 +74,7 @@ describe('tooling tests under an inherited git hook environment', () => {
         cwd: REPO_ROOT,
         env: {
           ...process.env,
+          HOME: homeDir,
           GIT_DIR: join(sentinelDir, '.git'),
           GIT_WORK_TREE: sentinelDir,
         },

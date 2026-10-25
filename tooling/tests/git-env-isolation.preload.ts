@@ -5,6 +5,11 @@ for (const key of Object.keys(process.env)) {
   if (key.startsWith('GIT_')) delete process.env[key];
 }
 
+// Fixtures create their own repositories and identities. Keep global/system
+// config, including signing and hooks, out of those child Git processes.
+process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+process.env.GIT_CONFIG_NOSYSTEM = '1';
+
 const withEnv = (options: unknown) => {
   const object = typeof options === 'object' && options !== null ? options : {};
   // After the spread, so an explicit `env: undefined` still gets process.env.

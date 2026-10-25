@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'bun:test';
 
-// Run by git-env-isolation.test.ts under an inherited GIT_DIR: writes a temp
-// repository the way tooling tests do, once per spawn options shape.
+// Run by git-env-isolation.test.ts under inherited Git configuration: writes a
+// temp repository and linked worktree the way tooling tests do.
 it.each([
   ['default options', {}],
   ['an explicit env: undefined', { env: undefined }],
@@ -24,6 +24,13 @@ it.each([
       });
       expect(result.exitCode).toBe(0);
     }
+
+    const worktree = join(dir, 'feature');
+    const result = Bun.spawnSync(
+      ['git', 'worktree', 'add', '--quiet', '-b', 'feature', worktree],
+      { ...options, cwd: dir, stderr: 'pipe' },
+    );
+    expect(result.exitCode).toBe(0);
   } finally {
     rmSync(dir, { force: true, recursive: true });
   }

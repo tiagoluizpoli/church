@@ -101,16 +101,31 @@ jobs:
     name: Develop Gate / Browser Journeys
     if: github.event_name == 'pull_request' && github.base_ref == 'develop'
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 10
 
-    # No `services.postgres` block here (unlike the other jobs): this job is
-    # a no-op on any PR whose affected plan selects no browser journey, and a
-    # `services:` container starts unconditionally at job boot, before any
-    # step (and its `if:`) can be evaluated — that would pay for a database
-    # container on every no-op run. "Start Postgres" below starts one only
-    # when the plan says a journey is actually selected (#291).
+    # Services and the job container start before steps can read the affected
+    # plan. The no-journey path still skips migrations and browser execution;
+    # CI evidence records this deliberate boot overhead (#593).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_unspecified_e2e
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    defaults:
+      run:
+        shell: bash
+
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
@@ -162,38 +177,9 @@ jobs:
           needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' "$plan_file")
           echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
 
-      - name: Start Postgres (only when a browser journey is selected)
-        if: steps.plan.outputs.needs_e2e == 'true'
-        # Mirrors the sibling jobs' services.postgres health-check
-        # (--health-interval 5s --health-retries 5) by hand, since a
-        # manually-started container can't use that declarative field.
-        run: |
-          docker run -d --name church-e2e-postgres \
-            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=church_unspecified_e2e \
-            -p 5432:5432 postgres:16-alpine
-          health_retries=5
-          health_interval_seconds=5
-          for _ in $(seq 1 "$health_retries"); do
-            if docker exec church-e2e-postgres pg_isready -U postgres >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep "$health_interval_seconds"
-          done
-          echo "Postgres did not become ready in time" >&2
-          exit 1
-
       - name: Run database migrations
         if: steps.plan.outputs.needs_e2e == 'true'
         run: bun run db:migrate
-
-      - name: Install Playwright browsers
-        if: steps.plan.outputs.needs_e2e == 'true'
-        id: install-browsers
-        # Cached per locked Playwright version; the action keeps the elapsed
-        # time evidence this step used to write inline.
-        uses: ./.github/actions/install-playwright-chromium
-        with:
-          summary-title: Develop Gate / Browser setup elapsed time
 
       - name: Browser journeys (affected or critical smoke set)
         # An intentional no-op when the plan selected no journey (e.g. a
@@ -266,6 +252,7 @@ jobs:
     # gate for master; fast-gate below covers the post-merge push instead.
     if: github.event_name == 'pull_request' && github.base_ref == 'master'
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 20
 
     services:
@@ -275,16 +262,18 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: church_unspecified_e2e
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
 
+    defaults:
+      run:
+        shell: bash
+
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
@@ -307,9 +296,6 @@ jobs:
 
       - uses: ./.github/actions/setup-church-ci
 
-      - name: Install Playwright browsers
-        uses: ./.github/actions/install-playwright-chromium
-
       # `bun run validate`'s scripts (tooling/validation/validate.ts), one
       # purpose per step: integration and E2E each resolve their own typed
       # database target (ADR-0005), so integration gets its own
@@ -328,12 +314,12 @@ jobs:
       - name: Create and migrate the integration database
         run: bun run --cwd packages/db db:setup-test
         env:
-          DATABASE_URL: *integration-database-url
+          DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_int
 
       - name: Integration tests
         run: bun run test:integration
         env:
-          DATABASE_URL: *integration-database-url
+          DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_int
 
       - name: Full E2E
         run: bun run test:e2e
@@ -425,6 +411,7 @@ jobs:
     # Post-merge safety net on master (release-gate above already ran the
     # full suite pre-merge on the develop -> master PR).
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     if: github.ref == 'refs/heads/master'
     needs: [fast-gate]
     timeout-minutes: 20
@@ -436,16 +423,18 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: church_unspecified_e2e
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
 
+    defaults:
+      run:
+        shell: bash
+
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
@@ -469,9 +458,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-church-ci
-
-      - name: Install Playwright browsers
-        uses: ./.github/actions/install-playwright-chromium
 
       - name: Run E2E tests
         run: bun run test:e2e

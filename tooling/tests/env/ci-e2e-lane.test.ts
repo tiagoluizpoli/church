@@ -12,7 +12,7 @@ import {
  * #253 / #263 / ADR-0005: every CI job injects its configuration explicitly
  * through the job environment, generates no environment value files, shares
  * one loopback URL set, and never depends on home-network DNS or Worktrunk
- * hooks. The E2E lane targets the PostgreSQL port the job provisions.
+ * hooks. Browser containers reach their PostgreSQL service by its hostname.
  */
 
 interface ActionStep {
@@ -47,32 +47,26 @@ const CI_URL_SET: Record<string, string> = {
 };
 const SETUP_ACTION = './.github/actions/setup-church-ci';
 const VALUE_FILE_WRITE = /(>>?|tee)\s*\S*\.env\b/;
+const PLAYWRIGHT_IMAGE_REPOSITORY = 'mcr.microsoft.com/playwright';
+const PLAYWRIGHT_IMAGE_PLATFORM = 'noble';
+
+function resolvedPlaywrightVersion(): string {
+  const lockfile = readFileSync(resolve(ROOT, 'bun.lock'), 'utf8');
+  const match = lockfile.match(
+    /"@playwright\/test": \["@playwright\/test@([^"]+)"/,
+  );
+
+  if (!match?.[1])
+    throw new Error('Could not find the resolved Playwright version');
+  return match[1];
+}
 
 interface JobInput {
   job: WorkflowJob;
 }
 
-/** The `docker run` of a job that starts Postgres only when needed. */
-function dockerRunPostgres({ job }: JobInput): string | undefined {
-  return job.steps
-    .map((step) => step.run ?? '')
-    .find((run) => run.includes('docker run') && run.includes('postgres'));
-}
-
-/** The host port the job binds its PostgreSQL to: the `services` mapping, or
- * the `docker run -p` of a job that starts Postgres only when needed. */
-function provisionedPostgresPort({ job }: JobInput): string | undefined {
-  const servicePort = job.services?.postgres?.ports?.[0];
-  if (servicePort) return servicePort.split(':')[0];
-
-  return dockerRunPostgres({ job })?.match(/-p\s+(\d+):5432/)?.[1];
-}
-
 function provisionedPostgresDatabase({ job }: JobInput): string | undefined {
-  const serviceDb = job.services?.postgres?.env?.POSTGRES_DB;
-  if (serviceDb) return serviceDb;
-
-  return dockerRunPostgres({ job })?.match(/POSTGRES_DB=(\S+)/)?.[1];
+  return job.services?.postgres?.env?.POSTGRES_DB;
 }
 
 describe('CI E2E lane', () => {
@@ -84,27 +78,39 @@ describe('CI E2E lane', () => {
         expect(job).toBeDefined();
       });
 
-      it('injects the E2E database URL at the port it provisions', () => {
+      it('uses the resolved Playwright image, Bash, and PostgreSQL service hostname', () => {
+        const resolvedVersion = resolvedPlaywrightVersion();
         const url = new URL(job?.env?.DATABASE_URL ?? '');
-        const port = provisionedPostgresPort({ job: job as WorkflowJob });
 
-        expect(LOOPBACK_HOSTS.has(url.hostname)).toBe(true);
-        expect(port).toBeDefined();
-        expect(url.port).toBe(port as string);
+        expect(job?.container).toBe(
+          `${PLAYWRIGHT_IMAGE_REPOSITORY}:v${resolvedVersion}-${PLAYWRIGHT_IMAGE_PLATFORM}`,
+        );
+        expect(job?.defaults?.run?.shell).toBe('bash');
+        expect(job?.services?.postgres).toBeDefined();
+        expect(url.hostname).toBe('postgres');
+        expect(url.port).toBe('5432');
         expect(url.pathname).toBe(
           `/${provisionedPostgresDatabase({ job: job as WorkflowJob })}`,
         );
         expect(url.pathname).toMatch(/^\/church_[a-z0-9-]+_e2e$/);
       });
 
-      it('uses only loopback URLs, never home-network DNS', () => {
+      it('keeps application URLs loopback-only without runtime browser or package installs', () => {
         const urls = Object.values(job?.env ?? {}).filter((value) =>
           /^[a-z]+:\/\//.test(value),
         );
 
         expect(urls.length).toBeGreaterThan(0);
-        for (const value of urls) {
+        for (const value of urls.filter(
+          (value) => value !== job?.env?.DATABASE_URL,
+        )) {
           expect(LOOPBACK_HOSTS.has(new URL(value).hostname)).toBe(true);
+        }
+        for (const step of job?.steps ?? []) {
+          expect(step.uses).not.toBe(
+            './.github/actions/install-playwright-chromium',
+          );
+          expect(step.run ?? '').not.toMatch(/\b(apt|playwright install)\b/);
         }
       });
     });

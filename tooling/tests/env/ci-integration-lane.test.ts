@@ -58,6 +58,10 @@ interface JobStepInput {
   step: WorkflowStep;
 }
 
+function expectedDatabaseHost({ job }: Pick<JobStepInput, 'job'>): string {
+  return job.container ? 'postgres' : 'localhost';
+}
+
 function effectiveDatabaseUrl({ job, step }: JobStepInput): URL {
   return new URL(step.env?.DATABASE_URL ?? job.env?.DATABASE_URL ?? '');
 }
@@ -89,13 +93,13 @@ describe('CI integration lane', () => {
       });
 
       it(`targets ${INTEGRATION_DATABASE} on the PostgreSQL it provisions`, () => {
-        const servicePort = job.services?.postgres?.ports?.[0]?.split(':')[0];
-
         for (const step of integrationSteps) {
           const url = effectiveDatabaseUrl({ job, step });
 
-          expect(LOOPBACK_HOSTS.has(url.hostname)).toBe(true);
-          expect(url.port).toBe(servicePort as string);
+          expect(url.hostname).toBe(expectedDatabaseHost({ job }));
+          if (!job.container)
+            expect(LOOPBACK_HOSTS.has(url.hostname)).toBe(true);
+          expect(url.port).toBe('5432');
           expect(url.pathname).toBe(`/${INTEGRATION_DATABASE}`);
         }
       });

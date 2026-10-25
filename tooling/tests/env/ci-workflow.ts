@@ -17,6 +17,12 @@ export interface WorkflowService {
 }
 
 export interface WorkflowJob {
+  container?: string;
+  defaults?: {
+    run?: {
+      shell?: string;
+    };
+  };
   env?: Record<string, string>;
   services?: Record<string, WorkflowService>;
   steps: WorkflowStep[];

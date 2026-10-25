@@ -15,7 +15,9 @@ interface CompositeAction {
 const SETUP_ACTION = './.github/actions/setup-church-ci';
 const SHARED_SETUP_LIMIT_MINUTES = 2;
 const PLAN_OR_DATABASE_LIMIT_MINUTES = 1;
-const SHARED_SETUP_ACTION_LIMIT_MINUTES = 11;
+// One bound for the whole composite action (its steps cannot carry their own
+// timeout); 5 minutes leaves the 10-minute daily jobs room for tests (#594).
+const SHARED_SETUP_ACTION_LIMIT_MINUTES = 5;
 const COMPOSITE_STEP_KEYS = new Set([
   'name',
   'id',

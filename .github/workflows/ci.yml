@@ -67,7 +67,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
-        timeout-minutes: 11
+        timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
@@ -187,7 +187,7 @@ jobs:
       # need Postgres reachable, which isn't true yet either way.
       - id: setup
         name: Shared CI setup
-        timeout-minutes: 11
+        timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
         with:
           skip-migrate: 'true'
@@ -358,7 +358,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
-        timeout-minutes: 11
+        timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
 
       # `bun run validate`'s scripts (tooling/validation/validate.ts), one
@@ -471,7 +471,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
-        timeout-minutes: 11
+        timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
@@ -577,7 +577,7 @@ jobs:
 
       - id: setup
         name: Shared CI setup
-        timeout-minutes: 11
+        timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
 
       - name: Run E2E tests

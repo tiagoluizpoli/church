@@ -125,6 +125,27 @@ describe('CI setup phase bounds and reporting', () => {
     expect(result.stdout.toString()).not.toContain('integration database');
   });
 
+  it('reports container startup when the job failed before checkout ran', () => {
+    for (const name of TEST_JOBS) {
+      const job = workflow.jobs[name] as WorkflowJob;
+      const report = stepWithId({ job, id: 'report-failure-phase' });
+      const command = (report?.run ?? '').replace(
+        /\$\{\{ steps\.[a-z-]+\.outcome \}\}/g,
+        '',
+      );
+      const result = Bun.spawnSync(['bash', '-c', command], {
+        env: { ...process.env, GITHUB_STEP_SUMMARY: '/dev/null' },
+        stderr: 'pipe',
+        stdout: 'pipe',
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout.toString()).toContain(
+        'setup/infrastructure — container or service startup',
+      );
+    }
+  });
+
   it('bounds planning and database migrations before browser tests', () => {
     const browser = workflow.jobs['develop-browser'] as WorkflowJob;
     const release = workflow.jobs['release-gate'] as WorkflowJob;

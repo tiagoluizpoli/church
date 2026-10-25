@@ -91,6 +91,9 @@ jobs:
         run: |
           if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
             phase="cancelled"
+          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
+            # No step ran: the job or service container failed to start.
+            phase="setup/infrastructure — container or service startup"
           elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
           elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
@@ -141,7 +144,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: church_unspecified_e2e
         options: >-
-          --health-cmd pg_isready -U postgres
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -236,6 +239,9 @@ jobs:
         run: |
           if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ] || [ "${{ steps.plan.outcome }}" == "cancelled" ] || [ "${{ steps.migrate.outcome }}" == "cancelled" ]; then
             phase="cancelled"
+          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
+            # No step ran: the job or service container failed to start.
+            phase="setup/infrastructure — container or service startup"
           elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
           elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
@@ -326,7 +332,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: church_unspecified_e2e
         options: >-
-          --health-cmd pg_isready -U postgres
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -406,6 +412,9 @@ jobs:
         run: |
           if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ] || [ "${{ steps.integration-database.outcome }}" == "cancelled" ]; then
             phase="cancelled"
+          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
+            # No step ran: the job or service container failed to start.
+            phase="setup/infrastructure — container or service startup"
           elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
           elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
@@ -504,6 +513,9 @@ jobs:
         run: |
           if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
             phase="cancelled"
+          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
+            # No step ran: the job or service container failed to start.
+            phase="setup/infrastructure — container or service startup"
           elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
           elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
@@ -547,7 +559,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: church_unspecified_e2e
         options: >-
-          --health-cmd pg_isready -U postgres
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -602,6 +614,9 @@ jobs:
         run: |
           if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
             phase="cancelled"
+          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
+            # No step ran: the job or service container failed to start.
+            phase="setup/infrastructure — container or service startup"
           elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
             phase="setup/infrastructure — checkout"
           elif [ "${{ steps.setup.outcome }}" == "failure" ]; then

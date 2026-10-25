@@ -110,7 +110,7 @@ describe('CI E2E lane', () => {
           'timeout-minutes': CHECKOUT_TIMEOUT_MINUTES,
         });
         expect(job?.services?.postgres?.options).toContain(
-          `--health-cmd ${POSTGRES_HEALTH_COMMAND}`,
+          `--health-cmd "${POSTGRES_HEALTH_COMMAND}"`,
         );
       });
 

@@ -1,10 +1,5 @@
-import { createHash } from 'node:crypto';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  type DatabasePurpose,
-  expectedDatabaseName,
-} from '../src/database-target-resolver';
 import {
   DatabaseDropError,
   dropDatabases,
@@ -12,24 +7,14 @@ import {
   listWorktreeDatabases,
 } from '../src/drop-databases';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
+import { scratchDatabaseName } from '../src/scratch-database-name';
 
-// Scoped to this worktree so concurrent integration runs in other worktrees
-// never create or drop the same scratch databases.
-// The worktree name is hashed because Postgres truncates identifiers over 63
-// characters, which would make long worktree names collide.
-const WORKTREE_HASH_LENGTH = 12;
-const SCRATCH_WORKTREE = `drop_${createHash('sha256')
-  .update(process.env.CHURCH_WORKTREE ?? 'unspecified')
-  .digest('hex')
-  .slice(0, WORKTREE_HASH_LENGTH)}`;
-const KEPT_WORKTREE = `${SCRATCH_WORKTREE}_kept`;
-const PURPOSES: DatabasePurpose[] = ['development', 'integration', 'e2e'];
-const SCRATCH_DATABASES = PURPOSES.map((purpose) =>
-  expectedDatabaseName({ purpose, worktree: SCRATCH_WORKTREE }),
+const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
+  scratchDatabaseName({ purpose: 'drop', kind }),
 );
-const KEPT_DATABASE = expectedDatabaseName({
-  purpose: 'integration',
-  worktree: KEPT_WORKTREE,
+const KEPT_DATABASE = scratchDatabaseName({
+  purpose: 'keep',
+  kind: 'int',
 });
 const UNREACHABLE_SERVER_URL = 'postgresql://postgres:postgres@127.0.0.1:1';
 

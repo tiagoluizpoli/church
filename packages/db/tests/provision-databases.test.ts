@@ -1,34 +1,27 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  type DatabasePurpose,
-  expectedDatabaseName,
-} from '../src/database-target-resolver';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
 import {
   DatabaseProvisioningError,
   provisionDatabases,
 } from '../src/provision-databases';
+import { scratchDatabaseName } from '../src/scratch-database-name';
 
-// Scoped to this worktree so concurrent integration runs in other worktrees
-// never create or drop the same scratch databases.
-// The worktree name is hashed because Postgres truncates identifiers over 63
-// characters, which would make long worktree names collide.
-const WORKTREE_HASH_LENGTH = 12;
-const SCRATCH_WORKTREE = `provision_${createHash('sha256')
-  .update(process.env.CHURCH_WORKTREE ?? 'unspecified')
-  .digest('hex')
-  .slice(0, WORKTREE_HASH_LENGTH)}`;
-const PURPOSES: DatabasePurpose[] = ['development', 'integration', 'e2e'];
-const SCRATCH_DATABASES = PURPOSES.map((purpose) =>
-  expectedDatabaseName({ purpose, worktree: SCRATCH_WORKTREE }),
+const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
+  scratchDatabaseName({ purpose: 'prov', kind }),
 );
 const [DEV_DATABASE = '', INT_DATABASE = '', E2E_DATABASE = ''] =
   SCRATCH_DATABASES;
+const POOL_CLOSE_RACE_DATABASE_COUNT = 10;
+const POOL_CLOSE_RACE_ITERATIONS = 10;
+const POOL_CLOSE_RACE_DATABASES = Array.from(
+  { length: POOL_CLOSE_RACE_DATABASE_COUNT },
+  (_, index) =>
+    scratchDatabaseName({ purpose: `pool_close_race_${index}`, kind: 'dev' }),
+);
 // The first migration creates this enum; an existing one makes it fail.
 const CONFLICTING_TYPE = '"public"."assignment_status"';
 
@@ -65,11 +58,12 @@ const scratchUrls = SCRATCH_DATABASES.map((database) =>
 
 const adminPool = new pg.Pool({
   connectionString: databaseUrlFor({ database: 'postgres' }),
-  max: 1,
+  max: POOL_CLOSE_RACE_DATABASE_COUNT * 2,
 });
 
 interface QueryDatabaseInput extends DatabaseInput {
   sql: string;
+  racePoolClose?: () => Promise<void>;
 }
 
 async function queryDatabase(
@@ -82,7 +76,12 @@ async function queryDatabase(
   try {
     return await pool.query(input.sql);
   } finally {
-    await pool.end();
+    // pool.end() resolves before its client's socket closes, so a later force-drop can still kill that client (57P01).
+    pool.on('error', () => {});
+    const forceDrop = input.racePoolClose?.();
+    const close = pool.end();
+    await forceDrop;
+    await close;
   }
 }
 
@@ -120,7 +119,7 @@ async function applicationRows(input: DatabaseInput): Promise<number> {
 }
 
 async function dropScratchDatabases(): Promise<void> {
-  for (const database of SCRATCH_DATABASES) {
+  for (const database of [...SCRATCH_DATABASES, ...POOL_CLOSE_RACE_DATABASES]) {
     await adminPool.query(`drop database if exists "${database}" with (force)`);
   }
 }
@@ -224,5 +223,29 @@ describe('provisionDatabases', () => {
 
     expect(failure).toBeInstanceOf(DatabaseProvisioningError);
     expect((failure as DatabaseProvisioningError).step).toBe('validate');
+  });
+
+  it('survives force-drops that race a closing query pool', async () => {
+    for (
+      let iteration = 0;
+      iteration < POOL_CLOSE_RACE_ITERATIONS;
+      iteration++
+    ) {
+      await Promise.all(
+        POOL_CLOSE_RACE_DATABASES.map(async (database) => {
+          await adminPool.query(
+            `drop database if exists "${database}" with (force)`,
+          );
+          await adminPool.query(`create database "${database}"`);
+          await queryDatabase({
+            database,
+            sql: 'select 1',
+            racePoolClose: async () => {
+              await adminPool.query(`drop database "${database}" with (force)`);
+            },
+          });
+        }),
+      );
+    }
   });
 });

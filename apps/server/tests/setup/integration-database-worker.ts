@@ -1,6 +1,6 @@
 import { scratchDatabaseName } from '@church/db/scratch-database-name';
 
-export const INTEGRATION_WORKER_COUNT = 1;
+export const INTEGRATION_WORKER_COUNT = 2;
 
 interface WorkerDatabaseInput {
   workerId: number;
@@ -16,6 +16,12 @@ export function configureIntegrationWorkerDatabase(): void {
   const workerId = Number(process.env.VITEST_POOL_ID);
   if (!Number.isSafeInteger(workerId) || workerId < 1) {
     throw new Error('Vitest did not provide a valid integration worker id.');
+  }
+
+  if (workerId > INTEGRATION_WORKER_COUNT) {
+    throw new Error(
+      `Integration worker ${workerId} has no cloned database (cap ${INTEGRATION_WORKER_COUNT}).`,
+    );
   }
 
   const databaseUrl = process.env.DATABASE_URL;

@@ -6,6 +6,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./now": {
+      "types": "./src/now.ts",
+      "default": "./src/now.ts"
     }
   },
   "scripts": {

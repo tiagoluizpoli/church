@@ -88,23 +88,7 @@ jobs:
         name: Report failed phase
         if: failure() || cancelled()
         shell: bash
-        run: |
-          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
-            phase="cancelled"
-          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
-            # No step ran: the job or service container failed to start.
-            phase="setup/infrastructure — container or service startup"
-          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — shared setup"
-          else
-            phase="test-command"
-          fi
-          echo "::error::CI failure phase: $phase"
-          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
-          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
 
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
@@ -236,27 +220,7 @@ jobs:
         name: Report failed phase
         if: failure() || cancelled()
         shell: bash
-        run: |
-          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ] || [ "${{ steps.plan.outcome }}" == "cancelled" ] || [ "${{ steps.migrate.outcome }}" == "cancelled" ]; then
-            phase="cancelled"
-          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
-            # No step ran: the job or service container failed to start.
-            phase="setup/infrastructure — container or service startup"
-          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — shared setup"
-          elif [ "${{ steps.plan.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — affected planning"
-          elif [ "${{ steps.migrate.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — database migration"
-          else
-            phase="test-command"
-          fi
-          echo "::error::CI failure phase: $phase"
-          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
-          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup" "${{ steps.plan.outcome }}:affected planning" "${{ steps.migrate.outcome }}:database migration"
 
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
@@ -395,12 +359,12 @@ jobs:
         timeout-minutes: 1
         run: bun run --cwd packages/db db:setup-test
         env:
-          DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_int
+          DATABASE_URL: &release-integration-database-url postgresql://postgres:postgres@postgres:5432/church_unspecified_int
 
       - name: Integration tests
         run: bun run test:integration
         env:
-          DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_int
+          DATABASE_URL: *release-integration-database-url
 
       - name: Full E2E
         run: bun run test:e2e
@@ -409,25 +373,7 @@ jobs:
         name: Report failed phase
         if: failure() || cancelled()
         shell: bash
-        run: |
-          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ] || [ "${{ steps.integration-database.outcome }}" == "cancelled" ]; then
-            phase="cancelled"
-          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
-            # No step ran: the job or service container failed to start.
-            phase="setup/infrastructure — container or service startup"
-          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — shared setup"
-          elif [ "${{ steps.integration-database.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — integration database"
-          else
-            phase="test-command"
-          fi
-          echo "::error::CI failure phase: $phase"
-          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
-          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup" "${{ steps.integration-database.outcome }}:integration database"
 
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
@@ -510,23 +456,7 @@ jobs:
         name: Report failed phase
         if: failure() || cancelled()
         shell: bash
-        run: |
-          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
-            phase="cancelled"
-          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
-            # No step ran: the job or service container failed to start.
-            phase="setup/infrastructure — container or service startup"
-          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — shared setup"
-          else
-            phase="test-command"
-          fi
-          echo "::error::CI failure phase: $phase"
-          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
-          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
 
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
@@ -611,23 +541,7 @@ jobs:
         name: Report failed phase
         if: failure() || cancelled()
         shell: bash
-        run: |
-          if [ "${{ steps.checkout.outcome }}" == "cancelled" ] || [ "${{ steps.setup.outcome }}" == "cancelled" ]; then
-            phase="cancelled"
-          elif [ -z "${{ steps.checkout.outcome }}" ] || [ "${{ steps.checkout.outcome }}" == "skipped" ]; then
-            # No step ran: the job or service container failed to start.
-            phase="setup/infrastructure — container or service startup"
-          elif [ "${{ steps.checkout.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — checkout"
-          elif [ "${{ steps.setup.outcome }}" == "failure" ]; then
-            phase="setup/infrastructure — shared setup"
-          else
-            phase="test-command"
-          fi
-          echo "::error::CI failure phase: $phase"
-          echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
-          echo "$phase" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
 
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic

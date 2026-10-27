@@ -54,8 +54,65 @@ function stepWithId({ job, id }: StepInput): WorkflowStep | undefined {
   return job.steps.find((step) => step.id === id);
 }
 
-function outcomeExpression(step: string): string {
-  return `${'$'}{{ steps.${step}.outcome }}`;
+const SETUP_LABELS: Record<string, string> = {
+  setup: 'shared setup',
+  plan: 'affected planning',
+  migrate: 'database migration',
+  'integration-database': 'integration database',
+  toolchain: 'toolchain',
+  'dependency-cache': 'dependency cache',
+  dependencies: 'dependency installation',
+  'failure-bundles': 'failure-bundle setup',
+};
+
+interface RunInput {
+  run: string;
+}
+
+/** The step ids a report step reads outcomes of, in the order it lists them. */
+function referencedSteps({ run }: RunInput): string[] {
+  return [...run.matchAll(/steps\.([a-z-]+)\.outcome/g)].map(
+    (match) => match[1] ?? '',
+  );
+}
+
+interface FailingAtInput {
+  setupSteps: string[];
+  failed: string;
+}
+
+/** GitHub's outcomes for a run that failed at one step: those before it
+ * succeeded and those after it never started. */
+function outcomesFailingAt({ setupSteps, failed }: FailingAtInput) {
+  const failedIndex = setupSteps.indexOf(failed);
+  return Object.fromEntries(
+    setupSteps.map((id, index) => [
+      id,
+      index < failedIndex
+        ? 'success'
+        : index === failedIndex
+          ? 'failure'
+          : 'skipped',
+    ]),
+  );
+}
+
+interface SimulateInput extends RunInput {
+  outcomes: Record<string, string>;
+}
+
+function simulate({ run, outcomes }: SimulateInput) {
+  const command = run.replace(
+    /\$\{\{ steps\.([a-z-]+)\.outcome \}\}/g,
+    (_, id: string) => outcomes[id] ?? '',
+  );
+  const result = Bun.spawnSync(['bash', '-c', command], {
+    cwd: ROOT,
+    env: { ...process.env, GITHUB_STEP_SUMMARY: '' },
+    stderr: 'pipe',
+    stdout: 'pipe',
+  });
+  return { exitCode: result.exitCode, stdout: result.stdout.toString() };
 }
 
 describe('CI setup phase bounds and reporting', () => {
@@ -76,16 +133,45 @@ describe('CI setup phase bounds and reporting', () => {
         );
       });
 
-      it('reports setup failures separately and leaves test commands nonzero', () => {
+      it('reports through the shared script and keeps the failure nonzero', () => {
         const report = stepWithId({ job, id: 'report-failure-phase' });
 
         expect(report).toMatchObject({ if: 'failure() || cancelled()' });
-        expect(report?.run).toContain('setup/infrastructure');
-        expect(report?.run).toContain('test-command');
-        expect(report?.run).toContain('phase="cancelled"');
-        expect(report?.run).toContain('exit 1');
-        expect(report?.run).toContain('steps.checkout.outcome');
-        expect(report?.run).toContain('steps.setup.outcome');
+        expect(report?.run).toStartWith(
+          'bash tooling/ci/report-failure-phase.sh',
+        );
+        expect(report?.run).not.toContain('phase=');
+      });
+
+      it('reports a controlled failure of each setup step as setup, with no test step started', () => {
+        const run = stepWithId({ job, id: 'report-failure-phase' })?.run ?? '';
+        const setupSteps = referencedSteps({ run });
+
+        expect(setupSteps).toContain('setup');
+        for (const failed of setupSteps) {
+          const result = simulate({
+            run,
+            outcomes: outcomesFailingAt({ setupSteps, failed }),
+          });
+
+          expect(result.exitCode).toBe(1);
+          expect(result.stdout).toContain(
+            `setup/infrastructure — ${SETUP_LABELS[failed]}`,
+          );
+          expect(result.stdout).not.toContain('test-command');
+        }
+      });
+
+      it('reports a failed test command when every setup step succeeded', () => {
+        const run = stepWithId({ job, id: 'report-failure-phase' })?.run ?? '';
+        const outcomes = Object.fromEntries(
+          referencedSteps({ run }).map((id) => [id, 'success']),
+        );
+
+        const result = simulate({ run, outcomes });
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stdout).toContain('CI failure phase: test-command');
       });
     });
   }
@@ -103,47 +189,49 @@ describe('CI setup phase bounds and reporting', () => {
       (step) => step.id === 'report-setup-failure',
     );
     expect(report).toMatchObject({ if: 'failure() || cancelled()' });
-    expect(report?.run).toContain('setup/infrastructure');
-    expect(report?.run).toContain('exit 1');
+    expect(report?.run).toContain('report-failure-phase.sh --setup-only');
+  });
+
+  it('reports a controlled failure of each shared setup step as setup', () => {
+    const run =
+      setupAction.runs.steps.find((step) => step.id === 'report-setup-failure')
+        ?.run ?? '';
+    const setupSteps = referencedSteps({ run });
+
+    expect(setupSteps).toEqual([
+      'toolchain',
+      'dependency-cache',
+      'dependencies',
+      'failure-bundles',
+      'migrate',
+    ]);
+    for (const failed of setupSteps) {
+      const result = simulate({
+        run,
+        outcomes: outcomesFailingAt({ setupSteps, failed }),
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain(
+        `setup/infrastructure — ${SETUP_LABELS[failed]}`,
+      );
+      expect(result.stdout).not.toContain('test-command');
+    }
   });
 
   it('reports a failed test command when release database setup was skipped', () => {
     const release = workflow.jobs['release-gate'] as WorkflowJob;
-    const report = stepWithId({ job: release, id: 'report-failure-phase' });
-    const command = (report?.run ?? '')
-      .replaceAll(outcomeExpression('checkout'), 'success')
-      .replaceAll(outcomeExpression('setup'), 'success')
-      .replaceAll(outcomeExpression('integration-database'), 'skipped');
-    const result = Bun.spawnSync(['bash', '-c', command], {
-      env: { ...process.env, GITHUB_STEP_SUMMARY: '/dev/null' },
-      stderr: 'pipe',
-      stdout: 'pipe',
+    const run =
+      stepWithId({ job: release, id: 'report-failure-phase' })?.run ?? '';
+
+    const result = simulate({
+      run,
+      outcomes: { setup: 'success', 'integration-database': 'skipped' },
     });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stdout.toString()).toContain('test-command');
-    expect(result.stdout.toString()).not.toContain('integration database');
-  });
-
-  it('reports container startup when the job failed before checkout ran', () => {
-    for (const name of TEST_JOBS) {
-      const job = workflow.jobs[name] as WorkflowJob;
-      const report = stepWithId({ job, id: 'report-failure-phase' });
-      const command = (report?.run ?? '').replace(
-        /\$\{\{ steps\.[a-z-]+\.outcome \}\}/g,
-        '',
-      );
-      const result = Bun.spawnSync(['bash', '-c', command], {
-        env: { ...process.env, GITHUB_STEP_SUMMARY: '/dev/null' },
-        stderr: 'pipe',
-        stdout: 'pipe',
-      });
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stdout.toString()).toContain(
-        'setup/infrastructure — container or service startup',
-      );
-    }
+    expect(result.stdout).toContain('test-command');
+    expect(result.stdout).not.toContain('integration database');
   });
 
   it('bounds planning and database migrations before browser tests', () => {

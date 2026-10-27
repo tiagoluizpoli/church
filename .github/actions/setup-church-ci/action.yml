@@ -53,23 +53,10 @@ runs:
       id: report-setup-failure
       if: failure() || cancelled()
       shell: bash
-      run: |
-        if [ "${{ steps.toolchain.outcome }}" == "cancelled" ] || [ "${{ steps.dependency-cache.outcome }}" == "cancelled" ] || [ "${{ steps.dependencies.outcome }}" == "cancelled" ] || [ "${{ steps.failure-bundles.outcome }}" == "cancelled" ] || [ "${{ steps.migrate.outcome }}" == "cancelled" ]; then
-          phase="cancelled"
-        elif [ "${{ steps.toolchain.outcome }}" == "failure" ]; then
-          phase="toolchain"
-        elif [ "${{ steps.dependency-cache.outcome }}" == "failure" ]; then
-          phase="dependency cache"
-        elif [ "${{ steps.dependencies.outcome }}" == "failure" ]; then
-          phase="dependency installation"
-        elif [ "${{ steps.failure-bundles.outcome }}" == "failure" ]; then
-          phase="failure-bundle setup"
-        elif [ "${{ steps.migrate.outcome }}" == "failure" ]; then
-          phase="database migration"
-        else
-          phase="test-command"
-        fi
-        echo "::error::CI failure phase: setup/infrastructure — $phase"
-        echo "### CI failure phase" >> "$GITHUB_STEP_SUMMARY"
-        echo "setup/infrastructure — $phase" >> "$GITHUB_STEP_SUMMARY"
-        exit 1
+      run: >-
+        bash tooling/ci/report-failure-phase.sh --setup-only
+        "${{ steps.toolchain.outcome }}:toolchain"
+        "${{ steps.dependency-cache.outcome }}:dependency cache"
+        "${{ steps.dependencies.outcome }}:dependency installation"
+        "${{ steps.failure-bundles.outcome }}:failure-bundle setup"
+        "${{ steps.migrate.outcome }}:database migration"

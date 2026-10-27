@@ -179,7 +179,8 @@ describe('worktree:remove-databases', () => {
       );
       await admin.close();
     }
-  });
+    // create database checkpoints; beside the integration lane it exceeds the default 5 s.
+  }, 30_000);
 
   it('exits successfully so the removal proceeds', () => {
     const result = spawnSync('bun', [REMOVE_SCRIPT], {

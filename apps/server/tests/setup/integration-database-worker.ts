@@ -1,4 +1,5 @@
-import { scratchDatabaseName } from '@church/db/scratch-database-name';
+import { integrationWorkerDatabaseName } from '@church/db/integration-worker-database-name';
+import { worktreeOrUnspecified } from '@church/db/purpose-database-url-guard';
 
 export const INTEGRATION_WORKER_COUNT = 2;
 
@@ -6,12 +7,15 @@ interface WorkerDatabaseInput {
   workerId: number;
 }
 
-export function integrationWorkerDatabaseName(
-  input: WorkerDatabaseInput,
-): string {
-  return scratchDatabaseName({ purpose: `w${input.workerId}`, kind: 'int' });
+export function integrationWorkerDatabase(input: WorkerDatabaseInput): string {
+  return integrationWorkerDatabaseName({
+    worktree: worktreeOrUnspecified(),
+    workerId: input.workerId,
+  });
 }
 
+/** Points this worker's `DATABASE_URL` at its own clone; the cloning itself
+ * is `integration-database.global.ts`. */
 export function configureIntegrationWorkerDatabase(): void {
   const workerId = Number(process.env.VITEST_POOL_ID);
   if (!Number.isSafeInteger(workerId) || workerId < 1) {
@@ -29,8 +33,6 @@ export function configureIntegrationWorkerDatabase(): void {
     throw new Error('DATABASE_URL is required for integration tests.');
 
   const url = new URL(databaseUrl);
-  url.pathname = `/${integrationWorkerDatabaseName({ workerId })}`;
+  url.pathname = `/${integrationWorkerDatabase({ workerId })}`;
   process.env.DATABASE_URL = url.toString();
-  process.env.CHURCH_INTEGRATION_BASE_DATABASE_URL = databaseUrl;
-  process.env.CHURCH_INTEGRATION_WORKER_ID = String(workerId);
 }

@@ -1,3 +1,5 @@
+import { isIntegrationWorkerDatabaseName } from './integration-worker-database-name';
+
 const PRIMARY_WORKTREE = 'develop';
 
 export const DATABASE_PURPOSES = ['development', 'integration', 'e2e'] as const;
@@ -145,7 +147,13 @@ export function resolveDatabaseTarget(
     worktree: input.worktree,
   });
 
-  if (database !== expectedName) {
+  // An integration run may target a per-worker clone of this worktree's own
+  // integration database (cloned from it by the server's test setup).
+  const isOwnWorkerClone =
+    input.purpose === 'integration' &&
+    isIntegrationWorkerDatabaseName({ database, worktree: input.worktree });
+
+  if (database !== expectedName && !isOwnWorkerClone) {
     throw new DatabaseTargetError({
       reason: 'purpose-name-mismatch',
       message: `Database "${database}" does not match the expected "${expectedName}" for purpose "${input.purpose}" in worktree "${input.worktree}".`,

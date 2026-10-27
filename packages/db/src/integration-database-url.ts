@@ -6,7 +6,6 @@ import {
   requireExecPurpose,
   worktreeOrUnspecified,
 } from './purpose-database-url-guard';
-import { scratchDatabaseName } from './scratch-database-name';
 
 /**
  * Returns the integration database target Varlock injected for this process
@@ -17,7 +16,8 @@ import { scratchDatabaseName } from './scratch-database-name';
  * Resolves through `resolveDatabaseTarget` (src/database-target-resolver.ts),
  * so it refuses the development database, an E2E database, another
  * worktree's integration database, and any database outside the managed
- * "church" namespace. Every caller (packages/db, packages/auth, apps/server)
+ * "church" namespace. It accepts this worktree's integration database or one
+ * of its per-worker clones, which a runner selects by setting `DATABASE_URL`. Every caller (packages/db, packages/auth, apps/server)
  * resolves through this one function, so the redacted preflight line it logs
  * is directly comparable across all three integration runners.
  */
@@ -27,9 +27,7 @@ export function getIntegrationDatabaseUrl(): string {
     functionName: 'getIntegrationDatabaseUrl',
   });
 
-  const databaseUrl =
-    process.env.CHURCH_INTEGRATION_BASE_DATABASE_URL ??
-    requireDatabaseUrl({ purpose: 'integration' });
+  const databaseUrl = requireDatabaseUrl({ purpose: 'integration' });
   const worktree = worktreeOrUnspecified();
 
   const identity = resolveDatabaseTarget({
@@ -42,19 +40,6 @@ export function getIntegrationDatabaseUrl(): string {
   });
 
   reportDatabaseTarget({ identity });
-
-  const workerId = process.env.CHURCH_INTEGRATION_WORKER_ID;
-  if (workerId !== undefined) {
-    const parsedWorkerId = Number(workerId);
-    if (!Number.isSafeInteger(parsedWorkerId) || parsedWorkerId < 1) {
-      throw new Error(
-        'CHURCH_INTEGRATION_WORKER_ID must be a positive integer.',
-      );
-    }
-    const workerUrl = new URL(databaseUrl);
-    workerUrl.pathname = `/${scratchDatabaseName({ purpose: `w${parsedWorkerId}`, kind: 'int' })}`;
-    return workerUrl.toString();
-  }
 
   return databaseUrl;
 }

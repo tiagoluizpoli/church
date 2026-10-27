@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
+import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
 
 const DATABASE_SERVER = 'postgresql://postgres:postgres@localhost:5444';
 const INTEGRATION_URL = `${DATABASE_SERVER}/church_develop_int`;
@@ -28,6 +29,7 @@ describe('getIntegrationDatabaseUrl', () => {
   afterEach(() => {
     resetEnv();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("returns the current worktree's integration database", () => {
@@ -35,6 +37,30 @@ describe('getIntegrationDatabaseUrl', () => {
       database: 'church_develop_int',
       worktree: 'develop',
     });
+
+    expect(getIntegrationDatabaseUrl()).toBe(INTEGRATION_URL);
+  });
+
+  it("returns a per-worker clone of the worktree's integration database", () => {
+    const worker = integrationWorkerDatabaseName({
+      worktree: 'feature_x',
+      workerId: 2,
+    });
+    useIntegrationTarget({ database: worker, worktree: 'feature_x' });
+
+    expect(getIntegrationDatabaseUrl()).toBe(`${DATABASE_SERVER}/${worker}`);
+  });
+
+  it('ignores the retired worker environment variables', () => {
+    useIntegrationTarget({
+      database: 'church_develop_int',
+      worktree: 'develop',
+    });
+    vi.stubEnv('CHURCH_INTEGRATION_WORKER_ID', '2');
+    vi.stubEnv(
+      'CHURCH_INTEGRATION_BASE_DATABASE_URL',
+      `${DATABASE_SERVER}/church_other_int`,
+    );
 
     expect(getIntegrationDatabaseUrl()).toBe(INTEGRATION_URL);
   });

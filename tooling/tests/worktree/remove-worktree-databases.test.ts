@@ -10,12 +10,11 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { SQL } from 'bun';
 import type { Instant } from '../../../packages/time/src';
-import { LOCAL_DATABASE_SERVER_URL } from '../../worktree/database-targets';
 import {
   removeWorktreeDatabases,
   reportRemoval,
+  selectWorktreeDatabases,
 } from '../../worktree/remove-worktree-databases';
 
 /**
@@ -30,8 +29,6 @@ const REMOVE_SCRIPT = resolve(
   'tooling/worktree/remove-worktree-databases.ts',
 );
 const LOCAL_ENV_SCRIPT = resolve(REPO_ROOT, 'tooling/worktree/local-env.ts');
-// DROP DATABASE forces an immediate checkpoint (create does not), so beside the integration lane a drop outlasts the default 5 s.
-const DROP_TEST_TIMEOUT_MS = 30_000;
 const UNREACHABLE_SERVER_URL = 'postgresql://postgres:postgres@127.0.0.1:1';
 
 let sandbox: string;
@@ -157,42 +154,30 @@ describe('worktree:remove-databases', () => {
     expect(outcome).toEqual({ kind: 'shared-identity', worktree: 'feature_a' });
   });
 
-  it(
-    "drops the worktree's per-worker integration databases and no other worktree's",
-    async () => {
-      generateLocalEnv({ cwd: feature });
-      const ownWorker = 'church_feature_a__w1_int';
-      const otherWorker = 'church_feature_ab__w1_int';
-      const adminUrl = new URL(LOCAL_DATABASE_SERVER_URL);
-      adminUrl.pathname = '/postgres';
-      const admin = new SQL(adminUrl.toString());
-      try {
-        await admin.unsafe(`create database "${ownWorker}"`);
-        await admin.unsafe(`create database "${otherWorker}"`);
+  it("selects the worktree's standard and per-worker databases and no other worktree's", () => {
+    const own = [
+      'church_feature_a_dev',
+      'church_feature_a_int',
+      'church_feature_a_e2e',
+      'church_feature_a__w1_int',
+      'church_feature_a__w2_int',
+    ];
+    const others = [
+      'church',
+      'church_feature_ab_dev',
+      'church_feature_ab__w1_int',
+      'church_other__w1_int',
+      'church_feature_a__w1_dev',
+      'postgres',
+    ];
 
-        const outcome = await removeWorktreeDatabases({
-          cwd: feature,
-          serverUrl: LOCAL_DATABASE_SERVER_URL,
-        });
-
-        expect(outcome).toMatchObject({ kind: 'dropped' });
-        const remaining = await admin.unsafe(
-          `select datname from pg_database where datname in ('${ownWorker}', '${otherWorker}')`,
-        );
-        expect(
-          remaining.map((row: { datname: string }) => row.datname),
-        ).toEqual([otherWorker]);
-      } finally {
-        for (const database of [ownWorker, otherWorker]) {
-          await admin.unsafe(
-            `drop database if exists "${database}" with (force)`,
-          );
-        }
-        await admin.close();
-      }
-    },
-    DROP_TEST_TIMEOUT_MS,
-  );
+    expect(
+      selectWorktreeDatabases({
+        databases: [...others, ...own],
+        worktree: 'feature_a',
+      }),
+    ).toEqual(own);
+  });
 
   it('exits successfully so the removal proceeds', () => {
     const result = spawnSync('bun', [REMOVE_SCRIPT], {

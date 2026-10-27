@@ -48,6 +48,26 @@ export interface RemoveWorktreeDatabasesInput {
   serverUrl: string;
 }
 
+export interface SelectWorktreeDatabasesInput {
+  databases: string[];
+  worktree: string;
+}
+
+/** The worktree's own standard and per-worker databases among `databases`. */
+export function selectWorktreeDatabases(
+  input: SelectWorktreeDatabasesInput,
+): string[] {
+  const { databases, worktree } = input;
+  const standardDatabases = DATABASE_PURPOSES.map((purpose) =>
+    expectedDatabaseName({ purpose, worktree }),
+  );
+  return databases.filter(
+    (database) =>
+      standardDatabases.includes(database) ||
+      isIntegrationWorkerDatabaseName({ database, worktree }),
+  );
+}
+
 export async function removeWorktreeDatabases(
   input: RemoveWorktreeDatabasesInput,
 ): Promise<RemovalOutcome> {
@@ -66,14 +86,7 @@ export async function removeWorktreeDatabases(
     const databases = await listWorktreeDatabases({
       serverUrl: input.serverUrl,
     });
-    const standardDatabases = DATABASE_PURPOSES.map((purpose) =>
-      expectedDatabaseName({ purpose, worktree }),
-    );
-    const databasesToDrop = databases.filter(
-      (database) =>
-        standardDatabases.includes(database) ||
-        isIntegrationWorkerDatabaseName({ database, worktree }),
-    );
+    const databasesToDrop = selectWorktreeDatabases({ databases, worktree });
 
     return {
       kind: 'dropped',

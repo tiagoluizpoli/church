@@ -5,6 +5,7 @@ import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
 import {
+  cloneDatabasesFromTemplate,
   DatabaseProvisioningError,
   provisionDatabases,
 } from '../src/provision-databases';
@@ -15,6 +16,7 @@ const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
 );
 const [DEV_DATABASE = '', INT_DATABASE = '', E2E_DATABASE = ''] =
   SCRATCH_DATABASES;
+const WORKER_DATABASE = scratchDatabaseName({ purpose: 'w1', kind: 'int' });
 const POOL_CLOSE_RACE_DATABASE_COUNT = 10;
 const POOL_CLOSE_RACE_ITERATIONS = 10;
 const POOL_CLOSE_RACE_DATABASES = Array.from(
@@ -119,7 +121,11 @@ async function applicationRows(input: DatabaseInput): Promise<number> {
 }
 
 async function dropScratchDatabases(): Promise<void> {
-  for (const database of [...SCRATCH_DATABASES, ...POOL_CLOSE_RACE_DATABASES]) {
+  for (const database of [
+    ...SCRATCH_DATABASES,
+    WORKER_DATABASE,
+    ...POOL_CLOSE_RACE_DATABASES,
+  ]) {
     await adminPool.query(`drop database if exists "${database}" with (force)`);
   }
 }
@@ -223,6 +229,22 @@ describe('provisionDatabases', () => {
 
     expect(failure).toBeInstanceOf(DatabaseProvisioningError);
     expect((failure as DatabaseProvisioningError).step).toBe('validate');
+  });
+
+  it('clones a migrated template for an integration worker without rerunning migrations', async () => {
+    await provisionDatabases({
+      databaseUrls: [databaseUrlFor({ database: INT_DATABASE })],
+    });
+
+    const results = await cloneDatabasesFromTemplate({
+      templateUrl: databaseUrlFor({ database: INT_DATABASE }),
+      databaseNames: [WORKER_DATABASE],
+    });
+
+    expect(results).toEqual([{ database: WORKER_DATABASE, replaced: false }]);
+    expect(await appliedMigrations({ database: WORKER_DATABASE })).toBe(
+      journal.entries.length,
+    );
   });
 
   it('survives force-drops that race a closing query pool', async () => {

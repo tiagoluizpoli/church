@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { isIntegrationWorkerDatabaseName } from './integration-worker-database-name';
 
 /**
  * Creates and migrates managed databases (ADR-0005 bootstrap): rerunnable,
@@ -15,12 +16,11 @@ import pg from 'pg';
 
 // Held on the admin (`postgres`) connection: advisory locks are scoped to
 // the connected database, and every bootstrap connects to that same one.
-const PROVISIONING_LOCK_KEY = 7_245_256;
+export const PROVISIONING_LOCK_KEY = 7_245_256;
 const LOCK_TIMEOUT = '2min';
 const ADMIN_DATABASE = 'postgres';
 const MANAGED_DATABASE_NAME = /^church[a-z0-9_]*$/;
-const INTEGRATION_WORKER_DATABASE_NAME =
-  /^church_[a-z0-9_]+__w[1-9][0-9]*_int$/;
+const OBJECT_IN_USE = '55006';
 const POSTGRES_IDENTIFIER_LIMIT = 63;
 const DUPLICATE_DATABASE = '42P04';
 
@@ -145,6 +145,55 @@ function validateTargets(input: ProvisionDatabasesInput): Target[] {
   return targets;
 }
 
+/** The SQLSTATE a `pg` query error carries. */
+interface PostgresError {
+  code?: string;
+}
+
+interface CloneDatabaseInput {
+  admin: pg.Client;
+  templateDatabase: string;
+  database: string;
+}
+
+async function cloneDatabase(
+  input: CloneDatabaseInput,
+): Promise<ClonedDatabase> {
+  const { admin, templateDatabase, database } = input;
+  const existing = await admin.query(
+    'select 1 from pg_database where datname = $1',
+    [database],
+  );
+  await admin.query(`drop database if exists "${database}" with (force)`);
+  try {
+    await admin.query(
+      `create database "${database}" template "${templateDatabase}"`,
+    );
+  } catch (error) {
+    // PostgreSQL refuses to copy a template that has other sessions connected.
+    if ((error as PostgresError).code === OBJECT_IN_USE) {
+      throw new Error(
+        `The template "${templateDatabase}" has other connections open, so it cannot be cloned. Stop whatever is connected to it (a running integration test, dev server or psql session) and rerun.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  return { database, replaced: existing.rowCount === 1 };
+}
+
+interface LockInput {
+  admin: pg.Client;
+}
+
+async function acquireProvisioningLock(input: LockInput): Promise<void> {
+  // Bounded: a stuck bootstrap must not block every worktree forever.
+  await input.admin.query(`set lock_timeout = '${LOCK_TIMEOUT}'`);
+  await input.admin.query('select pg_advisory_lock($1)', [
+    PROVISIONING_LOCK_KEY,
+  ]);
+}
+
 /**
  * Replaces worker databases with PostgreSQL template clones. The template is
  * already migrated, so every worker starts from the same schema without a
@@ -158,7 +207,7 @@ export async function cloneDatabasesFromTemplate(
 
   for (const database of input.databaseNames) {
     if (
-      !INTEGRATION_WORKER_DATABASE_NAME.test(database) ||
+      !isIntegrationWorkerDatabaseName({ database }) ||
       database.length > POSTGRES_IDENTIFIER_LIMIT
     ) {
       throw new Error(
@@ -176,30 +225,28 @@ export async function cloneDatabasesFromTemplate(
   const admin = new pg.Client({ connectionString: adminUrl.toString() });
 
   try {
-    await admin.connect();
+    await withStep({ step: 'connect', run: () => admin.connect() });
+    await withStep({
+      step: 'lock',
+      run: () => acquireProvisioningLock({ admin }),
+    });
     const clones: ClonedDatabase[] = [];
 
     for (const database of input.databaseNames) {
-      const existing = await admin.query(
-        'select 1 from pg_database where datname = $1',
-        [database],
+      clones.push(
+        await withStep({
+          step: 'create',
+          database,
+          run: () => cloneDatabase({ admin, templateDatabase, database }),
+        }),
       );
-      await admin.query(`drop database if exists "${database}" with (force)`);
-      await admin.query(
-        `create database "${database}" template "${templateDatabase}"`,
-      );
-      clones.push({ database, replaced: existing.rowCount === 1 });
     }
 
     return clones;
   } finally {
+    // Closing the session also releases the advisory lock.
     await admin.end().catch(() => {});
   }
-}
-
-/** The SQLSTATE a `pg` query error carries. */
-interface PostgresError {
-  code?: string;
 }
 
 interface AdminInput {
@@ -255,13 +302,7 @@ export async function provisionDatabases(
     await withStep({ step: 'connect', run: () => admin.connect() });
     await withStep({
       step: 'lock',
-      run: async () => {
-        // Bounded: a stuck bootstrap must not block every worktree forever.
-        await admin.query(`set lock_timeout = '${LOCK_TIMEOUT}'`);
-        await admin.query('select pg_advisory_lock($1)', [
-          PROVISIONING_LOCK_KEY,
-        ]);
-      },
+      run: () => acquireProvisioningLock({ admin }),
     });
 
     const provisioned: ProvisionedDatabase[] = [];

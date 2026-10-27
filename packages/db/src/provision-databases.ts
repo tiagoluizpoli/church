@@ -19,6 +19,9 @@ const PROVISIONING_LOCK_KEY = 7_245_256;
 const LOCK_TIMEOUT = '2min';
 const ADMIN_DATABASE = 'postgres';
 const MANAGED_DATABASE_NAME = /^church[a-z0-9_]*$/;
+const INTEGRATION_WORKER_DATABASE_NAME =
+  /^church_[a-z0-9_]+__w[1-9][0-9]*_int$/;
+const POSTGRES_IDENTIFIER_LIMIT = 63;
 const DUPLICATE_DATABASE = '42P04';
 
 const MIGRATIONS_FOLDER = join(
@@ -68,9 +71,34 @@ export interface ProvisionedDatabase {
   created: boolean;
 }
 
+export interface CloneDatabasesFromTemplateInput {
+  /** Migrated database on the local PostgreSQL server. */
+  templateUrl: string;
+  /** New managed database names on that same server. */
+  databaseNames: string[];
+}
+
+export interface ClonedDatabase {
+  database: string;
+  /** Whether a prior worker database had to be removed first. */
+  replaced: boolean;
+}
+
 interface Target {
   url: string;
   database: string;
+}
+
+function databaseNameFromUrl(url: string): string {
+  return new URL(url).pathname.slice(1);
+}
+
+function assertManagedDatabaseName(database: string): void {
+  if (!MANAGED_DATABASE_NAME.test(database)) {
+    throw new Error(
+      `"${database}" is outside the managed "church" database namespace.`,
+    );
+  }
 }
 
 interface StepInput<T> {
@@ -111,14 +139,62 @@ function validateTargets(input: ProvisionDatabasesInput): Target[] {
   }
 
   for (const { database } of targets) {
-    if (!MANAGED_DATABASE_NAME.test(database)) {
+    assertManagedDatabaseName(database);
+  }
+
+  return targets;
+}
+
+/**
+ * Replaces worker databases with PostgreSQL template clones. The template is
+ * already migrated, so every worker starts from the same schema without a
+ * migration pass of its own.
+ */
+export async function cloneDatabasesFromTemplate(
+  input: CloneDatabasesFromTemplateInput,
+): Promise<ClonedDatabase[]> {
+  const templateDatabase = databaseNameFromUrl(input.templateUrl);
+  assertManagedDatabaseName(templateDatabase);
+
+  for (const database of input.databaseNames) {
+    if (
+      !INTEGRATION_WORKER_DATABASE_NAME.test(database) ||
+      database.length > POSTGRES_IDENTIFIER_LIMIT
+    ) {
       throw new Error(
-        `"${database}" is outside the managed "church" database namespace.`,
+        `"${database}" is not a valid integration worker database name.`,
       );
     }
   }
 
-  return targets;
+  if (input.databaseNames.includes(templateDatabase)) {
+    throw new Error('A database cannot be cloned from itself as a template.');
+  }
+
+  const adminUrl = new URL(input.templateUrl);
+  adminUrl.pathname = `/${ADMIN_DATABASE}`;
+  const admin = new pg.Client({ connectionString: adminUrl.toString() });
+
+  try {
+    await admin.connect();
+    const clones: ClonedDatabase[] = [];
+
+    for (const database of input.databaseNames) {
+      const existing = await admin.query(
+        'select 1 from pg_database where datname = $1',
+        [database],
+      );
+      await admin.query(`drop database if exists "${database}" with (force)`);
+      await admin.query(
+        `create database "${database}" template "${templateDatabase}"`,
+      );
+      clones.push({ database, replaced: existing.rowCount === 1 });
+    }
+
+    return clones;
+  } finally {
+    await admin.end().catch(() => {});
+  }
 }
 
 /** The SQLSTATE a `pg` query error carries. */

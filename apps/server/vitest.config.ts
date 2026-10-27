@@ -125,6 +125,12 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'integration',
+          globalSetup: ['./tests/setup/integration-database.global.ts'],
+          setupFiles: [
+            './tests/setup/clock.ts',
+            './tests/setup/locale.ts',
+            './tests/setup/integration-database.ts',
+          ],
           include: [
             'tests/application/event-builder.assign.integration.test.ts',
             'tests/application/planning-phase3.managers.test.ts',

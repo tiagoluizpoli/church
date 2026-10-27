@@ -6,6 +6,7 @@ import {
   requireExecPurpose,
   worktreeOrUnspecified,
 } from './purpose-database-url-guard';
+import { scratchDatabaseName } from './scratch-database-name';
 
 /**
  * Returns the integration database target Varlock injected for this process
@@ -26,7 +27,9 @@ export function getIntegrationDatabaseUrl(): string {
     functionName: 'getIntegrationDatabaseUrl',
   });
 
-  const databaseUrl = requireDatabaseUrl({ purpose: 'integration' });
+  const databaseUrl =
+    process.env.CHURCH_INTEGRATION_BASE_DATABASE_URL ??
+    requireDatabaseUrl({ purpose: 'integration' });
   const worktree = worktreeOrUnspecified();
 
   const identity = resolveDatabaseTarget({
@@ -39,6 +42,19 @@ export function getIntegrationDatabaseUrl(): string {
   });
 
   reportDatabaseTarget({ identity });
+
+  const workerId = process.env.CHURCH_INTEGRATION_WORKER_ID;
+  if (workerId !== undefined) {
+    const parsedWorkerId = Number(workerId);
+    if (!Number.isSafeInteger(parsedWorkerId) || parsedWorkerId < 1) {
+      throw new Error(
+        'CHURCH_INTEGRATION_WORKER_ID must be a positive integer.',
+      );
+    }
+    const workerUrl = new URL(databaseUrl);
+    workerUrl.pathname = `/${scratchDatabaseName({ purpose: `w${parsedWorkerId}`, kind: 'int' })}`;
+    return workerUrl.toString();
+  }
 
   return databaseUrl;
 }

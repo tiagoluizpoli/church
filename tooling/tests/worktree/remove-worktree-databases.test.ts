@@ -10,7 +10,9 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { SQL } from 'bun';
 import type { Instant } from '../../../packages/time/src';
+import { LOCAL_DATABASE_SERVER_URL } from '../../worktree/database-targets';
 import {
   removeWorktreeDatabases,
   reportRemoval,
@@ -151,6 +153,32 @@ describe('worktree:remove-databases', () => {
     });
 
     expect(outcome).toEqual({ kind: 'shared-identity', worktree: 'feature_a' });
+  });
+
+  it("drops the worktree's per-worker integration databases", async () => {
+    generateLocalEnv({ cwd: feature });
+    const adminUrl = new URL(LOCAL_DATABASE_SERVER_URL);
+    adminUrl.pathname = '/postgres';
+    const admin = new SQL(adminUrl.toString());
+    try {
+      await admin.unsafe('create database "church_feature_a__w1_int"');
+
+      const outcome = await removeWorktreeDatabases({
+        cwd: feature,
+        serverUrl: LOCAL_DATABASE_SERVER_URL,
+      });
+
+      expect(outcome).toMatchObject({ kind: 'dropped' });
+      const remaining = await admin.unsafe(
+        "select 1 from pg_database where datname = 'church_feature_a__w1_int'",
+      );
+      expect(remaining.length).toBe(0);
+    } finally {
+      await admin.unsafe(
+        'drop database if exists "church_feature_a__w1_int" with (force)',
+      );
+      await admin.close();
+    }
   });
 
   it('exits successfully so the removal proceeds', () => {

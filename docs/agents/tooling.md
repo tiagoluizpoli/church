@@ -292,6 +292,10 @@ its generated `.env.local`) after terminating their connections. It runs the
 primary checkout's copy of `tooling/worktree/remove-worktree-databases.ts`, so
 it also cleans worktrees branched before the script existed. It never drops
 the primary's databases, nor an identity another active worktree also holds.
+It also drops the worktree's per-worker integration databases
+(`church_<worktree>__w<N>_int`), which the server integration run clones from
+its migrated `int` database before the tests start; `db:prune` attributes them
+to the same worktree.
 It never blocks the removal: with PostgreSQL down, a primary checkout without
 the script, or any other failure, it warns and keeps the databases.
 

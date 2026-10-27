@@ -30,6 +30,8 @@ const REMOVE_SCRIPT = resolve(
   'tooling/worktree/remove-worktree-databases.ts',
 );
 const LOCAL_ENV_SCRIPT = resolve(REPO_ROOT, 'tooling/worktree/local-env.ts');
+// DROP DATABASE forces an immediate checkpoint (create does not), so beside the integration lane a drop outlasts the default 5 s.
+const DROP_TEST_TIMEOUT_MS = 30_000;
 const UNREACHABLE_SERVER_URL = 'postgresql://postgres:postgres@127.0.0.1:1';
 
 let sandbox: string;
@@ -155,32 +157,42 @@ describe('worktree:remove-databases', () => {
     expect(outcome).toEqual({ kind: 'shared-identity', worktree: 'feature_a' });
   });
 
-  it("drops the worktree's per-worker integration databases", async () => {
-    generateLocalEnv({ cwd: feature });
-    const adminUrl = new URL(LOCAL_DATABASE_SERVER_URL);
-    adminUrl.pathname = '/postgres';
-    const admin = new SQL(adminUrl.toString());
-    try {
-      await admin.unsafe('create database "church_feature_a__w1_int"');
+  it(
+    "drops the worktree's per-worker integration databases and no other worktree's",
+    async () => {
+      generateLocalEnv({ cwd: feature });
+      const ownWorker = 'church_feature_a__w1_int';
+      const otherWorker = 'church_feature_ab__w1_int';
+      const adminUrl = new URL(LOCAL_DATABASE_SERVER_URL);
+      adminUrl.pathname = '/postgres';
+      const admin = new SQL(adminUrl.toString());
+      try {
+        await admin.unsafe(`create database "${ownWorker}"`);
+        await admin.unsafe(`create database "${otherWorker}"`);
 
-      const outcome = await removeWorktreeDatabases({
-        cwd: feature,
-        serverUrl: LOCAL_DATABASE_SERVER_URL,
-      });
+        const outcome = await removeWorktreeDatabases({
+          cwd: feature,
+          serverUrl: LOCAL_DATABASE_SERVER_URL,
+        });
 
-      expect(outcome).toMatchObject({ kind: 'dropped' });
-      const remaining = await admin.unsafe(
-        "select 1 from pg_database where datname = 'church_feature_a__w1_int'",
-      );
-      expect(remaining.length).toBe(0);
-    } finally {
-      await admin.unsafe(
-        'drop database if exists "church_feature_a__w1_int" with (force)',
-      );
-      await admin.close();
-    }
-    // create database checkpoints; beside the integration lane it exceeds the default 5 s.
-  }, 30_000);
+        expect(outcome).toMatchObject({ kind: 'dropped' });
+        const remaining = await admin.unsafe(
+          `select datname from pg_database where datname in ('${ownWorker}', '${otherWorker}')`,
+        );
+        expect(
+          remaining.map((row: { datname: string }) => row.datname),
+        ).toEqual([otherWorker]);
+      } finally {
+        for (const database of [ownWorker, otherWorker]) {
+          await admin.unsafe(
+            `drop database if exists "${database}" with (force)`,
+          );
+        }
+        await admin.close();
+      }
+    },
+    DROP_TEST_TIMEOUT_MS,
+  );
 
   it('exits successfully so the removal proceeds', () => {
     const result = spawnSync('bun', [REMOVE_SCRIPT], {

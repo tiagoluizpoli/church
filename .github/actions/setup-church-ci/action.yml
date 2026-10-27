@@ -20,9 +20,11 @@ runs:
   using: composite
   steps:
     - name: Install Bun and Node from mise.toml
+      id: toolchain
       uses: jdx/mise-action@v5
 
     - name: Cache bun dependencies
+      id: dependency-cache
       uses: actions/cache@v4
       with:
         path: ~/.bun/install/cache
@@ -30,16 +32,31 @@ runs:
         restore-keys: bun-${{ runner.os }}-
 
     - name: Install dependencies
+      id: dependencies
       shell: bash
       run: bun install --frozen-lockfile
 
     - name: Keep failure bundles in runner-temporary storage
+      id: failure-bundles
       # ADR-0005: CI has no shared Git directory to keep bundles in; the
       # calling job uploads this directory only when it fails.
       shell: bash
       run: echo "CHURCH_FAILURE_BUNDLES_DIR=$RUNNER_TEMP/church-failure-bundles" >> "$GITHUB_ENV"
 
     - name: Run database migrations
+      id: migrate
       if: inputs.skip-migrate != 'true'
       shell: bash
       run: bun run db:migrate
+
+    - name: Report setup failure phase
+      id: report-setup-failure
+      if: failure() || cancelled()
+      shell: bash
+      run: >-
+        bash tooling/ci/report-failure-phase.sh --setup-only
+        "${{ steps.toolchain.outcome }}:toolchain"
+        "${{ steps.dependency-cache.outcome }}:dependency cache"
+        "${{ steps.dependencies.outcome }}:dependency installation"
+        "${{ steps.failure-bundles.outcome }}:failure-bundle setup"
+        "${{ steps.migrate.outcome }}:database migration"

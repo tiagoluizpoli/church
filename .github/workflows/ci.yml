@@ -58,11 +58,17 @@ jobs:
       - name: Record job start time
         run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
         run: bun run validate:api-generated
@@ -78,10 +84,17 @@ jobs:
         # instead, concurrently.
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --skip-e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -101,16 +114,31 @@ jobs:
     name: Develop Gate / Browser Journeys
     if: github.event_name == 'pull_request' && github.base_ref == 'develop'
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 10
 
-    # No `services.postgres` block here (unlike the other jobs): this job is
-    # a no-op on any PR whose affected plan selects no browser journey, and a
-    # `services:` container starts unconditionally at job boot, before any
-    # step (and its `if:`) can be evaluated — that would pay for a database
-    # container on every no-op run. "Start Postgres" below starts one only
-    # when the plan says a journey is actually selected (#291).
+    # Services and the job container start before steps can read the affected
+    # plan. The no-journey path still skips migrations and browser execution;
+    # CI evidence records this deliberate boot overhead (#593).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_unspecified_e2e
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    defaults:
+      run:
+        shell: bash
+
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
@@ -134,19 +162,30 @@ jobs:
       - name: Record job start time
         run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Trust the checked-out workspace
+        timeout-minutes: 2
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       # skip-migrate: this job doesn't know yet whether it needs a database
       # at all — the plan step right below decides that — and migrations
       # need Postgres reachable, which isn't true yet either way.
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
         with:
           skip-migrate: 'true'
 
       - name: Determine affected plan
         id: plan
+        timeout-minutes: 1
         run: |
           # Written under $RUNNER_TEMP, outside the repo working tree — the
           # later "Browser journeys" step re-runs the same planner, whose
@@ -159,41 +198,14 @@ jobs:
           plan_file="$RUNNER_TEMP/affected-plan.json"
           bun tooling/validation/affected.ts --dry-run --daily-gate --base "origin/${{ github.base_ref }}" > "$plan_file"
           cat "$plan_file"
-          needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' "$plan_file")
+          needs_e2e=$(bun -e 'const plan = await Bun.file(process.argv[1]).json(); console.log(plan.requiresFullE2e || plan.e2eSpecPaths.length > 0 ? "true" : "false")' "$plan_file")
           echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
 
-      - name: Start Postgres (only when a browser journey is selected)
-        if: steps.plan.outputs.needs_e2e == 'true'
-        # Mirrors the sibling jobs' services.postgres health-check
-        # (--health-interval 5s --health-retries 5) by hand, since a
-        # manually-started container can't use that declarative field.
-        run: |
-          docker run -d --name church-e2e-postgres \
-            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=church_unspecified_e2e \
-            -p 5432:5432 postgres:16-alpine
-          health_retries=5
-          health_interval_seconds=5
-          for _ in $(seq 1 "$health_retries"); do
-            if docker exec church-e2e-postgres pg_isready -U postgres >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep "$health_interval_seconds"
-          done
-          echo "Postgres did not become ready in time" >&2
-          exit 1
-
       - name: Run database migrations
+        id: migrate
         if: steps.plan.outputs.needs_e2e == 'true'
+        timeout-minutes: 1
         run: bun run db:migrate
-
-      - name: Install Playwright browsers
-        if: steps.plan.outputs.needs_e2e == 'true'
-        id: install-browsers
-        # Cached per locked Playwright version; the action keeps the elapsed
-        # time evidence this step used to write inline.
-        uses: ./.github/actions/install-playwright-chromium
-        with:
-          summary-title: Develop Gate / Browser setup elapsed time
 
       - name: Browser journeys (affected or critical smoke set)
         # An intentional no-op when the plan selected no journey (e.g. a
@@ -204,10 +216,17 @@ jobs:
         if: steps.plan.outputs.needs_e2e == 'true'
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --only-e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup" "${{ steps.plan.outcome }}:affected planning" "${{ steps.migrate.outcome }}:database migration"
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -266,6 +285,7 @@ jobs:
     # gate for master; fast-gate below covers the post-merge push instead.
     if: github.event_name == 'pull_request' && github.base_ref == 'master'
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 20
 
     services:
@@ -275,16 +295,18 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: church_unspecified_e2e
-        ports:
-          - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
 
+    defaults:
+      run:
+        shell: bash
+
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
@@ -303,12 +325,19 @@ jobs:
       - name: Record job start time
         run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-church-ci
+      - name: Trust the checked-out workspace
+        timeout-minutes: 2
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Install Playwright browsers
-        uses: ./.github/actions/install-playwright-chromium
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
 
       # `bun run validate`'s scripts (tooling/validation/validate.ts), one
       # purpose per step: integration and E2E each resolve their own typed
@@ -326,22 +355,31 @@ jobs:
         run: bun run test:unit
 
       - name: Create and migrate the integration database
+        id: integration-database
+        timeout-minutes: 1
         run: bun run --cwd packages/db db:setup-test
         env:
-          DATABASE_URL: *integration-database-url
+          DATABASE_URL: &release-integration-database-url postgresql://postgres:postgres@postgres:5432/church_unspecified_int
 
       - name: Integration tests
         run: bun run test:integration
         env:
-          DATABASE_URL: *integration-database-url
+          DATABASE_URL: *release-integration-database-url
 
       - name: Full E2E
         run: bun run test:e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup" "${{ steps.integration-database.outcome }}:integration database"
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -389,9 +427,15 @@ jobs:
       TZ: Asia/Kolkata
 
     steps:
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-church-ci
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
 
       - name: Generated API client matches the server
         run: bun run validate:api-generated
@@ -408,10 +452,17 @@ jobs:
       - name: Run tests with coverage
         run: bunx turbo test:unit test:integration -- --coverage
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -425,6 +476,7 @@ jobs:
     # Post-merge safety net on master (release-gate above already ran the
     # full suite pre-merge on the develop -> master PR).
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     if: github.ref == 'refs/heads/master'
     needs: [fast-gate]
     timeout-minutes: 20
@@ -436,16 +488,18 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: church_unspecified_e2e
-        ports:
-          - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
 
+    defaults:
+      run:
+        shell: bash
+
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
@@ -466,20 +520,34 @@ jobs:
       TZ: Asia/Kolkata
 
     steps:
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-church-ci
+      - name: Trust the checked-out workspace
+        timeout-minutes: 2
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Install Playwright browsers
-        uses: ./.github/actions/install-playwright-chromium
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
 
       - name: Run E2E tests
         run: bun run test:e2e
 
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
         # bundle in runner-temporary storage (setup-church-ci); only a failed
-        # job uploads them, and only for seven days.
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
         if: failure()
         uses: actions/upload-artifact@v4
         with:

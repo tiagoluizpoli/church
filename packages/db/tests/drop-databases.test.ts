@@ -7,6 +7,7 @@ import {
   listWorktreeDatabases,
 } from '../src/drop-databases';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
+import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
 import { scratchDatabaseName } from '../src/scratch-database-name';
 
 const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
@@ -15,6 +16,10 @@ const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
 const KEPT_DATABASE = scratchDatabaseName({
   purpose: 'keep',
   kind: 'int',
+});
+const WORKER_DATABASE = integrationWorkerDatabaseName({
+  worktree: 'drop_worker_test',
+  workerId: 1,
 });
 const UNREACHABLE_SERVER_URL = 'postgresql://postgres:postgres@127.0.0.1:1';
 
@@ -46,13 +51,21 @@ async function databaseExists(input: DatabaseInput): Promise<boolean> {
 }
 
 async function dropScratchDatabases(): Promise<void> {
-  for (const database of [...SCRATCH_DATABASES, KEPT_DATABASE]) {
+  for (const database of [
+    ...SCRATCH_DATABASES,
+    KEPT_DATABASE,
+    WORKER_DATABASE,
+  ]) {
     await adminPool.query(`drop database if exists "${database}" with (force)`);
   }
 }
 
 async function createScratchDatabases(): Promise<void> {
-  for (const database of [...SCRATCH_DATABASES, KEPT_DATABASE]) {
+  for (const database of [
+    ...SCRATCH_DATABASES,
+    KEPT_DATABASE,
+    WORKER_DATABASE,
+  ]) {
     await adminPool.query(`create database "${database}"`);
   }
 }
@@ -104,6 +117,17 @@ describe('dropDatabases', () => {
     for (const database of SCRATCH_DATABASES) {
       expect(await databaseExists({ database })).toBe(false);
     }
+    expect(await databaseExists({ database: KEPT_DATABASE })).toBe(true);
+  });
+
+  it('drops a per-worker integration database', async () => {
+    const results = await dropDatabases({
+      serverUrl,
+      databases: [WORKER_DATABASE],
+    });
+
+    expect(results).toEqual([{ database: WORKER_DATABASE, existed: true }]);
+    expect(await databaseExists({ database: WORKER_DATABASE })).toBe(false);
     expect(await databaseExists({ database: KEPT_DATABASE })).toBe(true);
   });
 
@@ -174,7 +198,11 @@ describe('listWorktreeDatabases', () => {
     const databases = await listWorktreeDatabases({ serverUrl });
 
     expect(databases).toEqual(
-      expect.arrayContaining([...SCRATCH_DATABASES, KEPT_DATABASE]),
+      expect.arrayContaining([
+        ...SCRATCH_DATABASES,
+        KEPT_DATABASE,
+        WORKER_DATABASE,
+      ]),
     );
     expect(databases).not.toContain('church');
     expect(databases).not.toContain('postgres');

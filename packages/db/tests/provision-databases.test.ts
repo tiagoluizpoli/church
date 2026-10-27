@@ -5,7 +5,9 @@ import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
 import {
+  cloneDatabasesFromTemplate,
   DatabaseProvisioningError,
+  PROVISIONING_LOCK_KEY,
   provisionDatabases,
 } from '../src/provision-databases';
 import { scratchDatabaseName } from '../src/scratch-database-name';
@@ -15,6 +17,8 @@ const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
 );
 const [DEV_DATABASE = '', INT_DATABASE = '', E2E_DATABASE = ''] =
   SCRATCH_DATABASES;
+const WORKER_DATABASE = scratchDatabaseName({ purpose: 'w1', kind: 'int' });
+const LOCK_WAIT_MS = 300;
 const POOL_CLOSE_RACE_DATABASE_COUNT = 10;
 const POOL_CLOSE_RACE_ITERATIONS = 10;
 const POOL_CLOSE_RACE_DATABASES = Array.from(
@@ -119,7 +123,11 @@ async function applicationRows(input: DatabaseInput): Promise<number> {
 }
 
 async function dropScratchDatabases(): Promise<void> {
-  for (const database of [...SCRATCH_DATABASES, ...POOL_CLOSE_RACE_DATABASES]) {
+  for (const database of [
+    ...SCRATCH_DATABASES,
+    WORKER_DATABASE,
+    ...POOL_CLOSE_RACE_DATABASES,
+  ]) {
     await adminPool.query(`drop database if exists "${database}" with (force)`);
   }
 }
@@ -223,6 +231,82 @@ describe('provisionDatabases', () => {
 
     expect(failure).toBeInstanceOf(DatabaseProvisioningError);
     expect((failure as DatabaseProvisioningError).step).toBe('validate');
+  });
+
+  it('clones a migrated template for an integration worker without rerunning migrations', async () => {
+    await provisionDatabases({
+      databaseUrls: [databaseUrlFor({ database: INT_DATABASE })],
+    });
+
+    const results = await cloneDatabasesFromTemplate({
+      templateUrl: databaseUrlFor({ database: INT_DATABASE }),
+      databaseNames: [WORKER_DATABASE],
+    });
+
+    expect(results).toEqual([{ database: WORKER_DATABASE, replaced: false }]);
+    expect(await appliedMigrations({ database: WORKER_DATABASE })).toBe(
+      journal.entries.length,
+    );
+  });
+
+  it('waits for the provisioning lock before cloning', async () => {
+    await provisionDatabases({
+      databaseUrls: [databaseUrlFor({ database: INT_DATABASE })],
+    });
+    const holder = new pg.Client({
+      connectionString: databaseUrlFor({ database: 'postgres' }),
+    });
+    await holder.connect();
+    await holder.query('select pg_advisory_lock($1)', [PROVISIONING_LOCK_KEY]);
+
+    try {
+      let cloned = false;
+      const cloning = cloneDatabasesFromTemplate({
+        templateUrl: databaseUrlFor({ database: INT_DATABASE }),
+        databaseNames: [WORKER_DATABASE],
+      }).then(() => {
+        cloned = true;
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, LOCK_WAIT_MS));
+      expect(cloned).toBe(false);
+      expect(await databaseExists({ database: WORKER_DATABASE })).toBe(false);
+
+      await holder.query('select pg_advisory_unlock($1)', [
+        PROVISIONING_LOCK_KEY,
+      ]);
+      await cloning;
+      expect(await databaseExists({ database: WORKER_DATABASE })).toBe(true);
+    } finally {
+      await holder.end();
+    }
+  });
+
+  it('names the template and what to stop when it is in use', async () => {
+    await provisionDatabases({
+      databaseUrls: [databaseUrlFor({ database: INT_DATABASE })],
+    });
+    const occupant = new pg.Client({
+      connectionString: databaseUrlFor({ database: INT_DATABASE }),
+    });
+    await occupant.connect();
+
+    try {
+      const failure = await cloneDatabasesFromTemplate({
+        templateUrl: databaseUrlFor({ database: INT_DATABASE }),
+        databaseNames: [WORKER_DATABASE],
+      }).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(DatabaseProvisioningError);
+      expect((failure as DatabaseProvisioningError).message).toContain(
+        `The template "${INT_DATABASE}" has other connections open`,
+      );
+      expect((failure as DatabaseProvisioningError).message).toContain(
+        'Stop whatever is connected to it',
+      );
+    } finally {
+      await occupant.end();
+    }
   });
 
   it('survives force-drops that race a closing query pool', async () => {

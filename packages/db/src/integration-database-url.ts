@@ -16,7 +16,8 @@ import {
  * Resolves through `resolveDatabaseTarget` (src/database-target-resolver.ts),
  * so it refuses the development database, an E2E database, another
  * worktree's integration database, and any database outside the managed
- * "church" namespace. Every caller (packages/db, packages/auth, apps/server)
+ * "church" namespace. It accepts this worktree's integration database or one
+ * of its per-worker clones, which a runner selects by setting `DATABASE_URL`. Every caller (packages/db, packages/auth, apps/server)
  * resolves through this one function, so the redacted preflight line it logs
  * is directly comparable across all three integration runners.
  */

@@ -4,22 +4,39 @@ import { resolve } from 'node:path';
 /** The parsed `.github/workflows/ci.yml` the CI lane tests assert on. */
 
 export interface WorkflowStep {
-  name?: string;
-  uses?: string;
-  run?: string;
-  with?: Record<string, string>;
+  'continue-on-error'?: boolean;
   env?: Record<string, string>;
+  id?: string;
+  if?: string;
+  name?: string;
+  run?: string;
+  shell?: string;
+  uses?: string;
+  with?: Record<string, string>;
+  'working-directory'?: string;
+  'timeout-minutes'?: number;
 }
 
 export interface WorkflowService {
   env?: Record<string, string>;
+  options?: string;
   ports?: string[];
 }
 
 export interface WorkflowJob {
+  container?: string;
+  defaults?: {
+    run?: {
+      shell?: string;
+    };
+  };
   env?: Record<string, string>;
+  if?: string;
+  name?: string;
+  needs?: string[];
   services?: Record<string, WorkflowService>;
   steps: WorkflowStep[];
+  'timeout-minutes'?: number;
 }
 
 export interface Workflow {

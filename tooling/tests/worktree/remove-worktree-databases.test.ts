@@ -14,6 +14,7 @@ import type { Instant } from '../../../packages/time/src';
 import {
   removeWorktreeDatabases,
   reportRemoval,
+  selectWorktreeDatabases,
 } from '../../worktree/remove-worktree-databases';
 
 /**
@@ -151,6 +152,31 @@ describe('worktree:remove-databases', () => {
     });
 
     expect(outcome).toEqual({ kind: 'shared-identity', worktree: 'feature_a' });
+  });
+
+  it("selects the worktree's standard and per-worker databases and no other worktree's", () => {
+    const own = [
+      'church_feature_a_dev',
+      'church_feature_a_int',
+      'church_feature_a_e2e',
+      'church_feature_a__w1_int',
+      'church_feature_a__w2_int',
+    ];
+    const others = [
+      'church',
+      'church_feature_ab_dev',
+      'church_feature_ab__w1_int',
+      'church_other__w1_int',
+      'church_feature_a__w1_dev',
+      'postgres',
+    ];
+
+    expect(
+      selectWorktreeDatabases({
+        databases: [...others, ...own],
+        worktree: 'feature_a',
+      }),
+    ).toEqual(own);
   });
 
   it('exits successfully so the removal proceeds', () => {

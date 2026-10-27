@@ -41,11 +41,13 @@ describe('selectStaleDatabases', () => {
         databases: [
           'church_feature_a_provision_test_dev',
           'church_feature_a_drop_test_int',
+          'church_feature_a__w1_int',
           'church_gone_drop_test_int',
+          'church_gone__w1_int',
         ],
         activeIdentities,
       }),
-    ).toEqual(['church_gone_drop_test_int']);
+    ).toEqual(['church_gone_drop_test_int', 'church_gone__w1_int']);
   });
 
   it("keeps the primary checkout's databases", () => {

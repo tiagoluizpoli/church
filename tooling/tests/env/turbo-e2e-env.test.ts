@@ -44,6 +44,18 @@ describe('turbo integration and E2E tasks', () => {
   }
 });
 
+// #593: the Playwright job image keeps its browsers at PLAYWRIGHT_BROWSERS_PATH;
+// without it Playwright looks in ~/.cache and finds no browser.
+describe('turbo E2E tasks', () => {
+  for (const task of ['test:e2e', 'test:e2e:ui']) {
+    it(`${task} passes the container's browser location through`, () => {
+      expect(turboConfig.tasks[task]?.passThroughEnv).toContain(
+        'PLAYWRIGHT_BROWSERS_PATH',
+      );
+    });
+  }
+});
+
 // #253: CI migrates its E2E database from the job environment alone — no
 // generated value file — so the migration task must see the injected target.
 describe('turbo db:migrate task', () => {

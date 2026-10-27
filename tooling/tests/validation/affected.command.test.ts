@@ -67,7 +67,7 @@ function runAffected({ args = [] }: RunAffectedInput = {}): RunAffectedResult {
   if (result.exitCode !== 0) {
     throw new Error(`affected.ts --dry-run failed: ${stderr}\n${stdout}`);
   }
-  // --dry-run keeps stdout as pure JSON (CI parses it with jq) and sends the
+  // --dry-run keeps stdout as pure JSON (CI parses it with Bun) and sends the
   // human-readable explanation to stderr instead.
   const plan = JSON.parse(stdout);
   return { exitCode: result.exitCode, plan, stderr };
@@ -163,8 +163,8 @@ describe('affected.ts --dry-run against a temporary Git history', () => {
       stdout: 'pipe',
     });
 
-    // Mirrors ci.yml's "Determine affected plan" step: redirect stdout to a
-    // file, then parse it with jq.
+    // Mirrors ci.yml's "Determine affected plan": redirect stdout to a file,
+    // then parse it with Bun.
     expect(() => JSON.parse(result.stdout.toString())).not.toThrow();
     expect(result.stderr.toString()).toContain('Base ref:');
   });

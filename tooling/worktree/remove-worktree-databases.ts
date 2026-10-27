@@ -1,19 +1,21 @@
-import { expectedDatabaseName } from '../../packages/db/src/database-target-resolver';
+import {
+  DATABASE_PURPOSES,
+  expectedDatabaseName,
+} from '../../packages/db/src/database-target-resolver';
 import {
   DatabaseDropError,
   type DroppedDatabase,
   dropDatabases,
+  listWorktreeDatabases,
 } from '../../packages/db/src/drop-databases';
+import { isIntegrationWorkerDatabaseName } from '../../packages/db/src/integration-worker-database-name';
 import type { Instant } from '../../packages/time/src/brands';
 import { now } from '../../packages/time/src/now';
 import {
   errorMessage,
   tryRecordFailureBundle,
 } from '../diagnostics/failure-bundle';
-import {
-  LOCAL_DATABASE_SERVER_URL,
-  WORKTREE_DATABASE_PURPOSES,
-} from './database-targets';
+import { LOCAL_DATABASE_SERVER_URL } from './database-targets';
 import {
   activeWorktreeIdentities,
   readGeneratedWorktreeIdentity,
@@ -46,6 +48,26 @@ export interface RemoveWorktreeDatabasesInput {
   serverUrl: string;
 }
 
+export interface SelectWorktreeDatabasesInput {
+  databases: string[];
+  worktree: string;
+}
+
+/** The worktree's own standard and per-worker databases among `databases`. */
+export function selectWorktreeDatabases(
+  input: SelectWorktreeDatabasesInput,
+): string[] {
+  const { databases, worktree } = input;
+  const standardDatabases = DATABASE_PURPOSES.map((purpose) =>
+    expectedDatabaseName({ purpose, worktree }),
+  );
+  return databases.filter(
+    (database) =>
+      standardDatabases.includes(database) ||
+      isIntegrationWorkerDatabaseName({ database, worktree }),
+  );
+}
+
 export async function removeWorktreeDatabases(
   input: RemoveWorktreeDatabasesInput,
 ): Promise<RemovalOutcome> {
@@ -61,13 +83,16 @@ export async function removeWorktreeDatabases(
     });
     if (others.has(worktree)) return { kind: 'shared-identity', worktree };
 
+    const databases = await listWorktreeDatabases({
+      serverUrl: input.serverUrl,
+    });
+    const databasesToDrop = selectWorktreeDatabases({ databases, worktree });
+
     return {
       kind: 'dropped',
       databases: await dropDatabases({
         serverUrl: input.serverUrl,
-        databases: WORKTREE_DATABASE_PURPOSES.map((purpose) =>
-          expectedDatabaseName({ purpose, worktree }),
-        ),
+        databases: databasesToDrop,
       }),
     };
   } catch (error) {

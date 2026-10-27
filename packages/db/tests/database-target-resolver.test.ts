@@ -4,6 +4,7 @@ import {
   formatDatabaseTargetPreflight,
   resolveDatabaseTarget,
 } from '../src/database-target-resolver';
+import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
 
 interface ExpectRejectionReasonInput {
   action: () => unknown;
@@ -37,6 +38,17 @@ const FEATURE_INTEGRATION_URL =
   'postgresql://postgres:postgres@localhost:5444/church_246-resolver_int';
 const FEATURE_E2E_URL =
   'postgresql://postgres:postgres@localhost:5444/church_246-resolver_e2e';
+
+const WORKER_DEVELOPMENT_URL =
+  'postgresql://postgres:postgres@localhost:5444/church_wt_resolver_dev';
+
+interface WorkerUrlInput {
+  worktree: string;
+}
+
+function workerUrl(input: WorkerUrlInput): string {
+  return `postgresql://postgres:postgres@localhost:5444/${integrationWorkerDatabaseName({ worktree: input.worktree, workerId: 1 })}`;
+}
 
 describe('resolveDatabaseTarget', () => {
   describe('the primary worktree', () => {
@@ -218,6 +230,49 @@ describe('resolveDatabaseTarget', () => {
             candidates: {
               development: FEATURE_DEVELOPMENT_URL,
               integration: FEATURE_E2E_URL,
+            },
+          }),
+        reason: 'purpose-name-mismatch',
+      });
+    });
+
+    it("resolves a worker clone of the worktree's own integration database", () => {
+      const identity = resolveDatabaseTarget({
+        purpose: 'integration',
+        worktree: 'wt_resolver',
+        candidates: {
+          development: WORKER_DEVELOPMENT_URL,
+          integration: workerUrl({ worktree: 'wt_resolver' }),
+        },
+      });
+
+      expect(identity.database).toBe('church_wt_resolver__w1_int');
+    });
+
+    it('rejects a worker clone of another worktree', () => {
+      expectRejectionReason({
+        action: () =>
+          resolveDatabaseTarget({
+            purpose: 'integration',
+            worktree: 'wt_resolver',
+            candidates: {
+              development: WORKER_DEVELOPMENT_URL,
+              integration: workerUrl({ worktree: 'wt_other' }),
+            },
+          }),
+        reason: 'purpose-name-mismatch',
+      });
+    });
+
+    it('rejects a worker clone for a purpose other than integration', () => {
+      expectRejectionReason({
+        action: () =>
+          resolveDatabaseTarget({
+            purpose: 'e2e',
+            worktree: 'wt_resolver',
+            candidates: {
+              development: WORKER_DEVELOPMENT_URL,
+              e2e: workerUrl({ worktree: 'wt_resolver' }),
             },
           }),
         reason: 'purpose-name-mismatch',

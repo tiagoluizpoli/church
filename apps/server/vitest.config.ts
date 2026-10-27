@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { INTEGRATION_WORKER_COUNT } from './tests/setup/integration-worker-count';
 
 // Unit execution needs no database or local values (#203): modules that read
 // the Zod server env at import get fixed placeholders, never a value file.
@@ -125,6 +126,15 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'integration',
+          // One cloned database per worker (integration-database.global.ts); capped at 2 like unit (OOM kills uncapped).
+          fileParallelism: true,
+          maxWorkers: INTEGRATION_WORKER_COUNT,
+          globalSetup: ['./tests/setup/integration-database.global.ts'],
+          setupFiles: [
+            './tests/setup/clock.ts',
+            './tests/setup/locale.ts',
+            './tests/setup/integration-database.ts',
+          ],
           include: [
             'tests/application/event-builder.assign.integration.test.ts',
             'tests/application/planning-phase3.managers.test.ts',

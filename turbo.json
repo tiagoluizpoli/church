@@ -47,7 +47,8 @@
         "ENABLE_DEBUG_ENDPOINTS",
         "VITE_SERVER_URL",
         "CHURCH_WORKTREE",
-        "CHURCH_FAILURE_BUNDLES_DIR"
+        "CHURCH_FAILURE_BUNDLES_DIR",
+        "PLAYWRIGHT_BROWSERS_PATH"
       ],
       "cache": false
     },
@@ -62,7 +63,8 @@
         "ENABLE_DEBUG_ENDPOINTS",
         "VITE_SERVER_URL",
         "CHURCH_WORKTREE",
-        "CHURCH_FAILURE_BUNDLES_DIR"
+        "CHURCH_FAILURE_BUNDLES_DIR",
+        "PLAYWRIGHT_BROWSERS_PATH"
       ],
       "cache": false
     },

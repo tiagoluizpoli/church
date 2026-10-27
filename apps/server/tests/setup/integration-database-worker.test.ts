@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   configureIntegrationWorkerDatabase,
-  INTEGRATION_WORKER_COUNT,
   integrationWorkerDatabase,
 } from './integration-database-worker';
+import { INTEGRATION_WORKER_COUNT } from './integration-worker-count';
 
 const BASE_URL = 'postgresql://u:p@127.0.0.1:5432/church_wt__abc_int';
 

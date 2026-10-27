@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
-import { INTEGRATION_WORKER_COUNT } from './tests/setup/integration-database-worker';
+import { INTEGRATION_WORKER_COUNT } from './tests/setup/integration-worker-count';
 
 // Unit execution needs no database or local values (#203): modules that read
 // the Zod server env at import get fixed placeholders, never a value file.

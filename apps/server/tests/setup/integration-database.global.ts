@@ -1,9 +1,7 @@
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { cloneDatabasesFromTemplate } from '@church/db/provision-databases';
-import {
-  INTEGRATION_WORKER_COUNT,
-  integrationWorkerDatabase,
-} from './integration-database-worker';
+import { integrationWorkerDatabase } from './integration-database-worker';
+import { INTEGRATION_WORKER_COUNT } from './integration-worker-count';
 
 export async function setup(): Promise<void> {
   const templateUrl = getIntegrationDatabaseUrl();

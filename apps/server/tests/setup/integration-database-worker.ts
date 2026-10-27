@@ -1,7 +1,6 @@
 import { integrationWorkerDatabaseName } from '@church/db/integration-worker-database-name';
 import { worktreeOrUnspecified } from '@church/db/purpose-database-url-guard';
-
-export const INTEGRATION_WORKER_COUNT = 2;
+import { INTEGRATION_WORKER_COUNT } from './integration-worker-count';
 
 interface WorkerDatabaseInput {
   workerId: number;

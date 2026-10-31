@@ -49,7 +49,6 @@ function buildDrainer(emailSender: CaptureEmailSender): DbOutboxDrainer {
     churchRepository: harness.churchRepository,
     ministryRepository: harness.ministryRepository,
     roleRepository: harness.roleRepository,
-    volunteerRepository: harness.volunteerRepository,
     volunteerTransferRepository: harness.volunteerTransferRepository,
     emailSender,
     notifier: harness.buildNotifier({ emailSender }),

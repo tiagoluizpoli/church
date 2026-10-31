@@ -6,7 +6,6 @@ import type {
   MinistryId,
   RoleId,
   UserId,
-  VolunteerId,
 } from '@/domain/branded-ids';
 import { EmailSendError } from '@/domain/errors/email-send-error';
 
@@ -14,7 +13,6 @@ const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;
 const inviterId = 'inviter_1' as UserId;
 const roleId = 'role_1' as RoleId;
-const volunteerId = 'volunteer_1' as VolunteerId;
 const fakeTx = { id: 'fake-tx' } as never;
 
 const outboxRepository = {
@@ -28,10 +26,9 @@ const invitationRepository = {
   findById: vi.fn(),
   resolveRecipientEmail: vi.fn(),
 };
-const churchRepository = { getById: vi.fn(), listAdminEmails: vi.fn() };
+const churchRepository = { getById: vi.fn() };
 const ministryRepository = { getById: vi.fn() };
 const roleRepository = { getById: vi.fn() };
-const volunteerRepository = { listActiveLeaderEmails: vi.fn() };
 const volunteerTransferRepository = { getDigestDetails: vi.fn() };
 const emailSender = {
   prepare: vi.fn((input: { payload: unknown }) => ({
@@ -50,7 +47,6 @@ function createDrainer(): DbOutboxDrainer {
     churchRepository: churchRepository as never,
     ministryRepository: ministryRepository as never,
     roleRepository: roleRepository as never,
-    volunteerRepository: volunteerRepository as never,
     volunteerTransferRepository: volunteerTransferRepository as never,
     emailSender: emailSender as never,
     notifier: { send: vi.fn() },
@@ -64,7 +60,7 @@ function buildMessage(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: 'outbox_1',
     churchId,
-    kind: 'invitation.ministry',
+    kind: 'invitation.chained',
     payload: { ministryInvitationId: 'invitation_1' },
     status: 'processing',
     attempts: 0,
@@ -114,7 +110,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
         idempotencyKey: 'outbox-message/outbox_1',
         email: expect.objectContaining({
           payload: expect.objectContaining({
-            kind: 'invitation.ministry',
+            kind: 'invitation.chained',
             to: 'invitee@example.com',
             churchName: 'Grace Church',
             ministryName: 'Worship Team',
@@ -263,123 +259,5 @@ describe('DbOutboxDrainer.drainOnce', () => {
     await expect(createDrainer().drainOnce({ limit: 10 })).rejects.toThrow(
       'unexpected',
     );
-  });
-
-  describe('Volunteer Transfer notifications (issue #60)', () => {
-    const digestDetails = {
-      ministryName: 'Hospitality',
-      volunteerName: 'Jamie Rivera',
-      withdrawnAssignments: [
-        {
-          eventName: 'Sunday Gathering',
-          eventTimeBlockStart: new Date('2026-09-20T10:00:00Z'),
-          roleName: 'Greeter',
-        },
-      ],
-    };
-
-    beforeEach(() => {
-      volunteerTransferRepository.getDigestDetails.mockResolvedValue(
-        digestDetails,
-      );
-    });
-
-    it('sends a Ministry digest to every active leader and marks it sent', async () => {
-      const message = buildMessage({
-        kind: 'transfer.ministry-digest',
-        payload: { ministryId, volunteerId },
-      });
-      outboxRepository.claimPending.mockResolvedValue([message]);
-      volunteerRepository.listActiveLeaderEmails.mockResolvedValue([
-        'leader@example.com',
-      ]);
-      emailSender.deliver.mockResolvedValue({
-        providerMessageId: 'provider-2',
-      });
-
-      const result = await createDrainer().drainOnce({ limit: 10 });
-
-      expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
-      expect(volunteerTransferRepository.getDigestDetails).toHaveBeenCalledWith(
-        {
-          churchId,
-          ministryId,
-          volunteerId,
-          correlationId: 'corr_1',
-        },
-      );
-      expect(emailSender.deliver).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: expect.objectContaining({
-            payload: expect.objectContaining({
-              kind: 'transfer.ministry-digest',
-              to: ['leader@example.com'],
-              ministryName: 'Hospitality',
-              volunteerName: 'Jamie Rivera',
-            }),
-          }),
-        }),
-      );
-      expect(outboxRepository.markSent).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'outbox_1' }),
-      );
-    });
-
-    it('fails terminally without sending a digest when the Ministry has no active leader', async () => {
-      const message = buildMessage({
-        kind: 'transfer.ministry-digest',
-        payload: { ministryId, volunteerId },
-      });
-      outboxRepository.claimPending.mockResolvedValue([message]);
-      volunteerRepository.listActiveLeaderEmails.mockResolvedValue([]);
-
-      const result = await createDrainer().drainOnce({ limit: 10 });
-
-      expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
-      expect(emailSender.deliver).not.toHaveBeenCalled();
-      expect(outboxRepository.markFailed).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'failed' }),
-      );
-    });
-
-    it('escalates a leaderless Ministry to every ChurchAdmin', async () => {
-      const message = buildMessage({
-        kind: 'transfer.leaderless-ministry',
-        payload: { ministryId, volunteerId },
-      });
-      outboxRepository.claimPending.mockResolvedValue([message]);
-      churchRepository.listAdminEmails.mockResolvedValue(['admin@example.com']);
-      emailSender.deliver.mockResolvedValue({
-        providerMessageId: 'provider-3',
-      });
-
-      const result = await createDrainer().drainOnce({ limit: 10 });
-
-      expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
-      expect(emailSender.deliver).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: expect.objectContaining({
-            payload: expect.objectContaining({
-              kind: 'transfer.leaderless-ministry',
-              to: ['admin@example.com'],
-            }),
-          }),
-        }),
-      );
-    });
-
-    it('fails terminally without sending an escalation when the Church has no admin', async () => {
-      const message = buildMessage({
-        kind: 'transfer.leaderless-ministry',
-        payload: { ministryId, volunteerId },
-      });
-      outboxRepository.claimPending.mockResolvedValue([message]);
-      churchRepository.listAdminEmails.mockResolvedValue([]);
-
-      const result = await createDrainer().drainOnce({ limit: 10 });
-
-      expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
-      expect(emailSender.deliver).not.toHaveBeenCalled();
-    });
   });
 });

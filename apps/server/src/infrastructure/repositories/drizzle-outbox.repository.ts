@@ -13,7 +13,6 @@ import type {
   FindOutboxEmailDeliveryInput,
   MarkOutboxMessageFailedInput,
   MarkOutboxMessageSentInput,
-  MinistryInvitationOutboxMessage,
   NotificationOutboxMessage,
   OutboxEmailDelivery,
   OutboxMessage,
@@ -22,8 +21,6 @@ import type {
   RecordOutboxEmailDeliveredInput,
   RecordOutboxEmailPreparedInput,
   RedemptionAcceptedOutboxMessage,
-  TransferLeaderlessMinistryOutboxMessage,
-  TransferMinistryDigestOutboxMessage,
 } from '../../domain/contracts/infrastructure/outbox.repository';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -154,10 +151,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
           withChurchIsolation({ table: outboxMessage, churchId }),
           or(
             and(
-              inArray(outboxMessage.kind, [
-                'invitation.chained',
-                'invitation.ministry',
-              ]),
+              eq(outboxMessage.kind, 'invitation.chained'),
               sql`${outboxMessage.payload} ->> 'ministryInvitationId' = ${ministryInvitationId}`,
             ),
             and(
@@ -203,12 +197,6 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         kind: row.kind,
         payload: row.payload as ChainedInvitationOutboxMessage['payload'],
       };
-    case 'invitation.ministry':
-      return {
-        ...base,
-        kind: row.kind,
-        payload: row.payload as MinistryInvitationOutboxMessage['payload'],
-      };
     case 'invitation.church-bootstrap':
       return {
         ...base,
@@ -220,19 +208,6 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         ...base,
         kind: row.kind,
         payload: row.payload as RedemptionAcceptedOutboxMessage['payload'],
-      };
-    case 'transfer.ministry-digest':
-      return {
-        ...base,
-        kind: row.kind,
-        payload: row.payload as TransferMinistryDigestOutboxMessage['payload'],
-      };
-    case 'transfer.leaderless-ministry':
-      return {
-        ...base,
-        kind: row.kind,
-        payload:
-          row.payload as TransferLeaderlessMinistryOutboxMessage['payload'],
       };
     case 'notification':
       return {

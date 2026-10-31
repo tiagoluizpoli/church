@@ -16,7 +16,7 @@ import type {
   HasLeadershipInMinistryInput,
   HasMembershipInMinistryInput,
   HasRoleQualificationInput,
-  ListActiveLeaderEmailsInput,
+  ListActiveLeaderUserIdsInput,
   ListLedMinistriesInput,
   ListMemberMinistryIdsInput,
   ListMinistryMembershipsInput,
@@ -399,7 +399,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     churchId,
     ministryId,
     tx,
-  }: ListActiveLeaderEmailsInput): Promise<UserId[]> {
+  }: ListActiveLeaderUserIdsInput): Promise<UserId[]> {
     const db = getClient({ db: this.db, tx });
     const rows = await db
       .select({ userId: volunteer.userId })
@@ -414,28 +414,6 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         ),
       );
     return rows.map((r) => r.userId as UserId);
-  }
-
-  async listActiveLeaderEmails({
-    churchId,
-    ministryId,
-    tx,
-  }: ListActiveLeaderEmailsInput): Promise<string[]> {
-    const db = getClient({ db: this.db, tx });
-    const rows = await db
-      .select({ email: user.email })
-      .from(ministryMembership)
-      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
-      .innerJoin(user, eq(user.id, volunteer.userId))
-      .where(
-        and(
-          eq(ministryMembership.ministryId, ministryId),
-          eq(ministryMembership.churchId, churchId),
-          eq(ministryMembership.status, 'active'),
-          eq(ministryMembership.ministryAccessLevel, 'leader'),
-        ),
-      );
-    return rows.map((r) => r.email);
   }
 }
 

@@ -181,7 +181,6 @@ export function buildManagers({
       churchRepository,
       ministryRepository,
       roleRepository,
-      volunteerRepository,
       volunteerTransferRepository,
       emailSender,
       schedulingFacts: new SchedulingNotificationFacts({

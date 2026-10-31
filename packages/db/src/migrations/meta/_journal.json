@@ -183,6 +183,13 @@
       "when": 1793473875850,
       "tag": "0025_drop-volunteer-notification",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793475834059,
+      "tag": "0026_drop-legacy-outbox-kinds",
+      "breakpoints": true
     }
   ]
 }

@@ -136,7 +136,6 @@ function createHarness({
       .fn()
       .mockResolvedValue({ name: 'Riverside Fellowship' } as Church),
     getBySlug: vi.fn(),
-    listAdminEmails: vi.fn(),
     listAdminUserIds: vi.fn(),
     findMemberEmail: vi.fn(),
   };

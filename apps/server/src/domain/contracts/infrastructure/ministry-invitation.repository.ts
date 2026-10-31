@@ -161,12 +161,7 @@ export interface IsInvitationAddressedToUserInput {
 
 export interface EnqueueOutboxMessageInput {
   churchId: ChurchId;
-  kind:
-    | 'invitation.chained'
-    | 'invitation.ministry'
-    | 'invitation.church-bootstrap'
-    | 'transfer.ministry-digest'
-    | 'transfer.leaderless-ministry';
+  kind: 'invitation.chained' | 'invitation.church-bootstrap';
   payload: Record<string, unknown>;
   correlationId: string;
   scheduledFor: Date;

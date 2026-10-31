@@ -20,26 +20,20 @@ import type {
   EmailSender,
   MinistryInvitationEmail,
   RedemptionAcceptedEmail,
-  TransferLeaderlessMinistryEmail,
-  TransferMinistryDigestEmail,
 } from '../domain/contracts/infrastructure/email-sender';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type {
   ChainedInvitationOutboxMessage,
   ChannelOutcomes,
-  MinistryInvitationOutboxMessage,
   NotificationOutboxMessage,
   OutboxEmailDelivery,
   OutboxMessage,
   OutboxRepository,
   RedemptionAcceptedOutboxMessage,
-  TransferLeaderlessMinistryOutboxMessage,
-  TransferMinistryDigestOutboxMessage,
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type {
   VolunteerTransferRepository,
   WithdrawnAssignmentPreview,
@@ -66,7 +60,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly churchRepository: ChurchRepository;
   private readonly ministryRepository: MinistryRepository;
   private readonly roleRepository: RoleRepository;
-  private readonly volunteerRepository: VolunteerRepository;
   private readonly volunteerTransferRepository: VolunteerTransferRepository;
   private readonly emailSender: EmailSender;
   private readonly notifier: ChurchNotifier;
@@ -81,7 +74,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     churchRepository,
     ministryRepository,
     roleRepository,
-    volunteerRepository,
     volunteerTransferRepository,
     emailSender,
     notifier,
@@ -94,7 +86,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.churchRepository = churchRepository;
     this.ministryRepository = ministryRepository;
     this.roleRepository = roleRepository;
-    this.volunteerRepository = volunteerRepository;
     this.volunteerTransferRepository = volunteerTransferRepository;
     this.emailSender = emailSender;
     this.notifier = notifier;
@@ -131,14 +122,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }: ProcessOneInput): Promise<'sent' | 'failed'> {
     switch (message.kind) {
       case 'invitation.chained':
-      case 'invitation.ministry':
         return this.processInvitationMessage({ message });
       case 'redemption.accepted':
         return this.processRedemptionAcceptedMessage({ message });
-      case 'transfer.ministry-digest':
-        return this.processTransferMinistryDigestMessage({ message });
-      case 'transfer.leaderless-ministry':
-        return this.processTransferLeaderlessMinistryMessage({ message });
       case 'notification':
         return this.processNotificationMessage({ message });
       case 'invitation.church-bootstrap':
@@ -423,83 +409,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     return this.prepareAndDeliver({ message, payload });
   }
 
-  private async processTransferMinistryDigestMessage({
-    message,
-  }: ProcessTransferMinistryDigestMessageInput): Promise<'sent' | 'failed'> {
-    if (message.emailDelivery) {
-      return this.deliverEmail({ message, delivery: message.emailDelivery });
-    }
-    const ministryId = message.payload.ministryId as MinistryId;
-    const volunteerId = message.payload.volunteerId as VolunteerId;
-    const [details, recipients] = await Promise.all([
-      this.volunteerTransferRepository.getDigestDetails({
-        churchId: message.churchId,
-        ministryId,
-        volunteerId,
-        correlationId: message.correlationId,
-      }),
-      this.volunteerRepository.listActiveLeaderEmails({
-        churchId: message.churchId,
-        ministryId,
-      }),
-    ]);
-    if (recipients.length === 0) {
-      await this.failTerminally({
-        message,
-        reason: 'Ministry has no active leader to receive the digest',
-      });
-      return 'failed';
-    }
-    const payload: TransferMinistryDigestEmail = {
-      kind: message.kind,
-      to: recipients,
-      ministryName: details.ministryName,
-      volunteerName: details.volunteerName,
-      withdrawnAssignments: toEmailLines({
-        assignments: details.withdrawnAssignments,
-      }),
-    };
-    return this.prepareAndDeliver({ message, payload });
-  }
-
-  private async processTransferLeaderlessMinistryMessage({
-    message,
-  }: ProcessTransferLeaderlessMinistryMessageInput): Promise<
-    'sent' | 'failed'
-  > {
-    if (message.emailDelivery) {
-      return this.deliverEmail({ message, delivery: message.emailDelivery });
-    }
-    const ministryId = message.payload.ministryId as MinistryId;
-    const volunteerId = message.payload.volunteerId as VolunteerId;
-    const [details, recipients] = await Promise.all([
-      this.volunteerTransferRepository.getDigestDetails({
-        churchId: message.churchId,
-        ministryId,
-        volunteerId,
-        correlationId: message.correlationId,
-      }),
-      this.churchRepository.listAdminEmails({ id: message.churchId }),
-    ]);
-    if (recipients.length === 0) {
-      await this.failTerminally({
-        message,
-        reason: 'Church has no admin to escalate the leaderless Ministry to',
-      });
-      return 'failed';
-    }
-    const payload: TransferLeaderlessMinistryEmail = {
-      kind: message.kind,
-      to: recipients,
-      ministryName: details.ministryName,
-      volunteerName: details.volunteerName,
-      withdrawnAssignments: toEmailLines({
-        assignments: details.withdrawnAssignments,
-      }),
-    };
-    return this.prepareAndDeliver({ message, payload });
-  }
-
   /**
    * Fixes the email before its first attempt: the prepared request, the
    * row-derived key and the first-attempt Instant commit in their own short
@@ -638,7 +547,6 @@ interface DbOutboxDrainerDependencies {
   churchRepository: ChurchRepository;
   ministryRepository: MinistryRepository;
   roleRepository: RoleRepository;
-  volunteerRepository: VolunteerRepository;
   volunteerTransferRepository: VolunteerTransferRepository;
   emailSender: EmailSender;
   notifier: ChurchNotifier;
@@ -651,7 +559,7 @@ interface ProcessOneInput {
 }
 
 interface ProcessInvitationMessageInput {
-  message: ChainedInvitationOutboxMessage | MinistryInvitationOutboxMessage;
+  message: ChainedInvitationOutboxMessage;
 }
 
 interface LoadPendingInvitationFactsInput {
@@ -679,14 +587,6 @@ interface ProcessNotificationMessageInput {
 
 interface ProcessRedemptionAcceptedMessageInput {
   message: RedemptionAcceptedOutboxMessage;
-}
-
-interface ProcessTransferMinistryDigestMessageInput {
-  message: TransferMinistryDigestOutboxMessage;
-}
-
-interface ProcessTransferLeaderlessMinistryMessageInput {
-  message: TransferLeaderlessMinistryOutboxMessage;
 }
 
 interface PrepareAndDeliverInput {

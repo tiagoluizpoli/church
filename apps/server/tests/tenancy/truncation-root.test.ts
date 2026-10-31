@@ -249,7 +249,7 @@ async function seedEveryTenantedTable(): Promise<void> {
   await testDb.insert(outboxMessage).values({
     id: IDS.outboxMessage,
     churchId: IDS.church,
-    kind: 'invitation.ministry',
+    kind: 'invitation.chained',
     payload: { ministryInvitationId: IDS.ministryInvitation },
     scheduledFor: new Date('2030-01-01T00:00:00Z'),
     correlationId: 'truncation-root-correlation',

@@ -7,11 +7,8 @@ import type { ChurchRecipient } from '@/domain/contracts/application/church-noti
 
 export type OutboxMessageKind =
   | 'invitation.chained'
-  | 'invitation.ministry'
   | 'invitation.church-bootstrap'
   | 'redemption.accepted'
-  | 'transfer.ministry-digest'
-  | 'transfer.leaderless-ministry'
   | 'notification';
 
 export const OUTBOX_MESSAGE_STATUS_OPTIONS = [
@@ -71,12 +68,6 @@ export interface MinistryInvitationOutboxPayload {
   ministryInvitationId: string;
 }
 
-/** Mirrors the payload `mintForExistingMember`/`resend` enqueue. */
-export interface MinistryInvitationOutboxMessage extends OutboxMessageBase {
-  kind: 'invitation.ministry';
-  payload: MinistryInvitationOutboxPayload;
-}
-
 export interface ChurchBootstrapOutboxPayload {
   churchInvitationId: string;
 }
@@ -98,39 +89,6 @@ export interface RedemptionAcceptedOutboxMessage extends OutboxMessageBase {
   payload: RedemptionAcceptedOutboxPayload;
 }
 
-/**
- * One row per affected Ministry (spec §8.8): `volunteerId` is the *retired*
- * source Volunteer profile — it still exists (never deleted), so the
- * departing Volunteer's display name is reachable at send time. The
- * withdrawn-assignment list is not duplicated here; it is re-derived at send
- * time from `assignment_audit` by `correlationId` (the outbox row's own
- * column) scoped to this `ministryId`, matching the "payload carries ids,
- * rendered at send time" rule the other kinds already follow. Both transfer
- * notification kinds carry this same shape — only the addressee resolution
- * (active leaders vs. ChurchAdmins) differs at send time.
- */
-export interface TransferOutboxPayload {
-  ministryId: string;
-  volunteerId: string;
-}
-
-export type TransferMinistryDigestOutboxPayload = TransferOutboxPayload;
-
-/** Addressed to the Ministry's active leaders — the routine case. */
-export interface TransferMinistryDigestOutboxMessage extends OutboxMessageBase {
-  kind: 'transfer.ministry-digest';
-  payload: TransferMinistryDigestOutboxPayload;
-}
-
-export type TransferLeaderlessMinistryOutboxPayload = TransferOutboxPayload;
-
-/** Escalated to every ChurchAdmin — the departure left the Ministry with no active leader. */
-export interface TransferLeaderlessMinistryOutboxMessage
-  extends OutboxMessageBase {
-  kind: 'transfer.leaderless-ministry';
-  payload: TransferLeaderlessMinistryOutboxPayload;
-}
-
 /** One Notification to one recipient (ADR-0008), written by `notifications.enqueue`. */
 export type NotificationOutboxPayload = NotificationRequest & {
   to: ChurchRecipient;
@@ -144,11 +102,8 @@ export interface NotificationOutboxMessage extends OutboxMessageBase {
 
 export type OutboxMessage =
   | ChainedInvitationOutboxMessage
-  | MinistryInvitationOutboxMessage
   | ChurchBootstrapOutboxMessage
   | RedemptionAcceptedOutboxMessage
-  | TransferMinistryDigestOutboxMessage
-  | TransferLeaderlessMinistryOutboxMessage
   | NotificationOutboxMessage;
 
 export interface ClaimPendingOutboxMessagesInput {

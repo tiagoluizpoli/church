@@ -20,8 +20,8 @@ post-merge:
 pre-push:
   parallel: true
   jobs:
-    - name: affected-validation
-      run: bun run validate:affected
+    - name: no-docker-validation
+      run: bun run validate:no-docker
 
 commit-msg:
   commands:

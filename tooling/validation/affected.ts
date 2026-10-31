@@ -51,6 +51,7 @@ interface ParseArgumentsResult {
   onlyE2e: boolean;
   seedImpactAcknowledgements: string[];
   skipE2e: boolean;
+  tier: ValidationTier;
 }
 
 interface BuildTestLayerStepsInput {
@@ -66,10 +67,14 @@ interface BuildTurboStepInput {
   workspaceNames: string[];
 }
 
+/** `no-docker` drops integration and E2E, the steps that need Docker. */
+export type ValidationTier = 'affected' | 'no-docker';
+
 export interface RunValidationInput {
   onlyE2e: boolean;
   plan: ValidationPlan;
   skipE2e: boolean;
+  tier?: ValidationTier;
 }
 
 interface RunValidationResult {
@@ -193,6 +198,7 @@ export function parseArguments({
   let baseRef: string | undefined;
   let skipE2e = false;
   let onlyE2e = false;
+  let tier: ValidationTier = 'affected';
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -208,6 +214,11 @@ export function parseArguments({
 
     if (arg === '--skip-e2e') {
       skipE2e = true;
+      continue;
+    }
+
+    if (arg === '--no-docker') {
+      tier = 'no-docker';
       continue;
     }
 
@@ -252,6 +263,7 @@ export function parseArguments({
     onlyE2e,
     seedImpactAcknowledgements,
     skipE2e,
+    tier,
   };
 }
 
@@ -299,8 +311,11 @@ export interface ValidationSteps {
 export function buildValidationSteps({
   onlyE2e,
   plan,
-  skipE2e,
+  skipE2e: skipE2eArgument,
+  tier = 'affected',
 }: RunValidationInput): ValidationSteps {
+  const noDocker = tier === 'no-docker';
+  const skipE2e = skipE2eArgument || noDocker;
   const checkedLabels: string[] = [];
   const checkLane: LaneStep[] = [];
   const integrationLane: LaneStep[] = [];
@@ -352,6 +367,7 @@ export function buildValidationSteps({
 
     for (const testLayer of ALL_TEST_LAYERS) {
       if (!plan.testLayers.includes(testLayer)) continue;
+      if (noDocker && testLayer === 'test:integration') continue;
       const layerSteps = buildTestLayerSteps({
         testLayer,
         testTargets: plan.testTargets,
@@ -404,10 +420,11 @@ async function runValidation({
   onlyE2e,
   plan,
   skipE2e,
+  tier,
 }: RunValidationInput): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
   const { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane } =
-    buildValidationSteps({ onlyE2e, plan, skipE2e });
+    buildValidationSteps({ onlyE2e, plan, skipE2e, tier });
 
   const results = await runStages({
     finalSteps: e2eSteps,
@@ -623,6 +640,11 @@ export function formatTimingSummary({
 
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+  if (argumentsResult.tier === 'no-docker') {
+    console.log(
+      'validate:no-docker skips integration tests and browser journeys; CI runs them.',
+    );
+  }
   const {
     baseRef,
     changedPaths,
@@ -671,6 +693,7 @@ if (import.meta.main) {
       onlyE2e: argumentsResult.onlyE2e,
       plan,
       skipE2e: argumentsResult.skipE2e,
+      tier: argumentsResult.tier,
     });
     const summary = formatTimingSummary({ timings });
     const explanation = explainPlan({ baseRef, plan });

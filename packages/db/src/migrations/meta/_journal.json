@@ -155,6 +155,13 @@
       "when": 1792243333968,
       "tag": "0021_gorgeous_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793469383247,
+      "tag": "0022_outbox-email-delivery-snapshot",
+      "breakpoints": true
     }
   ]
 }

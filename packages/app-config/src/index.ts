@@ -34,6 +34,12 @@ export const appConfigSchema = z.object({
   outbox: z.object({
     maxAttempts: positiveInt,
     backoffCapMinutes: positiveInt,
+    /**
+     * How long the email provider remembers an idempotency key (Resend: 24
+     * hours). An email attempt at or past this age since its first attempt
+     * is failed terminally rather than risk an undeduplicated duplicate.
+     */
+    emailIdempotencyRetentionMs: positiveInt,
   }),
   assignment: z.object({ cancelLeadTimeDays: positiveInt }),
   /** MVP choice until user settings exist. */
@@ -61,7 +67,11 @@ export const appConfig = appConfigSchema.parse({
     maxAttempts: 5,
   },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
-  outbox: { maxAttempts: 5, backoffCapMinutes: 60 },
+  outbox: {
+    maxAttempts: 5,
+    backoffCapMinutes: 60,
+    emailIdempotencyRetentionMs: DAY_MS,
+  },
   assignment: { cancelLeadTimeDays: 3 },
   defaultLocale: 'pt-BR',
   localeCookieName: 'church_locale',

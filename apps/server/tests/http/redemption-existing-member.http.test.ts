@@ -316,7 +316,7 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .select({ kind: outboxMessage.kind })
         .from(outboxMessage)
         .where(eq(outboxMessage.churchId, fixture.churchA.id));
-      expect(outboxKinds).toEqual([{ kind: 'invitation.ministry' }]);
+      expect(outboxKinds).toEqual([{ kind: 'notification' }]);
     });
   });
 

@@ -15,7 +15,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
-    "test:unit:related": "vitest related --run",
+    "test:unit:related": "bun ../../tooling/validation/vitest-related.ts",
     "test": "bun run test:unit"
   },
   "dependencies": {},

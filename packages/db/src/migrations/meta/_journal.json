@@ -155,6 +155,41 @@
       "when": 1792243333968,
       "tag": "0021_gorgeous_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793469383247,
+      "tag": "0022_outbox-email-delivery-snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793470358993,
+      "tag": "0023_blue_rage",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793471722265,
+      "tag": "0024_aberrant_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793473875850,
+      "tag": "0025_drop-volunteer-notification",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793475834059,
+      "tag": "0026_drop-legacy-outbox-kinds",
+      "breakpoints": true
     }
   ]
 }

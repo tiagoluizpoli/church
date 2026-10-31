@@ -34,8 +34,24 @@ export const appConfigSchema = z.object({
   outbox: z.object({
     maxAttempts: positiveInt,
     backoffCapMinutes: positiveInt,
+    /**
+     * How long the email provider remembers an idempotency key (Resend: 24
+     * hours). An email attempt at or past this age since its first attempt
+     * is failed terminally rather than risk an undeduplicated duplicate.
+     */
+    emailIdempotencyRetentionMs: positiveInt,
   }),
   assignment: z.object({ cancelLeadTimeDays: positiveInt }),
+  notifications: z.object({
+    /** Independent channel switches; a disabled sink is skipped for that processing. */
+    email: z.object({ enabled: z.boolean() }),
+    inbox: z.object({ enabled: z.boolean() }),
+    /** How often the web refetches the member inbox while online. */
+    pollIntervalMs: positiveInt,
+    /** Inbox page size when the request names none, and the most it may ask for. */
+    pageSize: positiveInt,
+    maxPageSize: positiveInt,
+  }),
   /** MVP choice until user settings exist. */
   defaultLocale: z.enum(['en', 'pt-BR']),
   /** Cookie holding the chosen locale; written by the `?lang=` override. */
@@ -61,8 +77,19 @@ export const appConfig = appConfigSchema.parse({
     maxAttempts: 5,
   },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
-  outbox: { maxAttempts: 5, backoffCapMinutes: 60 },
+  outbox: {
+    maxAttempts: 5,
+    backoffCapMinutes: 60,
+    emailIdempotencyRetentionMs: DAY_MS,
+  },
   assignment: { cancelLeadTimeDays: 3 },
+  notifications: {
+    email: { enabled: true },
+    inbox: { enabled: true },
+    pollIntervalMs: 2 * MINUTE_MS,
+    pageSize: 20,
+    maxPageSize: 50,
+  },
   defaultLocale: 'pt-BR',
   localeCookieName: 'church_locale',
   localeQueryParam: 'lang',

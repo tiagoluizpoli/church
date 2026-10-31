@@ -699,10 +699,15 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       },
     );
     expect(hiddenSchedule).toHaveLength(0);
-    expect(managers.notificationSpy.notifyVolunteer.mock.calls).toContainEqual([
+    expect(managers.notificationSpy.enqueue.mock.calls).toContainEqual([
       expect.objectContaining({
-        type: 'schedule_published',
-        volunteerId: primaryVolunteer.volunteer.id,
+        kind: 'schedule_published',
+        to: [
+          {
+            userId: primaryVolunteer.volunteer.userId,
+            churchId: seed.churchAId,
+          },
+        ],
       }),
     ]);
   });

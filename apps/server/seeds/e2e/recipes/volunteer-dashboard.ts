@@ -5,7 +5,7 @@ import {
   parseTimeOfDay,
   type TimeOfDay,
 } from '@church/time';
-import { buildVolunteerNotification } from '../../builders/notification';
+import { buildNotification } from '../../builders/notification';
 import { buildAssignment, buildCycle } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
@@ -92,7 +92,8 @@ type DashboardChurch = AssignChurch<typeof PLAN>;
 
 export interface VolunteerDashboardNotification {
   id: string;
-  title: string;
+  /** The Ministry the seeded invitation names; the bell renders it into words. */
+  ministryName: string;
   createdAt: Instant;
 }
 
@@ -222,23 +223,21 @@ export function createVolunteerDashboardRecipe({
       dayOffset: NOTIFICATION_OFFSET_DAYS,
       time: NOTIFICATION_TIME,
     });
-    const notification = await buildVolunteerNotification({
+    const notification = await buildNotification({
       db,
       churchId,
-      volunteerId: volunteer.volunteerId,
+      userId: volunteer.userId,
       id: idOf({ kind: 'notification' }),
-      type: 'assignment_removed',
-      title: 'Assignment removed',
-      body: `You are no longer scheduled for ${worship.roles.usher.name} at ${removedEvent.title}.`,
+      sourceOutboxId: idOf({ kind: 'notification-outbox' }),
       payload: {
-        assignmentId: idOf({ kind: 'assignment:removed' }),
-        eventId: removedEvent.id,
-        ministryId: worship.id,
-        section: 'assignments',
+        kind: 'ministry_invitation',
+        data: {
+          ministryInvitationId: idOf({ kind: 'notification-invitation' }),
+          ministryId: worship.id,
+          ministryName: worship.name,
+        },
       },
       createdAt: notificationCreatedAt,
-      ministryId: worship.id,
-      eventId: removedEvent.id,
     });
 
     return {
@@ -249,7 +248,7 @@ export function createVolunteerDashboardRecipe({
       removedEvent,
       notification: {
         id: notification.id,
-        title: notification.title,
+        ministryName: worship.name,
         createdAt: notificationCreatedAt,
       },
     };

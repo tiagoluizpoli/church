@@ -39,8 +39,12 @@ class MockChurchRepository implements ChurchRepository {
     throw new NotFoundError(`Church with slug ${slug} not found`);
   }
 
-  async listAdminEmails(): Promise<string[]> {
+  async listAdminUserIds(): Promise<never[]> {
     return [];
+  }
+
+  async findMemberEmail(): Promise<string | null> {
+    return null;
   }
 }
 

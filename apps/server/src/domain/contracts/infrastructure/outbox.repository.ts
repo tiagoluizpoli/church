@@ -1,13 +1,18 @@
+import type { Instant } from '@church/time';
 import type { ChurchId } from '../../branded-ids';
+import type {
+  NotificationDeliveryData,
+  NotificationRequest,
+} from '../../notification-kinds';
+import type { PreparedEmail } from './email-sender';
 import type { TransactionContext } from './transaction-context';
+import type { ChurchRecipient } from '@/domain/contracts/application/church-notifications';
 
 export type OutboxMessageKind =
   | 'invitation.chained'
-  | 'invitation.ministry'
   | 'invitation.church-bootstrap'
   | 'redemption.accepted'
-  | 'transfer.ministry-digest'
-  | 'transfer.leaderless-ministry';
+  | 'notification';
 
 export const OUTBOX_MESSAGE_STATUS_OPTIONS = [
   'pending',
@@ -28,6 +33,27 @@ interface OutboxMessageBase {
   providerMessageId?: string;
   correlationId: string;
   sentAt?: Date;
+  /** Present once the email was prepared, before its first external attempt. */
+  emailDelivery?: OutboxEmailDelivery;
+}
+
+/** A sink's outcome once it no longer needs an attempt. */
+export type SettledChannelOutcome = 'delivered' | 'skipped' | 'failed';
+
+/** Settled outcomes of a `notification` row, by sink name. */
+export type ChannelOutcomes = Record<string, SettledChannelOutcome>;
+
+/**
+ * The email channel's durable delivery state for one row: the exact request
+ * every attempt resends, the stable provider idempotency key, when the first
+ * attempt began (bounding the provider's retention window) and, once the
+ * provider confirmed it, the receipt Instant that suppresses a replay.
+ */
+export interface OutboxEmailDelivery {
+  email: PreparedEmail;
+  idempotencyKey: string;
+  firstAttemptAt: Instant;
+  deliveredAt?: Instant;
 }
 
 export interface ChainedInvitationOutboxPayload {
@@ -43,12 +69,6 @@ export interface ChainedInvitationOutboxMessage extends OutboxMessageBase {
 
 export interface MinistryInvitationOutboxPayload {
   ministryInvitationId: string;
-}
-
-/** Mirrors the payload `mintForExistingMember`/`resend` enqueue. */
-export interface MinistryInvitationOutboxMessage extends OutboxMessageBase {
-  kind: 'invitation.ministry';
-  payload: MinistryInvitationOutboxPayload;
 }
 
 export interface ChurchBootstrapOutboxPayload {
@@ -72,46 +92,24 @@ export interface RedemptionAcceptedOutboxMessage extends OutboxMessageBase {
   payload: RedemptionAcceptedOutboxPayload;
 }
 
-/**
- * One row per affected Ministry (spec §8.8): `volunteerId` is the *retired*
- * source Volunteer profile — it still exists (never deleted), so the
- * departing Volunteer's display name is reachable at send time. The
- * withdrawn-assignment list is not duplicated here; it is re-derived at send
- * time from `assignment_audit` by `correlationId` (the outbox row's own
- * column) scoped to this `ministryId`, matching the "payload carries ids,
- * rendered at send time" rule the other kinds already follow. Both transfer
- * notification kinds carry this same shape — only the addressee resolution
- * (active leaders vs. ChurchAdmins) differs at send time.
- */
-export interface TransferOutboxPayload {
-  ministryId: string;
-  volunteerId: string;
-}
+/** One Notification to one recipient (ADR-0008), written by `notifications.enqueue`. */
+export type NotificationOutboxPayload = NotificationRequest & {
+  to: ChurchRecipient;
+  /** Display facts frozen at the row's first resolution; retries reuse them. */
+  facts?: NotificationDeliveryData;
+};
 
-export type TransferMinistryDigestOutboxPayload = TransferOutboxPayload;
-
-/** Addressed to the Ministry's active leaders — the routine case. */
-export interface TransferMinistryDigestOutboxMessage extends OutboxMessageBase {
-  kind: 'transfer.ministry-digest';
-  payload: TransferMinistryDigestOutboxPayload;
-}
-
-export type TransferLeaderlessMinistryOutboxPayload = TransferOutboxPayload;
-
-/** Escalated to every ChurchAdmin — the departure left the Ministry with no active leader. */
-export interface TransferLeaderlessMinistryOutboxMessage
-  extends OutboxMessageBase {
-  kind: 'transfer.leaderless-ministry';
-  payload: TransferLeaderlessMinistryOutboxPayload;
+export interface NotificationOutboxMessage extends OutboxMessageBase {
+  kind: 'notification';
+  payload: NotificationOutboxPayload;
+  channelOutcomes: ChannelOutcomes;
 }
 
 export type OutboxMessage =
   | ChainedInvitationOutboxMessage
-  | MinistryInvitationOutboxMessage
   | ChurchBootstrapOutboxMessage
   | RedemptionAcceptedOutboxMessage
-  | TransferMinistryDigestOutboxMessage
-  | TransferLeaderlessMinistryOutboxMessage;
+  | NotificationOutboxMessage;
 
 export interface ClaimPendingOutboxMessagesInput {
   limit: number;
@@ -123,6 +121,8 @@ export interface MarkOutboxMessageSentInput {
   id: string;
   providerMessageId?: string;
   sentAt: Date;
+  /** A `notification` row's settled sinks, persisted with its completion. */
+  channelOutcomes?: ChannelOutcomes;
   tx: TransactionContext;
 }
 
@@ -133,7 +133,43 @@ export interface MarkOutboxMessageFailedInput {
   /** `pending` to retry later (with `scheduledFor` bumped), `failed` when terminal. */
   status: OutboxMessageStatus;
   scheduledFor?: Date;
+  /** Settled sinks survive the retry or terminal failure of another sink. */
+  channelOutcomes?: ChannelOutcomes;
   tx: TransactionContext;
+}
+
+export interface RecordOutboxEmailPreparedInput {
+  id: string;
+  email: PreparedEmail;
+  idempotencyKey: string;
+  firstAttemptAt: Instant;
+  tx: TransactionContext;
+}
+
+export interface RecordOutboxEmailDeliveredInput {
+  id: string;
+  providerMessageId?: string;
+  deliveredAt: Instant;
+  tx: TransactionContext;
+}
+
+export interface RecordOutboxDeliveryFactsInput {
+  id: string;
+  facts: NotificationDeliveryData;
+  tx: TransactionContext;
+}
+
+export interface EnqueueNotificationOutboxMessageInput {
+  churchId: ChurchId;
+  payload: NotificationOutboxPayload;
+  correlationId: string;
+  scheduledFor: Date;
+  tx: TransactionContext;
+}
+
+export interface FindOutboxEmailDeliveryInput {
+  id: string;
+  tx?: TransactionContext;
 }
 
 export interface FindLatestOutboxStatusForMinistryInvitationInput {
@@ -161,10 +197,31 @@ export interface OutboxRepository {
 
   markFailed(input: MarkOutboxMessageFailedInput): Promise<void>;
 
+  /** Persists the prepared email, key and first-attempt Instant — committed
+   * before the provider is called, so a retry resends exactly this. */
+  recordEmailPrepared(input: RecordOutboxEmailPreparedInput): Promise<void>;
+
+  /** Freezes a `notification` row's resolved display facts into its payload. */
+  recordDeliveryFacts(input: RecordOutboxDeliveryFactsInput): Promise<void>;
+
+  /** Persists the provider's confirmed receipt for the email channel. */
+  recordEmailDelivered(input: RecordOutboxEmailDeliveredInput): Promise<void>;
+
+  /** Writes one `notification` row in the caller's transaction. */
+  enqueueNotification(
+    input: EnqueueNotificationOutboxMessageInput,
+  ): Promise<void>;
+
+  /** The email channel's persisted delivery state for a row, if prepared. */
+  findEmailDelivery(
+    input: FindOutboxEmailDeliveryInput,
+  ): Promise<OutboxEmailDelivery | null>;
+
   /**
    * Reads the most recent outbox row's status for a Ministry Invitation.
    * There is no FK column — `payload` is jsonb — so this matches
-   * structurally on `payload->>'ministryInvitationId'`, scoped by Church. A
+   * structurally on the invitation id (top level for Transactional rows,
+   * under `data` for `ministry_invitation` Notifications), scoped by Church. A
    * resend enqueues a second row for the same invitation, so "latest" is
    * ordered by `createdAt` descending; the minting API's response surfaces
    * this as the invitation's delivery status (spec #56 §6.4). Returns

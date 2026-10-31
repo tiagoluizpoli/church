@@ -30,7 +30,8 @@ export interface VerifyInvitationCodeInput {
 
 interface VerificationCodeManagerDependencies {
   repository: InvitationVerificationCodeRepository;
-  emailSender: EmailSender;
+  /** Sends directly: a Transactional email with no outbox row to key on. */
+  emailSender: Pick<EmailSender, 'send'>;
   generateCode?: () => string;
   verificationCodeSecret: string;
   config: AppConfig;
@@ -54,7 +55,7 @@ export class InvitationVerificationCodeManager
   implements InvitationVerificationCodeManagerContract
 {
   private readonly repository: InvitationVerificationCodeRepository;
-  private readonly emailSender: EmailSender;
+  private readonly emailSender: Pick<EmailSender, 'send'>;
   private readonly generateCode: () => string;
   private readonly verificationCodeSecret: string;
   private readonly codeTtlMs: number;

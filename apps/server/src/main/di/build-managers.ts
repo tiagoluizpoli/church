@@ -9,6 +9,7 @@ import {
   DbEventTemplateManager,
   DbMinistryInvitationManager,
   DbMinistryManager,
+  DbNotificationManager,
   DbOutboxDrainer,
   DbParticipationManager,
   DbPlanningEventManager,
@@ -17,6 +18,9 @@ import {
   DbVolunteerTransferManager,
   InvitationVerificationCodeManager,
 } from '../../application';
+import { ChurchNotifications } from '../../application/church-notifications';
+import { buildChurchNotifier } from '../../application/church-notifier';
+import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import type { Auth } from './build-auth';
 import type { Repositories } from './build-repositories';
 import type { Services } from './build-services';
@@ -39,6 +43,7 @@ export type Managers = Pick<
   | 'participationManager'
   | 'availabilityCheckManager'
   | 'activeChurchSelectionManager'
+  | 'notificationManager'
 >;
 
 export interface BuildManagersInput {
@@ -76,11 +81,10 @@ export function buildManagers({
     roleRepository,
     sectorRepository,
     eventTimeBlockRepository,
-    volunteerNotificationRepository,
+    notificationRepository,
     unitOfWork,
   },
   services: {
-    notificationService,
     redemptionIdentityGateway,
     emailSender,
     verificationCodeInspector,
@@ -96,9 +100,7 @@ export function buildManagers({
       participationRepository: ministryParticipationRepository,
       volunteerRepository,
       unavailableShiftRepository,
-      planningEventRepository,
       cycleRepository,
-      notificationService,
       unitOfWork,
     });
   const eventManager =
@@ -118,6 +120,7 @@ export function buildManagers({
   const eventTemplateManager =
     overrides.eventTemplateManager ??
     new DbEventTemplateManager({ templateRepository: eventTemplateRepository });
+  const notifications = new ChurchNotifications({ outboxRepository });
   const ministryManager =
     overrides.ministryManager ??
     new DbMinistryManager({
@@ -133,6 +136,7 @@ export function buildManagers({
       authorityManager,
       unitOfWork,
       outboxRepository,
+      notifications,
       config,
     });
   const invitationVerificationCodeManager =
@@ -163,6 +167,7 @@ export function buildManagers({
       churchRepository,
       identityGateway: redemptionIdentityGateway,
       invitationRepository: ministryInvitationRepository,
+      notifications,
       securityLogRepository,
       unitOfWork,
       volunteerRepository,
@@ -176,11 +181,31 @@ export function buildManagers({
       churchRepository,
       ministryRepository,
       roleRepository,
-      volunteerRepository,
       volunteerTransferRepository,
       emailSender,
+      schedulingFacts: new SchedulingNotificationFacts({
+        churchRepository,
+        ministryRepository,
+        cycleRepository,
+        participationRepository: ministryParticipationRepository,
+        eventRepository: planningEventRepository,
+        eventTimeBlockRepository,
+        assignmentRepository,
+        roleRepository,
+        volunteerRepository,
+        webBaseUrl: env.CORS_ORIGIN,
+      }),
+      notifier: buildChurchNotifier({
+        config,
+        churchRepository,
+        notificationRepository,
+        outboxRepository,
+        emailSender,
+        unitOfWork,
+      }),
       unitOfWork,
       config,
+      webBaseUrl: env.CORS_ORIGIN,
     });
   const cycleManager =
     overrides.cycleManager ??
@@ -210,14 +235,13 @@ export function buildManagers({
       volunteerRepo: volunteerRepository,
       assignmentRepo: assignmentRepository,
       unavailableShiftRepo: unavailableShiftRepository,
-      notificationRepo: volunteerNotificationRepository,
+      notificationRepo: notificationRepository,
       eventRepo: eventRepository,
       shiftRepo: shiftRepository,
       ministryRepo: ministryRepository,
       participationRepo: ministryParticipationRepository,
       roleRepo: roleRepository,
       availabilityCheckRepo: availabilityCheckRepository,
-      notificationService,
       unitOfWork,
       config,
     });
@@ -237,7 +261,7 @@ export function buildManagers({
       cycleRepository,
       roleRepository,
       sectorRepository,
-      notificationService,
+      notifications,
       unitOfWork,
     });
   const availabilityCheckManager =
@@ -247,7 +271,7 @@ export function buildManagers({
       eventRepository: planningEventRepository,
       availabilityCheckRepository,
       cycleRepository,
-      notificationService,
+      notifications,
       unitOfWork,
     });
   const activeChurchSelectionManager =
@@ -257,6 +281,13 @@ export function buildManagers({
       authorityManager,
       activeChurchResolver,
       churchRepository,
+    });
+
+  const notificationManager =
+    overrides.notificationManager ??
+    new DbNotificationManager({
+      notificationRepository,
+      defaultPageSize: config.notifications.pageSize,
     });
 
   return {
@@ -275,5 +306,6 @@ export function buildManagers({
     participationManager,
     availabilityCheckManager,
     activeChurchSelectionManager,
+    notificationManager,
   };
 }

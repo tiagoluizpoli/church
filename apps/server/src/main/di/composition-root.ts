@@ -25,7 +25,7 @@ export function createCompositionRoot(
   const database = overrides.db ?? db;
 
   const repositories = buildRepositories({ config, database, overrides });
-  const services = buildServices({ repositories, overrides });
+  const services = buildServices({ overrides });
   const auth = buildAuth({ database, repositories, overrides });
   const managers = buildManagers({
     config,

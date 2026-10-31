@@ -76,6 +76,8 @@ function authorizeChurchResource(
   input: AuthorizeChurchResourceInput,
 ): AuthorityDecision {
   const { actor, action, resource, isAdmin } = input;
+  // Church Membership was already verified by `authorize`.
+  if (action === 'access') return allow();
   if (action === 'participate') {
     const hasMatchingMembership =
       Boolean(actor.volunteerId) &&

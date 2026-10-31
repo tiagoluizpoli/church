@@ -19,6 +19,7 @@ import {
   ministryMembershipRole,
   ministryMembershipTeam,
   ministryParticipation,
+  notification,
   outboxMessage,
   participationEventTimeBlockInclusion,
   role,
@@ -35,7 +36,6 @@ import {
   usualSetup,
   verification,
   volunteer,
-  volunteerNotification,
   volunteerTransfer,
 } from '@church/db';
 import { sql } from 'drizzle-orm';
@@ -249,7 +249,7 @@ async function seedEveryTenantedTable(): Promise<void> {
   await testDb.insert(outboxMessage).values({
     id: IDS.outboxMessage,
     churchId: IDS.church,
-    kind: 'invitation.ministry',
+    kind: 'invitation.chained',
     payload: { ministryInvitationId: IDS.ministryInvitation },
     scheduledFor: new Date('2030-01-01T00:00:00Z'),
     correlationId: 'truncation-root-correlation',
@@ -371,17 +371,12 @@ async function seedEveryTenantedTable(): Promise<void> {
     shiftId: IDS.shift,
   });
 
-  await testDb.insert(volunteerNotification).values({
+  await testDb.insert(notification).values({
+    userId: IDS.user,
     churchId: IDS.church,
-    volunteerId: IDS.volunteer,
-    cycleId: IDS.cycle,
-    ministryId: IDS.ministry,
-    eventId: IDS.event,
-    assignmentId: IDS.assignment,
-    type: 'assignment_reminder',
-    title: 'Truncation notification',
-    body: 'Truncation notification body',
-    payload: {},
+    kind: 'ministry_invitation',
+    data: {},
+    sourceOutboxId: '00000000-0000-4000-8000-0000000000aa',
   });
 
   await testDb.insert(identityAudit).values({

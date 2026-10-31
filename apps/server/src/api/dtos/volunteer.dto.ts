@@ -4,7 +4,6 @@ import type {
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
   DashboardAvailabilityTask,
-  DashboardNotificationPreview,
   MinistrySchedule,
   MinistryScheduleEvent,
   VolunteerAvailabilityCheckDetail,
@@ -17,6 +16,10 @@ import {
   assignmentMapper,
   assignmentResponseSchema,
 } from './assignment.dto';
+import {
+  memberNotificationMapper,
+  memberNotificationResponseSchema,
+} from './member-notification.dto';
 
 export type { AssignmentResponse };
 export { assignmentResponseSchema };
@@ -114,18 +117,6 @@ type DashboardAvailabilityTaskResponse = z.infer<
   typeof dashboardAvailabilityTaskSchema
 >;
 
-const dashboardNotificationPreviewSchema = z.object({
-  id: z.string(),
-  type: z.string(),
-  title: z.string(),
-  body: z.string(),
-  readAt: instantSchema.optional(),
-  createdAt: instantSchema,
-});
-type DashboardNotificationPreviewResponse = z.infer<
-  typeof dashboardNotificationPreviewSchema
->;
-
 const dashboardMinistryOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -135,7 +126,7 @@ export const dashboardResponseSchema = z.object({
   availabilityTasks: z.array(dashboardAvailabilityTaskSchema),
   upcomingAssignmentGroups: z.array(dashboardAssignmentGroupSchema),
   unreadNotificationCount: z.number(),
-  notificationPreview: z.array(dashboardNotificationPreviewSchema),
+  notificationPreview: z.array(memberNotificationResponseSchema),
   defaultMinistryId: z.string().optional(),
   ministryOptions: z.array(dashboardMinistryOptionSchema),
 });
@@ -268,21 +259,6 @@ function dashboardAssignmentGroupToResponse(
   };
 }
 
-function dashboardNotificationPreviewToResponse(
-  preview: DashboardNotificationPreview,
-): DashboardNotificationPreviewResponse {
-  return {
-    id: preview.id,
-    type: preview.type,
-    title: preview.title,
-    body: preview.body,
-    readAt: preview.readAt
-      ? parseInstant({ value: preview.readAt })
-      : undefined,
-    createdAt: parseInstant({ value: preview.createdAt }),
-  };
-}
-
 function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
   return {
     availabilityTasks: dashboard.availabilityTasks.map(
@@ -293,7 +269,7 @@ function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
     ),
     unreadNotificationCount: dashboard.unreadNotificationCount,
     notificationPreview: dashboard.notificationPreview.map(
-      dashboardNotificationPreviewToResponse,
+      memberNotificationMapper.toResponse,
     ),
     defaultMinistryId: dashboard.defaultMinistryId,
     ministryOptions: dashboard.ministryOptions,

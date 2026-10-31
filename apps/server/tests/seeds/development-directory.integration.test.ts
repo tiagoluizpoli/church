@@ -154,10 +154,7 @@ type NotificationRow = {
   type: string;
   title: string;
   body: string;
-  shaped: boolean;
   inCycle: boolean;
-  noAssignment?: boolean;
-  namesNewAssignment?: boolean;
   at: string;
   read: string | null;
 };
@@ -1140,20 +1137,26 @@ describe('development seed recipe', () => {
     expect(crossMinistryServers).toBeGreaterThanOrEqual(2);
   });
 
-  it('leaves the notifications publishing and the reassignment wrote', async () => {
-    const byType = await testDb.execute<NotificationCountRow>(sql`
-      select type, count(*)::int as total,
+  it('leaves the member inbox Notifications publishing wrote', async () => {
+    const byKind = await testDb.execute<NotificationCountRow>(sql`
+      select kind as type, count(*)::int as total,
         count(*) filter (where read_at is null)::int as unread
-      from volunteer_notification group by type order by type`);
-    expect(byType.rows).toEqual([
+      from notification where kind = 'schedule_published' group by kind`);
+    expect(byKind.rows).toEqual([
       {
         type: 'schedule_published',
         total: SCHEDULE_PUBLISHED,
         unread: UNREAD_PUBLISHED,
       },
-      { type: 'assignment_added', total: 1, unread: 0 },
-      { type: 'assignment_removed', total: 1, unread: 1 },
     ]);
+
+    // The dropped assignment kinds are never seeded.
+    expect(
+      await queryCount({
+        query: sql`select count(*) as value from notification
+          where kind not in ('schedule_published', 'ministry_invitation')`,
+      }),
+    ).toBe(0);
 
     // One per Volunteer and published participation they were assigned on
     // when it was published; replacements came after and got none.
@@ -1163,78 +1166,35 @@ describe('development seed recipe', () => {
             select distinct a.participation_id, a.volunteer_id from ${assignment} a
             where a.assigned_at = '2026-01-27T13:00:00Z'
           ) as assigned
-          where not exists (select 1 from volunteer_notification n
-            join ${ministryParticipation} p on p.event_id = n.event_id and p.ministry_id = n.ministry_id
-            where p.id = assigned.participation_id and n.volunteer_id = assigned.volunteer_id
-              and n.type = 'schedule_published')`,
+          where not exists (select 1 from notification n
+            join ${ministryParticipation} p on p.event_id::text = n.data->>'eventId' and p.ministry_id::text = n.data->>'ministryId'
+            join ${volunteer} v on v.user_id = n.user_id
+            where p.id = assigned.participation_id and v.id = assigned.volunteer_id
+              and n.kind = 'schedule_published')`,
       }),
     ).toBe(0);
 
     const published = await testDb.execute<NotificationRow>(sql`
-      select u.email, n.type, n.title, n.body, n.payload = jsonb_build_object(
-          'eventId', n.event_id::text, 'ministryId', n.ministry_id::text, 'section', 'assignments') as shaped,
-        n.cycle_id is not null as "inCycle", n.assignment_id is null as "noAssignment",
+      select u.email, n.kind as type, n.data->>'eventTitle' as title,
+        n.data->>'ministryName' as body,
+        (n.data->>'cycleId') = e.cycle_id::text as "inCycle",
         to_char(n.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at,
         to_char(n.read_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as read
-      from volunteer_notification n
-      join ${volunteer} v on v.id = n.volunteer_id
-      join ${user} u on u.id = v.user_id
-      join ${event} e on e.id = n.event_id
-      join ${ministry} m on m.id = n.ministry_id
-      where n.type = 'schedule_published' and m.name = 'Intercessão'
+      from notification n
+      join ${user} u on u.id = n.user_id
+      join ${event} e on e.id::text = n.data->>'eventId'
+      where n.kind = 'schedule_published' and n.data->>'ministryName' = 'Intercessão'
         and e.start = '2026-02-18T23:00:00Z'
         and u.email in ('isabela.medeiros@igreja-semente.test', 'vanessa.campos@igreja-semente.test')`);
     expect(published.rows).toEqual([
       {
         email: 'isabela.medeiros@igreja-semente.test',
         type: 'schedule_published',
-        title: 'Schedule published',
-        body: 'Culto de Quarta is now published for your ministry.',
-        shaped: true,
+        title: 'Culto de Quarta',
+        body: 'Intercessão',
         inCycle: true,
-        noAssignment: true,
         at: '2026-01-28T21:00Z',
         read: '2026-01-29T11:00Z',
-      },
-    ]);
-
-    const reassigned = await testDb.execute<NotificationRow>(sql`
-      select u.email, n.type, n.title, n.body, n.payload = jsonb_build_object(
-          'assignmentId', n.assignment_id::text, 'eventId', n.event_id::text,
-          'ministryId', n.ministry_id::text) as shaped,
-        n.cycle_id is not null as "inCycle",
-        a.volunteer_id = (select id from ${volunteer} where user_id =
-          (select id from ${user} where email = 'daniel.moreira@igreja-semente.test')) as "namesNewAssignment",
-        to_char(n.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at,
-        to_char(n.read_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as read
-      from volunteer_notification n
-      join ${volunteer} v on v.id = n.volunteer_id
-      join ${user} u on u.id = v.user_id
-      join ${assignment} a on a.id = n.assignment_id
-      where n.type <> 'schedule_published'
-      order by n.type`);
-    expect(reassigned.rows).toEqual([
-      {
-        email: 'daniel.moreira@igreja-semente.test',
-        type: 'assignment_added',
-        title: 'New assignment',
-        body: 'You were assigned to Culto de Quarta.',
-        shaped: true,
-        inCycle: true,
-        namesNewAssignment: true,
-        at: '2026-02-09T13:00Z',
-        read: '2026-02-10T11:00Z',
-      },
-      {
-        email: 'joao.pereira@igreja-semente.test',
-        type: 'assignment_removed',
-        title: 'Assignment changed',
-        body: 'Culto de Quarta has been reassigned.',
-        shaped: true,
-        inCycle: true,
-        namesNewAssignment: true,
-        at: '2026-02-09T13:00Z',
-        read: null,
       },
     ]);
   });
@@ -1409,8 +1369,8 @@ describe('development seed recipe', () => {
       label: 'an assigned Volunteer misses the publish notification',
       problem: 'notification',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`delete from volunteer_notification
-          where id = (select id from volunteer_notification where type = 'schedule_published' order by id limit 1)`);
+        await tx.execute(sql`delete from notification
+          where id = (select id from notification where kind = 'schedule_published' order by id limit 1)`);
       },
     },
     {

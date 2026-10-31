@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { type NavigateOptions, useNavigate } from '@tanstack/react-router';
 import { authClient } from '@/lib/auth-client';
+import { clearNotificationCache } from '@/shared/utils/notification-storage';
 
 interface SignOutInput {
   to?: NavigateOptions['to'];
@@ -16,6 +17,7 @@ export function useSignOut() {
       fetchOptions: {
         onSuccess: () => {
           queryClient.clear();
+          clearNotificationCache();
           navigate({ to, search });
         },
       },

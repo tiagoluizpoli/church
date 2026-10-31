@@ -2,6 +2,7 @@ import { appConfig } from '@church/app-config';
 import { compareInstants } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
+import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
 import { ChurchId, MinistryId, RoleId, UserId } from '@/domain/branded-ids';
@@ -48,6 +49,7 @@ const manager = new DbMinistryInvitationManager({
   authorityManager,
   unitOfWork,
   outboxRepository,
+  notifications: new ChurchNotifications({ outboxRepository }),
   config: appConfig,
 });
 

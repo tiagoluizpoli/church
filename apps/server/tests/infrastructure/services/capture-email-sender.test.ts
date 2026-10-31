@@ -1,3 +1,4 @@
+import { fromDate } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type { MinistryInvitationEmail } from '@/domain/contracts/infrastructure/email-sender';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
@@ -12,7 +13,8 @@ function buildPayload(
     ministryName: 'Worship Team',
     ministryAccessLevel: 'volunteer',
     roleNames: ['Vocalist'],
-    expiresAt: new Date('2026-08-01T00:00:00Z'),
+    expiresAt: fromDate({ date: new Date('2026-08-01T00:00:00Z') }),
+    churchTimezone: 'UTC',
     redemptionUrl: 'https://app.church.test/invitations/church/abc',
     ...overrides,
   };
@@ -38,6 +40,17 @@ describe('CaptureEmailSender', () => {
     await sender.send({ payload: second });
 
     expect(sender.sent).toEqual([first, second]);
+  });
+
+  it('deduplicates a repeated idempotency key, like the provider', async () => {
+    const sender = new CaptureEmailSender();
+    const email = sender.prepare({ payload: buildPayload() });
+
+    await sender.deliver({ email, idempotencyKey: 'outbox-message/row-1' });
+    await sender.deliver({ email, idempotencyKey: 'outbox-message/row-1' });
+    await sender.deliver({ email, idempotencyKey: 'outbox-message/row-2' });
+
+    expect(sender.delivered).toEqual([email, email]);
   });
 
   it('returns the most recently captured verification code for the recipient', async () => {

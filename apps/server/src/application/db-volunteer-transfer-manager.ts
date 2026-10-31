@@ -4,6 +4,7 @@ import type {
   MinistryInvitationId,
   UserId,
 } from '../domain/branded-ids';
+import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   ConfirmTransferInput,
   ConfirmTransferOutcome,
@@ -24,6 +25,7 @@ interface DbVolunteerTransferManagerDependencies {
   churchRepository: ChurchRepository;
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: MinistryInvitationRepository;
+  notifications: IChurchNotifications;
   securityLogRepository: SecurityLogRepository;
   unitOfWork: UnitOfWork;
   volunteerRepository: VolunteerRepository;
@@ -68,6 +70,7 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
   private readonly churchRepository: ChurchRepository;
   private readonly identityGateway: RedemptionIdentityGateway;
   private readonly invitationRepository: MinistryInvitationRepository;
+  private readonly notifications: IChurchNotifications;
   private readonly securityLogRepository: SecurityLogRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly volunteerRepository: VolunteerRepository;
@@ -77,6 +80,7 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
     churchRepository,
     identityGateway,
     invitationRepository,
+    notifications,
     securityLogRepository,
     unitOfWork,
     volunteerRepository,
@@ -85,6 +89,7 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
     this.churchRepository = churchRepository;
     this.identityGateway = identityGateway;
     this.invitationRepository = invitationRepository;
+    this.notifications = notifications;
     this.securityLogRepository = securityLogRepository;
     this.unitOfWork = unitOfWork;
     this.volunteerRepository = volunteerRepository;
@@ -183,17 +188,37 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
       return { kind: 'password-mismatch' };
     }
 
-    const outcome = await this.unitOfWork.run((tx) =>
-      this.volunteerTransferRepository.executeTransfer({
+    const sourceChurchId = resolved.sourceChurchId;
+    const outcome = await this.unitOfWork.run(async (tx) => {
+      const executed = await this.volunteerTransferRepository.executeTransfer({
         userId,
         ministryInvitationId,
-        sourceChurchId: resolved.sourceChurchId,
+        sourceChurchId,
         destinationChurchId: resolved.ministryInvitation.churchId,
         confirmedAt: now,
         correlationId: idempotencyKey,
         tx,
-      }),
-    );
+      });
+      if (executed.kind !== 'transferred') return executed;
+      // Recipients are fixed now: a leader added before delivery is not
+      // notified, and the rows roll back with the transfer.
+      for (const digest of executed.digests) {
+        await this.notifications.enqueue({
+          tx,
+          kind: digest.kind,
+          to: digest.recipientUserIds.map((recipientUserId) => ({
+            userId: recipientUserId,
+            churchId: sourceChurchId,
+          })),
+          data: {
+            ministryId: digest.ministryId,
+            volunteerId: executed.result.sourceVolunteerId,
+            transferCorrelationId: idempotencyKey,
+          },
+        });
+      }
+      return executed;
+    });
     if (outcome.kind === 'terminal-failure') {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }

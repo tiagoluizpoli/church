@@ -61,6 +61,7 @@ const {
   manager: invitationManager,
   ministryInvitationRepository,
   churchRepository,
+  notifications,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
 let app: FastifyTypedInstance;
@@ -90,6 +91,7 @@ beforeEach(async () => {
     churchRepository,
     identityGateway,
     invitationRepository: ministryInvitationRepository,
+    notifications,
     securityLogRepository,
     unitOfWork,
     volunteerRepository,
@@ -316,7 +318,7 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .select({ kind: outboxMessage.kind })
         .from(outboxMessage)
         .where(eq(outboxMessage.churchId, fixture.churchA.id));
-      expect(outboxKinds).toEqual([{ kind: 'invitation.ministry' }]);
+      expect(outboxKinds).toEqual([{ kind: 'notification' }]);
     });
   });
 

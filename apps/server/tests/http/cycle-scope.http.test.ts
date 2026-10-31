@@ -28,8 +28,8 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import { testLocale } from '@/tests/test-support/fastify-locale';
-import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 vi.mock('@church/auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -57,7 +57,7 @@ beforeAll(async () => {
       db: schedulingTestDb,
     }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
-    notificationService: createNotificationServiceSpy(),
+    notifications: createChurchNotificationsSpy(),
     unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
   });
   app = await createFastify({ locale: testLocale });

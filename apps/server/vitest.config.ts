@@ -111,6 +111,7 @@ export default defineConfig({
             'tests/application/db-redemption-manager.test.ts',
             'tests/application/db-volunteer-transfer-manager.test.ts',
             'tests/application/invitation-verification-code-manager.test.ts',
+            'tests/application/notifier.test.ts',
             'tests/contract/**/*.test.ts',
             'tests/domain/**/*.test.ts',
             'tests/dtos/**/*.test.ts',

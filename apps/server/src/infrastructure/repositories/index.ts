@@ -10,6 +10,7 @@ export { DrizzleInvitationVerificationCodeRepository } from './drizzle-invitatio
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
 export { DrizzleMinistryInvitationRepository } from './drizzle-ministry-invitation.repository';
 export { DrizzleMinistryParticipationRepository } from './drizzle-ministry-participation.repository';
+export { DrizzleNotificationRepository } from './drizzle-notification.repository';
 export { DrizzleOutboxRepository } from './drizzle-outbox.repository';
 export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
 export { DrizzleRedemptionRepository } from './drizzle-redemption.repository';
@@ -22,6 +23,5 @@ export { DrizzleUnavailableShiftRepository } from './drizzle-unavailable-shift.r
 export { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 export { DrizzleUsualSetupRepository } from './drizzle-usual-setup.repository';
 export { DrizzleVolunteerRepository } from './drizzle-volunteer.repository';
-export { DrizzleVolunteerNotificationRepository } from './drizzle-volunteer-notification.repository';
 export { DrizzleVolunteerTransferRepository } from './drizzle-volunteer-transfer.repository';
 export { getClient, withChurchIsolation } from './helpers';

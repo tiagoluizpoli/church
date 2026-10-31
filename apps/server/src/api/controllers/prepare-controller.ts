@@ -529,7 +529,7 @@ export class PrepareController implements FastifyController {
           operationId: 'resendAvailabilityReminder',
           summary: 'Resend an availability reminder',
           description:
-            "Resend the availability reminder VolunteerNotification to a MinistryParticipation's unconfirmed Volunteers.",
+            "Resend the availability reminder Notification to a MinistryParticipation's unconfirmed Volunteers.",
           response: {
             202: resendAvailabilityResponseSchema,
             403: errorResponseSchema,

@@ -94,7 +94,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
       return false;
     },
   };
-  const emailSender: EmailSender = {
+  const emailSender: Pick<EmailSender, 'send'> = {
     async send({ payload }) {
       await send?.();
       sent.push(payload);

@@ -6,6 +6,7 @@ import type {
   EventId,
   MinistryId,
   ShiftId,
+  UserId,
   VolunteerId,
 } from '../../branded-ids';
 import type { AvailabilityCheck } from '../../entities/availability-check';
@@ -20,6 +21,7 @@ export interface ListActiveMembershipsInput {
 export interface ActiveMinistryMembership {
   ministryMembershipId: string;
   volunteerId: VolunteerId;
+  userId: UserId;
   volunteerName: string;
 }
 

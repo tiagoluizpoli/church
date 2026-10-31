@@ -15,9 +15,11 @@ export type ChurchAccessLevel = (typeof CHURCH_ACCESS_LEVEL_OPTIONS)[number];
  * `participate` is the capability to be the subject of a scope's own
  * activity (e.g. served, assigned, scheduled) — a Church Membership `admin`
  * override never grants it; only an actual Ministry Membership, or
- * being the resource's own owner, does.
+ * being the resource's own owner, does. `access` is the plain Church Member
+ * capability to use the Church's member-level features (e.g. one's own
+ * Notification inbox): any current Church Membership, no Volunteer profile.
  */
-export type AuthorityAction = 'manage' | 'participate';
+export type AuthorityAction = 'manage' | 'participate' | 'access';
 
 export interface ChurchMembershipFact {
   churchId: ChurchId;

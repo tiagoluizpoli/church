@@ -3,8 +3,8 @@ import {
   cycle,
   event,
   ministryParticipation,
+  notification as notificationTable,
   shift,
-  volunteerNotification,
 } from '@church/db';
 import {
   addCalendarDays,
@@ -77,23 +77,15 @@ describe('volunteer-dashboard E2E journey recipe', () => {
 
     const notifications = await testDb
       .select()
-      .from(volunteerNotification)
-      .where(eq(volunteerNotification.churchId, journey.church.id));
+      .from(notificationTable)
+      .where(eq(notificationTable.churchId, journey.church.id));
     expect(notifications).toHaveLength(1);
     expect(notifications[0]).toMatchObject({
-      volunteerId,
-      title: journey.notification.title,
-      type: 'assignment_removed',
+      userId: journey.personas.volunteer.userId,
+      kind: 'ministry_invitation',
       readAt: null,
-      eventId: journey.removedEvent.id,
-      assignmentId: null,
-      payload: {
-        eventId: journey.removedEvent.id,
-        assignmentId: expect.any(String),
-        section: 'assignments',
-      },
+      data: { ministryName: journey.notification.ministryName },
     });
-    expect(notifications[0]?.body).toContain(journey.removedEvent.title);
   });
 
   it('leaves the removal on its own past event: no Assignment row, so neither the confirmed Care one nor any upcoming one is touched', async () => {
@@ -136,9 +128,9 @@ describe('volunteer-dashboard E2E journey recipe', () => {
       .from(shift)
       .where(eq(shift.churchId, journey.church.id));
     const [notification] = await testDb
-      .select({ createdAt: volunteerNotification.createdAt })
-      .from(volunteerNotification)
-      .where(eq(volunteerNotification.churchId, journey.church.id));
+      .select({ createdAt: notificationTable.createdAt })
+      .from(notificationTable)
+      .where(eq(notificationTable.churchId, journey.church.id));
     const [cycleRow] = await testDb
       .select({ startDate: cycle.startDate })
       .from(cycle)
@@ -172,9 +164,9 @@ describe('volunteer-dashboard E2E journey recipe', () => {
   it('restores the notification and assignment when a mutated graph is reloaded', async () => {
     const journey = await load({ anchor: ANCHOR });
     await testDb
-      .update(volunteerNotification)
+      .update(notificationTable)
       .set({ readAt: new Date() })
-      .where(eq(volunteerNotification.id, journey.notification.id));
+      .where(eq(notificationTable.id, journey.notification.id));
     await testDb
       .update(assignment)
       .set({ status: 'declined' })
@@ -184,9 +176,9 @@ describe('volunteer-dashboard E2E journey recipe', () => {
 
     expect(reloaded).toEqual(journey);
     const [row] = await testDb
-      .select({ readAt: volunteerNotification.readAt })
-      .from(volunteerNotification)
-      .where(eq(volunteerNotification.id, journey.notification.id));
+      .select({ readAt: notificationTable.readAt })
+      .from(notificationTable)
+      .where(eq(notificationTable.id, journey.notification.id));
     expect(row?.readAt).toBeNull();
   });
 });

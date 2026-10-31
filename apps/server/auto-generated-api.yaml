@@ -3612,7 +3612,7 @@ paths:
       summary: Resend an availability reminder
       tags:
         - prepare
-      description: Resend the availability reminder VolunteerNotification to a
+      description: Resend the availability reminder Notification to a
         MinistryParticipation's unconfirmed Volunteers.
       parameters:
         - schema:
@@ -4754,6 +4754,529 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/notifications:
+    get:
+      operationId: getNotifications
+      summary: List the caller's Notifications
+      tags:
+        - notifications
+      description: List the caller's own Notifications in the Active Church, newest
+        first, with the unread count of the whole inbox.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: cursor
+          required: false
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          in: query
+          name: limit
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - ministry_invitation
+                            data:
+                              type: object
+                              properties:
+                                ministryInvitationId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                              required:
+                                - ministryInvitationId
+                                - ministryId
+                                - ministryName
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - availability_opened
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                cycleName:
+                                  type: string
+                                cycleStartDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                cycleEndDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                              required:
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - cycleName
+                                - cycleStartDate
+                                - cycleEndDate
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - availability_reminder
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                cycleName:
+                                  type: string
+                                cycleStartDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                cycleEndDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                              required:
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - cycleName
+                                - cycleStartDate
+                                - cycleEndDate
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - schedule_published
+                            data:
+                              type: object
+                              properties:
+                                eventId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                eventTitle:
+                                  type: string
+                                eventStart:
+                                  type: string
+                                  format: date-time
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                eventEnd:
+                                  type: string
+                                  format: date-time
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchTimezone:
+                                  type: string
+                                shifts:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      roleName:
+                                        type: string
+                                      startsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    required:
+                                      - roleName
+                                      - startsAt
+                                    additionalProperties: false
+                              required:
+                                - eventId
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - eventTitle
+                                - eventStart
+                                - eventEnd
+                                - churchTimezone
+                                - shifts
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                  nextCursor:
+                    type: string
+                  unreadCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                required:
+                  - items
+                  - unreadCount
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/notifications/{notificationId}:
+    patch:
+      operationId: markNotificationRead
+      summary: Mark a Notification read
+      tags:
+        - notifications
+      description: Mark one of the caller's own Notifications as read. Repeating it
+        keeps the first read Instant.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: notificationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marked:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - marked
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      summary: Mark all Notifications read
+      tags:
+        - notifications
+      description: Mark every unread Notification of the caller in the Active Church
+        as read, including those not yet loaded.
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marked:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - marked
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/church/{invitationId}:
     get:
       operationId: previewChurchInvitation
@@ -5844,31 +6367,238 @@ paths:
                   notificationPreview:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        type:
-                          type: string
-                        title:
-                          type: string
-                        body:
-                          type: string
-                        readAt:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        createdAt:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                      required:
-                        - id
-                        - type
-                        - title
-                        - body
-                        - createdAt
-                      additionalProperties: false
+                      oneOf:
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - ministry_invitation
+                            data:
+                              type: object
+                              properties:
+                                ministryInvitationId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                              required:
+                                - ministryInvitationId
+                                - ministryId
+                                - ministryName
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - availability_opened
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                cycleName:
+                                  type: string
+                                cycleStartDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                cycleEndDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                              required:
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - cycleName
+                                - cycleStartDate
+                                - cycleEndDate
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - availability_reminder
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                cycleName:
+                                  type: string
+                                cycleStartDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                cycleEndDate:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                              required:
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - cycleName
+                                - cycleStartDate
+                                - cycleEndDate
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - schedule_published
+                            data:
+                              type: object
+                              properties:
+                                eventId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                eventTitle:
+                                  type: string
+                                eventStart:
+                                  type: string
+                                  format: date-time
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                eventEnd:
+                                  type: string
+                                  format: date-time
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchTimezone:
+                                  type: string
+                                shifts:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      roleName:
+                                        type: string
+                                      startsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    required:
+                                      - roleName
+                                      - startsAt
+                                    additionalProperties: false
+                              required:
+                                - eventId
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - eventTitle
+                                - eventStart
+                                - eventEnd
+                                - churchTimezone
+                                - shifts
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
                   defaultMinistryId:
                     type: string
                   ministryOptions:
@@ -6496,142 +7226,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/volunteer/notifications:
-    get:
-      operationId: getNotifications
-      summary: List the caller's VolunteerNotifications
-      tags:
-        - volunteer
-      description: List the current Volunteer's VolunteerNotifications, paginated by cursor.
-      parameters:
-        - schema:
-            type: string
-            format: date-time
-            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-          in: query
-          name: cursor
-          required: false
-        - schema:
-            type: number
-          in: query
-          name: limit
-          required: false
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        volunteerId:
-                          type: string
-                        ministryId:
-                          type: string
-                        eventId:
-                          type: string
-                        assignmentId:
-                          type: string
-                        type:
-                          type: string
-                          enum:
-                            - schedule_published
-                            - assignment_added
-                            - assignment_changed
-                            - assignment_removed
-                            - availability_reminder
-                            - assignment_reminder
-                        title:
-                          type: string
-                        body:
-                          type: string
-                        payload:
-                          type: object
-                          additionalProperties:
-                            nullable: true
-                            type: string
-                        readAt:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        createdAt:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                      required:
-                        - id
-                        - volunteerId
-                        - type
-                        - title
-                        - body
-                        - payload
-                        - createdAt
-                      additionalProperties: false
-                  nextCursor:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                required:
-                  - items
-                additionalProperties: false
-  /api/v1/volunteer/notifications/{notificationId}:
-    patch:
-      operationId: markNotificationRead
-      summary: Mark a VolunteerNotification read
-      tags:
-        - volunteer
-      description: Mark one of the current Volunteer's VolunteerNotifications as read.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: notificationId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  marked:
-                    type: boolean
-                required:
-                  - marked
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-  /api/v1/volunteer/notifications/read-all:
-    post:
-      operationId: markAllNotificationsRead
-      summary: Mark all VolunteerNotifications read
-      tags:
-        - volunteer
-      description: Mark every one of the current Volunteer's VolunteerNotifications as read.
-      responses:
-        "200":
-          description: Default Response
   /api/v1/volunteer/schedule:
     get:
       operationId: getPublishedVolunteerSchedule

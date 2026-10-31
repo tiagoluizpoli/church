@@ -1,11 +1,13 @@
 import { NotFoundError } from '@church/core';
 import { church, member, organization, user } from '@church/db';
 import { and, eq } from 'drizzle-orm';
+import type { UserId } from '../../domain/branded-ids';
 import type {
   ChurchRepository,
+  FindChurchMemberEmailInput,
   GetChurchByIdInput,
   GetChurchBySlugInput,
-  ListChurchAdminEmailsInput,
+  ListChurchAdminUserIdsInput,
 } from '../../domain/contracts/infrastructure/church.repository';
 import type { Church } from '../../domain/entities/church';
 import { mapChurch } from '../mappers/church.mapper';
@@ -55,12 +57,26 @@ export class DrizzleChurchRepository implements ChurchRepository {
    * from Better Auth's `member.role = 'admin'` for the organization whose id
    * equals the Church id (spec §4.5).
    */
-  async listAdminEmails({ id }: ListChurchAdminEmailsInput): Promise<string[]> {
-    const rows = await getClient({ db: this.db })
+  async listAdminUserIds({
+    id,
+    tx,
+  }: ListChurchAdminUserIdsInput): Promise<UserId[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({ userId: member.userId })
+      .from(member)
+      .where(and(eq(member.organizationId, id), eq(member.role, 'admin')));
+    return rows.map((row) => row.userId as UserId);
+  }
+
+  async findMemberEmail({
+    id,
+    userId,
+  }: FindChurchMemberEmailInput): Promise<string | null> {
+    const [row] = await getClient({ db: this.db })
       .select({ email: user.email })
       .from(member)
       .innerJoin(user, eq(user.id, member.userId))
-      .where(and(eq(member.organizationId, id), eq(member.role, 'admin')));
-    return rows.map((row) => row.email);
+      .where(and(eq(member.organizationId, id), eq(member.userId, userId)));
+    return row?.email ?? null;
   }
 }

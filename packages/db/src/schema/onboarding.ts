@@ -169,8 +169,8 @@ export const ministryInvitationRole = pgTable(
  * One general, Church-scoped outbox serving invitation emails and
  * Volunteer-Transfer notifications alike — one worker, one retry policy,
  * one place support looks. The payload references its subject by id and is
- * rendered at send time, so a message never carries a stale copy. Nothing
- * drains this table yet — the worker lands with delivery (a later ticket).
+ * rendered once, before the first email attempt, and that prepared copy is
+ * what every retry resends.
  */
 export const outboxMessage = pgTable('outbox_message', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -189,6 +189,22 @@ export const outboxMessage = pgTable('outbox_message', {
   providerMessageId: text('provider_message_id'),
   correlationId: text('correlation_id').notNull(),
   sentAt: timestamp('sent_at', { withTimezone: true, mode: 'date' }),
+  /** The exact prepared email, persisted before its first external attempt
+   * and replayed unchanged on retry. Private server data. */
+  emailRequest: jsonb('email_request'),
+  emailIdempotencyKey: text('email_idempotency_key'),
+  emailFirstAttemptAt: timestamp('email_first_attempt_at', {
+    withTimezone: true,
+    mode: 'date',
+  }),
+  /** Confirmed provider receipt: a replay skips an already-delivered email. */
+  emailDeliveredAt: timestamp('email_delivered_at', {
+    withTimezone: true,
+    mode: 'date',
+  }),
+  /** Settled per-sink outcomes of a `notification` row (sink name →
+   * delivered | skipped | failed); a whole-row retry skips settled sinks. */
+  channelOutcomes: jsonb('channel_outcomes'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
     .notNull(),

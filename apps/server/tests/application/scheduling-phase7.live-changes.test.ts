@@ -101,13 +101,6 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       peopleNeeded: 1,
     });
 
-    const leader = await seedVolunteerMembership({
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Leader Volunteer',
-      email: 'leader-phase7@test.com',
-      ministryAccessLevel: 'leader',
-    });
     const volunteerA = await seedVolunteerMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
@@ -163,12 +156,8 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     );
     expect(completionAfterCancel.completionPercent).toBe(0);
 
-    expect(managers.notificationSpy.notifyVolunteer.mock.calls).toContainEqual([
-      expect.objectContaining({
-        type: 'assignment_removed',
-        volunteerId: leader.volunteer.id,
-      }),
-    ]);
+    // The dropped assignment_removed kind produces nothing.
+    expect(managers.notificationSpy.enqueue).not.toHaveBeenCalled();
   });
 
   it("DL2-LC-02 rejects a volunteer cancelling someone else's assignment", async () => {
@@ -347,18 +336,8 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       }),
     ).rejects.toBeInstanceOf(NotFoundError);
 
-    expect(managers.notificationSpy.notifyVolunteer.mock.calls).toContainEqual([
-      expect.objectContaining({
-        type: 'assignment_removed',
-        volunteerId: outgoing.volunteer.id,
-      }),
-    ]);
-    expect(managers.notificationSpy.notifyVolunteer.mock.calls).toContainEqual([
-      expect.objectContaining({
-        type: 'assignment_added',
-        volunteerId: incoming.volunteer.id,
-      }),
-    ]);
+    // The dropped assignment_added / assignment_removed kinds produce nothing.
+    expect(managers.notificationSpy.enqueue).not.toHaveBeenCalled();
   });
 
   it('DL2-LC-04 blocks self-cancel inside the church-configured lead time before the shift (FR-028)', async () => {

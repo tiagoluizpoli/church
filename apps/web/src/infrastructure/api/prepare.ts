@@ -168,7 +168,7 @@ const getAvailabilityStatus = (
       );
     }
   /**
- * Resend the availability reminder VolunteerNotification to a MinistryParticipation's unconfirmed Volunteers.
+ * Resend the availability reminder Notification to a MinistryParticipation's unconfirmed Volunteers.
  * @summary Resend an availability reminder
  */
 const resendAvailabilityReminder = (

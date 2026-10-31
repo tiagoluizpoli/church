@@ -1,68 +1,51 @@
-import { volunteerNotification } from '@church/db';
+import { randomUUID } from 'node:crypto';
+import { notification } from '@church/db';
 import { type Instant, toDate } from '@church/time';
+import type { NotificationPayload } from '../../src/domain/notification-kinds';
 import type { SeedWriter } from '../recipe';
 import { requireInsertedRow } from './require-inserted-row';
 
-export type SeededVolunteerNotification =
-  typeof volunteerNotification.$inferSelect;
-export type VolunteerNotificationType = SeededVolunteerNotification['type'];
+export type SeededNotification = typeof notification.$inferSelect;
 
-export interface BuildVolunteerNotificationInput {
+export interface BuildNotificationInput {
   db: SeedWriter;
+  userId: string;
   churchId: string;
-  volunteerId: string;
-  id: string;
-  type: VolunteerNotificationType;
-  title: string;
-  body: string;
-  payload: Record<string, string | null>;
   /** Explicit, so a graph never depends on the wall clock at load time. */
   createdAt: Instant;
-  ministryId?: string;
-  eventId?: string;
-  assignmentId?: string;
-  /** The Cycle the notification is packaged under. */
-  cycleId?: string;
-  /** When the Volunteer opened it; absent leaves it unread. */
+  payload: NotificationPayload;
+  id?: string;
+  /** Defaults to a fresh id; pass one to model a replay of the same outbox row. */
+  sourceOutboxId?: string;
+  /** When the member opened it; absent leaves it unread. */
   readAt?: Instant;
 }
 
-/** Direct state by purpose (ADR 0006): an in-app notification of a Volunteer, as left by a schedule change; unread unless `readAt` is given. */
-export async function buildVolunteerNotification({
+/** Direct state by purpose (ADR 0006): a member's inbox Notification as the inbox sink leaves it; unread unless `readAt` is given. */
+export async function buildNotification({
   db,
+  userId,
   churchId,
-  volunteerId,
-  id,
-  type,
-  title,
-  body,
-  payload,
   createdAt,
-  ministryId,
-  eventId,
-  assignmentId,
-  cycleId,
+  payload,
+  id,
+  sourceOutboxId,
   readAt,
-}: BuildVolunteerNotificationInput): Promise<SeededVolunteerNotification> {
+}: BuildNotificationInput): Promise<SeededNotification> {
   return requireInsertedRow({
     rows: await db
-      .insert(volunteerNotification)
+      .insert(notification)
       .values({
         id,
+        userId,
         churchId,
-        volunteerId,
-        type,
-        title,
-        body,
-        payload,
+        kind: payload.kind,
+        data: payload.data,
+        sourceOutboxId: sourceOutboxId ?? randomUUID(),
         createdAt: toDate({ instant: createdAt }),
-        ministryId,
-        eventId,
-        assignmentId,
-        cycleId,
         readAt: readAt === undefined ? undefined : toDate({ instant: readAt }),
       })
       .returning(),
-    description: `Volunteer Notification ${id}`,
+    description: `Notification of ${userId} in ${churchId}`,
   });
 }

@@ -1,20 +1,27 @@
 import { outboxMessage } from '@church/db';
-import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { fromDate, toDate } from '@church/time';
+import { and, asc, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
+import type { PreparedEmail } from '../../domain/contracts/infrastructure/email-sender';
 import type {
   ChainedInvitationOutboxMessage,
+  ChannelOutcomes,
   ChurchBootstrapOutboxMessage,
   ClaimPendingOutboxMessagesInput,
+  EnqueueNotificationOutboxMessageInput,
   FindLatestOutboxStatusForMinistryInvitationInput,
+  FindOutboxEmailDeliveryInput,
   MarkOutboxMessageFailedInput,
   MarkOutboxMessageSentInput,
-  MinistryInvitationOutboxMessage,
+  NotificationOutboxMessage,
+  OutboxEmailDelivery,
   OutboxMessage,
   OutboxMessageStatus,
   OutboxRepository,
+  RecordOutboxDeliveryFactsInput,
+  RecordOutboxEmailDeliveredInput,
+  RecordOutboxEmailPreparedInput,
   RedemptionAcceptedOutboxMessage,
-  TransferLeaderlessMinistryOutboxMessage,
-  TransferMinistryDigestOutboxMessage,
 } from '../../domain/contracts/infrastructure/outbox.repository';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -59,19 +66,90 @@ export class DrizzleOutboxRepository implements OutboxRepository {
   }
 
   async markSent(input: MarkOutboxMessageSentInput): Promise<void> {
-    const { id, providerMessageId, sentAt, tx } = input;
+    const { id, providerMessageId, sentAt, channelOutcomes, tx } = input;
     await getClient({ db: this.db, tx })
       .update(outboxMessage)
-      .set({ status: 'sent', providerMessageId, sentAt })
+      .set({ status: 'sent', providerMessageId, sentAt, channelOutcomes })
       .where(eq(outboxMessage.id, id));
   }
 
   async markFailed(input: MarkOutboxMessageFailedInput): Promise<void> {
-    const { id, lastError, attempts, status, scheduledFor, tx } = input;
+    const {
+      id,
+      lastError,
+      attempts,
+      status,
+      scheduledFor,
+      channelOutcomes,
+      tx,
+    } = input;
     await getClient({ db: this.db, tx })
       .update(outboxMessage)
-      .set({ status, attempts, lastError, scheduledFor })
+      .set({ status, attempts, lastError, scheduledFor, channelOutcomes })
       .where(eq(outboxMessage.id, id));
+  }
+
+  async recordEmailPrepared(
+    input: RecordOutboxEmailPreparedInput,
+  ): Promise<void> {
+    const { id, email, idempotencyKey, firstAttemptAt, tx } = input;
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        emailRequest: email,
+        emailIdempotencyKey: idempotencyKey,
+        emailFirstAttemptAt: toDate({ instant: firstAttemptAt }),
+      })
+      .where(eq(outboxMessage.id, id));
+  }
+
+  async recordDeliveryFacts(
+    input: RecordOutboxDeliveryFactsInput,
+  ): Promise<void> {
+    const { id, facts, tx } = input;
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        payload: sql`${outboxMessage.payload} || ${JSON.stringify({ facts })}::jsonb`,
+      })
+      .where(eq(outboxMessage.id, id));
+  }
+
+  async recordEmailDelivered(
+    input: RecordOutboxEmailDeliveredInput,
+  ): Promise<void> {
+    const { id, providerMessageId, deliveredAt, tx } = input;
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        providerMessageId,
+        emailDeliveredAt: toDate({ instant: deliveredAt }),
+      })
+      .where(eq(outboxMessage.id, id));
+  }
+
+  async enqueueNotification(
+    input: EnqueueNotificationOutboxMessageInput,
+  ): Promise<void> {
+    const { churchId, payload, correlationId, scheduledFor, tx } = input;
+    await getClient({ db: this.db, tx }).insert(outboxMessage).values({
+      churchId,
+      kind: 'notification',
+      payload,
+      correlationId,
+      scheduledFor,
+    });
+  }
+
+  async findEmailDelivery(
+    input: FindOutboxEmailDeliveryInput,
+  ): Promise<OutboxEmailDelivery | null> {
+    const { id, tx } = input;
+    const [row] = await getClient({ db: this.db, tx })
+      .select()
+      .from(outboxMessage)
+      .where(eq(outboxMessage.id, id));
+    return (row && mapEmailDelivery(row)) ?? null;
   }
 
   async findLatestStatusForMinistryInvitation(
@@ -84,11 +162,17 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .where(
         and(
           withChurchIsolation({ table: outboxMessage, churchId }),
-          inArray(outboxMessage.kind, [
-            'invitation.chained',
-            'invitation.ministry',
-          ]),
-          sql`${outboxMessage.payload} ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+          or(
+            and(
+              eq(outboxMessage.kind, 'invitation.chained'),
+              sql`${outboxMessage.payload} ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+            ),
+            and(
+              eq(outboxMessage.kind, 'notification'),
+              sql`${outboxMessage.payload} ->> 'kind' = 'ministry_invitation'`,
+              sql`${outboxMessage.payload} -> 'data' ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+            ),
+          ),
         ),
       )
       .orderBy(desc(outboxMessage.createdAt))
@@ -116,6 +200,7 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
     providerMessageId: row.providerMessageId ?? undefined,
     correlationId: row.correlationId,
     sentAt: row.sentAt ?? undefined,
+    emailDelivery: mapEmailDelivery(row),
   };
 
   switch (row.kind) {
@@ -124,12 +209,6 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         ...base,
         kind: row.kind,
         payload: row.payload as ChainedInvitationOutboxMessage['payload'],
-      };
-    case 'invitation.ministry':
-      return {
-        ...base,
-        kind: row.kind,
-        payload: row.payload as MinistryInvitationOutboxMessage['payload'],
       };
     case 'invitation.church-bootstrap':
       return {
@@ -143,18 +222,31 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         kind: row.kind,
         payload: row.payload as RedemptionAcceptedOutboxMessage['payload'],
       };
-    case 'transfer.ministry-digest':
+    case 'notification':
       return {
         ...base,
         kind: row.kind,
-        payload: row.payload as TransferMinistryDigestOutboxMessage['payload'],
-      };
-    case 'transfer.leaderless-ministry':
-      return {
-        ...base,
-        kind: row.kind,
-        payload:
-          row.payload as TransferLeaderlessMinistryOutboxMessage['payload'],
+        payload: row.payload as NotificationOutboxMessage['payload'],
+        channelOutcomes: (row.channelOutcomes ?? {}) as ChannelOutcomes,
       };
   }
+}
+
+/** `email_request` is jsonb written only by `recordEmailPrepared`, from a
+ * JSON-safe `PreparedEmail`, so the read-back is that same shape. */
+function mapEmailDelivery(
+  row: OutboxMessageRow,
+): OutboxEmailDelivery | undefined {
+  const { emailRequest, emailIdempotencyKey, emailFirstAttemptAt } = row;
+  if (!emailRequest || !emailIdempotencyKey || !emailFirstAttemptAt) {
+    return undefined;
+  }
+  return {
+    email: emailRequest as PreparedEmail,
+    idempotencyKey: emailIdempotencyKey,
+    firstAttemptAt: fromDate({ date: emailFirstAttemptAt }),
+    deliveredAt: row.emailDeliveredAt
+      ? fromDate({ date: row.emailDeliveredAt })
+      : undefined,
+  };
 }

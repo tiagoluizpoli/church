@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { NotificationDetailSheet } from '@/features/volunteers/components/notification-detail-sheet';
-import { NotificationsInboxSection } from '@/features/volunteers/components/notifications-inbox-section';
-import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';
-import { resolveNotificationTarget } from '@/features/volunteers/lib/notification-navigation';
+import { NotificationDetailSheet } from '@/features/notifications/components/notification-detail-sheet';
+import { NotificationsInboxSection } from '@/features/notifications/components/notifications-inbox-section';
+import { useNotificationInbox } from '@/features/notifications/hooks/use-notification-inbox';
+import { openNotificationDestination } from '@/features/notifications/lib/notification-navigation';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/notifications',
@@ -12,17 +12,17 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const navigate = useNavigate();
-  const inbox = useNotificationInbox(0);
+  const inbox = useNotificationInbox();
 
   const handleOpenContext = () => {
     const notification = inbox.selectedNotification;
     inbox.setSelectedNotificationId(undefined);
-
-    if (!notification) {
-      return;
+    if (notification) {
+      openNotificationDestination({
+        item: notification.source,
+        navigate: (target) => navigate(target),
+      });
     }
-
-    navigate(resolveNotificationTarget(notification.deepLink));
   };
 
   return (
@@ -31,6 +31,9 @@ function RouteComponent() {
         variant="full"
         unreadCount={inbox.unreadCount}
         pages={inbox.pages}
+        isLoading={inbox.isLoading}
+        isError={inbox.isError}
+        onRetry={inbox.refresh}
         isLoadingMore={inbox.isLoadingMore}
         hasMore={inbox.hasMore}
         onLoadMore={inbox.loadMore}

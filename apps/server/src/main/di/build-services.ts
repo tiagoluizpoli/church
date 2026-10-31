@@ -1,32 +1,21 @@
 import { env } from '@church/env/server';
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
-import { LocalNotificationService } from '../../infrastructure/services/local-notification-service';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
-import type { Repositories } from './build-repositories';
 import type { CompositionRootDependencies } from './dependencies';
 
 export type Services = Pick<
   CompositionRootDependencies,
-  'notificationService' | 'redemptionIdentityGateway' | 'emailSender'
+  'redemptionIdentityGateway' | 'emailSender'
 > &
   // Absent in production, where no capturing sender exists.
   Partial<Pick<CompositionRootDependencies, 'verificationCodeInspector'>>;
 
 export interface BuildServicesInput {
-  repositories: Pick<Repositories, 'volunteerNotificationRepository'>;
   overrides: Partial<CompositionRootDependencies>;
 }
 
-export function buildServices({
-  repositories: { volunteerNotificationRepository },
-  overrides,
-}: BuildServicesInput): Services {
-  const notificationService =
-    overrides.notificationService ??
-    new LocalNotificationService({
-      volunteerNotificationRepo: volunteerNotificationRepository,
-    });
+export function buildServices({ overrides }: BuildServicesInput): Services {
   const redemptionIdentityGateway =
     overrides.redemptionIdentityGateway ??
     new BetterAuthRedemptionIdentityGateway();
@@ -50,7 +39,6 @@ export function buildServices({
       : captureEmailSender);
 
   return {
-    notificationService,
     redemptionIdentityGateway,
     emailSender,
     verificationCodeInspector,

@@ -8,7 +8,7 @@ import {
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, eq, inArray } from 'drizzle-orm';
-import type { MinistryId, VolunteerId } from '../../domain/branded-ids';
+import type { MinistryId, UserId, VolunteerId } from '../../domain/branded-ids';
 import type {
   FindVolunteerByUserIdGloballyInput,
   FindVolunteerByUserIdInput,
@@ -16,7 +16,7 @@ import type {
   HasLeadershipInMinistryInput,
   HasMembershipInMinistryInput,
   HasRoleQualificationInput,
-  ListActiveLeaderEmailsInput,
+  ListActiveLeaderUserIdsInput,
   ListLedMinistriesInput,
   ListMemberMinistryIdsInput,
   ListMinistryMembershipsInput,
@@ -395,17 +395,16 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     }));
   }
 
-  async listActiveLeaderEmails({
+  async listActiveLeaderUserIds({
     churchId,
     ministryId,
     tx,
-  }: ListActiveLeaderEmailsInput): Promise<string[]> {
+  }: ListActiveLeaderUserIdsInput): Promise<UserId[]> {
     const db = getClient({ db: this.db, tx });
     const rows = await db
-      .select({ email: user.email })
+      .select({ userId: volunteer.userId })
       .from(ministryMembership)
       .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
-      .innerJoin(user, eq(user.id, volunteer.userId))
       .where(
         and(
           eq(ministryMembership.ministryId, ministryId),
@@ -414,7 +413,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryMembership.ministryAccessLevel, 'leader'),
         ),
       );
-    return rows.map((r) => r.email);
+    return rows.map((r) => r.userId as UserId);
   }
 }
 

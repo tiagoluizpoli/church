@@ -1,5 +1,10 @@
 import { addChurchMember } from '@church/db';
-import type { CalendarDay } from '@church/time';
+import {
+  addCalendarDays,
+  type CalendarDay,
+  parseTimeOfDay,
+  toInstant,
+} from '@church/time';
 import { hashPassword } from 'better-auth/crypto';
 import { SEED_PERSONA_PASSWORD } from '../blueprints/credentials';
 import { DEVELOPMENT_BLUEPRINT } from '../blueprints/development';
@@ -17,6 +22,7 @@ import {
 import { deriveSeedId } from '../builders/derived-id';
 import { buildAuthenticatableUser } from '../builders/identity';
 import { buildMinistry, buildRole, buildSector } from '../builders/ministry';
+import { buildNotification } from '../builders/notification';
 import { buildMinistryMembership, buildVolunteer } from '../builders/volunteer';
 import type { SeededChurchSummary, SeedRecipe, SeedWriter } from '../recipe';
 import {
@@ -303,6 +309,74 @@ async function loadChurchDirectory({
   };
 }
 
+interface LoadMemberInboxInput {
+  db: SeedWriter;
+  anchor: CalendarDay;
+  blueprint: ChurchDirectoryBlueprint;
+  church: SeededChurchSummary;
+  ministries: Map<string, SeededMinistryIds>;
+  userIdByEmail: Map<string, string>;
+}
+
+/**
+ * Seeds each ChurchAdmin's private inbox, an admin with no Volunteer
+ * profile, with one unread and one read Ministry invitation Notification
+ * naming a Ministry of their own Church — enough to see the bell, the
+ * unread count and the detail sheet, and never another Church's inbox.
+ */
+async function loadMemberInbox({
+  db,
+  anchor,
+  blueprint,
+  church,
+  ministries,
+  userIdByEmail,
+}: LoadMemberInboxInput): Promise<void> {
+  const userId = requireId({
+    ids: userIdByEmail,
+    key: blueprint.churchAdmin.email,
+    description: `User ${blueprint.churchAdmin.email}`,
+  });
+  const noon = parseTimeOfDay({ value: '12:00' });
+  const sentOn = (days: number) =>
+    toInstant({
+      day: addCalendarDays({ day: anchor, days }),
+      time: noon,
+      timeZone: blueprint.church.timezone,
+    });
+  let index = 0;
+  for (const [ministryName, structure] of ministries) {
+    if (index === 2) break;
+    await buildNotification({
+      db,
+      userId,
+      churchId: church.id,
+      id: deriveSeedId({
+        kind: 'notification',
+        parentIds: [church.id, userId, structure.ministryId],
+      }),
+      sourceOutboxId: deriveSeedId({
+        kind: 'notification-outbox',
+        parentIds: [church.id, userId, structure.ministryId],
+      }),
+      payload: {
+        kind: 'ministry_invitation',
+        data: {
+          ministryInvitationId: deriveSeedId({
+            kind: 'notification-ministry-invitation',
+            parentIds: [church.id, userId, structure.ministryId],
+          }),
+          ministryId: structure.ministryId,
+          ministryName,
+        },
+      },
+      createdAt: sentOn(-1 - index),
+      readAt: index === 0 ? undefined : sentOn(-index),
+    });
+    index += 1;
+  }
+}
+
 /**
  * The scenario `db:reseed:dev` loads: the realistic Igreja Semente directory
  * and the small Igreja Colheita, joined by multi-Church Church Memberships.
@@ -381,6 +455,15 @@ export function createDevelopmentRecipe({
         history: blueprint.history,
         ministries: primary.ministries,
         volunteerIdByEmail: primary.volunteerIdByEmail,
+        userIdByEmail,
+      });
+
+      await loadMemberInbox({
+        db,
+        anchor,
+        blueprint: blueprint.primary,
+        church,
+        ministries: primary.ministries,
         userIdByEmail,
       });
 

@@ -196,6 +196,34 @@ describe('AuthorityService — church resource', () => {
       expect(denyReason(decision)).toBe('INSUFFICIENT_ACCESS_LEVEL');
   });
 
+  it.each([
+    'member',
+    'admin',
+  ] as const)('a %s with no Volunteer profile may access the Church', (accessLevel) => {
+    const decision = AuthorityService.authorize(
+      request({
+        actor: actor({
+          volunteerId: null,
+          churchMembership: churchMembership({ accessLevel }),
+        }),
+        action: 'access',
+        resource,
+      }),
+    );
+    expect(allowed(decision)).toBe(true);
+  });
+
+  it('denies access without a current Church Membership', () => {
+    const decision = AuthorityService.authorize(
+      request({
+        actor: actor({ churchMembership: null }),
+        action: 'access',
+        resource,
+      }),
+    );
+    expect(denyReason(decision)).toBe('NO_CHURCH_MEMBERSHIP');
+  });
+
   it('a Church Membership admin override grants management but no participatory capability, even over their own resource', () => {
     const manage = AuthorityService.authorize(
       request({

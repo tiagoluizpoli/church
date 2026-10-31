@@ -61,8 +61,9 @@ const {
   ministryRepository,
   outboxRepository,
   roleRepository,
-  volunteerRepository,
   volunteerTransferRepository,
+  schedulingFacts,
+  buildNotifier,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
 interface RedemptionHarness {
@@ -123,11 +124,13 @@ function createOutboxDrainer({
     churchRepository,
     ministryRepository,
     roleRepository,
-    volunteerRepository,
     volunteerTransferRepository,
     emailSender,
+    notifier: buildNotifier({ emailSender }),
+    schedulingFacts,
     unitOfWork,
     config: appConfig,
+    webBaseUrl: 'https://app.test',
   });
 }
 

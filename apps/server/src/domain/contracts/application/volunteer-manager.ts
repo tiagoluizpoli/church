@@ -5,12 +5,12 @@ import type {
   ChurchId,
   MinistryId,
   ShiftId,
+  UserId,
   VolunteerId,
-  VolunteerNotificationId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
-import type { VolunteerNotification } from '../../entities/volunteer-notification';
+import type { Notification } from '../../entities/notification';
 
 export interface DashboardAvailabilityTask {
   eventId: string;
@@ -47,15 +47,6 @@ export interface DashboardAssignmentGroup {
   assignments: DashboardAssignmentItem[];
 }
 
-export interface DashboardNotificationPreview {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  readAt?: string;
-  createdAt: string;
-}
-
 export interface DashboardMinistryOption {
   id: string;
   name: string;
@@ -65,7 +56,8 @@ export interface VolunteerDashboard {
   availabilityTasks: DashboardAvailabilityTask[];
   upcomingAssignmentGroups: DashboardAssignmentGroup[];
   unreadNotificationCount: number;
-  notificationPreview: DashboardNotificationPreview[];
+  /** The caller's own latest member Notifications (User + Active Church). */
+  notificationPreview: Notification[];
   defaultMinistryId?: string;
   ministryOptions: DashboardMinistryOption[];
 }
@@ -172,12 +164,8 @@ export interface CancelOwnAssignmentInput {
   volunteerId: VolunteerId;
 }
 
-export interface NotificationListResult {
-  items: VolunteerNotification[];
-  nextCursor?: Date;
-}
-
 export interface GetDashboardInput {
+  userId: UserId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
 }
@@ -194,24 +182,6 @@ export interface GetPublishedScheduleInput {
 
 export interface GetMinistryScheduleInput {
   ministryId: MinistryId;
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-}
-
-export interface GetNotificationsInput {
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-  cursor?: Date;
-  limit?: number;
-}
-
-export interface MarkNotificationReadInput {
-  notificationId: VolunteerNotificationId;
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-}
-
-export interface MarkAllNotificationsReadInput {
   volunteerId: VolunteerId;
   churchId: ChurchId;
 }
@@ -239,9 +209,4 @@ export interface IVolunteerManager {
   ): Promise<ConfirmAvailabilityCheckResult>;
   respondToAssignment(input: RespondToAssignmentInput): Promise<Assignment>;
   cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void>;
-  getNotifications(
-    input: GetNotificationsInput,
-  ): Promise<NotificationListResult>;
-  markNotificationRead(input: MarkNotificationReadInput): Promise<void>;
-  markAllNotificationsRead(input: MarkAllNotificationsReadInput): Promise<void>;
 }

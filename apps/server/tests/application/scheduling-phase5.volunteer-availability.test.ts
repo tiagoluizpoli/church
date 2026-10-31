@@ -4,9 +4,8 @@ import {
   availabilityCheck as availabilityCheckTable,
   ministryParticipation,
   unavailableShift as unavailableShiftTable,
-  volunteerNotification,
 } from '@church/db';
-import { fromDate } from '@church/time';
+import { fromDate, parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
@@ -15,23 +14,25 @@ import {
   ChurchId,
   MinistryId,
   ShiftId,
+  UserId,
   VolunteerId,
-  VolunteerNotificationId,
 } from '@/domain/branded-ids';
 import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
+import type { NotificationPayload } from '@/domain/notification-kinds';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleNotificationRepository } from '@/infrastructure/repositories/drizzle-notification.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
+import { buildNotification } from '@/seeds/builders/notification';
 import {
   buildAssignment,
   buildMinistryParticipation,
@@ -51,22 +52,22 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
-import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
+import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 
 interface Phase5Manager {
   volunteerManager: DbVolunteerManager;
-  notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
+  notificationSpy: ReturnType<typeof createChurchNotificationsSpy>;
 }
 
 function createPhase5Manager(): Phase5Manager {
-  const notificationSpy = createNotificationServiceSpy();
+  const notificationSpy = createChurchNotificationsSpy();
   const volunteerManager = new DbVolunteerManager({
     volunteerRepo: new DrizzleVolunteerRepository({ db: schedulingTestDb }),
     assignmentRepo: new DrizzleAssignmentRepository({ db: schedulingTestDb }),
     unavailableShiftRepo: new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     }),
-    notificationRepo: new DrizzleVolunteerNotificationRepository({
+    notificationRepo: new DrizzleNotificationRepository({
       db: schedulingTestDb,
     }),
     eventRepo: new DrizzleEventRepository({ db: schedulingTestDb }),
@@ -79,7 +80,6 @@ function createPhase5Manager(): Phase5Manager {
     availabilityCheckRepo: new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,
     }),
-    notificationService: notificationSpy,
     unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
     config: appConfig,
   });
@@ -420,7 +420,7 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     });
 
     expect(result.state).toBe('confirmed');
-    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
+    expect(notificationSpy.enqueue).not.toHaveBeenCalled();
     const [row] = await schedulingTestDb
       .select()
       .from(availabilityCheckTable)
@@ -440,7 +440,7 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     });
 
     expect(result.state).toBe('confirmed');
-    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
+    expect(notificationSpy.enqueue).not.toHaveBeenCalled();
   });
 
   it('lists checks and resolves detail with available-by-default shifts', async () => {
@@ -558,42 +558,39 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
       eventEnd: new Date('2026-08-09T11:00:00.000Z'),
     });
 
-    await schedulingTestDb.insert(volunteerNotification).values([
-      {
-        id: randomUUID(),
-        churchId: fixture.seed.churchAId,
-        volunteerId: fixture.volunteerId,
-        type: 'schedule_published',
-        title: 'Schedule published',
-        body: 'Your schedule is live',
-        payload: {},
-        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+    const invitation = (name: string): NotificationPayload => ({
+      kind: 'ministry_invitation',
+      data: {
+        ministryInvitationId: randomUUID(),
+        ministryId: fixture.seed.ministryAId,
+        ministryName: name,
       },
-      {
-        id: randomUUID(),
-        churchId: fixture.seed.churchAId,
-        volunteerId: fixture.volunteerId,
-        type: 'availability_reminder',
-        title: 'Availability needed',
-        body: 'Please respond',
-        payload: {},
-        createdAt: new Date('2026-07-02T10:00:00.000Z'),
-      },
-      {
-        id: randomUUID(),
-        churchId: fixture.seed.churchAId,
-        volunteerId: fixture.volunteerId,
-        type: 'assignment_added',
-        title: 'Already read',
-        body: 'Read already',
-        payload: {},
-        readAt: new Date('2026-07-02T11:00:00.000Z'),
-        createdAt: new Date('2026-07-02T09:00:00.000Z'),
-      },
-    ]);
+    });
+    const owner = {
+      db: schedulingTestDb,
+      userId: fixture.seed.adminUserId,
+      churchId: fixture.seed.churchAId,
+    };
+    await buildNotification({
+      ...owner,
+      payload: invitation('Oldest'),
+      createdAt: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
+    });
+    await buildNotification({
+      ...owner,
+      payload: invitation('Newest'),
+      createdAt: parseInstant({ value: '2026-07-02T10:00:00.000Z' }),
+    });
+    await buildNotification({
+      ...owner,
+      payload: invitation('Read already'),
+      createdAt: parseInstant({ value: '2026-07-02T09:00:00.000Z' }),
+      readAt: parseInstant({ value: '2026-07-02T11:00:00.000Z' }),
+    });
 
     const dashboard = await volunteerManager.getDashboard({
       churchId,
+      userId: UserId.from(fixture.seed.adminUserId),
       volunteerId: VolunteerId.from(fixture.volunteerId),
     });
 
@@ -621,8 +618,12 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
     expect(dashboard.unreadNotificationCount).toBe(2);
     expect(dashboard.notificationPreview).toHaveLength(3);
     // Preview is ordered most-recent-first by createdAt.
-    expect(dashboard.notificationPreview[0]?.title).toBe('Availability needed');
-    expect(dashboard.notificationPreview[1]?.title).toBe('Already read');
+    expect(dashboard.notificationPreview[0]?.payload.data).toMatchObject({
+      ministryName: 'Newest',
+    });
+    expect(dashboard.notificationPreview[1]?.payload.data).toMatchObject({
+      ministryName: 'Read already',
+    });
     expect(dashboard.notificationPreview[1]?.readAt).toBeDefined();
 
     expect(dashboard.defaultMinistryId).toBe(fixture.seed.ministryAId);
@@ -686,77 +687,5 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
         volunteerId: VolunteerId.from(fixture.volunteerId),
       }),
     ).rejects.toBeInstanceOf(IsolationBreachError);
-  });
-
-  it('notifications: lists, marks one read, then marks the rest read', async () => {
-    const fixture = await seedPhase5Fixture();
-    const { volunteerManager } = createPhase5Manager();
-    const churchId = ChurchId.from(fixture.seed.churchAId);
-    const volunteerId = VolunteerId.from(fixture.volunteerId);
-
-    const seededRows = await schedulingTestDb
-      .insert(volunteerNotification)
-      .values([
-        {
-          id: randomUUID(),
-          churchId: fixture.seed.churchAId,
-          volunteerId: fixture.volunteerId,
-          type: 'schedule_published',
-          title: 'First',
-          body: 'First body',
-          payload: {},
-          createdAt: new Date('2026-07-01T09:00:00.000Z'),
-        },
-        {
-          id: randomUUID(),
-          churchId: fixture.seed.churchAId,
-          volunteerId: fixture.volunteerId,
-          type: 'schedule_published',
-          title: 'Second',
-          body: 'Second body',
-          payload: {},
-          createdAt: new Date('2026-07-01T10:00:00.000Z'),
-        },
-        {
-          id: randomUUID(),
-          churchId: fixture.seed.churchAId,
-          volunteerId: fixture.volunteerId,
-          type: 'schedule_published',
-          title: 'Third',
-          body: 'Third body',
-          payload: {},
-          createdAt: new Date('2026-07-01T11:00:00.000Z'),
-        },
-      ])
-      .returning();
-
-    const listResult = await volunteerManager.getNotifications({
-      churchId,
-      volunteerId,
-    });
-    expect(listResult.items).toHaveLength(3);
-
-    const targetId = seededRows[0]?.id;
-    if (!targetId) throw new Error('missing seeded notification id');
-
-    await volunteerManager.markNotificationRead({
-      churchId,
-      volunteerId,
-      notificationId: VolunteerNotificationId.from(targetId),
-    });
-
-    const [markedRow] = await schedulingTestDb
-      .select()
-      .from(volunteerNotification)
-      .where(eq(volunteerNotification.id, targetId));
-    expect(markedRow?.readAt).toBeInstanceOf(Date);
-
-    await volunteerManager.markAllNotificationsRead({ churchId, volunteerId });
-
-    const allRows = await schedulingTestDb
-      .select()
-      .from(volunteerNotification)
-      .where(eq(volunteerNotification.volunteerId, fixture.volunteerId));
-    expect(allRows.every((row) => row.readAt != null)).toBe(true);
   });
 });

@@ -60,8 +60,28 @@ export interface VolunteerTransferResult {
  * is returned and nothing is written. `terminal-failure` means the Ministry
  * Invitation is no longer `pending`/unexpired and nothing changed (§8.5 step 2).
  */
+export type TransferDigestKind =
+  | 'transfer_ministry_digest'
+  | 'transfer_leaderless_ministry';
+
+/**
+ * One affected Ministry's digest and its intended Users, selected inside the
+ * transfer transaction after the memberships ended (issue #60): the
+ * remaining active leaders, or every ChurchAdmin when the departing
+ * Volunteer was that Ministry's last active leader.
+ */
+export interface TransferDigest {
+  kind: TransferDigestKind;
+  ministryId: MinistryId;
+  recipientUserIds: UserId[];
+}
+
 export type ExecuteVolunteerTransferOutcome =
-  | { kind: 'transferred'; result: VolunteerTransferResult }
+  | {
+      kind: 'transferred';
+      result: VolunteerTransferResult;
+      digests: TransferDigest[];
+    }
   | { kind: 'already-transferred'; result: VolunteerTransferResult }
   | { kind: 'terminal-failure'; reason: 'INVITATION_UNAVAILABLE' };
 
@@ -88,15 +108,16 @@ export interface TransferDigestDetails {
 export interface VolunteerTransferRepository {
   getTransferImpact(input: GetTransferImpactInput): Promise<TransferImpact>;
   /**
-   * Steps 1–9 and 11–12 of spec §8.5, inside the caller's transaction —
-   * including the outbox enqueue (step 9), one row per affected Ministry
-   * (issue #60).
+   * Steps 1–9 and 11–12 of spec §8.5, inside the caller's transaction. It
+   * selects each affected Ministry's digest recipients but enqueues nothing:
+   * the caller hands them to the Church notification boundary in the same
+   * transaction.
    */
   executeTransfer(
     input: ExecuteVolunteerTransferInput,
   ): Promise<ExecuteVolunteerTransferOutcome>;
 
-  /** Content for a `transfer.ministry-digest` / `transfer.leaderless-ministry` send (issue #60). */
+  /** Content for a transfer digest send, either kind (issue #60). */
   getDigestDetails(
     input: GetTransferDigestDetailsInput,
   ): Promise<TransferDigestDetails>;

@@ -56,3 +56,19 @@ describe('locale config', () => {
     expect(appConfigSchema.safeParse(bad).success).toBe(false);
   });
 });
+
+describe('notifications config', () => {
+  it('defaults both sinks on and polls every two minutes', () => {
+    expect(appConfig.notifications.email.enabled).toBe(true);
+    expect(appConfig.notifications.inbox.enabled).toBe(true);
+    expect(appConfig.notifications.pollIntervalMs).toBe(2 * 60 * 1000);
+  });
+
+  it('refuses a zero poll interval', () => {
+    const bad = {
+      ...appConfig,
+      notifications: { ...appConfig.notifications, pollIntervalMs: 0 },
+    };
+    expect(appConfigSchema.safeParse(bad).success).toBe(false);
+  });
+});

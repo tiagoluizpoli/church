@@ -20,7 +20,6 @@ import {
   unavailableShift,
   user,
   volunteer,
-  volunteerNotification,
 } from '../../src/schema';
 import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
@@ -318,15 +317,6 @@ describe('Scheduling reshape schema', () => {
       churchId: seed.churchAId,
       availabilityCheckId: check.id,
       shiftId: graph.shiftId,
-    });
-    await testDb.insert(volunteerNotification).values({
-      churchId: seed.churchAId,
-      volunteerId: seed.volunteerId,
-      cycleId: graph.cycleId,
-      type: 'availability_reminder',
-      title: 'Availability requested',
-      body: 'Please respond',
-      payload: {},
     });
 
     const unavailableShifts = await testDb

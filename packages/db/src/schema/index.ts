@@ -11,4 +11,3 @@ export * from './participation';
 export * from './planning';
 export * from './scheduling';
 export * from './todo';
-export * from './volunteer-notifications';

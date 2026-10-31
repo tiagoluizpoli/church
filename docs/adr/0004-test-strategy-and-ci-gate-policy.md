@@ -51,12 +51,12 @@ through it. It:
 
 | Script | Runs | Needs Docker | Used by |
 |---|---|---|---|
-| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests picked by import graph | no | the pre-push hook |
-| `validate:affected` | the above, plus integration tests and the selected browser journeys, on whole affected workspaces | yes | the per-ticket check, and the daily gate in CI |
+| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests picked by import graph (whole suite when the graph can't trace a change or reaches no test) | no | the pre-push hook |
+| `validate:affected` | the above, plus integration tests and the selected browser journeys, on whole affected workspaces | yes | the per-ticket check, and the Develop Gate in CI |
 | `validate` | everything | yes | final handoff and the release gate |
 
 - The pre-push hook runs `validate:no-docker`. Integration and browser-journey
-  failures are reported by the daily gate on the pull request.
+  failures are reported by the Develop Gate on the pull request.
 - The per-ticket check is the full `validate:affected`. Ticket branches that
   merge into a wrapper's integration branch get no CI, so this run is their
   only integration and E2E check before the combined pull request.
@@ -67,9 +67,9 @@ through it. It:
   its changes include something the graph can't trace: Vitest config, test
   setup files, env files, the workspace or root `package.json`, the lockfile,
   tsconfig, test fixtures, a deleted file, or anything outside `src/`,
-  `tests/` or `seeds/`. Missing information widens the selection, never
-  narrows it to nothing. Type-only changes reach no test at run time;
-  typecheck covers them.
+  `tests/` or `seeds/`, and also when `vitest related` finds no test that
+  imports its changes. Missing information widens the selection, never
+  narrows it to nothing.
 - CI, `validate:affected` and `validate` keep whole-workspace selection. CI
   is the only thing that blocks a merge.
 
@@ -145,7 +145,7 @@ remembering every mapping by hand.
   and in CI) or `validate` (handoff and release). Each answers "what do I
   need to run for this change" instead of guessing.
 - A push no longer waits on integration tests or browser journeys; those
-  failures surface in the daily gate instead, and per ticket in
+  failures surface in the Develop Gate instead, and per ticket in
   `validate:affected`.
 - A `JOURNEY_MAP` entry is a claim that must stay in sync with real route/spec
   coupling; under-mapping is safe (it only widens the fallback to the critical

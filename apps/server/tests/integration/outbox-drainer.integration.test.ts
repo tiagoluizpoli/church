@@ -1,10 +1,14 @@
-import { appConfig } from '@church/app-config';
+import { type AppConfig, appConfig } from '@church/app-config';
 import {
+  member as churchMember,
   ministry,
   ministryInvitation,
   ministryMembership,
+  notification,
   outboxMessage,
+  volunteer as volunteerTable,
 } from '@church/db';
+import { m } from '@church/i18n/messages';
 import {
   addMilliseconds,
   fromDate,
@@ -13,7 +17,7 @@ import {
   resetClock,
   setTestClock,
 } from '@church/time';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
@@ -24,8 +28,15 @@ import {
   UserId,
 } from '@/domain/branded-ids';
 import type { DeliverEmailInput } from '@/domain/contracts/infrastructure/email-sender';
+import type {
+  CreateNotificationInput,
+  NotificationRepository,
+} from '@/domain/contracts/infrastructure/notification.repository';
 import { EmailSendError } from '@/domain/errors/email-send-error';
-import { DrizzleUnitOfWork } from '@/infrastructure/repositories';
+import {
+  DrizzleNotificationRepository,
+  DrizzleUnitOfWork,
+} from '@/infrastructure/repositories';
 import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import {
@@ -53,6 +64,8 @@ const {
   volunteerRepository,
   volunteerTransferRepository,
   unitOfWork,
+  notifications,
+  buildNotifier,
   manager,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
@@ -77,6 +90,7 @@ function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
     volunteerRepository,
     volunteerTransferRepository,
     emailSender,
+    notifier: buildNotifier({ emailSender }),
     unitOfWork,
     config: appConfig,
   });
@@ -228,7 +242,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
       emailDeliveredAt: null,
     });
     expect(row.emailRequest).toMatchObject({
-      locale: 'en',
+      locale: appConfig.defaultLocale,
       request: { to: memberEmail() },
     });
     expect(emailSender.attemptedKeys).toEqual([`outbox-message/${row.id}`]);
@@ -534,5 +548,433 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
     const messages = await testDb.select().from(outboxMessage);
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatchObject({ kind: 'transfer.ministry-digest' });
+  });
+});
+
+describe('Ministry Invitation Notification through email and inbox (ticket #621, integration)', () => {
+  const start = '2026-11-02T12:00:00.000Z' as Instant;
+  const { backoffCapMinutes, maxAttempts } = appConfig.outbox;
+
+  beforeEach(() => {
+    setTestClock({ instant: start });
+  });
+
+  afterEach(() => {
+    resetClock();
+  });
+
+  const churchId = () => ChurchId.from(fixture.churchA.id);
+  const member = () => UserId.from(fixture.memberNoVolunteerA);
+
+  async function inviteMember(): Promise<string> {
+    const invitation = await manager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: UserId.from(fixture.adminA),
+      email: `${fixture.memberNoVolunteerA}@fixture.test`,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+    });
+    return invitation.id;
+  }
+
+  interface DrainerForInput {
+    emailSender: CaptureEmailSender;
+    config?: AppConfig;
+    inboxRepository?: NotificationRepository;
+  }
+
+  function drainerFor({
+    emailSender,
+    config = appConfig,
+    inboxRepository,
+  }: DrainerForInput): DbOutboxDrainer {
+    return new DbOutboxDrainer({
+      outboxRepository,
+      invitationRepository: ministryInvitationRepository,
+      churchRepository,
+      ministryRepository,
+      roleRepository,
+      volunteerRepository,
+      volunteerTransferRepository,
+      emailSender,
+      notifier: buildNotifier({ emailSender, config, inboxRepository }),
+      unitOfWork,
+      config,
+    });
+  }
+
+  function advanceToRetry(): void {
+    setTestClock({
+      instant: addMilliseconds({
+        instant: start,
+        milliseconds: backoffCapMinutes * 60_000 * maxAttempts,
+      }),
+    });
+  }
+
+  const outboxRows = () => testDb.select().from(outboxMessage);
+  const inboxRows = () =>
+    testDb.select().from(notification).where(eq(notification.userId, member()));
+
+  async function removeMembership(): Promise<void> {
+    await testDb
+      .delete(churchMember)
+      .where(
+        and(
+          eq(churchMember.organizationId, fixture.churchA.id),
+          eq(churchMember.userId, fixture.memberNoVolunteerA),
+        ),
+      );
+  }
+
+  /** Inbox repository whose next `create` calls throw. */
+  class FlakyInboxRepository extends DrizzleNotificationRepository {
+    failuresLeft = 0;
+
+    override async create(input: CreateNotificationInput) {
+      if (this.failuresLeft > 0) {
+        this.failuresLeft -= 1;
+        throw new Error('injected inbox failure');
+      }
+      return super.create(input);
+    }
+  }
+
+  it('delivers one email and one inbox row from the committed mint, in the recipient locale', async () => {
+    const ministryInvitationId = await inviteMember();
+    const emailSender = new CaptureEmailSender();
+
+    const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    const [ministryRow] = await testDb
+      .select({ name: ministry.name })
+      .from(ministry)
+      .where(eq(ministry.id, fixture.ministryOneA));
+    const ministryName = ministryRow?.name ?? '';
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(emailSender.delivered[0]).toMatchObject({
+      locale: 'pt-BR',
+      request: {
+        to: `${fixture.memberNoVolunteerA}@fixture.test`,
+        subject: m.notification_ministry_invitation_title(
+          { ministryName },
+          { locale: 'pt-BR' },
+        ),
+      },
+    });
+    expect(emailSender.delivered[0]?.request.html).toContain(
+      `/invitations/ministry/${ministryInvitationId}`,
+    );
+    const inbox = await inboxRows();
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      churchId: fixture.churchA.id,
+      kind: 'ministry_invitation',
+      data: {
+        ministryInvitationId,
+        ministryId: fixture.ministryOneA,
+        ministryName,
+      },
+    });
+    const [row] = await outboxRows();
+    expect(row).toMatchObject({
+      status: 'sent',
+      channelOutcomes: { email: 'delivered', inbox: 'delivered' },
+    });
+    expect(inbox[0]?.sourceOutboxId).toBe(row?.id);
+  });
+
+  it('a resend is a new Notification: a second row, email and inbox entry', async () => {
+    const ministryInvitationId = await inviteMember();
+    const emailSender = new CaptureEmailSender();
+    const drainer = drainerFor({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    advanceToRetry();
+
+    await manager.resend({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      ministryInvitationId: MinistryInvitationId.from(ministryInvitationId),
+      callerId: UserId.from(fixture.adminA),
+    });
+    await drainer.drainOnce({ limit: 10 });
+
+    expect(await outboxRows()).toHaveLength(2);
+    expect(emailSender.delivered).toHaveLength(2);
+    expect(await inboxRows()).toHaveLength(2);
+  });
+
+  it('a rolled-back change writes neither the invitation nor its Notification', async () => {
+    await expect(
+      unitOfWork.run(async (tx) => {
+        const invitation = await ministryInvitationRepository.create({
+          churchId: churchId(),
+          ministryId: MinistryId.from(fixture.ministryOneA),
+          ministryAccessLevel: 'volunteer',
+          inviterId: UserId.from(fixture.adminA),
+          inviteeUserId: member(),
+          roleIds: [],
+          expiresAt: new Date('2026-12-01T00:00:00Z'),
+          tx,
+        });
+        await notifications.enqueue({
+          tx,
+          kind: 'ministry_invitation',
+          to: [{ userId: member(), churchId: churchId() }],
+          data: { ministryInvitationId: invitation.id },
+        });
+        throw new Error('deliberate rollback');
+      }),
+    ).rejects.toThrow('deliberate rollback');
+
+    expect(await testDb.select().from(ministryInvitation)).toHaveLength(0);
+    expect(await outboxRows()).toHaveLength(0);
+    const emailSender = new CaptureEmailSender();
+    expect(await drainerFor({ emailSender }).drainOnce({ limit: 10 })).toEqual({
+      claimed: 0,
+      sent: 0,
+      failed: 0,
+    });
+  });
+
+  it('enqueues one row per recipient deduplicated by User within Church, and nothing for no recipients', async () => {
+    const ministryInvitationId = await inviteMember();
+    await testDb.delete(outboxMessage);
+    const admin = UserId.from(fixture.adminA);
+
+    await unitOfWork.run(async (tx) => {
+      await notifications.enqueue({
+        tx,
+        kind: 'ministry_invitation',
+        to: [
+          { userId: member(), churchId: churchId() },
+          { userId: admin, churchId: churchId() },
+          { userId: member(), churchId: churchId() },
+        ],
+        data: { ministryInvitationId },
+      });
+      await notifications.enqueue({
+        tx,
+        kind: 'ministry_invitation',
+        to: [],
+        data: { ministryInvitationId },
+      });
+    });
+
+    const rows = await outboxRows();
+    expect(rows.map((row) => row.payload)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          to: { userId: member(), churchId: churchId() },
+        }),
+        expect.objectContaining({
+          to: { userId: admin, churchId: churchId() },
+        }),
+      ]),
+    );
+    expect(rows).toHaveLength(2);
+  });
+
+  it('rejects data that does not match the kind before writing anything', async () => {
+    await expect(
+      unitOfWork.run((tx) =>
+        notifications.enqueue({
+          tx,
+          kind: 'ministry_invitation',
+          to: [{ userId: member(), churchId: churchId() }],
+          data: { ministryInvitationId: 'not-a-uuid' },
+        }),
+      ),
+    ).rejects.toThrow();
+    expect(await outboxRows()).toHaveLength(0);
+  });
+
+  it('inbox fails, email succeeds: the retry writes the inbox row and never resends the email', async () => {
+    await inviteMember();
+    const emailSender = new CaptureEmailSender();
+    const inboxRepository = new FlakyInboxRepository({ db: testDb });
+    inboxRepository.failuresLeft = 1;
+    const drainer = drainerFor({ emailSender, inboxRepository });
+
+    await drainer.drainOnce({ limit: 10 });
+    expect(await outboxRows()).toMatchObject([
+      { status: 'pending', channelOutcomes: { email: 'delivered' } },
+    ]);
+    expect(await inboxRows()).toHaveLength(0);
+
+    advanceToRetry();
+    const result = await drainer.drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(await inboxRows()).toHaveLength(1);
+  });
+
+  it('email fails, inbox succeeds: the retry sends one email and keeps the one inbox row and its read state', async () => {
+    await inviteMember();
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'after-provider', retryable: true });
+    const drainer = drainerFor({ emailSender });
+
+    await drainer.drainOnce({ limit: 10 });
+    const [inboxRow] = await inboxRows();
+    if (!inboxRow) throw new Error('expected an inbox row');
+    await testDb
+      .update(notification)
+      .set({ readAt: new Date(start) })
+      .where(eq(notification.id, inboxRow.id));
+    // Replay the inbox sink too, as a lost settlement would.
+    await testDb.update(outboxMessage).set({ channelOutcomes: {} });
+
+    advanceToRetry();
+    const result = await drainer.drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(new Set(emailSender.attemptedKeys).size).toBe(1);
+    expect(await inboxRows()).toEqual([
+      expect.objectContaining({ id: inboxRow.id, readAt: new Date(start) }),
+    ]);
+  });
+
+  it('a terminal email failure fails the row without undoing the inbox delivery', async () => {
+    const ministryInvitationId = await inviteMember();
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: false });
+
+    const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(await outboxRows()).toMatchObject([
+      {
+        status: 'failed',
+        channelOutcomes: { email: 'failed', inbox: 'delivered' },
+      },
+    ]);
+    expect(await inboxRows()).toHaveLength(1);
+    expect(
+      await manager.getDeliveryStatus({
+        churchId: churchId(),
+        ministryInvitationId: MinistryInvitationId.from(ministryInvitationId),
+      }),
+    ).toBe('failed');
+  });
+
+  it('a recipient who left the Church before the drain receives nothing on either channel', async () => {
+    await inviteMember();
+    await removeMembership();
+    const emailSender = new CaptureEmailSender();
+
+    const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.delivered).toHaveLength(0);
+    expect(await inboxRows()).toHaveLength(0);
+    expect(await outboxRows()).toMatchObject([
+      {
+        status: 'sent',
+        channelOutcomes: { email: 'skipped', inbox: 'skipped' },
+      },
+    ]);
+  });
+
+  it('a recipient who left before a retry gets no remaining delivery, even with a saved email', async () => {
+    await inviteMember();
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: true });
+    const drainer = drainerFor({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    expect((await outboxRows())[0]?.emailRequest).not.toBeNull();
+
+    await removeMembership();
+    advanceToRetry();
+    await drainer.drainOnce({ limit: 10 });
+
+    expect(emailSender.delivered).toHaveLength(0);
+    expect(emailSender.attemptedKeys).toHaveLength(1);
+    expect(await outboxRows()).toMatchObject([
+      {
+        status: 'sent',
+        channelOutcomes: { email: 'skipped', inbox: 'delivered' },
+      },
+    ]);
+  });
+
+  it('a retired Volunteer profile does not deny Church Membership', async () => {
+    const volunteer = await buildVolunteer({
+      db: testDb,
+      churchId: fixture.churchA.id,
+      userId: fixture.memberNoVolunteerA,
+    });
+    await testDb
+      .update(volunteerTable)
+      .set({ leftAt: new Date(start) })
+      .where(eq(volunteerTable.id, volunteer.id));
+    await inviteMember();
+    const emailSender = new CaptureEmailSender();
+
+    await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(await inboxRows()).toHaveLength(1);
+  });
+
+  it.each([
+    { channel: 'email', emails: 0, inboxes: 1 },
+    { channel: 'inbox', emails: 1, inboxes: 0 },
+  ] as const)('a disabled $channel switch skips only that channel, settled without backfill', async ({
+    channel,
+    emails,
+    inboxes,
+  }) => {
+    await inviteMember();
+    const config: AppConfig = {
+      ...appConfig,
+      notifications: {
+        ...appConfig.notifications,
+        [channel]: { enabled: false },
+      },
+    };
+    const emailSender = new CaptureEmailSender();
+
+    await drainerFor({ emailSender, config }).drainOnce({ limit: 10 });
+    // Re-enabling the channel later never backfills this row.
+    await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(emailSender.delivered).toHaveLength(emails);
+    expect(await inboxRows()).toHaveLength(inboxes);
+    expect((await outboxRows())[0]).toMatchObject({
+      status: 'sent',
+      channelOutcomes: { [channel]: 'skipped' },
+    });
+  });
+
+  it('two concurrent drains deliver one email and one inbox row', async () => {
+    await inviteMember();
+    const senderA = new CaptureEmailSender();
+    const senderB = new CaptureEmailSender();
+
+    await Promise.all([
+      drainerFor({ emailSender: senderA }).drainOnce({ limit: 1 }),
+      drainerFor({ emailSender: senderB }).drainOnce({ limit: 1 }),
+    ]);
+
+    expect(senderA.delivered.length + senderB.delivered.length).toBe(1);
+    expect(await inboxRows()).toHaveLength(1);
+  });
+
+  it('keeps processing other rows after one row fails terminally', async () => {
+    await inviteMember();
+    await inviteMember();
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: false });
+
+    const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 2, sent: 1, failed: 1 });
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(await inboxRows()).toHaveLength(2);
   });
 });

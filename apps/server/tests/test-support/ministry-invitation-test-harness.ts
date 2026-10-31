@@ -1,6 +1,13 @@
-import { appConfig } from '@church/app-config';
+import { type AppConfig, appConfig } from '@church/app-config';
+import { ChurchNotifications } from '@/application/church-notifications';
+import {
+  buildChurchNotifier,
+  type ChurchNotifier,
+} from '@/application/church-notifier';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
+import type { EmailSender } from '@/domain/contracts/infrastructure/email-sender';
+import type { NotificationRepository } from '@/domain/contracts/infrastructure/notification.repository';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
@@ -9,6 +16,7 @@ import {
   DrizzleEventTimeBlockRepository,
   DrizzleMinistryInvitationRepository,
   DrizzleMinistryRepository,
+  DrizzleNotificationRepository,
   DrizzleOutboxRepository,
   DrizzleRoleRepository,
   DrizzleUnitOfWork,
@@ -19,6 +27,13 @@ import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
 
 export interface MinistryInvitationTestHarnessOptions {
   db: AnyDrizzleDb;
+}
+
+interface BuildNotifierInput {
+  emailSender: EmailSender;
+  config?: AppConfig;
+  /** Replaces the inbox sink's repository, e.g. to inject a failure. */
+  inboxRepository?: NotificationRepository;
 }
 
 /**
@@ -49,6 +64,8 @@ export function createMinistryInvitationTestHarness({
     ministryRepository: ministryRepository,
   });
   const unitOfWork = new DrizzleUnitOfWork({ db });
+  const notificationRepository = new DrizzleNotificationRepository({ db });
+  const notifications = new ChurchNotifications({ outboxRepository });
   const manager = new DbMinistryInvitationManager({
     repo: ministryInvitationRepository,
     roleRepository,
@@ -56,8 +73,25 @@ export function createMinistryInvitationTestHarness({
     authorityManager,
     unitOfWork,
     outboxRepository,
+    notifications,
     config: appConfig,
   });
+
+  /** The registered email + inbox sinks over these repositories. */
+  function buildNotifier({
+    emailSender,
+    config = appConfig,
+    inboxRepository = notificationRepository,
+  }: BuildNotifierInput): ChurchNotifier {
+    return buildChurchNotifier({
+      config,
+      churchRepository,
+      notificationRepository: inboxRepository,
+      outboxRepository,
+      emailSender,
+      unitOfWork,
+    });
+  }
 
   return {
     ministryInvitationRepository,
@@ -69,6 +103,9 @@ export function createMinistryInvitationTestHarness({
     volunteerTransferRepository,
     authorityManager,
     unitOfWork,
+    notificationRepository,
+    notifications,
+    buildNotifier,
     manager,
   };
 }

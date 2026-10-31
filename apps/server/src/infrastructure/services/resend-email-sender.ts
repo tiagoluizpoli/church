@@ -53,8 +53,8 @@ export class ResendEmailSender implements EmailSender {
     this.from = from;
   }
 
-  prepare({ payload }: PrepareEmailInput): PreparedEmail {
-    return prepareEmail({ payload, from: this.from });
+  prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
+    return prepareEmail({ payload, locale, from: this.from });
   }
 
   async send({ payload }: SendEmailInput): Promise<SendEmailResult> {

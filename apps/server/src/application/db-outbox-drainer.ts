@@ -7,7 +7,7 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import type { MinistryId, VolunteerId } from '../domain/branded-ids';
+import type { ChurchId, MinistryId, VolunteerId } from '../domain/branded-ids';
 import type {
   DrainOnceInput,
   DrainOnceResult,
@@ -26,7 +26,9 @@ import type { MinistryRepository } from '../domain/contracts/infrastructure/mini
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type {
   ChainedInvitationOutboxMessage,
+  ChannelOutcomes,
   MinistryInvitationOutboxMessage,
+  NotificationOutboxMessage,
   OutboxEmailDelivery,
   OutboxMessage,
   OutboxRepository,
@@ -42,11 +44,16 @@ import type {
   WithdrawnAssignmentPreview,
 } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { EmailSendError } from '../domain/errors/email-send-error';
+import {
+  type MinistryInvitationDeliveryFacts,
+  notificationRequestDataSchemas,
+} from '../domain/notification-kinds';
 import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
 import {
   hasExhaustedRetries,
   nextRetryAt,
 } from '../domain/services/outbox-retry-policy';
+import type { ChurchNotifier } from './church-notifier';
 
 export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly outboxRepository: OutboxRepository;
@@ -57,6 +64,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly volunteerRepository: VolunteerRepository;
   private readonly volunteerTransferRepository: VolunteerTransferRepository;
   private readonly emailSender: EmailSender;
+  private readonly notifier: ChurchNotifier;
   private readonly unitOfWork: UnitOfWork;
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
@@ -70,6 +78,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     volunteerRepository,
     volunteerTransferRepository,
     emailSender,
+    notifier,
     unitOfWork,
     config,
   }: DbOutboxDrainerDependencies) {
@@ -81,6 +90,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.volunteerRepository = volunteerRepository;
     this.volunteerTransferRepository = volunteerTransferRepository;
     this.emailSender = emailSender;
+    this.notifier = notifier;
     this.unitOfWork = unitOfWork;
     const { outbox } = config;
     this.outboxPolicy = outbox;
@@ -121,6 +131,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         return this.processTransferMinistryDigestMessage({ message });
       case 'transfer.leaderless-ministry':
         return this.processTransferLeaderlessMinistryMessage({ message });
+      case 'notification':
+        return this.processNotificationMessage({ message });
       case 'invitation.church-bootstrap':
         await this.failTerminally({
           message,
@@ -173,10 +185,142 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
       expiresAt: invitation.expiresAt,
+      churchTimezone: church.timezone,
       redemptionUrl: `${env.CORS_ORIGIN}${redemptionPathFor(invitation)}`,
     };
 
     return this.prepareAndDeliver({ message, payload });
+  }
+
+  /** The invitation's display facts, read now; `null` once it is no longer pending. */
+  private async loadPendingInvitationFacts({
+    churchId,
+    ministryInvitationId,
+  }: LoadPendingInvitationFactsInput): Promise<MinistryInvitationDeliveryFacts | null> {
+    const invitation = await this.invitationRepository.findById({
+      churchId,
+      ministryInvitationId,
+    });
+    if (!invitation || invitation.status !== 'pending') return null;
+    const [church, ministry, roles] = await Promise.all([
+      this.churchRepository.getById({ id: churchId }),
+      this.ministryRepository.getById({ churchId, id: invitation.ministryId }),
+      Promise.all(
+        invitation.roleIds.map((roleId) =>
+          this.roleRepository.getById({ churchId, id: roleId }),
+        ),
+      ),
+    ]);
+    return {
+      ministryInvitationId: invitation.id,
+      ministryId: invitation.ministryId,
+      ministryName: ministry.name,
+      churchName: church.name,
+      churchTimezone: church.timezone,
+      ministryAccessLevel: invitation.ministryAccessLevel,
+      roleNames: roles.map((role) => role.name),
+      expiresAt: invitation.expiresAt,
+      redemptionUrl: `${env.CORS_ORIGIN}${redemptionPathFor(invitation)}`,
+    };
+  }
+
+  /**
+   * Hands one recipient's Notification to every unsettled sink, then settles
+   * the row: all delivered/skipped completes it; a retryable sink retries the
+   * whole row (settled sinks are not attempted again); a terminal sink fails
+   * it without undoing another sink's delivery.
+   */
+  private async processNotificationMessage({
+    message,
+  }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
+    const { to, kind, data } = message.payload;
+    const request = notificationRequestDataSchemas[kind]?.safeParse(data);
+    if (!request?.success) {
+      await this.failTerminally({
+        message,
+        reason: `Invalid data for notification kind "${kind}"`,
+      });
+      return 'failed';
+    }
+    const facts = await this.loadPendingInvitationFacts({
+      churchId: message.churchId,
+      ministryInvitationId: request.data.ministryInvitationId,
+    });
+    if (!facts) {
+      await this.failTerminally({
+        message,
+        reason: 'Invitation is no longer pending',
+      });
+      return 'failed';
+    }
+
+    const { outcomes } = await this.notifier.send({
+      to,
+      kind,
+      data: facts,
+      deliveryId: message.id,
+      settledSinks: Object.keys(message.channelOutcomes),
+    });
+
+    const channelOutcomes: ChannelOutcomes = { ...message.channelOutcomes };
+    const retryable: string[] = [];
+    const failures: string[] = [];
+    for (const [sink, outcome] of Object.entries(outcomes)) {
+      if (outcome.status === 'delivered') channelOutcomes[sink] = 'delivered';
+      else if (outcome.status === 'skipped') channelOutcomes[sink] = 'skipped';
+      else {
+        failures.push(`${sink}: ${outcome.reason}`);
+        if (outcome.status === 'retryable') retryable.push(sink);
+        else channelOutcomes[sink] = 'failed';
+      }
+    }
+
+    const attempts = message.attempts + 1;
+    if (
+      retryable.length > 0 &&
+      !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
+    ) {
+      const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
+      await this.unitOfWork.run((tx) =>
+        this.outboxRepository.markFailed({
+          id: message.id,
+          lastError: failures.join('; '),
+          attempts,
+          status: 'pending',
+          scheduledFor: toDate({ instant: retryAt }),
+          channelOutcomes,
+          tx,
+        }),
+      );
+      return 'failed';
+    }
+    for (const sink of retryable) channelOutcomes[sink] = 'failed';
+
+    if (Object.values(channelOutcomes).includes('failed')) {
+      await this.unitOfWork.run((tx) =>
+        this.outboxRepository.markFailed({
+          id: message.id,
+          lastError:
+            failures.length > 0
+              ? failures.join('; ')
+              : (message.lastError ?? ''),
+          attempts,
+          status: 'failed',
+          channelOutcomes,
+          tx,
+        }),
+      );
+      return 'failed';
+    }
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markSent({
+        id: message.id,
+        sentAt: nowAsDate(),
+        channelOutcomes,
+        tx,
+      }),
+    );
+    return 'sent';
   }
 
   private async processRedemptionAcceptedMessage({
@@ -433,6 +577,7 @@ interface DbOutboxDrainerDependencies {
   volunteerRepository: VolunteerRepository;
   volunteerTransferRepository: VolunteerTransferRepository;
   emailSender: EmailSender;
+  notifier: ChurchNotifier;
   unitOfWork: UnitOfWork;
 }
 
@@ -442,6 +587,15 @@ interface ProcessOneInput {
 
 interface ProcessInvitationMessageInput {
   message: ChainedInvitationOutboxMessage | MinistryInvitationOutboxMessage;
+}
+
+interface LoadPendingInvitationFactsInput {
+  churchId: ChurchId;
+  ministryInvitationId: string;
+}
+
+interface ProcessNotificationMessageInput {
+  message: NotificationOutboxMessage;
 }
 
 interface ProcessRedemptionAcceptedMessageInput {

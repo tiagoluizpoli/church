@@ -119,6 +119,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
       .mockResolvedValue({ name: 'Riverside Fellowship' } as Church),
     getBySlug: vi.fn(),
     listAdminEmails: vi.fn(),
+    findMemberEmail: vi.fn(),
   } as ChurchRepository;
 
   const securityLogRepository: SecurityLogRepository = {

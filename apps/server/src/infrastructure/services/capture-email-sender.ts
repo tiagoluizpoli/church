@@ -28,8 +28,8 @@ export class CaptureEmailSender
   readonly delivered: PreparedEmail[] = [];
   private readonly seenKeys = new Set<string>();
 
-  prepare({ payload }: PrepareEmailInput): PreparedEmail {
-    return prepareEmail({ payload, from: CAPTURE_FROM });
+  prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
+    return prepareEmail({ payload, locale, from: CAPTURE_FROM });
   }
 
   async send({ payload }: SendEmailInput): Promise<SendEmailResult> {

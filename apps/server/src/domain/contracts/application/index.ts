@@ -3,6 +3,7 @@ export * from './active-church-selection-manager';
 export * from './assignment-manager';
 export * from './authority-manager';
 export * from './availability-check-manager';
+export * from './church-notifications';
 export * from './cycle-manager';
 export * from './event-manager';
 export * from './event-template-manager';

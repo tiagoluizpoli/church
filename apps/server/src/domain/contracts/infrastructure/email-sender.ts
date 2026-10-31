@@ -19,6 +19,8 @@ export interface MinistryInvitationEmail {
   ministryAccessLevel: string;
   roleNames: string[];
   expiresAt: Instant;
+  /** The Church Timezone `expiresAt` is read in. */
+  churchTimezone: string;
   redemptionUrl: string;
 }
 
@@ -114,6 +116,8 @@ export interface SendEmailResult {
 
 export interface PrepareEmailInput {
   payload: EmailPayload;
+  /** The recipient's language; templates not yet on the catalog stay English. */
+  locale?: EmailLocale;
 }
 
 export interface DeliverEmailInput {

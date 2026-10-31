@@ -53,6 +53,7 @@ function createDrainer(): DbOutboxDrainer {
     volunteerRepository: volunteerRepository as never,
     volunteerTransferRepository: volunteerTransferRepository as never,
     emailSender: emailSender as never,
+    notifier: { send: vi.fn() },
     unitOfWork: unitOfWork as never,
     config: appConfig,
   });

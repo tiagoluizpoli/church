@@ -63,6 +63,7 @@ const {
   roleRepository,
   volunteerRepository,
   volunteerTransferRepository,
+  buildNotifier,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
 interface RedemptionHarness {
@@ -126,6 +127,7 @@ function createOutboxDrainer({
     volunteerRepository,
     volunteerTransferRepository,
     emailSender,
+    notifier: buildNotifier({ emailSender }),
     unitOfWork,
     config: appConfig,
   });

@@ -1,16 +1,20 @@
 import { outboxMessage } from '@church/db';
 import { fromDate, toDate } from '@church/time';
-import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
 import type { PreparedEmail } from '../../domain/contracts/infrastructure/email-sender';
 import type {
   ChainedInvitationOutboxMessage,
+  ChannelOutcomes,
   ChurchBootstrapOutboxMessage,
   ClaimPendingOutboxMessagesInput,
+  EnqueueNotificationOutboxMessageInput,
   FindLatestOutboxStatusForMinistryInvitationInput,
+  FindOutboxEmailDeliveryInput,
   MarkOutboxMessageFailedInput,
   MarkOutboxMessageSentInput,
   MinistryInvitationOutboxMessage,
+  NotificationOutboxMessage,
   OutboxEmailDelivery,
   OutboxMessage,
   OutboxMessageStatus,
@@ -64,18 +68,26 @@ export class DrizzleOutboxRepository implements OutboxRepository {
   }
 
   async markSent(input: MarkOutboxMessageSentInput): Promise<void> {
-    const { id, providerMessageId, sentAt, tx } = input;
+    const { id, providerMessageId, sentAt, channelOutcomes, tx } = input;
     await getClient({ db: this.db, tx })
       .update(outboxMessage)
-      .set({ status: 'sent', providerMessageId, sentAt })
+      .set({ status: 'sent', providerMessageId, sentAt, channelOutcomes })
       .where(eq(outboxMessage.id, id));
   }
 
   async markFailed(input: MarkOutboxMessageFailedInput): Promise<void> {
-    const { id, lastError, attempts, status, scheduledFor, tx } = input;
+    const {
+      id,
+      lastError,
+      attempts,
+      status,
+      scheduledFor,
+      channelOutcomes,
+      tx,
+    } = input;
     await getClient({ db: this.db, tx })
       .update(outboxMessage)
-      .set({ status, attempts, lastError, scheduledFor })
+      .set({ status, attempts, lastError, scheduledFor, channelOutcomes })
       .where(eq(outboxMessage.id, id));
   }
 
@@ -106,6 +118,30 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .where(eq(outboxMessage.id, id));
   }
 
+  async enqueueNotification(
+    input: EnqueueNotificationOutboxMessageInput,
+  ): Promise<void> {
+    const { churchId, payload, correlationId, scheduledFor, tx } = input;
+    await getClient({ db: this.db, tx }).insert(outboxMessage).values({
+      churchId,
+      kind: 'notification',
+      payload,
+      correlationId,
+      scheduledFor,
+    });
+  }
+
+  async findEmailDelivery(
+    input: FindOutboxEmailDeliveryInput,
+  ): Promise<OutboxEmailDelivery | null> {
+    const { id, tx } = input;
+    const [row] = await getClient({ db: this.db, tx })
+      .select()
+      .from(outboxMessage)
+      .where(eq(outboxMessage.id, id));
+    return (row && mapEmailDelivery(row)) ?? null;
+  }
+
   async findLatestStatusForMinistryInvitation(
     input: FindLatestOutboxStatusForMinistryInvitationInput,
   ): Promise<OutboxMessageStatus | null> {
@@ -116,11 +152,20 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .where(
         and(
           withChurchIsolation({ table: outboxMessage, churchId }),
-          inArray(outboxMessage.kind, [
-            'invitation.chained',
-            'invitation.ministry',
-          ]),
-          sql`${outboxMessage.payload} ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+          or(
+            and(
+              inArray(outboxMessage.kind, [
+                'invitation.chained',
+                'invitation.ministry',
+              ]),
+              sql`${outboxMessage.payload} ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+            ),
+            and(
+              eq(outboxMessage.kind, 'notification'),
+              sql`${outboxMessage.payload} ->> 'kind' = 'ministry_invitation'`,
+              sql`${outboxMessage.payload} -> 'data' ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+            ),
+          ),
         ),
       )
       .orderBy(desc(outboxMessage.createdAt))
@@ -188,6 +233,13 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         kind: row.kind,
         payload:
           row.payload as TransferLeaderlessMinistryOutboxMessage['payload'],
+      };
+    case 'notification':
+      return {
+        ...base,
+        kind: row.kind,
+        payload: row.payload as NotificationOutboxMessage['payload'],
+        channelOutcomes: (row.channelOutcomes ?? {}) as ChannelOutcomes,
       };
   }
 }

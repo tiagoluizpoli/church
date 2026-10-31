@@ -49,6 +49,7 @@ const authorityManager = {
 };
 const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
 const outboxRepository = { findLatestStatusForMinistryInvitation: vi.fn() };
+const notifications = { enqueue: vi.fn() };
 
 function createManager(): DbMinistryInvitationManager {
   return new DbMinistryInvitationManager({
@@ -58,6 +59,7 @@ function createManager(): DbMinistryInvitationManager {
     authorityManager: authorityManager as never,
     unitOfWork: unitOfWork as never,
     outboxRepository: outboxRepository as never,
+    notifications,
     config: appConfig,
   });
 }
@@ -184,9 +186,14 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
       expect.objectContaining({ churchId, ministryId, inviteeUserId }),
     );
     expect(repo.refreshExpiry).not.toHaveBeenCalled();
-    expect(repo.enqueueOutboxMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ churchId, kind: 'invitation.ministry' }),
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'ministry_invitation',
+        to: [{ userId: inviteeUserId, churchId }],
+        data: { ministryInvitationId: 'invitation-1' },
+      }),
     );
+    expect(repo.enqueueOutboxMessage).not.toHaveBeenCalled();
   });
 
   it('refreshes rather than duplicates when a pending invitee row already exists', async () => {

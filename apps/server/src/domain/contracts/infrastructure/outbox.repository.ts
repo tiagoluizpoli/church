@@ -1,7 +1,9 @@
 import type { Instant } from '@church/time';
 import type { ChurchId } from '../../branded-ids';
+import type { NotificationRequest } from '../../notification-kinds';
 import type { PreparedEmail } from './email-sender';
 import type { TransactionContext } from './transaction-context';
+import type { ChurchRecipient } from '@/domain/contracts/application/church-notifications';
 
 export type OutboxMessageKind =
   | 'invitation.chained'
@@ -9,7 +11,8 @@ export type OutboxMessageKind =
   | 'invitation.church-bootstrap'
   | 'redemption.accepted'
   | 'transfer.ministry-digest'
-  | 'transfer.leaderless-ministry';
+  | 'transfer.leaderless-ministry'
+  | 'notification';
 
 export const OUTBOX_MESSAGE_STATUS_OPTIONS = [
   'pending',
@@ -33,6 +36,12 @@ interface OutboxMessageBase {
   /** Present once the email was prepared, before its first external attempt. */
   emailDelivery?: OutboxEmailDelivery;
 }
+
+/** A sink's outcome once it no longer needs an attempt. */
+export type SettledChannelOutcome = 'delivered' | 'skipped' | 'failed';
+
+/** Settled outcomes of a `notification` row, by sink name. */
+export type ChannelOutcomes = Record<string, SettledChannelOutcome>;
 
 /**
  * The email channel's durable delivery state for one row: the exact request
@@ -122,13 +131,25 @@ export interface TransferLeaderlessMinistryOutboxMessage
   payload: TransferLeaderlessMinistryOutboxPayload;
 }
 
+/** One Notification to one recipient (ADR-0008), written by `notifications.enqueue`. */
+export type NotificationOutboxPayload = NotificationRequest & {
+  to: ChurchRecipient;
+};
+
+export interface NotificationOutboxMessage extends OutboxMessageBase {
+  kind: 'notification';
+  payload: NotificationOutboxPayload;
+  channelOutcomes: ChannelOutcomes;
+}
+
 export type OutboxMessage =
   | ChainedInvitationOutboxMessage
   | MinistryInvitationOutboxMessage
   | ChurchBootstrapOutboxMessage
   | RedemptionAcceptedOutboxMessage
   | TransferMinistryDigestOutboxMessage
-  | TransferLeaderlessMinistryOutboxMessage;
+  | TransferLeaderlessMinistryOutboxMessage
+  | NotificationOutboxMessage;
 
 export interface ClaimPendingOutboxMessagesInput {
   limit: number;
@@ -140,6 +161,8 @@ export interface MarkOutboxMessageSentInput {
   id: string;
   providerMessageId?: string;
   sentAt: Date;
+  /** A `notification` row's settled sinks, persisted with its completion. */
+  channelOutcomes?: ChannelOutcomes;
   tx: TransactionContext;
 }
 
@@ -150,6 +173,8 @@ export interface MarkOutboxMessageFailedInput {
   /** `pending` to retry later (with `scheduledFor` bumped), `failed` when terminal. */
   status: OutboxMessageStatus;
   scheduledFor?: Date;
+  /** Settled sinks survive the retry or terminal failure of another sink. */
+  channelOutcomes?: ChannelOutcomes;
   tx: TransactionContext;
 }
 
@@ -166,6 +191,19 @@ export interface RecordOutboxEmailDeliveredInput {
   providerMessageId?: string;
   deliveredAt: Instant;
   tx: TransactionContext;
+}
+
+export interface EnqueueNotificationOutboxMessageInput {
+  churchId: ChurchId;
+  payload: NotificationOutboxPayload;
+  correlationId: string;
+  scheduledFor: Date;
+  tx: TransactionContext;
+}
+
+export interface FindOutboxEmailDeliveryInput {
+  id: string;
+  tx?: TransactionContext;
 }
 
 export interface FindLatestOutboxStatusForMinistryInvitationInput {
@@ -200,10 +238,21 @@ export interface OutboxRepository {
   /** Persists the provider's confirmed receipt for the email channel. */
   recordEmailDelivered(input: RecordOutboxEmailDeliveredInput): Promise<void>;
 
+  /** Writes one `notification` row in the caller's transaction. */
+  enqueueNotification(
+    input: EnqueueNotificationOutboxMessageInput,
+  ): Promise<void>;
+
+  /** The email channel's persisted delivery state for a row, if prepared. */
+  findEmailDelivery(
+    input: FindOutboxEmailDeliveryInput,
+  ): Promise<OutboxEmailDelivery | null>;
+
   /**
    * Reads the most recent outbox row's status for a Ministry Invitation.
    * There is no FK column — `payload` is jsonb — so this matches
-   * structurally on `payload->>'ministryInvitationId'`, scoped by Church. A
+   * structurally on the invitation id (top level for Transactional rows,
+   * under `data` for `ministry_invitation` Notifications), scoped by Church. A
    * resend enqueues a second row for the same invitation, so "latest" is
    * ordered by `createdAt` descending; the minting API's response surfaces
    * this as the invitation's delivery status (spec #56 §6.4). Returns

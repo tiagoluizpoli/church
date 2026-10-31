@@ -1,4 +1,4 @@
-import type { ChurchId } from '../../branded-ids';
+import type { ChurchId, UserId } from '../../branded-ids';
 import type { Church, ChurchSlug } from '../../entities/church';
 
 export interface ChurchRepository {
@@ -9,6 +9,11 @@ export interface ChurchRepository {
    * leaderless-Ministry escalation's addressee list (spec §8.8, issue #60).
    */
   listAdminEmails(input: ListChurchAdminEmailsInput): Promise<string[]>;
+  /**
+   * The User's email while they hold Church Membership in this Church;
+   * `null` otherwise. Volunteer status plays no part.
+   */
+  findMemberEmail(input: FindChurchMemberEmailInput): Promise<string | null>;
 }
 
 export interface GetChurchByIdInput {
@@ -21,4 +26,9 @@ export interface GetChurchBySlugInput {
 
 export interface ListChurchAdminEmailsInput {
   id: ChurchId;
+}
+
+export interface FindChurchMemberEmailInput {
+  id: ChurchId;
+  userId: UserId;
 }

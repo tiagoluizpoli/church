@@ -18,6 +18,8 @@ import {
   DbVolunteerTransferManager,
   InvitationVerificationCodeManager,
 } from '../../application';
+import { ChurchNotifications } from '../../application/church-notifications';
+import { buildChurchNotifier } from '../../application/church-notifier';
 import type { Auth } from './build-auth';
 import type { Repositories } from './build-repositories';
 import type { Services } from './build-services';
@@ -135,6 +137,7 @@ export function buildManagers({
       authorityManager,
       unitOfWork,
       outboxRepository,
+      notifications: new ChurchNotifications({ outboxRepository }),
       config,
     });
   const invitationVerificationCodeManager =
@@ -181,6 +184,14 @@ export function buildManagers({
       volunteerRepository,
       volunteerTransferRepository,
       emailSender,
+      notifier: buildChurchNotifier({
+        config,
+        churchRepository,
+        notificationRepository,
+        outboxRepository,
+        emailSender,
+        unitOfWork,
+      }),
       unitOfWork,
       config,
     });

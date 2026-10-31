@@ -46,9 +46,10 @@ describe('DrizzleOutboxRepository', () => {
 
     expect(claimed).toHaveLength(1);
     expect(claimed[0]?.status).toBe('processing');
-    expect(claimed[0]?.kind).toBe('invitation.ministry');
+    expect(claimed[0]?.kind).toBe('notification');
     expect(claimed[0]?.payload).toMatchObject({
-      ministryInvitationId: invitation.id,
+      kind: 'ministry_invitation',
+      data: { ministryInvitationId: invitation.id },
     });
   });
 

@@ -14,6 +14,7 @@ function buildPayload(
     ministryAccessLevel: 'volunteer',
     roleNames: ['Vocalist'],
     expiresAt: fromDate({ date: new Date('2026-08-01T00:00:00Z') }),
+    churchTimezone: 'UTC',
     redemptionUrl: 'https://app.church.test/invitations/church/abc',
     ...overrides,
   };

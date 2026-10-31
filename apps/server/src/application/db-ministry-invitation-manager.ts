@@ -9,6 +9,7 @@ import {
 } from '@church/time';
 import type { ChurchId, MinistryId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
+import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   GetMinistryInvitationDeliveryStatusInput,
   IMinistryInvitationManager,
@@ -66,6 +67,13 @@ interface ResolveChainedChurchInvitationInput {
   tx: TransactionContext;
 }
 
+interface EnqueueMemberNotificationInput {
+  churchId: ChurchId;
+  userId: UserId;
+  ministryInvitationId: string;
+  tx: TransactionContext;
+}
+
 interface EnsureResendAllowedInput {
   throttleState: ResendThrottleState;
   now: Instant;
@@ -78,6 +86,7 @@ interface DbMinistryInvitationManagerDependencies {
   authorityManager: IAuthorityManager;
   unitOfWork: UnitOfWork;
   outboxRepository: OutboxRepository;
+  notifications: IChurchNotifications;
   config: AppConfig;
 }
 
@@ -88,6 +97,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   private readonly authorityManager: IAuthorityManager;
   private readonly unitOfWork: UnitOfWork;
   private readonly outboxRepository: OutboxRepository;
+  private readonly notifications: IChurchNotifications;
 
   private readonly invitationTtlMs: number;
   private readonly resendPolicy: AppConfig['invitationResend'];
@@ -99,6 +109,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     authorityManager,
     unitOfWork,
     outboxRepository,
+    notifications,
     config,
   }: DbMinistryInvitationManagerDependencies) {
     this.repo = repo;
@@ -107,6 +118,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     this.authorityManager = authorityManager;
     this.unitOfWork = unitOfWork;
     this.outboxRepository = outboxRepository;
+    this.notifications = notifications;
     const { ministryInvitation, invitationResend } = config;
     this.invitationTtlMs = ministryInvitation.ttlMs;
     this.resendPolicy = invitationResend;
@@ -205,17 +217,24 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         tx,
       });
 
-      await this.repo.enqueueOutboxMessage({
-        churchId,
-        kind:
-          existing.kind === 'chained'
-            ? 'invitation.chained'
-            : 'invitation.ministry',
-        payload: { ministryInvitationId: invitation.id },
-        correlationId: crypto.randomUUID(),
-        scheduledFor: nowAsDate(),
-        tx,
-      });
+      // A resend is a new intended delivery: a new row, never a retry.
+      if (invitation.inviteeUserId) {
+        await this.enqueueMemberNotification({
+          churchId,
+          userId: invitation.inviteeUserId,
+          ministryInvitationId: invitation.id,
+          tx,
+        });
+      } else {
+        await this.repo.enqueueOutboxMessage({
+          churchId,
+          kind: 'invitation.chained',
+          payload: { ministryInvitationId: invitation.id },
+          correlationId: crypto.randomUUID(),
+          scheduledFor: nowAsDate(),
+          tx,
+        });
+      }
 
       return invitation;
     });
@@ -294,16 +313,29 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
           tx,
         });
 
-    await this.repo.enqueueOutboxMessage({
+    await this.enqueueMemberNotification({
       churchId,
-      kind: 'invitation.ministry',
-      payload: { ministryInvitationId: invitation.id },
-      correlationId: crypto.randomUUID(),
-      scheduledFor: nowAsDate(),
+      userId: inviteeUserId,
+      ministryInvitationId: invitation.id,
       tx,
     });
 
     return invitation;
+  }
+
+  /** An existing Church Member's invitation is a Notification: email + inbox. */
+  private async enqueueMemberNotification({
+    churchId,
+    userId,
+    ministryInvitationId,
+    tx,
+  }: EnqueueMemberNotificationInput): Promise<void> {
+    await this.notifications.enqueue({
+      tx,
+      kind: 'ministry_invitation',
+      to: [{ userId, churchId }],
+      data: { ministryInvitationId },
+    });
   }
 
   private async mintChained(

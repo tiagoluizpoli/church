@@ -6,18 +6,23 @@ import {
 } from '@/application/church-notifier';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
+import { SchedulingNotificationFacts } from '@/application/scheduling-notification-facts';
 import type { EmailSender } from '@/domain/contracts/infrastructure/email-sender';
 import type { NotificationRepository } from '@/domain/contracts/infrastructure/notification.repository';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
+  DrizzleAssignmentRepository,
   DrizzleChurchRepository,
+  DrizzleCycleRepository,
   DrizzleEventRepository,
   DrizzleEventTimeBlockRepository,
   DrizzleMinistryInvitationRepository,
+  DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
   DrizzleNotificationRepository,
   DrizzleOutboxRepository,
+  DrizzlePlanningEventRepository,
   DrizzleRoleRepository,
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
@@ -66,6 +71,17 @@ export function createMinistryInvitationTestHarness({
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const notificationRepository = new DrizzleNotificationRepository({ db });
   const notifications = new ChurchNotifications({ outboxRepository });
+  const schedulingFacts = new SchedulingNotificationFacts({
+    churchRepository,
+    ministryRepository,
+    cycleRepository: new DrizzleCycleRepository({ db }),
+    participationRepository: new DrizzleMinistryParticipationRepository({ db }),
+    eventRepository: new DrizzlePlanningEventRepository({ db }),
+    eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+    assignmentRepository: new DrizzleAssignmentRepository({ db }),
+    roleRepository,
+    volunteerRepository,
+  });
   const manager = new DbMinistryInvitationManager({
     repo: ministryInvitationRepository,
     roleRepository,
@@ -105,6 +121,7 @@ export function createMinistryInvitationTestHarness({
     unitOfWork,
     notificationRepository,
     notifications,
+    schedulingFacts,
     buildNotifier,
     manager,
   };

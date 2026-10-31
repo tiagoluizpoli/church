@@ -63,6 +63,7 @@ const {
   roleRepository,
   volunteerRepository,
   volunteerTransferRepository,
+  schedulingFacts,
   buildNotifier,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
@@ -128,6 +129,7 @@ function createOutboxDrainer({
     volunteerTransferRepository,
     emailSender,
     notifier: buildNotifier({ emailSender }),
+    schedulingFacts,
     unitOfWork,
     config: appConfig,
   });

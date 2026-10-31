@@ -43,6 +43,10 @@ class MockChurchRepository implements ChurchRepository {
     return [];
   }
 
+  async listAdminUserIds(): Promise<never[]> {
+    return [];
+  }
+
   async findMemberEmail(): Promise<string | null> {
     return null;
   }

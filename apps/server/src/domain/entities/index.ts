@@ -20,4 +20,3 @@ export * from './template-time-block';
 export * from './unavailable-shift';
 export * from './usual-setup';
 export * from './volunteer';
-export * from './volunteer-notification';

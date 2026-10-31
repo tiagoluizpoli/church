@@ -20,5 +20,4 @@ export * from './unavailable-shift-id';
 export * from './user-id';
 export * from './usual-setup-id';
 export * from './volunteer-id';
-export * from './volunteer-notification-id';
 export * from './volunteer-transfer-id';

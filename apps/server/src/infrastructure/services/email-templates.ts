@@ -1,10 +1,12 @@
 import { m } from '@church/i18n/messages';
-import { formatInstant, toDate } from '@church/time';
+import { formatCalendarDay, formatInstant, toDate } from '@church/time';
 import type {
+  AvailabilityEmail,
   EmailLocale,
   EmailPayload,
   MinistryInvitationEmail,
   PreparedEmail,
+  SchedulePublishedEmail,
   TransferLeaderlessMinistryEmail,
   TransferMinistryDigestEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -27,6 +29,28 @@ export function prepareEmail({
 }: PrepareEmailFromInput): PreparedEmail {
   if (payload.kind === 'invitation.ministry') {
     const { subject, html } = composeMinistryInvitationEmail({
+      payload,
+      locale,
+    });
+    return {
+      payload,
+      locale,
+      request: { from, to: payload.to, subject, html },
+    };
+  }
+  if (
+    payload.kind === 'availability.opened' ||
+    payload.kind === 'availability.reminder'
+  ) {
+    const { subject, html } = composeAvailabilityEmail({ payload, locale });
+    return {
+      payload,
+      locale,
+      request: { from, to: payload.to, subject, html },
+    };
+  }
+  if (payload.kind === 'schedule.published') {
+    const { subject, html } = composeSchedulePublishedEmail({
       payload,
       locale,
     });
@@ -83,6 +107,69 @@ function composeMinistryInvitationEmail({
   };
 }
 
+interface ComposeAvailabilityEmailInput {
+  payload: AvailabilityEmail;
+  locale: EmailLocale;
+}
+
+function composeAvailabilityEmail({
+  payload,
+  locale,
+}: ComposeAvailabilityEmailInput): ComposedEmail {
+  const options = { locale };
+  const isReminder = payload.kind === 'availability.reminder';
+  const subjectInput = { ministryName: payload.ministryName };
+  const bodyInput = {
+    ministryName: escapeHtml(payload.ministryName),
+    cycleName: escapeHtml(payload.cycleName),
+    startDate: formatCalendarDay({ day: payload.cycleStartDate }),
+    endDate: formatCalendarDay({ day: payload.cycleEndDate }),
+  };
+  return {
+    subject: isReminder
+      ? m.email_availability_reminder_subject(subjectInput, options)
+      : m.email_availability_opened_subject(subjectInput, options),
+    html: `
+          <p>${isReminder ? m.email_availability_reminder_body(bodyInput, options) : m.email_availability_opened_body(bodyInput, options)}</p>
+          <p><a href="${escapeHtml(payload.actionUrl)}">${m.email_availability_action({}, options)}</a></p>
+        `,
+  };
+}
+
+interface ComposeSchedulePublishedEmailInput {
+  payload: SchedulePublishedEmail;
+  locale: EmailLocale;
+}
+
+function composeSchedulePublishedEmail({
+  payload,
+  locale,
+}: ComposeSchedulePublishedEmailInput): ComposedEmail {
+  const options = { locale };
+  const at = (instant: SchedulePublishedEmail['eventStart']) =>
+    formatInstant({ instant, timeZone: payload.churchTimezone });
+  const shifts =
+    payload.shifts.length > 0
+      ? `<p>${m.email_schedule_published_shifts({}, options)}</p><ul>${payload.shifts
+          .map(
+            (shift) =>
+              `<li>${m.email_schedule_published_shift({ roleName: escapeHtml(shift.roleName), startsAt: at(shift.startsAt) }, options)}</li>`,
+          )
+          .join('')}</ul>`
+      : '';
+  return {
+    subject: m.email_schedule_published_subject(
+      { ministryName: payload.ministryName },
+      options,
+    ),
+    html: `
+          <p>${m.email_schedule_published_body({ eventTitle: escapeHtml(payload.eventTitle), startsAt: at(payload.eventStart), ministryName: escapeHtml(payload.ministryName) }, options)}</p>
+          ${shifts}
+          <p><a href="${escapeHtml(payload.actionUrl)}">${m.email_schedule_published_action({}, options)}</a></p>
+        `,
+  };
+}
+
 const HTML_ESCAPES: Record<string, string> = {
   '&': '&amp;',
   '<': '&lt;',
@@ -119,6 +206,11 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
           <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
         `,
       };
+    case 'availability.opened':
+    case 'availability.reminder':
+    case 'schedule.published':
+      // Rendered from the catalog in prepareEmail.
+      throw new Error(`Email kind "${payload.kind}" renders in prepareEmail`);
     case 'invitation.verification-code':
       return {
         subject: `Your ${payload.churchName} verification code`,

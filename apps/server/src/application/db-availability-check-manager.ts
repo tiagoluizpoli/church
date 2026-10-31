@@ -8,19 +8,22 @@ import type {
   ListCycleCheckStatusesInput,
   ResendReminderInput,
 } from '../domain/contracts/application/availability-check-manager';
+import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   ActiveMinistryMembership,
   AvailabilityCheckRepository,
 } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
-import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import { IllegalStateTransitionError } from '../domain/errors';
 
 interface NotifyMembershipsInput {
+  tx: TransactionContext;
+  kind: 'availability_opened' | 'availability_reminder';
   churchId: AskAvailabilityInput['churchId'];
   participation: MinistryParticipation;
   cycleId: CycleId;
@@ -32,7 +35,7 @@ interface DbAvailabilityCheckManagerDependencies {
   eventRepository: PlanningEventRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
   cycleRepository: CycleRepository;
-  notificationService: NotificationService;
+  notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
 }
 
@@ -41,7 +44,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
   private readonly eventRepository: PlanningEventRepository;
   private readonly availabilityCheckRepository: AvailabilityCheckRepository;
   private readonly cycleRepository: CycleRepository;
-  private readonly notificationService: NotificationService;
+  private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
 
   constructor({
@@ -49,14 +52,14 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     eventRepository,
     availabilityCheckRepository,
     cycleRepository,
-    notificationService,
+    notifications,
     unitOfWork,
   }: DbAvailabilityCheckManagerDependencies) {
     this.participationRepository = participationRepository;
     this.eventRepository = eventRepository;
     this.availabilityCheckRepository = availabilityCheckRepository;
     this.cycleRepository = cycleRepository;
-    this.notificationService = notificationService;
+    this.notifications = notifications;
     this.unitOfWork = unitOfWork;
   }
 
@@ -119,19 +122,21 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         tx,
       });
 
+      await this.notifyMemberships({
+        tx,
+        kind: 'availability_opened',
+        churchId: input.churchId,
+        participation,
+        cycleId,
+        memberships: missingMemberships,
+      });
+
       return {
         participation,
         cycleId,
         createdCheckCount: createdChecks.length,
         newMemberships: missingMemberships,
       };
-    });
-
-    await this.notifyMemberships({
-      churchId: input.churchId,
-      participation: requested.participation,
-      cycleId: requested.cycleId,
-      memberships: requested.newMemberships,
     });
 
     return {
@@ -230,34 +235,37 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       pendingMembershipIds.has(membership.ministryMembershipId),
     );
 
-    await this.notifyMemberships({
-      churchId: input.churchId,
-      participation,
-      cycleId: event.cycleId,
-      memberships: pendingMemberships,
-    });
+    await this.unitOfWork.run((tx) =>
+      this.notifyMemberships({
+        tx,
+        kind: 'availability_reminder',
+        churchId: input.churchId,
+        participation,
+        cycleId: event.cycleId,
+        memberships: pendingMemberships,
+      }),
+    );
   }
 
   private async notifyMemberships({
+    tx,
+    kind,
     churchId,
     participation,
     cycleId,
     memberships,
   }: NotifyMembershipsInput): Promise<void> {
-    for (const membership of memberships) {
-      await this.notificationService.notifyVolunteer({
-        churchId: churchId as string,
-        volunteerId: membership.volunteerId as string,
-        cycleId,
-        ministryId: participation.ministryId,
-        type: 'availability_reminder',
-        title: 'Availability check',
-        body: 'Your ministry leader asked for your availability for an upcoming planning period.',
-        payload: {
-          cycleId: cycleId as string,
-          ministryId: participation.ministryId as string,
-        },
-      });
-    }
+    await this.notifications.enqueue({
+      tx,
+      kind,
+      to: memberships.map((membership) => ({
+        userId: membership.userId,
+        churchId,
+      })),
+      data: {
+        cycleId: cycleId as string,
+        ministryId: participation.ministryId as string,
+      },
+    });
   }
 }

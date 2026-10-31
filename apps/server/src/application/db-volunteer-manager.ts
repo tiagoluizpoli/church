@@ -9,7 +9,7 @@ import {
   toDate,
   toTimeOfDay,
 } from '@church/time';
-import type { ChurchId, MinistryId, ShiftId } from '../domain/branded-ids';
+import type { MinistryId, ShiftId } from '../domain/branded-ids';
 import type {
   CancelOwnAssignmentInput,
   ConfirmAvailabilityCheckInput,
@@ -42,7 +42,6 @@ import type { EventRepository } from '../domain/contracts/infrastructure/event.r
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
-import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
@@ -67,11 +66,6 @@ import {
 const UPCOMING_DAYS = 30;
 const NOTIFICATION_PREVIEW_LIMIT = 3;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-
-interface NotifyLeadersOfCancellationInput {
-  churchId: ChurchId;
-  assignment: Assignment;
-}
 
 interface DashboardAssignmentGroupDraft {
   eventId: string;
@@ -189,7 +183,6 @@ interface DbVolunteerManagerDependencies {
   participationRepo: MinistryParticipationRepository;
   roleRepo: RoleRepository;
   availabilityCheckRepo: AvailabilityCheckRepository;
-  notificationService: NotificationService;
   unitOfWork: UnitOfWork;
   config: AppConfig;
 }
@@ -205,7 +198,6 @@ export class DbVolunteerManager implements IVolunteerManager {
   private readonly participationRepo: MinistryParticipationRepository;
   private readonly roleRepo: RoleRepository;
   private readonly availabilityCheckRepo: AvailabilityCheckRepository;
-  private readonly notificationService: NotificationService;
   private readonly unitOfWork: UnitOfWork;
 
   private readonly cancelLeadTimeDays: number;
@@ -221,7 +213,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     participationRepo,
     roleRepo,
     availabilityCheckRepo,
-    notificationService,
     unitOfWork,
     config,
   }: DbVolunteerManagerDependencies) {
@@ -235,7 +226,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     this.participationRepo = participationRepo;
     this.roleRepo = roleRepo;
     this.availabilityCheckRepo = availabilityCheckRepo;
-    this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
     const { assignment } = config;
     this.cancelLeadTimeDays = assignment.cancelLeadTimeDays;
@@ -860,52 +850,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       }
     }
 
-    await this.notifyLeadersOfCancellation({ churchId, assignment });
     await this.assignmentRepo.deleteById({ churchId, assignmentId });
-  }
-
-  private async notifyLeadersOfCancellation(
-    input: NotifyLeadersOfCancellationInput,
-  ): Promise<void> {
-    const { churchId, assignment } = input;
-    if (!assignment.participationId) {
-      return;
-    }
-
-    const participation = await this.participationRepo.getById({
-      churchId,
-      participationId: assignment.participationId,
-    });
-    const event = await this.eventRepo.getById({
-      churchId,
-      eventId: participation.eventId,
-    });
-    const leaders =
-      await this.availabilityCheckRepo.listMinistryLeaderVolunteerIds({
-        churchId,
-        ministryIds: [participation.ministryId],
-      });
-
-    await Promise.all(
-      leaders.map((leader) =>
-        this.notificationService.notifyVolunteer({
-          churchId: churchId as string,
-          volunteerId: leader.volunteerId as string,
-          cycleId: event.cycleId,
-          ministryId: participation.ministryId,
-          eventId: event.id,
-          assignmentId: assignment.id,
-          type: 'assignment_removed',
-          title: 'Volunteer cancelled an assignment',
-          body: `A volunteer cancelled their assignment for ${event.title}. The shift is open again.`,
-          payload: {
-            assignmentId: assignment.id as string,
-            eventId: event.id as string,
-            ministryId: participation.ministryId as string,
-          },
-        }),
-      ),
-    );
   }
 
   private async listPublishedAssignmentsForVolunteer({

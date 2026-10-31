@@ -212,6 +212,10 @@ class MockVolunteerRepository implements VolunteerRepository {
   async listActiveLeaderEmails(): Promise<string[]> {
     return [];
   }
+
+  async listActiveLeaderUserIds(): Promise<never[]> {
+    return [];
+  }
 }
 
 runVolunteerRepositoryContractTests(

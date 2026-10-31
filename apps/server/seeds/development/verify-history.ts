@@ -9,6 +9,7 @@ import {
   ministryMembership,
   ministryMembershipRole,
   ministryParticipation,
+  notification,
   participationEventTimeBlockInclusion,
   role,
   sector,
@@ -19,7 +20,6 @@ import {
   user,
   usualSetup,
   volunteer,
-  volunteerNotification,
 } from '@church/db';
 import {
   addCalendarDays,
@@ -612,18 +612,17 @@ interface NotificationProblemsInput {
 }
 
 /**
- * What publishing and the reassignments wrote: one `schedule_published` per
- * Volunteer assigned on a participation when it was published, the pair a
- * reassignment sends, each in the product's shape, read unless the
- * blueprint says otherwise.
+ * What publishing wrote: one `schedule_published` per
+ * Volunteer assigned on a participation when it was published, in the
+ * product's shape, read unless the blueprint says otherwise.
  */
 async function notificationProblems({
   db,
   blueprint,
 }: NotificationProblemsInput): Promise<string[]> {
   const { history } = blueprint;
-  const published = sql`(select min(created_at) from ${volunteerNotification}
-    where type = 'schedule_published')`;
+  const published = sql`(select min(created_at) from ${notification}
+    where kind = 'schedule_published')`;
   const unreadEmails = sql.join(
     history.unreadNotificationEmails.map((email) => sql`${email}`),
     sql`, `,
@@ -635,17 +634,18 @@ async function notificationProblems({
         query: sql`select count(*) as value from (
             select distinct a.participation_id, a.volunteer_id from ${assignment} a
             where a.assigned_at <= ${published}) as assigned
-          where not exists (select 1 from ${volunteerNotification} n
-            join ${ministryParticipation} p on p.event_id = n.event_id and p.ministry_id = n.ministry_id
-            where p.id = assigned.participation_id and n.volunteer_id = assigned.volunteer_id
-              and n.type = 'schedule_published')`,
+          where not exists (select 1 from ${notification} n
+            join ${ministryParticipation} p on p.event_id::text = n.data->>'eventId' and p.ministry_id::text = n.data->>'ministryId'
+            join ${volunteer} v on v.user_id = n.user_id
+            where p.id = assigned.participation_id and v.id = assigned.volunteer_id
+              and n.kind = 'schedule_published')`,
       }),
       expected: 0,
     },
     'publish notifications beyond the assigned Volunteers': {
       actual: await countOf({
         db,
-        query: sql`select (select count(*) from ${volunteerNotification} where type = 'schedule_published')
+        query: sql`select (select count(*) from ${notification} where kind = 'schedule_published')
           - (select count(*) from (select distinct a.participation_id, a.volunteer_id
               from ${assignment} a where a.assigned_at <= ${published}) as assigned) as value`,
       }),
@@ -655,45 +655,30 @@ async function notificationProblems({
     'publish notifications not in the shape publishing writes': {
       actual: await countOf({
         db,
-        query: sql`select count(*) as value from ${volunteerNotification} n
-          join ${event} e on e.id = n.event_id
-          where n.type = 'schedule_published'
-            and (n.title <> 'Schedule published'
-              or n.body <> e.title || ' is now published for your ministry.'
-              or n.cycle_id is distinct from e.cycle_id
-              or n.assignment_id is not null
-              or n.payload <> jsonb_build_object('eventId', n.event_id::text,
-                'ministryId', n.ministry_id::text, 'section', 'assignments'))`,
+        query: sql`select count(*) as value from ${notification} n
+          join ${event} e on e.id::text = n.data->>'eventId'
+          where n.kind = 'schedule_published'
+            and (n.data->>'eventTitle' <> e.title
+              or n.data->>'cycleId' <> e.cycle_id::text)`,
       }),
       expected: 0,
-    },
-    'reassignment notifications': {
-      actual: await countOf({
-        db,
-        query: sql`select count(*) as value from ${volunteerNotification} n
-          join ${assignment} a on a.id = n.assignment_id
-          where n.type in ('assignment_added', 'assignment_removed')
-            and n.payload = jsonb_build_object('assignmentId', n.assignment_id::text,
-              'eventId', n.event_id::text, 'ministryId', n.ministry_id::text)`,
-      }),
-      expected: 2 * history.resolvedOverlaps.length,
     },
     'notifications of any other kind': {
       actual: await countOf({
         db,
-        query: sql`select count(*) as value from ${volunteerNotification}
-          where type not in ('schedule_published', 'assignment_added', 'assignment_removed')`,
+        query: sql`select count(*) as value from ${notification}
+          where kind not in ('schedule_published', 'ministry_invitation')`,
       }),
       expected: 0,
     },
     'notifications whose read state contradicts the blueprint': {
       actual: await countOf({
         db,
-        query: sql`select count(*) as value from ${volunteerNotification} n
-          join ${volunteer} v on v.id = n.volunteer_id
-          join ${user} u on u.id = v.user_id
-          where (n.read_at is null) <> (u.email in (${unreadEmails}))
-            or n.read_at < n.created_at`,
+        query: sql`select count(*) as value from ${notification} n
+          join ${user} u on u.id = n.user_id
+          where n.kind = 'schedule_published'
+            and ((n.read_at is null) <> (u.email in (${unreadEmails}))
+              or n.read_at < n.created_at)`,
       }),
       expected: 0,
     },

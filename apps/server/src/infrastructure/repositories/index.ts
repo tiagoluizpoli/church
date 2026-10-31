@@ -23,6 +23,5 @@ export { DrizzleUnavailableShiftRepository } from './drizzle-unavailable-shift.r
 export { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 export { DrizzleUsualSetupRepository } from './drizzle-usual-setup.repository';
 export { DrizzleVolunteerRepository } from './drizzle-volunteer.repository';
-export { DrizzleVolunteerNotificationRepository } from './drizzle-volunteer-notification.repository';
 export { DrizzleVolunteerTransferRepository } from './drizzle-volunteer-transfer.repository';
 export { getClient, withChurchIsolation } from './helpers';

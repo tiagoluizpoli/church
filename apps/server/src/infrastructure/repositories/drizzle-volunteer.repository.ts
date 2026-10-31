@@ -8,7 +8,7 @@ import {
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, eq, inArray } from 'drizzle-orm';
-import type { MinistryId, VolunteerId } from '../../domain/branded-ids';
+import type { MinistryId, UserId, VolunteerId } from '../../domain/branded-ids';
 import type {
   FindVolunteerByUserIdGloballyInput,
   FindVolunteerByUserIdInput,
@@ -393,6 +393,27 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       qualifiedRoleIds: roleIdsByMembership.get(r.id) ?? [],
       ministryAccessLevel: r.ministryAccessLevel as MinistryAccessLevel,
     }));
+  }
+
+  async listActiveLeaderUserIds({
+    churchId,
+    ministryId,
+    tx,
+  }: ListActiveLeaderEmailsInput): Promise<UserId[]> {
+    const db = getClient({ db: this.db, tx });
+    const rows = await db
+      .select({ userId: volunteer.userId })
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
+      .where(
+        and(
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
+          eq(ministryMembership.ministryAccessLevel, 'leader'),
+        ),
+      );
+    return rows.map((r) => r.userId as UserId);
   }
 
   async listActiveLeaderEmails({

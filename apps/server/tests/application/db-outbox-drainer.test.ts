@@ -54,6 +54,7 @@ function createDrainer(): DbOutboxDrainer {
     volunteerTransferRepository: volunteerTransferRepository as never,
     emailSender: emailSender as never,
     notifier: { send: vi.fn() },
+    schedulingFacts: {} as never,
     unitOfWork: unitOfWork as never,
     config: appConfig,
   });

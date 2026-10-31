@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
+import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
@@ -30,7 +31,7 @@ import {
   buildVolunteerWithMembership,
 } from '@/seeds/builders/volunteer';
 import { schedulingTestDb } from '@/tests/scheduling-reshape/setup';
-import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
+import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 
 /**
  * The managers and seed steps the assign (phase 6) and live-change
@@ -43,11 +44,13 @@ export interface SchedulingManagers {
   volunteerManager: DbVolunteerManager;
   assignmentRepo: DrizzleAssignmentRepository;
   participationRepo: DrizzleMinistryParticipationRepository;
-  notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
+  notificationSpy: ReturnType<typeof createChurchNotificationsSpy>;
 }
 
 export interface CreateSchedulingManagersInput {
   cancelLeadTimeDays?: number;
+  /** Replaces the recording spy, e.g. to write real outbox rows. */
+  notifications?: IChurchNotifications;
 }
 
 export interface SeedRoleQualificationInput {
@@ -58,6 +61,7 @@ export interface SeedRoleQualificationInput {
 
 export function createSchedulingManagers({
   cancelLeadTimeDays = appConfig.assignment.cancelLeadTimeDays,
+  notifications,
 }: CreateSchedulingManagersInput = {}): SchedulingManagers {
   const assignmentRepo = new DrizzleAssignmentRepository({
     db: schedulingTestDb,
@@ -79,7 +83,7 @@ export function createSchedulingManagers({
   const eventRepo = new DrizzlePlanningEventRepository({
     db: schedulingTestDb,
   });
-  const notificationSpy = createNotificationServiceSpy();
+  const notificationSpy = createChurchNotificationsSpy();
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
   const plainEventRepo = new DrizzleEventRepository({ db: schedulingTestDb });
   const availabilityCheckRepo = new DrizzleAvailabilityCheckRepository({
@@ -94,9 +98,7 @@ export function createSchedulingManagers({
       participationRepository: participationRepo,
       volunteerRepository: volunteerRepo,
       unavailableShiftRepository: unavailableShiftRepo,
-      planningEventRepository: eventRepo,
       cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
-      notificationService: notificationSpy,
       unitOfWork,
     }),
     participationManager: new DbParticipationManager({
@@ -117,7 +119,7 @@ export function createSchedulingManagers({
       }),
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
       sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
-      notificationService: notificationSpy,
+      notifications: notifications ?? notificationSpy,
       unitOfWork,
     }),
     volunteerManager: new DbVolunteerManager({
@@ -133,7 +135,6 @@ export function createSchedulingManagers({
       participationRepo,
       roleRepo: new DrizzleRoleRepository({ db: schedulingTestDb }),
       availabilityCheckRepo,
-      notificationService: notificationSpy,
       unitOfWork,
       config: { ...appConfig, assignment: { cancelLeadTimeDays } },
     }),

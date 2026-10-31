@@ -9,10 +9,16 @@ import type {
 import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
 import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type {
-  NotificationDeliveryData,
-  NotificationKind,
-  NotificationPayload,
+import {
+  type AvailabilityDeliveryFacts,
+  availabilityNotificationDataSchema,
+  type MinistryInvitationDeliveryFacts,
+  ministryInvitationNotificationDataSchema,
+  type NotificationDeliveryData,
+  type NotificationKind,
+  type NotificationPayload,
+  type SchedulePublishedDeliveryFacts,
+  schedulePublishedNotificationDataSchema,
 } from '../domain/notification-kinds';
 import { recipientLocale } from '../domain/services/recipient-locale';
 import {
@@ -76,17 +82,46 @@ export function buildChurchNotifier({
     },
     templates: {
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-      ministry_invitation: ({ data, address }) => ({
-        kind: 'invitation.ministry',
+      ministry_invitation: ({ data: facts, address }) => {
+        const data = facts as MinistryInvitationDeliveryFacts;
+        return {
+          kind: 'invitation.ministry',
+          to: address.email,
+          churchName: data.churchName,
+          ministryName: data.ministryName,
+          ministryAccessLevel: data.ministryAccessLevel,
+          roleNames: data.roleNames,
+          expiresAt: data.expiresAt,
+          churchTimezone: data.churchTimezone,
+          redemptionUrl: data.redemptionUrl,
+        };
+      },
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      availability_opened: ({ data, address }) => ({
+        kind: 'availability.opened',
         to: address.email,
-        churchName: data.churchName,
-        ministryName: data.ministryName,
-        ministryAccessLevel: data.ministryAccessLevel,
-        roleNames: data.roleNames,
-        expiresAt: data.expiresAt,
-        churchTimezone: data.churchTimezone,
-        redemptionUrl: data.redemptionUrl,
+        ...availabilityEmailFacts(data),
       }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      availability_reminder: ({ data, address }) => ({
+        kind: 'availability.reminder',
+        to: address.email,
+        ...availabilityEmailFacts(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      schedule_published: ({ data, address }) => {
+        const facts = data as SchedulePublishedDeliveryFacts;
+        return {
+          kind: 'schedule.published',
+          to: address.email,
+          ministryName: facts.ministryName,
+          eventTitle: facts.eventTitle,
+          eventStart: facts.eventStart,
+          churchTimezone: facts.churchTimezone,
+          shifts: facts.shifts,
+          actionUrl: facts.actionUrl,
+        };
+      },
     },
     sink: new EmailNotificationSink({
       emailSender,
@@ -116,15 +151,38 @@ export function buildChurchNotifier({
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       ministry_invitation: ({ data }) => ({
         kind: 'ministry_invitation',
-        data: {
-          ministryInvitationId: data.ministryInvitationId,
-          ministryId: data.ministryId,
-          ministryName: data.ministryName,
-        },
+        data: ministryInvitationNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      availability_opened: ({ data }) => ({
+        kind: 'availability_opened',
+        data: availabilityNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      availability_reminder: ({ data }) => ({
+        kind: 'availability_reminder',
+        data: availabilityNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      schedule_published: ({ data }) => ({
+        kind: 'schedule_published',
+        data: schedulePublishedNotificationDataSchema.parse(data),
       }),
     },
     sink: new InboxNotificationSink({ notificationRepository }),
   });
 
   return new Notifier({ sinks: [email, inbox] });
+}
+
+/** The facts every availability email renders; the drainer resolved them for this kind. */
+function availabilityEmailFacts(data: NotificationDeliveryData) {
+  const facts = data as AvailabilityDeliveryFacts;
+  return {
+    ministryName: facts.ministryName,
+    cycleName: facts.cycleName,
+    cycleStartDate: facts.cycleStartDate,
+    cycleEndDate: facts.cycleEndDate,
+    actionUrl: facts.actionUrl,
+  };
 }

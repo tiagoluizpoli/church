@@ -36,7 +36,6 @@ import {
   usualSetup,
   verification,
   volunteer,
-  volunteerNotification,
   volunteerTransfer,
 } from '@church/db';
 import { sql } from 'drizzle-orm';
@@ -370,19 +369,6 @@ async function seedEveryTenantedTable(): Promise<void> {
     churchId: IDS.church,
     availabilityCheckId: IDS.availabilityCheck,
     shiftId: IDS.shift,
-  });
-
-  await testDb.insert(volunteerNotification).values({
-    churchId: IDS.church,
-    volunteerId: IDS.volunteer,
-    cycleId: IDS.cycle,
-    ministryId: IDS.ministry,
-    eventId: IDS.event,
-    assignmentId: IDS.assignment,
-    type: 'assignment_reminder',
-    title: 'Truncation notification',
-    body: 'Truncation notification body',
-    payload: {},
   });
 
   await testDb.insert(notification).values({

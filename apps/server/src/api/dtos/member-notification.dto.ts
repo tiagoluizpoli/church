@@ -3,7 +3,11 @@ import { z } from 'zod';
 import type { MemberNotificationPage } from '../../domain/contracts/application/notification-manager';
 import type { Notification } from '../../domain/entities/notification';
 import { decodeNotificationCursor } from '../../domain/notification-cursor';
-import { ministryInvitationNotificationDataSchema } from '../../domain/notification-kinds';
+import {
+  availabilityNotificationDataSchema,
+  ministryInvitationNotificationDataSchema,
+  schedulePublishedNotificationDataSchema,
+} from '../../domain/notification-kinds';
 
 /** One member Notification: typed kind/data and Instants, never rendered text. */
 export const memberNotificationResponseSchema = z.discriminatedUnion('kind', [
@@ -11,6 +15,27 @@ export const memberNotificationResponseSchema = z.discriminatedUnion('kind', [
     id: z.uuid(),
     kind: z.literal('ministry_invitation'),
     data: ministryInvitationNotificationDataSchema,
+    createdAt: instantSchema,
+    readAt: instantSchema.optional(),
+  }),
+  z.object({
+    id: z.uuid(),
+    kind: z.literal('availability_opened'),
+    data: availabilityNotificationDataSchema,
+    createdAt: instantSchema,
+    readAt: instantSchema.optional(),
+  }),
+  z.object({
+    id: z.uuid(),
+    kind: z.literal('availability_reminder'),
+    data: availabilityNotificationDataSchema,
+    createdAt: instantSchema,
+    readAt: instantSchema.optional(),
+  }),
+  z.object({
+    id: z.uuid(),
+    kind: z.literal('schedule_published'),
+    data: schedulePublishedNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),

@@ -38,7 +38,6 @@ import type {
   MinistryParticipationRepository,
   MinistryRepository,
   NotificationRepository,
-  NotificationService,
   OutboxRepository,
   PlanningEventRepository,
   RedemptionIdentityGateway,
@@ -52,7 +51,6 @@ import type {
   UnitOfWork,
   UsualSetupRepository,
   VerificationCodeInspector,
-  VolunteerNotificationRepository,
   VolunteerRepository,
   VolunteerTransferRepository,
 } from '../../domain/contracts/infrastructure';
@@ -84,11 +82,9 @@ export interface CompositionRootDependencies {
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
-  volunteerNotificationRepository: VolunteerNotificationRepository;
   notificationRepository: NotificationRepository;
   unitOfWork: UnitOfWork;
   // Services
-  notificationService: NotificationService;
   emailSender: EmailSender;
   redemptionIdentityGateway: RedemptionIdentityGateway;
   /** Non-production only; set alongside a capturing `emailSender`. */

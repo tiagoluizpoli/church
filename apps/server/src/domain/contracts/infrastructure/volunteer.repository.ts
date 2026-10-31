@@ -84,6 +84,10 @@ export interface VolunteerRepository {
    * has no active leader.
    */
   listActiveLeaderEmails(input: ListActiveLeaderEmailsInput): Promise<string[]>;
+  /** User ids of the Ministry's active leaders, in this Church only. */
+  listActiveLeaderUserIds(
+    input: ListActiveLeaderEmailsInput,
+  ): Promise<UserId[]>;
 }
 
 export interface ListActiveLeaderEmailsInput {

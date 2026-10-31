@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { NotFoundError } from '@church/core';
 import {
   ministryParticipation,
+  outboxMessage,
   shift as shiftTable,
-  volunteerNotification,
 } from '@church/db';
 import { fromDate, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
@@ -23,7 +24,7 @@ import {
   TemplateTimeBlockId,
   UserId,
 } from '@/domain/branded-ids';
-import type { NotificationService } from '@/domain/contracts/infrastructure/notification-service';
+import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
 import {
   IllegalStateTransitionError,
   InvalidRequiredCountError,
@@ -40,6 +41,7 @@ import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/dr
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
@@ -48,8 +50,6 @@ import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { LocalNotificationService } from '@/infrastructure/services/local-notification-service';
 import {
   buildMinistry,
   buildRole,
@@ -70,16 +70,16 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
-import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
+import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 
 interface Phase4Managers {
   participationManager: DbParticipationManager;
   availabilityManager: DbAvailabilityCheckManager;
-  notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
+  notificationSpy: ReturnType<typeof createChurchNotificationsSpy>;
 }
 
 function createPhase4Managers(
-  notificationService?: NotificationService,
+  notifications?: IChurchNotifications,
 ): Phase4Managers {
   const participationRepository = new DrizzleMinistryParticipationRepository({
     db: schedulingTestDb,
@@ -99,7 +99,7 @@ function createPhase4Managers(
     db: schedulingTestDb,
   });
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
-  const notificationSpy = createNotificationServiceSpy();
+  const notificationSpy = createChurchNotificationsSpy();
 
   return {
     participationManager: new DbParticipationManager({
@@ -126,7 +126,7 @@ function createPhase4Managers(
       }),
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
       sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
-      notificationService: notificationService ?? notificationSpy,
+      notifications: notifications ?? notificationSpy,
       unitOfWork,
     }),
     availabilityManager: new DbAvailabilityCheckManager({
@@ -134,7 +134,7 @@ function createPhase4Managers(
       eventRepository,
       availabilityCheckRepository,
       cycleRepository,
-      notificationService: notificationService ?? notificationSpy,
+      notifications: notifications ?? notificationSpy,
       unitOfWork,
     }),
     notificationSpy,
@@ -638,19 +638,18 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
 
     // admin leader membership (from base seed) + two active volunteers; inactive excluded
     expect(result.createdCheckCount).toBe(3);
-    expect(notificationSpy.notifyVolunteer).toHaveBeenCalledTimes(3);
-    const notified = notificationSpy.notifyVolunteer.mock.calls.map(
-      ([event]) => event,
+    expect(notificationSpy.enqueue).toHaveBeenCalledTimes(1);
+    const [call] = notificationSpy.enqueue.mock.calls[0] ?? [];
+    expect(call).toMatchObject({
+      kind: 'availability_opened',
+      data: { cycleId: cycle.id, ministryId: seed.ministryAId },
+    });
+    const recipients = call?.to.map((recipient) => recipient.userId) ?? [];
+    expect(recipients).toHaveLength(3);
+    expect(recipients).toEqual(
+      expect.arrayContaining(['vol-user-1', 'vol-user-2']),
     );
-    for (const event of notified) {
-      expect(event.type).toBe('availability_reminder');
-      expect(event.cycleId).toBe(cycle.id);
-    }
-    expect(
-      notified.some(
-        (event) => event.volunteerId === '99999999-9999-4999-8999-999999999993',
-      ),
-    ).toBe(false);
+    expect(recipients).not.toContain('vol-user-3');
   });
 
   it('DL2-AF-04/05 asking for availability flips state transactionally and never duplicates checks across events of the same cycle', async () => {
@@ -692,13 +691,13 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
 
     // firing a second event's participation in the same cycle creates no duplicate checks
-    notificationSpy.notifyVolunteer.mockClear();
+    notificationSpy.enqueue.mockClear();
     const second = await availabilityManager.askAvailability({
       churchId,
       participationId: MinistryParticipationId.from(graph2.participation.id),
     });
     expect(second.createdCheckCount).toBe(0);
-    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
+    expect(notificationSpy.enqueue.mock.calls[0]?.[0].to).toEqual([]);
   });
 
   it('DL2-AF-06 resendReminder re-notifies pending checks without creating new ones', async () => {
@@ -713,11 +712,15 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
 
     await availabilityManager.askAvailability({ churchId, participationId });
-    notificationSpy.notifyVolunteer.mockClear();
+    notificationSpy.enqueue.mockClear();
 
     await availabilityManager.resendReminder({ churchId, participationId });
 
-    expect(notificationSpy.notifyVolunteer).toHaveBeenCalledTimes(1);
+    expect(notificationSpy.enqueue).toHaveBeenCalledTimes(1);
+    expect(notificationSpy.enqueue.mock.calls[0]?.[0]).toMatchObject({
+      kind: 'availability_reminder',
+    });
+    expect(notificationSpy.enqueue.mock.calls[0]?.[0].to).toHaveLength(1);
     const checks = await schedulingTestDb
       .select()
       .from((await import('@church/db')).availabilityCheck);
@@ -741,16 +744,14 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     ).rejects.toThrow();
   });
 
-  it('DL2-AF-08 requested notifications persist with the cycle scope', async () => {
+  it('DL2-AF-08 the Ask commits its notification rows with the state change', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
-    const notificationRepository = new DrizzleVolunteerNotificationRepository({
+    const outboxRepository = new DrizzleOutboxRepository({
       db: schedulingTestDb,
     });
     const { availabilityManager } = createPhase4Managers(
-      new LocalNotificationService({
-        volunteerNotificationRepo: notificationRepository,
-      }),
+      new ChurchNotifications({ outboxRepository }),
     );
 
     await availabilityManager.askAvailability({
@@ -760,16 +761,16 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
 
     const rows = await schedulingTestDb
       .select()
-      .from(volunteerNotification)
-      .where(
-        and(
-          eq(volunteerNotification.churchId, seed.churchAId),
-          eq(volunteerNotification.type, 'availability_reminder'),
-        ),
-      );
+      .from(outboxMessage)
+      .where(eq(outboxMessage.churchId, seed.churchAId));
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.cycleId).toBe(cycle.id);
+    expect(rows[0]?.kind).toBe('notification');
+    expect(rows[0]?.payload).toMatchObject({
+      kind: 'availability_opened',
+      to: { userId: seed.adminUserId, churchId: seed.churchAId },
+      data: { cycleId: cycle.id, ministryId: seed.ministryAId },
+    });
   });
 });
 
@@ -1124,7 +1125,9 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
         ),
       );
     expect(row[0]?.state).toBe('published');
-    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
+    for (const [call] of notificationSpy.enqueue.mock.calls) {
+      expect(call.to).toEqual([]);
+    }
   });
 });
 

@@ -57,7 +57,7 @@ import {
   schedulingTestPool,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
-import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
+import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 
 function createParticipationManager(): DbParticipationManager {
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
@@ -91,7 +91,7 @@ function createParticipationManager(): DbParticipationManager {
     }),
     roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
     sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
-    notificationService: createNotificationServiceSpy(),
+    notifications: createChurchNotificationsSpy(),
     unitOfWork,
   });
 }
@@ -113,11 +113,7 @@ function createAssignmentManager(input?: {
     unavailableShiftRepository: new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     }),
-    planningEventRepository: new DrizzlePlanningEventRepository({
-      db: schedulingTestDb,
-    }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
-    notificationService: createNotificationServiceSpy(),
     unitOfWork,
   });
 }

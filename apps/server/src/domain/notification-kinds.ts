@@ -1,4 +1,4 @@
-import type { Instant } from '@church/time';
+import { calendarDaySchema, type Instant, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { MinistryAccessLevel } from './entities/ministry-membership';
 
@@ -14,9 +14,44 @@ export const ministryInvitationNotificationDataSchema = z.object({
   ministryName: z.string(),
 });
 
+/** Availability opened (initial Ask) and the reminder share their facts. */
+export const availabilityNotificationDataSchema = z.object({
+  cycleId: z.uuid(),
+  ministryId: z.uuid(),
+  ministryName: z.string(),
+  cycleName: z.string(),
+  cycleStartDate: calendarDaySchema,
+  cycleEndDate: calendarDaySchema,
+});
+
+/** One of the recipient's own Shifts in the published event. */
+export const schedulePublishedShiftSchema = z.object({
+  roleName: z.string(),
+  startsAt: instantSchema,
+});
+
+export const schedulePublishedNotificationDataSchema = z.object({
+  eventId: z.uuid(),
+  cycleId: z.uuid(),
+  ministryId: z.uuid(),
+  ministryName: z.string(),
+  eventTitle: z.string(),
+  eventStart: instantSchema,
+  eventEnd: instantSchema,
+  /** The Church Timezone the Instants are read in. */
+  churchTimezone: z.string(),
+  shifts: z.array(schedulePublishedShiftSchema),
+});
+
 export const notificationKindDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   ministry_invitation: ministryInvitationNotificationDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_opened: availabilityNotificationDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_reminder: availabilityNotificationDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_published: schedulePublishedNotificationDataSchema,
 } as const;
 
 export const NOTIFICATION_KIND_OPTIONS = Object.keys(
@@ -43,9 +78,20 @@ export function isNotificationKind(value: string): value is NotificationKind {
  * outbox row is written. Display facts are resolved at delivery and frozen by
  * each channel's first delivery (inbox row, prepared email).
  */
+const availabilityRequestDataSchema = z.object({
+  cycleId: z.uuid(),
+  ministryId: z.uuid(),
+});
+
 export const notificationRequestDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   ministry_invitation: z.object({ ministryInvitationId: z.uuid() }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_opened: availabilityRequestDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_reminder: availabilityRequestDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_published: z.object({ participationId: z.uuid() }),
 } as const satisfies Record<NotificationKind, z.ZodType>;
 
 export type NotificationRequestDataOf<K extends NotificationKind> = z.infer<
@@ -70,5 +116,17 @@ export interface MinistryInvitationDeliveryFacts {
   redemptionUrl: string;
 }
 
-/** Delivery facts by kind; later kinds widen this union. */
-export type NotificationDeliveryData = MinistryInvitationDeliveryFacts;
+/** Delivery facts of the kinds whose inbox data is also the email's facts. */
+export type AvailabilityDeliveryFacts =
+  NotificationDataOf<'availability_opened'> & { actionUrl: string };
+export type SchedulePublishedDeliveryFacts =
+  NotificationDataOf<'schedule_published'> & { actionUrl: string };
+
+/**
+ * Delivery facts by kind, discriminated so a template never sees another
+ * kind's facts; later kinds widen this union.
+ */
+export type NotificationDeliveryData =
+  | MinistryInvitationDeliveryFacts
+  | AvailabilityDeliveryFacts
+  | SchedulePublishedDeliveryFacts;

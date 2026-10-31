@@ -1,9 +1,4 @@
 import { toDate } from '@church/time';
-import type {
-  AssignmentId,
-  ChurchId,
-  VolunteerId,
-} from '../domain/branded-ids';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
   CreateParticipationAssignmentInput,
@@ -18,8 +13,6 @@ import type { AssignmentRepository } from '../domain/contracts/infrastructure/as
 import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
-import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
-import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
@@ -33,19 +26,6 @@ interface CreateParticipationAssignmentTransactionInput {
   tx: TransactionContext;
 }
 
-interface ReassignTransactionResult {
-  nextAssignment: Assignment;
-  previousVolunteerId: VolunteerId;
-}
-
-interface NotifyReassignmentInput {
-  churchId: ChurchId;
-  previousVolunteerId: VolunteerId;
-  nextVolunteerId: VolunteerId;
-  participationId: NonNullable<Assignment['participationId']>;
-  assignmentId: AssignmentId;
-}
-
 interface DbAssignmentManagerDependencies {
   assignmentRepo: AssignmentRepository;
   auditRepo: AssignmentAuditRepository;
@@ -53,9 +33,7 @@ interface DbAssignmentManagerDependencies {
   participationRepository: MinistryParticipationRepository;
   volunteerRepository: VolunteerRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
-  planningEventRepository: PlanningEventRepository;
   cycleRepository: CycleRepository;
-  notificationService: NotificationService;
   unitOfWork: UnitOfWork;
 }
 
@@ -66,9 +44,7 @@ export class DbAssignmentManager implements IAssignmentManager {
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly volunteerRepository: VolunteerRepository;
   private readonly unavailableShiftRepository: UnavailableShiftRepository;
-  private readonly planningEventRepository: PlanningEventRepository;
   private readonly cycleRepository: CycleRepository;
-  private readonly notificationService: NotificationService;
   private readonly unitOfWork: UnitOfWork;
 
   constructor({
@@ -78,9 +54,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     participationRepository,
     volunteerRepository,
     unavailableShiftRepository,
-    planningEventRepository,
     cycleRepository,
-    notificationService,
     unitOfWork,
   }: DbAssignmentManagerDependencies) {
     this.assignmentRepo = assignmentRepo;
@@ -89,9 +63,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.participationRepository = participationRepository;
     this.volunteerRepository = volunteerRepository;
     this.unavailableShiftRepository = unavailableShiftRepository;
-    this.planningEventRepository = planningEventRepository;
     this.cycleRepository = cycleRepository;
-    this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
   }
 
@@ -129,8 +101,8 @@ export class DbAssignmentManager implements IAssignmentManager {
   async reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment> {
-    const { nextAssignment, previousVolunteerId } = await this.unitOfWork.run(
-      async (tx): Promise<ReassignTransactionResult> => {
+    const nextAssignment = await this.unitOfWork.run(
+      async (tx): Promise<Assignment> => {
         const currentAssignment = await this.assignmentRepo.getById({
           churchId: input.churchId,
           assignmentId: input.assignmentId,
@@ -169,26 +141,13 @@ export class DbAssignmentManager implements IAssignmentManager {
           tx,
         });
 
-        return {
-          nextAssignment: nextAssignmentResult.assignment,
-          previousVolunteerId: currentAssignment.volunteerId,
-        };
+        return nextAssignmentResult.assignment;
       },
     );
 
     if (!nextAssignment.participationId) {
       throw new Error('Assignment is missing a participation reference');
     }
-
-    // Runs after the transaction commits — the notification service writes
-    // on its own connection and can't see the new assignment row otherwise.
-    await this.notifyReassignment({
-      churchId: input.churchId,
-      previousVolunteerId,
-      nextVolunteerId: nextAssignment.volunteerId,
-      participationId: nextAssignment.participationId,
-      assignmentId: nextAssignment.id,
-    });
 
     return nextAssignment;
   }
@@ -358,57 +317,6 @@ export class DbAssignmentManager implements IAssignmentManager {
       assignment,
       warnings,
     };
-  }
-
-  private async notifyReassignment({
-    churchId,
-    previousVolunteerId,
-    nextVolunteerId,
-    participationId,
-    assignmentId,
-  }: NotifyReassignmentInput): Promise<void> {
-    const participation = await this.participationRepository.getById({
-      churchId,
-      participationId,
-    });
-    const event = await this.planningEventRepository.getEvent({
-      churchId,
-      eventId: participation.eventId,
-    });
-
-    await this.notificationService.notifyVolunteer({
-      churchId: churchId as string,
-      volunteerId: previousVolunteerId as string,
-      cycleId: event.cycleId,
-      ministryId: participation.ministryId,
-      eventId: event.id,
-      assignmentId,
-      type: 'assignment_removed',
-      title: 'Assignment changed',
-      body: `${event.title} has been reassigned.`,
-      payload: {
-        assignmentId: assignmentId as string,
-        eventId: event.id as string,
-        ministryId: participation.ministryId as string,
-      },
-    });
-
-    await this.notificationService.notifyVolunteer({
-      churchId: churchId as string,
-      volunteerId: nextVolunteerId as string,
-      cycleId: event.cycleId,
-      ministryId: participation.ministryId,
-      eventId: event.id,
-      assignmentId,
-      type: 'assignment_added',
-      title: 'New assignment',
-      body: `You were assigned to ${event.title}.`,
-      payload: {
-        assignmentId: assignmentId as string,
-        eventId: event.id as string,
-        ministryId: participation.ministryId as string,
-      },
-    });
   }
 }
 

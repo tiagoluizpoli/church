@@ -20,6 +20,7 @@ import {
 } from '../../application';
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
+import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import type { Auth } from './build-auth';
 import type { Repositories } from './build-repositories';
 import type { Services } from './build-services';
@@ -84,7 +85,6 @@ export function buildManagers({
     unitOfWork,
   },
   services: {
-    notificationService,
     redemptionIdentityGateway,
     emailSender,
     verificationCodeInspector,
@@ -100,9 +100,7 @@ export function buildManagers({
       participationRepository: ministryParticipationRepository,
       volunteerRepository,
       unavailableShiftRepository,
-      planningEventRepository,
       cycleRepository,
-      notificationService,
       unitOfWork,
     });
   const eventManager =
@@ -122,6 +120,7 @@ export function buildManagers({
   const eventTemplateManager =
     overrides.eventTemplateManager ??
     new DbEventTemplateManager({ templateRepository: eventTemplateRepository });
+  const notifications = new ChurchNotifications({ outboxRepository });
   const ministryManager =
     overrides.ministryManager ??
     new DbMinistryManager({
@@ -137,7 +136,7 @@ export function buildManagers({
       authorityManager,
       unitOfWork,
       outboxRepository,
-      notifications: new ChurchNotifications({ outboxRepository }),
+      notifications,
       config,
     });
   const invitationVerificationCodeManager =
@@ -184,6 +183,17 @@ export function buildManagers({
       volunteerRepository,
       volunteerTransferRepository,
       emailSender,
+      schedulingFacts: new SchedulingNotificationFacts({
+        churchRepository,
+        ministryRepository,
+        cycleRepository,
+        participationRepository: ministryParticipationRepository,
+        eventRepository: planningEventRepository,
+        eventTimeBlockRepository,
+        assignmentRepository,
+        roleRepository,
+        volunteerRepository,
+      }),
       notifier: buildChurchNotifier({
         config,
         churchRepository,
@@ -230,7 +240,6 @@ export function buildManagers({
       participationRepo: ministryParticipationRepository,
       roleRepo: roleRepository,
       availabilityCheckRepo: availabilityCheckRepository,
-      notificationService,
       unitOfWork,
       config,
     });
@@ -250,7 +259,7 @@ export function buildManagers({
       cycleRepository,
       roleRepository,
       sectorRepository,
-      notificationService,
+      notifications,
       unitOfWork,
     });
   const availabilityCheckManager =
@@ -260,7 +269,7 @@ export function buildManagers({
       eventRepository: planningEventRepository,
       availabilityCheckRepository,
       cycleRepository,
-      notificationService,
+      notifications,
       unitOfWork,
     });
   const activeChurchSelectionManager =

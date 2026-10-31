@@ -17,6 +17,7 @@ import type {
   EventId,
   MinistryId,
   ShiftId,
+  UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
 import type {
@@ -60,6 +61,7 @@ export class DrizzleAvailabilityCheckRepository
       .select({
         ministryMembershipId: ministryMembership.id,
         volunteerId: ministryMembership.volunteerId,
+        userId: volunteer.userId,
         volunteerName: user.name,
       })
       .from(ministryMembership)
@@ -79,6 +81,7 @@ export class DrizzleAvailabilityCheckRepository
     return rows.map((row) => ({
       ministryMembershipId: row.ministryMembershipId,
       volunteerId: row.volunteerId as VolunteerId,
+      userId: row.userId as UserId,
       volunteerName: row.volunteerName,
     }));
   }

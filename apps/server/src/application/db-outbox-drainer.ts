@@ -8,6 +8,7 @@ import {
   toDate,
 } from '@church/time';
 import type { ChurchId, MinistryId, VolunteerId } from '../domain/branded-ids';
+import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
   DrainOnceInput,
   DrainOnceResult,
@@ -46,6 +47,8 @@ import type {
 import { EmailSendError } from '../domain/errors/email-send-error';
 import {
   type MinistryInvitationDeliveryFacts,
+  type NotificationDeliveryData,
+  type NotificationRequest,
   notificationRequestDataSchemas,
 } from '../domain/notification-kinds';
 import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
@@ -54,6 +57,7 @@ import {
   nextRetryAt,
 } from '../domain/services/outbox-retry-policy';
 import type { ChurchNotifier } from './church-notifier';
+import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
 
 export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly outboxRepository: OutboxRepository;
@@ -65,6 +69,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly volunteerTransferRepository: VolunteerTransferRepository;
   private readonly emailSender: EmailSender;
   private readonly notifier: ChurchNotifier;
+  private readonly schedulingFacts: SchedulingNotificationFacts;
   private readonly unitOfWork: UnitOfWork;
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
@@ -79,6 +84,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     volunteerTransferRepository,
     emailSender,
     notifier,
+    schedulingFacts,
     unitOfWork,
     config,
   }: DbOutboxDrainerDependencies) {
@@ -91,6 +97,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.volunteerTransferRepository = volunteerTransferRepository;
     this.emailSender = emailSender;
     this.notifier = notifier;
+    this.schedulingFacts = schedulingFacts;
     this.unitOfWork = unitOfWork;
     const { outbox } = config;
     this.outboxPolicy = outbox;
@@ -224,6 +231,33 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     };
   }
 
+  /** The kind's delivery facts, read now; `null` once their context is gone. */
+  private async loadNotificationFacts({
+    churchId,
+    to,
+    request,
+  }: LoadNotificationFactsInput): Promise<NotificationDeliveryData | null> {
+    switch (request.kind) {
+      case 'ministry_invitation':
+        return this.loadPendingInvitationFacts({
+          churchId,
+          ministryInvitationId: request.data.ministryInvitationId,
+        });
+      case 'availability_opened':
+      case 'availability_reminder':
+        return this.schedulingFacts.availability({
+          churchId,
+          data: request.data,
+        });
+      case 'schedule_published':
+        return this.schedulingFacts.schedulePublished({
+          churchId,
+          userId: to.userId,
+          data: request.data,
+        });
+    }
+  }
+
   /**
    * Hands one recipient's Notification to every unsettled sink, then settles
    * the row: all delivered/skipped completes it; a retryable sink retries the
@@ -242,14 +276,18 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       });
       return 'failed';
     }
-    const facts = await this.loadPendingInvitationFacts({
+    const facts = await this.loadNotificationFacts({
       churchId: message.churchId,
-      ministryInvitationId: request.data.ministryInvitationId,
+      to,
+      request: { kind, data: request.data } as NotificationRequest,
     });
     if (!facts) {
       await this.failTerminally({
         message,
-        reason: 'Invitation is no longer pending',
+        reason:
+          kind === 'ministry_invitation'
+            ? 'Invitation is no longer pending'
+            : `Context of notification kind "${kind}" no longer exists`,
       });
       return 'failed';
     }
@@ -578,6 +616,7 @@ interface DbOutboxDrainerDependencies {
   volunteerTransferRepository: VolunteerTransferRepository;
   emailSender: EmailSender;
   notifier: ChurchNotifier;
+  schedulingFacts: SchedulingNotificationFacts;
   unitOfWork: UnitOfWork;
 }
 
@@ -587,6 +626,12 @@ interface ProcessOneInput {
 
 interface ProcessInvitationMessageInput {
   message: ChainedInvitationOutboxMessage | MinistryInvitationOutboxMessage;
+}
+
+interface LoadNotificationFactsInput {
+  churchId: ChurchId;
+  to: ChurchRecipient;
+  request: NotificationRequest;
 }
 
 interface LoadPendingInvitationFactsInput {

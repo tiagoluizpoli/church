@@ -1,5 +1,6 @@
 import type { ChurchId, UserId } from '../../branded-ids';
 import type { Church, ChurchSlug } from '../../entities/church';
+import type { TransactionContext } from './transaction-context';
 
 export interface ChurchRepository {
   getById(input: GetChurchByIdInput): Promise<Church>;
@@ -9,6 +10,8 @@ export interface ChurchRepository {
    * leaderless-Ministry escalation's addressee list (spec §8.8, issue #60).
    */
   listAdminEmails(input: ListChurchAdminEmailsInput): Promise<string[]>;
+  /** User ids of every ChurchAdmin of this Church. */
+  listAdminUserIds(input: ListChurchAdminUserIdsInput): Promise<UserId[]>;
   /**
    * The User's email while they hold Church Membership in this Church;
    * `null` otherwise. Volunteer status plays no part.
@@ -26,6 +29,11 @@ export interface GetChurchBySlugInput {
 
 export interface ListChurchAdminEmailsInput {
   id: ChurchId;
+}
+
+export interface ListChurchAdminUserIdsInput {
+  id: ChurchId;
+  tx?: TransactionContext;
 }
 
 export interface FindChurchMemberEmailInput {

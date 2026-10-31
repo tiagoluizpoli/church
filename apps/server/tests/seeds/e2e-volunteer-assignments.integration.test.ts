@@ -6,7 +6,6 @@ import {
   member,
   organization,
   user,
-  volunteerNotification,
 } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
@@ -57,7 +56,7 @@ interface DeclineWithNotificationInput {
   journey: VolunteerAssignmentsJourney;
 }
 
-/** What the journey does to its graph: decline, and a notification results. */
+/** What the journey does to its graph: the volunteer declines. */
 async function mutateLikeTheJourney({
   journey,
 }: DeclineWithNotificationInput): Promise<void> {
@@ -65,16 +64,6 @@ async function mutateLikeTheJourney({
     .update(assignment)
     .set({ status: 'declined' })
     .where(eq(assignment.id, journey.assignment.id));
-  await testDb.insert(volunteerNotification).values({
-    churchId: journey.church.id,
-    volunteerId: journey.volunteer.volunteerId,
-    eventId: journey.assignment.eventId,
-    assignmentId: journey.assignment.id,
-    type: 'assignment_changed',
-    title: 'Changed',
-    body: 'Changed',
-    payload: {},
-  });
 }
 
 describe('volunteer-assignments E2E journey recipe', () => {

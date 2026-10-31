@@ -24,10 +24,7 @@ import type {
   ServicePost,
 } from '../blueprints/history';
 import { deriveSeedId } from '../builders/derived-id';
-import {
-  buildVolunteerNotification,
-  type VolunteerNotificationType,
-} from '../builders/notification';
+import { buildNotification } from '../builders/notification';
 import {
   type AssignmentStatus,
   buildAssignment,
@@ -982,10 +979,9 @@ interface ApplyHistoryTrailInput {
   replacedAt: ShiftMoment;
 }
 
-/** The audits and notifications a trail step wrote beyond the routine ones. */
+/** The audits a trail step wrote beyond the routine ones. */
 interface TrailRecords {
   audits: AuditPlan[];
-  notifications: NotificationPlan[];
 }
 
 /**
@@ -1000,7 +996,7 @@ function applyHistoryTrail({
   assignedAt,
   replacedAt,
 }: ApplyHistoryTrailInput): TrailRecords {
-  const records: TrailRecords = { audits: [], notifications: [] };
+  const records: TrailRecords = { audits: [] };
   for (const incident of history.crossMinistryService) {
     for (const servicePost of incident.posts) {
       ledger.place({
@@ -1041,27 +1037,6 @@ function applyHistoryTrail({
       reason: incident.reason,
       occurredAt: reassignedAt,
     });
-    const { eventTitle } = target.shift;
-    records.notifications.push(
-      {
-        email: incident.email,
-        shift: target.shift,
-        assignment: replacement,
-        type: 'assignment_removed',
-        title: 'Assignment changed',
-        body: `${eventTitle} has been reassigned.`,
-        createdAt: reassignedAt,
-      },
-      {
-        email: incident.replacementEmail,
-        shift: target.shift,
-        assignment: replacement,
-        type: 'assignment_added',
-        title: 'New assignment',
-        body: `You were assigned to ${eventTitle}.`,
-        createdAt: reassignedAt,
-      },
-    );
   }
 
   // respondToAssignment only sets the status and reason; the leader then
@@ -1347,60 +1322,46 @@ export async function loadDevelopmentHistory({
     recipientsByParticipation.set(shift.participationId, recipients);
   }
   const notifications: NotificationPlan[] = [
-    ...[...recipientsByParticipation.values()].flatMap(({ shift, emails }) =>
-      [...emails].map(
-        (email): NotificationPlan => ({
-          email,
-          shift,
-          type: 'schedule_published',
-          title: 'Schedule published',
-          body: `${shift.eventTitle} is now published for your ministry.`,
-          createdAt: publishedAt,
-        }),
-      ),
+    ...recipientsByParticipation.values(),
+  ].flatMap(({ shift, emails }) =>
+    [...emails].map(
+      (email): NotificationPlan => ({ email, shift, createdAt: publishedAt }),
     ),
-    ...trail.notifications,
-  ];
+  );
   const unread = new Set(history.unreadNotificationEmails);
-  for (const notification of notifications) {
-    const volunteerId = requireKnown({
-      ids: volunteerIdByEmail,
-      key: notification.email,
-    });
-    const { shift } = notification;
-    const assignmentId = notification.assignment
-      ? assignmentIdOf(notification.assignment)
-      : undefined;
-    await buildVolunteerNotification({
+  for (const plan of notifications) {
+    const userId = requireKnown({ ids: userIdByEmail, key: plan.email });
+    const { shift } = plan;
+    await buildNotification({
       db,
+      userId,
       churchId,
-      volunteerId,
       id: deriveSeedId({
-        kind: 'volunteer-notification',
-        parentIds: [
-          notification.type,
-          assignmentId ?? shift.participationId,
-          volunteerId,
-        ],
+        kind: 'notification',
+        parentIds: ['schedule_published', shift.participationId, userId],
       }),
-      type: notification.type,
-      title: notification.title,
-      body: notification.body,
-      payload: assignmentId
-        ? { assignmentId, eventId: shift.eventId, ministryId: shift.ministryId }
-        : {
-            eventId: shift.eventId,
-            ministryId: shift.ministryId,
-            section: 'assignments',
-          },
-      createdAt: notification.createdAt,
-      readAt: unread.has(notification.email)
+      sourceOutboxId: deriveSeedId({
+        kind: 'notification-outbox',
+        parentIds: ['schedule_published', shift.participationId, userId],
+      }),
+      payload: {
+        kind: 'schedule_published',
+        data: {
+          eventId: shift.eventId,
+          cycleId: cycle.id,
+          ministryId: shift.ministryId,
+          ministryName: shift.ministryName,
+          eventTitle: shift.eventTitle,
+          eventStart: shift.start,
+          eventEnd: shift.end,
+          churchTimezone: timeZone,
+          shifts: [],
+        },
+      },
+      createdAt: plan.createdAt,
+      readAt: unread.has(plan.email)
         ? undefined
-        : readAfter({ instant: notification.createdAt }),
-      cycleId: cycle.id,
-      ministryId: shift.ministryId,
-      eventId: shift.eventId,
-      assignmentId,
+        : readAfter({ instant: plan.createdAt }),
     });
   }
 
@@ -1420,18 +1381,10 @@ interface PublishRecipients {
   emails: Set<string>;
 }
 
-/** A notification as the product's notifyVolunteer call would write it. */
+/** A publish notification as the product's enqueue and inbox sink would leave it. */
 interface NotificationPlan {
   email: string;
   shift: PlannedShift;
-  /** The Assignment it is about; absent for a publish notification. */
-  assignment?: AssignmentWrite;
-  type: Extract<
-    VolunteerNotificationType,
-    'schedule_published' | 'assignment_added' | 'assignment_removed'
-  >;
-  title: string;
-  body: string;
   createdAt: Instant;
 }
 

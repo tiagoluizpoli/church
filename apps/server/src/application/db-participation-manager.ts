@@ -7,6 +7,7 @@ import type {
   SectorId,
 } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
+import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   CycleBuilderEventTimeBlockView,
   CycleBuilderEventView,
@@ -43,7 +44,6 @@ import type { EventTemplateRepository } from '../domain/contracts/infrastructure
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
-import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
@@ -175,7 +175,7 @@ interface PublishCandidate {
 interface NotifyParticipationPublishedInput {
   churchId: ChurchId;
   participation: MinistryParticipation;
-  tx?: TransactionContext;
+  tx: TransactionContext;
 }
 
 interface DbParticipationManagerDependencies {
@@ -192,7 +192,7 @@ interface DbParticipationManagerDependencies {
   cycleRepository: CycleRepository;
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
-  notificationService: NotificationService;
+  notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
 }
 
@@ -224,7 +224,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly cycleRepository: CycleRepository;
   private readonly roleRepository: RoleRepository;
   private readonly sectorRepository: SectorRepository;
-  private readonly notificationService: NotificationService;
+  private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
 
   constructor({
@@ -241,7 +241,7 @@ export class DbParticipationManager implements IParticipationManager {
     cycleRepository,
     roleRepository,
     sectorRepository,
-    notificationService,
+    notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
     this.participationRepository = participationRepository;
@@ -257,7 +257,7 @@ export class DbParticipationManager implements IParticipationManager {
     this.cycleRepository = cycleRepository;
     this.roleRepository = roleRepository;
     this.sectorRepository = sectorRepository;
-    this.notificationService = notificationService;
+    this.notifications = notifications;
     this.unitOfWork = unitOfWork;
   }
 
@@ -971,11 +971,6 @@ export class DbParticipationManager implements IParticipationManager {
     participation,
     tx,
   }: NotifyParticipationPublishedInput): Promise<void> {
-    const planningEvent = await this.eventRepository.getEvent({
-      churchId,
-      eventId: participation.eventId,
-      tx,
-    });
     const assignments = await this.assignmentRepository.listByParticipation({
       churchId,
       participationId: participation.id,
@@ -988,24 +983,21 @@ export class DbParticipationManager implements IParticipationManager {
           .map((assignment) => assignment.volunteerId),
       ),
     ];
+    const volunteers = await this.volunteerRepository.listByIds({
+      churchId,
+      ids: volunteerIds,
+      tx,
+    });
 
-    for (const volunteerId of volunteerIds) {
-      await this.notificationService.notifyVolunteer({
-        churchId: churchId as string,
-        volunteerId: volunteerId as string,
-        cycleId: planningEvent.cycleId,
-        ministryId: participation.ministryId,
-        eventId: planningEvent.id,
-        type: 'schedule_published',
-        title: 'Schedule published',
-        body: `${planningEvent.title} is now published for your ministry.`,
-        payload: {
-          eventId: planningEvent.id as string,
-          ministryId: participation.ministryId as string,
-          section: 'assignments',
-        },
-      });
-    }
+    await this.notifications.enqueue({
+      tx,
+      kind: 'schedule_published',
+      to: volunteers.map((volunteer) => ({
+        userId: volunteer.userId,
+        churchId,
+      })),
+      data: { participationId: participation.id as string },
+    });
   }
 
   async listScheduleSummaries(

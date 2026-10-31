@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import type { Instant } from '@church/time';
+import type { CalendarDay, Instant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type { MinistryInvitationEmail } from '@/domain/contracts/infrastructure/email-sender';
 import { prepareEmail } from '@/infrastructure/services/email-templates';
@@ -49,5 +49,73 @@ describe('prepareEmail — member Ministry Invitation', () => {
     expect(html).toContain('Grace &amp; &lt;Truth&gt;');
     expect(html).toContain('Vocalist &lt;i&gt;lead&lt;/i&gt;');
     expect(html).not.toContain('<b>Worship</b>');
+  });
+});
+
+const cycleDays = {
+  cycleStartDate: '2026-12-01' as CalendarDay,
+  cycleEndDate: '2026-12-31' as CalendarDay,
+};
+
+describe('prepareEmail — retained scheduling Notifications', () => {
+  it('words availability opened and its reminder differently, in pt-BR, with escaped facts', () => {
+    const facts = {
+      to: 'member@example.com',
+      ministryName: 'Louvor & <Banda>',
+      cycleName: 'Dezembro',
+      ...cycleDays,
+      actionUrl: 'https://app.church.test/dashboard?section=availability',
+    };
+    const opened = prepareEmail({
+      payload: { kind: 'availability.opened', ...facts },
+      from: 'church@example.com',
+      locale: 'pt-BR',
+    });
+    const reminder = prepareEmail({
+      payload: { kind: 'availability.reminder', ...facts },
+      from: 'church@example.com',
+      locale: 'pt-BR',
+    });
+
+    expect(opened.locale).toBe('pt-BR');
+    expect(opened.request.subject).toBe(
+      'Louvor & <Banda> está pedindo a sua disponibilidade',
+    );
+    expect(reminder.request.subject).toBe(
+      'Lembrete: informe sua disponibilidade para Louvor & <Banda>',
+    );
+    expect(opened.request.html).toContain('01/12/2026 – 31/12/2026');
+    expect(opened.request.html).toContain('Louvor &amp; &lt;Banda&gt;');
+    expect(opened.request.html).toContain('Informar disponibilidade');
+    expect(opened.request.html).toContain(facts.actionUrl);
+  });
+
+  it('renders publication times and Shifts in the Church Timezone', () => {
+    const email = prepareEmail({
+      payload: {
+        kind: 'schedule.published',
+        to: 'member@example.com',
+        ministryName: 'Louvor',
+        eventTitle: 'Vigília <Natal>',
+        // 02:30 UTC is 23:30 the day before in São Paulo.
+        eventStart: '2026-12-25T02:30:00.000Z' as Instant,
+        churchTimezone: 'America/Sao_Paulo',
+        shifts: [
+          {
+            roleName: 'Violão',
+            startsAt: '2026-12-25T02:30:00.000Z' as Instant,
+          },
+        ],
+        actionUrl: 'https://app.church.test/dashboard?section=assignments',
+      },
+      from: 'church@example.com',
+      locale: 'pt-BR',
+    });
+
+    expect(email.request.subject).toBe('A escala de Louvor foi publicada');
+    expect(email.request.html).toContain('Vigília &lt;Natal&gt;');
+    expect(email.request.html).toContain('24/12/2026 23:30');
+    expect(email.request.html).toContain('Violão — 24/12/2026 23:30');
+    expect(email.request.html).toContain('Ver escala');
   });
 });

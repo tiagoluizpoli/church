@@ -52,15 +52,15 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
-import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
+import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 
 interface Phase5Manager {
   volunteerManager: DbVolunteerManager;
-  notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
+  notificationSpy: ReturnType<typeof createChurchNotificationsSpy>;
 }
 
 function createPhase5Manager(): Phase5Manager {
-  const notificationSpy = createNotificationServiceSpy();
+  const notificationSpy = createChurchNotificationsSpy();
   const volunteerManager = new DbVolunteerManager({
     volunteerRepo: new DrizzleVolunteerRepository({ db: schedulingTestDb }),
     assignmentRepo: new DrizzleAssignmentRepository({ db: schedulingTestDb }),
@@ -80,7 +80,6 @@ function createPhase5Manager(): Phase5Manager {
     availabilityCheckRepo: new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,
     }),
-    notificationService: notificationSpy,
     unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
     config: appConfig,
   });
@@ -421,7 +420,7 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     });
 
     expect(result.state).toBe('confirmed');
-    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
+    expect(notificationSpy.enqueue).not.toHaveBeenCalled();
     const [row] = await schedulingTestDb
       .select()
       .from(availabilityCheckTable)
@@ -441,7 +440,7 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     });
 
     expect(result.state).toBe('confirmed');
-    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
+    expect(notificationSpy.enqueue).not.toHaveBeenCalled();
   });
 
   it('lists checks and resolves detail with available-by-default shifts', async () => {

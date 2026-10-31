@@ -1,4 +1,4 @@
-import type { Instant } from '@church/time';
+import type { CalendarDay, Instant } from '@church/time';
 
 /**
  * Typed per-kind email payloads for invitation delivery (issue #56) and
@@ -79,7 +79,32 @@ export interface TransferLeaderlessMinistryEmail {
   withdrawnAssignments: WithdrawnAssignmentEmailLine[];
 }
 
+/** Availability opened (initial Ask) and its reminder: same facts, own words. */
+export interface AvailabilityEmail {
+  kind: 'availability.opened' | 'availability.reminder';
+  to: string;
+  ministryName: string;
+  cycleName: string;
+  cycleStartDate: CalendarDay;
+  cycleEndDate: CalendarDay;
+  actionUrl: string;
+}
+
+export interface SchedulePublishedEmail {
+  kind: 'schedule.published';
+  to: string;
+  ministryName: string;
+  eventTitle: string;
+  eventStart: Instant;
+  /** The Church Timezone the Instants are read in. */
+  churchTimezone: string;
+  shifts: { roleName: string; startsAt: Instant }[];
+  actionUrl: string;
+}
+
 export type EmailPayload =
+  | AvailabilityEmail
+  | SchedulePublishedEmail
   | MinistryInvitationEmail
   | VerificationCodeEmail
   | ChurchBootstrapInvitationEmail

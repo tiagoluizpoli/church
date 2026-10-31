@@ -65,6 +65,7 @@ const {
   volunteerTransferRepository,
   unitOfWork,
   notifications,
+  schedulingFacts,
   buildNotifier,
   manager,
 } = createMinistryInvitationTestHarness({ db: testDb });
@@ -91,6 +92,7 @@ function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
     volunteerTransferRepository,
     emailSender,
     notifier: buildNotifier({ emailSender }),
+    schedulingFacts,
     unitOfWork,
     config: appConfig,
   });
@@ -599,6 +601,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       volunteerTransferRepository,
       emailSender,
       notifier: buildNotifier({ emailSender, config, inboxRepository }),
+      schedulingFacts,
       unitOfWork,
       config,
     });

@@ -3,7 +3,10 @@ import type {
   EnqueueNotificationInput,
   IChurchNotifications,
 } from '../domain/contracts/application/church-notifications';
-import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
+import type {
+  NotificationOutboxPayload,
+  OutboxRepository,
+} from '../domain/contracts/infrastructure/outbox.repository';
 import {
   type NotificationKind,
   notificationRequestDataSchemas,
@@ -37,7 +40,11 @@ export class ChurchNotifications implements IChurchNotifications {
     for (const { userId, churchId } of recipients.values()) {
       await this.outboxRepository.enqueueNotification({
         churchId,
-        payload: { to: { userId, churchId }, kind, data: validData },
+        payload: {
+          to: { userId, churchId },
+          kind,
+          data: validData,
+        } as NotificationOutboxPayload,
         correlationId,
         scheduledFor: nowAsDate(),
         tx,

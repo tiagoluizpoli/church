@@ -5,7 +5,6 @@ import {
   TeamId,
   UnavailableShiftId,
   UsualSetupId,
-  VolunteerNotificationId,
 } from '@/domain/branded-ids';
 
 describe('Branded ID factories', () => {
@@ -18,7 +17,6 @@ describe('Branded ID factories', () => {
       ParticipationEventTimeBlockInclusionId,
     ],
     ['TeamId', TeamId],
-    ['VolunteerNotificationId', VolunteerNotificationId],
   ])('%s.from() returns the raw string branded as the id type', (_name, brand) => {
     const raw = 'e2e11111-1111-1111-a111-111111111111';
     expect(brand.from(raw)).toBe(raw);

@@ -147,6 +147,26 @@ describe('no-docker unit tests picked by import graph', () => {
     ]);
   });
 
+  it('runs the related tests of a package that has unit tests, not its whole suite', () => {
+    const steps = noDockerStepsFor({
+      changedPaths: ['packages/time/src/clock.ts'],
+    });
+
+    expect(unitStepsOf(steps)).toContainEqual(
+      relatedStep('@church/time', ['src/clock.ts']),
+    );
+  });
+
+  it('runs the whole suite of a dependent package without unit tests', () => {
+    const steps = noDockerStepsFor({
+      changedPaths: ['packages/time/src/clock.ts'],
+    });
+
+    expect(unitStepsOf(steps)).toContainEqual(
+      wholeSuiteStep(['@church/auth', '@church/db']),
+    );
+  });
+
   it('selects a changed unit test file', () => {
     const steps = noDockerStepsFor({
       changedPaths: ['apps/web/tests/lib/auth-error-message.unit.test.ts'],

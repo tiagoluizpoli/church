@@ -15,6 +15,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test:unit": "TZ=Pacific/Auckland vitest run",
+    "test:unit:related": "TZ=Pacific/Auckland bun ../../tooling/validation/vitest-related.ts",
     "test": "bun run test:unit"
   },
   "dependencies": {

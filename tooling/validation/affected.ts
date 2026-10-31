@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
-import { relative } from 'node:path';
+import { join, relative } from 'node:path';
 import {
   classifyChanges,
   isScriptsOnlyAddition,
@@ -103,9 +103,24 @@ interface PushLayerTimingInput {
 }
 
 const ALL_TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
+const UNIT_ONLY_LAYERS: TestLayer[] = ['test:unit'];
 
-/** Workspaces with a `test:unit:related` script (`vitest related`). */
-const RELATED_UNIT_WORKSPACE_NAMES = new Set(['@church/core', 'server', 'web']);
+// The script may run from a temporary repo, so read manifests from this checkout.
+const REPO_ROOT = join(import.meta.dir, '..', '..');
+const UNIT_CONCURRENCY = '2';
+
+/** Where the import graph can trace a changed file to the tests that use it. */
+const TRACEABLE_PATH = /^(?:apps|packages)\/[^/]+\/(?:src|tests|seeds)\//;
+const UNTRACEABLE_PATH = /\/tests\/setup\/|\/fixtures\//;
+
+/** Workspace paths whose package.json has a `test:unit:related` script. */
+const RELATED_UNIT_WORKSPACE_PATHS = new Map(
+  WORKSPACES.filter(({ path }) =>
+    readFileSync(join(REPO_ROOT, path, 'package.json'), 'utf8').includes(
+      '"test:unit:related"',
+    ),
+  ).map(({ name, path }) => [name, path]),
+);
 
 /**
  * A clean worktree with committed branch changes must not report nothing to
@@ -370,9 +385,9 @@ export function buildValidationSteps({
       });
     }
 
-    for (const testLayer of ALL_TEST_LAYERS) {
+    const tierLayers = noDocker ? UNIT_ONLY_LAYERS : ALL_TEST_LAYERS;
+    for (const testLayer of tierLayers) {
       if (!plan.testLayers.includes(testLayer)) continue;
-      if (noDocker && testLayer === 'test:integration') continue;
       const layerSteps = noDocker
         ? buildRelatedUnitSteps({ plan })
         : buildTestLayerSteps({
@@ -468,7 +483,7 @@ export function buildTestLayerSteps({
   const remainingWorkspaceNames = workspaceNames.filter(
     (workspaceName) => !targetedWorkspaceNames.has(workspaceName),
   );
-  const concurrency = testLayer === 'test:integration' ? '1' : '2';
+  const concurrency = testLayer === 'test:integration' ? '1' : UNIT_CONCURRENCY;
   const steps: LaneStep[] = [];
 
   if (remainingWorkspaceNames.length > 0) {
@@ -518,19 +533,15 @@ function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
     const changedPaths = [
       ...new Set(reasons.map(({ changedPath }) => changedPath)),
     ];
-    const workspacePath = RELATED_UNIT_WORKSPACE_NAMES.has(workspaceName)
-      ? WORKSPACES.find(({ name }) => name === workspaceName)?.path
-      : undefined;
+    const workspacePath = RELATED_UNIT_WORKSPACE_PATHS.get(workspaceName);
     const isTraceable =
       workspacePath !== undefined &&
       reasons.every(({ detail }) => detail !== 'root-infrastructure') &&
       changedPaths.every(
         (changedPath) =>
           !deletedPaths.has(changedPath) &&
-          /^(?:apps|packages)\/[^/]+\/(?:src|tests|seeds)\//.test(
-            changedPath,
-          ) &&
-          !/\/tests\/setup\/|\/fixtures\//.test(changedPath),
+          TRACEABLE_PATH.test(changedPath) &&
+          !UNTRACEABLE_PATH.test(changedPath),
       );
     if (!isTraceable) {
       wholeSuiteWorkspaceNames.push(workspaceName);
@@ -541,7 +552,7 @@ function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
         args: changedPaths.map((changedPath) =>
           relative(workspacePath, changedPath),
         ),
-        concurrency: '2',
+        concurrency: UNIT_CONCURRENCY,
         task: 'test:unit:related',
         workspaceNames: [workspaceName],
       }),
@@ -553,7 +564,7 @@ function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
   return [
     buildTurboStep({
       args: [],
-      concurrency: '2',
+      concurrency: UNIT_CONCURRENCY,
       task: 'test:unit',
       workspaceNames: wholeSuiteWorkspaceNames,
     }),

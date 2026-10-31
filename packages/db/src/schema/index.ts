@@ -4,6 +4,7 @@ export * from './availability-checks';
 export * from './church';
 export * from './core';
 export * from './enums';
+export * from './notifications';
 export * from './onboarding';
 export * from './organization';
 export * from './participation';

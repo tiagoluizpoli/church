@@ -167,6 +167,7 @@ export function buildManagers({
       churchRepository,
       identityGateway: redemptionIdentityGateway,
       invitationRepository: ministryInvitationRepository,
+      notifications,
       securityLogRepository,
       unitOfWork,
       volunteerRepository,

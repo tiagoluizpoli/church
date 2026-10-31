@@ -1,6 +1,10 @@
 import type { AppConfig } from '@church/app-config';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
-import type { INotifier } from '../domain/contracts/application/notifier';
+import type {
+  INotifier,
+  NotificationTemplate,
+  SinkRegistration,
+} from '../domain/contracts/application/notifier';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
   EmailPayload,
@@ -12,13 +16,13 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import {
   type AvailabilityDeliveryFacts,
   availabilityNotificationDataSchema,
-  type MinistryInvitationDeliveryFacts,
   ministryInvitationNotificationDataSchema,
   type NotificationDeliveryData,
-  type NotificationKind,
+  type NotificationDeliveryDataByKind,
   type NotificationPayload,
-  type SchedulePublishedDeliveryFacts,
+  type NotificationRequestKind,
   schedulePublishedNotificationDataSchema,
+  type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
 import { recipientLocale } from '../domain/services/recipient-locale';
 import {
@@ -31,9 +35,59 @@ import { Notifier, registerSink } from './notifier';
 /** The Notifier with the Church's recipient, kinds and delivery facts fixed. */
 export type ChurchNotifier = INotifier<
   ChurchRecipient,
-  NotificationKind,
+  NotificationRequestKind,
   NotificationDeliveryData
 >;
+
+/** Each kind's template sees that kind's own delivery facts. */
+type TemplatesByKind<TAddress, TContent> = {
+  [K in NotificationRequestKind]?: NotificationTemplate<
+    NotificationDeliveryDataByKind[K],
+    TAddress,
+    TContent
+  >;
+};
+
+/** The drainer resolves `data` from the row's own kind, so each template only
+ * ever receives its kind's facts. */
+function byKind<TAddress, TContent>(
+  templates: TemplatesByKind<TAddress, TContent>,
+): SinkRegistration<
+  ChurchRecipient,
+  NotificationRequestKind,
+  NotificationDeliveryData,
+  TAddress,
+  TContent
+>['templates'] {
+  return templates as SinkRegistration<
+    ChurchRecipient,
+    NotificationRequestKind,
+    NotificationDeliveryData,
+    TAddress,
+    TContent
+  >['templates'];
+}
+
+interface TransferDigestEmailInput {
+  kind: 'transfer.ministry-digest' | 'transfer.leaderless-ministry';
+  data: TransferDigestDeliveryFacts;
+  address: EmailRecipientAddress;
+}
+
+/** One private email per recipient: never a shared recipient list. */
+function transferDigestEmail({
+  kind,
+  data,
+  address,
+}: TransferDigestEmailInput): EmailPayload {
+  return {
+    kind,
+    to: [address.email],
+    ministryName: data.ministryName,
+    volunteerName: data.volunteerName,
+    withdrawnAssignments: data.withdrawnAssignments,
+  };
+}
 
 export interface BuildChurchNotifierInput {
   config: AppConfig;
@@ -58,7 +112,7 @@ export function buildChurchNotifier({
 }: BuildChurchNotifierInput): ChurchNotifier {
   const email = registerSink<
     ChurchRecipient,
-    NotificationKind,
+    NotificationRequestKind,
     NotificationDeliveryData,
     EmailRecipientAddress,
     EmailPayload
@@ -80,22 +134,19 @@ export function buildChurchNotifier({
             }),
           };
     },
-    templates: {
+    templates: byKind<EmailRecipientAddress, EmailPayload>({
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-      ministry_invitation: ({ data: facts, address }) => {
-        const data = facts as MinistryInvitationDeliveryFacts;
-        return {
-          kind: 'invitation.ministry',
-          to: address.email,
-          churchName: data.churchName,
-          ministryName: data.ministryName,
-          ministryAccessLevel: data.ministryAccessLevel,
-          roleNames: data.roleNames,
-          expiresAt: data.expiresAt,
-          churchTimezone: data.churchTimezone,
-          redemptionUrl: data.redemptionUrl,
-        };
-      },
+      ministry_invitation: ({ data, address }) => ({
+        kind: 'invitation.ministry',
+        to: address.email,
+        churchName: data.churchName,
+        ministryName: data.ministryName,
+        ministryAccessLevel: data.ministryAccessLevel,
+        roleNames: data.roleNames,
+        expiresAt: data.expiresAt,
+        churchTimezone: data.churchTimezone,
+        redemptionUrl: data.redemptionUrl,
+      }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       availability_opened: ({ data, address }) => ({
         kind: 'availability.opened',
@@ -109,20 +160,31 @@ export function buildChurchNotifier({
         ...availabilityEmailFacts(data),
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-      schedule_published: ({ data, address }) => {
-        const facts = data as SchedulePublishedDeliveryFacts;
-        return {
-          kind: 'schedule.published',
-          to: address.email,
-          ministryName: facts.ministryName,
-          eventTitle: facts.eventTitle,
-          eventStart: facts.eventStart,
-          churchTimezone: facts.churchTimezone,
-          shifts: facts.shifts,
-          actionUrl: facts.actionUrl,
-        };
-      },
-    },
+      schedule_published: ({ data, address }) => ({
+        kind: 'schedule.published',
+        to: address.email,
+        ministryName: data.ministryName,
+        eventTitle: data.eventTitle,
+        eventStart: data.eventStart,
+        churchTimezone: data.churchTimezone,
+        shifts: data.shifts,
+        actionUrl: data.actionUrl,
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      transfer_ministry_digest: ({ data, address }) =>
+        transferDigestEmail({
+          kind: 'transfer.ministry-digest',
+          data,
+          address,
+        }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      transfer_leaderless_ministry: ({ data, address }) =>
+        transferDigestEmail({
+          kind: 'transfer.leaderless-ministry',
+          data,
+          address,
+        }),
+    }),
     sink: new EmailNotificationSink({
       emailSender,
       outboxRepository,
@@ -133,7 +195,7 @@ export function buildChurchNotifier({
 
   const inbox = registerSink<
     ChurchRecipient,
-    NotificationKind,
+    NotificationRequestKind,
     NotificationDeliveryData,
     ChurchRecipient,
     NotificationPayload
@@ -147,7 +209,8 @@ export function buildChurchNotifier({
       })) === null
         ? null
         : to,
-    templates: {
+    // Transfer kinds are email-only: no template, so the inbox skips them.
+    templates: byKind<ChurchRecipient, NotificationPayload>({
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       ministry_invitation: ({ data }) => ({
         kind: 'ministry_invitation',
@@ -168,21 +231,20 @@ export function buildChurchNotifier({
         kind: 'schedule_published',
         data: schedulePublishedNotificationDataSchema.parse(data),
       }),
-    },
+    }),
     sink: new InboxNotificationSink({ notificationRepository }),
   });
 
   return new Notifier({ sinks: [email, inbox] });
 }
 
-/** The facts every availability email renders; the drainer resolved them for this kind. */
-function availabilityEmailFacts(data: NotificationDeliveryData) {
-  const facts = data as AvailabilityDeliveryFacts;
+/** The facts both availability emails render. */
+function availabilityEmailFacts(data: AvailabilityDeliveryFacts) {
   return {
-    ministryName: facts.ministryName,
-    cycleName: facts.cycleName,
-    cycleStartDate: facts.cycleStartDate,
-    cycleEndDate: facts.cycleEndDate,
-    actionUrl: facts.actionUrl,
+    ministryName: data.ministryName,
+    cycleName: data.cycleName,
+    cycleStartDate: data.cycleStartDate,
+    cycleEndDate: data.cycleEndDate,
+    actionUrl: data.actionUrl,
   };
 }

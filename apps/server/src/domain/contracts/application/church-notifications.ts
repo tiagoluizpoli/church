@@ -1,7 +1,7 @@
 import type { ChurchId, UserId } from '../../branded-ids';
 import type {
-  NotificationKind,
   NotificationRequestDataOf,
+  NotificationRequestKind,
 } from '../../notification-kinds';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
@@ -11,7 +11,7 @@ export interface ChurchRecipient {
   churchId: ChurchId;
 }
 
-export interface EnqueueNotificationInput<K extends NotificationKind> {
+export interface EnqueueNotificationInput<K extends NotificationRequestKind> {
   /** The change's own transaction: the rows commit or roll back with it. */
   tx: TransactionContext;
   kind: K;
@@ -24,7 +24,7 @@ export interface IChurchNotifications {
    * Validates `data` for `kind` and writes one outbox row per recipient,
    * deduplicated by User within Church. Never sends; empty `to` writes nothing.
    */
-  enqueue<K extends NotificationKind>(
+  enqueue<K extends NotificationRequestKind>(
     input: EnqueueNotificationInput<K>,
   ): Promise<void>;
 }

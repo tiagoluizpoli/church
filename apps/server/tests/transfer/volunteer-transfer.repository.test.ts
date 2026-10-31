@@ -403,83 +403,18 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
   });
 });
 
-describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (issue #60)', () => {
-  it('enqueues an ordinary Ministry digest — never an escalation — when a non-leader departs, even from a Ministry that already has no leader', async () => {
-    // The fixture's `dualMemberAB` is a plain volunteer in `ministryInB`,
-    // which happens to have no leader at all — but that pre-existing,
-    // unrelated state must never turn a routine departure into a ChurchAdmin
-    // escalation (spec: "Routine departures never reach ChurchAdmins").
+describe('DrizzleVolunteerTransferRepository.executeTransfer — digest recipients (issue #60)', () => {
+  async function transferDigests() {
     const outcome = await runTransfer();
-    expect(outcome.kind).toBe('transferred');
+    if (outcome.kind !== 'transferred') throw new Error('unreachable');
+    return outcome.digests;
+  }
 
-    const messages = await testDb.select().from(outboxMessage);
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatchObject({
-      churchId: fixture.churchB.id,
-      kind: 'transfer.ministry-digest',
-      correlationId: CORRELATION_ID,
-      status: 'pending',
-    });
-    expect(messages[0]?.payload).toMatchObject({
-      ministryId: fixture.ministryInB,
-      volunteerId: fixture.dualMemberABVolunteerInB,
-    });
-  });
-
-  it('enqueues a leaderless-ministry escalation only when the departing Volunteer was themselves the last active leader', async () => {
-    // Elevate the departing member to leader — and leave them the *only*
-    // one — so the departure genuinely leaves the Ministry leaderless.
-    await testDb
-      .update(ministryMembership)
-      .set({ ministryAccessLevel: 'leader' })
-      .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
-
-    const outcome = await runTransfer();
-    expect(outcome.kind).toBe('transferred');
-
-    const messages = await testDb.select().from(outboxMessage);
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatchObject({
-      kind: 'transfer.leaderless-ministry',
-      correlationId: CORRELATION_ID,
-    });
-  });
-
-  it('enqueues an ordinary digest, not an escalation, when the departing leader leaves a co-leader behind', async () => {
-    await testDb
-      .update(ministryMembership)
-      .set({ ministryAccessLevel: 'leader' })
-      .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
-    const coLeaderVolunteer = await buildVolunteer({
-      db: testDb,
-      churchId: fixture.churchB.id,
-      userId: fixture.adminB,
-    });
-    await buildMinistryMembership({
-      db: testDb,
-      churchId: fixture.churchB.id,
-      volunteerId: coLeaderVolunteer.id,
-      ministryId: fixture.ministryInB,
-      ministryAccessLevel: 'leader',
-      roleIds: [],
-      teams: [],
-    });
-
-    const outcome = await runTransfer();
-    expect(outcome.kind).toBe('transferred');
-
-    const messages = await testDb.select().from(outboxMessage);
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatchObject({ kind: 'transfer.ministry-digest' });
-  });
-
-  it('enqueues a ministry-digest addressed to the Ministry when an active leader remains', async () => {
-    // A second, unrelated Volunteer holds active leadership in `ministryInB`,
-    // so the departure is routine and never escalates.
+  async function addLeader(userId: string): Promise<void> {
     const leaderVolunteer = await buildVolunteer({
       db: testDb,
       churchId: fixture.churchB.id,
-      userId: fixture.adminB,
+      userId,
     });
     await buildMinistryMembership({
       db: testDb,
@@ -490,28 +425,84 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
       roleIds: [],
       teams: [],
     });
+  }
 
-    const outcome = await runTransfer();
-    expect(outcome.kind).toBe('transferred');
+  async function promoteDepartingVolunteerToLeader(): Promise<void> {
+    await testDb
+      .update(ministryMembership)
+      .set({ ministryAccessLevel: 'leader' })
+      .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
+  }
 
-    const messages = await testDb.select().from(outboxMessage);
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatchObject({
-      kind: 'transfer.ministry-digest',
-      correlationId: CORRELATION_ID,
-    });
+  it('selects an ordinary digest with no recipients — never an escalation — when a non-leader departs a Ministry that already has no leader', async () => {
+    // `ministryInB` has no leader at all; that pre-existing, unrelated state
+    // must never turn a routine departure into a ChurchAdmin escalation.
+    const digests = await transferDigests();
+
+    expect(digests).toEqual([
+      {
+        kind: 'transfer_ministry_digest',
+        ministryId: fixture.ministryInB,
+        recipientUserIds: [],
+      },
+    ]);
   });
 
-  it('is idempotent — a replay enqueues nothing new', async () => {
+  it('escalates to every ChurchAdmin only when the departing Volunteer was the last active leader', async () => {
+    await promoteDepartingVolunteerToLeader();
+
+    const digests = await transferDigests();
+
+    expect(digests).toEqual([
+      {
+        kind: 'transfer_leaderless_ministry',
+        ministryId: fixture.ministryInB,
+        recipientUserIds: [fixture.adminB],
+      },
+    ]);
+  });
+
+  it('selects the remaining co-leader, not an escalation, when a departing leader leaves one behind', async () => {
+    await promoteDepartingVolunteerToLeader();
+    await addLeader(fixture.adminB);
+
+    const digests = await transferDigests();
+
+    expect(digests).toEqual([
+      {
+        kind: 'transfer_ministry_digest',
+        ministryId: fixture.ministryInB,
+        recipientUserIds: [fixture.adminB],
+      },
+    ]);
+  });
+
+  it('selects every remaining active leader, after the departing membership ended', async () => {
+    await addLeader(fixture.adminB);
+
+    const digests = await transferDigests();
+
+    expect(digests).toHaveLength(1);
+    expect(digests[0]?.recipientUserIds).toEqual([fixture.adminB]);
+    expect(digests[0]?.recipientUserIds).not.toContain(fixture.dualMemberAB);
+  });
+
+  it('writes no outbox row itself — the caller enqueues through the notification boundary', async () => {
+    await addLeader(fixture.adminB);
+    await runTransfer();
+
+    expect(await testDb.select().from(outboxMessage)).toHaveLength(0);
+  });
+
+  it('is idempotent — a replay selects no digests', async () => {
     await runTransfer();
     const second = await runTransfer();
-    expect(second.kind).toBe('already-transferred');
 
-    const messages = await testDb.select().from(outboxMessage);
-    expect(messages).toHaveLength(1);
+    expect(second.kind).toBe('already-transferred');
+    expect(second).not.toHaveProperty('digests');
   });
 
-  it('writes one digest per Ministry, not one per withdrawn assignment — twelve vacated shifts must not mean twelve emails', async () => {
+  it('selects one digest per Ministry, not one per withdrawn assignment — twelve vacated shifts must not mean twelve emails', async () => {
     // Two more future, confirmed assignments in the same Ministry — on top of
     // the one `seedChurchBSchedule` already seeded (`cancelledAfter`), for
     // three withdrawn assignments total in this one Ministry.
@@ -562,11 +553,8 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
     if (outcome.kind !== 'transferred') throw new Error('unreachable');
     expect(outcome.result.withdrawnAssignmentCount).toBe(3);
 
-    const messages = await testDb.select().from(outboxMessage);
-    expect(messages).toHaveLength(1);
-    expect(messages[0]?.payload).toMatchObject({
-      ministryId: fixture.ministryInB,
-    });
+    expect(outcome.digests).toHaveLength(1);
+    expect(outcome.digests[0]?.ministryId).toBe(fixture.ministryInB);
   });
 });
 

@@ -50,6 +50,7 @@ import {
   type NotificationDeliveryData,
   type NotificationRequest,
   notificationRequestDataSchemas,
+  type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
 import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
 import {
@@ -231,12 +232,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     };
   }
 
-  /** The kind's delivery facts, read now; `null` once their context is gone. */
-  private async loadNotificationFacts({
+  /** The kind's display facts, read now; `null` when the kind's subject is gone. */
+  private async loadDeliveryFacts({
     churchId,
     to,
     request,
-  }: LoadNotificationFactsInput): Promise<NotificationDeliveryData | null> {
+  }: LoadDeliveryFactsInput): Promise<NotificationDeliveryData | null> {
     switch (request.kind) {
       case 'ministry_invitation':
         return this.loadPendingInvitationFacts({
@@ -255,7 +256,31 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           userId: to.userId,
           data: request.data,
         });
+      case 'transfer_ministry_digest':
+      case 'transfer_leaderless_ministry':
+        return this.loadTransferDigestFacts({ churchId, request });
     }
+  }
+
+  /** Transfer facts are historical: the retired profile and the audit rows
+   * never change, so they always resolve. */
+  private async loadTransferDigestFacts({
+    churchId,
+    request,
+  }: LoadTransferDigestFactsInput): Promise<TransferDigestDeliveryFacts> {
+    const details = await this.volunteerTransferRepository.getDigestDetails({
+      churchId,
+      ministryId: request.data.ministryId as MinistryId,
+      volunteerId: request.data.volunteerId as VolunteerId,
+      correlationId: request.data.transferCorrelationId,
+    });
+    return {
+      ministryName: details.ministryName,
+      volunteerName: details.volunteerName,
+      withdrawnAssignments: toEmailLines({
+        assignments: details.withdrawnAssignments,
+      }),
+    };
   }
 
   /**
@@ -276,9 +301,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       });
       return 'failed';
     }
-    const facts = await this.loadNotificationFacts({
+    const facts = await this.loadDeliveryFacts({
       churchId: message.churchId,
       to,
+      // Parsed by this kind's own schema just above.
       request: { kind, data: request.data } as NotificationRequest,
     });
     if (!facts) {
@@ -628,15 +654,23 @@ interface ProcessInvitationMessageInput {
   message: ChainedInvitationOutboxMessage | MinistryInvitationOutboxMessage;
 }
 
-interface LoadNotificationFactsInput {
+interface LoadPendingInvitationFactsInput {
+  churchId: ChurchId;
+  ministryInvitationId: string;
+}
+
+interface LoadDeliveryFactsInput {
   churchId: ChurchId;
   to: ChurchRecipient;
   request: NotificationRequest;
 }
 
-interface LoadPendingInvitationFactsInput {
+interface LoadTransferDigestFactsInput {
   churchId: ChurchId;
-  ministryInvitationId: string;
+  request: Extract<
+    NotificationRequest,
+    { kind: 'transfer_ministry_digest' | 'transfer_leaderless_ministry' }
+  >;
 }
 
 interface ProcessNotificationMessageInput {

@@ -35,7 +35,9 @@ export function NotificationDetailSheet({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-sm leading-6">{notification?.body}</p>
+          <p className="whitespace-pre-line text-sm leading-6">
+            {notification?.body}
+          </p>
           <div className="flex justify-end">
             <Button type="button" onClick={onOpenContext}>
               {m.notification_open_context()}

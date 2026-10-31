@@ -208,6 +208,46 @@ describe('useNotificationInbox', () => {
     expect(result.current.items.every((item) => !item.isUnread)).toBe(true);
   });
 
+  it('opens a publication with its full translated detail in the Church Timezone', async () => {
+    getNotifications.mockResolvedValue({
+      items: [
+        {
+          id: 'published-1',
+          kind: 'schedule_published',
+          data: {
+            eventId: MINISTRY_ID,
+            cycleId: MINISTRY_ID,
+            ministryId: MINISTRY_ID,
+            ministryName: 'Louvor',
+            eventTitle: 'Vigília de Natal',
+            eventStart: '2026-12-25T02:30:00.000Z',
+            eventEnd: '2026-12-25T04:00:00.000Z',
+            churchTimezone: 'America/Sao_Paulo',
+            shifts: [
+              { roleName: 'Violão', startsAt: '2026-12-25T02:30:00.000Z' },
+            ],
+          },
+          createdAt: '2026-12-20T12:00:00.000Z',
+        },
+      ],
+      unreadCount: 1,
+    });
+    const { result } = renderInbox();
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() => result.current.openNotification('published-1'));
+
+    expect(result.current.selectedNotification?.title).toBe(
+      'Escala de Louvor publicada',
+    );
+    expect(result.current.selectedNotification?.body).toContain(
+      'Vigília de Natal, em 24/12/2026 23:30',
+    );
+    expect(result.current.selectedNotification?.body).toContain(
+      'Violão (24/12/2026 23:30)',
+    );
+  });
+
   it('rerenders cached history in the new locale', async () => {
     getNotifications.mockResolvedValue({
       items: [invitation({ id: 'a', ministryName: 'Worship' })],

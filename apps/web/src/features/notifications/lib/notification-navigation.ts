@@ -7,6 +7,14 @@ export type NotificationNavigationTarget =
   | {
       to: '/invitations/ministry/$invitationId';
       params: { invitationId: string };
+    }
+  | {
+      to: '/dashboard';
+      search: {
+        section: 'availability' | 'assignments';
+        eventId?: string;
+        ministryId?: string;
+      };
     };
 
 export interface NotificationDestination {
@@ -29,6 +37,24 @@ export function resolveNotificationDestination(
         target: {
           to: '/invitations/ministry/$invitationId',
           params: { invitationId: item.data.ministryInvitationId },
+        },
+        isFallback: false,
+      };
+    case 'availability_opened':
+    case 'availability_reminder':
+      return {
+        target: { to: '/dashboard', search: { section: 'availability' } },
+        isFallback: false,
+      };
+    case 'schedule_published':
+      return {
+        target: {
+          to: '/dashboard',
+          search: {
+            section: 'assignments',
+            eventId: item.data.eventId,
+            ministryId: item.data.ministryId,
+          },
         },
         isFallback: false,
       };

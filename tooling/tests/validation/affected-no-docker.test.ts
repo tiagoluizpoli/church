@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   buildValidationSteps,
   classifyChanges,
+  explainPlan,
 } from '../../validation/affected';
 import type { LaneStep } from '../../validation/run-lanes';
 
@@ -212,5 +213,37 @@ describe('no-docker unit tests picked by import graph', () => {
     expect(unitStepsOf(steps)).toEqual([
       wholeSuiteStep(['@church/core', 'server']),
     ]);
+  });
+});
+
+describe('the no-docker run summary', () => {
+  const plan = classifyChanges({
+    changedPaths: [
+      'apps/server/src/index.ts',
+      'apps/web/src/shared/utils/active-church-switch.ts',
+    ],
+  });
+
+  it('shows integration tests and browser journeys as not run by this tier', () => {
+    const explanation = explainPlan({
+      baseRef: undefined,
+      plan,
+      tier: 'no-docker',
+    });
+
+    expect(explanation).toContain(
+      '  - test:integration (not run by validate:no-docker)',
+    );
+    expect(explanation).toContain(
+      'Browser journeys selected (not run by validate:no-docker):',
+    );
+  });
+
+  it('leaves the affected tier summary unchanged', () => {
+    const explanation = explainPlan({ baseRef: undefined, plan });
+
+    expect(explanation).toContain('  - test:integration\n');
+    expect(explanation).toContain('Browser journeys selected:');
+    expect(explanation).not.toContain('not run by');
   });
 });

@@ -596,9 +596,15 @@ function buildTurboStep({
 interface ExplainPlanInput {
   baseRef: string | undefined;
   plan: ValidationPlan;
+  tier?: ValidationTier;
 }
 
-export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
+export function explainPlan({
+  baseRef,
+  plan,
+  tier = 'affected',
+}: ExplainPlanInput): string {
+  const notRun = tier === 'no-docker' ? ' (not run by validate:no-docker)' : '';
   const lines: string[] = [
     `Base ref: ${baseRef ?? '(none — working tree only)'}`,
     '',
@@ -617,7 +623,9 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
   lines.push('', 'Test layers selected:');
   if (plan.testLayers.length === 0) lines.push('  (none)');
   for (const testLayer of plan.testLayers) {
-    lines.push(`  - ${testLayer}`);
+    lines.push(
+      `  - ${testLayer}${testLayer === 'test:integration' ? notRun : ''}`,
+    );
     for (const reason of plan.testLayerSelectionReasons.filter(
       (r) => r.testLayer === testLayer,
     )) {
@@ -627,7 +635,7 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
     }
   }
 
-  lines.push('', 'Browser journeys selected:');
+  lines.push('', `Browser journeys selected${notRun}:`);
   for (const specPath of plan.e2eSpecPaths) {
     lines.push(`  - ${specPath}`);
     for (const reason of plan.journeySelectionReasons.filter(
@@ -766,7 +774,11 @@ if (import.meta.main) {
       tier: argumentsResult.tier,
     });
     const summary = formatTimingSummary({ timings });
-    const explanation = explainPlan({ baseRef, plan });
+    const explanation = explainPlan({
+      baseRef,
+      plan,
+      tier: argumentsResult.tier,
+    });
     console.log('');
     console.log(summary);
     console.log('');

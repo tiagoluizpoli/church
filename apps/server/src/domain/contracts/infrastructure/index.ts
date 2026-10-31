@@ -13,6 +13,7 @@ export * from './invitation-verification-code.repository';
 export * from './ministry.repository';
 export * from './ministry-invitation.repository';
 export * from './ministry-participation.repository';
+export * from './notification.repository';
 export * from './notification-service';
 export * from './outbox.repository';
 export * from './planning-event.repository';

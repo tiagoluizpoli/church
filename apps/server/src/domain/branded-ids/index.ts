@@ -8,6 +8,7 @@ export * from './event-time-block-id';
 export * from './ministry-id';
 export * from './ministry-invitation-id';
 export * from './ministry-participation-id';
+export * from './notification-id';
 export * from './participation-event-time-block-inclusion-id';
 export * from './role-id';
 export * from './sector-id';

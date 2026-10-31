@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { isInstant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { volunteerMapper } from '@/api/dtos/volunteer.dto';
 import { Assignment } from '@/domain/entities/assignment';
+import { Notification } from '@/domain/entities/notification';
 
 describe('volunteerMapper', () => {
   describe('dashboardToResponse', () => {
@@ -75,14 +77,22 @@ describe('volunteerMapper', () => {
         ],
         unreadNotificationCount: 1,
         notificationPreview: [
-          {
-            id: 'notification-1',
-            type: 'assignment_added',
-            title: 'New assignment',
-            body: 'You were assigned a shift',
-            readAt: '2026-05-14T00:00:00.000Z',
-            createdAt: '2026-05-13T00:00:00.000Z',
-          },
+          new Notification({
+            props: {
+              userId: 'user-1',
+              churchId: 'church-1',
+              sourceOutboxId: randomUUID(),
+              kind: 'ministry_invitation',
+              data: {
+                ministryInvitationId: randomUUID(),
+                ministryId: randomUUID(),
+                ministryName: 'Worship',
+              },
+              readAt: parseInstant({ value: '2026-05-14T00:00:00.000Z' }),
+            },
+            id: randomUUID(),
+            createdAt: new Date('2026-05-13T00:00:00.000Z'),
+          }),
         ],
         ministryOptions: [],
       };

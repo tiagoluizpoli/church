@@ -13,6 +13,7 @@ import type {
   InvitationVerificationCodeManager as IInvitationVerificationCodeManager,
   IMinistryInvitationManager,
   IMinistryManager,
+  INotificationManager,
   IOutboxDrainer,
   IParticipationManager,
   IPlanningEventManager,
@@ -36,6 +37,7 @@ import type {
   MinistryInvitationRepository,
   MinistryParticipationRepository,
   MinistryRepository,
+  NotificationRepository,
   NotificationService,
   OutboxRepository,
   PlanningEventRepository,
@@ -83,6 +85,7 @@ export interface CompositionRootDependencies {
   sectorRepository: SectorRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   volunteerNotificationRepository: VolunteerNotificationRepository;
+  notificationRepository: NotificationRepository;
   unitOfWork: UnitOfWork;
   // Services
   notificationService: NotificationService;
@@ -113,4 +116,5 @@ export interface CompositionRootDependencies {
   outboxDrainer: IOutboxDrainer;
   participationManager: IParticipationManager;
   activeChurchSelectionManager: IActiveChurchSelectionManager;
+  notificationManager: INotificationManager;
 }

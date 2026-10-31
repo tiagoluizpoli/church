@@ -9,6 +9,7 @@ import {
   DbEventTemplateManager,
   DbMinistryInvitationManager,
   DbMinistryManager,
+  DbNotificationManager,
   DbOutboxDrainer,
   DbParticipationManager,
   DbPlanningEventManager,
@@ -39,6 +40,7 @@ export type Managers = Pick<
   | 'participationManager'
   | 'availabilityCheckManager'
   | 'activeChurchSelectionManager'
+  | 'notificationManager'
 >;
 
 export interface BuildManagersInput {
@@ -76,7 +78,7 @@ export function buildManagers({
     roleRepository,
     sectorRepository,
     eventTimeBlockRepository,
-    volunteerNotificationRepository,
+    notificationRepository,
     unitOfWork,
   },
   services: {
@@ -210,7 +212,7 @@ export function buildManagers({
       volunteerRepo: volunteerRepository,
       assignmentRepo: assignmentRepository,
       unavailableShiftRepo: unavailableShiftRepository,
-      notificationRepo: volunteerNotificationRepository,
+      notificationRepo: notificationRepository,
       eventRepo: eventRepository,
       shiftRepo: shiftRepository,
       ministryRepo: ministryRepository,
@@ -259,6 +261,13 @@ export function buildManagers({
       churchRepository,
     });
 
+  const notificationManager =
+    overrides.notificationManager ??
+    new DbNotificationManager({
+      notificationRepository,
+      defaultPageSize: config.notifications.pageSize,
+    });
+
   return {
     assignmentManager,
     eventManager,
@@ -275,5 +284,6 @@ export function buildManagers({
     participationManager,
     availabilityCheckManager,
     activeChurchSelectionManager,
+    notificationManager,
   };
 }

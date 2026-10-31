@@ -10,6 +10,7 @@ export { DrizzleInvitationVerificationCodeRepository } from './drizzle-invitatio
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
 export { DrizzleMinistryInvitationRepository } from './drizzle-ministry-invitation.repository';
 export { DrizzleMinistryParticipationRepository } from './drizzle-ministry-participation.repository';
+export { DrizzleNotificationRepository } from './drizzle-notification.repository';
 export { DrizzleOutboxRepository } from './drizzle-outbox.repository';
 export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
 export { DrizzleRedemptionRepository } from './drizzle-redemption.repository';

@@ -8,6 +8,7 @@ export { DbEventManager } from './db-event-manager';
 export { DbEventTemplateManager } from './db-event-template-manager';
 export { DbMinistryInvitationManager } from './db-ministry-invitation-manager';
 export { DbMinistryManager } from './db-ministry-manager';
+export { DbNotificationManager } from './db-notification-manager';
 export { DbOutboxDrainer } from './db-outbox-drainer';
 export { DbParticipationManager } from './db-participation-manager';
 export { DbPlanningEventManager } from './db-planning-event-manager';

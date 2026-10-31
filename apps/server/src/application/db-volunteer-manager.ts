@@ -1,10 +1,8 @@
 import type { AppConfig } from '@church/app-config';
-import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
   compareInstants,
   formatTimeOfDay,
-  fromDate,
   type Instant,
   now as nowInstant,
   parseCalendarDay,
@@ -22,15 +20,11 @@ import type {
   GetAvailabilityCheckInput,
   GetDashboardInput,
   GetMinistryScheduleInput,
-  GetNotificationsInput,
   GetPublishedScheduleInput,
   GetUpcomingAssignmentsInput,
   IVolunteerManager,
   ListAvailabilityChecksInput,
-  MarkAllNotificationsReadInput,
-  MarkNotificationReadInput,
   MinistrySchedule,
-  NotificationListResult,
   RespondToAssignmentInput,
   SetUnavailableShiftsInput,
   VolunteerAvailabilityCheckDetail,
@@ -47,13 +41,13 @@ import type {
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
+import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { VolunteerNotificationRepository } from '../domain/contracts/infrastructure/volunteer-notification.repository';
 import type {
   Assignment,
   AssignmentStatus,
@@ -71,7 +65,6 @@ import {
 } from '../domain/services/unavailable-shifts';
 
 const UPCOMING_DAYS = 30;
-const DEFAULT_NOTIFICATION_LIMIT = 20;
 const NOTIFICATION_PREVIEW_LIMIT = 3;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -189,7 +182,7 @@ interface DbVolunteerManagerDependencies {
   volunteerRepo: VolunteerRepository;
   assignmentRepo: AssignmentRepository;
   unavailableShiftRepo: UnavailableShiftRepository;
-  notificationRepo: VolunteerNotificationRepository;
+  notificationRepo: NotificationRepository;
   eventRepo: EventRepository;
   shiftRepo: ShiftRepository;
   ministryRepo: MinistryRepository;
@@ -205,7 +198,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   private readonly volunteerRepo: VolunteerRepository;
   private readonly assignmentRepo: AssignmentRepository;
   private readonly unavailableShiftRepo: UnavailableShiftRepository;
-  private readonly notificationRepo: VolunteerNotificationRepository;
+  private readonly notificationRepo: NotificationRepository;
   private readonly eventRepo: EventRepository;
   private readonly shiftRepo: ShiftRepository;
   private readonly ministryRepo: MinistryRepository;
@@ -249,7 +242,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   }
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
-    const { volunteerId, churchId } = input;
+    const { userId, volunteerId, churchId } = input;
     const now = nowInstant();
 
     const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds({
@@ -462,22 +455,14 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     const [unreadNotificationCount, notificationPreviewResult] =
       await Promise.all([
-        this.notificationRepo.countUnread({ churchId, volunteerId }),
-        this.notificationRepo.listByVolunteer({
+        this.notificationRepo.countUnread({ churchId, userId }),
+        this.notificationRepo.list({
           churchId,
-          volunteerId,
+          userId,
           limit: NOTIFICATION_PREVIEW_LIMIT,
         }),
       ]);
-
-    const notificationPreview = notificationPreviewResult.items.map((n) => ({
-      id: n.id as string,
-      type: n.type,
-      title: n.title,
-      body: n.body,
-      readAt: n.readAt,
-      createdAt: fromDate({ date: n.createdAt }),
-    }));
+    const notificationPreview = notificationPreviewResult.items;
 
     const defaultMinistryId =
       upcomingAssignmentGroups[0]?.ministryId ?? ministries[0]?.id;
@@ -921,44 +906,6 @@ export class DbVolunteerManager implements IVolunteerManager {
         }),
       ),
     );
-  }
-
-  async getNotifications(
-    input: GetNotificationsInput,
-  ): Promise<NotificationListResult> {
-    const {
-      volunteerId,
-      churchId,
-      cursor,
-      limit = DEFAULT_NOTIFICATION_LIMIT,
-    } = input;
-    return this.notificationRepo.listByVolunteer({
-      churchId,
-      volunteerId,
-      cursor,
-      limit,
-    });
-  }
-
-  async markNotificationRead(input: MarkNotificationReadInput): Promise<void> {
-    const { notificationId, volunteerId, churchId } = input;
-    const readAt = await this.notificationRepo.markRead({
-      churchId,
-      volunteerId,
-      notificationId,
-    });
-    if (!readAt) {
-      throw new NotFoundError('Resource not found');
-    }
-  }
-
-  async markAllNotificationsRead(
-    input: MarkAllNotificationsReadInput,
-  ): Promise<void> {
-    await this.notificationRepo.markAllRead({
-      churchId: input.churchId,
-      volunteerId: input.volunteerId,
-    });
   }
 
   private async listPublishedAssignmentsForVolunteer({

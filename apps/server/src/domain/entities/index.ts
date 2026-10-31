@@ -10,6 +10,7 @@ export * from './ministry';
 export * from './ministry-invitation';
 export * from './ministry-membership';
 export * from './ministry-participation';
+export * from './notification';
 export * from './participation-event-time-block-inclusion';
 export * from './role';
 export * from './sector';

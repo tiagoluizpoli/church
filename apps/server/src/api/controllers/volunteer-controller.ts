@@ -1,6 +1,5 @@
 import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
-import { instantSchema, toDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
@@ -9,8 +8,8 @@ import {
   ChurchId,
   MinistryId,
   ShiftId,
+  UserId,
   VolunteerId,
-  VolunteerNotificationId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type {
@@ -23,10 +22,6 @@ import { IsolationBreachError } from '../../domain/errors/isolation-breach-error
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
-import {
-  notificationListResponseSchema,
-  notificationMapper,
-} from '../dtos/notification.dto';
 import {
   assignmentListResponseSchema,
   assignmentResponseSchema,
@@ -51,15 +46,6 @@ interface AvailabilityCheckRouteParams {
 interface AssignmentRouteParams {
   assignmentId: string;
 }
-
-interface NotificationRouteParams {
-  notificationId: string;
-}
-
-const getNotificationsQuerystringSchema = z.object({
-  cursor: instantSchema.optional(),
-  limit: z.coerce.number().optional(),
-});
 
 interface VolunteerControllerDependencies {
   volunteerManager: IVolunteerManager;
@@ -128,6 +114,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const dashboard = await this.volunteerManager.getDashboard({
+          userId: UserId.from(request.userId),
           volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
@@ -389,86 +376,6 @@ export class VolunteerController implements FastifyController {
         },
       );
     }
-
-    app.get(
-      '/notifications',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'getNotifications',
-          summary: "List the caller's VolunteerNotifications",
-          description:
-            "List the current Volunteer's VolunteerNotifications, paginated by cursor.",
-          querystring: getNotificationsQuerystringSchema,
-          response: { 200: notificationListResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { cursor, limit } = request.query as z.infer<
-          typeof getNotificationsQuerystringSchema
-        >;
-        const result = await this.volunteerManager.getNotifications({
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-          cursor: cursor ? toDate({ instant: cursor }) : undefined,
-          limit,
-        });
-        return reply.send(notificationMapper.listToResponse(result));
-      },
-    );
-
-    app.patch(
-      '/notifications/:notificationId',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'markNotificationRead',
-          summary: 'Mark a VolunteerNotification read',
-          description:
-            "Mark one of the current Volunteer's VolunteerNotifications as read.",
-          response: {
-            200: z.object({ marked: z.boolean() }),
-            404: notFoundResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { notificationId } = request.params as NotificationRouteParams;
-        try {
-          await this.volunteerManager.markNotificationRead({
-            notificationId: VolunteerNotificationId.from(notificationId),
-            volunteerId: VolunteerId.from(request.volunteerId as string),
-            churchId: ChurchId.from(request.churchId),
-          });
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
-        return reply.status(200).send({ marked: true });
-      },
-    );
-
-    app.post(
-      '/notifications/read-all',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'markAllNotificationsRead',
-          summary: 'Mark all VolunteerNotifications read',
-          description:
-            "Mark every one of the current Volunteer's VolunteerNotifications as read.",
-        },
-      },
-      async (request, reply) => {
-        await this.volunteerManager.markAllNotificationsRead({
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-        });
-        return reply.status(201).send({ marked: true });
-      },
-    );
   }
 
   private async withPrivateObjectNotFound<T>({

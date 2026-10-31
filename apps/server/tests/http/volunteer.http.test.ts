@@ -48,9 +48,6 @@ const ROUTES: Array<{
   },
   { method: 'PATCH', url: '/api/v1/volunteer/assignments/some-id' },
   { method: 'POST', url: '/api/v1/volunteer/assignments/some-id/cancel' },
-  { method: 'GET', url: '/api/v1/volunteer/notifications' },
-  { method: 'PATCH', url: '/api/v1/volunteer/notifications/some-id' },
-  { method: 'POST', url: '/api/v1/volunteer/notifications/read-all' },
 ];
 
 describe('Volunteer routes authentication (T047)', () => {

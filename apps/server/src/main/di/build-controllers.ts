@@ -6,6 +6,7 @@ import {
   ChurchAdminController,
   EventController,
   MinistryController,
+  NotificationController,
   PrepareController,
   RedemptionController,
   VolunteerController,
@@ -37,6 +38,7 @@ export function buildControllers({
     participationManager,
     availabilityCheckManager,
     activeChurchSelectionManager,
+    notificationManager,
   },
   auth: { authorityGuard, activeChurchResolver },
 }: BuildControllersInput): FastifyController[] {
@@ -77,6 +79,11 @@ export function buildControllers({
     new CallerCapabilitiesController({
       activeChurchResolver,
       authorityGuard,
+    }),
+    new NotificationController({
+      notificationManager,
+      activeChurchResolver,
+      maxPageSize: config.notifications.maxPageSize,
     }),
     new RedemptionController({
       redemptionManager,

@@ -14,6 +14,7 @@ import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/dr
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleNotificationRepository } from '@/infrastructure/repositories/drizzle-notification.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
@@ -22,7 +23,6 @@ import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import { buildShift, buildShiftRequirement } from '@/seeds/builders/scheduling';
 import {
@@ -124,7 +124,7 @@ export function createSchedulingManagers({
       volunteerRepo,
       assignmentRepo,
       unavailableShiftRepo,
-      notificationRepo: new DrizzleVolunteerNotificationRepository({
+      notificationRepo: new DrizzleNotificationRepository({
         db: schedulingTestDb,
       }),
       eventRepo: plainEventRepo,

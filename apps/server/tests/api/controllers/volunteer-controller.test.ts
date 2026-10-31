@@ -41,9 +41,6 @@ const volunteerManager = {
   confirmAvailabilityCheck: vi.fn(),
   respondToAssignment: vi.fn(),
   cancelOwnAssignment: vi.fn(),
-  getNotifications: vi.fn(),
-  markNotificationRead: vi.fn(),
-  markAllNotificationsRead: vi.fn(),
 };
 
 const activeChurchResolver = {
@@ -94,15 +91,12 @@ beforeEach(() => {
 });
 
 const CHECK_ID = '77777777-7777-4777-8777-777777777771';
-const NOTIFICATION_ID = '88888888-8888-4888-8888-888888888881';
 const GENERIC_NOT_FOUND = { error: 'NOT_FOUND', message: m.error_not_found() };
 
 const servingCollections = [
   { method: 'GET' as const, url: '/api/v1/volunteer/dashboard' },
   { method: 'GET' as const, url: '/api/v1/volunteer/assignments' },
   { method: 'GET' as const, url: '/api/v1/volunteer/availability-checks' },
-  { method: 'GET' as const, url: '/api/v1/volunteer/notifications' },
-  { method: 'POST' as const, url: '/api/v1/volunteer/notifications/read-all' },
 ];
 
 describe('Volunteer route access', () => {
@@ -227,86 +221,6 @@ describe('Volunteer route access', () => {
     expect(hidden.statusCode).toBe(404);
     expect(missing.json()).toEqual(GENERIC_NOT_FOUND);
     expect(hidden.json()).toEqual(GENERIC_NOT_FOUND);
-  });
-
-  it("returns the generic 404 for a missing or another Volunteer's notification", async () => {
-    volunteerManager.markNotificationRead.mockRejectedValue(
-      new NotFoundError('Resource not found'),
-    );
-
-    const response = await app.inject({
-      method: 'PATCH',
-      url: `/api/v1/volunteer/notifications/${NOTIFICATION_ID}`,
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual(GENERIC_NOT_FOUND);
-    expect(volunteerManager.markNotificationRead).toHaveBeenCalledWith({
-      notificationId: NOTIFICATION_ID,
-      volunteerId: VOLUNTEER_ID,
-      churchId: CHURCH_ID,
-    });
-  });
-});
-
-describe('GET /api/v1/volunteer/notifications (C1 pagination)', () => {
-  it('passes cursor and limit querystring through to the manager', async () => {
-    volunteerManager.getNotifications.mockResolvedValue({
-      items: [],
-      nextCursor: undefined,
-    });
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/volunteer/notifications?cursor=2026-07-01T00%3A00%3A00.000Z&limit=5',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(volunteerManager.getNotifications).toHaveBeenCalledWith(
-      expect.objectContaining({
-        volunteerId: VOLUNTEER_ID,
-        churchId: CHURCH_ID,
-        cursor: new Date('2026-07-01T00:00:00.000Z'),
-        limit: 5,
-      }),
-    );
-  });
-
-  it('calls the manager without cursor/limit when the querystring is absent', async () => {
-    volunteerManager.getNotifications.mockResolvedValue({
-      items: [],
-      nextCursor: undefined,
-    });
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/volunteer/notifications',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(volunteerManager.getNotifications).toHaveBeenCalledWith(
-      expect.objectContaining({
-        volunteerId: VOLUNTEER_ID,
-        churchId: CHURCH_ID,
-        cursor: undefined,
-        limit: undefined,
-      }),
-    );
-  });
-
-  it('includes nextCursor in the response when the manager returns more pages', async () => {
-    volunteerManager.getNotifications.mockResolvedValue({
-      items: [],
-      nextCursor: new Date('2026-07-02T00:00:00.000Z'),
-    });
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/volunteer/notifications',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json().nextCursor).toBe('2026-07-02T00:00:00.000Z');
   });
 });
 

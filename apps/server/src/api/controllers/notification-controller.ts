@@ -5,6 +5,7 @@ import type { IActiveChurchResolver } from '../../domain/contracts/application/a
 import type { INotificationManager } from '../../domain/contracts/application/notification-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   markedResponseSchema,
@@ -23,6 +24,7 @@ const errorResponseSchema = z.object({
 interface NotificationControllerDependencies {
   notificationManager: INotificationManager;
   activeChurchResolver: IActiveChurchResolver;
+  authorityGuard: AuthorityGuard;
   /** Most notifications one page may ask for (validated central config). */
   maxPageSize: number;
 }
@@ -36,15 +38,18 @@ export class NotificationController implements FastifyController {
 
   private readonly notificationManager: INotificationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({
     notificationManager,
     activeChurchResolver,
+    authorityGuard,
     maxPageSize,
   }: NotificationControllerDependencies) {
     this.notificationManager = notificationManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.authorityGuard = authorityGuard;
     this.maxPageSize = maxPageSize;
   }
 
@@ -57,6 +62,20 @@ export class NotificationController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
     );
+
+    // Every route is the caller's own inbox: the owner is the session User,
+    // never a parameter, so member-level access is the only rule to ask.
+    app.addHook('preHandler', async (request, reply) => {
+      const decision = await this.authorityGuard.decideAuthority({
+        churchId: ChurchId.from(request.churchId),
+        userId: UserId.from(request.userId),
+        action: 'access',
+        resource: { type: 'church', churchId: ChurchId.from(request.churchId) },
+        scope: 'function',
+      });
+      if (!decision.allowed)
+        return refuse({ reply, request, code: 'FORBIDDEN' });
+    });
 
     const refusals = {
       401: errorResponseSchema,

@@ -83,6 +83,7 @@ export function buildControllers({
     new NotificationController({
       notificationManager,
       activeChurchResolver,
+      authorityGuard,
       maxPageSize: config.notifications.maxPageSize,
     }),
     new RedemptionController({

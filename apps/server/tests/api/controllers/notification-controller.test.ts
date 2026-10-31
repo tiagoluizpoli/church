@@ -35,6 +35,7 @@ const notificationManager = {
   markAllRead: vi.fn(),
 };
 const activeChurchResolver = { resolve: vi.fn() };
+const authorityGuard = { decideAuthority: vi.fn() };
 
 let app: FastifyTypedInstance;
 
@@ -43,6 +44,7 @@ beforeAll(async () => {
   const controller = new NotificationController({
     notificationManager: notificationManager as never,
     activeChurchResolver: activeChurchResolver as never,
+    authorityGuard: authorityGuard as never,
     maxPageSize: MAX_PAGE_SIZE,
   });
   await app.register(
@@ -66,6 +68,7 @@ beforeEach(() => {
     user: { id: 'current-user' },
     session: { activeOrganizationId: CHURCH_ID },
   } as never);
+  authorityGuard.decideAuthority.mockResolvedValue({ allowed: true });
   // A Church Member with no Volunteer profile, e.g. a ChurchAdmin.
   activeChurchResolver.resolve.mockResolvedValue({
     status: 'resolved',
@@ -125,6 +128,30 @@ describe('Notification routes refusals', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json().error).toBe('FORBIDDEN');
+  });
+
+  it.each(
+    operations,
+  )('$method $url returns 403 when AuthorityService denies member access', async (op) => {
+    authorityGuard.decideAuthority.mockResolvedValue({
+      allowed: false,
+      reason: 'NO_CHURCH_MEMBERSHIP',
+    });
+
+    const response = await app.inject(op);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error).toBe('FORBIDDEN');
+    expect(authorityGuard.decideAuthority).toHaveBeenCalledWith({
+      churchId: CHURCH_ID,
+      userId: 'current-user',
+      action: 'access',
+      resource: { type: 'church', churchId: CHURCH_ID },
+      scope: 'function',
+    });
+    expect(notificationManager.list).not.toHaveBeenCalled();
+    expect(notificationManager.markRead).not.toHaveBeenCalled();
+    expect(notificationManager.markAllRead).not.toHaveBeenCalled();
   });
 
   it.each(

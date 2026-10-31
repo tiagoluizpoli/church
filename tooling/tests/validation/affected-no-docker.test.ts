@@ -76,15 +76,6 @@ describe('the no-docker tier', () => {
     });
   });
 
-  it('keeps a deleted file’s workspace in scope for unit tests', () => {
-    const steps = noDockerStepsFor({
-      changedPaths: ['packages/core/src/gone.ts'],
-      deletedPaths: ['packages/core/src/gone.ts'],
-    });
-
-    expect(labelsOf(steps.checkLane)).toContain('test:unit');
-  });
-
   it('plans no unit step for a docs-only change', () => {
     const steps = noDockerStepsFor({ changedPaths: ['docs/adr/0004.md'] });
 

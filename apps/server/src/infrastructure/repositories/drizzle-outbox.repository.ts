@@ -1,6 +1,8 @@
 import { outboxMessage } from '@church/db';
+import { fromDate, toDate } from '@church/time';
 import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
+import type { PreparedEmail } from '../../domain/contracts/infrastructure/email-sender';
 import type {
   ChainedInvitationOutboxMessage,
   ChurchBootstrapOutboxMessage,
@@ -9,9 +11,12 @@ import type {
   MarkOutboxMessageFailedInput,
   MarkOutboxMessageSentInput,
   MinistryInvitationOutboxMessage,
+  OutboxEmailDelivery,
   OutboxMessage,
   OutboxMessageStatus,
   OutboxRepository,
+  RecordOutboxEmailDeliveredInput,
+  RecordOutboxEmailPreparedInput,
   RedemptionAcceptedOutboxMessage,
   TransferLeaderlessMinistryOutboxMessage,
   TransferMinistryDigestOutboxMessage,
@@ -74,6 +79,33 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .where(eq(outboxMessage.id, id));
   }
 
+  async recordEmailPrepared(
+    input: RecordOutboxEmailPreparedInput,
+  ): Promise<void> {
+    const { id, email, idempotencyKey, firstAttemptAt, tx } = input;
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        emailRequest: email,
+        emailIdempotencyKey: idempotencyKey,
+        emailFirstAttemptAt: toDate({ instant: firstAttemptAt }),
+      })
+      .where(eq(outboxMessage.id, id));
+  }
+
+  async recordEmailDelivered(
+    input: RecordOutboxEmailDeliveredInput,
+  ): Promise<void> {
+    const { id, providerMessageId, deliveredAt, tx } = input;
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        providerMessageId,
+        emailDeliveredAt: toDate({ instant: deliveredAt }),
+      })
+      .where(eq(outboxMessage.id, id));
+  }
+
   async findLatestStatusForMinistryInvitation(
     input: FindLatestOutboxStatusForMinistryInvitationInput,
   ): Promise<OutboxMessageStatus | null> {
@@ -116,6 +148,7 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
     providerMessageId: row.providerMessageId ?? undefined,
     correlationId: row.correlationId,
     sentAt: row.sentAt ?? undefined,
+    emailDelivery: mapEmailDelivery(row),
   };
 
   switch (row.kind) {
@@ -157,4 +190,23 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
           row.payload as TransferLeaderlessMinistryOutboxMessage['payload'],
       };
   }
+}
+
+/** `email_request` is jsonb written only by `recordEmailPrepared`, from a
+ * JSON-safe `PreparedEmail`, so the read-back is that same shape. */
+function mapEmailDelivery(
+  row: OutboxMessageRow,
+): OutboxEmailDelivery | undefined {
+  const { emailRequest, emailIdempotencyKey, emailFirstAttemptAt } = row;
+  if (!emailRequest || !emailIdempotencyKey || !emailFirstAttemptAt) {
+    return undefined;
+  }
+  return {
+    email: emailRequest as PreparedEmail,
+    idempotencyKey: emailIdempotencyKey,
+    firstAttemptAt: fromDate({ date: emailFirstAttemptAt }),
+    deliveredAt: row.emailDeliveredAt
+      ? fromDate({ date: row.emailDeliveredAt })
+      : undefined,
+  };
 }

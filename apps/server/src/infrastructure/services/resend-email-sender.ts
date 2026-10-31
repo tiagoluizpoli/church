@@ -1,31 +1,23 @@
-import { formatInstant, fromDate } from '@church/time';
 import { Resend } from 'resend';
 import type {
-  EmailPayload,
+  DeliverEmailInput,
   EmailSender,
+  PreparedEmail,
+  PrepareEmailInput,
   SendEmailInput,
   SendEmailResult,
-  TransferLeaderlessMinistryEmail,
-  TransferMinistryDigestEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { EmailSendError } from '../../domain/errors/email-send-error';
+import { prepareEmail } from './email-templates';
 
 export interface ResendEmailSenderOptions {
   apiKey: string;
   from: string;
 }
 
-interface ComposedEmail {
-  subject: string;
-  html: string;
-}
-
-interface ComposeEmailInput {
-  payload: EmailPayload;
-}
-
 interface SendViaResendInput {
   request: Parameters<Resend['emails']['send']>[0];
+  idempotencyKey?: string;
 }
 
 /**
@@ -37,6 +29,15 @@ interface SendViaResendInput {
  * is always retryable, per spec §6.4.
  */
 const NON_RETRYABLE_STATUS_CODES = new Set([400, 401, 403, 422]);
+
+/**
+ * Both idempotency conflicts answer 409, so they are told apart by name
+ * (https://resend.com/docs/dashboard/emails/idempotency-keys): a changed
+ * payload under a used key can never succeed, while a concurrent request on
+ * the same key may once the original finishes.
+ */
+const NON_RETRYABLE_ERROR_NAMES = new Set(['invalid_idempotent_request']);
+const RETRYABLE_ERROR_NAMES = new Set(['concurrent_idempotent_requests']);
 
 export class ResendEmailSender implements EmailSender {
   private readonly client: Resend;
@@ -52,22 +53,30 @@ export class ResendEmailSender implements EmailSender {
     this.from = from;
   }
 
-  async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
-    const { subject, html } = composeEmail({ payload });
+  prepare({ payload }: PrepareEmailInput): PreparedEmail {
+    return prepareEmail({ payload, from: this.from });
+  }
 
+  async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
+    return this.deliver({ email: this.prepare({ payload }) });
+  }
+
+  async deliver({
+    email,
+    idempotencyKey,
+  }: DeliverEmailInput): Promise<SendEmailResult> {
     const { data, error } = await this.sendViaResend({
-      request: {
-        from: this.from,
-        to: payload.to,
-        subject,
-        html,
-      },
+      request: email.request,
+      idempotencyKey,
     });
 
     if (error) {
       throw new EmailSendError({
         message: error.message,
-        retryable: !NON_RETRYABLE_STATUS_CODES.has(error.statusCode ?? 500),
+        retryable: isRetryable({
+          name: error.name,
+          statusCode: error.statusCode ?? 500,
+        }),
       });
     }
 
@@ -76,9 +85,12 @@ export class ResendEmailSender implements EmailSender {
 
   private async sendViaResend({
     request,
+    idempotencyKey,
   }: SendViaResendInput): ReturnType<Resend['emails']['send']> {
     try {
-      return await this.client.emails.send(request);
+      return idempotencyKey
+        ? await this.client.emails.send(request, { idempotencyKey })
+        : await this.client.emails.send(request);
     } catch (cause) {
       throw new EmailSendError({
         message:
@@ -91,72 +103,13 @@ export class ResendEmailSender implements EmailSender {
   }
 }
 
-function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
-  switch (payload.kind) {
-    case 'invitation.chained':
-    case 'invitation.ministry':
-      return {
-        subject: `You're invited to serve at ${payload.churchName}`,
-        html: `
-          <p>You've been invited to join <strong>${payload.ministryName}</strong> at ${payload.churchName} as a ${payload.ministryAccessLevel}.</p>
-          ${payload.roleNames.length > 0 ? `<p>Roles: ${payload.roleNames.join(', ')}</p>` : ''}
-          <p>This invitation expires on ${payload.expiresAt.toDateString()}.</p>
-          <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
-        `,
-      };
-    case 'invitation.verification-code':
-      return {
-        subject: `Your ${payload.churchName} verification code`,
-        html: `<p>Your verification code is <strong>${payload.code}</strong>.</p><p>It expires in 10 minutes.</p>`,
-      };
-    case 'invitation.church-bootstrap':
-      return {
-        subject: `You're invited to administer ${payload.churchName}`,
-        html: `
-          <p>You've been invited to become an administrator of ${payload.churchName}.</p>
-          <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
-        `,
-      };
-    case 'redemption.accepted':
-      return {
-        subject: `Welcome to ${payload.ministryName} at ${payload.churchName}`,
-        html: `<p>Your invitation to serve with <strong>${payload.ministryName}</strong> at ${payload.churchName} has been accepted.</p>`,
-      };
-    case 'transfer.ministry-digest':
-      return {
-        subject: `${payload.volunteerName} has transferred out of ${payload.ministryName}`,
-        html: renderTransferDigestHtml({ payload }),
-      };
-    case 'transfer.leaderless-ministry':
-      return {
-        subject: `${payload.ministryName} has no active leader`,
-        html: `
-          <p><strong>${payload.ministryName}</strong> has no active leader: ${payload.volunteerName} — its last active leader — has transferred out.</p>
-          ${renderTransferDigestHtml({ payload })}
-        `,
-      };
-  }
+interface IsRetryableInput {
+  name: string;
+  statusCode: number;
 }
 
-interface RenderTransferDigestHtmlInput {
-  payload: TransferMinistryDigestEmail | TransferLeaderlessMinistryEmail;
-}
-
-/** Shared body for both transfer notification kinds — only the framing
- * differs. No Church Timezone is available at this layer, so times read
- * UTC — a seam-armed swap of the prior raw `toLocaleString`, not a
- * timezone-correctness fix. */
-function renderTransferDigestHtml({
-  payload,
-}: RenderTransferDigestHtmlInput): string {
-  const items = payload.withdrawnAssignments
-    .map(
-      (a) =>
-        `<li>${a.eventName} — ${formatInstant({ instant: fromDate({ date: a.eventTimeBlockStart }), timeZone: 'UTC' })} — ${a.roleName}</li>`,
-    )
-    .join('');
-  return `
-    <p>${payload.volunteerName} transferred to another Church and their future assignments in <strong>${payload.ministryName}</strong> were withdrawn:</p>
-    <ul>${items}</ul>
-  `;
+function isRetryable({ name, statusCode }: IsRetryableInput): boolean {
+  if (NON_RETRYABLE_ERROR_NAMES.has(name)) return false;
+  if (RETRYABLE_ERROR_NAMES.has(name)) return true;
+  return !NON_RETRYABLE_STATUS_CODES.has(statusCode);
 }

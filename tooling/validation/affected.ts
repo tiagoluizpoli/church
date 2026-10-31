@@ -7,6 +7,7 @@ import {
   type TestLayer,
   type TestTarget,
   type ValidationPlan,
+  WORKSPACES,
 } from './affected-plan';
 import { readE2eImportGraph } from './e2e-import-graph';
 import {
@@ -104,11 +105,7 @@ interface PushLayerTimingInput {
 const ALL_TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
 
 /** Workspaces with a `test:unit:related` script (`vitest related`). */
-const RELATED_UNIT_WORKSPACE_PATHS: Record<string, string> = {
-  '@church/core': 'packages/core/',
-  server: 'apps/server/',
-  web: 'apps/web/',
-};
+const RELATED_UNIT_WORKSPACE_NAMES = new Set(['@church/core', 'server', 'web']);
 
 /**
  * A clean worktree with committed branch changes must not report nothing to
@@ -521,7 +518,9 @@ function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
     const changedPaths = [
       ...new Set(reasons.map(({ changedPath }) => changedPath)),
     ];
-    const workspacePath = RELATED_UNIT_WORKSPACE_PATHS[workspaceName];
+    const workspacePath = RELATED_UNIT_WORKSPACE_NAMES.has(workspaceName)
+      ? WORKSPACES.find(({ name }) => name === workspaceName)?.path
+      : undefined;
     const isTraceable =
       workspacePath !== undefined &&
       reasons.every(({ detail }) => detail !== 'root-infrastructure') &&

@@ -150,7 +150,7 @@ interface IsProductionSourcePathInput {
   workspaceName: string;
 }
 
-const WORKSPACES: Workspace[] = [
+export const WORKSPACES: Workspace[] = [
   { name: 'server', path: 'apps/server/' },
   { name: 'web', path: 'apps/web/' },
   { name: '@church/auth', path: 'packages/auth/' },

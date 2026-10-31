@@ -1,5 +1,5 @@
 import { appConfig } from '@church/app-config';
-import { notification, outboxMessage } from '@church/db';
+import { cycle, notification, outboxMessage } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
@@ -12,11 +12,13 @@ import {
   MinistryParticipationId,
   UserId,
 } from '@/domain/branded-ids';
+import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/notification.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import {
   DrizzleAvailabilityCheckRepository,
   DrizzleCycleRepository,
   DrizzleMinistryParticipationRepository,
+  DrizzleNotificationRepository,
   DrizzlePlanningEventRepository,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
@@ -42,7 +44,23 @@ const harness = createMinistryInvitationTestHarness({ db: schedulingTestDb });
 const { outboxRepository, unitOfWork } = harness;
 const notifications = new ChurchNotifications({ outboxRepository });
 
-function buildDrainer(emailSender: CaptureEmailSender): DbOutboxDrainer {
+/** Inbox repository whose next `create` calls throw. */
+class FlakyInboxRepository extends DrizzleNotificationRepository {
+  failuresLeft = 0;
+
+  override async create(input: CreateNotificationInput) {
+    if (this.failuresLeft > 0) {
+      this.failuresLeft -= 1;
+      throw new Error('injected inbox failure');
+    }
+    return super.create(input);
+  }
+}
+
+function buildDrainer(
+  emailSender: CaptureEmailSender,
+  inboxRepository?: DrizzleNotificationRepository,
+): DbOutboxDrainer {
   return new DbOutboxDrainer({
     outboxRepository,
     invitationRepository: harness.ministryInvitationRepository,
@@ -51,10 +69,11 @@ function buildDrainer(emailSender: CaptureEmailSender): DbOutboxDrainer {
     roleRepository: harness.roleRepository,
     volunteerTransferRepository: harness.volunteerTransferRepository,
     emailSender,
-    notifier: harness.buildNotifier({ emailSender }),
+    notifier: harness.buildNotifier({ emailSender, inboxRepository }),
     schedulingFacts: harness.schedulingFacts,
     unitOfWork,
     config: appConfig,
+    webBaseUrl: 'https://app.test',
   });
 }
 
@@ -153,6 +172,73 @@ async function outboxRows() {
 }
 
 describe('scheduling Notifications through enqueue and the drainer', () => {
+  async function askOneMember() {
+    await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    await buildAvailabilityManager().askAvailability({
+      churchId: ChurchId.from(ids.churchId),
+      participationId: MinistryParticipationId.from(participationId),
+    });
+  }
+
+  async function dropCycle() {
+    await schedulingTestDb.execute('SET session_replication_role = replica');
+    await schedulingTestDb.delete(cycle).where(eq(cycle.id, cycleId));
+    await schedulingTestDb.execute('SET session_replication_role = DEFAULT');
+  }
+
+  async function dueNow() {
+    await schedulingTestDb
+      .update(outboxMessage)
+      .set({ scheduledFor: new Date(0) });
+  }
+
+  it('freezes the facts at first resolution: a retry writes the inbox row after the Cycle is gone', async () => {
+    await askOneMember();
+    const emailSender = new CaptureEmailSender();
+    const inbox = new FlakyInboxRepository({ db: schedulingTestDb });
+    inbox.failuresLeft = 100;
+    const drainer = buildDrainer(emailSender, inbox);
+
+    await drainer.drainOnce({ limit: 10 });
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
+    expect(emailSender.sent.length).toBeGreaterThan(0);
+    const emailsBefore = emailSender.sent.length;
+
+    await dropCycle();
+    inbox.failuresLeft = 0;
+    await dueNow();
+    await drainer.drainOnce({ limit: 10 });
+
+    const rows = await schedulingTestDb.select().from(notification);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0]?.data).toMatchObject({ cycleName: 'December 2026' });
+    expect(emailSender.sent).toHaveLength(emailsBefore);
+    expect((await outboxRows()).every((row) => row.status === 'sent')).toBe(
+      true,
+    );
+  });
+
+  it('settles every sink as skipped, not failed, when the Cycle is gone before first resolution', async () => {
+    await askOneMember();
+    await dropCycle();
+    const emailSender = new CaptureEmailSender();
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.sent).toHaveLength(0);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
+    expect(await outboxRows()).toSatisfy(
+      (rows: { status: string; channelOutcomes: unknown }[]) =>
+        rows.every(
+          (row) =>
+            row.status === 'sent' &&
+            JSON.stringify(row.channelOutcomes) ===
+              JSON.stringify({ email: 'skipped', inbox: 'skipped' }),
+        ),
+    );
+  });
+
   it('Ask enqueues availability_opened per active member and delivers one email and one inbox entry each', async () => {
     const first = await seedMember({ name: 'Ana', email: 'ana@test.com' });
     const second = await seedMember({ name: 'Bia', email: 'bia@test.com' });

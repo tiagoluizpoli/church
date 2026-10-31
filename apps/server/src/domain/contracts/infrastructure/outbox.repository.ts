@@ -1,6 +1,9 @@
 import type { Instant } from '@church/time';
 import type { ChurchId } from '../../branded-ids';
-import type { NotificationRequest } from '../../notification-kinds';
+import type {
+  NotificationDeliveryData,
+  NotificationRequest,
+} from '../../notification-kinds';
 import type { PreparedEmail } from './email-sender';
 import type { TransactionContext } from './transaction-context';
 import type { ChurchRecipient } from '@/domain/contracts/application/church-notifications';
@@ -92,6 +95,8 @@ export interface RedemptionAcceptedOutboxMessage extends OutboxMessageBase {
 /** One Notification to one recipient (ADR-0008), written by `notifications.enqueue`. */
 export type NotificationOutboxPayload = NotificationRequest & {
   to: ChurchRecipient;
+  /** Display facts frozen at the row's first resolution; retries reuse them. */
+  facts?: NotificationDeliveryData;
 };
 
 export interface NotificationOutboxMessage extends OutboxMessageBase {
@@ -148,6 +153,12 @@ export interface RecordOutboxEmailDeliveredInput {
   tx: TransactionContext;
 }
 
+export interface RecordOutboxDeliveryFactsInput {
+  id: string;
+  facts: NotificationDeliveryData;
+  tx: TransactionContext;
+}
+
 export interface EnqueueNotificationOutboxMessageInput {
   churchId: ChurchId;
   payload: NotificationOutboxPayload;
@@ -189,6 +200,9 @@ export interface OutboxRepository {
   /** Persists the prepared email, key and first-attempt Instant — committed
    * before the provider is called, so a retry resends exactly this. */
   recordEmailPrepared(input: RecordOutboxEmailPreparedInput): Promise<void>;
+
+  /** Freezes a `notification` row's resolved display facts into its payload. */
+  recordDeliveryFacts(input: RecordOutboxDeliveryFactsInput): Promise<void>;
 
   /** Persists the provider's confirmed receipt for the email channel. */
   recordEmailDelivered(input: RecordOutboxEmailDeliveredInput): Promise<void>;

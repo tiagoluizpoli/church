@@ -81,6 +81,7 @@ export function createMinistryInvitationTestHarness({
     assignmentRepository: new DrizzleAssignmentRepository({ db }),
     roleRepository,
     volunteerRepository,
+    webBaseUrl: 'https://app.test',
   });
   const manager = new DbMinistryInvitationManager({
     repo: ministryInvitationRepository,

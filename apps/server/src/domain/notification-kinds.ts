@@ -1,5 +1,6 @@
 import { calendarDaySchema, type Instant, instantSchema } from '@church/time';
 import { z } from 'zod';
+import { MinistryId, VolunteerId } from './branded-ids';
 import type { MinistryAccessLevel } from './entities/ministry-membership';
 
 /**
@@ -79,8 +80,8 @@ export function isNotificationKind(value: string): value is NotificationKind {
  * Assignments from `assignment_audit` at delivery.
  */
 const transferDigestRequestDataSchema = z.object({
-  ministryId: z.uuid(),
-  volunteerId: z.uuid(),
+  ministryId: z.uuid().transform((id) => MinistryId.from(id)),
+  volunteerId: z.uuid().transform((id) => VolunteerId.from(id)),
   transferCorrelationId: z.string().min(1),
 });
 

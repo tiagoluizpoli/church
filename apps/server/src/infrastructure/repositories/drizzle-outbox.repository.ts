@@ -18,6 +18,7 @@ import type {
   OutboxMessage,
   OutboxMessageStatus,
   OutboxRepository,
+  RecordOutboxDeliveryFactsInput,
   RecordOutboxEmailDeliveredInput,
   RecordOutboxEmailPreparedInput,
   RedemptionAcceptedOutboxMessage,
@@ -98,6 +99,18 @@ export class DrizzleOutboxRepository implements OutboxRepository {
         emailRequest: email,
         emailIdempotencyKey: idempotencyKey,
         emailFirstAttemptAt: toDate({ instant: firstAttemptAt }),
+      })
+      .where(eq(outboxMessage.id, id));
+  }
+
+  async recordDeliveryFacts(
+    input: RecordOutboxDeliveryFactsInput,
+  ): Promise<void> {
+    const { id, facts, tx } = input;
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        payload: sql`${outboxMessage.payload} || ${JSON.stringify({ facts })}::jsonb`,
       })
       .where(eq(outboxMessage.id, id));
   }

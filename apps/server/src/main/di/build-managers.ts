@@ -193,6 +193,7 @@ export function buildManagers({
         assignmentRepository,
         roleRepository,
         volunteerRepository,
+        webBaseUrl: env.CORS_ORIGIN,
       }),
       notifier: buildChurchNotifier({
         config,
@@ -204,6 +205,7 @@ export function buildManagers({
       }),
       unitOfWork,
       config,
+      webBaseUrl: env.CORS_ORIGIN,
     });
   const cycleManager =
     overrides.cycleManager ??

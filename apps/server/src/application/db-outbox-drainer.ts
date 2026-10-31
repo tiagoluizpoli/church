@@ -1,5 +1,4 @@
 import type { AppConfig } from '@church/app-config';
-import { env } from '@church/env/server';
 import {
   fromDate,
   millisecondsBetween,
@@ -7,7 +6,7 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import type { ChurchId, MinistryId, VolunteerId } from '../domain/branded-ids';
+import type { ChurchId } from '../domain/branded-ids';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
   DrainOnceInput,
@@ -51,7 +50,8 @@ import {
   hasExhaustedRetries,
   nextRetryAt,
 } from '../domain/services/outbox-retry-policy';
-import type { ChurchNotifier } from './church-notifier';
+import { webLink } from '../domain/services/web-link';
+import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
 
 export class DbOutboxDrainer implements IOutboxDrainer {
@@ -67,6 +67,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly unitOfWork: UnitOfWork;
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
+  private readonly webBaseUrl: string;
 
   constructor({
     outboxRepository,
@@ -80,6 +81,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     schedulingFacts,
     unitOfWork,
     config,
+    webBaseUrl,
   }: DbOutboxDrainerDependencies) {
     this.outboxRepository = outboxRepository;
     this.invitationRepository = invitationRepository;
@@ -91,6 +93,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.notifier = notifier;
     this.schedulingFacts = schedulingFacts;
     this.unitOfWork = unitOfWork;
+    this.webBaseUrl = webBaseUrl;
     const { outbox } = config;
     this.outboxPolicy = outbox;
     this.emailIdempotencyRetentionMs = outbox.emailIdempotencyRetentionMs;
@@ -180,7 +183,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       roleNames: roles.map((role) => role.name),
       expiresAt: invitation.expiresAt,
       churchTimezone: church.timezone,
-      redemptionUrl: `${env.CORS_ORIGIN}${redemptionPathFor(invitation)}`,
+      redemptionUrl: webLink({
+        baseUrl: this.webBaseUrl,
+        path: redemptionPathFor(invitation),
+      }),
     };
 
     return this.prepareAndDeliver({ message, payload });
@@ -214,7 +220,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
       expiresAt: invitation.expiresAt,
-      redemptionUrl: `${env.CORS_ORIGIN}${redemptionPathFor(invitation)}`,
+      redemptionUrl: webLink({
+        baseUrl: this.webBaseUrl,
+        path: redemptionPathFor(invitation),
+      }),
     };
   }
 
@@ -256,8 +265,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }: LoadTransferDigestFactsInput): Promise<TransferDigestDeliveryFacts> {
     const details = await this.volunteerTransferRepository.getDigestDetails({
       churchId,
-      ministryId: request.data.ministryId as MinistryId,
-      volunteerId: request.data.volunteerId as VolunteerId,
+      ministryId: request.data.ministryId,
+      volunteerId: request.data.volunteerId,
       correlationId: request.data.transferCorrelationId,
     });
     return {
@@ -287,21 +296,49 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       });
       return 'failed';
     }
-    const facts = await this.loadDeliveryFacts({
-      churchId: message.churchId,
-      to,
-      // Parsed by this kind's own schema just above.
-      request: { kind, data: request.data } as NotificationRequest,
-    });
+    let facts = message.payload.facts;
     if (!facts) {
-      await this.failTerminally({
-        message,
-        reason:
-          kind === 'ministry_invitation'
-            ? 'Invitation is no longer pending'
-            : `Context of notification kind "${kind}" no longer exists`,
+      const resolved = await this.loadDeliveryFacts({
+        churchId: message.churchId,
+        to,
+        // Parsed by this kind's own schema just above.
+        request: { kind, data: request.data } as NotificationRequest,
       });
-      return 'failed';
+      if (!resolved) {
+        if (kind === 'ministry_invitation') {
+          await this.failTerminally({
+            message,
+            reason: 'Invitation is no longer pending',
+          });
+          return 'failed';
+        }
+        // The change is gone before anything was delivered: nothing to render.
+        console.warn(
+          `[Outbox] notification ${message.id} (${kind}) skipped: its context no longer exists`,
+        );
+        await this.unitOfWork.run((tx) =>
+          this.outboxRepository.markSent({
+            id: message.id,
+            sentAt: nowAsDate(),
+            channelOutcomes: {
+              ...message.channelOutcomes,
+              [CHURCH_SINK_NAMES.email]: 'skipped',
+              [CHURCH_SINK_NAMES.inbox]: 'skipped',
+            },
+            tx,
+          }),
+        );
+        return 'sent';
+      }
+      facts = resolved;
+      // Every retry re-renders from these, never from live scheduling objects.
+      await this.unitOfWork.run((tx) =>
+        this.outboxRepository.recordDeliveryFacts({
+          id: message.id,
+          facts: resolved,
+          tx,
+        }),
+      );
     }
 
     const { outcomes } = await this.notifier.send({
@@ -552,6 +589,8 @@ interface DbOutboxDrainerDependencies {
   notifier: ChurchNotifier;
   schedulingFacts: SchedulingNotificationFacts;
   unitOfWork: UnitOfWork;
+  /** Base URL of the web app, for deep links in emails. */
+  webBaseUrl: string;
 }
 
 interface ProcessOneInput {

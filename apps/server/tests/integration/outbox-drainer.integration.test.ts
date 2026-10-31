@@ -98,6 +98,7 @@ function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
     schedulingFacts,
     unitOfWork,
     config: appConfig,
+    webBaseUrl: 'https://app.test',
   });
 }
 
@@ -767,6 +768,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       schedulingFacts,
       unitOfWork,
       config,
+      webBaseUrl: 'https://app.test',
     });
   }
 

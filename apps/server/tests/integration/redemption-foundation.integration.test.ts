@@ -130,6 +130,7 @@ function createOutboxDrainer({
     schedulingFacts,
     unitOfWork,
     config: appConfig,
+    webBaseUrl: 'https://app.test',
   });
 }
 

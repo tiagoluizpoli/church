@@ -32,6 +32,9 @@ import {
 import { InboxNotificationSink } from './inbox-notification-sink';
 import { Notifier, registerSink } from './notifier';
 
+/** The registered sinks; a row's `channelOutcomes` is keyed by these. */
+export const CHURCH_SINK_NAMES = { email: 'email', inbox: 'inbox' } as const;
+
 /** The Notifier with the Church's recipient, kinds and delivery facts fixed. */
 export type ChurchNotifier = INotifier<
   ChurchRecipient,
@@ -117,7 +120,7 @@ export function buildChurchNotifier({
     EmailRecipientAddress,
     EmailPayload
   >({
-    name: 'email',
+    name: CHURCH_SINK_NAMES.email,
     enabled: config.notifications.email.enabled,
     lookup: async ({ to }) => {
       const address = await churchRepository.findMemberEmail({
@@ -200,7 +203,7 @@ export function buildChurchNotifier({
     ChurchRecipient,
     NotificationPayload
   >({
-    name: 'inbox',
+    name: CHURCH_SINK_NAMES.inbox,
     enabled: config.notifications.inbox.enabled,
     lookup: async ({ to }) =>
       (await churchRepository.findMemberEmail({

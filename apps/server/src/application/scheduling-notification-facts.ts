@@ -1,5 +1,4 @@
 import { NotFoundError } from '@church/core';
-import { env } from '@church/env/server';
 import {
   CycleId,
   MinistryId,
@@ -20,6 +19,7 @@ import type {
   NotificationRequestDataOf,
   SchedulePublishedDeliveryFacts,
 } from '../domain/notification-kinds';
+import { webLink } from '../domain/services/web-link';
 
 interface SchedulingNotificationFactsDependencies {
   churchRepository: ChurchRepository;
@@ -31,6 +31,8 @@ interface SchedulingNotificationFactsDependencies {
   assignmentRepository: AssignmentRepository;
   roleRepository: RoleRepository;
   volunteerRepository: VolunteerRepository;
+  /** Base URL of the web app, for deep links. */
+  webBaseUrl: string;
 }
 
 interface ResolveAvailabilityInput {
@@ -60,6 +62,7 @@ export class SchedulingNotificationFacts {
   private readonly assignmentRepository: AssignmentRepository;
   private readonly roleRepository: RoleRepository;
   private readonly volunteerRepository: VolunteerRepository;
+  private readonly webBaseUrl: string;
 
   constructor({
     churchRepository,
@@ -71,6 +74,7 @@ export class SchedulingNotificationFacts {
     assignmentRepository,
     roleRepository,
     volunteerRepository,
+    webBaseUrl,
   }: SchedulingNotificationFactsDependencies) {
     this.churchRepository = churchRepository;
     this.ministryRepository = ministryRepository;
@@ -81,6 +85,7 @@ export class SchedulingNotificationFacts {
     this.assignmentRepository = assignmentRepository;
     this.roleRepository = roleRepository;
     this.volunteerRepository = volunteerRepository;
+    this.webBaseUrl = webBaseUrl;
   }
 
   async availability({
@@ -105,7 +110,10 @@ export class SchedulingNotificationFacts {
         cycleName: cycle.name,
         cycleStartDate: cycle.startDate,
         cycleEndDate: cycle.endDate,
-        actionUrl: `${env.CORS_ORIGIN}/dashboard?section=availability`,
+        actionUrl: webLink({
+          baseUrl: this.webBaseUrl,
+          path: '/dashboard?section=availability',
+        }),
       };
     } catch (error) {
       if (error instanceof NotFoundError) return null;
@@ -167,7 +175,10 @@ export class SchedulingNotificationFacts {
         eventEnd: event.end,
         churchTimezone: church.timezone,
         shifts,
-        actionUrl: `${env.CORS_ORIGIN}/dashboard?section=assignments&eventId=${event.id}&ministryId=${ministry.id}`,
+        actionUrl: webLink({
+          baseUrl: this.webBaseUrl,
+          path: `/dashboard?section=assignments&eventId=${event.id}&ministryId=${ministry.id}`,
+        }),
       };
     } catch (error) {
       if (error instanceof NotFoundError) return null;

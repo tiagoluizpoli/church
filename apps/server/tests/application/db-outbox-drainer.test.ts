@@ -53,6 +53,7 @@ function createDrainer(): DbOutboxDrainer {
     schedulingFacts: {} as never,
     unitOfWork: unitOfWork as never,
     config: appConfig,
+    webBaseUrl: 'https://app.test',
   });
 }
 

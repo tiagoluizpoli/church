@@ -1,12 +1,20 @@
 import { appConfig } from '@church/app-config';
 import {
+  ministry,
   ministryInvitation,
   ministryMembership,
   outboxMessage,
 } from '@church/db';
-import { fromDate, parseCalendarDay } from '@church/time';
+import {
+  addMilliseconds,
+  fromDate,
+  type Instant,
+  parseCalendarDay,
+  resetClock,
+  setTestClock,
+} from '@church/time';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
 import {
@@ -15,6 +23,8 @@ import {
   MinistryInvitationId,
   UserId,
 } from '@/domain/branded-ids';
+import type { DeliverEmailInput } from '@/domain/contracts/infrastructure/email-sender';
+import { EmailSendError } from '@/domain/errors/email-send-error';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories';
 import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
@@ -120,6 +130,251 @@ describe('DbOutboxDrainer (integration)', () => {
     expect(totalClaimed).toBe(1);
     expect(totalSent).toBe(1);
     expect(totalCaptured).toBe(1);
+  });
+});
+
+type FailureMode = 'before-provider' | 'after-provider';
+
+interface QueueFailureInput {
+  mode: FailureMode;
+  retryable: boolean;
+}
+
+/**
+ * The capture adapter with injected failures. `after-provider` records the
+ * email and then throws — the ambiguous case where the provider accepted the
+ * request but the response was lost.
+ */
+class FlakyEmailSender extends CaptureEmailSender {
+  private readonly failures: QueueFailureInput[] = [];
+  readonly attemptedKeys: (string | undefined)[] = [];
+
+  queueFailure(failure: QueueFailureInput): void {
+    this.failures.push(failure);
+  }
+
+  override async deliver(input: DeliverEmailInput) {
+    this.attemptedKeys.push(input.idempotencyKey);
+    const failure = this.failures.shift();
+    if (failure?.mode === 'after-provider') await super.deliver(input);
+    if (failure) {
+      throw new EmailSendError({
+        message: `injected ${failure.mode} failure`,
+        retryable: failure.retryable,
+      });
+    }
+    return super.deliver(input);
+  }
+}
+
+describe('DbOutboxDrainer — invitation email retry safety (issue #619, integration)', () => {
+  const firstAttempt = '2026-11-02T12:00:00.000Z' as Instant;
+  const { emailIdempotencyRetentionMs, maxAttempts, backoffCapMinutes } =
+    appConfig.outbox;
+
+  beforeEach(() => {
+    setTestClock({ instant: firstAttempt });
+  });
+
+  afterEach(() => {
+    resetClock();
+  });
+
+  interface MintForInput {
+    email: string;
+  }
+
+  async function mintFor({ email }: MintForInput): Promise<void> {
+    await manager.mint({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: UserId.from(fixture.adminA),
+      email,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+    });
+  }
+
+  const memberEmail = () => `${fixture.memberNoVolunteerA}@fixture.test`;
+
+  interface AdvanceClockInput {
+    ms: number;
+  }
+
+  function advanceClockFromFirstAttempt({ ms }: AdvanceClockInput): void {
+    setTestClock({
+      instant: addMilliseconds({ instant: firstAttempt, milliseconds: ms }),
+    });
+  }
+
+  async function onlyRow() {
+    const [row, ...rest] = await testDb.select().from(outboxMessage);
+    if (!row || rest.length > 0) throw new Error('expected one outbox row');
+    return row;
+  }
+
+  it('persists the exact prepared request, stable key and first-attempt Instant before the first attempt', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: true });
+
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    const row = await onlyRow();
+    expect(row).toMatchObject({
+      status: 'pending',
+      emailIdempotencyKey: `outbox-message/${row.id}`,
+      emailFirstAttemptAt: new Date(firstAttempt),
+      emailDeliveredAt: null,
+    });
+    expect(row.emailRequest).toMatchObject({
+      locale: 'en',
+      request: { to: memberEmail() },
+    });
+    expect(emailSender.attemptedKeys).toEqual([`outbox-message/${row.id}`]);
+  });
+
+  it('resends the stored content after a Ministry rename, under the same key', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    const [original] = await testDb
+      .select({ name: ministry.name })
+      .from(ministry)
+      .where(eq(ministry.id, fixture.ministryOneA));
+    await testDb
+      .update(ministry)
+      .set({ name: 'Renamed Ministry' })
+      .where(eq(ministry.id, fixture.ministryOneA));
+    advanceClockFromFirstAttempt({ ms: backoffCapMinutes * 60_000 });
+
+    const result = await drainer.drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(emailSender.sent[0]).toMatchObject({
+      ministryName: original?.name,
+    });
+    expect(emailSender.delivered[0]?.request.html).not.toContain(
+      'Renamed Ministry',
+    );
+    const [firstKey, secondKey] = emailSender.attemptedKeys;
+    expect(secondKey).toBe(firstKey);
+  });
+
+  it('captures one email when an ambiguous attempt is replayed', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'after-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    advanceClockFromFirstAttempt({ ms: backoffCapMinutes * 60_000 });
+
+    await drainer.drainOnce({ limit: 10 });
+
+    expect(emailSender.attemptedKeys).toHaveLength(2);
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(await onlyRow()).toMatchObject({ status: 'sent', attempts: 1 });
+  });
+
+  it('suppresses a replay of an email the provider already confirmed', async () => {
+    await mintFor({ email: memberEmail() });
+    await buildDrainer({ emailSender: new CaptureEmailSender() }).drainOnce({
+      limit: 10,
+    });
+    const delivered = await onlyRow();
+    expect(delivered.emailDeliveredAt).toEqual(new Date(firstAttempt));
+    // Replay the same row, as a later channel's retry would.
+    await testDb
+      .update(outboxMessage)
+      .set({ status: 'pending' })
+      .where(eq(outboxMessage.id, delivered.id));
+
+    // A fresh adapter cannot deduplicate on its own: only the receipt can.
+    const replaySender = new CaptureEmailSender();
+    const result = await buildDrainer({ emailSender: replaySender }).drainOnce({
+      limit: 10,
+    });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(replaySender.delivered).toHaveLength(0);
+    expect(await onlyRow()).toMatchObject({ status: 'sent' });
+  });
+
+  it('fails terminally once retryable failures exhaust the configured attempts', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    const drainer = buildDrainer({ emailSender });
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      emailSender.queueFailure({ mode: 'before-provider', retryable: true });
+      advanceClockFromFirstAttempt({
+        ms: (attempt - 1) * backoffCapMinutes * 60_000,
+      });
+      await drainer.drainOnce({ limit: 10 });
+    }
+
+    expect(await onlyRow()).toMatchObject({
+      status: 'failed',
+      attempts: maxAttempts,
+    });
+    expect(new Set(emailSender.attemptedKeys).size).toBe(1);
+  });
+
+  it('fails terminally on a non-retryable provider error, such as a payload mismatch', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: false });
+
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(await onlyRow()).toMatchObject({ status: 'failed', attempts: 1 });
+  });
+
+  it('retries an ambiguous attempt just inside the retention window', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'after-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    advanceClockFromFirstAttempt({ ms: emailIdempotencyRetentionMs - 1 });
+
+    await drainer.drainOnce({ limit: 10 });
+
+    expect(emailSender.attemptedKeys).toHaveLength(2);
+    expect(await onlyRow()).toMatchObject({ status: 'sent' });
+  });
+
+  it('refuses an ambiguous attempt at the retention boundary, without a new key', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'after-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    advanceClockFromFirstAttempt({ ms: emailIdempotencyRetentionMs });
+
+    const result = await drainer.drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.attemptedKeys).toHaveLength(1);
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(await onlyRow()).toMatchObject({
+      status: 'failed',
+      lastError: expect.stringContaining('retention'),
+    });
+  });
+
+  it('keeps delivering the other claimed rows when one delivery fails', async () => {
+    await mintFor({ email: memberEmail() });
+    await mintFor({ email: 'outsider@example.com' });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: false });
+
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 2, sent: 1, failed: 1 });
+    expect(emailSender.delivered).toHaveLength(1);
   });
 });
 

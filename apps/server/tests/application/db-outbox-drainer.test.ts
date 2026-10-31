@@ -21,6 +21,8 @@ const outboxRepository = {
   claimPending: vi.fn(),
   markSent: vi.fn(),
   markFailed: vi.fn(),
+  recordEmailPrepared: vi.fn(),
+  recordEmailDelivered: vi.fn(),
 };
 const invitationRepository = {
   findById: vi.fn(),
@@ -31,7 +33,14 @@ const ministryRepository = { getById: vi.fn() };
 const roleRepository = { getById: vi.fn() };
 const volunteerRepository = { listActiveLeaderEmails: vi.fn() };
 const volunteerTransferRepository = { getDigestDetails: vi.fn() };
-const emailSender = { send: vi.fn() };
+const emailSender = {
+  prepare: vi.fn((input: { payload: unknown }) => ({
+    payload: input.payload,
+    locale: 'en',
+    request: {},
+  })),
+  deliver: vi.fn(),
+};
 const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
 
 function createDrainer(): DbOutboxDrainer {
@@ -93,19 +102,22 @@ describe('DbOutboxDrainer.drainOnce', () => {
     const message = buildMessage();
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    emailSender.send.mockResolvedValue({ providerMessageId: 'provider-1' });
+    emailSender.deliver.mockResolvedValue({ providerMessageId: 'provider-1' });
 
     const result = await createDrainer().drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
-    expect(emailSender.send).toHaveBeenCalledWith(
+    expect(emailSender.deliver).toHaveBeenCalledWith(
       expect.objectContaining({
-        payload: expect.objectContaining({
-          kind: 'invitation.ministry',
-          to: 'invitee@example.com',
-          churchName: 'Grace Church',
-          ministryName: 'Worship Team',
-          roleNames: ['Vocalist'],
+        idempotencyKey: 'outbox-message/outbox_1',
+        email: expect.objectContaining({
+          payload: expect.objectContaining({
+            kind: 'invitation.ministry',
+            to: 'invitee@example.com',
+            churchName: 'Grace Church',
+            ministryName: 'Worship Team',
+            roleNames: ['Vocalist'],
+          }),
         }),
       }),
     );
@@ -125,7 +137,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     const result = await createDrainer().drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
-    expect(emailSender.send).not.toHaveBeenCalled();
+    expect(emailSender.deliver).not.toHaveBeenCalled();
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'outbox_1', status: 'failed' }),
     );
@@ -140,7 +152,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
 
     await createDrainer().drainOnce({ limit: 10 });
 
-    expect(emailSender.send).not.toHaveBeenCalled();
+    expect(emailSender.deliver).not.toHaveBeenCalled();
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'failed' }),
     );
@@ -150,7 +162,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     const message = buildMessage({ attempts: 1 });
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    emailSender.send.mockRejectedValue(
+    emailSender.deliver.mockRejectedValue(
       new EmailSendError({ message: 'rate limited', retryable: true }),
     );
 
@@ -172,7 +184,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     const message = buildMessage({ attempts: maxAttempts - 1 });
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    emailSender.send.mockRejectedValue(
+    emailSender.deliver.mockRejectedValue(
       new EmailSendError({ message: 'rate limited', retryable: true }),
     );
 
@@ -190,7 +202,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     const message = buildMessage();
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    emailSender.send.mockRejectedValue(
+    emailSender.deliver.mockRejectedValue(
       new EmailSendError({ message: 'invalid recipient', retryable: false }),
     );
 
@@ -212,7 +224,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
 
     expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
     expect(invitationRepository.findById).not.toHaveBeenCalled();
-    expect(emailSender.send).not.toHaveBeenCalled();
+    expect(emailSender.deliver).not.toHaveBeenCalled();
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'failed',
@@ -233,7 +245,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
       failedMessage,
     ]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    emailSender.send.mockResolvedValue({ providerMessageId: 'provider-1' });
+    emailSender.deliver.mockResolvedValue({ providerMessageId: 'provider-1' });
 
     const result = await createDrainer().drainOnce({ limit: 10 });
 
@@ -244,7 +256,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     const message = buildMessage();
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    emailSender.send.mockRejectedValue(new Error('unexpected'));
+    emailSender.deliver.mockRejectedValue(new Error('unexpected'));
 
     await expect(createDrainer().drainOnce({ limit: 10 })).rejects.toThrow(
       'unexpected',
@@ -279,7 +291,9 @@ describe('DbOutboxDrainer.drainOnce', () => {
       volunteerRepository.listActiveLeaderEmails.mockResolvedValue([
         'leader@example.com',
       ]);
-      emailSender.send.mockResolvedValue({ providerMessageId: 'provider-2' });
+      emailSender.deliver.mockResolvedValue({
+        providerMessageId: 'provider-2',
+      });
 
       const result = await createDrainer().drainOnce({ limit: 10 });
 
@@ -292,13 +306,15 @@ describe('DbOutboxDrainer.drainOnce', () => {
           correlationId: 'corr_1',
         },
       );
-      expect(emailSender.send).toHaveBeenCalledWith(
+      expect(emailSender.deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          payload: expect.objectContaining({
-            kind: 'transfer.ministry-digest',
-            to: ['leader@example.com'],
-            ministryName: 'Hospitality',
-            volunteerName: 'Jamie Rivera',
+          email: expect.objectContaining({
+            payload: expect.objectContaining({
+              kind: 'transfer.ministry-digest',
+              to: ['leader@example.com'],
+              ministryName: 'Hospitality',
+              volunteerName: 'Jamie Rivera',
+            }),
           }),
         }),
       );
@@ -318,7 +334,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
       const result = await createDrainer().drainOnce({ limit: 10 });
 
       expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
-      expect(emailSender.send).not.toHaveBeenCalled();
+      expect(emailSender.deliver).not.toHaveBeenCalled();
       expect(outboxRepository.markFailed).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'failed' }),
       );
@@ -331,16 +347,20 @@ describe('DbOutboxDrainer.drainOnce', () => {
       });
       outboxRepository.claimPending.mockResolvedValue([message]);
       churchRepository.listAdminEmails.mockResolvedValue(['admin@example.com']);
-      emailSender.send.mockResolvedValue({ providerMessageId: 'provider-3' });
+      emailSender.deliver.mockResolvedValue({
+        providerMessageId: 'provider-3',
+      });
 
       const result = await createDrainer().drainOnce({ limit: 10 });
 
       expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
-      expect(emailSender.send).toHaveBeenCalledWith(
+      expect(emailSender.deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          payload: expect.objectContaining({
-            kind: 'transfer.leaderless-ministry',
-            to: ['admin@example.com'],
+          email: expect.objectContaining({
+            payload: expect.objectContaining({
+              kind: 'transfer.leaderless-ministry',
+              to: ['admin@example.com'],
+            }),
           }),
         }),
       );
@@ -357,7 +377,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
       const result = await createDrainer().drainOnce({ limit: 10 });
 
       expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
-      expect(emailSender.send).not.toHaveBeenCalled();
+      expect(emailSender.deliver).not.toHaveBeenCalled();
     });
   });
 });

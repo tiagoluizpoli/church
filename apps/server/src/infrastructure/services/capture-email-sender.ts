@@ -1,6 +1,9 @@
 import type {
+  DeliverEmailInput,
   EmailPayload,
   EmailSender,
+  PreparedEmail,
+  PrepareEmailInput,
   SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -8,18 +11,41 @@ import type {
   LastVerificationCodeForInput,
   VerificationCodeInspector,
 } from '../../domain/contracts/infrastructure/verification-code-inspector';
+import { prepareEmail } from './email-templates';
+
+const CAPTURE_FROM = 'Church <capture@church.test>';
 
 /**
  * Bound in every environment except production so no suite or local run ever
  * dispatches real mail. Records what would have been sent for assertions.
+ * Like the provider, a repeated idempotency key is deduplicated: it records
+ * nothing new, so a replay is observable as one captured email.
  */
 export class CaptureEmailSender
   implements EmailSender, VerificationCodeInspector
 {
   readonly sent: EmailPayload[] = [];
+  readonly delivered: PreparedEmail[] = [];
+  private readonly seenKeys = new Set<string>();
+
+  prepare({ payload }: PrepareEmailInput): PreparedEmail {
+    return prepareEmail({ payload, from: CAPTURE_FROM });
+  }
 
   async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
-    this.sent.push(payload);
+    return this.deliver({ email: this.prepare({ payload }) });
+  }
+
+  async deliver({
+    email,
+    idempotencyKey,
+  }: DeliverEmailInput): Promise<SendEmailResult> {
+    if (idempotencyKey !== undefined) {
+      if (this.seenKeys.has(idempotencyKey)) return {};
+      this.seenKeys.add(idempotencyKey);
+    }
+    this.sent.push(email.payload);
+    this.delivered.push(email);
     return {};
   }
 

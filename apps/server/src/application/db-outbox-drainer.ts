@@ -1,6 +1,12 @@
 import type { AppConfig } from '@church/app-config';
 import { env } from '@church/env/server';
-import { nowAsDate, toDate } from '@church/time';
+import {
+  fromDate,
+  millisecondsBetween,
+  now,
+  nowAsDate,
+  toDate,
+} from '@church/time';
 import type { MinistryId, VolunteerId } from '../domain/branded-ids';
 import type {
   DrainOnceInput,
@@ -21,6 +27,7 @@ import type { MinistryInvitationRepository } from '../domain/contracts/infrastru
 import type {
   ChainedInvitationOutboxMessage,
   MinistryInvitationOutboxMessage,
+  OutboxEmailDelivery,
   OutboxMessage,
   OutboxRepository,
   RedemptionAcceptedOutboxMessage,
@@ -30,7 +37,10 @@ import type {
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
+import type {
+  VolunteerTransferRepository,
+  WithdrawnAssignmentPreview,
+} from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { EmailSendError } from '../domain/errors/email-send-error';
 import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
 import {
@@ -49,6 +59,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly emailSender: EmailSender;
   private readonly unitOfWork: UnitOfWork;
   private readonly outboxPolicy: AppConfig['outbox'];
+  private readonly emailIdempotencyRetentionMs: number;
 
   constructor({
     outboxRepository,
@@ -73,6 +84,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.unitOfWork = unitOfWork;
     const { outbox } = config;
     this.outboxPolicy = outbox;
+    this.emailIdempotencyRetentionMs = outbox.emailIdempotencyRetentionMs;
   }
 
   async drainOnce(input: DrainOnceInput): Promise<DrainOnceResult> {
@@ -133,6 +145,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       });
       return 'failed';
     }
+    if (message.emailDelivery) {
+      return this.deliverEmail({ message, delivery: message.emailDelivery });
+    }
 
     const [church, ministry, email] = await Promise.all([
       this.churchRepository.getById({ id: message.churchId }),
@@ -157,11 +172,11 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
-      expiresAt: toDate({ instant: invitation.expiresAt }),
+      expiresAt: invitation.expiresAt,
       redemptionUrl: `${env.CORS_ORIGIN}${redemptionPathFor(invitation)}`,
     };
 
-    return this.sendAndMark({ message, payload });
+    return this.prepareAndDeliver({ message, payload });
   }
 
   private async processRedemptionAcceptedMessage({
@@ -177,6 +192,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         reason: 'Invitation was not accepted',
       });
       return 'failed';
+    }
+    if (message.emailDelivery) {
+      return this.deliverEmail({ message, delivery: message.emailDelivery });
     }
     const [church, ministry, email] = await Promise.all([
       this.churchRepository.getById({ id: message.churchId }),
@@ -194,12 +212,15 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       churchName: church.name,
       ministryName: ministry.name,
     };
-    return this.sendAndMark({ message, payload });
+    return this.prepareAndDeliver({ message, payload });
   }
 
   private async processTransferMinistryDigestMessage({
     message,
   }: ProcessTransferMinistryDigestMessageInput): Promise<'sent' | 'failed'> {
+    if (message.emailDelivery) {
+      return this.deliverEmail({ message, delivery: message.emailDelivery });
+    }
     const ministryId = message.payload.ministryId as MinistryId;
     const volunteerId = message.payload.volunteerId as VolunteerId;
     const [details, recipients] = await Promise.all([
@@ -226,9 +247,11 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       to: recipients,
       ministryName: details.ministryName,
       volunteerName: details.volunteerName,
-      withdrawnAssignments: details.withdrawnAssignments,
+      withdrawnAssignments: toEmailLines({
+        assignments: details.withdrawnAssignments,
+      }),
     };
-    return this.sendAndMark({ message, payload });
+    return this.prepareAndDeliver({ message, payload });
   }
 
   private async processTransferLeaderlessMinistryMessage({
@@ -236,6 +259,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }: ProcessTransferLeaderlessMinistryMessageInput): Promise<
     'sent' | 'failed'
   > {
+    if (message.emailDelivery) {
+      return this.deliverEmail({ message, delivery: message.emailDelivery });
+    }
     const ministryId = message.payload.ministryId as MinistryId;
     const volunteerId = message.payload.volunteerId as VolunteerId;
     const [details, recipients] = await Promise.all([
@@ -259,31 +285,96 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       to: recipients,
       ministryName: details.ministryName,
       volunteerName: details.volunteerName,
-      withdrawnAssignments: details.withdrawnAssignments,
+      withdrawnAssignments: toEmailLines({
+        assignments: details.withdrawnAssignments,
+      }),
     };
-    return this.sendAndMark({ message, payload });
+    return this.prepareAndDeliver({ message, payload });
   }
 
-  private async sendAndMark({
+  /**
+   * Fixes the email before its first attempt: the prepared request, the
+   * row-derived key and the first-attempt Instant commit in their own short
+   * transaction, so every later attempt resends exactly this.
+   */
+  private async prepareAndDeliver({
     message,
     payload,
-  }: SendAndMarkInput): Promise<'sent' | 'failed'> {
+  }: PrepareAndDeliverInput): Promise<'sent' | 'failed'> {
+    const delivery: OutboxEmailDelivery = {
+      email: this.emailSender.prepare({ payload }),
+      idempotencyKey: emailIdempotencyKeyFor({ message }),
+      firstAttemptAt: now(),
+    };
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.recordEmailPrepared({
+        id: message.id,
+        ...delivery,
+        tx,
+      }),
+    );
+    return this.deliverEmail({ message, delivery });
+  }
+
+  /** The network call runs outside any transaction; only the bookkeeping
+   * around it opens one. */
+  private async deliverEmail({
+    message,
+    delivery,
+  }: DeliverEmailInput): Promise<'sent' | 'failed'> {
+    if (delivery.deliveredAt) {
+      await this.markSent({ message });
+      return 'sent';
+    }
+    const age = millisecondsBetween({
+      start: delivery.firstAttemptAt,
+      end: now(),
+    });
+    // A key the provider may have forgotten no longer deduplicates, and a
+    // fresh key would too: an unconfirmed attempt this old is never resent.
+    if (age >= this.emailIdempotencyRetentionMs) {
+      await this.failTerminally({
+        message,
+        reason: 'Email idempotency retention elapsed since the first attempt',
+      });
+      return 'failed';
+    }
     try {
-      const result = await this.emailSender.send({ payload });
-      await this.unitOfWork.run((tx) =>
-        this.outboxRepository.markSent({
+      const result = await this.emailSender.deliver({
+        email: delivery.email,
+        idempotencyKey: delivery.idempotencyKey,
+      });
+      await this.unitOfWork.run(async (tx) => {
+        await this.outboxRepository.recordEmailDelivered({
+          id: message.id,
+          providerMessageId: result.providerMessageId,
+          deliveredAt: now(),
+          tx,
+        });
+        await this.outboxRepository.markSent({
           id: message.id,
           providerMessageId: result.providerMessageId,
           sentAt: nowAsDate(),
           tx,
-        }),
-      );
+        });
+      });
       return 'sent';
     } catch (error) {
       if (!(error instanceof EmailSendError)) throw error;
       await this.handleSendFailure({ message, error });
       return 'failed';
     }
+  }
+
+  private async markSent({ message }: MarkSentInput): Promise<void> {
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markSent({
+        id: message.id,
+        providerMessageId: message.providerMessageId,
+        sentAt: nowAsDate(),
+        tx,
+      }),
+    );
   }
 
   private async handleSendFailure({
@@ -365,9 +456,41 @@ interface ProcessTransferLeaderlessMinistryMessageInput {
   message: TransferLeaderlessMinistryOutboxMessage;
 }
 
-interface SendAndMarkInput {
+interface PrepareAndDeliverInput {
   message: OutboxMessage;
   payload: EmailPayload;
+}
+
+interface DeliverEmailInput {
+  message: OutboxMessage;
+  delivery: OutboxEmailDelivery;
+}
+
+interface MarkSentInput {
+  message: OutboxMessage;
+}
+
+interface EmailIdempotencyKeyForInput {
+  message: OutboxMessage;
+}
+
+/** One key per outbox row: every replay of the row reuses it. */
+function emailIdempotencyKeyFor({
+  message,
+}: EmailIdempotencyKeyForInput): string {
+  return `outbox-message/${message.id}`;
+}
+
+interface ToEmailLinesInput {
+  assignments: WithdrawnAssignmentPreview[];
+}
+
+function toEmailLines({ assignments }: ToEmailLinesInput) {
+  return assignments.map(({ eventName, eventTimeBlockStart, roleName }) => ({
+    eventName,
+    eventTimeBlockStart: fromDate({ date: eventTimeBlockStart }),
+    roleName,
+  }));
 }
 
 interface HandleSendFailureInput {

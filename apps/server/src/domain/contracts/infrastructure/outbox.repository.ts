@@ -1,4 +1,6 @@
+import type { Instant } from '@church/time';
 import type { ChurchId } from '../../branded-ids';
+import type { PreparedEmail } from './email-sender';
 import type { TransactionContext } from './transaction-context';
 
 export type OutboxMessageKind =
@@ -28,6 +30,21 @@ interface OutboxMessageBase {
   providerMessageId?: string;
   correlationId: string;
   sentAt?: Date;
+  /** Present once the email was prepared, before its first external attempt. */
+  emailDelivery?: OutboxEmailDelivery;
+}
+
+/**
+ * The email channel's durable delivery state for one row: the exact request
+ * every attempt resends, the stable provider idempotency key, when the first
+ * attempt began (bounding the provider's retention window) and, once the
+ * provider confirmed it, the receipt Instant that suppresses a replay.
+ */
+export interface OutboxEmailDelivery {
+  email: PreparedEmail;
+  idempotencyKey: string;
+  firstAttemptAt: Instant;
+  deliveredAt?: Instant;
 }
 
 export interface ChainedInvitationOutboxPayload {
@@ -136,6 +153,21 @@ export interface MarkOutboxMessageFailedInput {
   tx: TransactionContext;
 }
 
+export interface RecordOutboxEmailPreparedInput {
+  id: string;
+  email: PreparedEmail;
+  idempotencyKey: string;
+  firstAttemptAt: Instant;
+  tx: TransactionContext;
+}
+
+export interface RecordOutboxEmailDeliveredInput {
+  id: string;
+  providerMessageId?: string;
+  deliveredAt: Instant;
+  tx: TransactionContext;
+}
+
 export interface FindLatestOutboxStatusForMinistryInvitationInput {
   churchId: ChurchId;
   ministryInvitationId: string;
@@ -160,6 +192,13 @@ export interface OutboxRepository {
   markSent(input: MarkOutboxMessageSentInput): Promise<void>;
 
   markFailed(input: MarkOutboxMessageFailedInput): Promise<void>;
+
+  /** Persists the prepared email, key and first-attempt Instant — committed
+   * before the provider is called, so a retry resends exactly this. */
+  recordEmailPrepared(input: RecordOutboxEmailPreparedInput): Promise<void>;
+
+  /** Persists the provider's confirmed receipt for the email channel. */
+  recordEmailDelivered(input: RecordOutboxEmailDeliveredInput): Promise<void>;
 
   /**
    * Reads the most recent outbox row's status for a Ministry Invitation.

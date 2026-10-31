@@ -1,3 +1,4 @@
+import { fromDate } from '@church/time';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   ChurchBootstrapInvitationEmail,
@@ -30,7 +31,7 @@ function buildChainedPayload(): MinistryInvitationEmail {
     ministryName: 'Worship Team',
     ministryAccessLevel: 'volunteer',
     roleNames: ['Vocalist'],
-    expiresAt: new Date('2026-08-01T00:00:00Z'),
+    expiresAt: fromDate({ date: new Date('2026-08-01T00:00:00Z') }),
     redemptionUrl: 'https://app.church.test/invitations/church/abc',
   };
 }
@@ -53,7 +54,9 @@ function buildDigestPayload(): TransferMinistryDigestEmail {
     withdrawnAssignments: [
       {
         eventName: 'Sunday Gathering',
-        eventTimeBlockStart: new Date('2026-09-20T10:00:00Z'),
+        eventTimeBlockStart: fromDate({
+          date: new Date('2026-09-20T10:00:00Z'),
+        }),
         roleName: 'Greeter',
       },
     ],
@@ -157,6 +160,40 @@ describe('ResendEmailSender', () => {
         html: expect.stringContaining('Jamie Rivera'),
       }),
     );
+  });
+
+  it('delivers a prepared email unchanged, passing the stable idempotency key', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email-5' }, error: null });
+    const sender = makeSender();
+    const email = sender.prepare({ payload: buildChainedPayload() });
+
+    const result = await sender.deliver({
+      email,
+      idempotencyKey: 'outbox-message/row-1',
+    });
+
+    expect(sendMock).toHaveBeenCalledWith(email.request, {
+      idempotencyKey: 'outbox-message/row-1',
+    });
+    expect(result).toEqual({ providerMessageId: 'email-5' });
+  });
+
+  it.each([
+    ['invalid_idempotent_request', false],
+    ['concurrent_idempotent_requests', true],
+  ])('maps a 409 %s to retryable=%s', async (name, retryable) => {
+    sendMock.mockResolvedValue({
+      data: null,
+      error: { message: 'idempotency conflict', name, statusCode: 409 },
+    });
+    const sender = makeSender();
+
+    await expect(
+      sender.deliver({
+        email: sender.prepare({ payload: buildChainedPayload() }),
+        idempotencyKey: 'outbox-message/row-1',
+      }),
+    ).rejects.toMatchObject({ retryable });
   });
 
   it.each([

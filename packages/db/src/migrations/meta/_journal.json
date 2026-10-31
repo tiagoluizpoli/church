@@ -169,6 +169,13 @@
       "when": 1793470358993,
       "tag": "0023_blue_rage",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793471722265,
+      "tag": "0024_aberrant_the_twelve",
+      "breakpoints": true
     }
   ]
 }

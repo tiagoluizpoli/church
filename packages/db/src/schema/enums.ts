@@ -86,6 +86,7 @@ export const outboxMessageKindEnum = pgEnum('outbox_message_kind', [
   'redemption.accepted',
   'transfer.ministry-digest',
   'transfer.leaderless-ministry',
+  'notification',
 ]);
 
 export const outboxMessageStatusEnum = pgEnum('outbox_message_status', [

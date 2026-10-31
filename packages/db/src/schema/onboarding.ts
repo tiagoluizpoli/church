@@ -202,6 +202,9 @@ export const outboxMessage = pgTable('outbox_message', {
     withTimezone: true,
     mode: 'date',
   }),
+  /** Settled per-sink outcomes of a `notification` row (sink name →
+   * delivered | skipped | failed); a whole-row retry skips settled sinks. */
+  channelOutcomes: jsonb('channel_outcomes'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
     .notNull(),

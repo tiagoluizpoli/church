@@ -1,11 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import {
   classifyChanges,
   isScriptsOnlyAddition,
   type TestLayer,
   type TestTarget,
   type ValidationPlan,
+  WORKSPACES,
 } from './affected-plan';
 import { readE2eImportGraph } from './e2e-import-graph';
 import {
@@ -51,6 +53,7 @@ interface ParseArgumentsResult {
   onlyE2e: boolean;
   seedImpactAcknowledgements: string[];
   skipE2e: boolean;
+  tier: ValidationTier;
 }
 
 interface BuildTestLayerStepsInput {
@@ -66,10 +69,14 @@ interface BuildTurboStepInput {
   workspaceNames: string[];
 }
 
+/** `no-docker` drops integration and E2E, the steps that need Docker. */
+export type ValidationTier = 'affected' | 'no-docker';
+
 export interface RunValidationInput {
   onlyE2e: boolean;
   plan: ValidationPlan;
   skipE2e: boolean;
+  tier?: ValidationTier;
 }
 
 interface RunValidationResult {
@@ -96,6 +103,24 @@ interface PushLayerTimingInput {
 }
 
 const ALL_TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
+const UNIT_ONLY_LAYERS: TestLayer[] = ['test:unit'];
+
+// The script may run from a temporary repo, so read manifests from this checkout.
+const REPO_ROOT = join(import.meta.dir, '..', '..');
+const UNIT_CONCURRENCY = '2';
+
+/** Where the import graph can trace a changed file to the tests that use it. */
+const TRACEABLE_PATH = /^(?:apps|packages)\/[^/]+\/(?:src|tests|seeds)\//;
+const UNTRACEABLE_PATH = /\/tests\/setup\/|\/fixtures\//;
+
+/** Workspace paths whose package.json has a `test:unit:related` script. */
+const RELATED_UNIT_WORKSPACE_PATHS = new Map(
+  WORKSPACES.filter(({ path }) =>
+    readFileSync(join(REPO_ROOT, path, 'package.json'), 'utf8').includes(
+      '"test:unit:related"',
+    ),
+  ).map(({ name, path }) => [name, path]),
+);
 
 /**
  * A clean worktree with committed branch changes must not report nothing to
@@ -193,6 +218,7 @@ export function parseArguments({
   let baseRef: string | undefined;
   let skipE2e = false;
   let onlyE2e = false;
+  let tier: ValidationTier = 'affected';
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -208,6 +234,11 @@ export function parseArguments({
 
     if (arg === '--skip-e2e') {
       skipE2e = true;
+      continue;
+    }
+
+    if (arg === '--no-docker') {
+      tier = 'no-docker';
       continue;
     }
 
@@ -252,6 +283,7 @@ export function parseArguments({
     onlyE2e,
     seedImpactAcknowledgements,
     skipE2e,
+    tier,
   };
 }
 
@@ -299,8 +331,11 @@ export interface ValidationSteps {
 export function buildValidationSteps({
   onlyE2e,
   plan,
-  skipE2e,
+  skipE2e: skipE2eArgument,
+  tier = 'affected',
 }: RunValidationInput): ValidationSteps {
+  const noDocker = tier === 'no-docker';
+  const skipE2e = skipE2eArgument || noDocker;
   const checkedLabels: string[] = [];
   const checkLane: LaneStep[] = [];
   const integrationLane: LaneStep[] = [];
@@ -350,13 +385,16 @@ export function buildValidationSteps({
       });
     }
 
-    for (const testLayer of ALL_TEST_LAYERS) {
+    const tierLayers = noDocker ? UNIT_ONLY_LAYERS : ALL_TEST_LAYERS;
+    for (const testLayer of tierLayers) {
       if (!plan.testLayers.includes(testLayer)) continue;
-      const layerSteps = buildTestLayerSteps({
-        testLayer,
-        testTargets: plan.testTargets,
-        workspaceNames: plan.workspaceNames,
-      });
+      const layerSteps = noDocker
+        ? buildRelatedUnitSteps({ plan })
+        : buildTestLayerSteps({
+            testLayer,
+            testTargets: plan.testTargets,
+            workspaceNames: plan.workspaceNames,
+          });
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
       else checkLane.push(...layerSteps);
     }
@@ -404,10 +442,11 @@ async function runValidation({
   onlyE2e,
   plan,
   skipE2e,
+  tier,
 }: RunValidationInput): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
   const { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane } =
-    buildValidationSteps({ onlyE2e, plan, skipE2e });
+    buildValidationSteps({ onlyE2e, plan, skipE2e, tier });
 
   const results = await runStages({
     finalSteps: e2eSteps,
@@ -444,7 +483,7 @@ export function buildTestLayerSteps({
   const remainingWorkspaceNames = workspaceNames.filter(
     (workspaceName) => !targetedWorkspaceNames.has(workspaceName),
   );
-  const concurrency = testLayer === 'test:integration' ? '1' : '2';
+  const concurrency = testLayer === 'test:integration' ? '1' : UNIT_CONCURRENCY;
   const steps: LaneStep[] = [];
 
   if (remainingWorkspaceNames.length > 0) {
@@ -473,6 +512,64 @@ export function buildTestLayerSteps({
   }
 
   return steps;
+}
+
+/**
+ * The no-docker tier's unit steps: a workspace runs only the tests whose
+ * imports reach the changed files that selected it. A change the import
+ * graph can't trace — root infrastructure, a deletion, or anything outside
+ * `src/`, `tests/` or `seeds/` (config, env, package.json, tsconfig), test
+ * setup or fixtures — runs that workspace's whole suite instead.
+ */
+function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
+  const deletedPaths = new Set(plan.deletedPaths);
+  const wholeSuiteWorkspaceNames: string[] = [];
+  const relatedSteps: LaneStep[] = [];
+
+  for (const workspaceName of plan.workspaceNames) {
+    const reasons = plan.workspaceSelectionReasons.filter(
+      (reason) => reason.workspaceName === workspaceName,
+    );
+    const changedPaths = [
+      ...new Set(reasons.map(({ changedPath }) => changedPath)),
+    ];
+    const workspacePath = RELATED_UNIT_WORKSPACE_PATHS.get(workspaceName);
+    const isTraceable =
+      workspacePath !== undefined &&
+      reasons.every(({ detail }) => detail !== 'root-infrastructure') &&
+      changedPaths.every(
+        (changedPath) =>
+          !deletedPaths.has(changedPath) &&
+          TRACEABLE_PATH.test(changedPath) &&
+          !UNTRACEABLE_PATH.test(changedPath),
+      );
+    if (!isTraceable) {
+      wholeSuiteWorkspaceNames.push(workspaceName);
+      continue;
+    }
+    relatedSteps.push({
+      ...buildTurboStep({
+        args: changedPaths.map((changedPath) =>
+          relative(workspacePath, changedPath),
+        ),
+        concurrency: UNIT_CONCURRENCY,
+        task: 'test:unit:related',
+        workspaceNames: [workspaceName],
+      }),
+      label: 'test:unit',
+    });
+  }
+
+  if (wholeSuiteWorkspaceNames.length === 0) return relatedSteps;
+  return [
+    buildTurboStep({
+      args: [],
+      concurrency: UNIT_CONCURRENCY,
+      task: 'test:unit',
+      workspaceNames: wholeSuiteWorkspaceNames,
+    }),
+    ...relatedSteps,
+  ];
 }
 
 function buildTurboStep({
@@ -509,9 +606,15 @@ function buildTurboStep({
 interface ExplainPlanInput {
   baseRef: string | undefined;
   plan: ValidationPlan;
+  tier?: ValidationTier;
 }
 
-export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
+export function explainPlan({
+  baseRef,
+  plan,
+  tier = 'affected',
+}: ExplainPlanInput): string {
+  const notRun = tier === 'no-docker' ? ' (not run by validate:no-docker)' : '';
   const lines: string[] = [
     `Base ref: ${baseRef ?? '(none — working tree only)'}`,
     '',
@@ -530,7 +633,9 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
   lines.push('', 'Test layers selected:');
   if (plan.testLayers.length === 0) lines.push('  (none)');
   for (const testLayer of plan.testLayers) {
-    lines.push(`  - ${testLayer}`);
+    lines.push(
+      `  - ${testLayer}${testLayer === 'test:integration' ? notRun : ''}`,
+    );
     for (const reason of plan.testLayerSelectionReasons.filter(
       (r) => r.testLayer === testLayer,
     )) {
@@ -540,7 +645,7 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
     }
   }
 
-  lines.push('', 'Browser journeys selected:');
+  lines.push('', `Browser journeys selected${notRun}:`);
   for (const specPath of plan.e2eSpecPaths) {
     lines.push(`  - ${specPath}`);
     for (const reason of plan.journeySelectionReasons.filter(
@@ -623,6 +728,11 @@ export function formatTimingSummary({
 
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+  if (argumentsResult.tier === 'no-docker') {
+    console.log(
+      'validate:no-docker skips integration tests and browser journeys; CI runs them.',
+    );
+  }
   const {
     baseRef,
     changedPaths,
@@ -671,9 +781,14 @@ if (import.meta.main) {
       onlyE2e: argumentsResult.onlyE2e,
       plan,
       skipE2e: argumentsResult.skipE2e,
+      tier: argumentsResult.tier,
     });
     const summary = formatTimingSummary({ timings });
-    const explanation = explainPlan({ baseRef, plan });
+    const explanation = explainPlan({
+      baseRef,
+      plan,
+      tier: argumentsResult.tier,
+    });
     console.log('');
     console.log(summary);
     console.log('');

@@ -45,6 +45,8 @@ export interface ClassifyChangesInput {
 }
 
 export interface ValidationPlan {
+  /** Changed paths with no file left, sorted. */
+  deletedPaths?: string[];
   e2eSpecPaths: string[];
   journeySelectionReasons: JourneySelectionReason[];
   lintPaths: string[];
@@ -148,7 +150,7 @@ interface IsProductionSourcePathInput {
   workspaceName: string;
 }
 
-const WORKSPACES: Workspace[] = [
+export const WORKSPACES: Workspace[] = [
   { name: 'server', path: 'apps/server/' },
   { name: 'web', path: 'apps/web/' },
   { name: '@church/auth', path: 'packages/auth/' },
@@ -421,6 +423,7 @@ export function classifyChanges({
   }
 
   return {
+    deletedPaths: [...deletedPathSet].sort(),
     e2eSpecPaths: [...selectedE2eSpecPaths].sort(),
     journeySelectionReasons,
     lintPaths: changedPaths.filter(isLintablePath),

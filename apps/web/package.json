@@ -11,6 +11,7 @@
     "typecheck": "vite build && tsc --noEmit",
     "generate-pwa-assets": "pwa-assets-generator",
     "test:unit": "vitest run --project unit --project component",
+    "test:unit:related": "bun ../../tooling/validation/vitest-related.ts --project unit --project component",
     "test:integration": "CHURCH_EXEC_PURPOSE=integration bun ../../tooling/diagnostics/run-managed.ts test:integration --step web -- vitest run --project integration",
     "test": "bun run test:unit && bun run test:integration",
     "test:watch": "vitest",

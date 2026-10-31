@@ -21,6 +21,7 @@ and task ordering.
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
+| Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
@@ -30,6 +31,20 @@ and task ordering.
 | Make a worktree ready (all of the above) | `bun run worktree:bootstrap` |
 | Report databases of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
 | Start / stop this machine's opt-in URL resolver | `bun run dns:start` / `bun run dns:stop` |
+
+Local validation has three tiers, all planned by the same
+`tooling/validation/affected.ts` module:
+
+| Script | Runs | Needs Docker | Used by |
+|---|---|---|---|
+| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests picked by import graph (whole suite when the graph can't trace a change or reaches no test) | no | the pre-push hook |
+| `validate:affected` | the above, plus integration tests and the selected browser journeys, on whole affected workspaces | yes | the per-ticket check, and the Develop Gate in CI |
+| `validate` | everything | yes | final handoff and the release gate |
+
+- `validate:no-docker`: quick feedback before a commit or push; a green run
+  is not full validation, since CI runs integration and E2E.
+- `validate:affected`: once per ticket, before reporting it done (see below).
+- `validate`: final handoff or merge.
 
 `validate` and `validate:affected` run lint → typecheck → unit tests
 concurrently with integration tests, then E2E only if both lanes pass. Output

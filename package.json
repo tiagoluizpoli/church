@@ -73,6 +73,7 @@
     "validate:api-generated": "bun tooling/validation/api-generated-guard.ts",
     "validate:journey-map": "bun tooling/validation/journey-map-guard.ts",
     "validate:affected": "bun tooling/validation/affected.ts",
+    "validate:no-docker": "bun tooling/validation/affected.ts --no-docker",
     "validate": "bun tooling/validation/validate.ts",
     "push:safe": "bash tooling/git-safe-push.sh",
     "commit": "cz"

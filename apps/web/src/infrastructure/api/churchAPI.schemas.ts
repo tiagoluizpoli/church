@@ -1969,6 +1969,115 @@ export type GetCallerCapabilities403 = {
   message: string;
 };
 
+export type GetNotificationsParams = {
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type GetNotifications200ItemsItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  kind: 'ministry_invitation';
+  data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryInvitationId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+};
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  readAt?: string;
+};
+
+export type GetNotifications200 = {
+  items: GetNotifications200ItemsItem[];
+  nextCursor?: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  unreadCount: number;
+};
+
+export type GetNotifications401 = {
+  error: string;
+  message: string;
+};
+
+export type GetNotifications403 = {
+  error: string;
+  message: string;
+};
+
+export type GetNotifications409 = {
+  error: string;
+  message: string;
+};
+
+export type GetNotifications422 = {
+  error: string;
+  message: string;
+};
+
+export type MarkNotificationRead200 = {
+  marked: true;
+};
+
+export type MarkNotificationRead401 = {
+  error: string;
+  message: string;
+};
+
+export type MarkNotificationRead403 = {
+  error: string;
+  message: string;
+};
+
+export type MarkNotificationRead404 = {
+  error: string;
+  message: string;
+};
+
+export type MarkNotificationRead409 = {
+  error: string;
+  message: string;
+};
+
+export type MarkNotificationRead422 = {
+  error: string;
+  message: string;
+};
+
+export type MarkAllNotificationsRead201 = {
+  marked: true;
+};
+
+export type MarkAllNotificationsRead401 = {
+  error: string;
+  message: string;
+};
+
+export type MarkAllNotificationsRead403 = {
+  error: string;
+  message: string;
+};
+
+export type MarkAllNotificationsRead409 = {
+  error: string;
+  message: string;
+};
+
+export type MarkAllNotificationsRead422 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewChurchInvitation200MinistryAccessLevel = typeof PreviewChurchInvitation200MinistryAccessLevel[keyof typeof PreviewChurchInvitation200MinistryAccessLevel];
 
 
@@ -2339,14 +2448,20 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItem = {
 };
 
 export type GetVolunteerDashboard200NotificationPreviewItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id: string;
-  type: string;
-  title: string;
-  body: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  readAt?: string;
+  kind: 'ministry_invitation';
+  data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryInvitationId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+};
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  readAt?: string;
 };
 
 export type GetVolunteerDashboard200MinistryOptionsItem = {
@@ -2609,59 +2724,6 @@ export const CancelOwnAssignment204 = {
 } as const;
 
 export type CancelOwnAssignment404 = {
-  error: string;
-  message: string;
-};
-
-export type GetNotificationsParams = {
-/**
- * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
- */
-cursor?: string;
-limit?: number;
-};
-
-export type GetNotifications200ItemsItemType = typeof GetNotifications200ItemsItemType[keyof typeof GetNotifications200ItemsItemType];
-
-
-export const GetNotifications200ItemsItemType = {
-  schedule_published: 'schedule_published',
-  assignment_added: 'assignment_added',
-  assignment_changed: 'assignment_changed',
-  assignment_removed: 'assignment_removed',
-  availability_reminder: 'availability_reminder',
-  assignment_reminder: 'assignment_reminder',
-} as const;
-
-export type GetNotifications200ItemsItemPayload = {[key: string]: string | null};
-
-export type GetNotifications200ItemsItem = {
-  id: string;
-  volunteerId: string;
-  ministryId?: string;
-  eventId?: string;
-  assignmentId?: string;
-  type: GetNotifications200ItemsItemType;
-  title: string;
-  body: string;
-  payload: GetNotifications200ItemsItemPayload;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  readAt?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  createdAt: string;
-};
-
-export type GetNotifications200 = {
-  items: GetNotifications200ItemsItem[];
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  nextCursor?: string;
-};
-
-export type MarkNotificationRead200 = {
-  marked: boolean;
-};
-
-export type MarkNotificationRead404 = {
   error: string;
   message: string;
 };

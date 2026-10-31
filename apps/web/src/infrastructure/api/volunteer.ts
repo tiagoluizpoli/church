@@ -10,12 +10,9 @@ import type {
   GetAvailabilityCheck200,
   GetMinistrySchedule200,
   GetMyAssignments200,
-  GetNotifications200,
-  GetNotificationsParams,
   GetPublishedVolunteerSchedule200,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
-  MarkNotificationRead200,
   RespondToAssignment200,
   RespondToAssignmentBody,
   SetUnavailableShifts200,
@@ -143,43 +140,6 @@ const cancelOwnAssignment = (
       );
     }
   /**
- * List the current Volunteer's VolunteerNotifications, paginated by cursor.
- * @summary List the caller's VolunteerNotifications
- */
-const getNotifications = (
-    params?: GetNotificationsParams,
- ) => {
-      return apiClient<GetNotifications200>(
-      {url: `/api/v1/volunteer/notifications`, method: 'GET',
-        params
-    },
-      );
-    }
-  /**
- * Mark one of the current Volunteer's VolunteerNotifications as read.
- * @summary Mark a VolunteerNotification read
- */
-const markNotificationRead = (
-    notificationId: string,
- ) => {
-      return apiClient<MarkNotificationRead200>(
-      {url: `/api/v1/volunteer/notifications/${notificationId}`, method: 'PATCH'
-    },
-      );
-    }
-  /**
- * Mark every one of the current Volunteer's VolunteerNotifications as read.
- * @summary Mark all VolunteerNotifications read
- */
-const markAllNotificationsRead = (
-
- ) => {
-      return apiClient<void>(
-      {url: `/api/v1/volunteer/notifications/read-all`, method: 'POST'
-    },
-      );
-    }
-  /**
  * List the current Volunteer's Assignments from published MinistryParticipations.
  * @summary Get the caller's published schedule
  */
@@ -191,7 +151,7 @@ const getPublishedVolunteerSchedule = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailableShifts,confirmAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getNotifications,markNotificationRead,markAllNotificationsRead,getPublishedVolunteerSchedule}};
+  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailableShifts,confirmAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getPublishedVolunteerSchedule}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
@@ -201,7 +161,4 @@ export type SetUnavailableShiftsResult = NonNullable<Awaited<ReturnType<ReturnTy
 export type ConfirmAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['confirmAvailabilityCheck']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
 export type CancelOwnAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['cancelOwnAssignment']>>>
-export type GetNotificationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getNotifications']>>>
-export type MarkNotificationReadResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['markNotificationRead']>>>
-export type MarkAllNotificationsReadResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['markAllNotificationsRead']>>>
 export type GetPublishedVolunteerScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getPublishedVolunteerSchedule']>>>

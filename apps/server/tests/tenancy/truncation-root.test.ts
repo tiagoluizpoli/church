@@ -19,6 +19,7 @@ import {
   ministryMembershipRole,
   ministryMembershipTeam,
   ministryParticipation,
+  notification,
   outboxMessage,
   participationEventTimeBlockInclusion,
   role,
@@ -382,6 +383,14 @@ async function seedEveryTenantedTable(): Promise<void> {
     title: 'Truncation notification',
     body: 'Truncation notification body',
     payload: {},
+  });
+
+  await testDb.insert(notification).values({
+    userId: IDS.user,
+    churchId: IDS.church,
+    kind: 'ministry_invitation',
+    data: {},
+    sourceOutboxId: '00000000-0000-4000-8000-0000000000aa',
   });
 
   await testDb.insert(identityAudit).values({

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,14 @@ export interface NotificationPageViewModel {
   items: NotificationItemViewModel[];
 }
 
-export interface NotificationsInboxItemActions {
+export interface NotificationsInboxLoadState {
+  isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
+}
+
+export interface NotificationsInboxItemActions
+  extends NotificationsInboxLoadState {
   onOpenNotification: (notificationId: string) => void;
   onMarkRead: (notificationId: string) => void;
 }
@@ -52,13 +60,36 @@ export type NotificationsInboxSectionProps =
   | NotificationsInboxFullModeProps
   | NotificationsInboxCompactModeProps;
 
-function NoNotificationsAlert() {
+function NoNotificationsAlert({
+  isLoading,
+  isError,
+  onRetry,
+}: NotificationsInboxLoadState) {
+  if (isLoading) {
+    return (
+      <Alert role="status">
+        <AlertTitle>{m.notification_loading()}</AlertTitle>
+      </Alert>
+    );
+  }
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>{m.notification_load_error()}</AlertTitle>
+        {onRetry ? (
+          <AlertDescription>
+            <Button type="button" variant="outline" onClick={onRetry}>
+              {m.notification_retry()}
+            </Button>
+          </AlertDescription>
+        ) : null}
+      </Alert>
+    );
+  }
   return (
     <Alert>
-      <AlertTitle>No notifications yet</AlertTitle>
-      <AlertDescription>
-        Scheduling updates and reminders will appear here.
-      </AlertDescription>
+      <AlertTitle>{m.notification_empty_title()}</AlertTitle>
+      <AlertDescription>{m.notification_empty_description()}</AlertDescription>
     </Alert>
   );
 }
@@ -72,6 +103,9 @@ function FullModeInbox({
   onOpenNotification,
   onMarkRead,
   onMarkAllRead,
+  isLoading,
+  isError,
+  onRetry,
 }: NotificationsInboxFullModeProps) {
   const hasNotifications = pages.some((page) => page.items.length > 0);
 
@@ -80,15 +114,15 @@ function FullModeInbox({
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <CardTitle className="text-balance font-semibold text-2xl tracking-[-0.02em] md:text-3xl">
-            Notifications Inbox
+            {m.notification_inbox_title()}
           </CardTitle>
           <CardDescription className="text-sm">
-            Review schedule history, reminders, and assignment updates.
+            {m.notification_inbox_description()}
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={unreadCount > 0 ? 'default' : 'outline'}>
-            {unreadCount} unread
+            {m.notification_unread_count({ count: unreadCount })}
           </Badge>
           <Button
             type="button"
@@ -96,13 +130,17 @@ function FullModeInbox({
             disabled={unreadCount === 0}
             onClick={onMarkAllRead}
           >
-            Mark all as read
+            {m.notification_mark_all_read()}
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {!hasNotifications ? (
-          <NoNotificationsAlert />
+          <NoNotificationsAlert
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={onRetry}
+          />
         ) : (
           <ScrollArea className="h-96 pr-4">
             <div className="space-y-6">
@@ -124,7 +162,9 @@ function FullModeInbox({
                             <div className="flex items-center gap-2">
                               <div className="font-medium">{item.title}</div>
                               {item.isUnread ? (
-                                <Badge variant="secondary">Unread</Badge>
+                                <Badge variant="secondary">
+                                  {m.notification_unread_badge()}
+                                </Badge>
                               ) : null}
                             </div>
                             <div className="text-muted-foreground text-sm">
@@ -142,7 +182,7 @@ function FullModeInbox({
                             variant="outline"
                             onClick={() => onOpenNotification(item.id)}
                           >
-                            Open notification
+                            {m.notification_open_notification()}
                           </Button>
                           {item.isUnread ? (
                             <Button
@@ -150,7 +190,7 @@ function FullModeInbox({
                               variant="ghost"
                               onClick={() => onMarkRead(item.id)}
                             >
-                              Mark as read
+                              {m.notification_mark_read()}
                             </Button>
                           ) : null}
                         </div>
@@ -170,7 +210,9 @@ function FullModeInbox({
             disabled={isLoadingMore}
             onClick={onLoadMore}
           >
-            {isLoadingMore ? 'Loading...' : 'Load more'}
+            {isLoadingMore
+              ? m.notification_loading_more()
+              : m.notification_load_more()}
           </Button>
         ) : null}
       </CardContent>
@@ -182,11 +224,18 @@ function CompactModeInbox({
   items,
   onOpenNotification,
   onViewAll,
+  isLoading,
+  isError,
+  onRetry,
 }: NotificationsInboxCompactModeProps) {
   return (
     <div className="flex flex-col gap-2">
       {items.length === 0 ? (
-        <NoNotificationsAlert />
+        <NoNotificationsAlert
+          isLoading={isLoading}
+          isError={isError}
+          onRetry={onRetry}
+        />
       ) : (
         <div className="flex flex-col gap-1">
           {items.map((item) => (
@@ -202,7 +251,9 @@ function CompactModeInbox({
                 <span className="font-medium">{item.title}</span>
                 {item.isUnread ? (
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary">
-                    <span className="sr-only">Unread</span>
+                    <span className="sr-only">
+                      {m.notification_unread_badge()}
+                    </span>
                   </span>
                 ) : null}
               </div>
@@ -221,7 +272,7 @@ function CompactModeInbox({
         onClick={onViewAll}
         className="text-center text-primary text-sm hover:underline"
       >
-        View all
+        {m.notification_view_all()}
       </Link>
     </div>
   );

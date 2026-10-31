@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { NotificationInboxItem } from '../hooks/use-notification-inbox';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,22 +13,8 @@ export interface NotificationDetailSheetProps {
   notification?: NotificationInboxItem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The one way out of the sheet to the notification's destination. */
   onOpenContext: () => void;
-}
-
-function getContextLabel(
-  notification: NotificationInboxItem | undefined,
-): string {
-  switch (notification?.deepLink.section) {
-    case 'availability':
-      return 'Open availability task';
-    case 'assignments':
-      return 'Open assignments';
-    case 'ministry_schedule':
-      return 'Open ministry schedule';
-    default:
-      return 'Back to inbox';
-  }
 }
 
 export function NotificationDetailSheet({
@@ -40,7 +27,9 @@ export function NotificationDetailSheet({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{notification?.title ?? 'Notification'}</DialogTitle>
+          <DialogTitle>
+            {notification?.title ?? m.notification_detail_fallback_title()}
+          </DialogTitle>
           <DialogDescription>
             {notification?.createdAtLabel ?? ''}
           </DialogDescription>
@@ -49,7 +38,7 @@ export function NotificationDetailSheet({
           <p className="text-sm leading-6">{notification?.body}</p>
           <div className="flex justify-end">
             <Button type="button" onClick={onOpenContext}>
-              {getContextLabel(notification)}
+              {m.notification_open_context()}
             </Button>
           </div>
         </div>

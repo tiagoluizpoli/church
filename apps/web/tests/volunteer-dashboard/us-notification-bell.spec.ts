@@ -21,26 +21,36 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
   // is exact.
   await expect(bellTrigger.locator('[data-slot="badge"]')).toHaveText('1');
 
-  await expect(
-    page.getByText('Notifications Inbox', { exact: true }),
-  ).toHaveCount(0);
-
   await bellTrigger.click();
-  await expect(
-    page.getByText(journey.notification.title, { exact: true }),
-  ).toBeVisible();
+  const title = m.notification_ministry_invitation_title(
+    { ministryName: journey.notification.ministryName },
+    { locale: 'pt-BR' },
+  );
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
 
-  const viewAllLink = page.getByRole('link', { name: 'View all' });
+  const viewAllLink = page.getByRole('link', {
+    name: m.notification_view_all({}, { locale: 'pt-BR' }),
+  });
   await expect(viewAllLink).toHaveAttribute('href', '/notifications');
 
-  await page.getByText(journey.notification.title, { exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard\?.*section=assignments/);
+  // Selecting opens the detail and marks it read; only Open navigates.
+  await page.getByText(title, { exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByText(title, { exact: true })).toBeVisible();
+  await expect(bellTrigger.locator('[data-slot="badge"]')).toHaveCount(0);
+  await sheet
+    .getByRole('button', {
+      name: m.notification_open_context({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(page).toHaveURL(/\/invitations\/ministry\//);
 
   await page.goto('/notifications');
   await expect(
-    page.getByRole('button', { name: 'Mark all as read' }),
+    page.getByRole('button', {
+      name: m.notification_mark_all_read({}, { locale: 'pt-BR' }),
+    }),
   ).toBeVisible();
-  await expect(
-    page.getByText(journey.notification.title, { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
 });

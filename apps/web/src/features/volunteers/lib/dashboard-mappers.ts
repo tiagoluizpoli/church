@@ -3,6 +3,7 @@ import type {
   AvailabilityEventViewModel,
 } from '../components/availability-form';
 import type { AvailabilityTaskViewModel } from '../components/availability-needed-section';
+import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { formatInstantOf } from '@/shared/utils/church-time';
 
 export interface DashboardAvailabilityTask {
@@ -40,15 +41,6 @@ export interface DashboardAssignmentGroup {
   assignments: DashboardAssignmentItem[];
 }
 
-export interface DashboardNotificationPreview {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  readAt?: string;
-  createdAt: string;
-}
-
 export interface DashboardMinistryOption {
   id: string;
   name: string;
@@ -82,7 +74,8 @@ export interface DashboardSnapshot {
   availabilityTasks: DashboardAvailabilityTask[];
   upcomingAssignmentGroups: DashboardAssignmentGroup[];
   notificationUnreadCount: number;
-  notificationPreview: DashboardNotificationPreview[];
+  /** The caller's own latest member Notifications. */
+  notificationPreview: GetNotifications200ItemsItem[];
   defaultMinistryId?: string;
   ministryOptions: DashboardMinistryOption[];
   fetchedAt: string;

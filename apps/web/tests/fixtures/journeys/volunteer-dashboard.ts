@@ -27,7 +27,7 @@ export const VOLUNTEER_DASHBOARD_JOURNEY_SCHEMA =
     removedEvent: assignEventSchema({ requirements: ['usher'] }),
     notification: z.object({
       id: z.string().min(1),
-      title: z.string().min(1),
+      ministryName: z.string().min(1),
       createdAt: z.string().min(1),
     }),
   });

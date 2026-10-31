@@ -9,10 +9,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { NotificationsInboxSection } from '@/features/volunteers/components/notifications-inbox-section';
-import type { NotificationInboxItem } from '@/features/volunteers/hooks/use-notification-inbox';
-import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';
-import { resolveNotificationTarget } from '@/features/volunteers/lib/notification-navigation';
+import { NotificationDetailSheet } from '@/features/notifications/components/notification-detail-sheet';
+import { NotificationsInboxSection } from '@/features/notifications/components/notifications-inbox-section';
+import type { NotificationInboxItem } from '@/features/notifications/hooks/use-notification-inbox';
+import { useNotificationInbox } from '@/features/notifications/hooks/use-notification-inbox';
+import { openNotificationDestination } from '@/features/notifications/lib/notification-navigation';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 const BELL_MAX_ITEMS = 5;
@@ -49,31 +50,51 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const navigate = useNavigate();
-  const inbox = useNotificationInbox(0);
+  const inbox = useNotificationInbox();
   const bellViewModel = selectNotificationBellViewModel({
     items: inbox.items,
     unreadCount: inbox.unreadCount,
     hasMore: inbox.hasMore,
   });
 
-  const handleOpenNotification = (notificationId: string) => {
-    const notification = inbox.items.find((item) => item.id === notificationId);
-    inbox.markRead(notificationId);
+  // Selecting opens the detail sheet and marks it read; only Open navigates.
+  const handleSelectNotification = (notificationId: string) => {
     setOpen(false);
+    inbox.openNotification(notificationId);
+  };
 
-    const target = notification
-      ? resolveNotificationTarget(notification.deepLink)
-      : { to: '/notifications' as const };
-    navigate(target);
+  const handleOpenContext = () => {
+    const notification = inbox.selectedNotification;
+    inbox.setSelectedNotificationId(undefined);
+    if (notification) {
+      openNotificationDestination({
+        item: notification.source,
+        navigate: (target) => navigate(target),
+      });
+    }
   };
 
   const inboxContent = (
     <NotificationsInboxSection
       variant="compact"
       items={bellViewModel.recentItems}
-      onOpenNotification={handleOpenNotification}
+      isLoading={inbox.isLoading}
+      isError={inbox.isError}
+      onRetry={inbox.refresh}
+      onOpenNotification={handleSelectNotification}
       onMarkRead={inbox.markRead}
       onViewAll={() => setOpen(false)}
+    />
+  );
+
+  const detailSheet = (
+    <NotificationDetailSheet
+      open={inbox.selectedNotification != null}
+      notification={inbox.selectedNotification}
+      onOpenChange={(next) => {
+        if (!next) inbox.setSelectedNotificationId(undefined);
+      }}
+      onOpenContext={handleOpenContext}
     />
   );
 
@@ -97,30 +118,34 @@ export function NotificationBell() {
           open={open}
           onOpenChange={setOpen}
           title={m.notification_bell_label()}
-          description="Recent updates and reminders."
+          description={m.notification_bell_description()}
         >
           {inboxContent}
         </MobileDrawer>
+        {detailSheet}
       </>
     );
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        aria-label={m.notification_bell_label()}
-        className="radius-icon relative flex h-8 w-8 items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-      >
-        <Bell className="h-4 w-4" />
-        {bellViewModel.unreadCount > 0 ? (
-          <Badge className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center px-1 text-[10px]">
-            {bellViewModel.unreadCount}
-          </Badge>
-        ) : null}
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80">
-        {inboxContent}
-      </PopoverContent>
-    </Popover>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          aria-label={m.notification_bell_label()}
+          className="radius-icon relative flex h-8 w-8 items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <Bell className="h-4 w-4" />
+          {bellViewModel.unreadCount > 0 ? (
+            <Badge className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center px-1 text-[10px]">
+              {bellViewModel.unreadCount}
+            </Badge>
+          ) : null}
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-80">
+          {inboxContent}
+        </PopoverContent>
+      </Popover>
+      {detailSheet}
+    </>
   );
 }

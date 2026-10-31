@@ -46,7 +46,10 @@ import type {
 import { EmailSendError } from '../domain/errors/email-send-error';
 import {
   type MinistryInvitationDeliveryFacts,
+  type NotificationDeliveryData,
+  type NotificationRequest,
   notificationRequestDataSchemas,
+  type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
 import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
 import {
@@ -224,6 +227,44 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     };
   }
 
+  /** The kind's display facts, read now; `null` when the kind's subject is gone. */
+  private async loadDeliveryFacts({
+    churchId,
+    request,
+  }: LoadDeliveryFactsInput): Promise<NotificationDeliveryData | null> {
+    switch (request.kind) {
+      case 'ministry_invitation':
+        return this.loadPendingInvitationFacts({
+          churchId,
+          ministryInvitationId: request.data.ministryInvitationId,
+        });
+      case 'transfer_ministry_digest':
+      case 'transfer_leaderless_ministry':
+        return this.loadTransferDigestFacts({ churchId, request });
+    }
+  }
+
+  /** Transfer facts are historical: the retired profile and the audit rows
+   * never change, so they always resolve. */
+  private async loadTransferDigestFacts({
+    churchId,
+    request,
+  }: LoadTransferDigestFactsInput): Promise<TransferDigestDeliveryFacts> {
+    const details = await this.volunteerTransferRepository.getDigestDetails({
+      churchId,
+      ministryId: request.data.ministryId as MinistryId,
+      volunteerId: request.data.volunteerId as VolunteerId,
+      correlationId: request.data.transferCorrelationId,
+    });
+    return {
+      ministryName: details.ministryName,
+      volunteerName: details.volunteerName,
+      withdrawnAssignments: toEmailLines({
+        assignments: details.withdrawnAssignments,
+      }),
+    };
+  }
+
   /**
    * Hands one recipient's Notification to every unsettled sink, then settles
    * the row: all delivered/skipped completes it; a retryable sink retries the
@@ -242,9 +283,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       });
       return 'failed';
     }
-    const facts = await this.loadPendingInvitationFacts({
+    const facts = await this.loadDeliveryFacts({
       churchId: message.churchId,
-      ministryInvitationId: request.data.ministryInvitationId,
+      // Parsed by this kind's own schema just above.
+      request: { kind, data: request.data } as NotificationRequest,
     });
     if (!facts) {
       await this.failTerminally({
@@ -592,6 +634,19 @@ interface ProcessInvitationMessageInput {
 interface LoadPendingInvitationFactsInput {
   churchId: ChurchId;
   ministryInvitationId: string;
+}
+
+interface LoadDeliveryFactsInput {
+  churchId: ChurchId;
+  request: NotificationRequest;
+}
+
+interface LoadTransferDigestFactsInput {
+  churchId: ChurchId;
+  request: Extract<
+    NotificationRequest,
+    { kind: 'transfer_ministry_digest' | 'transfer_leaderless_ministry' }
+  >;
 }
 
 interface ProcessNotificationMessageInput {

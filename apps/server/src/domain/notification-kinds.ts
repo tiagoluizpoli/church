@@ -39,23 +39,47 @@ export function isNotificationKind(value: string): value is NotificationKind {
 }
 
 /**
+ * One Volunteer Transfer digest for one affected Ministry: the retired source
+ * profile and the transfer's correlation id, which re-derives the withdrawn
+ * Assignments from `assignment_audit` at delivery.
+ */
+const transferDigestRequestDataSchema = z.object({
+  ministryId: z.uuid(),
+  volunteerId: z.uuid(),
+  transferCorrelationId: z.string().min(1),
+});
+
+/**
  * What Church code enqueues per kind: identifiers only, validated before the
  * outbox row is written. Display facts are resolved at delivery and frozen by
- * each channel's first delivery (inbox row, prepared email).
+ * each channel's first delivery (inbox row, prepared email). Every inbox kind
+ * is enqueueable; the transfer kinds are email-only, so the inbox has no
+ * template for them and stores no row.
  */
 export const notificationRequestDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   ministry_invitation: z.object({ ministryInvitationId: z.uuid() }),
-} as const satisfies Record<NotificationKind, z.ZodType>;
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_ministry_digest: transferDigestRequestDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_leaderless_ministry: transferDigestRequestDataSchema,
+} as const satisfies Record<NotificationKind, z.ZodType> &
+  Record<string, z.ZodType>;
 
-export type NotificationRequestDataOf<K extends NotificationKind> = z.infer<
-  (typeof notificationRequestDataSchemas)[K]
->;
+/** Every kind Church code can enqueue: the inbox kinds plus email-only kinds. */
+export type NotificationRequestKind =
+  keyof typeof notificationRequestDataSchemas;
+
+export type NotificationRequestDataOf<K extends NotificationRequestKind> =
+  z.infer<(typeof notificationRequestDataSchemas)[K]>;
 
 /** A kind with its enqueued data, as persisted on the outbox row. */
 export type NotificationRequest = {
-  [K in NotificationKind]: { kind: K; data: NotificationRequestDataOf<K> };
-}[NotificationKind];
+  [K in NotificationRequestKind]: {
+    kind: K;
+    data: NotificationRequestDataOf<K>;
+  };
+}[NotificationRequestKind];
 
 /** Everything the ministry_invitation templates render, resolved at delivery. */
 export interface MinistryInvitationDeliveryFacts {
@@ -70,5 +94,29 @@ export interface MinistryInvitationDeliveryFacts {
   redemptionUrl: string;
 }
 
-/** Delivery facts by kind; later kinds widen this union. */
-export type NotificationDeliveryData = MinistryInvitationDeliveryFacts;
+/**
+ * Everything both transfer email templates render, resolved at delivery.
+ * Never names the destination Church.
+ */
+export interface TransferDigestDeliveryFacts {
+  ministryName: string;
+  volunteerName: string;
+  withdrawnAssignments: {
+    eventName: string;
+    eventTimeBlockStart: Instant;
+    roleName: string;
+  }[];
+}
+
+/** Delivery facts by kind; later kinds add their entry here. */
+export interface NotificationDeliveryDataByKind {
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  ministry_invitation: MinistryInvitationDeliveryFacts;
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_ministry_digest: TransferDigestDeliveryFacts;
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_leaderless_ministry: TransferDigestDeliveryFacts;
+}
+
+export type NotificationDeliveryData =
+  NotificationDeliveryDataByKind[NotificationRequestKind];

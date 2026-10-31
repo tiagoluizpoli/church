@@ -61,6 +61,7 @@ const {
   manager: invitationManager,
   ministryInvitationRepository,
   churchRepository,
+  notifications,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
 let app: FastifyTypedInstance;
@@ -90,6 +91,7 @@ beforeEach(async () => {
     churchRepository,
     identityGateway,
     invitationRepository: ministryInvitationRepository,
+    notifications,
     securityLogRepository,
     unitOfWork,
     volunteerRepository,

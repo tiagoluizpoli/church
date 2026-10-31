@@ -8,6 +8,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
 import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
 import type { MinistryInvitationRepository } from '@/domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
@@ -37,6 +38,14 @@ const DESTINATION_VOLUNTEER_ID = VolunteerId.from(
 const DESTINATION_CHURCH_NAME = 'Northgate Community Church';
 const IDEMPOTENCY_KEY = '66666666-6666-4666-8666-666666666666';
 const NOW = new Date('2026-09-15T12:00:00.000Z');
+const SOURCE_VOLUNTEER_ID = VolunteerId.from(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+);
+const AFFECTED_MINISTRY_ID = MinistryId.from(
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+);
+const LEADER_ID = UserId.from('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+const TX = { label: 'transfer-tx' } as unknown as TransactionContext;
 
 function pendingInvitation(): MinistryInvitation {
   return new MinistryInvitation({
@@ -73,13 +82,18 @@ function createHarness(overrides: HarnessOverrides = {}) {
         volunteerTransferId: VolunteerId.from(
           '99999999-9999-4999-8999-999999999999',
         ) as never,
-        sourceVolunteerId: VolunteerId.from(
-          'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        ),
+        sourceVolunteerId: SOURCE_VOLUNTEER_ID,
         destinationVolunteerId: DESTINATION_VOLUNTEER_ID,
         withdrawnAssignmentCount: 2,
         endedMembershipCount: 1,
       },
+      digests: [
+        {
+          kind: 'transfer_ministry_digest',
+          ministryId: AFFECTED_MINISTRY_ID,
+          recipientUserIds: [LEADER_ID],
+        },
+      ],
     },
     invitation = pendingInvitation(),
   } = overrides;
@@ -142,17 +156,22 @@ function createHarness(overrides: HarnessOverrides = {}) {
 
   const unitOfWork: UnitOfWork = {
     async run(fn) {
-      return fn({} as TransactionContext);
+      return fn(TX);
     },
     async runWith({ work }) {
       return this.run(work);
     },
   };
 
+  const notifications: IChurchNotifications = {
+    enqueue: vi.fn().mockResolvedValue(undefined),
+  };
+
   const manager = new DbVolunteerTransferManager({
     churchRepository,
     identityGateway,
     invitationRepository,
+    notifications,
     securityLogRepository,
     unitOfWork,
     volunteerRepository,
@@ -162,6 +181,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
   return {
     manager,
     identityGateway,
+    notifications,
     securityLogRepository,
     volunteerTransferRepository,
   };
@@ -275,8 +295,26 @@ describe('DbVolunteerTransferManager', () => {
       );
     });
 
+    it("enqueues each digest to its selected Users in the transfer's own transaction", async () => {
+      const { manager, notifications } = createHarness();
+
+      await manager.confirmTransfer(confirmInput);
+
+      expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+      expect(notifications.enqueue).toHaveBeenCalledWith({
+        tx: TX,
+        kind: 'transfer_ministry_digest',
+        to: [{ userId: LEADER_ID, churchId: SOURCE_CHURCH_ID }],
+        data: {
+          ministryId: AFFECTED_MINISTRY_ID,
+          volunteerId: SOURCE_VOLUNTEER_ID,
+          transferCorrelationId: IDEMPOTENCY_KEY,
+        },
+      });
+    });
+
     it('passes an idempotent replay straight through', async () => {
-      const { manager } = createHarness({
+      const { manager, notifications } = createHarness({
         executeOutcome: {
           kind: 'already-transferred',
           result: {
@@ -297,6 +335,7 @@ describe('DbVolunteerTransferManager', () => {
         kind: 'already-transferred',
         destinationVolunteerId: DESTINATION_VOLUNTEER_ID,
       });
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
     it('is an identity mismatch when the invitation is not addressed to the caller', async () => {

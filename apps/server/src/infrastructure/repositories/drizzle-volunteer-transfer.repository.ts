@@ -5,12 +5,12 @@ import {
   event,
   eventTimeBlock,
   identityAudit,
+  member,
   ministry,
   ministryInvitation,
   ministryInvitationRole,
   ministryMembership,
   ministryParticipation,
-  outboxMessage,
   role,
   shift,
   user,
@@ -18,15 +18,19 @@ import {
   volunteerTransfer,
 } from '@church/db';
 import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
-import type {
-  VolunteerId,
-  VolunteerTransferId,
+import {
+  type ChurchId,
+  MinistryId,
+  UserId,
+  type VolunteerId,
+  type VolunteerTransferId,
 } from '../../domain/branded-ids';
 import type {
   ExecuteVolunteerTransferInput,
   ExecuteVolunteerTransferOutcome,
   GetTransferDigestDetailsInput,
   GetTransferImpactInput,
+  TransferDigest,
   TransferDigestDetails,
   TransferImpact,
   VolunteerTransferRepository,
@@ -51,11 +55,9 @@ interface DrizzleVolunteerTransferRepositoryInput {
  * only assignments whose **event time block** starts strictly after the commit are
  * cancelled — an event time block already under way is protected even inside a still-running
  * event. The `volunteer_transfer` row is the idempotency key: a replay returns
- * the original result and writes nothing (the outbox enqueue is skipped on
- * replay too, for the same reason). One `outbox_message` row is written per
- * affected Ministry (§8.8, issue #60): `transfer.ministry-digest` when at
- * least one active leader remains, `transfer.leaderless-ministry` — addressed
- * to ChurchAdmins instead — when none does.
+ * the original result and writes nothing (and selects no digests, so nothing
+ * is enqueued twice). One digest is selected per affected Ministry (§8.8,
+ * issue #60); the caller enqueues them in this same transaction.
  */
 export class DrizzleVolunteerTransferRepository
   implements VolunteerTransferRepository
@@ -272,11 +274,12 @@ export class DrizzleVolunteerTransferRepository
       );
     }
 
-    // 7. Enqueue one notification per affected Ministry (spec §8.8, issue
-    //    #60) — affected meaning a Membership ended there or an Assignment
-    //    was withdrawn there. Escalates to ChurchAdmins *only* when the
-    //    departing Volunteer was themselves an active leader of that Ministry
-    //    and no other active leader remains — not merely because the
+    // 7. Select one digest per affected Ministry (spec §8.8, issue #60) —
+    //    affected meaning a Membership ended there or an Assignment was
+    //    withdrawn there. Read after step 5, so the departing Volunteer is
+    //    never among the remaining leaders. Escalates to ChurchAdmins *only*
+    //    when the departing Volunteer was themselves an active leader of that
+    //    Ministry and no other active leader remains — not merely because the
     //    Ministry happens to have none (a pre-existing, unrelated state must
     //    never turn an ordinary member's departure into an escalation).
     const wasLeaderByMinistryId = new Map<string, boolean>(
@@ -289,33 +292,24 @@ export class DrizzleVolunteerTransferRepository
       ...sourceMemberships.map(({ ministryId }) => ministryId),
       ...futureAssignments.map(({ ministryId }) => ministryId),
     ]);
+    const digests: TransferDigest[] = [];
     for (const affectedMinistryId of affectedMinistryIds) {
-      let kind: 'transfer.ministry-digest' | 'transfer.leaderless-ministry' =
-        'transfer.ministry-digest';
-      if (wasLeaderByMinistryId.get(affectedMinistryId)) {
-        const [remainingLeader] = await db
-          .select({ id: ministryMembership.id })
-          .from(ministryMembership)
-          .where(
-            and(
-              eq(ministryMembership.ministryId, affectedMinistryId),
-              eq(ministryMembership.churchId, sourceChurchId),
-              eq(ministryMembership.status, 'active'),
-              eq(ministryMembership.ministryAccessLevel, 'leader'),
-            ),
-          )
-          .limit(1);
-        if (!remainingLeader) kind = 'transfer.leaderless-ministry';
-      }
-      await db.insert(outboxMessage).values({
+      const leaderUserIds = await listActiveLeaderUserIds({
+        db,
         churchId: sourceChurchId,
-        kind,
-        payload: {
-          ministryId: affectedMinistryId,
-          volunteerId: activeProfile.id,
-        },
-        correlationId,
-        scheduledFor: confirmedAt,
+        ministryId: affectedMinistryId,
+      });
+      const escalate =
+        wasLeaderByMinistryId.get(affectedMinistryId) === true &&
+        leaderUserIds.length === 0;
+      digests.push({
+        kind: escalate
+          ? 'transfer_leaderless_ministry'
+          : 'transfer_ministry_digest',
+        ministryId: MinistryId.from(affectedMinistryId),
+        recipientUserIds: escalate
+          ? await listChurchAdminUserIds({ db, churchId: sourceChurchId })
+          : leaderUserIds,
       });
     }
 
@@ -404,7 +398,7 @@ export class DrizzleVolunteerTransferRepository
       timestamp: confirmedAt,
     });
 
-    return { kind: 'transferred', result: toResult(transferRow) };
+    return { kind: 'transferred', result: toResult(transferRow), digests };
   }
 
   async getDigestDetails({
@@ -478,6 +472,48 @@ export class DrizzleVolunteerTransferRepository
       withdrawnAssignments,
     };
   }
+}
+
+interface ListActiveLeaderUserIdsInput {
+  db: AnyDrizzleDb;
+  churchId: ChurchId;
+  ministryId: string;
+}
+
+async function listActiveLeaderUserIds({
+  db,
+  churchId,
+  ministryId,
+}: ListActiveLeaderUserIdsInput): Promise<UserId[]> {
+  const rows = await db
+    .select({ userId: volunteer.userId })
+    .from(ministryMembership)
+    .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
+    .where(
+      and(
+        eq(ministryMembership.ministryId, ministryId),
+        eq(ministryMembership.churchId, churchId),
+        eq(ministryMembership.status, 'active'),
+        eq(ministryMembership.ministryAccessLevel, 'leader'),
+      ),
+    );
+  return rows.map(({ userId }) => UserId.from(userId));
+}
+
+interface ListChurchAdminUserIdsInput {
+  db: AnyDrizzleDb;
+  churchId: ChurchId;
+}
+
+async function listChurchAdminUserIds({
+  db,
+  churchId,
+}: ListChurchAdminUserIdsInput): Promise<UserId[]> {
+  const rows = await db
+    .select({ userId: member.userId })
+    .from(member)
+    .where(and(eq(member.organizationId, churchId), eq(member.role, 'admin')));
+  return rows.map(({ userId }) => UserId.from(userId));
 }
 
 interface VolunteerTransferRow {

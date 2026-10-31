@@ -21,24 +21,28 @@ import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
+import { DbVolunteerTransferManager } from '@/application/db-volunteer-transfer-manager';
 import {
   ChurchId,
   MinistryId,
   MinistryInvitationId,
   UserId,
 } from '@/domain/branded-ids';
+import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
 import type { DeliverEmailInput } from '@/domain/contracts/infrastructure/email-sender';
 import type {
   CreateNotificationInput,
   NotificationRepository,
 } from '@/domain/contracts/infrastructure/notification.repository';
+import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
 import { EmailSendError } from '@/domain/errors/email-send-error';
 import {
   DrizzleNotificationRepository,
-  DrizzleUnitOfWork,
+  DrizzleSecurityLogRepository,
 } from '@/infrastructure/repositories';
-import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
 import {
   buildAssignedShift,
   buildCycle,
@@ -392,18 +396,34 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
   });
 });
 
-describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integration)', () => {
+describe('Volunteer Transfer digests through the Notifier (ticket #623, integration)', () => {
   // Deliberately in the past relative to the drainer's real-clock claim
   // filter (`scheduledFor <= now()`) — the transfer's own business rules
   // (invitation expiry, event time block-start cutoff) only compare against this
   // fixture's own timestamps, never the real wall clock.
   const COMMIT = new Date('2024-01-15T12:00:00.000Z');
   const CORRELATION_ID = 'drain-transfer-corr-0001';
-
-  const transferRepository = new DrizzleVolunteerTransferRepository({
+  const securityLogRepository = new DrizzleSecurityLogRepository({
     db: testDb,
   });
-  const transferUnitOfWork = new DrizzleUnitOfWork({ db: testDb });
+  const identityGateway = {
+    verifyPassword: async () => true,
+  } as unknown as RedemptionIdentityGateway;
+
+  function transferManager(
+    transferNotifications: IChurchNotifications = notifications,
+  ): DbVolunteerTransferManager {
+    return new DbVolunteerTransferManager({
+      churchRepository,
+      identityGateway,
+      invitationRepository: ministryInvitationRepository,
+      notifications: transferNotifications,
+      securityLogRepository,
+      unitOfWork,
+      volunteerRepository,
+      volunteerTransferRepository,
+    });
+  }
 
   async function seedWithdrawnAssignment(): Promise<void> {
     const churchId = fixture.churchB.id;
@@ -462,30 +482,28 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
     return invitation?.id ?? '';
   }
 
-  async function runTransferAndDrain(
-    emailSender: CaptureEmailSender,
-  ): Promise<void> {
-    await seedWithdrawnAssignment();
-    const invitationId = await seedPendingInvitationInChurchA();
-    await transferUnitOfWork.run((tx) =>
-      transferRepository.executeTransfer({
-        userId: UserId.from(fixture.dualMemberAB),
-        ministryInvitationId: MinistryInvitationId.from(invitationId),
-        sourceChurchId: ChurchId.from(fixture.churchB.id),
-        destinationChurchId: ChurchId.from(fixture.churchA.id),
-        confirmedAt: COMMIT,
-        correlationId: CORRELATION_ID,
-        tx,
-      }),
-    );
-    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+  /** A Church B member who leads `ministryInB`. */
+  async function addChurchBLeader(userId: string): Promise<void> {
+    await buildUser({
+      db: testDb,
+      id: userId,
+      name: userId,
+      email: `${userId}@fixture.test`,
+    });
+    await buildChurchMembership({
+      db: testDb,
+      churchId: fixture.churchB.id,
+      userId,
+      accessLevel: 'member',
+    });
+    await leadMinistryInB(userId);
   }
 
-  it('sends a Ministry digest naming the Volunteer and the withdrawn assignment, never the destination Church', async () => {
+  async function leadMinistryInB(userId: string): Promise<void> {
     const leaderVolunteer = await buildVolunteer({
       db: testDb,
       churchId: fixture.churchB.id,
-      userId: fixture.adminB,
+      userId,
     });
     await buildMinistryMembership({
       db: testDb,
@@ -496,58 +514,205 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
       roleIds: [],
       teams: [],
     });
+  }
+
+  async function confirmTransfer(
+    manager: DbVolunteerTransferManager = transferManager(),
+  ) {
+    await seedWithdrawnAssignment();
+    const invitationId = await seedPendingInvitationInChurchA();
+    return manager.confirmTransfer({
+      ministryInvitationId: MinistryInvitationId.from(invitationId),
+      userId: UserId.from(fixture.dualMemberAB),
+      destinationChurchName: fixture.churchA.name,
+      password: 'unused by the stub gateway',
+      idempotencyKey: CORRELATION_ID,
+      now: COMMIT,
+    });
+  }
+
+  function drain(emailSender: CaptureEmailSender) {
+    return buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+  }
+
+  const outboxRows = () =>
+    testDb
+      .select()
+      .from(outboxMessage)
+      .where(eq(outboxMessage.kind, 'notification'));
+
+  const ministryInBName = async () => {
+    const [row] = await testDb
+      .select({ name: ministry.name })
+      .from(ministry)
+      .where(eq(ministry.id, fixture.ministryInB));
+    return row?.name ?? '';
+  };
+
+  it('sends each remaining leader one private, translated digest naming the Volunteer and withdrawn Assignment, never the destination Church', async () => {
+    await leadMinistryInB(fixture.adminB);
+    const secondLeader = 'fixture-second-leader-b';
+    await addChurchBLeader(secondLeader);
+
+    expect((await confirmTransfer()).kind).toBe('transferred');
+    const rows = await outboxRows();
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.payload)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'transfer_ministry_digest',
+          to: { userId: fixture.adminB, churchId: fixture.churchB.id },
+          data: {
+            ministryId: fixture.ministryInB,
+            volunteerId: fixture.dualMemberABVolunteerInB,
+            transferCorrelationId: CORRELATION_ID,
+          },
+        }),
+        expect.objectContaining({
+          to: { userId: secondLeader, churchId: fixture.churchB.id },
+        }),
+      ]),
+    );
 
     const emailSender = new CaptureEmailSender();
-    await runTransferAndDrain(emailSender);
+    expect(await drain(emailSender)).toEqual({
+      claimed: 2,
+      sent: 2,
+      failed: 0,
+    });
 
-    expect(emailSender.sent).toHaveLength(1);
-    const [sent] = emailSender.sent;
-    expect(sent).toMatchObject({
-      kind: 'transfer.ministry-digest',
-      to: [`${fixture.adminB}@fixture.test`],
-      volunteerName: 'Fixture Dual Member AB',
-    });
-    if (sent?.kind !== 'transfer.ministry-digest') {
-      throw new Error('unreachable');
+    const ministryName = await ministryInBName();
+    expect(
+      emailSender.delivered.map(({ request }) => request.to).sort(),
+    ).toEqual([
+      [`${fixture.adminB}@fixture.test`],
+      [`${secondLeader}@fixture.test`],
+    ]);
+    for (const email of emailSender.delivered) {
+      expect(email).toMatchObject({
+        locale: 'pt-BR',
+        payload: {
+          kind: 'transfer.ministry-digest',
+          volunteerName: 'Fixture Dual Member AB',
+          ministryName,
+          withdrawnAssignments: [
+            expect.objectContaining({ eventName: 'Transfer Sunday' }),
+          ],
+        },
+        request: {
+          subject: m.email_transfer_digest_subject(
+            { volunteerName: 'Fixture Dual Member AB', ministryName },
+            { locale: 'pt-BR' },
+          ),
+        },
+      });
+      expect(email.request.html).toContain('Transfer Sunday');
+      // The digest never names the destination Church (spec §8.8).
+      expect(JSON.stringify(email)).not.toContain(fixture.churchA.name);
     }
-    expect(sent.ministryName).toContain('Hospitality');
-    expect(sent.withdrawnAssignments).toHaveLength(1);
-    expect(sent.withdrawnAssignments[0]).toMatchObject({
-      eventName: 'Transfer Sunday',
-    });
-    // The digest never names the destination Church (spec §8.8).
-    expect(JSON.stringify(sent)).not.toContain(fixture.churchA.name);
+    // Email-only kind: the inbox skips it and stores nothing.
+    expect(await testDb.select().from(notification)).toHaveLength(0);
+    for (const row of await outboxRows()) {
+      expect(row).toMatchObject({
+        status: 'sent',
+        channelOutcomes: { email: 'delivered', inbox: 'skipped' },
+      });
+    }
   });
 
-  it("escalates to ChurchAdmins when the departing Volunteer was themselves the Ministry's last active leader", async () => {
+  it("escalates to ChurchAdmins when the departing Volunteer was the Ministry's last active leader", async () => {
     await testDb
       .update(ministryMembership)
       .set({ ministryAccessLevel: 'leader' })
       .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
 
+    await confirmTransfer();
     const emailSender = new CaptureEmailSender();
-    await runTransferAndDrain(emailSender);
+    await drain(emailSender);
 
-    expect(emailSender.sent).toHaveLength(1);
-    const [sent] = emailSender.sent;
-    expect(sent).toMatchObject({
-      kind: 'transfer.leaderless-ministry',
-      to: [`${fixture.adminB}@fixture.test`],
+    const [row] = await outboxRows();
+    expect(row?.payload).toMatchObject({
+      kind: 'transfer_leaderless_ministry',
+      to: { userId: fixture.adminB },
+    });
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(emailSender.delivered[0]).toMatchObject({
+      payload: { kind: 'transfer.leaderless-ministry' },
+      request: {
+        to: [`${fixture.adminB}@fixture.test`],
+        subject: m.email_transfer_leaderless_subject(
+          { ministryName: await ministryInBName() },
+          { locale: 'pt-BR' },
+        ),
+      },
+    });
+    expect(await testDb.select().from(notification)).toHaveLength(0);
+  });
+
+  it('does not escalate a routine departure — a plain member leaving an already-leaderless Ministry notifies no one', async () => {
+    await confirmTransfer();
+    const emailSender = new CaptureEmailSender();
+    await drain(emailSender);
+
+    expect(await outboxRows()).toHaveLength(0);
+    expect(emailSender.delivered).toHaveLength(0);
+  });
+
+  it('skips a recipient whose Church Membership ended before delivery', async () => {
+    await leadMinistryInB(fixture.adminB);
+    await confirmTransfer();
+    await testDb
+      .delete(churchMember)
+      .where(
+        and(
+          eq(churchMember.organizationId, fixture.churchB.id),
+          eq(churchMember.userId, fixture.adminB),
+        ),
+      );
+
+    const emailSender = new CaptureEmailSender();
+    await drain(emailSender);
+
+    expect(emailSender.delivered).toHaveLength(0);
+    const [row] = await outboxRows();
+    expect(row).toMatchObject({
+      status: 'sent',
+      channelOutcomes: { email: 'skipped', inbox: 'skipped' },
     });
   });
 
-  it('does not escalate a routine departure — a plain member leaving an already-leaderless Ministry stays a digest', async () => {
-    // `dualMemberAB` stays a plain volunteer; `ministryInB` has no leader at
-    // all (pre-existing, unrelated to this transfer). The digest still has
-    // no one to send to, so it fails to deliver — but it must never reach a
-    // ChurchAdmin, matching "Routine departures never reach ChurchAdmins."
-    const emailSender = new CaptureEmailSender();
-    await runTransferAndDrain(emailSender);
+  it('keeps the recipients fixed at the transfer: a leader added before delivery is not notified', async () => {
+    await leadMinistryInB(fixture.adminB);
+    await confirmTransfer();
+    await addChurchBLeader('fixture-late-leader-b');
 
-    expect(emailSender.sent).toHaveLength(0);
-    const messages = await testDb.select().from(outboxMessage);
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatchObject({ kind: 'transfer.ministry-digest' });
+    const emailSender = new CaptureEmailSender();
+    await drain(emailSender);
+
+    expect(emailSender.delivered.map(({ request }) => request.to)).toEqual([
+      [`${fixture.adminB}@fixture.test`],
+    ]);
+  });
+
+  it('rolls the digests back with the transfer when the transaction fails', async () => {
+    await leadMinistryInB(fixture.adminB);
+    const failingNotifications: IChurchNotifications = {
+      async enqueue(input) {
+        await notifications.enqueue(input);
+        throw new Error('fail after enqueue');
+      },
+    };
+
+    await expect(
+      confirmTransfer(transferManager(failingNotifications)),
+    ).rejects.toThrow('fail after enqueue');
+
+    expect(await testDb.select().from(outboxMessage)).toHaveLength(0);
+    const [departing] = await testDb
+      .select({ leftAt: volunteerTable.leftAt })
+      .from(volunteerTable)
+      .where(eq(volunteerTable.id, fixture.dualMemberABVolunteerInB));
+    expect(departing?.leftAt).toBeNull();
   });
 });
 

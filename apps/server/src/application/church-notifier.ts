@@ -1,6 +1,10 @@
 import type { AppConfig } from '@church/app-config';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
-import type { INotifier } from '../domain/contracts/application/notifier';
+import type {
+  INotifier,
+  NotificationTemplate,
+  SinkRegistration,
+} from '../domain/contracts/application/notifier';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
   EmailPayload,
@@ -11,8 +15,10 @@ import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type {
   NotificationDeliveryData,
-  NotificationKind,
+  NotificationDeliveryDataByKind,
   NotificationPayload,
+  NotificationRequestKind,
+  TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
 import { recipientLocale } from '../domain/services/recipient-locale';
 import {
@@ -25,9 +31,59 @@ import { Notifier, registerSink } from './notifier';
 /** The Notifier with the Church's recipient, kinds and delivery facts fixed. */
 export type ChurchNotifier = INotifier<
   ChurchRecipient,
-  NotificationKind,
+  NotificationRequestKind,
   NotificationDeliveryData
 >;
+
+/** Each kind's template sees that kind's own delivery facts. */
+type TemplatesByKind<TAddress, TContent> = {
+  [K in NotificationRequestKind]?: NotificationTemplate<
+    NotificationDeliveryDataByKind[K],
+    TAddress,
+    TContent
+  >;
+};
+
+/** The drainer resolves `data` from the row's own kind, so each template only
+ * ever receives its kind's facts. */
+function byKind<TAddress, TContent>(
+  templates: TemplatesByKind<TAddress, TContent>,
+): SinkRegistration<
+  ChurchRecipient,
+  NotificationRequestKind,
+  NotificationDeliveryData,
+  TAddress,
+  TContent
+>['templates'] {
+  return templates as SinkRegistration<
+    ChurchRecipient,
+    NotificationRequestKind,
+    NotificationDeliveryData,
+    TAddress,
+    TContent
+  >['templates'];
+}
+
+interface TransferDigestEmailInput {
+  kind: 'transfer.ministry-digest' | 'transfer.leaderless-ministry';
+  data: TransferDigestDeliveryFacts;
+  address: EmailRecipientAddress;
+}
+
+/** One private email per recipient: never a shared recipient list. */
+function transferDigestEmail({
+  kind,
+  data,
+  address,
+}: TransferDigestEmailInput): EmailPayload {
+  return {
+    kind,
+    to: [address.email],
+    ministryName: data.ministryName,
+    volunteerName: data.volunteerName,
+    withdrawnAssignments: data.withdrawnAssignments,
+  };
+}
 
 export interface BuildChurchNotifierInput {
   config: AppConfig;
@@ -52,7 +108,7 @@ export function buildChurchNotifier({
 }: BuildChurchNotifierInput): ChurchNotifier {
   const email = registerSink<
     ChurchRecipient,
-    NotificationKind,
+    NotificationRequestKind,
     NotificationDeliveryData,
     EmailRecipientAddress,
     EmailPayload
@@ -74,7 +130,7 @@ export function buildChurchNotifier({
             }),
           };
     },
-    templates: {
+    templates: byKind<EmailRecipientAddress, EmailPayload>({
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       ministry_invitation: ({ data, address }) => ({
         kind: 'invitation.ministry',
@@ -87,7 +143,21 @@ export function buildChurchNotifier({
         churchTimezone: data.churchTimezone,
         redemptionUrl: data.redemptionUrl,
       }),
-    },
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      transfer_ministry_digest: ({ data, address }) =>
+        transferDigestEmail({
+          kind: 'transfer.ministry-digest',
+          data,
+          address,
+        }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      transfer_leaderless_ministry: ({ data, address }) =>
+        transferDigestEmail({
+          kind: 'transfer.leaderless-ministry',
+          data,
+          address,
+        }),
+    }),
     sink: new EmailNotificationSink({
       emailSender,
       outboxRepository,
@@ -98,7 +168,7 @@ export function buildChurchNotifier({
 
   const inbox = registerSink<
     ChurchRecipient,
-    NotificationKind,
+    NotificationRequestKind,
     NotificationDeliveryData,
     ChurchRecipient,
     NotificationPayload
@@ -112,7 +182,8 @@ export function buildChurchNotifier({
       })) === null
         ? null
         : to,
-    templates: {
+    // Transfer kinds are email-only: no template, so the inbox skips them.
+    templates: byKind<ChurchRecipient, NotificationPayload>({
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       ministry_invitation: ({ data }) => ({
         kind: 'ministry_invitation',
@@ -122,7 +193,7 @@ export function buildChurchNotifier({
           ministryName: data.ministryName,
         },
       }),
-    },
+    }),
     sink: new InboxNotificationSink({ notificationRepository }),
   });
 

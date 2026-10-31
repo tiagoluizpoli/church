@@ -5,7 +5,8 @@ import type {
 } from '../domain/contracts/application/church-notifications';
 import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
 import {
-  type NotificationKind,
+  type NotificationRequest,
+  type NotificationRequestKind,
   notificationRequestDataSchemas,
 } from '../domain/notification-kinds';
 
@@ -20,13 +21,17 @@ export class ChurchNotifications implements IChurchNotifications {
     this.outboxRepository = outboxRepository;
   }
 
-  async enqueue<K extends NotificationKind>({
+  async enqueue<K extends NotificationRequestKind>({
     tx,
     kind,
     to,
     data,
   }: EnqueueNotificationInput<K>): Promise<void> {
-    const validData = notificationRequestDataSchemas[kind].parse(data);
+    // Parsed by the kind's own schema, so kind and data agree.
+    const request = {
+      kind,
+      data: notificationRequestDataSchemas[kind].parse(data),
+    } as NotificationRequest;
     const recipients = new Map(
       to.map((recipient) => [
         `${recipient.churchId}/${recipient.userId}`,
@@ -37,7 +42,7 @@ export class ChurchNotifications implements IChurchNotifications {
     for (const { userId, churchId } of recipients.values()) {
       await this.outboxRepository.enqueueNotification({
         churchId,
-        payload: { to: { userId, churchId }, kind, data: validData },
+        payload: { to: { userId, churchId }, ...request },
         correlationId,
         scheduledFor: nowAsDate(),
         tx,

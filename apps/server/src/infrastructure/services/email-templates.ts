@@ -17,8 +17,9 @@ export interface PrepareEmailFromInput {
 
 /**
  * The one renderer every EmailSender adapter prepares with, so capture and
- * Resend agree on content. The member Ministry Invitation renders from the
- * shared catalog in `locale`; the rest stay English until Spec 10 moves them.
+ * Resend agree on content. The member Ministry Invitation and the transfer
+ * digests render from the shared catalog in `locale`; the rest stay English
+ * until Spec 10 moves them.
  */
 export function prepareEmail({
   payload,
@@ -30,6 +31,17 @@ export function prepareEmail({
       payload,
       locale,
     });
+    return {
+      payload,
+      locale,
+      request: { from, to: payload.to, subject, html },
+    };
+  }
+  if (
+    payload.kind === 'transfer.ministry-digest' ||
+    payload.kind === 'transfer.leaderless-ministry'
+  ) {
+    const { subject, html } = composeTransferDigestEmail({ payload, locale });
     return {
       payload,
       locale,
@@ -138,40 +150,62 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
         html: `<p>Your invitation to serve with <strong>${payload.ministryName}</strong> at ${payload.churchName} has been accepted.</p>`,
       };
     case 'transfer.ministry-digest':
-      return {
-        subject: `${payload.volunteerName} has transferred out of ${payload.ministryName}`,
-        html: renderTransferDigestHtml({ payload }),
-      };
     case 'transfer.leaderless-ministry':
-      return {
-        subject: `${payload.ministryName} has no active leader`,
-        html: `
-          <p><strong>${payload.ministryName}</strong> has no active leader: ${payload.volunteerName} — its last active leader — has transferred out.</p>
-          ${renderTransferDigestHtml({ payload })}
-        `,
-      };
+      // Rendered from the catalog in prepareEmail.
+      return composeTransferDigestEmail({ payload, locale: 'en' });
   }
 }
 
-interface RenderTransferDigestHtmlInput {
+interface ComposeTransferDigestEmailInput {
   payload: TransferMinistryDigestEmail | TransferLeaderlessMinistryEmail;
+  locale: EmailLocale;
 }
 
-/** Shared body for both transfer notification kinds — only the framing
- * differs. No Church Timezone is available at this layer, so times read
- * UTC — a seam-armed swap of the prior raw `toLocaleString`, not a
- * timezone-correctness fix. */
-function renderTransferDigestHtml({
+/** Both transfer kinds share the digest body; the leaderless escalation adds
+ * its framing. Never names the destination Church. Times read UTC until
+ * Spec 10 adds the Church Timezone. */
+function composeTransferDigestEmail({
   payload,
-}: RenderTransferDigestHtmlInput): string {
+  locale,
+}: ComposeTransferDigestEmailInput): ComposedEmail {
+  const options = { locale };
+  const volunteerName = escapeHtml(payload.volunteerName);
+  const ministryName = `<strong>${escapeHtml(payload.ministryName)}</strong>`;
   const items = payload.withdrawnAssignments
     .map(
-      (a) =>
-        `<li>${a.eventName} — ${formatInstant({ instant: a.eventTimeBlockStart, timeZone: 'UTC' })} — ${a.roleName}</li>`,
+      (line) =>
+        `<li>${escapeHtml(line.eventName)} — ${formatInstant({ instant: line.eventTimeBlockStart, timeZone: 'UTC' })} — ${escapeHtml(line.roleName)}</li>`,
     )
     .join('');
-  return `
-    <p>${payload.volunteerName} transferred to another Church and their future assignments in <strong>${payload.ministryName}</strong> were withdrawn:</p>
-    <ul>${items}</ul>
+  const assignments =
+    items.length > 0
+      ? `<ul>${items}</ul>`
+      : `<p>${m.email_transfer_digest_no_assignments({}, options)}</p>`;
+  const digest = `
+    <p>${m.email_transfer_digest_body({ volunteerName, ministryName }, options)}</p>
+    ${assignments}
   `;
+  // Subjects are plain text: no markup to escape.
+  if (payload.kind === 'transfer.leaderless-ministry') {
+    return {
+      subject: m.email_transfer_leaderless_subject(
+        { ministryName: payload.ministryName },
+        options,
+      ),
+      html: `
+          <p>${m.email_transfer_leaderless_body({ ministryName, volunteerName }, options)}</p>
+          ${digest}
+        `,
+    };
+  }
+  return {
+    subject: m.email_transfer_digest_subject(
+      {
+        volunteerName: payload.volunteerName,
+        ministryName: payload.ministryName,
+      },
+      options,
+    ),
+    html: digest,
+  };
 }

@@ -128,6 +128,7 @@ export function buildManagers({
       ministryRepo: ministryRepository,
       volunteerRepo: volunteerRepository,
     });
+  const notifications = new ChurchNotifications({ outboxRepository });
   const ministryInvitationManager =
     overrides.ministryInvitationManager ??
     new DbMinistryInvitationManager({
@@ -137,7 +138,7 @@ export function buildManagers({
       authorityManager,
       unitOfWork,
       outboxRepository,
-      notifications: new ChurchNotifications({ outboxRepository }),
+      notifications,
       config,
     });
   const invitationVerificationCodeManager =
@@ -168,6 +169,7 @@ export function buildManagers({
       churchRepository,
       identityGateway: redemptionIdentityGateway,
       invitationRepository: ministryInvitationRepository,
+      notifications,
       securityLogRepository,
       unitOfWork,
       volunteerRepository,

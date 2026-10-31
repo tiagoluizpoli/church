@@ -37,7 +37,7 @@ Local validation has three tiers, all planned by the same
 
 | Script | Runs | Needs Docker | Used by |
 |---|---|---|---|
-| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests of affected workspaces | no | the pre-push hook |
+| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests picked by import graph (whole suite when the graph can't trace a change) | no | the pre-push hook |
 | `validate:affected` | the above, plus integration tests and the selected browser journeys | yes | the per-ticket check, and the Develop Gate in CI |
 | `validate` | everything | yes | final handoff and the release gate |
 

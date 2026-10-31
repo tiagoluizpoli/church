@@ -51,7 +51,7 @@ through it. It:
 
 | Script | Runs | Needs Docker | Used by |
 |---|---|---|---|
-| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests of affected workspaces | no | the pre-push hook |
+| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests picked by import graph | no | the pre-push hook |
 | `validate:affected` | the above, plus integration tests and the selected browser journeys, on whole affected workspaces | yes | the per-ticket check, and the daily gate in CI |
 | `validate` | everything | yes | final handoff and the release gate |
 
@@ -60,8 +60,18 @@ through it. It:
 - The per-ticket check is the full `validate:affected`. Ticket branches that
   merge into a wrapper's integration branch get no CI, so this run is their
   only integration and E2E check before the combined pull request.
-- CI selects whole affected workspaces and is the only thing that blocks a
-  merge.
+- Unit tests are picked by import graph only in `validate:no-docker`: each
+  affected workspace, and each dependent of a changed shared package, runs
+  `vitest related` with the changed files that selected it, so a changed unit
+  test file runs itself. A workspace runs its whole unit suite instead when
+  its changes include something the graph can't trace: Vitest config, test
+  setup files, env files, the workspace or root `package.json`, the lockfile,
+  tsconfig, test fixtures, a deleted file, or anything outside `src/`,
+  `tests/` or `seeds/`. Missing information widens the selection, never
+  narrows it to nothing. Type-only changes reach no test at run time;
+  typecheck covers them.
+- CI, `validate:affected` and `validate` keep whole-workspace selection. CI
+  is the only thing that blocks a merge.
 
 ### Playwright is critical-journey-only
 

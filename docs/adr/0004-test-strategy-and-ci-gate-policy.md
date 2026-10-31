@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted
+accepted · amended 2026-10-30 by #606 (local validation tiers)
 
 ## Context
 
@@ -24,8 +24,9 @@ This ADR records the trade-offs those seams converged on.
 
 ### One test-selection seam
 
-`tooling/validation/affected.ts` (`bun run validate:affected`) is the single
-policy seam for test selection, both locally and in CI. It:
+`tooling/validation/affected.ts` is the single policy seam for test
+selection, both locally and in CI; every local validation tier (below) plans
+through it. It:
 
 - Maps a changed workspace to the lowest test layer that can prove it
   (`test:unit`, `test:integration`), using Turbo's dependency graph so a
@@ -45,6 +46,22 @@ policy seam for test selection, both locally and in CI. It:
   and reset they load) — and only outside the daily gate (see below); the
   daily gate never escalates to the full suite, so a Playwright-infrastructure
   change on a task branch still gets its normal mapped/critical-journey run.
+
+### Local validation tiers
+
+| Script | Runs | Needs Docker | Used by |
+|---|---|---|---|
+| `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests of affected workspaces | no | the pre-push hook |
+| `validate:affected` | the above, plus integration tests and the selected browser journeys, on whole affected workspaces | yes | the per-ticket check, and the daily gate in CI |
+| `validate` | everything | yes | final handoff and the release gate |
+
+- The pre-push hook runs `validate:no-docker`. Integration and browser-journey
+  failures are reported by the daily gate on the pull request.
+- The per-ticket check is the full `validate:affected`. Ticket branches that
+  merge into a wrapper's integration branch get no CI, so this run is their
+  only integration and E2E check before the combined pull request.
+- CI selects whole affected workspaces and is the only thing that blocks a
+  merge.
 
 ### Playwright is critical-journey-only
 
@@ -113,9 +130,13 @@ remembering every mapping by hand.
 
 ## Consequences
 
-- Contributors and agents get one command (`bun run validate:affected`) that
-  answers "what do I need to run for this change," locally and in CI, instead
-  of guessing.
+- Contributors and agents pick one of three commands by what it needs:
+  `validate:no-docker` (no Docker; pre-push), `validate:affected` (per ticket
+  and in CI) or `validate` (handoff and release). Each answers "what do I
+  need to run for this change" instead of guessing.
+- A push no longer waits on integration tests or browser journeys; those
+  failures surface in the daily gate instead, and per ticket in
+  `validate:affected`.
 - A `JOURNEY_MAP` entry is a claim that must stay in sync with real route/spec
   coupling; under-mapping is safe (it only widens the fallback to the critical
   smoke set) so entries are added only once verified against a real spec, but

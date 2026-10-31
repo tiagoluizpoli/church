@@ -15,6 +15,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
+    "test:unit:related": "vitest related --run",
     "test": "bun run test:unit"
   },
   "dependencies": {},

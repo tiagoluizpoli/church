@@ -21,6 +21,9 @@
       "dependsOn": ["^test:unit"],
       "cache": false
     },
+    "test:unit:related": {
+      "cache": false
+    },
     "test:integration": {
       "dependsOn": ["^test:integration"],
       "passThroughEnv": [

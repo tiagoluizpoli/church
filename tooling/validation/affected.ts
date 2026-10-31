@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { relative } from 'node:path';
 import {
   classifyChanges,
   isScriptsOnlyAddition,
@@ -101,6 +102,13 @@ interface PushLayerTimingInput {
 }
 
 const ALL_TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
+
+/** Workspaces with a `test:unit:related` script (`vitest related`). */
+const RELATED_UNIT_WORKSPACE_PATHS: Record<string, string> = {
+  '@church/core': 'packages/core/',
+  server: 'apps/server/',
+  web: 'apps/web/',
+};
 
 /**
  * A clean worktree with committed branch changes must not report nothing to
@@ -368,11 +376,13 @@ export function buildValidationSteps({
     for (const testLayer of ALL_TEST_LAYERS) {
       if (!plan.testLayers.includes(testLayer)) continue;
       if (noDocker && testLayer === 'test:integration') continue;
-      const layerSteps = buildTestLayerSteps({
-        testLayer,
-        testTargets: plan.testTargets,
-        workspaceNames: plan.workspaceNames,
-      });
+      const layerSteps = noDocker
+        ? buildRelatedUnitSteps({ plan })
+        : buildTestLayerSteps({
+            testLayer,
+            testTargets: plan.testTargets,
+            workspaceNames: plan.workspaceNames,
+          });
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
       else checkLane.push(...layerSteps);
     }
@@ -490,6 +500,66 @@ export function buildTestLayerSteps({
   }
 
   return steps;
+}
+
+/**
+ * The no-docker tier's unit steps: a workspace runs only the tests whose
+ * imports reach the changed files that selected it. A change the import
+ * graph can't trace — root infrastructure, a deletion, or anything outside
+ * `src/`, `tests/` or `seeds/` (config, env, package.json, tsconfig), test
+ * setup or fixtures — runs that workspace's whole suite instead.
+ */
+function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
+  const deletedPaths = new Set(plan.deletedPaths);
+  const wholeSuiteWorkspaceNames: string[] = [];
+  const relatedSteps: LaneStep[] = [];
+
+  for (const workspaceName of plan.workspaceNames) {
+    const reasons = plan.workspaceSelectionReasons.filter(
+      (reason) => reason.workspaceName === workspaceName,
+    );
+    const changedPaths = [
+      ...new Set(reasons.map(({ changedPath }) => changedPath)),
+    ];
+    const workspacePath = RELATED_UNIT_WORKSPACE_PATHS[workspaceName];
+    const isTraceable =
+      workspacePath !== undefined &&
+      reasons.every(({ detail }) => detail !== 'root-infrastructure') &&
+      changedPaths.every(
+        (changedPath) =>
+          !deletedPaths.has(changedPath) &&
+          /^(?:apps|packages)\/[^/]+\/(?:src|tests|seeds)\//.test(
+            changedPath,
+          ) &&
+          !/\/tests\/setup\/|\/fixtures\//.test(changedPath),
+      );
+    if (!isTraceable) {
+      wholeSuiteWorkspaceNames.push(workspaceName);
+      continue;
+    }
+    relatedSteps.push({
+      ...buildTurboStep({
+        args: changedPaths.map((changedPath) =>
+          relative(workspacePath, changedPath),
+        ),
+        concurrency: '2',
+        task: 'test:unit:related',
+        workspaceNames: [workspaceName],
+      }),
+      label: 'test:unit',
+    });
+  }
+
+  if (wholeSuiteWorkspaceNames.length === 0) return relatedSteps;
+  return [
+    buildTurboStep({
+      args: [],
+      concurrency: '2',
+      task: 'test:unit',
+      workspaceNames: wholeSuiteWorkspaceNames,
+    }),
+    ...relatedSteps,
+  ];
 }
 
 function buildTurboStep({

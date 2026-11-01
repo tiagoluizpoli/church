@@ -234,10 +234,11 @@ function memberNotificationContent({
       ...base,
       subject: title,
       heading: title,
-      facts:
-        payload.roleNames.length > 0
-          ? [body, details, roles, expires]
-          : [body, details, expires],
+      facts: [
+        body,
+        payload.roleNames.length > 0 ? `${details} ${roles}` : details,
+        expires,
+      ],
       action: {
         label: m.email_ministry_invitation_accept({}, options),
         url: payload.redemptionUrl,

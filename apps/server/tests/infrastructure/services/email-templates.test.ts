@@ -175,9 +175,19 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       ),
     );
     expect(request.text).toContain('30/11/2026 23:30');
-    expect(request.text).toContain(
-      m.email_invitation_roles({ roles: 'Vocalist <i>lead</i>' }, ptBR),
+    const details = m.email_ministry_invitation_details(
+      {
+        churchName: 'Grace & <Truth>',
+        ministryName: '<b>Worship</b>',
+        accessLevel: m.email_ministry_invitation_access_volunteer({}, ptBR),
+      },
+      ptBR,
     );
+    const roles = m.email_invitation_roles(
+      { roles: 'Vocalist <i>lead</i>' },
+      ptBR,
+    );
+    expect(request.text).toContain(`${details} ${roles}`);
     expect(request.text).toContain(
       `${m.email_ministry_invitation_accept({}, ptBR)}: ${memberInvitation.redemptionUrl}`,
     );

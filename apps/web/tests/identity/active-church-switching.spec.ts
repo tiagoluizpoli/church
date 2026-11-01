@@ -75,7 +75,7 @@ test.describe('#67 — Active Church selection and switching', () => {
     );
 
     await churchOptionRow({ page, churchId: churchA.id }).click();
-    await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
 
     expect(
       await fetchActiveChurchStatus({ request: page.request }),

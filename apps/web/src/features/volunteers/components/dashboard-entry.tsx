@@ -83,18 +83,18 @@ export function DashboardEntry({ search, volunteerName }: DashboardEntryProps) {
   return (
     <WorkspacePage>
       <WorkspaceIntroPanel
-        title="Volunteer dashboard"
+        title={m.dashboard_entry_title()}
         description={
           volunteerName
-            ? `Review what needs your attention, ${volunteerName}.`
-            : 'Review what needs your attention.'
+            ? m.dashboard_entry_description_named({ name: volunteerName })
+            : m.dashboard_entry_description()
         }
         aside={
           <Link
             to="/volunteer/availability"
             className="radius-control inline-flex min-h-11 items-center justify-center border border-border bg-background px-4 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            View availability checks
+            {m.dashboard_entry_availability_link()}
           </Link>
         }
       />

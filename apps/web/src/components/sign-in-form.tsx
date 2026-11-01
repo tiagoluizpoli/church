@@ -43,7 +43,7 @@ export default function SignInForm({
             navigate({
               href: redirectTo ?? '/',
             });
-            toast.success('Sign in successful');
+            toast.success(m.auth_sign_in_success());
           },
           onError: (error) => {
             toast.error(authErrorMessage({ error: error.error }));
@@ -53,8 +53,8 @@ export default function SignInForm({
     },
     validators: {
       onSubmit: z.object({
-        email: z.email('Invalid email address'),
-        password: z.string().min(8, 'Password must be at least 8 characters'),
+        email: z.email(m.password_recovery_invalid_email()),
+        password: z.string().min(8, m.password_recovery_password_too_short()),
       }),
     },
   });
@@ -65,10 +65,11 @@ export default function SignInForm({
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-2 text-center font-bold text-3xl">Welcome Back</h1>
+      <h1 className="mb-2 text-center font-bold text-3xl">
+        {m.auth_sign_in_title()}
+      </h1>
       <p className="mb-6 text-center text-muted-foreground text-sm">
-        Access is invitation-only. Sign in with the account from your
-        invitation.
+        {m.auth_sign_in_invitation_only()}
       </p>
 
       {notice === 'password-changed' && (
@@ -89,7 +90,9 @@ export default function SignInForm({
           <form.Field name="email">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
+                <Label htmlFor={field.name}>
+                  {m.password_recovery_email_label()}
+                </Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -112,7 +115,7 @@ export default function SignInForm({
           <form.Field name="password">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
+                <Label htmlFor={field.name}>{m.auth_password_label()}</Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -152,7 +155,9 @@ export default function SignInForm({
               className="w-full"
               disabled={!canSubmit || isSubmitting}
             >
-              {isSubmitting ? 'Submitting...' : 'Sign In'}
+              {isSubmitting
+                ? m.auth_sign_in_submitting()
+                : m.auth_sign_in_submit()}
             </Button>
           )}
         </form.Subscribe>

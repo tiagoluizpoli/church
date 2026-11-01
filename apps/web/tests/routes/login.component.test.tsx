@@ -51,8 +51,8 @@ describe('the sign-in route (login)', () => {
       churchTimezone: 'UTC',
     });
 
-    expect(await screen.findByText('Welcome Back')).toBeVisible();
-    expect(screen.getByText(/access is invitation-only/i)).toBeVisible();
+    expect(await screen.findByText(m.auth_sign_in_title())).toBeVisible();
+    expect(screen.getByText(m.auth_sign_in_invitation_only())).toBeVisible();
     expect(screen.queryByText('Create Account')).not.toBeInTheDocument();
     expect(
       screen.queryByText('Need an account? Sign Up'),

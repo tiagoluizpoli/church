@@ -5747,8 +5747,9 @@ paths:
       summary: Decline a Church Invitation
       tags:
         - redemption
-      description: Decline a Church Invitation as its authenticated recipient, also
-        declining a chained Ministry Invitation if one is paired with it.
+      description: Publicly decline a pending Church Invitation and any paired
+        Ministry Invitation. Possession of the link authorizes it; no User or
+        session is created.
       parameters:
         - schema:
             type: string
@@ -5763,42 +5764,16 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                  - type: object
-                    properties:
-                      kind:
-                        type: string
-                        enum:
-                          - declined
-                    required:
-                      - kind
-                    additionalProperties: false
-                  - type: object
-                    properties:
-                      kind:
-                        type: string
-                        enum:
-                          - identity-mismatch
-                    required:
-                      - kind
-                    additionalProperties: false
-                  - type: object
-                    properties:
-                      kind:
-                        type: string
-                        enum:
-                          - terminal-failure
-                      reason:
-                        type: string
-                        enum:
-                          - INVITATION_UNAVAILABLE
-                          - VERIFICATION_FAILED
-                          - IDENTITY_FAILED
-                    required:
-                      - kind
-                      - reason
-                    additionalProperties: false
-        "401":
+                type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - declined
+                required:
+                  - kind
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:
@@ -5808,7 +5783,24 @@ paths:
                   error:
                     type: string
                     enum:
-                      - UNAUTHORIZED
+                      - INVITATION_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - RATE_LIMITED
                   message:
                     type: string
                 required:

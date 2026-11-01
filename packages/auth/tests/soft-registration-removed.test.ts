@@ -2,8 +2,10 @@ import * as schema from '@church/db/schema';
 import { createChurch } from '@church/db/tenancy';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { auth } from '../src/index';
+import { createAuth } from '../src/index';
 import { clearDatabase, testDb } from './setup';
+
+const auth = createAuth({ database: testDb });
 
 describe('registration', () => {
   beforeEach(async () => {

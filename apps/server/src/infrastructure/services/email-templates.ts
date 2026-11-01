@@ -5,6 +5,7 @@ import type {
   EmailLocale,
   EmailPayload,
   MinistryInvitationEmail,
+  PasswordResetEmail,
   PreparedEmail,
   ReplayableEmail,
   SchedulePublishedEmail,
@@ -24,6 +25,8 @@ export interface PrepareEmailFromInput {
   payload: EmailPayload;
   from: string;
   locale?: EmailLocale;
+  /** Display name for app-branded kinds; injected from composition. */
+  appName?: string;
 }
 
 /**
@@ -36,6 +39,7 @@ export function prepareEmail({
   payload,
   from,
   locale = 'en',
+  appName,
 }: PrepareEmailFromInput): ReplayableEmail {
   if (payload.kind === 'invitation.verification-code') {
     return prepareLayoutEmail({
@@ -46,6 +50,15 @@ export function prepareEmail({
         configuredFrom: from,
       }),
       content: verificationCodeContent({ payload, locale }),
+    });
+  }
+  if (payload.kind === 'auth.password-reset') {
+    if (!appName) throw new Error('Password reset email requires an appName.');
+    return prepareLayoutEmail({
+      payload,
+      locale,
+      from: emailSender({ displayName: appName, configuredFrom: from }),
+      content: passwordResetContent({ payload, locale, appName }),
     });
   }
   if (payload.kind === 'invitation.ministry') {
@@ -148,6 +161,41 @@ function verificationCodeContent({
       m.email_verification_code_expires({ duration }, options),
     ],
     footer: m.email_footer_invitation({ email: to, churchName }, options),
+  };
+}
+
+interface PasswordResetContentInput {
+  payload: PasswordResetEmail;
+  locale: EmailLocale;
+  appName: string;
+}
+
+/** T3: no Church; the action opens the supplied reset URL. */
+function passwordResetContent({
+  payload,
+  locale,
+  appName,
+}: PasswordResetContentInput): EmailContent {
+  const options = { locale };
+  const { to: email, resetUrl } = payload;
+  const duration = formatEmailDuration({
+    duration: payload.linkLifetime,
+    locale,
+  });
+  return {
+    subject: m.email_password_reset_subject({ appName }, options),
+    greeting: m.email_greeting_transactional({}, options),
+    heading: m.email_password_reset_heading({}, options),
+    facts: [
+      m.email_password_reset_body({ email }, options),
+      m.email_password_reset_ignore({}, options),
+      m.email_password_reset_expires({ duration }, options),
+    ],
+    action: {
+      label: m.email_password_reset_action({}, options),
+      url: resetUrl,
+    },
+    footer: m.email_footer_password_reset({ email, appName }, options),
   };
 }
 
@@ -280,6 +328,7 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
     case 'availability.reminder':
     case 'schedule.published':
     case 'invitation.verification-code':
+    case 'auth.password-reset':
       // Rendered from the catalog in prepareEmail.
       throw new Error(`Email kind "${payload.kind}" renders in prepareEmail`);
     case 'invitation.church-bootstrap':

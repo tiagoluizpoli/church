@@ -83,13 +83,18 @@ describe('ResendEmailSender', () => {
     return new ResendEmailSender({
       apiKey: 'test-key',
       from: 'Church <hi@church.test>',
+      appName: 'Church',
     });
   }
 
   it('refuses to construct without an API key', () => {
     expect(
       () =>
-        new ResendEmailSender({ apiKey: '', from: 'Church <hi@church.test>' }),
+        new ResendEmailSender({
+          apiKey: '',
+          from: 'Church <hi@church.test>',
+          appName: 'Church',
+        }),
     ).toThrow(/RESEND_API_KEY/);
   });
 
@@ -121,6 +126,29 @@ describe('ResendEmailSender', () => {
       html: expect.stringContaining('Worship Team'),
     });
     expect(result).toEqual({ providerMessageId: 'email-1' });
+  });
+
+  it('delivers the password reset with its text alternative, no reply-to', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email-pr' }, error: null });
+    const sender = makeSender();
+
+    await sender.send({
+      payload: {
+        kind: 'auth.password-reset',
+        to: 'user@example.com',
+        resetUrl: 'https://app.church.test/reset?token=t',
+        linkLifetime: { minutes: 60 },
+      },
+      locale: 'en',
+    });
+
+    const request = sendMock.mock.calls[0]?.[0];
+    expect(request).toMatchObject({
+      from: '"Church" <hi@church.test>',
+      to: 'user@example.com',
+      text: expect.stringContaining('https://app.church.test/reset?token=t'),
+    });
+    expect(request).not.toHaveProperty('replyTo');
   });
 
   it('composes a bootstrap email with no ministry content', async () => {

@@ -113,7 +113,7 @@ describe('DbOutboxDrainer (integration)', () => {
       roleIds: [],
     });
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
@@ -135,8 +135,8 @@ describe('DbOutboxDrainer (integration)', () => {
       roleIds: [],
     });
 
-    const emailSenderA = new CaptureEmailSender();
-    const emailSenderB = new CaptureEmailSender();
+    const emailSenderA = new CaptureEmailSender('Church');
+    const emailSenderB = new CaptureEmailSender('Church');
 
     const [resultA, resultB] = await Promise.all([
       buildDrainer({ emailSender: emailSenderA }).drainOnce({ limit: 1 }),
@@ -338,7 +338,9 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('suppresses a replay of an email the provider already confirmed', async () => {
     await mintFor({ email: memberEmail() });
-    await buildDrainer({ emailSender: new CaptureEmailSender() }).drainOnce({
+    await buildDrainer({
+      emailSender: new CaptureEmailSender('Church'),
+    }).drainOnce({
       limit: 10,
     });
     const delivered = await onlyRow();
@@ -350,7 +352,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
       .where(eq(outboxMessage.id, delivered.id));
 
     // A fresh adapter cannot deduplicate on its own: only the receipt can.
-    const replaySender = new CaptureEmailSender();
+    const replaySender = new CaptureEmailSender('Church');
     const result = await buildDrainer({ emailSender: replaySender }).drainOnce({
       limit: 10,
     });
@@ -613,7 +615,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
       ]),
     );
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     expect(await drain(emailSender)).toEqual({
       claimed: 2,
       sent: 2,
@@ -666,7 +668,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
       .where(eq(ministryMembership.id, fixture.dualMemberABMembershipInB));
 
     await confirmTransfer();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await drain(emailSender);
 
     const [row] = await outboxRows();
@@ -690,7 +692,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
 
   it('does not escalate a routine departure — a plain member leaving an already-leaderless Ministry notifies no one', async () => {
     await confirmTransfer();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await drain(emailSender);
 
     expect(await outboxRows()).toHaveLength(0);
@@ -709,7 +711,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
         ),
       );
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await drain(emailSender);
 
     expect(emailSender.delivered).toHaveLength(0);
@@ -725,7 +727,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
     await confirmTransfer();
     await addChurchBLeader('fixture-late-leader-b');
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await drain(emailSender);
 
     expect(emailSender.delivered.map(({ request }) => request.to)).toEqual([
@@ -848,7 +850,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('delivers one email and one inbox row from the committed mint, in the recipient locale', async () => {
     const ministryInvitationId = await inviteMember();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
 
     const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
 
@@ -893,7 +895,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('a resend is a new Notification: a second row, email and inbox entry', async () => {
     const ministryInvitationId = await inviteMember();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     const drainer = drainerFor({ emailSender });
     await drainer.drainOnce({ limit: 10 });
     advanceToRetry();
@@ -936,7 +938,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
     expect(await testDb.select().from(ministryInvitation)).toHaveLength(0);
     expect(await outboxRows()).toHaveLength(0);
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     expect(await drainerFor({ emailSender }).drainOnce({ limit: 10 })).toEqual({
       claimed: 0,
       sent: 0,
@@ -998,7 +1000,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('inbox fails, email succeeds: the retry writes the inbox row and never resends the email', async () => {
     await inviteMember();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     const inboxRepository = new FlakyInboxRepository({ db: testDb });
     inboxRepository.failuresLeft = 1;
     const drainer = drainerFor({ emailSender, inboxRepository });
@@ -1070,7 +1072,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
   it('a recipient who left the Church before the drain receives nothing on either channel', async () => {
     await inviteMember();
     await removeMembership();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
 
     const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
 
@@ -1118,7 +1120,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       .set({ leftAt: new Date(start) })
       .where(eq(volunteerTable.id, volunteer.id));
     await inviteMember();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
 
     await drainerFor({ emailSender }).drainOnce({ limit: 10 });
 
@@ -1142,7 +1144,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
         [channel]: { enabled: false },
       },
     };
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
 
     await drainerFor({ emailSender, config }).drainOnce({ limit: 10 });
     // Re-enabling the channel later never backfills this row.
@@ -1158,8 +1160,8 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('two concurrent drains deliver one email and one inbox row', async () => {
     await inviteMember();
-    const senderA = new CaptureEmailSender();
-    const senderB = new CaptureEmailSender();
+    const senderA = new CaptureEmailSender('Church');
+    const senderB = new CaptureEmailSender('Church');
 
     await Promise.all([
       drainerFor({ emailSender: senderA }).drainOnce({ limit: 1 }),

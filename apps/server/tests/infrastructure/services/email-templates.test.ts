@@ -5,6 +5,7 @@ import type {
   MinistryInvitationEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
+import { escapeHtml } from '@/infrastructure/services/email-layout';
 import { prepareEmail } from '@/infrastructure/services/email-templates';
 
 const memberInvitation: MinistryInvitationEmail = {
@@ -262,5 +263,82 @@ describe('prepareEmail — Church sender display name', () => {
     expect(request.from).toBe(
       '"Grace Bcc: victim@example.com" <hi@church.test>',
     );
+  });
+});
+
+describe('prepareEmail — password reset (T3)', () => {
+  const ptBR = { locale: 'pt-BR' } as const;
+  const appName = 'Igreja <Fé> & "Paz"';
+  const resetUrl = 'https://app.church.test/reset?token=a&b=1';
+  const prepare = () =>
+    prepareEmail({
+      payload: {
+        kind: 'auth.password-reset',
+        to: 'o"neil@example.com',
+        resetUrl,
+        linkLifetime: { minutes: 60 },
+      },
+      from: 'Church <hi@church.test>',
+      locale: 'pt-BR',
+      appName,
+    });
+
+  it('renders equivalent text and HTML with facts, ignore line, duration, action and reason footer', () => {
+    const { locale, request } = prepare();
+    const email = 'o"neil@example.com';
+    const duration = m.email_duration_minutes_other({ count: 60 }, ptBR);
+    const action = m.email_password_reset_action({}, ptBR);
+
+    expect(locale).toBe('pt-BR');
+    expect(request.subject).toBe(
+      m.email_password_reset_subject({ appName }, ptBR),
+    );
+    const facts = [
+      m.email_password_reset_body({ email }, ptBR),
+      m.email_password_reset_ignore({}, ptBR),
+      m.email_password_reset_expires({ duration }, ptBR),
+    ];
+    const footer = m.email_footer_password_reset({ email, appName }, ptBR);
+    for (const fact of facts) expect(request.text).toContain(fact);
+    expect(request.text).toContain(action);
+    expect(request.text).toContain(resetUrl);
+    expect(request.text).toContain(footer);
+    expect(request.html).toContain(escapeHtml(facts[2] as string));
+    expect(request.html).toContain(escapeHtml(action));
+    expect(request.html).toContain(escapeHtml(footer));
+  });
+
+  it('escapes the address, app name and URL once in HTML and is church-less', () => {
+    const { request, payload } = prepare();
+
+    expect(request.html).toContain('o&quot;neil@example.com');
+    expect(request.html).toContain(
+      'href="https://app.church.test/reset?token=a&amp;b=1"',
+    );
+    expect(request.html).not.toContain('&amp;amp;');
+    expect(request.html).not.toContain(appName);
+    expect(request.subject).toContain(appName);
+    expect(payload).not.toHaveProperty('churchName');
+  });
+
+  it('sends as the app from the configured mailbox, with no reply-to', () => {
+    const { request } = prepare();
+
+    expect(request.from).toBe('"Igreja <Fé> & \\"Paz\\"" <hi@church.test>');
+    expect(request).not.toHaveProperty('replyTo');
+  });
+
+  it('refuses to render without an app name', () => {
+    expect(() =>
+      prepareEmail({
+        payload: {
+          kind: 'auth.password-reset',
+          to: 'a@example.com',
+          resetUrl,
+          linkLifetime: { minutes: 60 },
+        },
+        from: 'hi@church.test',
+      }),
+    ).toThrow(/appName/);
   });
 });

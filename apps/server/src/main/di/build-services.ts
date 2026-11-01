@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { env } from '@church/env/server';
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
@@ -24,13 +25,14 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
   const isProduction = env.NODE_ENV === 'production';
   const captureEmailSender = isProduction
     ? undefined
-    : new CaptureEmailSender();
+    : new CaptureEmailSender(appConfig.appName);
   const emailSender =
     overrides.emailSender ??
     captureEmailSender ??
     new ResendEmailSender({
       apiKey: env.RESEND_API_KEY ?? '',
       from: env.RESEND_FROM_EMAIL,
+      appName: appConfig.appName,
     });
   const verificationCodeInspector =
     overrides.verificationCodeInspector ??

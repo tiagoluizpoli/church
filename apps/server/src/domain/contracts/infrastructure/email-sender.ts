@@ -38,6 +38,18 @@ export interface VerificationCodeEmail {
   codeLifetime: EmailDuration;
 }
 
+/**
+ * App-branded and church-less: sent to an address, never a Church Member.
+ * The caller (Spec 11) supplies the absolute reset URL and the lifetime from
+ * the policy that enforces the link.
+ */
+export interface PasswordResetEmail {
+  kind: 'auth.password-reset';
+  to: string;
+  resetUrl: string;
+  linkLifetime: EmailDuration;
+}
+
 export interface ChurchBootstrapInvitationEmail {
   kind: 'invitation.church-bootstrap';
   to: string;
@@ -114,6 +126,7 @@ export type EmailPayload =
   | SchedulePublishedEmail
   | MinistryInvitationEmail
   | VerificationCodeEmail
+  | PasswordResetEmail
   | ChurchBootstrapInvitationEmail
   | RedemptionAcceptedEmail
   | TransferMinistryDigestEmail

@@ -24,6 +24,7 @@ import {
   debugVerificationCodeResponseSchema,
   declineOutcomeResponseSchema,
   existingMemberOutcomeResponseSchema,
+  publicDeclineResponseSchema,
   rateLimitedResponseSchema,
   redeemNewUserBodySchema,
   redemptionOutcomeResponseSchema,
@@ -224,15 +225,26 @@ export class RedemptionController implements FastifyController {
           operationId: 'declineChurchInvitation',
           summary: 'Decline a Church Invitation',
           description:
-            'Decline a Church Invitation as its authenticated recipient, also declining a chained Ministry Invitation if one is paired with it.',
+            'Publicly decline a pending Church Invitation and any paired Ministry Invitation. Possession of the link authorizes it; no User or session is created.',
           params: redemptionParamsSchema,
           response: {
-            200: declineOutcomeResponseSchema,
-            401: unauthorizedResponseSchema,
+            200: publicDeclineResponseSchema,
+            404: unavailableRedemptionResponseSchema,
+            429: rateLimitedResponseSchema,
           },
         },
       },
-      this.handleDecline.bind(this),
+      async (request, reply) => {
+        if (this.isRateLimitedRequest({ key: request.ip }))
+          return refuse({ reply, request, code: 'RATE_LIMITED' });
+        const params = request.params as RedemptionParams;
+        const outcome = await this.redemptionManager.declineChurchInvitation({
+          churchInvitationId: ChurchInvitationId.from(params.invitationId),
+        });
+        if (outcome.kind === 'terminal-failure')
+          return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
+        return reply.send(outcome);
+      },
     );
 
     app.get(
@@ -435,8 +447,7 @@ export class RedemptionController implements FastifyController {
   }
 
   /**
-   * Shared by `/church/:invitationId/decline` and `/ministry/:invitationId/decline`
-   * — the invitation's own `kind`, not the URL used to reach it, decides
+   * Authenticated Ministry decline: the invitation's own `kind` decides
    * whether the chained pair is rejected alongside it (spec §7.3).
    */
   // named-parameters-ignore: Fastify route handler signature (request, reply); bound as a route handler

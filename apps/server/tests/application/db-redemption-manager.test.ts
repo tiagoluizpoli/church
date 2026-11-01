@@ -111,6 +111,9 @@ function createHarness({
       return VOLUNTEER_ID;
     },
     async declineMinistryInvitation() {},
+    async declineChurchInvitation() {
+      return 'declined' as const;
+    },
     recordChurchOnlyPartialAcceptance,
   };
   const unitOfWork: UnitOfWork = {

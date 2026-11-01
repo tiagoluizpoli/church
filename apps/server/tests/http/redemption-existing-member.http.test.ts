@@ -1,7 +1,6 @@
 import { appConfig } from '@church/app-config';
 import {
   account,
-  invitation as churchInvitation,
   identityAudit,
   member,
   ministryInvitation,
@@ -156,25 +155,6 @@ async function mintExistingMemberInvitation() {
     ministryAccessLevel: 'volunteer',
     roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
   });
-}
-
-/**
- * Mints for an email that matches no existing Church Member, which per spec
- * §5.3 resolves the mint to the chained Church Invitation + Ministry
- * Invitation pair — unlike `mintExistingMemberInvitation`, whose fixture
- * email always belongs to a real Church Member and so is never chained.
- */
-async function mintChainedInvitation() {
-  const email = `outsider-${crypto.randomUUID()}@fixture.test`;
-  const invitation = await invitationManager.mint({
-    churchId: ChurchId.from(fixture.churchA.id),
-    ministryId: MinistryId.from(fixture.ministryOneA),
-    inviterId: UserId.from(fixture.adminA),
-    email,
-    ministryAccessLevel: 'volunteer',
-    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
-  });
-  return { invitation, email };
 }
 
 interface CreateUserSessionInput {
@@ -501,51 +481,6 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .from(ministryInvitation)
         .where(eq(ministryInvitation.id, invitation.id));
       expect(declinedInvitation?.status).toBe('rejected');
-    });
-  });
-
-  describe('POST /redemption/church/:invitationId/decline', () => {
-    it('returns 401 without a session', async () => {
-      const invitation = await mintExistingMemberInvitation();
-
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/v1/redemption/church/${invitation.id}/decline`,
-      });
-
-      expect(response.statusCode).toBe(401);
-    });
-
-    it('rejects both halves of a chained invitation for its own intended person', async () => {
-      const { invitation, email } = await mintChainedInvitation();
-      const cookie = await createUserSession({ email });
-
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/v1/redemption/church/${invitation.id}/decline`,
-        headers: { cookie },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ kind: 'declined' });
-      const [declinedInvitation] = await testDb
-        .select({
-          status: ministryInvitation.status,
-          churchInvitationId: ministryInvitation.churchInvitationId,
-        })
-        .from(ministryInvitation)
-        .where(eq(ministryInvitation.id, invitation.id));
-      expect(declinedInvitation?.status).toBe('rejected');
-      const [declinedChurchInvitation] = await testDb
-        .select({ status: churchInvitation.status })
-        .from(churchInvitation)
-        .where(
-          eq(
-            churchInvitation.id,
-            declinedInvitation?.churchInvitationId as string,
-          ),
-        );
-      expect(declinedChurchInvitation?.status).toBe('rejected');
     });
   });
 

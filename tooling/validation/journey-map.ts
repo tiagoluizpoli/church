@@ -32,9 +32,15 @@ export const CRITICAL_SMOKE_SPEC_PATHS: string[] = [
 ];
 
 const REDEMPTION_SPEC_PATHS = [
-  'tests/identity/first-admin-onboarding.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
+];
+
+// The public Church Invitation join also serves the plain first-admin
+// invitation (J0→J1); the authenticated Ministry route does not.
+const CHURCH_INVITATION_SPEC_PATHS = [
+  'tests/identity/first-admin-onboarding.spec.ts',
+  ...REDEMPTION_SPEC_PATHS,
 ];
 
 const VOLUNTEER_TRANSFER_SPEC_PATHS = [
@@ -159,7 +165,7 @@ const PREPARE_ROUTE_FILES = [
 export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix: 'apps/web/src/routes/invitations/',
-    specPaths: REDEMPTION_SPEC_PATHS,
+    specPaths: CHURCH_INVITATION_SPEC_PATHS,
   },
   {
     sourcePathPrefix: 'apps/web/src/routes/_authenticated/invitations/',
@@ -167,7 +173,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     sourcePathPrefix: 'apps/web/src/infrastructure/api/redemption.ts',
-    specPaths: REDEMPTION_SPEC_PATHS,
+    specPaths: CHURCH_INVITATION_SPEC_PATHS,
   },
   {
     sourcePathPrefix: 'apps/web/src/routes/_authenticated/_active-church.tsx',
@@ -418,7 +424,10 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix:
       'apps/server/src/api/controllers/redemption-controller.ts',
-    specPaths: [...REDEMPTION_SPEC_PATHS, ...VOLUNTEER_TRANSFER_SPEC_PATHS],
+    specPaths: [
+      ...CHURCH_INVITATION_SPEC_PATHS,
+      ...VOLUNTEER_TRANSFER_SPEC_PATHS,
+    ],
   },
   {
     sourcePathPrefix:

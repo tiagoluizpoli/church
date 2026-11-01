@@ -153,7 +153,7 @@ describe('classifyChanges', () => {
     expect(plan.requiresFullE2e).toBe(false);
   });
 
-  it('selects both redemption journeys for a chained-invitation route change', () => {
+  it('selects the Church Invitation journeys for a public Church Invitation route change', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/invitations/church/$invitationId.tsx',
@@ -161,6 +161,7 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -236,7 +237,7 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects both redemption journeys and the transfer journey for the shared redemption controller', () => {
+  it('selects the Church Invitation and transfer journeys for the shared redemption controller', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/server/src/api/controllers/redemption-controller.ts',
@@ -244,6 +245,7 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
@@ -251,12 +253,13 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects both redemption journeys for a redemption API client change', () => {
+  it('selects the Church Invitation journeys for a redemption API client change', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/infrastructure/api/redemption.ts'],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -696,6 +699,7 @@ describe('classifyChanges', () => {
     expect(journeyRecipePlan.e2eSpecPaths).toEqual([
       'tests/identity/active-church-switching.spec.ts',
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+      'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/route-protection.spec.ts',

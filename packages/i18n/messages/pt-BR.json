@@ -257,5 +257,13 @@
   "span_duration_hours": "{hours} h",
   "span_duration_hours_minutes": "{hours} h {minutes} min",
   "span_runs": "Dura {duration}",
-  "span_runs_next_day": "Dura {duration} · termina no dia seguinte"
+  "span_runs_next_day": "Dura {duration} · termina no dia seguinte",
+  "redemption_try_again": "Tente novamente",
+  "redemption_failure_retryable_description": "Não conseguimos concluir sua entrada, e nada foi salvo. Tente novamente.",
+  "redemption_failure_code_title": "Esse código não funcionou",
+  "redemption_failure_code_description": "Peça um novo código e digite-o novamente para continuar.",
+  "redemption_failure_registered_title": "Este email já tem uma conta",
+  "redemption_failure_registered_description": "Este email já tem uma conta; fale com quem convidou você.",
+  "redemption_failure_unavailable_title": "Este convite não está mais disponível",
+  "redemption_failure_unavailable_description": "Ele pode ter expirado ou já ter sido usado. Peça um novo convite a quem convidou você."
 }

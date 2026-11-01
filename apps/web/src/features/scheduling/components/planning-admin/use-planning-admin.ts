@@ -42,10 +42,6 @@ interface ToggleTemplateSelectionInput {
   checked: boolean;
 }
 
-interface DeleteTemplateInput {
-  templateId: string;
-}
-
 export interface UsePlanningAdminResult {
   isAccessDenied: boolean;
   cycles: CycleSummary[];
@@ -61,7 +57,6 @@ export interface UsePlanningAdminResult {
   cycleDetailsLoading: boolean;
   canCreateCycle: boolean;
   createCyclePending: boolean;
-  deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
   sendCyclePending: boolean;
@@ -78,7 +73,6 @@ export interface UsePlanningAdminResult {
   handleSelectCycle: (input: SelectCycleInput) => void;
   handleToggleTemplateSelection: (input: ToggleTemplateSelectionInput) => void;
   handleCreateCycle: () => void;
-  handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
@@ -183,7 +177,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     cycleDetailsLoading: cycleDetailsQuery.isLoading,
     canCreateCycle: canCreateCycle({ cycleForm }),
     createCyclePending: mutationHandlers.createCyclePending,
-    deleteTemplatePending: mutationHandlers.deleteTemplatePending,
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,
     applyTemplatesError: mutationHandlers.applyTemplatesError,
     sendCyclePending: mutationHandlers.sendCyclePending,
@@ -214,7 +207,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
             ),
       ),
     handleCreateCycle: mutationHandlers.handleCreateCycle,
-    handleDeleteTemplate: mutationHandlers.handleDeleteTemplate,
     handleApplyTemplates: mutationHandlers.handleApplyTemplates,
     handleSendCycle: mutationHandlers.handleSendCycle,
     handleUpdateEvent: mutationHandlers.handleUpdateEvent,

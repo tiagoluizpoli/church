@@ -1,4 +1,3 @@
-import { m } from '@church/i18n/messages';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { type Dispatch, type SetStateAction, useCallback } from 'react';
@@ -24,10 +23,6 @@ export interface UsePlanningAdminMutationsProps {
 
 export interface ApplyTemplatesOptions {
   onSuccess?: () => void;
-}
-
-interface DeleteTemplateInput {
-  templateId: string;
 }
 
 export interface UpdateEventInput {
@@ -117,7 +112,6 @@ function usePlanningMutation<TVariables, TResult>({
 
 export interface UsePlanningAdminMutationsResult {
   createCyclePending: boolean;
-  deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
   sendCyclePending: boolean;
@@ -128,7 +122,6 @@ export interface UsePlanningAdminMutationsResult {
   deleteEventTimeBlockPending: boolean;
   resetApplyTemplates: () => void;
   handleCreateCycle: () => void;
-  handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleSendCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
@@ -162,14 +155,6 @@ export function usePlanningAdminMutations({
       setCycleErrorMessage(message);
       toast.error(message);
     },
-    queryClient,
-  });
-
-  const deleteTemplate = usePlanningMutation({
-    mutationFn: (templateId: string) =>
-      adminApi.deleteEventTemplate(templateId),
-    invalidateQueryKeys: [['planning-templates']],
-    successMessage: m.event_templates_deleted_toast(),
     queryClient,
   });
 
@@ -263,10 +248,6 @@ export function usePlanningAdminMutations({
     });
   }
 
-  function handleDeleteTemplate({ templateId }: DeleteTemplateInput) {
-    deleteTemplate.mutate(templateId);
-  }
-
   function handleApplyTemplates(options?: ApplyTemplatesOptions) {
     if (selectedCycleId) {
       applyTemplates.mutate(selectedCycleId, {
@@ -309,7 +290,6 @@ export function usePlanningAdminMutations({
 
   return {
     createCyclePending: createCycle.isPending,
-    deleteTemplatePending: deleteTemplate.isPending,
     applyTemplatesPending: applyTemplates.isPending,
     applyTemplatesError: applyTemplates.error
       ? getErrorMessage({ error: applyTemplates.error })
@@ -322,7 +302,6 @@ export function usePlanningAdminMutations({
     deleteEventTimeBlockPending: deleteEventTimeBlock.isPending,
     resetApplyTemplates,
     handleCreateCycle,
-    handleDeleteTemplate,
     handleApplyTemplates,
     handleSendCycle,
     handleUpdateEvent,

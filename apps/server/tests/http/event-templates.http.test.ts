@@ -884,6 +884,74 @@ describe('PATCH /event-templates/:templateId identity', () => {
   });
 });
 
+function del(templateId: string) {
+  return app.inject({
+    method: 'DELETE',
+    url: `/api/v1/admin/event-templates/${templateId}`,
+  });
+}
+
+describe('DELETE /event-templates/:templateId', () => {
+  it('removes the template, blocks and their Usual setup, clears generated source links and keeps staffing and other data', async () => {
+    await seedEditGraph();
+    const countOf = async (
+      table: typeof shift | typeof shiftRequirement | typeof assignment,
+    ) => (await schedulingTestDb.select().from(table)).length;
+    const before = {
+      events: await schedulingTestDb.select().from(event),
+      etbs: await schedulingTestDb.select().from(eventTimeBlock),
+      shifts: await countOf(shift),
+      requirements: await countOf(shiftRequirement),
+      assignments: await countOf(assignment),
+    };
+    expect(before.events.some((e) => e.sourceTemplateId === ids.template)).toBe(
+      true,
+    );
+
+    const res = await del(ids.template);
+
+    expect(res.statusCode).toBe(204);
+    const templates = await schedulingTestDb.select().from(eventTemplate);
+    expect(templates.map((t) => t.id).sort()).toEqual(
+      [ids.sibling, ids.foreign].sort(),
+    );
+    expect((await blockRows()).map((b) => b.id).sort()).toEqual(
+      [ids.siblingBlock, ids.foreignBlock].sort(),
+    );
+    expect(await setupRows()).toEqual([]);
+    const events = await schedulingTestDb.select().from(event);
+    expect(events).toHaveLength(before.events.length);
+    expect(events.every((e) => e.sourceTemplateId === null)).toBe(true);
+    const etbs = await schedulingTestDb.select().from(eventTimeBlock);
+    expect(etbs).toHaveLength(before.etbs.length);
+    expect(etbs.every((b) => b.sourceTemplateTimeBlockId === null)).toBe(true);
+    expect(
+      etbs.map(({ sourceTemplateTimeBlockId: _s, ...rest }) => rest),
+    ).toEqual(
+      before.etbs.map(({ sourceTemplateTimeBlockId: _s, ...rest }) => rest),
+    );
+    expect(await countOf(shift)).toBe(before.shifts);
+    expect(await countOf(shiftRequirement)).toBe(before.requirements);
+    expect(await countOf(assignment)).toBe(before.assignments);
+  });
+
+  it('answers the same 404 for a missing, malformed and foreign-Church target and changes nothing', async () => {
+    await seedEditGraph();
+    const before = await storedState();
+
+    const responses = await Promise.all(
+      [crypto.randomUUID(), 'not-a-uuid', ids.foreign].map(del),
+    );
+
+    for (const res of responses) {
+      expect(res.statusCode).toBe(404);
+      expect(res.json().error).toBe('NOT_FOUND');
+    }
+    expect(new Set(responses.map((r) => r.json().message)).size).toBe(1);
+    expect(await storedState()).toEqual(before);
+  });
+});
+
 describe('GET /event-templates and authorization', () => {
   it('lists the Active Church templates alphabetically, ignoring case, without foreign templates', async () => {
     const seed = await signIn();
@@ -917,6 +985,7 @@ describe('GET /event-templates and authorization', () => {
 
     expect((await list()).statusCode).toBe(401);
     expect((await post(body())).statusCode).toBe(401);
+    expect((await del(ids.template)).statusCode).toBe(401);
   });
 
   it('answers 403 to a signed-in member without ChurchAdmin authority and writes nothing', async () => {
@@ -926,6 +995,7 @@ describe('GET /event-templates and authorization', () => {
     expect((await post(body())).statusCode).toBe(403);
     expect((await getDetail(ids.template)).statusCode).toBe(403);
     expect((await getUsage(ids.template)).statusCode).toBe(403);
+    expect((await del(ids.template)).statusCode).toBe(403);
     expect(
       (await patch({ templateId: ids.template, payload: body() })).statusCode,
     ).toBe(403);

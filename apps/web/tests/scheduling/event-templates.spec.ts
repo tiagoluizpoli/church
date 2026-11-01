@@ -5,9 +5,9 @@ import { loadEventTemplatesJourney } from '@/tests/fixtures/journeys/event-templ
 
 test.use({ viewport: { width: 767, height: 1200 } });
 
-// J3 (Spec 13): list → create → edit. Delete joins this journey with its own
-// ticket; the persistence and permission matrix stays in HTTP tests.
-test('church admin lists Event templates, creates an overnight one and edits it on nested pages', async ({
+// J3 (Spec 13): list → create → edit → confirm delete. The persistence and
+// permission matrix stays in HTTP tests.
+test('church admin lists Event templates, creates an overnight one, edits it on nested pages and deletes it after confirmation', async ({
   page,
 }, testInfo) => {
   const journey = loadEventTemplatesJourney({ testInfo });
@@ -94,4 +94,23 @@ test('church admin lists Event templates, creates an overnight one and edits it 
     .filter({ hasText: renamed });
   await expect(editedRow).toBeVisible();
   await expect(editedRow).toContainText(/sexta-feira · 2 blocos/i);
+
+  // Delete from the edit page: confirmation first, then gone from the list.
+  await editedRow.getByTestId('edit-template-button').click();
+  await page.getByTestId('delete-template-button').click();
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Excluir este modelo?',
+  });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('template-name-input')).toHaveValue(renamed);
+
+  await page.getByTestId('delete-template-button').click();
+  await dialog.getByTestId('confirm-template-delete-button').click();
+
+  await expect(page).toHaveURL(/\/event-templates$/);
+  await expect(
+    page.getByTestId('saved-template-row').filter({ hasText: renamed }),
+  ).toHaveCount(0);
 });

@@ -109,25 +109,6 @@ export function useCycleListCard(): CycleListCardModel {
   };
 }
 
-export type TemplateManagerCardModel = Pick<
-  UsePlanningAdminResult,
-  | 'templates'
-  | 'templatesLoading'
-  | 'deleteTemplatePending'
-  | 'handleDeleteTemplate'
->;
-
-export function useTemplateManagerCard(): TemplateManagerCardModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    templates: context.templates,
-    templatesLoading: context.templatesLoading,
-    deleteTemplatePending: context.deleteTemplatePending,
-    handleDeleteTemplate: context.handleDeleteTemplate,
-  };
-}
-
 export type TemplateApplyDialogModel = Pick<
   UsePlanningAdminResult,
   | 'templates'

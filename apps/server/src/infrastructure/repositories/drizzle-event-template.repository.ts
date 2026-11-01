@@ -268,15 +268,25 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
 
   async delete(input: DeleteEventTemplateInput): Promise<void> {
     const db = getClient({ db: this.db, tx: input.tx });
-    await db.delete(eventTemplate).where(
-      and(
-        eq(eventTemplate.id, input.templateId),
-        withChurchIsolation({
-          table: eventTemplate,
-          churchId: input.churchId,
-        }),
-      ),
-    );
+    if (!isValidUuid(input.templateId)) {
+      throw new NotFoundError(`Event template not found: ${input.templateId}`);
+    }
+    // One statement: blocks and setup cascade, generated-source links SET NULL.
+    const deleted = await db
+      .delete(eventTemplate)
+      .where(
+        and(
+          eq(eventTemplate.id, input.templateId),
+          withChurchIsolation({
+            table: eventTemplate,
+            churchId: input.churchId,
+          }),
+        ),
+      )
+      .returning({ id: eventTemplate.id });
+    if (deleted.length === 0) {
+      throw new NotFoundError(`Event template not found: ${input.templateId}`);
+    }
   }
 
   async list(input: ListEventTemplatesInput): Promise<EventTemplate[]> {

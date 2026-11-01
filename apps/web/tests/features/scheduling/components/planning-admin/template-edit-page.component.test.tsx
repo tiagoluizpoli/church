@@ -9,6 +9,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const getEventTemplate = vi.fn();
 const getEventTemplateUsage = vi.fn();
 const updateEventTemplate = vi.fn();
+const deleteEventTemplate = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
 
@@ -18,6 +19,7 @@ vi.mock('@/utils/api-instances', () => ({
     getEventTemplateUsage: (...args: unknown[]) =>
       getEventTemplateUsage(...args),
     updateEventTemplate: (...args: unknown[]) => updateEventTemplate(...args),
+    deleteEventTemplate: (...args: unknown[]) => deleteEventTemplate(...args),
   },
 }));
 vi.mock('sonner', () => ({
@@ -83,6 +85,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   getEventTemplate.mockResolvedValue(template);
   updateEventTemplate.mockResolvedValue(template);
+  deleteEventTemplate.mockResolvedValue(undefined);
+  getEventTemplateUsage.mockResolvedValue({
+    templateId: 'template-1',
+    ministryCount: 2,
+    blocks: [],
+  });
 });
 
 async function renderLoaded() {
@@ -98,6 +106,38 @@ async function removeVigil(user: ReturnType<typeof userEvent.setup>) {
     within(vigilRow as HTMLElement).getByRole('button', { name: 'Remover' }),
   );
 }
+
+describe('TemplateEditPage delete', () => {
+  it('confirms from the edit page keeping the draft on cancel, then deletes and returns to the list', async () => {
+    const user = await renderLoaded();
+    await user.type(screen.getByTestId('template-name-input'), ' 2');
+
+    await user.click(screen.getByTestId('delete-template-button'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(deleteEventTemplate).not.toHaveBeenCalled();
+    expect(
+      await within(dialog).findByText(
+        'A configuração padrão de 2 ministérios será removida.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(deleteEventTemplate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('template-name-input')).toHaveValue('Sunday 2');
+
+    await user.click(screen.getByTestId('delete-template-button'));
+    await user.click(
+      await screen.findByTestId('confirm-template-delete-button'),
+    );
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: '/event-templates' }),
+    );
+    expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
+    expect(toastSuccess).toHaveBeenCalledWith('Modelo excluído');
+  });
+});
 
 describe('TemplateEditPage', () => {
   it('prefills from its own detail read and saves a rename without a usage read, keeping block ids', async () => {

@@ -34,6 +34,11 @@ const listCycles = vi.fn().mockResolvedValue({ cycles: [] });
 const listEventTemplates = vi.fn();
 const getCycle = vi.fn();
 const deleteEventTemplate = vi.fn().mockResolvedValue(undefined);
+const getEventTemplateUsage = vi.fn().mockResolvedValue({
+  templateId: 'template-1',
+  ministryCount: 0,
+  blocks: [],
+});
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -41,6 +46,8 @@ vi.mock('@/utils/api-instances', () => ({
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
     getCycle: (...args: unknown[]) => getCycle(...args),
     deleteEventTemplate: (...args: unknown[]) => deleteEventTemplate(...args),
+    getEventTemplateUsage: (...args: unknown[]) =>
+      getEventTemplateUsage(...args),
   },
 }));
 
@@ -105,7 +112,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
   });
 
-  it('deletes a template from the table row action', async () => {
+  it('opens a confirmation from the table row action without deleting', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
         {
@@ -125,7 +132,10 @@ describe('TemplateManagerCard table view (US1)', () => {
 
     await user.click(within(row).getByRole('button', { name: 'Excluir' }));
 
-    expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Excluir este modelo?' }),
+    ).toBeInTheDocument();
+    expect(deleteEventTemplate).not.toHaveBeenCalled();
   });
 
   it('renders the Delete action with destructive styling, distinct from Edit', async () => {
@@ -185,7 +195,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
   });
 
-  it('deletes a template from the mobile card action', async () => {
+  it('opens a confirmation from the mobile card action without deleting', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
         {
@@ -203,7 +213,8 @@ describe('TemplateManagerCard table view (US1)', () => {
     const mobileRow = await screen.findByTestId('saved-template-row');
     await user.click(within(mobileRow).getByTestId('delete-template-button'));
 
-    expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    expect(deleteEventTemplate).not.toHaveBeenCalled();
   });
 
   it('shows the empty state with a New template action instead of an empty table', async () => {

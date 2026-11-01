@@ -1,9 +1,11 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
+import { useState } from 'react';
 import type { PlanningTemplateSummary } from './planning-admin.types';
 import { TemplateBlockRemovalDialog } from './template-block-removal-dialog';
+import { TemplateDeleteDialog } from './template-delete-dialog';
 import { TemplateEditorForm } from './template-editor-form';
 import { templateDetailQueryKey, useEditTemplate } from './use-edit-template';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -20,15 +22,31 @@ export interface TemplateEditPageProps {
   templateId: string;
 }
 
-function BackToListLink() {
+interface EditActionsProps {
+  disabled: boolean;
+  onDelete: () => void;
+}
+
+function EditActions({ disabled, onDelete }: EditActionsProps) {
   return (
-    <Link
-      to="/event-templates"
-      data-testid="cancel-template-button"
-      className={buttonVariants({ variant: 'outline' })}
-    >
-      {m.event_templates_cancel()}
-    </Link>
+    <>
+      <Link
+        to="/event-templates"
+        data-testid="cancel-template-button"
+        className={buttonVariants({ variant: 'outline' })}
+      >
+        {m.event_templates_cancel()}
+      </Link>
+      <Button
+        type="button"
+        variant="destructive"
+        disabled={disabled}
+        data-testid="delete-template-button"
+        onClick={onDelete}
+      >
+        {m.event_templates_delete()}
+      </Button>
+    </>
   );
 }
 
@@ -106,6 +124,8 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
     onCancelRemoval,
     ...editor
   } = useEditTemplate({ template });
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
 
   return (
     <>
@@ -129,7 +149,22 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
           </Button>
         </div>
       ) : null}
-      <TemplateEditorForm {...editor} actions={<BackToListLink />} />
+      <TemplateEditorForm
+        {...editor}
+        actions={
+          <EditActions
+            disabled={editor.pending}
+            onDelete={() => setDeleting(true)}
+          />
+        }
+      />
+      {deleting ? (
+        <TemplateDeleteDialog
+          templateId={template.id}
+          onClose={() => setDeleting(false)}
+          onDeleted={() => navigate({ to: '/event-templates' })}
+        />
+      ) : null}
       <TemplateBlockRemovalDialog
         blocks={confirmation ?? []}
         open={confirmation !== null}

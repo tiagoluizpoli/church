@@ -2,9 +2,10 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import type { TemplateLibraryTableRow } from './planning-admin.types';
 import { toTemplateLibraryTableRow } from './planning-admin.utils';
-import { useTemplateManagerCard } from './planning-admin-context';
+import { TemplateDeleteDialog } from './template-delete-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -26,16 +27,13 @@ function templateTableColumns(): DataTableColumn[] {
 }
 
 export function TemplateManagerCard() {
-  // The list reads the shared template query itself so it can offer retry; the
-  // planning-admin context supplies only the legacy delete action.
   const templatesQuery = useQuery({
     queryKey: ['planning-templates'],
     queryFn: () => adminApi.listEventTemplates(),
     retry: false,
   });
   const templates = templatesQuery.data?.templates ?? [];
-  const { deleteTemplatePending, handleDeleteTemplate } =
-    useTemplateManagerCard();
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const rows: TemplateLibraryTableRow[] = templates.map((template) =>
     toTemplateLibraryTableRow({ template, locale: getLocale() }),
@@ -113,10 +111,7 @@ export function TemplateManagerCard() {
                       type="button"
                       size="xs"
                       variant="destructive"
-                      disabled={deleteTemplatePending}
-                      onClick={() =>
-                        handleDeleteTemplate({ templateId: item.id })
-                      }
+                      onClick={() => setDeleteTargetId(item.id)}
                     >
                       {m.event_templates_delete()}
                     </Button>
@@ -152,10 +147,7 @@ export function TemplateManagerCard() {
                     size="xs"
                     variant="destructive"
                     data-testid="delete-template-button"
-                    disabled={deleteTemplatePending}
-                    onClick={() =>
-                      handleDeleteTemplate({ templateId: item.id })
-                    }
+                    onClick={() => setDeleteTargetId(item.id)}
                   >
                     {m.event_templates_delete()}
                   </Button>
@@ -164,6 +156,13 @@ export function TemplateManagerCard() {
             )}
           />
         )}
+        {deleteTargetId ? (
+          <TemplateDeleteDialog
+            templateId={deleteTargetId}
+            onClose={() => setDeleteTargetId(null)}
+            onDeleted={() => setDeleteTargetId(null)}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );

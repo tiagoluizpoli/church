@@ -90,6 +90,17 @@ export interface GetTransferDigestDetailsInput {
   ministryId: MinistryId;
   volunteerId: VolunteerId;
   correlationId: string;
+  /** The digest's one recipient, for the greeting. */
+  recipientUserId: UserId;
+}
+
+/** One withdrawn Assignment as its actual Shift, never its EventTimeBlock. */
+export interface WithdrawnShift {
+  startsAt: Date;
+  endsAt: Date;
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
 }
 
 /**
@@ -100,9 +111,13 @@ export interface GetTransferDigestDetailsInput {
  * duplicated onto the outbox row itself.
  */
 export interface TransferDigestDetails {
+  /** The former Church — the destination is never read. */
+  churchName: string;
+  churchTimezone: string;
+  recipientName: string;
   ministryName: string;
   volunteerName: string;
-  withdrawnAssignments: WithdrawnAssignmentPreview[];
+  withdrawnAssignments: WithdrawnShift[];
 }
 
 export interface VolunteerTransferRepository {

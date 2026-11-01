@@ -65,7 +65,7 @@ describe('composition root', () => {
   });
 
   it('reads the debug code back from an overridden capture email sender', async () => {
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await emailSender.send({
       payload: {
         kind: 'invitation.verification-code',

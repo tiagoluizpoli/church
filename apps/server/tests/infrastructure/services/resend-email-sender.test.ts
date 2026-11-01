@@ -48,19 +48,27 @@ function buildBootstrapPayload(): ChurchBootstrapInvitationEmail {
   };
 }
 
+const digestFacts = {
+  churchName: 'Grace Church',
+  churchTimezone: 'UTC',
+  recipientFirstName: 'Sam',
+  ministryName: 'Hospitality',
+  volunteerName: 'Jamie Rivera',
+  actionUrl: 'https://app.church.test/schedules',
+};
+
 function buildDigestPayload(): TransferMinistryDigestEmail {
   return {
     kind: 'transfer.ministry-digest',
     to: ['leader-one@example.com', 'leader-two@example.com'],
-    ministryName: 'Hospitality',
-    volunteerName: 'Jamie Rivera',
+    ...digestFacts,
     withdrawnAssignments: [
       {
-        eventName: 'Sunday Gathering',
-        eventTimeBlockStart: fromDate({
-          date: new Date('2026-09-20T10:00:00Z'),
-        }),
+        startsAt: fromDate({ date: new Date('2026-09-20T10:00:00Z') }),
+        endsAt: fromDate({ date: new Date('2026-09-20T11:00:00Z') }),
+        eventTitle: 'Sunday Gathering',
         roleName: 'Greeter',
+        sectorName: 'Lobby',
       },
     ],
   };
@@ -70,8 +78,7 @@ function buildLeaderlessPayload(): TransferLeaderlessMinistryEmail {
   return {
     kind: 'transfer.leaderless-ministry',
     to: ['admin@example.com'],
-    ministryName: 'Hospitality',
-    volunteerName: 'Jamie Rivera',
+    ...digestFacts,
     withdrawnAssignments: [],
   };
 }
@@ -85,13 +92,18 @@ describe('ResendEmailSender', () => {
     return new ResendEmailSender({
       apiKey: 'test-key',
       from: 'Church <hi@church.test>',
+      appName: 'Church',
     });
   }
 
   it('refuses to construct without an API key', () => {
     expect(
       () =>
-        new ResendEmailSender({ apiKey: '', from: 'Church <hi@church.test>' }),
+        new ResendEmailSender({
+          apiKey: '',
+          from: 'Church <hi@church.test>',
+          appName: 'Church',
+        }),
     ).toThrow(/RESEND_API_KEY/);
   });
 
@@ -126,6 +138,29 @@ describe('ResendEmailSender', () => {
     expect(result).toEqual({ providerMessageId: 'email-1' });
   });
 
+  it('delivers the password reset with its text alternative, no reply-to', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email-pr' }, error: null });
+    const sender = makeSender();
+
+    await sender.send({
+      payload: {
+        kind: 'auth.password-reset',
+        to: 'user@example.com',
+        resetUrl: 'https://app.church.test/reset?token=t',
+        linkLifetime: { minutes: 60 },
+      },
+      locale: 'en',
+    });
+
+    const request = sendMock.mock.calls[0]?.[0];
+    expect(request).toMatchObject({
+      from: '"Church" <hi@church.test>',
+      to: 'user@example.com',
+      text: expect.stringContaining('https://app.church.test/reset?token=t'),
+    });
+    expect(request).not.toHaveProperty('replyTo');
+  });
+
   it('composes a bootstrap email with no ministry content', async () => {
     sendMock.mockResolvedValue({ data: { id: 'email-2' }, error: null });
     const sender = makeSender();
@@ -148,6 +183,9 @@ describe('ResendEmailSender', () => {
         to: ['leader-one@example.com', 'leader-two@example.com'],
         subject: expect.stringContaining('Hospitality'),
         html: expect.stringContaining('Greeter'),
+        text: expect.stringContaining(
+          'Sun 20/09 · 10:00–11:00 · Sunday Gathering · Greeter · Lobby',
+        ),
       }),
     );
     // The destination Church is never named (spec §8.8).
@@ -163,8 +201,10 @@ describe('ResendEmailSender', () => {
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: ['admin@example.com'],
-        subject: expect.stringContaining('no active leader'),
-        html: expect.stringContaining('Jamie Rivera'),
+        subject: expect.stringContaining('Jamie Rivera'),
+        text: expect.stringContaining(
+          'The Hospitality ministry now has no leader.',
+        ),
       }),
     );
   });

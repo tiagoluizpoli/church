@@ -28,8 +28,15 @@ export class CaptureEmailSender
   readonly delivered: ReplayableEmail[] = [];
   private readonly seenKeys = new Set<string>();
 
+  constructor(private readonly appName: string) {}
+
   prepare({ payload, locale }: PrepareEmailInput): ReplayableEmail {
-    return prepareEmail({ payload, locale, from: CAPTURE_FROM });
+    return prepareEmail({
+      payload,
+      locale,
+      from: CAPTURE_FROM,
+      appName: this.appName,
+    });
   }
 
   async send({ payload, locale }: SendEmailInput): Promise<SendEmailResult> {

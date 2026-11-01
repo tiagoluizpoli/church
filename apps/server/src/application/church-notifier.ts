@@ -83,13 +83,7 @@ function transferDigestEmail({
   data,
   address,
 }: TransferDigestEmailInput): EmailPayload {
-  return {
-    kind,
-    to: [address.email],
-    ministryName: data.ministryName,
-    volunteerName: data.volunteerName,
-    withdrawnAssignments: data.withdrawnAssignments,
-  };
+  return { kind, to: [address.email], ...data };
 }
 
 export interface BuildChurchNotifierInput {

@@ -235,7 +235,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('persists the exact prepared request, stable key and first-attempt Instant before the first attempt', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: true });
 
     await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
@@ -256,7 +256,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('resends the stored content after a Ministry rename, under the same key', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: true });
     const drainer = buildDrainer({ emailSender });
     await drainer.drainOnce({ limit: 10 });
@@ -286,7 +286,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('replays a saved html-only request exactly as stored, without adding text', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: true });
     const drainer = buildDrainer({ emailSender });
     await drainer.drainOnce({ limit: 10 });
@@ -323,7 +323,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('captures one email when an ambiguous attempt is replayed', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'after-provider', retryable: true });
     const drainer = buildDrainer({ emailSender });
     await drainer.drainOnce({ limit: 10 });
@@ -364,7 +364,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('fails terminally once retryable failures exhaust the configured attempts', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     const drainer = buildDrainer({ emailSender });
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       emailSender.queueFailure({ mode: 'before-provider', retryable: true });
@@ -383,7 +383,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('fails terminally on a non-retryable provider error, such as a payload mismatch', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: false });
 
     await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
@@ -393,7 +393,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('retries an ambiguous attempt just inside the retention window', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'after-provider', retryable: true });
     const drainer = buildDrainer({ emailSender });
     await drainer.drainOnce({ limit: 10 });
@@ -407,7 +407,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
   it('refuses an ambiguous attempt at the retention boundary, without a new key', async () => {
     await mintFor({ email: memberEmail() });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'after-provider', retryable: true });
     const drainer = buildDrainer({ emailSender });
     await drainer.drainOnce({ limit: 10 });
@@ -427,7 +427,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
   it('keeps delivering the other claimed rows when one delivery fails', async () => {
     await mintFor({ email: memberEmail() });
     await mintFor({ email: 'outsider@example.com' });
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: false });
 
     const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
@@ -1021,7 +1021,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('email fails, inbox succeeds: the retry sends one email and keeps the one inbox row and its read state', async () => {
     await inviteMember();
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'after-provider', retryable: true });
     const drainer = drainerFor({ emailSender });
 
@@ -1048,7 +1048,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('a terminal email failure fails the row without undoing the inbox delivery', async () => {
     const ministryInvitationId = await inviteMember();
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: false });
 
     const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
@@ -1089,7 +1089,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('a recipient who left before a retry gets no remaining delivery, even with a saved email', async () => {
     await inviteMember();
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: true });
     const drainer = drainerFor({ emailSender });
     await drainer.drainOnce({ limit: 10 });
@@ -1175,7 +1175,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
   it('keeps processing other rows after one row fails terminally', async () => {
     await inviteMember();
     await inviteMember();
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: false });
 
     const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });

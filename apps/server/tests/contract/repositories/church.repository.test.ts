@@ -50,6 +50,10 @@ class MockChurchRepository implements ChurchRepository {
   async findMemberContact(): Promise<null> {
     return null;
   }
+
+  async findMemberName(): Promise<string | null> {
+    return null;
+  }
 }
 
 runChurchRepositoryContractTests(

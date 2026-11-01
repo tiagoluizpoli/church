@@ -18,6 +18,8 @@ export interface MinistryInvitationEmail {
   ministryName: string;
   ministryAccessLevel: string;
   roleNames: string[];
+  /** Who sent the invitation; omitted when it cannot be resolved. */
+  inviterName?: string;
   expiresAt: Instant;
   /** The Church Timezone `expiresAt` is read in. */
   churchTimezone: string;
@@ -44,14 +46,10 @@ export interface ChurchBootstrapInvitationEmail {
   kind: 'invitation.church-bootstrap';
   to: string;
   churchName: string;
+  expiresAt: Instant;
+  /** The Church Timezone `expiresAt` is read in. */
+  churchTimezone: string;
   redemptionUrl: string;
-}
-
-export interface RedemptionAcceptedEmail {
-  kind: 'redemption.accepted';
-  to: string;
-  churchName: string;
-  ministryName: string;
 }
 
 /**
@@ -121,7 +119,6 @@ export type EmailPayload =
   | MinistryInvitationEmail
   | VerificationCodeEmail
   | ChurchBootstrapInvitationEmail
-  | RedemptionAcceptedEmail
   | TransferMinistryDigestEmail
   | TransferLeaderlessMinistryEmail;
 

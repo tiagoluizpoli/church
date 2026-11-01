@@ -4,7 +4,6 @@ import {
   ministryInvitation,
   ministryInvitationRole,
   ministryMembership,
-  outboxMessage,
   role,
   volunteer,
 } from '@church/db';
@@ -193,16 +192,6 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     if (!acceptedInvitation) {
       throw new PendingMinistryInvitationNotFoundError();
     }
-    await db.insert(outboxMessage).values({
-      churchId,
-      kind: 'redemption.accepted',
-      payload: {
-        ministryInvitationId,
-        volunteerId,
-      },
-      correlationId,
-      scheduledFor: acceptedAt,
-    });
     await db.insert(identityAudit).values({
       churchId,
       ministryInvitationId,

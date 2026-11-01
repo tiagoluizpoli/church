@@ -16,6 +16,8 @@ export interface ChurchRepository {
   findMemberContact(
     input: FindChurchMemberEmailInput,
   ): Promise<ChurchMemberContact | null>;
+  /** The User's display name while they hold Church Membership; `null` otherwise. */
+  findMemberName(input: FindChurchMemberEmailInput): Promise<string | null>;
 }
 
 export interface ChurchMemberContact {

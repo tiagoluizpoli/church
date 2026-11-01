@@ -15,10 +15,10 @@ import type {
 } from '../domain/contracts/application/outbox-drainer';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
+  EmailLocale,
   EmailPayload,
   EmailSender,
   MinistryInvitationEmail,
-  RedemptionAcceptedEmail,
 } from '../domain/contracts/infrastructure/email-sender';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
@@ -29,7 +29,6 @@ import type {
   OutboxEmailDelivery,
   OutboxMessage,
   OutboxRepository,
-  RedemptionAcceptedOutboxMessage,
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -50,6 +49,7 @@ import {
   hasExhaustedRetries,
   nextRetryAt,
 } from '../domain/services/outbox-retry-policy';
+import { recipientLocale } from '../domain/services/recipient-locale';
 import { webLink } from '../domain/services/web-link';
 import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
@@ -68,6 +68,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
   private readonly webBaseUrl: string;
+  private readonly defaultLocale: AppConfig['defaultLocale'];
 
   constructor({
     outboxRepository,
@@ -94,7 +95,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.schedulingFacts = schedulingFacts;
     this.unitOfWork = unitOfWork;
     this.webBaseUrl = webBaseUrl;
-    const { outbox } = config;
+    const { outbox, defaultLocale } = config;
+    this.defaultLocale = defaultLocale;
     this.outboxPolicy = outbox;
     this.emailIdempotencyRetentionMs = outbox.emailIdempotencyRetentionMs;
   }
@@ -126,8 +128,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     switch (message.kind) {
       case 'invitation.chained':
         return this.processInvitationMessage({ message });
-      case 'redemption.accepted':
-        return this.processRedemptionAcceptedMessage({ message });
       case 'notification':
         return this.processNotificationMessage({ message });
       case 'invitation.church-bootstrap':
@@ -158,7 +158,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return this.deliverEmail({ message, delivery: message.emailDelivery });
     }
 
-    const [church, ministry, email] = await Promise.all([
+    const [church, ministry, email, inviterName] = await Promise.all([
       this.churchRepository.getById({ id: message.churchId }),
       this.ministryRepository.getById({
         churchId: message.churchId,
@@ -166,6 +166,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       }),
       this.invitationRepository.resolveRecipientEmail({
         ministryInvitation: invitation,
+      }),
+      this.churchRepository.findMemberName({
+        id: message.churchId,
+        userId: invitation.inviterId,
       }),
     ]);
     const roles = await Promise.all(
@@ -181,6 +185,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
+      ...(inviterName === null ? {} : { inviterName }),
       expiresAt: invitation.expiresAt,
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -189,7 +194,18 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       }),
     };
 
-    return this.prepareAndDeliver({ message, payload });
+    return this.prepareAndDeliver({
+      message,
+      payload,
+      locale: this.localeFor({ email }),
+    });
+  }
+
+  private localeFor({ email }: LocaleForInput): EmailLocale {
+    return recipientLocale({
+      recipient: { email },
+      defaultLocale: this.defaultLocale,
+    });
   }
 
   /** The invitation's display facts, read now; `null` once it is no longer pending. */
@@ -410,42 +426,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     return 'sent';
   }
 
-  private async processRedemptionAcceptedMessage({
-    message,
-  }: ProcessRedemptionAcceptedMessageInput): Promise<'sent' | 'failed'> {
-    const invitation = await this.invitationRepository.findById({
-      churchId: message.churchId,
-      ministryInvitationId: message.payload.ministryInvitationId,
-    });
-    if (!invitation || invitation.status !== 'accepted') {
-      await this.failTerminally({
-        message,
-        reason: 'Invitation was not accepted',
-      });
-      return 'failed';
-    }
-    if (message.emailDelivery) {
-      return this.deliverEmail({ message, delivery: message.emailDelivery });
-    }
-    const [church, ministry, email] = await Promise.all([
-      this.churchRepository.getById({ id: message.churchId }),
-      this.ministryRepository.getById({
-        churchId: message.churchId,
-        id: invitation.ministryId,
-      }),
-      this.invitationRepository.resolveRecipientEmail({
-        ministryInvitation: invitation,
-      }),
-    ]);
-    const payload: RedemptionAcceptedEmail = {
-      kind: message.kind,
-      to: email,
-      churchName: church.name,
-      ministryName: ministry.name,
-    };
-    return this.prepareAndDeliver({ message, payload });
-  }
-
   /**
    * Fixes the email before its first attempt: the prepared request, the
    * row-derived key and the first-attempt Instant commit in their own short
@@ -454,9 +434,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private async prepareAndDeliver({
     message,
     payload,
+    locale,
   }: PrepareAndDeliverInput): Promise<'sent' | 'failed'> {
     const delivery: OutboxEmailDelivery = {
-      email: this.emailSender.prepare({ payload }),
+      email: this.emailSender.prepare({ payload, locale }),
       idempotencyKey: emailIdempotencyKeyFor({ message }),
       firstAttemptAt: now(),
     };
@@ -593,6 +574,10 @@ interface DbOutboxDrainerDependencies {
   webBaseUrl: string;
 }
 
+interface LocaleForInput {
+  email: string;
+}
+
 interface ProcessOneInput {
   message: OutboxMessage;
 }
@@ -624,13 +609,10 @@ interface ProcessNotificationMessageInput {
   message: NotificationOutboxMessage;
 }
 
-interface ProcessRedemptionAcceptedMessageInput {
-  message: RedemptionAcceptedOutboxMessage;
-}
-
 interface PrepareAndDeliverInput {
   message: OutboxMessage;
   payload: EmailPayload;
+  locale: EmailLocale;
 }
 
 interface DeliverEmailInput {

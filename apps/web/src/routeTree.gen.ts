@@ -34,6 +34,7 @@ import { Route as AuthenticatedActiveChurchSchedulesMinistryIdIndexRouteImport }
 import { Route as AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRouteImport } from './routes/_authenticated/_active-church/_planning-admin/event-templates/index'
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesIndexRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/index'
 import { Route as AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRouteImport } from './routes/_authenticated/_active-church/_planning-admin/event-templates/new'
+import { Route as AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRouteImport } from './routes/_authenticated/_active-church/_planning-admin/event-templates/$templateId'
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesNewRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/new'
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/$cycleId'
 import { Route as AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRouteImport } from './routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index'
@@ -183,6 +184,14 @@ const AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute =
     path: '/event-templates/new',
     getParentRoute: () => AuthenticatedActiveChurchPlanningAdminRoute,
   } as any)
+const AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute =
+  AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRouteImport.update(
+    {
+      id: '/event-templates/$templateId',
+      path: '/event-templates/$templateId',
+      getParentRoute: () => AuthenticatedActiveChurchPlanningAdminRoute,
+    } as any,
+  )
 const AuthenticatedActiveChurchPlanningAdminCyclesNewRoute =
   AuthenticatedActiveChurchPlanningAdminCyclesNewRouteImport.update({
     id: '/cycles/new',
@@ -229,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/schedules/': typeof AuthenticatedActiveChurchSchedulesIndexRoute
   '/cycles/$cycleId': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRoute
   '/cycles/new': typeof AuthenticatedActiveChurchPlanningAdminCyclesNewRoute
+  '/event-templates/$templateId': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute
   '/event-templates/new': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute
   '/cycles/': typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute
   '/event-templates/': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute
@@ -255,6 +265,7 @@ export interface FileRoutesByTo {
   '/schedules': typeof AuthenticatedActiveChurchSchedulesIndexRoute
   '/cycles/$cycleId': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRoute
   '/cycles/new': typeof AuthenticatedActiveChurchPlanningAdminCyclesNewRoute
+  '/event-templates/$templateId': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute
   '/event-templates/new': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute
   '/cycles': typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute
   '/event-templates': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute
@@ -287,6 +298,7 @@ export interface FileRoutesById {
   '/_authenticated/_active-church/schedules/': typeof AuthenticatedActiveChurchSchedulesIndexRoute
   '/_authenticated/_active-church/_planning-admin/cycles/$cycleId': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRoute
   '/_authenticated/_active-church/_planning-admin/cycles/new': typeof AuthenticatedActiveChurchPlanningAdminCyclesNewRoute
+  '/_authenticated/_active-church/_planning-admin/event-templates/$templateId': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute
   '/_authenticated/_active-church/_planning-admin/event-templates/new': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute
   '/_authenticated/_active-church/_planning-admin/cycles/': typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute
   '/_authenticated/_active-church/_planning-admin/event-templates/': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute
@@ -317,6 +329,7 @@ export interface FileRouteTypes {
     | '/schedules/'
     | '/cycles/$cycleId'
     | '/cycles/new'
+    | '/event-templates/$templateId'
     | '/event-templates/new'
     | '/cycles/'
     | '/event-templates/'
@@ -343,6 +356,7 @@ export interface FileRouteTypes {
     | '/schedules'
     | '/cycles/$cycleId'
     | '/cycles/new'
+    | '/event-templates/$templateId'
     | '/event-templates/new'
     | '/cycles'
     | '/event-templates'
@@ -374,6 +388,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_active-church/schedules/'
     | '/_authenticated/_active-church/_planning-admin/cycles/$cycleId'
     | '/_authenticated/_active-church/_planning-admin/cycles/new'
+    | '/_authenticated/_active-church/_planning-admin/event-templates/$templateId'
     | '/_authenticated/_active-church/_planning-admin/event-templates/new'
     | '/_authenticated/_active-church/_planning-admin/cycles/'
     | '/_authenticated/_active-church/_planning-admin/event-templates/'
@@ -565,6 +580,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRouteImport
       parentRoute: typeof AuthenticatedActiveChurchPlanningAdminRoute
     }
+    '/_authenticated/_active-church/_planning-admin/event-templates/$templateId': {
+      id: '/_authenticated/_active-church/_planning-admin/event-templates/$templateId'
+      path: '/event-templates/$templateId'
+      fullPath: '/event-templates/$templateId'
+      preLoaderRoute: typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRouteImport
+      parentRoute: typeof AuthenticatedActiveChurchPlanningAdminRoute
+    }
     '/_authenticated/_active-church/_planning-admin/cycles/new': {
       id: '/_authenticated/_active-church/_planning-admin/cycles/new'
       path: '/cycles/new'
@@ -599,6 +621,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedActiveChurchPlanningAdminRouteChildren {
   AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRoute: typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRoute
   AuthenticatedActiveChurchPlanningAdminCyclesNewRoute: typeof AuthenticatedActiveChurchPlanningAdminCyclesNewRoute
+  AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute: typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute
   AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute: typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute
   AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute: typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute
   AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute: typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute
@@ -610,6 +633,8 @@ const AuthenticatedActiveChurchPlanningAdminRouteChildren: AuthenticatedActiveCh
       AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRoute,
     AuthenticatedActiveChurchPlanningAdminCyclesNewRoute:
       AuthenticatedActiveChurchPlanningAdminCyclesNewRoute,
+    AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute:
+      AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateIdRoute,
     AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute:
       AuthenticatedActiveChurchPlanningAdminEventTemplatesNewRoute,
     AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute:

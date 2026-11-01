@@ -4,8 +4,25 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
+  Link: ({
+    children,
+    to,
+    params,
+    ...props
+  }: {
+    children: ReactNode;
+    to: string;
+    params?: { templateId: string };
+    className?: string;
+    'data-testid'?: string;
+  }) => (
+    <a
+      href={to.replace('$templateId', params?.templateId ?? '')}
+      className={props.className}
+      data-testid={props['data-testid']}
+    >
+      {children}
+    </a>
   ),
 }));
 
@@ -30,7 +47,7 @@ vi.mock('@/utils/api-instances', () => ({
 function render() {
   return renderWithProviders(
     <PlanningAdminProvider>
-      <TemplateManagerCard onEditTemplate={() => undefined} />
+      <TemplateManagerCard />
     </PlanningAdminProvider>,
   );
 }
@@ -79,9 +96,10 @@ describe('TemplateManagerCard table view (US1)', () => {
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
     expect(row).toHaveTextContent('Domingo');
     expect(row).toHaveTextContent('2');
-    expect(
-      within(row).getByRole('button', { name: 'Editar' }),
-    ).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: 'Editar' })).toHaveAttribute(
+      'href',
+      '/event-templates/template-1',
+    );
     expect(
       within(row).getByRole('button', { name: 'Excluir' }),
     ).toBeInTheDocument();
@@ -130,7 +148,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     expect(within(row).getByRole('button', { name: 'Excluir' })).toHaveClass(
       'text-destructive',
     );
-    expect(within(row).getByRole('button', { name: 'Editar' })).not.toHaveClass(
+    expect(within(row).getByRole('link', { name: 'Editar' })).not.toHaveClass(
       'text-destructive',
     );
   });
@@ -160,7 +178,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     const mobileRow = await screen.findByTestId('saved-template-row');
     expect(mobileRow).toHaveTextContent('Sunday Service');
     expect(
-      within(mobileRow).getByTestId('open-edit-template-dialog-button'),
+      within(mobileRow).getByTestId('edit-template-button'),
     ).toBeInTheDocument();
     expect(
       within(mobileRow).getByTestId('delete-template-button'),

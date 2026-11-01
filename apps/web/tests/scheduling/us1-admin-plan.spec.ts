@@ -220,22 +220,18 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page
     .getByTestId('saved-template-row')
     .filter({ hasText: sundayTemplateName })
-    .getByTestId('open-edit-template-dialog-button')
+    .getByTestId('edit-template-button')
     .click();
-  const editTemplateDialog = page.getByRole('dialog', {
-    name: 'Editar modelo',
-  });
-  await editTemplateDialog
-    .getByTestId('template-name-input')
-    .fill(sundayGatheringName);
-  await editTemplateDialog.getByTestId('create-template-button').click();
+  await expect(page.getByTestId('template-edit-page')).toBeVisible();
+  await page.getByTestId('template-name-input').fill(sundayGatheringName);
+  await page.getByTestId('create-template-button').click();
 
+  await expect(page).toHaveURL(/\/event-templates$/);
   await expect(
     page
       .getByTestId('saved-template-row')
       .filter({ hasText: sundayGatheringName }),
-  ).toBeVisible();
-  await expect(editTemplateDialog).not.toBeAttached();
+  ).toBeAttached();
 
   await page.goto(cycleReviewUrl);
   await page.getByTestId('open-apply-templates-dialog-button').click();

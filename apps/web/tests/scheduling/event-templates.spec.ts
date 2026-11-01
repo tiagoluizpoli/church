@@ -5,9 +5,9 @@ import { loadEventTemplatesJourney } from '@/tests/fixtures/journeys/event-templ
 
 test.use({ viewport: { width: 767, height: 1200 } });
 
-// J3, list → create segment (Spec 13). Edit and delete join this journey with
-// their own tickets.
-test('church admin lists Event templates, then creates an overnight one on the nested page', async ({
+// J3 (Spec 13): list → create → edit. Delete joins this journey with its own
+// ticket; the persistence and permission matrix stays in HTTP tests.
+test('church admin lists Event templates, creates an overnight one and edits it on nested pages', async ({
   page,
 }, testInfo) => {
   const journey = loadEventTemplatesJourney({ testInfo });
@@ -55,4 +55,43 @@ test('church admin lists Event templates, then creates an overnight one on the n
   await expect(
     page.getByTestId('saved-template-row').filter({ hasText: templateName }),
   ).toBeVisible();
+
+  // Edit: the nested page reads its own target, so a refresh keeps it.
+  await page
+    .getByTestId('saved-template-row')
+    .filter({ hasText: templateName })
+    .getByTestId('edit-template-button')
+    .click();
+  await expect(page).toHaveURL(/\/event-templates\/[0-9a-f-]+$/);
+  await page.reload();
+  const nameInput = page.getByTestId('template-name-input');
+  await expect(nameInput).toHaveValue(templateName);
+  await expect(
+    page.getByTestId('template-time-block-label-input').first(),
+  ).toHaveValue('Vigília');
+
+  const renamed = 'Vigília de sexta';
+  await nameInput.fill(renamed);
+  await page.getByTestId('template-weekday-select').click();
+  await page.getByTestId('template-weekday-option-5').click();
+  await page.getByTestId('add-template-time-block-button').click();
+  const added = page.getByTestId('template-time-block-row').nth(1);
+  await added.getByTestId('template-time-block-label-input').fill('Louvor');
+  await fillTimeOfDayField({
+    field: added.getByTestId('template-time-block-start-time-input'),
+    time: '20:00',
+  });
+  await fillTimeOfDayField({
+    field: added.getByTestId('template-time-block-end-time-input'),
+    time: '21:30',
+  });
+  await page.getByTestId('create-template-button').click();
+
+  // Retained blocks need no removal confirmation.
+  await expect(page).toHaveURL(/\/event-templates$/);
+  const editedRow = page
+    .getByTestId('saved-template-row')
+    .filter({ hasText: renamed });
+  await expect(editedRow).toBeVisible();
+  await expect(editedRow).toContainText(/sexta-feira · 2 blocos/i);
 });

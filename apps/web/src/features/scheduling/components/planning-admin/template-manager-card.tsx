@@ -16,14 +16,6 @@ import {
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { adminApi } from '@/utils/api-instances';
 
-interface TemplateManagerCardProps {
-  onEditTemplate: () => void;
-}
-
-interface StartEditTemplateInput {
-  templateId: string;
-}
-
 function templateTableColumns(): DataTableColumn[] {
   return [
     { id: 'name', name: m.event_templates_column_name(), isRowHeader: true },
@@ -33,31 +25,21 @@ function templateTableColumns(): DataTableColumn[] {
   ];
 }
 
-export function TemplateManagerCard({
-  onEditTemplate,
-}: TemplateManagerCardProps) {
+export function TemplateManagerCard() {
   // The list reads the shared template query itself so it can offer retry; the
-  // planning-admin context supplies only the legacy edit/delete actions.
+  // planning-admin context supplies only the legacy delete action.
   const templatesQuery = useQuery({
     queryKey: ['planning-templates'],
     queryFn: () => adminApi.listEventTemplates(),
     retry: false,
   });
   const templates = templatesQuery.data?.templates ?? [];
-  const {
-    deleteTemplatePending,
-    handleDeleteTemplate,
-    handleStartEditTemplate,
-  } = useTemplateManagerCard();
+  const { deleteTemplatePending, handleDeleteTemplate } =
+    useTemplateManagerCard();
 
   const rows: TemplateLibraryTableRow[] = templates.map((template) =>
     toTemplateLibraryTableRow({ template, locale: getLocale() }),
   );
-
-  function startEditTemplate({ templateId }: StartEditTemplateInput): void {
-    handleStartEditTemplate({ templateId });
-    onEditTemplate();
-  }
 
   return (
     <Card className="surface-panel">
@@ -117,14 +99,16 @@ export function TemplateManagerCard({
                 {column.id === 'blocks' ? item.blockCount : null}
                 {column.id === 'actions' ? (
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      onClick={() => startEditTemplate({ templateId: item.id })}
+                    <Link
+                      to="/event-templates/$templateId"
+                      params={{ templateId: item.id }}
+                      className={buttonVariants({
+                        size: 'xs',
+                        variant: 'outline',
+                      })}
                     >
                       {m.event_templates_edit()}
-                    </Button>
+                    </Link>
                     <Button
                       type="button"
                       size="xs"
@@ -152,15 +136,17 @@ export function TemplateManagerCard({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="outline"
-                    data-testid="open-edit-template-dialog-button"
-                    onClick={() => startEditTemplate({ templateId: item.id })}
+                  <Link
+                    to="/event-templates/$templateId"
+                    params={{ templateId: item.id }}
+                    data-testid="edit-template-button"
+                    className={buttonVariants({
+                      size: 'xs',
+                      variant: 'outline',
+                    })}
                   >
                     {m.event_templates_edit()}
-                  </Button>
+                  </Link>
                   <Button
                     type="button"
                     size="xs"

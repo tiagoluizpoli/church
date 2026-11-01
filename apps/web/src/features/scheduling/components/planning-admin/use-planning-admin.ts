@@ -1,4 +1,3 @@
-import type { TimeOfDay } from '@church/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
@@ -7,16 +6,11 @@ import type {
   CycleSummary,
   PlanningTemplateSummary,
   SelectedCycle,
-  TemplateFormState,
 } from './planning-admin.types';
 import {
   calculateTotalEventTimeBlocks,
   canCreateCycle,
-  canCreateTemplate,
   createEmptyCycleForm,
-  createEmptyTemplateForm,
-  createEmptyTemplateTimeBlock,
-  createTemplateFormFromTemplate,
   getSelectedCycleIdOrThrow,
   isForbiddenError,
 } from './planning-admin.utils';
@@ -43,34 +37,6 @@ interface CycleDateChangeInput {
   date: string;
 }
 
-interface TemplateNameChangeInput {
-  name: string;
-}
-
-interface TemplateWeekdayChangeInput {
-  weekday: string;
-}
-
-interface TemplateTimeBlockLabelChangeInput {
-  blockId: string;
-  field: 'label';
-  value: string;
-}
-
-interface TemplateTimeBlockTimeChangeInput {
-  blockId: string;
-  field: 'startTime' | 'endTime';
-  value: TimeOfDay;
-}
-
-type TemplateTimeBlockChangeInput =
-  | TemplateTimeBlockLabelChangeInput
-  | TemplateTimeBlockTimeChangeInput;
-
-interface RemoveTemplateTimeBlockInput {
-  blockId: string;
-}
-
 interface ToggleTemplateSelectionInput {
   templateId: string;
   checked: boolean;
@@ -80,31 +46,21 @@ interface DeleteTemplateInput {
   templateId: string;
 }
 
-interface StartEditTemplateInput {
-  templateId: string;
-}
-
 export interface UsePlanningAdminResult {
   isAccessDenied: boolean;
   cycles: CycleSummary[];
   templates: PlanningTemplateSummary[];
   selectedCycleId: string | null;
   selectedCycle: SelectedCycle | null;
-  editingTemplateId: string | null;
   cycleEvents: CycleEventGroup[];
   totalEventTimeBlocks: number;
   cycleForm: CycleFormState;
-  templateForm: TemplateFormState;
   cycleErrorMessage: string | null;
   cyclesLoading: boolean;
   templatesLoading: boolean;
   cycleDetailsLoading: boolean;
   canCreateCycle: boolean;
-  canCreateTemplate: boolean;
   createCyclePending: boolean;
-  createTemplatePending: boolean;
-  updateTemplatePending: boolean;
-  saveTemplatePending: boolean;
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
@@ -114,24 +70,14 @@ export interface UsePlanningAdminResult {
   createEventTimeBlockPending: boolean;
   updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  templateSaveSuccessCount: number;
   selectedTemplateIds: string[];
   resetApplyTemplates: () => void;
   handleCycleNameChange: (input: CycleNameChangeInput) => void;
   handleCycleStartDateChange: (input: CycleDateChangeInput) => void;
   handleCycleEndDateChange: (input: CycleDateChangeInput) => void;
   handleSelectCycle: (input: SelectCycleInput) => void;
-  handleStartCreateTemplate: () => void;
-  handleStartEditTemplate: (input: StartEditTemplateInput) => void;
-  handleResetTemplateEditor: () => void;
-  handleTemplateNameChange: (input: TemplateNameChangeInput) => void;
-  handleTemplateWeekdayChange: (input: TemplateWeekdayChangeInput) => void;
-  handleTemplateTimeBlockChange: (input: TemplateTimeBlockChangeInput) => void;
-  handleRemoveTemplateTimeBlock: (input: RemoveTemplateTimeBlockInput) => void;
-  handleAddTemplateTimeBlock: () => void;
   handleToggleTemplateSelection: (input: ToggleTemplateSelectionInput) => void;
   handleCreateCycle: () => void;
-  handleSaveTemplate: () => void;
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleSendCycle: () => void;
@@ -147,19 +93,11 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const queryClient = useQueryClient();
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(
-    null,
-  );
   const [cycleForm, setCycleForm] =
     useState<CycleFormState>(createEmptyCycleForm);
-  const [templateForm, setTemplateForm] = useState<TemplateFormState>(
-    createEmptyTemplateForm,
-  );
   const [cycleErrorMessage, setCycleErrorMessage] = useState<string | null>(
     null,
   );
-  const [templateSaveSuccessCount, setTemplateSaveSuccessCount] =
-    useState<number>(0);
 
   const cyclesQuery = useQuery({
     queryKey: ['cycles'],
@@ -224,16 +162,10 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     selectedCycleId,
     selectedCycle,
     selectedTemplateIds,
-    editingTemplateId,
     cycleForm,
-    templateForm,
     setCycleErrorMessage,
     setCycleForm,
-    setEditingTemplateId,
     setSelectedCycleId,
-    setSelectedTemplateIds,
-    setTemplateForm,
-    setTemplateSaveSuccessCount,
   });
 
   return {
@@ -242,21 +174,15 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     templates,
     selectedCycleId,
     selectedCycle,
-    editingTemplateId,
     cycleEvents,
     totalEventTimeBlocks,
     cycleForm,
-    templateForm,
     cycleErrorMessage,
     cyclesLoading: cyclesQuery.isLoading,
     templatesLoading: templatesQuery.isLoading,
     cycleDetailsLoading: cycleDetailsQuery.isLoading,
     canCreateCycle: canCreateCycle({ cycleForm }),
-    canCreateTemplate: canCreateTemplate({ templateForm }),
     createCyclePending: mutationHandlers.createCyclePending,
-    createTemplatePending: mutationHandlers.createTemplatePending,
-    updateTemplatePending: mutationHandlers.updateTemplatePending,
-    saveTemplatePending: mutationHandlers.saveTemplatePending,
     deleteTemplatePending: mutationHandlers.deleteTemplatePending,
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,
     applyTemplatesError: mutationHandlers.applyTemplatesError,
@@ -266,7 +192,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     createEventTimeBlockPending: mutationHandlers.createEventTimeBlockPending,
     updateEventTimeBlockPending: mutationHandlers.updateEventTimeBlockPending,
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
-    templateSaveSuccessCount,
     selectedTemplateIds,
     resetApplyTemplates: mutationHandlers.resetApplyTemplates,
     handleCycleNameChange: ({ name }: CycleNameChangeInput) =>
@@ -277,57 +202,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       setCycleForm((currentForm) => ({ ...currentForm, endDate: date })),
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
-    handleStartCreateTemplate: () => {
-      setEditingTemplateId(null);
-      setTemplateForm(createEmptyTemplateForm());
-    },
-    handleStartEditTemplate: ({ templateId }: StartEditTemplateInput) => {
-      const template = templates.find(
-        (currentTemplate) => currentTemplate.id === templateId,
-      );
-
-      if (!template) {
-        return;
-      }
-
-      setEditingTemplateId(templateId);
-      setTemplateForm(createTemplateFormFromTemplate({ template }));
-    },
-    handleResetTemplateEditor: () => {
-      setEditingTemplateId(null);
-      setTemplateForm(createEmptyTemplateForm());
-    },
-    handleTemplateNameChange: ({ name }: TemplateNameChangeInput) =>
-      setTemplateForm((currentForm) => ({ ...currentForm, name })),
-    handleTemplateWeekdayChange: ({ weekday }: TemplateWeekdayChangeInput) =>
-      setTemplateForm((currentForm) => ({ ...currentForm, weekday })),
-    handleTemplateTimeBlockChange: (input: TemplateTimeBlockChangeInput) =>
-      setTemplateForm((currentForm) => ({
-        ...currentForm,
-        blocks: currentForm.blocks.map((block) => {
-          if (block.key !== input.blockId) {
-            return block;
-          }
-
-          if (input.field === 'label') {
-            return { ...block, label: input.value };
-          }
-
-          return { ...block, [input.field]: input.value };
-        }),
-      })),
-    handleRemoveTemplateTimeBlock: ({
-      blockId,
-    }: RemoveTemplateTimeBlockInput) =>
-      setTemplateForm((currentForm) => ({
-        ...currentForm,
-        blocks: currentForm.blocks.filter((block) => block.key !== blockId),
-      })),
-    handleAddTemplateTimeBlock: () =>
-      setTemplateForm((currentForm) => ({
-        ...currentForm,
-        blocks: [...currentForm.blocks, createEmptyTemplateTimeBlock()],
-      })),
     handleToggleTemplateSelection: ({
       templateId,
       checked,
@@ -340,7 +214,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
             ),
       ),
     handleCreateCycle: mutationHandlers.handleCreateCycle,
-    handleSaveTemplate: mutationHandlers.handleSaveTemplate,
     handleDeleteTemplate: mutationHandlers.handleDeleteTemplate,
     handleApplyTemplates: mutationHandlers.handleApplyTemplates,
     handleSendCycle: mutationHandlers.handleSendCycle,

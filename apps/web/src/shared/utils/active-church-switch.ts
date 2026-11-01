@@ -65,7 +65,7 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
-  { pattern: /^\/event-templates\/new$/, policy: 'fallback' },
+  { pattern: /^\/event-templates\/[^/]+$/, policy: 'fallback' },
   { pattern: /^\/cycles\/[^/]+$/, policy: 'fallback' },
   {
     pattern: /^\/schedules\/?$/,

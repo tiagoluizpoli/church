@@ -115,7 +115,6 @@ export type TemplateManagerCardModel = Pick<
   | 'templatesLoading'
   | 'deleteTemplatePending'
   | 'handleDeleteTemplate'
-  | 'handleStartEditTemplate'
 >;
 
 export function useTemplateManagerCard(): TemplateManagerCardModel {
@@ -126,44 +125,6 @@ export function useTemplateManagerCard(): TemplateManagerCardModel {
     templatesLoading: context.templatesLoading,
     deleteTemplatePending: context.deleteTemplatePending,
     handleDeleteTemplate: context.handleDeleteTemplate,
-    handleStartEditTemplate: context.handleStartEditTemplate,
-  };
-}
-
-export type TemplateEditorModel = Pick<
-  UsePlanningAdminResult,
-  | 'editingTemplateId'
-  | 'templateForm'
-  | 'canCreateTemplate'
-  | 'saveTemplatePending'
-  | 'templateSaveSuccessCount'
-  | 'handleStartCreateTemplate'
-  | 'handleResetTemplateEditor'
-  | 'handleTemplateNameChange'
-  | 'handleTemplateWeekdayChange'
-  | 'handleTemplateTimeBlockChange'
-  | 'handleRemoveTemplateTimeBlock'
-  | 'handleAddTemplateTimeBlock'
-  | 'handleSaveTemplate'
->;
-
-export function useTemplateEditor(): TemplateEditorModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    editingTemplateId: context.editingTemplateId,
-    templateForm: context.templateForm,
-    canCreateTemplate: context.canCreateTemplate,
-    saveTemplatePending: context.saveTemplatePending,
-    templateSaveSuccessCount: context.templateSaveSuccessCount,
-    handleStartCreateTemplate: context.handleStartCreateTemplate,
-    handleResetTemplateEditor: context.handleResetTemplateEditor,
-    handleTemplateNameChange: context.handleTemplateNameChange,
-    handleTemplateWeekdayChange: context.handleTemplateWeekdayChange,
-    handleTemplateTimeBlockChange: context.handleTemplateTimeBlockChange,
-    handleRemoveTemplateTimeBlock: context.handleRemoveTemplateTimeBlock,
-    handleAddTemplateTimeBlock: context.handleAddTemplateTimeBlock,
-    handleSaveTemplate: context.handleSaveTemplate,
   };
 }
 

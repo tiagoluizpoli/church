@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
+import { useTemplateBreadcrumb } from '@/features/scheduling/hooks/use-template-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -144,9 +145,12 @@ function ActiveChurchLayout() {
   const { churchId, churchTimezone, session } = Route.useRouteContext();
   const cycleBreadcrumb = useCycleBreadcrumb();
   const ministryBreadcrumb = useMinistryBreadcrumb();
-  const overrides = [cycleBreadcrumb, ministryBreadcrumb].filter(
-    (override) => override !== null,
-  );
+  const templateBreadcrumb = useTemplateBreadcrumb();
+  const overrides = [
+    cycleBreadcrumb,
+    ministryBreadcrumb,
+    templateBreadcrumb,
+  ].filter((override) => override !== null);
   const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;
 
   return (

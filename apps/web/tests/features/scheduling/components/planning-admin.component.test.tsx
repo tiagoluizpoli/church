@@ -10,6 +10,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getCycle = vi.fn();
+const getEventTemplate = vi.fn();
 const applyPlanningTemplates = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
@@ -18,6 +19,7 @@ vi.mock('@/utils/api-instances', async () => ({
     listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
     getCycle: (...args: unknown[]) => getCycle(...args),
+    getEventTemplate: (...args: unknown[]) => getEventTemplate(...args),
     applyPlanningTemplates: (...args: unknown[]) =>
       applyPlanningTemplates(...args),
   },
@@ -179,42 +181,63 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     expect(getCycle).not.toHaveBeenCalled();
   });
 
-  it('opens a saved template in edit mode from the library list', async () => {
-    listCycles.mockResolvedValue({ cycles: [] });
-    listEventTemplates.mockResolvedValue({
-      templates: [
+  it('opens a saved template on its nested edit page from the library list', async () => {
+    const template = {
+      id: 'template-1',
+      name: 'Sunday Service',
+      weekday: 0,
+      blocks: [
         {
-          id: 'template-1',
-          name: 'Sunday Service',
-          weekday: 0,
-          blocks: [
-            {
-              id: 'block-1',
-              label: 'Welcome',
-              startTime: '09:00',
-              endTime: '09:30',
-              order: 0,
-            },
-          ],
+          id: 'block-1',
+          label: 'Welcome',
+          startTime: '09:00',
+          endTime: '09:30',
+          order: 0,
         },
       ],
-    });
+    };
+    listCycles.mockResolvedValue({ cycles: [] });
+    listEventTemplates.mockResolvedValue({ templates: [template] });
+    getEventTemplate.mockResolvedValue(template);
 
     const user = userEvent.setup();
     renderCycles();
 
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-template-library-button'));
-    await user.click(
-      await screen.findByTestId('open-edit-template-dialog-button'),
-    );
+    await user.click(await screen.findByTestId('edit-template-button'));
 
-    expect(
-      await screen.findByRole('dialog', { name: 'Editar modelo' }),
-    ).toBeVisible();
-    expect(screen.getByTestId('template-name-input')).toHaveValue(
+    expect(await screen.findByTestId('template-edit-page')).toBeVisible();
+    expect(await screen.findByTestId('template-name-input')).toHaveValue(
       'Sunday Service',
     );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('opens the nested edit page directly, without list state', async () => {
+    listCycles.mockResolvedValue({ cycles: [] });
+    listEventTemplates.mockClear();
+    getEventTemplate.mockResolvedValue({
+      id: 'template-9',
+      name: 'Vigil',
+      weekday: 5,
+      blocks: [
+        {
+          id: 'block-9',
+          label: 'Watch',
+          startTime: '22:00',
+          endTime: '02:00',
+          order: 0,
+        },
+      ],
+    });
+
+    renderCycles('/event-templates/template-9');
+
+    expect(await screen.findByTestId('template-name-input')).toHaveValue(
+      'Vigil',
+    );
+    expect(getEventTemplate).toHaveBeenCalledWith('template-9');
   });
 
   it('keeps the apply-templates dialog open and displays an inline error when template application fails', async () => {

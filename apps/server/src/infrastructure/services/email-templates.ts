@@ -298,11 +298,6 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
     case 'invitation.church-bootstrap':
       // Rendered from the catalog in prepareEmail.
       throw new Error(`Email kind "${payload.kind}" renders in prepareEmail`);
-    case 'redemption.accepted':
-      return {
-        subject: `Welcome to ${payload.ministryName} at ${payload.churchName}`,
-        html: `<p>Your invitation to serve with <strong>${payload.ministryName}</strong> at ${payload.churchName} has been accepted.</p>`,
-      };
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
       // Rendered from the catalog in prepareEmail.

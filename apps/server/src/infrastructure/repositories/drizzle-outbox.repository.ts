@@ -21,7 +21,6 @@ import type {
   RecordOutboxDeliveryFactsInput,
   RecordOutboxEmailDeliveredInput,
   RecordOutboxEmailPreparedInput,
-  RedemptionAcceptedOutboxMessage,
 } from '../../domain/contracts/infrastructure/outbox.repository';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -215,12 +214,6 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         ...base,
         kind: row.kind,
         payload: row.payload as ChurchBootstrapOutboxMessage['payload'],
-      };
-    case 'redemption.accepted':
-      return {
-        ...base,
-        kind: row.kind,
-        payload: row.payload as RedemptionAcceptedOutboxMessage['payload'],
       };
     case 'notification':
       return {

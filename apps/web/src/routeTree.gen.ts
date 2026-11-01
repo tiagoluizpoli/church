@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedSwitchChurchConfirmRouteImport } from './routes/_authenticated/switch-church-confirm'
 import { Route as AuthenticatedSelectChurchRouteImport } from './routes/_authenticated/select-church'
@@ -40,9 +42,19 @@ import { Route as AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRouteImport
 import { Route as AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRouteImport } from './routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index'
 import { Route as AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRouteImport } from './routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -219,7 +231,9 @@ const AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedActiveChurchIndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/no-access': typeof AuthenticatedNoAccessRoute
   '/select-church': typeof AuthenticatedSelectChurchRoute
   '/switch-church-confirm': typeof AuthenticatedSwitchChurchConfirmRoute
@@ -248,7 +262,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedActiveChurchIndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/no-access': typeof AuthenticatedNoAccessRoute
   '/select-church': typeof AuthenticatedSelectChurchRoute
   '/switch-church-confirm': typeof AuthenticatedSwitchChurchConfirmRoute
@@ -276,7 +292,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/_active-church': typeof AuthenticatedActiveChurchRouteWithChildren
   '/_authenticated/no-access': typeof AuthenticatedNoAccessRoute
   '/_authenticated/select-church': typeof AuthenticatedSelectChurchRoute
@@ -310,7 +328,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/no-access'
     | '/select-church'
     | '/switch-church-confirm'
@@ -339,7 +359,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/no-access'
     | '/select-church'
     | '/switch-church-confirm'
@@ -366,7 +388,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/_authenticated/_active-church'
     | '/_authenticated/no-access'
     | '/_authenticated/select-church'
@@ -399,17 +423,33 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   InvitationsChurchInvitationIdRoute: typeof InvitationsChurchInvitationIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -754,7 +794,9 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   InvitationsChurchInvitationIdRoute: InvitationsChurchInvitationIdRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
@@ -35,9 +36,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
         {
           onSuccess: () => {
             navigate({
-              to: '/dashboard',
+              to: '/',
             });
-            toast.success('Sign up successful');
+            toast.success(m.auth_sign_up_success());
           },
           onError: (error) => {
             toast.error(authErrorMessage({ error: error.error }));

@@ -1,6 +1,7 @@
 import { type AppConfig, appConfig } from '@church/app-config';
 import {
   church,
+  invitation as churchInvitation,
   member as churchMember,
   ministry,
   ministryInvitation,
@@ -153,9 +154,15 @@ describe('DbOutboxDrainer (integration)', () => {
     const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    const [pending] = await testDb
+      .select({ id: churchInvitation.id })
+      .from(churchInvitation)
+      .where(eq(churchInvitation.email, 'newcomer@fixture.test'));
     expect(emailSender.sent[0]).toMatchObject({
       kind: 'invitation.chained',
       inviterName: 'Fixture Admin A',
+      // The paired link opens the Church half; the server resolves the Ministry.
+      redemptionUrl: `https://app.test/invitations/church/${pending?.id}`,
     });
   });
 

@@ -1,15 +1,25 @@
-import { screen } from '@testing-library/react';
+import { m } from '@church/i18n/messages';
+import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { activeChurchApiMock } from '@/tests/setup/active-church';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
-// #219, right-sized from home-landing.spec.ts: the home landing surface
-// itself (no leftover banner, no duplicate Events list) is proven at the
-// dashboard component in volunteer-dashboard-tabs.component.test.tsx — this
-// test proves only the redirect this route contributes, which the real
-// browser flow depends on to land there in the first place.
+// Home (`/`) is the common entry: it renders the existing dashboard content
+// in place and defers Church resolution to the shared entry gate.
 
 const getSession = vi.fn();
+const toastWarning = vi.hoisted(() => vi.fn());
+const toastSuccess = vi.hoisted(() => vi.fn());
+
+vi.mock('sonner', () => ({
+  toast: {
+    warning: toastWarning,
+    info: vi.fn(),
+    success: toastSuccess,
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -47,9 +57,85 @@ describe('_active-church index route', () => {
     });
   });
 
-  it('redirects "/" straight to "/dashboard" regardless of caller role', async () => {
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+  it('renders Home at "/" without cycling through /dashboard', async () => {
+    const { router } = renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
 
     expect(await screen.findByText('Volunteer dashboard stub')).toBeVisible();
+    expect(router.state.location.pathname).toBe('/');
+    expect(screen.getByText(m.dashboard_entry_title())).toBeVisible();
+    expect(
+      screen.getByText(
+        m.dashboard_entry_description_named({ name: 'Any Caller' }),
+      ),
+    ).toBeVisible();
+  });
+
+  it('sends a caller who must choose a Church to /select-church', async () => {
+    activeChurchApiMock.getActiveChurchStatus.mockResolvedValue({
+      status: 'selection_required',
+    });
+    activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({
+      churches: [],
+    });
+
+    const { router } = renderRoute({ initialPath: '/' });
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/select-church'),
+    );
+  });
+
+  it('sends a caller with no membership to /no-access', async () => {
+    activeChurchApiMock.getActiveChurchStatus.mockResolvedValue({
+      status: 'no_membership',
+    });
+
+    const { router } = renderRoute({ initialPath: '/' });
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/no-access'),
+    );
+  });
+
+  it('shows the Church-only warning carried in navigation state', async () => {
+    renderRoute({
+      initialPath: '/?joinedChurch=St.%20Peter&invitedMinistry=Youth',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() =>
+      expect(toastWarning).toHaveBeenCalledWith(
+        m.home_church_only_warning({
+          churchName: 'St. Peter',
+          ministryName: 'Youth',
+        }),
+      ),
+    );
+  });
+
+  it('announces the Ministry just joined', async () => {
+    renderRoute({
+      initialPath: '/?joinedMinistry=Care',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.ministry_invitation_joined_toast({ ministryName: 'Care' }),
+      ),
+    );
+  });
+
+  it('announces a declined Ministry Invitation', async () => {
+    renderRoute({
+      initialPath: '/?invitationDeclined=true',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.ministry_invitation_declined_toast(),
+      ),
+    );
   });
 });

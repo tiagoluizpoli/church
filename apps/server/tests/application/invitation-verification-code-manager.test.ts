@@ -5,7 +5,7 @@ import {
   hashVerificationCode,
   InvitationVerificationCodeManager,
 } from '@/application/invitation-verification-code-manager';
-import { MinistryInvitationId } from '@/domain/branded-ids';
+import { ChurchInvitationId } from '@/domain/branded-ids';
 import type {
   EmailSender,
   SendEmailInput,
@@ -134,12 +134,12 @@ describe('InvitationVerificationCodeManager', () => {
 
   it('hashes a code with its secret, sends it synchronously, and consumes it only once', async () => {
     const harness = createHarness();
-    const invitationId = MinistryInvitationId.from(
+    const invitationId = ChurchInvitationId.from(
       '00000000-0000-4000-8000-000000000001',
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
     await harness.manager.issue({
-      ministryInvitationId: invitationId,
+      churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
       now,
@@ -147,13 +147,13 @@ describe('InvitationVerificationCodeManager', () => {
     expect(harness.state?.codeHash).not.toBe('123456');
     expect(harness.sent).toHaveLength(1);
     await harness.manager.verify({
-      ministryInvitationId: invitationId,
+      churchInvitationId: invitationId,
       code: '123456',
       now,
     });
     await expect(
       harness.manager.verify({
-        ministryInvitationId: invitationId,
+        churchInvitationId: invitationId,
         code: '123456',
         now,
       }),
@@ -162,12 +162,12 @@ describe('InvitationVerificationCodeManager', () => {
 
   it('allows the max failed attempts and blocks the next', async () => {
     const harness = createHarness();
-    const invitationId = MinistryInvitationId.from(
+    const invitationId = ChurchInvitationId.from(
       '00000000-0000-4000-8000-000000000002',
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
     await harness.manager.issue({
-      ministryInvitationId: invitationId,
+      churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
       now,
@@ -176,7 +176,7 @@ describe('InvitationVerificationCodeManager', () => {
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       await expect(
         harness.manager.verify({
-          ministryInvitationId: invitationId,
+          churchInvitationId: invitationId,
           code: '000000',
           now,
         }),
@@ -184,7 +184,7 @@ describe('InvitationVerificationCodeManager', () => {
     }
     await expect(
       harness.manager.verify({
-        ministryInvitationId: invitationId,
+        churchInvitationId: invitationId,
         code: '123456',
         now,
       }),
@@ -195,26 +195,26 @@ describe('InvitationVerificationCodeManager', () => {
 
   it('allows a consumed code to resume only the same redemption request', async () => {
     const harness = createHarness();
-    const invitationId = MinistryInvitationId.from(
+    const invitationId = ChurchInvitationId.from(
       '00000000-0000-4000-8000-000000000005',
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
     await harness.manager.issue({
-      ministryInvitationId: invitationId,
+      churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
       now,
     });
 
     await harness.manager.verify({
-      ministryInvitationId: invitationId,
+      churchInvitationId: invitationId,
       code: '123456',
       idempotencyKey: '11111111-1111-4111-8111-111111111111',
       now,
     });
     await expect(
       harness.manager.verify({
-        ministryInvitationId: invitationId,
+        churchInvitationId: invitationId,
         code: '123456',
         idempotencyKey: '11111111-1111-4111-8111-111111111111',
         now,
@@ -222,7 +222,7 @@ describe('InvitationVerificationCodeManager', () => {
     ).resolves.toBeUndefined();
     await expect(
       harness.manager.verify({
-        ministryInvitationId: invitationId,
+        churchInvitationId: invitationId,
         code: '123456',
         idempotencyKey: '22222222-2222-4222-8222-222222222222',
         now,
@@ -232,7 +232,7 @@ describe('InvitationVerificationCodeManager', () => {
 
   it('replaces the code and resets its attempt budget only after the sixty-second cooldown', async () => {
     const harness = createHarness();
-    const invitationId = MinistryInvitationId.from(
+    const invitationId = ChurchInvitationId.from(
       '00000000-0000-4000-8000-000000000003',
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
@@ -242,14 +242,14 @@ describe('InvitationVerificationCodeManager', () => {
     );
     const whenCooldownEnds = new Date(now.getTime() + resendCooldownMs);
     await harness.manager.issue({
-      ministryInvitationId: invitationId,
+      churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
       now,
     });
     await expect(
       harness.manager.issue({
-        ministryInvitationId: invitationId,
+        churchInvitationId: invitationId,
         recipientEmail: 'invitee@example.test',
         churchName: 'Church',
         now: justBeforeCooldownEnds,
@@ -258,7 +258,7 @@ describe('InvitationVerificationCodeManager', () => {
       code: 'VERIFICATION_CODE_RESEND_COOLDOWN_ACTIVE',
     });
     await harness.manager.issue({
-      ministryInvitationId: invitationId,
+      churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
       now: whenCooldownEnds,
@@ -279,7 +279,7 @@ describe('InvitationVerificationCodeManager', () => {
     const harness = createHarness({ config });
 
     await harness.manager.issue({
-      ministryInvitationId: MinistryInvitationId.from(
+      churchInvitationId: ChurchInvitationId.from(
         '00000000-0000-4000-8000-000000000005',
       ),
       recipientEmail: 'invitee@example.test',
@@ -307,14 +307,14 @@ describe('InvitationVerificationCodeManager', () => {
         throw new Error('delivery unavailable');
       },
     });
-    const invitationId = MinistryInvitationId.from(
+    const invitationId = ChurchInvitationId.from(
       '00000000-0000-4000-8000-000000000004',
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
 
     await expect(
       harness.manager.issue({
-        ministryInvitationId: invitationId,
+        churchInvitationId: invitationId,
         recipientEmail: 'invitee@example.test',
         churchName: 'Church',
         now,

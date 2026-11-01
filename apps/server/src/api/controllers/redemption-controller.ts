@@ -1,12 +1,19 @@
 import type { AppConfig } from '@church/app-config';
-import { auth } from '@church/auth';
 import { fromDate, nowAsDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
-import { MinistryInvitationId, UserId } from '../../domain/branded-ids';
-import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
+import {
+  ChurchInvitationId,
+  MinistryInvitationId,
+  UserId,
+} from '../../domain/branded-ids';
+import type {
+  PublicRedemptionPreview,
+  RedemptionManager,
+} from '../../domain/contracts/application/redemption-manager';
 import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
+import { auth } from '../../main/di/server-auth';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -17,6 +24,7 @@ import {
   debugVerificationCodeResponseSchema,
   declineOutcomeResponseSchema,
   existingMemberOutcomeResponseSchema,
+  publicDeclineResponseSchema,
   rateLimitedResponseSchema,
   redeemNewUserBodySchema,
   redemptionOutcomeResponseSchema,
@@ -46,7 +54,7 @@ interface RequireRedeemerInput {
   reply: FastifyReply;
 }
 
-/** The restricted preview field set both the chained and existing-member routes expose (spec §7.1). */
+/** The restricted preview field set the existing-member route exposes (spec §7.1). */
 interface InvitationPreviewFields {
   email: string;
   churchName: string;
@@ -127,11 +135,11 @@ export class RedemptionController implements FastifyController {
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         const preview = await this.redemptionManager.getPublicPreview({
-          ministryInvitationId: MinistryInvitationId.from(params.invitationId),
+          churchInvitationId: ChurchInvitationId.from(params.invitationId),
         });
         if (!preview)
           return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
-        return reply.send(toInvitationPreviewFields(preview));
+        return reply.send(toPublicPreview(preview));
       },
     );
 
@@ -159,9 +167,7 @@ export class RedemptionController implements FastifyController {
         let sent: boolean;
         try {
           sent = await this.redemptionManager.requestVerificationCode({
-            ministryInvitationId: MinistryInvitationId.from(
-              params.invitationId,
-            ),
+            churchInvitationId: ChurchInvitationId.from(params.invitationId),
           });
         } catch (error) {
           if (error instanceof VerificationCodeError) {
@@ -195,18 +201,17 @@ export class RedemptionController implements FastifyController {
         const params = request.params as RedemptionParams;
         const body = request.body as RedeemNewUserBody;
         const outcome = await this.redemptionManager.redeemNewUser({
-          ministryInvitationId: MinistryInvitationId.from(params.invitationId),
+          churchInvitationId: ChurchInvitationId.from(params.invitationId),
           name: body.name,
           password: body.password,
           code: body.code,
           idempotencyKey: body.idempotencyKey,
         });
-        if (outcome.kind === 'full-success') {
-          reply.header('set-cookie', outcome.sessionCookie);
-          return reply.send({
-            kind: outcome.kind,
-            volunteerId: outcome.volunteerId,
-          });
+        // Only committed outcomes carry a session; failures never set a cookie.
+        if ('sessionCookie' in outcome) {
+          const { sessionCookie, ...committed } = outcome;
+          reply.header('set-cookie', sessionCookie);
+          return reply.send(committed);
         }
         return reply.send(outcome);
       },
@@ -220,15 +225,26 @@ export class RedemptionController implements FastifyController {
           operationId: 'declineChurchInvitation',
           summary: 'Decline a Church Invitation',
           description:
-            'Decline a Church Invitation as its authenticated recipient, also declining a chained Ministry Invitation if one is paired with it.',
+            'Publicly decline a pending Church Invitation and any paired Ministry Invitation. Possession of the link authorizes it; no User or session is created.',
           params: redemptionParamsSchema,
           response: {
-            200: declineOutcomeResponseSchema,
-            401: unauthorizedResponseSchema,
+            200: publicDeclineResponseSchema,
+            404: unavailableRedemptionResponseSchema,
+            429: rateLimitedResponseSchema,
           },
         },
       },
-      this.handleDecline.bind(this),
+      async (request, reply) => {
+        if (this.isRateLimitedRequest({ key: request.ip }))
+          return refuse({ reply, request, code: 'RATE_LIMITED' });
+        const params = request.params as RedemptionParams;
+        const outcome = await this.redemptionManager.declineChurchInvitation({
+          churchInvitationId: ChurchInvitationId.from(params.invitationId),
+        });
+        if (outcome.kind === 'terminal-failure')
+          return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
+        return reply.send(outcome);
+      },
     );
 
     app.get(
@@ -420,9 +436,7 @@ export class RedemptionController implements FastifyController {
         async (request, reply) => {
           const params = request.params as RedemptionParams;
           const code = await this.redemptionManager.getDebugVerificationCode({
-            ministryInvitationId: MinistryInvitationId.from(
-              params.invitationId,
-            ),
+            churchInvitationId: ChurchInvitationId.from(params.invitationId),
           });
           if (!code)
             return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
@@ -433,8 +447,7 @@ export class RedemptionController implements FastifyController {
   }
 
   /**
-   * Shared by `/church/:invitationId/decline` and `/ministry/:invitationId/decline`
-   * — the invitation's own `kind`, not the URL used to reach it, decides
+   * Authenticated Ministry decline: the invitation's own `kind` decides
    * whether the chained pair is rejected alongside it (spec §7.3).
    */
   // named-parameters-ignore: Fastify route handler signature (request, reply); bound as a route handler
@@ -490,7 +503,28 @@ function isRateLimited({
   return attempts.length > maxRequests;
 }
 
-/** Shared by the chained and existing-member previews — both expose the same restricted field set (spec §7.1). */
+/** The public Church Invitation preview: the Ministry block only for a paired invitation. */
+function toPublicPreview(preview: PublicRedemptionPreview) {
+  const { ministry } = preview;
+  return {
+    email: preview.email,
+    churchName: preview.churchName,
+    churchAccessLevel: preview.churchAccessLevel,
+    expiresAt: fromDate({ date: preview.expiresAt }),
+    ...(ministry
+      ? {
+          ministry: {
+            invitationId: ministry.ministryInvitationId,
+            name: ministry.ministryName,
+            ministryAccessLevel: ministry.ministryAccessLevel,
+            roleNames: ministry.roleNames,
+          },
+        }
+      : {}),
+  };
+}
+
+/** Shared by the existing-member previews — both expose the same restricted field set (spec §7.1). */
 function toInvitationPreviewFields(preview: InvitationPreviewFields) {
   return {
     email: preview.email,

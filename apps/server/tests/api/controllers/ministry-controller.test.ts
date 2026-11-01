@@ -15,7 +15,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: {
     api: {
       getSession: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('@church/auth', () => ({
 }));
 
 const mockGetSession = vi.mocked(
-  (await import('@church/auth')).auth.api.getSession,
+  (await import('@/main/di/server-auth')).auth.api.getSession,
 );
 
 const ministryManager = {
@@ -191,7 +191,7 @@ describe('Ministry Invitation minting routes', () => {
       kind: 'chained',
       status: 'pending',
       expiresAt: '2030-01-01T00:00:00.000Z',
-      redemptionPath: '/invitations/church/ministry-invitation-1',
+      redemptionPath: '/invitations/church/church-invitation-1',
       deliveryStatus: 'pending',
     });
     expect(ministryInvitationManager.mint).toHaveBeenCalledWith({

@@ -2233,23 +2233,38 @@ export type MarkAllNotificationsRead422 = {
   message: string;
 };
 
-export type PreviewChurchInvitation200MinistryAccessLevel = typeof PreviewChurchInvitation200MinistryAccessLevel[keyof typeof PreviewChurchInvitation200MinistryAccessLevel];
+export type PreviewChurchInvitation200ChurchAccessLevel = typeof PreviewChurchInvitation200ChurchAccessLevel[keyof typeof PreviewChurchInvitation200ChurchAccessLevel];
 
 
-export const PreviewChurchInvitation200MinistryAccessLevel = {
+export const PreviewChurchInvitation200ChurchAccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type PreviewChurchInvitation200MinistryMinistryAccessLevel = typeof PreviewChurchInvitation200MinistryMinistryAccessLevel[keyof typeof PreviewChurchInvitation200MinistryMinistryAccessLevel];
+
+
+export const PreviewChurchInvitation200MinistryMinistryAccessLevel = {
   volunteer: 'volunteer',
   leader: 'leader',
 } as const;
+
+export type PreviewChurchInvitation200Ministry = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  invitationId: string;
+  name: string;
+  ministryAccessLevel: PreviewChurchInvitation200MinistryMinistryAccessLevel;
+  roleNames: string[];
+};
 
 export type PreviewChurchInvitation200 = {
   /** @pattern ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
   email: string;
   churchName: string;
-  ministryName: string;
-  ministryAccessLevel: PreviewChurchInvitation200MinistryAccessLevel;
-  roleNames: string[];
+  churchAccessLevel: PreviewChurchInvitation200ChurchAccessLevel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt: string;
+  ministry?: PreviewChurchInvitation200Ministry;
 };
 
 export type PreviewChurchInvitation404Error = typeof PreviewChurchInvitation404Error[keyof typeof PreviewChurchInvitation404Error];
@@ -2327,39 +2342,56 @@ export type RedeemChurchInvitationBody = {
 
 export type RedeemChurchInvitation200 = {
   kind: 'full-success';
-  volunteerId: string;
+  /** @nullable */
+  volunteerId: string | null;
 } | {
   kind: 'church-only';
   sourceChurchName: string;
+  destinationChurchId: string;
   destinationChurchName: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryInvitationId: string;
+  ministryName: string;
 } | {
   kind: 'retryable-failure';
-  reason: 'MINISTRY_ACCEPTANCE_FAILED';
+  reason: 'IDENTITY_FAILED' | 'MINISTRY_ACCEPTANCE_FAILED';
 } | {
   kind: 'terminal-failure';
-  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
+  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'EMAIL_ALREADY_REGISTERED';
 };
 
-export type DeclineChurchInvitation200 = {
-  kind: 'declined';
-} | {
-  kind: 'identity-mismatch';
-} | {
-  kind: 'terminal-failure';
-  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
-};
-
-export type DeclineChurchInvitation401Error = typeof DeclineChurchInvitation401Error[keyof typeof DeclineChurchInvitation401Error];
+export type DeclineChurchInvitation200Kind = typeof DeclineChurchInvitation200Kind[keyof typeof DeclineChurchInvitation200Kind];
 
 
-export const DeclineChurchInvitation401Error = {
-  UNAUTHORIZED: 'UNAUTHORIZED',
+export const DeclineChurchInvitation200Kind = {
+  declined: 'declined',
 } as const;
 
-export type DeclineChurchInvitation401 = {
-  error: DeclineChurchInvitation401Error;
+export type DeclineChurchInvitation200 = {
+  kind: DeclineChurchInvitation200Kind;
+};
+
+export type DeclineChurchInvitation404Error = typeof DeclineChurchInvitation404Error[keyof typeof DeclineChurchInvitation404Error];
+
+
+export const DeclineChurchInvitation404Error = {
+  INVITATION_UNAVAILABLE: 'INVITATION_UNAVAILABLE',
+} as const;
+
+export type DeclineChurchInvitation404 = {
+  error: DeclineChurchInvitation404Error;
+  message: string;
+};
+
+export type DeclineChurchInvitation429Error = typeof DeclineChurchInvitation429Error[keyof typeof DeclineChurchInvitation429Error];
+
+
+export const DeclineChurchInvitation429Error = {
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type DeclineChurchInvitation429 = {
+  error: DeclineChurchInvitation429Error;
   message: string;
 };
 
@@ -2379,6 +2411,7 @@ export type GetMinistryInvitationStatus200 = {
   churchId: string;
 } | {
   kind: 'identity-mismatch';
+  maskedEmail: string;
 } | {
   kind: 'unavailable';
 };
@@ -2406,9 +2439,11 @@ export type AcceptMinistryInvitation200 = {
 } | {
   kind: 'church-only';
   sourceChurchName: string;
+  destinationChurchId: string;
   destinationChurchName: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryInvitationId: string;
+  ministryName: string;
 } | {
   kind: 'already-accepted';
   churchId: string;

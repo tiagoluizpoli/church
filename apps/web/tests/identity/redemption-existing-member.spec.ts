@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
 import {
@@ -64,14 +65,23 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
       new RegExp(`/invitations/ministry/${invitation.id}$`),
     );
     await expect(
-      page.getByRole('heading', { name: `Join ${worship.name}` }),
+      page.getByRole('heading', {
+        name: m.ministry_invitation_title(
+          { ministryName: worship.name },
+          { locale: 'pt-BR' },
+        ),
+      }),
     ).toBeVisible();
 
     const [acceptResponse] = await Promise.all([
       page.waitForResponse((response) =>
         response.url().endsWith(`/redemption/ministry/${invitation.id}/accept`),
       ),
-      page.getByRole('button', { name: 'Accept' }).click(),
+      page
+        .getByRole('button', {
+          name: m.ministry_invitation_accept({}, { locale: 'pt-BR' }),
+        })
+        .click(),
     ]);
     // #253 redemption gate: provisioned (above) and redeemed here against
     // the run's one pinned target.
@@ -84,7 +94,7 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
     expect(acceptOutcome.kind).toBe('full-success');
     expect(acceptOutcome.volunteerId).toEqual(expect.any(String));
 
-    await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
 
     expect(
       await fetchActiveChurchStatus({ request: page.request }),
@@ -112,11 +122,24 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
 
     await page.goto(invitation.redemptionPath);
     await signIn({ page, persona: memberOnly });
-    await expect(page.getByRole('button', { name: 'Decline' })).toBeVisible();
-
-    await page.getByRole('button', { name: 'Decline' }).click();
     await expect(
-      page.getByText(`only your invitation to ${care.name}`),
+      page.getByRole('button', {
+        name: m.ministry_invitation_decline({}, { locale: 'pt-BR' }),
+      }),
+    ).toBeVisible();
+
+    await page
+      .getByRole('button', {
+        name: m.ministry_invitation_decline({}, { locale: 'pt-BR' }),
+      })
+      .click();
+    await expect(
+      page.getByText(
+        m.ministry_invitation_decline_notice_ministry_only(
+          { ministryName: care.name },
+          { locale: 'pt-BR' },
+        ),
+      ),
     ).toBeVisible();
 
     const [declineResponse] = await Promise.all([
@@ -125,14 +148,24 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
           .url()
           .endsWith(`/redemption/ministry/${invitation.id}/decline`),
       ),
-      page.getByRole('button', { name: 'Yes, decline' }).click(),
+      page
+        .getByRole('button', {
+          name: m.ministry_invitation_decline_confirm({}, { locale: 'pt-BR' }),
+        })
+        .click(),
     ]);
     expect(await declineResponse.json()).toEqual({ kind: 'declined' });
     await expect(
-      page.getByText("You've declined this invitation."),
+      page.getByText(
+        m.ministry_invitation_declined_toast({}, { locale: 'pt-BR' }),
+      ),
     ).toBeVisible();
 
     await page.goto(invitation.redemptionPath);
-    await expect(page.getByText(/no longer available/i)).toBeVisible();
+    await expect(
+      page.getByText(
+        m.ministry_invitation_unavailable_description({}, { locale: 'pt-BR' }),
+      ),
+    ).toBeVisible();
   });
 });

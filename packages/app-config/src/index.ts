@@ -17,6 +17,8 @@ export const appConfigSchema = z.object({
     auditPanel: z.boolean(),
     commandPalette: z.boolean(),
   }),
+  /** Better Auth organization options; omitted or 0 there means a cap of 100. */
+  auth: z.object({ organizationMembershipLimit: positiveInt }),
   churchInvitation: z.object({ ttlMs: positiveInt }),
   ministryInvitation: z.object({ ttlMs: positiveInt }),
   invitationResend: z.object({
@@ -29,6 +31,7 @@ export const appConfigSchema = z.object({
     resendCooldownMs: positiveInt,
     maxAttempts: positiveInt,
   }),
+  passwordReset: z.object({ ttlMs: positiveInt }),
   redemptionRateLimit: z.object({
     windowMs: positiveInt,
     maxRequests: positiveInt,
@@ -71,14 +74,17 @@ export const appConfig = appConfigSchema.parse({
     auditPanel: false,
     commandPalette: false,
   },
-  churchInvitation: { ttlMs: 48 * HOUR_MS },
-  ministryInvitation: { ttlMs: 14 * DAY_MS },
+  // No practical MVP cap on Church Members per Church.
+  auth: { organizationMembershipLimit: 1_000_000 },
+  churchInvitation: { ttlMs: 7 * DAY_MS },
+  ministryInvitation: { ttlMs: 7 * DAY_MS },
   invitationResend: { cooldownMs: MINUTE_MS, dailyCap: 10, windowMs: DAY_MS },
   verificationCode: {
     ttlMs: 10 * MINUTE_MS,
     resendCooldownMs: MINUTE_MS,
     maxAttempts: 5,
   },
+  passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
   outbox: {
     maxAttempts: 5,

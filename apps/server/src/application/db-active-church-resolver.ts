@@ -28,6 +28,12 @@ interface ResolveAfterMembershipRemovedInput {
   formerChurchId: ChurchId;
 }
 
+/** Only the silent auto-select touches "last opened": a request against an
+ * already-active Church must not bump it on every call. */
+interface AutoSelectChurchInput {
+  userId: UserId;
+}
+
 interface DbActiveChurchResolverDependencies {
   actorRepository: AuthorityActorRepository;
   membershipRepository: ChurchMembershipRepository;
@@ -70,10 +76,29 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
     // Membership listed here can't be revoked out from under the actor
     // lookup below within the same transaction, closing the check-then-use
     // gap between "how many Churches" and "resolve against that Church".
-    return this.unitOfWork.runWith({
+    return this.autoSelectChurch({ userId });
+  }
+
+  /**
+   * Resolves under one snapshot, then records "last opened" after commit. The
+   * touch is only a recency hint: inside the repeatable-read transaction, two
+   * concurrent auto-selects of one Church would conflict on the same row and
+   * fail the read with a serialization error.
+   */
+  private async autoSelectChurch({
+    userId,
+  }: AutoSelectChurchInput): Promise<ActiveChurchResolution> {
+    const resolution = await this.unitOfWork.runWith({
       work: (tx) => this.resolveWithNoActiveOrganization({ userId, tx }),
       isolationLevel: 'repeatable read',
     });
+    if (resolution.status === 'resolved' && resolution.autoSelected) {
+      await this.membershipRepository.touchOpened({
+        userId,
+        churchId: resolution.churchId,
+      });
+    }
+    return resolution;
   }
 
   private async resolveWithNoActiveOrganization(
@@ -117,13 +142,6 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
       });
     }
 
-    if (autoSelected) {
-      // Only the silent-auto-select branch touches "last opened" here — a
-      // request against an *already*-active Church resolves through this
-      // same method on every call, and must not bump the timestamp each time.
-      await this.membershipRepository.touchOpened({ userId, churchId, tx });
-    }
-
     return {
       status: 'resolved',
       churchId,
@@ -153,10 +171,7 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
       id: formerChurchId,
     });
 
-    const resolution = await this.unitOfWork.runWith({
-      work: (tx) => this.resolveWithNoActiveOrganization({ userId, tx }),
-      isolationLevel: 'repeatable read',
-    });
+    const resolution = await this.autoSelectChurch({ userId });
 
     return { ...resolution, membershipRemovedFrom: formerChurch.name };
   }

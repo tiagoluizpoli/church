@@ -150,6 +150,28 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
     });
   });
 
+  it('resolves concurrent auto-selects of the same Church without a serialization failure', async () => {
+    const resolver = createResolver();
+
+    // Each round opens two repeatable-read snapshots before either commits.
+    for (let round = 0; round < 10; round += 1) {
+      const results = await Promise.all([
+        resolver.resolve({
+          userId: singleMemberUserId,
+          activeOrganizationId: null,
+        }),
+        resolver.resolve({
+          userId: singleMemberUserId,
+          activeOrganizationId: null,
+        }),
+      ]);
+      expect(results.map((result) => result.status)).toEqual([
+        'resolved',
+        'resolved',
+      ]);
+    }
+  });
+
   it('requires selection for a User with several Memberships and no active organization', async () => {
     const resolver = createResolver();
 

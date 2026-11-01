@@ -4,10 +4,11 @@ import SignInForm from '@/components/sign-in-form';
 import { authClient } from '@/lib/auth-client';
 import { validateInternalReturnTarget } from '@/shared/utils/return-target';
 
-const DASHBOARD_PATH = '/dashboard';
+const HOME_PATH = '/';
 
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
+  notice: z.literal('password-changed').optional().catch(undefined),
 });
 
 export const Route = createFileRoute('/login')({
@@ -17,17 +18,16 @@ export const Route = createFileRoute('/login')({
     const session = await authClient.getSession();
     if (session.data) {
       const target =
-        validateInternalReturnTarget({ target: search.redirect }) ??
-        DASHBOARD_PATH;
+        validateInternalReturnTarget({ target: search.redirect }) ?? HOME_PATH;
       throw redirect({ href: target });
     }
   },
 });
 
 function RouteComponent() {
-  const { redirect: redirectSearch } = Route.useSearch();
+  const { redirect: redirectSearch, notice } = Route.useSearch();
   const redirectTo =
     validateInternalReturnTarget({ target: redirectSearch }) ?? undefined;
 
-  return <SignInForm redirectTo={redirectTo} />;
+  return <SignInForm redirectTo={redirectTo} notice={notice} />;
 }

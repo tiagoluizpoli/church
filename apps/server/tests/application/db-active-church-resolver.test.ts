@@ -166,10 +166,10 @@ describe('DbActiveChurchResolver', () => {
       autoSelected: true,
       membershipRemovedFrom: 'Former Home Church',
     });
+    // After commit, outside the snapshot transaction.
     expect(membershipRepository.touchOpened).toHaveBeenCalledWith({
       userId,
       churchId: otherChurchId,
-      tx: FAKE_TX,
     });
   });
 
@@ -228,10 +228,10 @@ describe('DbActiveChurchResolver', () => {
       activeChurchId: churchId,
       tx: FAKE_TX,
     });
+    // After commit, outside the snapshot transaction.
     expect(membershipRepository.touchOpened).toHaveBeenCalledWith({
       userId,
       churchId,
-      tx: FAKE_TX,
     });
   });
 

@@ -1,5 +1,6 @@
+import { m } from '@church/i18n/messages';
 import { useForm } from '@tanstack/react-form';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import z from 'zod';
 import Loader from './loader';
@@ -12,11 +13,14 @@ import { authErrorMessage } from '@/lib/auth-error-message';
 export interface SignInFormProps {
   onSwitchToSignUp?: () => void;
   redirectTo?: string;
+  /** Set by the password-reset flow when it returns here. */
+  notice?: 'password-changed';
 }
 
 export default function SignInForm({
   onSwitchToSignUp,
   redirectTo,
+  notice,
 }: SignInFormProps) {
   const navigate = useNavigate({
     from: '/',
@@ -37,9 +41,9 @@ export default function SignInForm({
         {
           onSuccess: () => {
             navigate({
-              href: redirectTo ?? '/dashboard',
+              href: redirectTo ?? '/',
             });
-            toast.success('Sign in successful');
+            toast.success(m.auth_sign_in_success());
           },
           onError: (error) => {
             toast.error(authErrorMessage({ error: error.error }));
@@ -49,8 +53,8 @@ export default function SignInForm({
     },
     validators: {
       onSubmit: z.object({
-        email: z.email('Invalid email address'),
-        password: z.string().min(8, 'Password must be at least 8 characters'),
+        email: z.email(m.password_recovery_invalid_email()),
+        password: z.string().min(8, m.password_recovery_password_too_short()),
       }),
     },
   });
@@ -61,11 +65,18 @@ export default function SignInForm({
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-2 text-center font-bold text-3xl">Welcome Back</h1>
+      <h1 className="mb-2 text-center font-bold text-3xl">
+        {m.auth_sign_in_title()}
+      </h1>
       <p className="mb-6 text-center text-muted-foreground text-sm">
-        Access is invitation-only. Sign in with the account from your
-        invitation.
+        {m.auth_sign_in_invitation_only()}
       </p>
+
+      {notice === 'password-changed' && (
+        <p role="status" className="mb-4 text-center text-sm">
+          {m.password_recovery_password_changed()}
+        </p>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -79,7 +90,9 @@ export default function SignInForm({
           <form.Field name="email">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
+                <Label htmlFor={field.name}>
+                  {m.password_recovery_email_label()}
+                </Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -102,7 +115,7 @@ export default function SignInForm({
           <form.Field name="password">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
+                <Label htmlFor={field.name}>{m.auth_password_label()}</Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -121,6 +134,15 @@ export default function SignInForm({
           </form.Field>
         </div>
 
+        <div className="text-right">
+          <Link
+            to="/forgot-password"
+            className="text-muted-foreground text-sm underline"
+          >
+            {m.password_recovery_forgot_link()}
+          </Link>
+        </div>
+
         <form.Subscribe
           selector={(state) => ({
             canSubmit: state.canSubmit,
@@ -133,7 +155,9 @@ export default function SignInForm({
               className="w-full"
               disabled={!canSubmit || isSubmitting}
             >
-              {isSubmitting ? 'Submitting...' : 'Sign In'}
+              {isSubmitting
+                ? m.auth_sign_in_submitting()
+                : m.auth_sign_in_submit()}
             </Button>
           )}
         </form.Subscribe>

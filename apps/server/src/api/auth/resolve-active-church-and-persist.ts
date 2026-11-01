@@ -1,10 +1,10 @@
-import { auth } from '@church/auth';
 import type { FastifyRequest } from 'fastify';
 import type { ChurchId, UserId } from '../../domain/branded-ids';
 import type {
   ActiveChurchResolution,
   IActiveChurchResolver,
 } from '../../domain/contracts/application/active-church-resolver';
+import { auth } from '../../main/di/server-auth';
 import { headersFromRequest } from '../utils/headers';
 
 export interface ResolveActiveChurchAndPersistInput {

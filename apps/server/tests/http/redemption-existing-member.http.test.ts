@@ -1,12 +1,12 @@
 import { appConfig } from '@church/app-config';
 import {
   account,
-  invitation as churchInvitation,
   identityAudit,
   member,
   ministryInvitation,
   ministryMembership,
   outboxMessage,
+  securityLog,
   session,
   user,
   volunteer,
@@ -30,6 +30,7 @@ import {
 } from '@/infrastructure/repositories';
 import { BetterAuthRedemptionIdentityGateway } from '@/infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { auth, createServerAuth } from '@/main/di/server-auth';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
@@ -77,7 +78,10 @@ beforeEach(async () => {
     verificationCodeSecret: 'test-secret',
     config: appConfig,
   });
-  const identityGateway = new BetterAuthRedemptionIdentityGateway();
+  const identityGateway = new BetterAuthRedemptionIdentityGateway({
+    auth,
+    createTransactionAuth: createServerAuth,
+  });
   const redemptionManager = new DbRedemptionManager({
     churchRepository,
     identityGateway,
@@ -86,6 +90,7 @@ beforeEach(async () => {
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    failureLog: { record: () => {} },
   });
   const volunteerTransferManager = new DbVolunteerTransferManager({
     churchRepository,
@@ -150,25 +155,6 @@ async function mintExistingMemberInvitation() {
     ministryAccessLevel: 'volunteer',
     roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
   });
-}
-
-/**
- * Mints for an email that matches no existing Church Member, which per spec
- * §5.3 resolves the mint to the chained Church Invitation + Ministry
- * Invitation pair — unlike `mintExistingMemberInvitation`, whose fixture
- * email always belongs to a real Church Member and so is never chained.
- */
-async function mintChainedInvitation() {
-  const email = `outsider-${crypto.randomUUID()}@fixture.test`;
-  const invitation = await invitationManager.mint({
-    churchId: ChurchId.from(fixture.churchA.id),
-    ministryId: MinistryId.from(fixture.ministryOneA),
-    inviterId: UserId.from(fixture.adminA),
-    email,
-    ministryAccessLevel: 'volunteer',
-    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
-  });
-  return { invitation, email };
 }
 
 interface CreateUserSessionInput {
@@ -290,8 +276,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.json()).toEqual({
         kind: 'church-only',
         sourceChurchName: fixture.churchB.name,
+        destinationChurchId: fixture.churchA.id,
         destinationChurchName: fixture.churchA.name,
         ministryInvitationId: invitation.id,
+        ministryName: expect.stringMatching(/^Worship /),
       });
 
       // The Ministry half is refused: invitation stays pending, no grant, no
@@ -496,48 +484,155 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
     });
   });
 
-  describe('POST /redemption/church/:invitationId/decline', () => {
-    it('returns 401 without a session', async () => {
-      const invitation = await mintExistingMemberInvitation();
+  describe('wrong login and ministry-only outcomes', () => {
+    const addressedEmail = () =>
+      `${fixture.existingChurchMemberA}@fixture.test`;
 
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/v1/redemption/church/${invitation.id}/decline`,
+    async function countGrants() {
+      const grants = await testDb
+        .select()
+        .from(ministryMembership)
+        .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
+      return grants.length;
+    }
+
+    async function expectStillPending(invitationId: string) {
+      const [row] = await testDb
+        .select({ status: ministryInvitation.status })
+        .from(ministryInvitation)
+        .where(eq(ministryInvitation.id, invitationId));
+      expect(row?.status).toBe('pending');
+    }
+
+    it('shows a wrong login only the masked addressed email and logs the mismatch', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.memberNoVolunteerA,
       });
 
-      expect(response.statusCode).toBe(401);
-    });
-
-    it('rejects both halves of a chained invitation for its own intended person', async () => {
-      const { invitation, email } = await mintChainedInvitation();
-      const cookie = await createUserSession({ email });
-
       const response = await app.inject({
-        method: 'POST',
-        url: `/api/v1/redemption/church/${invitation.id}/decline`,
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${invitation.id}`,
         headers: { cookie },
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ kind: 'declined' });
-      const [declinedInvitation] = await testDb
-        .select({
-          status: ministryInvitation.status,
-          churchInvitationId: ministryInvitation.churchInvitationId,
-        })
-        .from(ministryInvitation)
-        .where(eq(ministryInvitation.id, invitation.id));
-      expect(declinedInvitation?.status).toBe('rejected');
-      const [declinedChurchInvitation] = await testDb
-        .select({ status: churchInvitation.status })
-        .from(churchInvitation)
-        .where(
-          eq(
-            churchInvitation.id,
-            declinedInvitation?.churchInvitationId as string,
-          ),
-        );
-      expect(declinedChurchInvitation?.status).toBe('rejected');
+      expect(response.json()).toEqual({
+        kind: 'identity-mismatch',
+        maskedEmail: 'f***@fixture.test',
+      });
+      expect(response.body).not.toContain(addressedEmail());
+      const logged = await testDb
+        .select()
+        .from(securityLog)
+        .where(eq(securityLog.ministryInvitationId, invitation.id));
+      expect(logged).toHaveLength(1);
+      expect(logged[0]?.event).toBe('identity_mismatch');
+    });
+
+    it('answers a signed-in person with no Church Membership the same masked notice, not 401', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const cookie = await createUserSession({
+        email: 'nobody@elsewhere.test',
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${invitation.id}`,
+        headers: { cookie },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ kind: 'identity-mismatch' });
+    });
+
+    it('grants nothing when a wrong login accepts', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const grantsBefore = await countGrants();
+      const cookie = await createSessionCookie({
+        userId: fixture.memberNoVolunteerA,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json()).toEqual({ kind: 'identity-mismatch' });
+      expect(await countGrants()).toBe(grantsBefore);
+      await expectStillPending(invitation.id);
+    });
+
+    it('declines nothing when a wrong login declines', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const grantsBefore = await countGrants();
+      const cookie = await createSessionCookie({
+        userId: fixture.memberNoVolunteerA,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/decline`,
+        headers: { cookie },
+      });
+
+      expect(response.json()).toEqual({ kind: 'identity-mismatch' });
+      expect(await countGrants()).toBe(grantsBefore);
+      await expectStillPending(invitation.id);
+    });
+
+    it('creates a Volunteer profile for a leader invitation with no Roles', async () => {
+      const invitation = await invitationManager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email: addressedEmail(),
+        ministryAccessLevel: 'leader',
+        roleIds: [],
+      });
+      const cookie = await createSessionCookie({
+        userId: fixture.existingChurchMemberA,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json()).toMatchObject({ kind: 'full-success' });
+      const profiles = await testDb
+        .select()
+        .from(volunteer)
+        .where(eq(volunteer.userId, fixture.existingChurchMemberA));
+      expect(profiles).toHaveLength(1);
+      const [grant] = await testDb
+        .select({ level: ministryMembership.ministryAccessLevel })
+        .from(ministryMembership)
+        .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
+      expect(grant?.level).toBe('leader');
+    });
+
+    it('keeps Church Membership when the invitation is declined', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.existingChurchMemberA,
+      });
+
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/decline`,
+        headers: { cookie },
+      });
+
+      const memberships = await testDb
+        .select()
+        .from(member)
+        .where(eq(member.userId, fixture.existingChurchMemberA));
+      expect(memberships).toHaveLength(1);
     });
   });
 });

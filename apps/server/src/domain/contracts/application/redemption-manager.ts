@@ -1,9 +1,14 @@
 import type {
   ChurchId,
+  ChurchInvitationId,
   MinistryInvitationId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
+import type {
+  PublicRedemptionMinistry,
+  PublicRedemptionPreview,
+} from '../../entities/public-redemption-preview';
 
 export interface AcceptPendingMinistryInvitationInput {
   churchId: ChurchId;
@@ -15,35 +20,25 @@ export interface AcceptPendingMinistryInvitationInput {
   auditAction?: 'acceptance' | 'ministry_acceptance';
 }
 
-export interface PublicRedemptionPreview {
-  churchId: ChurchId;
-  churchInvitationId: string;
-  email: string;
-  churchName: string;
-  ministryName: string;
-  ministryAccessLevel: 'volunteer' | 'leader';
-  roleNames: string[];
-  expiresAt: Date;
-  churchInvitationStatus: 'pending' | 'accepted';
-}
+export type { PublicRedemptionMinistry, PublicRedemptionPreview };
 
 export interface GetPublicRedemptionPreviewInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   now?: Date;
 }
 
 export interface GetDebugVerificationCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   now?: Date;
 }
 
 export interface RequestRedemptionCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   now?: Date;
 }
 
 export interface RedeemNewUserInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   name: string;
   password: string;
   code: string;
@@ -51,9 +46,10 @@ export interface RedeemNewUserInput {
   now?: Date;
 }
 
+/** A plain Church Invitation admits a Church Member only: no Volunteer. */
 export interface FullRedemptionSuccess {
   kind: 'full-success';
-  volunteerId: VolunteerId;
+  volunteerId: VolunteerId | null;
   sessionCookie: string;
 }
 
@@ -70,7 +66,10 @@ export interface ChurchOnlyRedemptionOutcome {
   sourceChurchName: string;
   /** The invitation's Church, now the redeemer's Active Church. */
   destinationChurchName: string;
+  destinationChurchId: ChurchId;
   ministryInvitationId: MinistryInvitationId;
+  /** The invited Ministry the warning names. */
+  ministryName: string;
 }
 
 export interface RetryableRedemptionFailure {
@@ -83,11 +82,31 @@ export interface TerminalRedemptionFailure {
   reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
 }
 
+/** A committed Church-only join: the new session is kept. */
+export interface NewPersonChurchOnlyOutcome
+  extends ChurchOnlyRedemptionOutcome {
+  sessionCookie: string;
+}
+
+/** Every new-person write was rolled back; the same invitation can be retried. */
+export interface RetryableNewPersonFailure {
+  kind: 'retryable-failure';
+  reason: 'IDENTITY_FAILED' | 'MINISTRY_ACCEPTANCE_FAILED';
+}
+
+export interface TerminalNewPersonFailure {
+  kind: 'terminal-failure';
+  reason:
+    | 'INVITATION_UNAVAILABLE'
+    | 'VERIFICATION_FAILED'
+    | 'EMAIL_ALREADY_REGISTERED';
+}
+
 export type RedeemNewUserOutcome =
   | FullRedemptionSuccess
-  | ChurchOnlyRedemptionOutcome
-  | RetryableRedemptionFailure
-  | TerminalRedemptionFailure;
+  | NewPersonChurchOnlyOutcome
+  | RetryableNewPersonFailure
+  | TerminalNewPersonFailure;
 
 /**
  * Post-authentication lifecycle classification for an existing Church
@@ -122,6 +141,11 @@ export interface IdentityMismatchStatus {
   kind: 'identity-mismatch';
 }
 
+/** The status read also tells a wrong login who the invitation was addressed to, masked. */
+export interface MaskedIdentityMismatchStatus extends IdentityMismatchStatus {
+  maskedEmail: string;
+}
+
 export interface UnavailableInvitationStatus {
   kind: 'unavailable';
 }
@@ -129,7 +153,7 @@ export interface UnavailableInvitationStatus {
 export type AuthenticatedInvitationStatus =
   | RedeemableInvitationStatus
   | AlreadyAcceptedInvitationStatus
-  | IdentityMismatchStatus
+  | MaskedIdentityMismatchStatus
   | UnavailableInvitationStatus;
 
 export interface AcceptExistingMemberInput {
@@ -160,6 +184,15 @@ export interface DeclineInvitationInput {
   sessionCookie: string;
   now?: Date;
 }
+
+export interface DeclineChurchInvitationInput {
+  churchInvitationId: ChurchInvitationId;
+  now?: Date;
+}
+
+export type DeclineChurchInvitationOutcome =
+  | { kind: 'declined' }
+  | { kind: 'terminal-failure'; reason: 'INVITATION_UNAVAILABLE' };
 
 export interface DeclinedOutcome {
   kind: 'declined';
@@ -195,6 +228,10 @@ export interface RedemptionManager {
   declineInvitation(
     input: DeclineInvitationInput,
   ): Promise<DeclineInvitationOutcome>;
+  /** Public: link possession authorizes it; creates no User or session. */
+  declineChurchInvitation(
+    input: DeclineChurchInvitationInput,
+  ): Promise<DeclineChurchInvitationOutcome>;
   /** Non-production support only: null in production, when the invitation
    * is unavailable, or when no code has been captured yet. */
   getDebugVerificationCode(

@@ -1,5 +1,5 @@
 import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
-import type { VolunteerId } from '../domain/branded-ids';
+import type { ChurchId, VolunteerId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
   AcceptExistingMemberInput,
@@ -7,11 +7,15 @@ import type {
   AcceptPendingMinistryInvitationInput,
   AuthenticatedInvitationStatus,
   ChurchOnlyRedemptionOutcome,
+  DeclineChurchInvitationInput,
+  DeclineChurchInvitationOutcome,
   DeclineInvitationInput,
   DeclineInvitationOutcome,
+  FullRedemptionSuccess,
   GetAuthenticatedInvitationStatusInput,
   GetDebugVerificationCodeInput,
   GetPublicRedemptionPreviewInput,
+  PublicRedemptionMinistry,
   PublicRedemptionPreview,
   RedeemNewUserInput,
   RedeemNewUserOutcome,
@@ -24,16 +28,16 @@ import type {
   MinistryInvitationRepository,
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionRepository } from '../domain/contracts/infrastructure/redemption.repository';
-import type {
-  CreateRedemptionAccountOutput,
-  RedemptionIdentityGateway,
-} from '../domain/contracts/infrastructure/redemption-identity-gateway';
+import type { RedemptionFailureLog } from '../domain/contracts/infrastructure/redemption-failure-log';
+import type { RedemptionIdentityGateway } from '../domain/contracts/infrastructure/redemption-identity-gateway';
 import type { SecurityLogRepository } from '../domain/contracts/infrastructure/security-log.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VerificationCodeInspector } from '../domain/contracts/infrastructure/verification-code-inspector';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
+import { maskEmail } from '../domain/services/mask-email';
 
 interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
@@ -43,6 +47,7 @@ interface DbRedemptionManagerDependencies {
   redemptionRepository: RedemptionRepository;
   securityLogRepository: SecurityLogRepository;
   unitOfWork: UnitOfWork;
+  failureLog: RedemptionFailureLog;
   /** Non-production only — see `getDebugVerificationCode`. */
   verificationCodeInspector?: VerificationCodeInspector;
 }
@@ -53,9 +58,51 @@ interface DescribeChurchOnlySplitInput {
   churchId: AcceptPendingMinistryInvitationInput['churchId'];
   destinationChurchName: string;
   ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
+  ministryName: string;
   userId: AcceptPendingMinistryInvitationInput['userId'];
   correlationId: string;
   now: Date;
+}
+
+interface AdmitNewPersonInput {
+  preview: PublicRedemptionPreview;
+  name: string;
+  password: string;
+  correlationId: string;
+  now: Date;
+  tx: TransactionContext;
+}
+
+interface AdmittedChurchOnly {
+  kind: 'church-only';
+  sourceChurchId: ChurchId;
+  ministry: PublicRedemptionMinistry;
+  sessionCookie: string;
+}
+
+type AdmittedNewPerson = FullRedemptionSuccess | AdmittedChurchOnly;
+
+interface ClassifyIdentityFailureInput {
+  email: string;
+}
+
+interface ChurchOnlyOutcomeInput {
+  sourceChurchId: ChurchId;
+  destinationChurchId: ChurchId;
+  destinationChurchName: string;
+  ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
+  ministryName: string;
+}
+
+interface MinistryGrantFailureInput {
+  cause: unknown;
+}
+
+/** Marks a throw from the Ministry grant step, so the rollback reports it as such. */
+class MinistryGrantFailure extends Error {
+  constructor({ cause }: MinistryGrantFailureInput) {
+    super('Ministry grant failed during new-person admission.', { cause });
+  }
 }
 
 interface ResolveInvitationContextInput {
@@ -68,7 +115,7 @@ interface ResolveInvitationContextInput {
 
 type ResolvedInvitationContext =
   | { status: 'unavailable' }
-  | { status: 'identity-mismatch' }
+  | { status: 'identity-mismatch'; addressedEmail: string }
   | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
   | { status: 'redeemable'; context: MinistryInvitationContext };
 
@@ -104,6 +151,7 @@ export class DbRedemptionManager implements RedemptionManager {
   private readonly redemptionRepository: RedemptionRepository;
   private readonly securityLogRepository: SecurityLogRepository;
   private readonly unitOfWork: UnitOfWork;
+  private readonly failureLog: RedemptionFailureLog;
   private readonly verificationCodeInspector:
     | VerificationCodeInspector
     | undefined;
@@ -116,6 +164,7 @@ export class DbRedemptionManager implements RedemptionManager {
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    failureLog,
     verificationCodeInspector,
   }: DbRedemptionManagerDependencies) {
     this.churchRepository = churchRepository;
@@ -125,31 +174,28 @@ export class DbRedemptionManager implements RedemptionManager {
     this.redemptionRepository = redemptionRepository;
     this.securityLogRepository = securityLogRepository;
     this.unitOfWork = unitOfWork;
+    this.failureLog = failureLog;
     this.verificationCodeInspector = verificationCodeInspector;
   }
 
   async getPublicPreview({
-    ministryInvitationId,
+    churchInvitationId,
     now = nowAsDate(),
   }: GetPublicRedemptionPreviewInput): Promise<PublicRedemptionPreview | null> {
-    const preview = await this.invitationRepository.findPublicRedemptionPreview(
-      {
-        ministryInvitationId,
-        now,
-      },
-    );
-    if (!preview) return null;
-    return preview;
+    return this.invitationRepository.findPublicRedemptionPreview({
+      churchInvitationId,
+      now,
+    });
   }
 
   async requestVerificationCode({
-    ministryInvitationId,
+    churchInvitationId,
     now = nowAsDate(),
   }: RequestRedemptionCodeInput): Promise<boolean> {
-    const preview = await this.getPublicPreview({ ministryInvitationId, now });
+    const preview = await this.getPublicPreview({ churchInvitationId, now });
     if (!preview) return false;
     await this.invitationVerificationCodeManager.issue({
-      ministryInvitationId,
+      churchInvitationId,
       recipientEmail: preview.email,
       churchName: preview.churchName,
       now,
@@ -158,21 +204,19 @@ export class DbRedemptionManager implements RedemptionManager {
   }
 
   async redeemNewUser({
-    ministryInvitationId,
+    churchInvitationId,
     name,
     password,
     code,
     idempotencyKey,
     now = nowAsDate(),
   }: RedeemNewUserInput): Promise<RedeemNewUserOutcome> {
-    const preview = await this.invitationRepository.findPublicRedemptionPreview(
-      { ministryInvitationId, now, includeAcceptedChurchInvitation: true },
-    );
+    const preview = await this.getPublicPreview({ churchInvitationId, now });
     if (!preview)
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     try {
       await this.invitationVerificationCodeManager.verify({
-        ministryInvitationId,
+        churchInvitationId,
         code,
         idempotencyKey,
         now,
@@ -183,57 +227,141 @@ export class DbRedemptionManager implements RedemptionManager {
       }
       throw error;
     }
-    let account: CreateRedemptionAccountOutput;
     try {
-      account = await this.identityGateway.createAccount({
-        email: preview.email,
-        name,
-        password,
-      });
-      if (preview.churchInvitationStatus === 'pending') {
-        await this.identityGateway.acceptChurchInvitation({
-          churchInvitationId: preview.churchInvitationId,
-          sessionCookie: account.sessionCookie,
-        });
-      }
-      await this.identityGateway.setActiveChurch({
-        churchId: preview.churchId,
-        sessionCookie: account.sessionCookie,
-      });
-    } catch {
-      return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
-    }
-    try {
-      const volunteerId = await this.acceptPendingMinistryInvitation({
-        churchId: preview.churchId,
-        ministryInvitationId,
-        userId: account.userId,
-        acceptedAt: now,
-        correlationId: idempotencyKey,
-        auditAction: 'acceptance',
-      });
-      return {
-        kind: 'full-success',
-        volunteerId,
-        sessionCookie: account.sessionCookie,
-      };
-    } catch (error) {
-      if (error instanceof CrossChurchVolunteerConflictError) {
-        return this.describeChurchOnlySplit({
-          error,
-          churchId: preview.churchId,
-          destinationChurchName: preview.churchName,
-          ministryInvitationId,
-          userId: account.userId,
+      const committed = await this.unitOfWork.run((tx) =>
+        this.admitNewPerson({
+          preview,
+          name,
+          password,
           correlationId: idempotencyKey,
           now,
+          tx,
+        }),
+      );
+      if (committed.kind === 'full-success') return committed;
+      const outcome = await this.churchOnlyOutcome({
+        sourceChurchId: committed.sourceChurchId,
+        destinationChurchId: preview.churchId,
+        destinationChurchName: preview.churchName,
+        ministryInvitationId: committed.ministry.ministryInvitationId,
+        ministryName: committed.ministry.ministryName,
+      });
+      return { ...outcome, sessionCookie: committed.sessionCookie };
+    } catch (error) {
+      const reason =
+        error instanceof MinistryGrantFailure
+          ? 'MINISTRY_ACCEPTANCE_FAILED'
+          : await this.classifyIdentityFailure({ email: preview.email });
+      const cause = error instanceof MinistryGrantFailure ? error.cause : error;
+      this.failureLog.record({
+        reason,
+        churchInvitationId,
+        ministryInvitationId: preview.ministry?.ministryInvitationId ?? null,
+        correlationId: idempotencyKey,
+        errorName: cause instanceof Error ? cause.name : typeof cause,
+      });
+      if (reason === 'EMAIL_ALREADY_REGISTERED')
+        return { kind: 'terminal-failure', reason };
+      return { kind: 'retryable-failure', reason };
+    }
+  }
+
+  /**
+   * One transaction for identity, session, Church admission and any paired
+   * Ministry grants: any throw rolls all of them back, and the caller only
+   * sees the session cookie after commit. The verification code is consumed
+   * before, keyed by the idempotency key, so the same request can be retried.
+   */
+  private async admitNewPerson({
+    preview,
+    name,
+    password,
+    correlationId,
+    now,
+    tx,
+  }: AdmitNewPersonInput): Promise<AdmittedNewPerson> {
+    const account = await this.identityGateway.createAccount({
+      email: preview.email,
+      name,
+      password,
+      tx,
+    });
+    const { sessionCookie, userId } = account;
+    await this.identityGateway.acceptChurchInvitation({
+      churchInvitationId: preview.churchInvitationId,
+      sessionCookie,
+      tx,
+    });
+    await this.identityGateway.setActiveChurch({
+      churchId: preview.churchId,
+      sessionCookie,
+      tx,
+    });
+    const { ministry } = preview;
+    if (!ministry)
+      return { kind: 'full-success', volunteerId: null, sessionCookie };
+    const grant = {
+      churchId: preview.churchId,
+      ministryInvitationId: ministry.ministryInvitationId,
+      userId,
+      correlationId,
+      tx,
+    };
+    try {
+      const volunteerId =
+        await this.redemptionRepository.acceptPendingMinistryInvitation({
+          ...grant,
+          acceptedAt: now,
+          auditAction: 'acceptance',
         });
-      }
+      return { kind: 'full-success', volunteerId, sessionCookie };
+    } catch (error) {
+      if (!(error instanceof CrossChurchVolunteerConflictError))
+        throw new MinistryGrantFailure({ cause: error });
+      // Refused before any grant write: the Church admission still commits.
+      await this.redemptionRepository.recordChurchOnlyPartialAcceptance({
+        ...grant,
+        recordedAt: now,
+      });
       return {
-        kind: 'retryable-failure',
-        reason: 'MINISTRY_ACCEPTANCE_FAILED',
+        kind: 'church-only',
+        sourceChurchId: error.sourceChurchId,
+        ministry,
+        sessionCookie,
       };
     }
+  }
+
+  /** After rollback: a committed User with this email (pre-existing or a racing signup) is never touched. */
+  private async classifyIdentityFailure({
+    email,
+  }: ClassifyIdentityFailureInput): Promise<
+    'EMAIL_ALREADY_REGISTERED' | 'IDENTITY_FAILED'
+  > {
+    const registered = await this.identityGateway
+      .isEmailRegistered({ email })
+      .catch(() => false);
+    return registered ? 'EMAIL_ALREADY_REGISTERED' : 'IDENTITY_FAILED';
+  }
+
+  private async churchOnlyOutcome({
+    sourceChurchId,
+    destinationChurchId,
+    destinationChurchName,
+    ministryInvitationId,
+    ministryName,
+  }: ChurchOnlyOutcomeInput): Promise<ChurchOnlyRedemptionOutcome> {
+    const sourceChurch = await this.churchRepository.getById({
+      id: sourceChurchId,
+    });
+    return {
+      kind: 'church-only',
+      sourceChurchName: sourceChurch.name,
+      destinationChurchId,
+      destinationChurchName,
+      ministryInvitationId,
+      ministryName,
+    };
   }
 
   /**
@@ -248,6 +376,7 @@ export class DbRedemptionManager implements RedemptionManager {
     churchId,
     destinationChurchName,
     ministryInvitationId,
+    ministryName,
     userId,
     correlationId,
     now,
@@ -262,15 +391,13 @@ export class DbRedemptionManager implements RedemptionManager {
         tx,
       }),
     );
-    const sourceChurch = await this.churchRepository.getById({
-      id: error.sourceChurchId,
-    });
-    return {
-      kind: 'church-only',
-      sourceChurchName: sourceChurch.name,
+    return this.churchOnlyOutcome({
+      sourceChurchId: error.sourceChurchId,
+      destinationChurchId: churchId,
       destinationChurchName,
       ministryInvitationId,
-    };
+      ministryName,
+    });
   }
 
   async acceptPendingMinistryInvitation({
@@ -324,7 +451,7 @@ export class DbRedemptionManager implements RedemptionManager {
         correlationId: correlationId ?? crypto.randomUUID(),
         now,
       });
-      return { status: 'identity-mismatch' };
+      return { status: 'identity-mismatch', addressedEmail: context.email };
     }
     if (context.ministryInvitation.status === 'accepted') {
       return {
@@ -346,8 +473,12 @@ export class DbRedemptionManager implements RedemptionManager {
       now,
     });
     if (resolved.status === 'unavailable') return { kind: 'unavailable' };
-    if (resolved.status === 'identity-mismatch')
-      return { kind: 'identity-mismatch' };
+    if (resolved.status === 'identity-mismatch') {
+      return {
+        kind: 'identity-mismatch',
+        maskedEmail: maskEmail({ email: resolved.addressedEmail }),
+      };
+    }
     if (resolved.status === 'already-accepted') {
       return {
         kind: 'already-accepted',
@@ -427,6 +558,7 @@ export class DbRedemptionManager implements RedemptionManager {
           churchId: ministryInvitation.churchId,
           destinationChurchName: resolved.context.churchName,
           ministryInvitationId,
+          ministryName: resolved.context.ministryName,
           userId,
           correlationId: idempotencyKey,
           now,
@@ -488,12 +620,28 @@ export class DbRedemptionManager implements RedemptionManager {
     return { kind: 'declined' };
   }
 
+  async declineChurchInvitation({
+    churchInvitationId,
+    now = nowAsDate(),
+  }: DeclineChurchInvitationInput): Promise<DeclineChurchInvitationOutcome> {
+    const result = await this.unitOfWork.run((tx) =>
+      this.redemptionRepository.declineChurchInvitation({
+        churchInvitationId,
+        declinedAt: now,
+        tx,
+      }),
+    );
+    if (result === 'unavailable')
+      return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
+    return { kind: 'declined' };
+  }
+
   async getDebugVerificationCode({
-    ministryInvitationId,
+    churchInvitationId,
     now = nowAsDate(),
   }: GetDebugVerificationCodeInput): Promise<string | null> {
     if (!this.verificationCodeInspector) return null;
-    const preview = await this.getPublicPreview({ ministryInvitationId, now });
+    const preview = await this.getPublicPreview({ churchInvitationId, now });
     if (!preview) return null;
     return (
       this.verificationCodeInspector.lastVerificationCodeFor({

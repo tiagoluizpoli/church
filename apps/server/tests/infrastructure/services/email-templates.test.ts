@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
+  EmailDuration,
   MinistryInvitationEmail,
   TransferDigestEmail,
   TransferMinistryDigestEmail,
@@ -590,5 +591,39 @@ describe('prepareEmail — password reset (T3)', () => {
 
     expect(request.from).toBe('"Igreja <Fé> & \\"Paz\\"" <hi@church.test>');
     expect(request).not.toHaveProperty('replyTo');
+  });
+});
+
+describe('prepareEmail — typed email durations', () => {
+  interface ResetLifetimeInput {
+    linkLifetime: EmailDuration;
+    locale: 'en' | 'pt-BR';
+  }
+  const resetLifetime = ({ linkLifetime, locale }: ResetLifetimeInput) =>
+    prepareEmail({
+      payload: {
+        kind: 'auth.password-reset',
+        to: 'user@example.com',
+        resetUrl: 'https://app.church.test/reset-password?token=t',
+        linkLifetime,
+      },
+      from: 'Church <hi@church.test>',
+      locale,
+      appName: 'Church',
+    }).request.text;
+
+  it.each([
+    [{ hours: 1 }, 'en', 'This link expires in 1 hour.'],
+    [{ hours: 1 }, 'pt-BR', 'Este link expira em 1 hora.'],
+    [{ hours: 2 }, 'en', 'This link expires in 2 hours.'],
+    [{ hours: 2 }, 'pt-BR', 'Este link expira em 2 horas.'],
+    [{ days: 1 }, 'en', 'This link expires in 1 day.'],
+    [{ days: 3 }, 'pt-BR', 'Este link expira em 3 dias.'],
+    [{ minutes: 1 }, 'pt-BR', 'Este link expira em 1 minuto.'],
+    [{ minutes: 10 }, 'en', 'This link expires in 10 minutes.'],
+  ] as const)('renders %j in %s', (duration, locale, sentence) => {
+    expect(resetLifetime({ linkLifetime: duration, locale })).toContain(
+      sentence,
+    );
   });
 });

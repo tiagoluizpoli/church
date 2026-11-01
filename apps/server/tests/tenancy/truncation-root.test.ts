@@ -234,7 +234,7 @@ async function seedEveryTenantedTable(): Promise<void> {
   });
 
   await testDb.insert(invitationVerificationCode).values({
-    ministryInvitationId: IDS.ministryInvitation,
+    churchInvitationId: 'truncation-root-invitation',
     codeHash: 'truncation-root-verification-code-hash',
     expiresAt: new Date('2030-01-01T00:00:00Z'),
     lastSentAt: new Date('2030-01-01T00:00:00Z'),

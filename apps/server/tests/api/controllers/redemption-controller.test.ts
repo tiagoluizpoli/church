@@ -11,6 +11,7 @@ import {
 import { RedemptionController } from '@/api/controllers/redemption-controller';
 import {
   ChurchId,
+  ChurchInvitationId,
   MinistryInvitationId,
   VolunteerId,
 } from '@/domain/branded-ids';
@@ -21,12 +22,12 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
 }));
 
 const mockGetSession = vi.mocked(
-  (await import('@church/auth')).auth.api.getSession,
+  (await import('@/main/di/server-auth')).auth.api.getSession,
 );
 
 const INVITATION_ID = '11111111-1111-4111-8111-111111111111';
@@ -42,6 +43,7 @@ const redemptionManager: RedemptionManager = {
   getAuthenticatedInvitationStatus: vi.fn(),
   acceptExistingMember: vi.fn(),
   declineInvitation: vi.fn(),
+  declineChurchInvitation: vi.fn(),
   getDebugVerificationCode: vi.fn(),
 };
 
@@ -79,17 +81,15 @@ beforeEach(() => {
 });
 
 describe('RedemptionController', () => {
-  it('returns only the public preview fields for an available invitation', async () => {
+  it('returns only the public preview fields for an available plain invitation', async () => {
     vi.mocked(redemptionManager.getPublicPreview).mockResolvedValue({
       churchId: ChurchId.from('33333333-3333-4333-8333-333333333333'),
-      churchInvitationId: '44444444-4444-4444-8444-444444444444',
+      churchInvitationId: ChurchInvitationId.from(INVITATION_ID),
       email: 'invitee@example.test',
       churchName: 'St. Peter',
-      ministryName: 'Worship',
-      ministryAccessLevel: 'volunteer',
-      roleNames: ['Singer'],
+      churchAccessLevel: 'admin',
       expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-      churchInvitationStatus: 'pending',
+      ministry: null,
     });
 
     const response = await app.inject({
@@ -101,9 +101,7 @@ describe('RedemptionController', () => {
     expect(response.json()).toEqual({
       email: 'invitee@example.test',
       churchName: 'St. Peter',
-      ministryName: 'Worship',
-      ministryAccessLevel: 'volunteer',
-      roleNames: ['Singer'],
+      churchAccessLevel: 'admin',
       expiresAt: '2026-08-03T12:00:00.000Z',
     });
   });
@@ -206,12 +204,17 @@ describe('RedemptionController', () => {
     });
   });
 
-  it('passes the cross-Church split outcome through, naming both Churches', async () => {
+  it('passes the committed cross-Church split through with its session, naming both Churches', async () => {
     vi.mocked(redemptionManager.redeemNewUser).mockResolvedValue({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: ChurchId.from(
+        '33333333-3333-4333-8333-333333333333',
+      ),
       destinationChurchName: 'Northgate Community Church',
       ministryInvitationId: MinistryInvitationId.from(INVITATION_ID),
+      ministryName: 'Worship',
+      sessionCookie: 'better-auth.session_token=split-session; HttpOnly',
     });
 
     const response = await app.inject({
@@ -226,11 +229,14 @@ describe('RedemptionController', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers['set-cookie']).toContain('split-session');
     expect(response.json()).toEqual({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: '33333333-3333-4333-8333-333333333333',
       destinationChurchName: 'Northgate Community Church',
       ministryInvitationId: INVITATION_ID,
+      ministryName: 'Worship',
     });
   });
 
@@ -348,14 +354,17 @@ describe('GET /redemption/ministry/:invitationId', () => {
     });
   });
 
-  it('never surfaces the invited email for a wrong signed-in account', async () => {
+  it('surfaces only the masked addressed email for a wrong signed-in account', async () => {
     mockGetSession.mockResolvedValueOnce({
       user: { id: USER_ID },
       session: { activeOrganizationId: null },
     } as never);
     vi.mocked(
       redemptionManager.getAuthenticatedInvitationStatus,
-    ).mockResolvedValue({ kind: 'identity-mismatch' });
+    ).mockResolvedValue({
+      kind: 'identity-mismatch',
+      maskedEmail: 'e***@example.test',
+    });
 
     const response = await app.inject({
       method: 'GET',
@@ -364,8 +373,10 @@ describe('GET /redemption/ministry/:invitationId', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ kind: 'identity-mismatch' });
-    expect(response.body).not.toContain('@');
+    expect(response.json()).toEqual({
+      kind: 'identity-mismatch',
+      maskedEmail: 'e***@example.test',
+    });
   });
 
   it('offers Continue to Church for an already-accepted invitation', async () => {
@@ -500,40 +511,36 @@ describe('decline endpoints', () => {
     });
   });
 
-  it('POST /redemption/church/:invitationId/decline returns 401 without a session', async () => {
-    mockGetSession.mockResolvedValueOnce(null as never);
-
-    const response = await app.inject({
-      method: 'POST',
-      url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(redemptionManager.declineInvitation).not.toHaveBeenCalled();
-  });
-
-  it('POST /redemption/church/:invitationId/decline rejects the chained pair through the same manager call', async () => {
-    mockGetSession.mockResolvedValueOnce({
-      user: { id: USER_ID },
-      session: { activeOrganizationId: null },
-    } as never);
-    vi.mocked(redemptionManager.declineInvitation).mockResolvedValue({
+  it('POST /redemption/church/:invitationId/decline is public and takes the Church Invitation id', async () => {
+    vi.mocked(redemptionManager.declineChurchInvitation).mockResolvedValue({
       kind: 'declined',
     });
 
     const response = await app.inject({
       method: 'POST',
       url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
-      headers: { cookie: AUTH_COOKIE },
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ kind: 'declined' });
-    expect(redemptionManager.declineInvitation).toHaveBeenCalledWith({
-      ministryInvitationId: INVITATION_ID,
-      userId: USER_ID,
-      sessionCookie: AUTH_COOKIE,
+    expect(redemptionManager.declineChurchInvitation).toHaveBeenCalledWith({
+      churchInvitationId: INVITATION_ID,
     });
+    expect(mockGetSession).not.toHaveBeenCalled();
+  });
+
+  it('POST /redemption/church/:invitationId/decline maps an unavailable invitation to 404', async () => {
+    vi.mocked(redemptionManager.declineChurchInvitation).mockResolvedValue({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 
   it('GET /redemption/transfer/:invitationId/preview returns 401 without a session', async () => {

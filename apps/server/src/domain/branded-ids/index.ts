@@ -1,6 +1,7 @@
 export * from './assignment-id';
 export * from './availability-check-id';
 export * from './church-id';
+export * from './church-invitation-id';
 export * from './cycle-id';
 export * from './event-id';
 export * from './event-template-id';

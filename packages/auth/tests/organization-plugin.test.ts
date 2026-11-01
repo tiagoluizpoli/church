@@ -4,7 +4,7 @@ import { eq, getTableColumns } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { clearDatabase, testDb } from './setup';
-import { auth } from '@/index';
+import { createAuth } from '@/index';
 import {
   organizationCreatorRole,
   organizationRoles,
@@ -88,6 +88,8 @@ const drizzleTables: Record<string, PgTable> = {
 // Better Auth narrows its generated server API to configured roles. This test
 // intentionally exercises hostile transport input, which reaches the hook
 // before persistence.
+const auth = createAuth({ database: testDb });
+
 const addMemberEndpoint = auth.api.addMember as unknown as AddMemberEndpoint;
 
 function getOrganizationPlugin(): OrganizationPluginShape {

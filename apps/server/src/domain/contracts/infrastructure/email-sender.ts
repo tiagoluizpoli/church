@@ -42,9 +42,10 @@ export interface MinistryInvitationEmail {
 }
 
 /** A policy-derived length of time, translated at render time. */
-export interface EmailDuration {
-  minutes: number;
-}
+export type EmailDuration =
+  | { minutes: number }
+  | { hours: number }
+  | { days: number };
 
 /** A Transactional recipient known only by address (no Church Membership). */
 export interface AddressRecipient {

@@ -48,6 +48,9 @@ export const E2E_JOURNEY_RECIPES: Record<
   [E2E_JOURNEY_RECIPE_NAMES.ministryRedemption]: async () =>
     (await import('./recipes/ministry-redemption'))
       .createMinistryRedemptionRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.firstAdminOnboarding]: async () =>
+    (await import('./recipes/first-admin-onboarding'))
+      .createFirstAdminOnboardingRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.crossTenantInvitation]: async () =>
     (await import('./recipes/cross-tenant-invitation'))
       .createCrossTenantInvitationRecipe,

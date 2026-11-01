@@ -1,6 +1,13 @@
-import type { ChurchId, MinistryId, RoleId, UserId } from '../../branded-ids';
+import type {
+  ChurchId,
+  ChurchInvitationId,
+  MinistryId,
+  RoleId,
+  UserId,
+} from '../../branded-ids';
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
+import type { PublicRedemptionPreview } from '../../entities/public-redemption-preview';
 import type { TransactionContext } from './transaction-context';
 
 export interface AcquireMintLockInput {
@@ -85,6 +92,13 @@ export interface RefreshMinistryInvitationExpiryInput {
   tx?: TransactionContext;
 }
 
+export interface RefreshChurchInvitationExpiryInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  expiresAt: Date;
+  tx?: TransactionContext;
+}
+
 export interface ResendThrottleFields {
   lastResendAt: Date;
   resendCount: number;
@@ -110,23 +124,9 @@ export interface ResolveRecipientEmailInput {
   tx?: TransactionContext;
 }
 
-export interface PublicRedemptionPreview {
-  ministryInvitationId: string;
-  churchId: ChurchId;
-  churchInvitationId: string;
-  email: string;
-  churchName: string;
-  ministryName: string;
-  ministryAccessLevel: MinistryAccessLevel;
-  roleNames: string[];
-  expiresAt: Date;
-  churchInvitationStatus: 'pending' | 'accepted';
-}
-
 export interface FindPublicRedemptionPreviewInput {
-  ministryInvitationId: string;
+  churchInvitationId: ChurchInvitationId;
   now: Date;
-  includeAcceptedChurchInvitation?: boolean;
 }
 
 export interface FindMinistryInvitationContextInput {
@@ -137,7 +137,7 @@ export interface FindMinistryInvitationContextInput {
 /**
  * Any-status, kind-agnostic lookup for the existing-member/lifecycle-branch
  * flows — unlike `findPublicRedemptionPreview`, this does not filter on
- * `status`/`expiresAt` or require a chained Church Invitation to exist, so
+ * `status`/`expiresAt`, so
  * the caller (application layer) classifies redeemable / already-accepted /
  * unavailable itself. Returning `null` only for a nonexistent id keeps the
  * same "collapse to null" shape `findPublicRedemptionPreview` uses.
@@ -218,8 +218,10 @@ export interface MinistryInvitationRepository {
   resolveRecipientEmail(input: ResolveRecipientEmailInput): Promise<string>;
 
   /**
-   * Public redemption lookup. All unavailable lifecycle states deliberately
-   * collapse to null so transport never reveals why a link cannot be used.
+   * Public redemption lookup by Church Invitation, resolving its pending
+   * paired Ministry Invitation, if any. All unavailable lifecycle states
+   * deliberately collapse to null so transport never reveals why a link
+   * cannot be used.
    */
   findPublicRedemptionPreview(
     input: FindPublicRedemptionPreviewInput,
@@ -258,6 +260,11 @@ export interface MinistryInvitationRepository {
   refreshExpiry(
     input: RefreshMinistryInvitationExpiryInput,
   ): Promise<MinistryInvitation>;
+
+  /** Restarts a pending Church Invitation's expiry, as a paired resend does. */
+  refreshChurchInvitationExpiry(
+    input: RefreshChurchInvitationExpiryInput,
+  ): Promise<void>;
 
   /** Refreshes `expiresAt` and persists resend-throttle bookkeeping in one write — resend's variant of `refreshExpiry`. */
   applyResend(input: ApplyResendInput): Promise<MinistryInvitation>;

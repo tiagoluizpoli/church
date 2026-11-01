@@ -1,9 +1,8 @@
-import { appConfig } from '@church/app-config';
-import { env } from '@church/env/server';
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
-import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
 import type { CompositionRootDependencies } from './dependencies';
+import { auth, createServerAuth, useResetMailSender } from './server-auth';
+import { captureEmailSender, serverEmailSender } from './server-email-sender';
 
 export type Services = Pick<
   CompositionRootDependencies,
@@ -19,21 +18,12 @@ export interface BuildServicesInput {
 export function buildServices({ overrides }: BuildServicesInput): Services {
   const redemptionIdentityGateway =
     overrides.redemptionIdentityGateway ??
-    new BetterAuthRedemptionIdentityGateway();
-  // One shared capture instance outside production: the redemption debug route
-  // reads back what the verification-code manager just sent through it.
-  const isProduction = env.NODE_ENV === 'production';
-  const captureEmailSender = isProduction
-    ? undefined
-    : new CaptureEmailSender(appConfig.appName);
-  const emailSender =
-    overrides.emailSender ??
-    captureEmailSender ??
-    new ResendEmailSender({
-      apiKey: env.RESEND_API_KEY ?? '',
-      from: env.RESEND_FROM_EMAIL,
-      appName: appConfig.appName,
+    new BetterAuthRedemptionIdentityGateway({
+      auth,
+      createTransactionAuth: createServerAuth,
     });
+  const emailSender = overrides.emailSender ?? serverEmailSender;
+  useResetMailSender(emailSender);
   const verificationCodeInspector =
     overrides.verificationCodeInspector ??
     (emailSender instanceof CaptureEmailSender

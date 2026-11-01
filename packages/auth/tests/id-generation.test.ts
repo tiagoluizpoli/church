@@ -1,8 +1,10 @@
 import * as schema from '@church/db/schema';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { auth } from '../src/index';
+import { createAuth } from '../src/index';
 import { clearDatabase, testDb } from './setup';
+
+const auth = createAuth({ database: testDb });
 
 /**
  * A Church *is* an `organization` row, and `church` — plus every `church_id`

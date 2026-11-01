@@ -2,7 +2,6 @@ import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { activeChurchApiMock } from '@/tests/setup/active-church';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
@@ -11,8 +10,7 @@ const getVolunteerDashboard = vi.fn();
 const previewChurchInvitation = vi.fn();
 const requestChurchInvitationVerificationCode = vi.fn();
 const redeemChurchInvitation = vi.fn();
-const getVolunteerTransferPreview = vi.fn();
-const confirmVolunteerTransfer = vi.fn();
+const declineChurchInvitation = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -38,10 +36,8 @@ vi.mock('@/utils/api-instances', async () => ({
       requestChurchInvitationVerificationCode(...args),
     redeemChurchInvitation: (...args: unknown[]) =>
       redeemChurchInvitation(...args),
-    getVolunteerTransferPreview: (...args: unknown[]) =>
-      getVolunteerTransferPreview(...args),
-    confirmVolunteerTransfer: (...args: unknown[]) =>
-      confirmVolunteerTransfer(...args),
+    declineChurchInvitation: (...args: unknown[]) =>
+      declineChurchInvitation(...args),
   },
 }));
 
@@ -57,506 +53,415 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-const PREVIEW = {
-  email: 'invitee@example.test',
+const PLAIN_PREVIEW = {
+  email: 'first-admin@example.test',
   churchName: 'St. Peter',
-  ministryName: 'Worship',
-  ministryAccessLevel: 'volunteer' as const,
-  roleNames: ['Singer'],
+  churchAccessLevel: 'admin' as const,
   expiresAt: '2099-01-01T00:00:00.000Z',
 };
 
-function notFoundError(): AxiosError {
-  return new AxiosError('Not Found', undefined, undefined, undefined, {
-    status: 404,
-    data: { error: 'INVITATION_UNAVAILABLE' },
+const PAIRED_PREVIEW = {
+  email: 'invitee@example.test',
+  churchName: 'St. Peter',
+  churchAccessLevel: 'member' as const,
+  expiresAt: '2099-01-01T00:00:00.000Z',
+  ministry: {
+    invitationId: 'ministry-invitation-1',
+    name: 'Worship',
+    ministryAccessLevel: 'leader' as const,
+    roleNames: ['Singer', 'Guitar'],
+  },
+};
+
+const INITIAL_PATH = '/invitations/church/church-invitation-1';
+
+function axiosErrorWithStatus(status: number): AxiosError {
+  return new AxiosError('Request failed', undefined, undefined, undefined, {
+    status,
+    data: {},
   } as never);
 }
 
-describe('the chained-invitation redemption route', () => {
+const EMPTY_DASHBOARD = {
+  availabilityTasks: [],
+  upcomingAssignmentGroups: [],
+  unreadNotificationCount: 0,
+  notificationPreview: [],
+  defaultMinistryId: undefined,
+  ministryOptions: [],
+};
+
+async function openStepTwo() {
+  const { default: userEvent } = await import('@testing-library/user-event');
+  requestChurchInvitationVerificationCode.mockResolvedValue({ status: 'sent' });
+  const rendered = renderRoute({
+    initialPath: INITIAL_PATH,
+    churchTimezone: 'UTC',
+  });
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('button', { name: m.join_send_code() }),
+  );
+  await screen.findByLabelText(m.join_code_label());
+  return { user, ...rendered };
+}
+
+interface FillJoinFormInput {
+  user: Awaited<ReturnType<typeof openStepTwo>>['user'];
+  password?: string;
+}
+
+async function fillAndJoin({
+  user,
+  password = 'correct-horse-battery-staple',
+}: FillJoinFormInput): Promise<void> {
+  await user.type(screen.getByLabelText(m.join_code_label()), '123456');
+  await user.type(screen.getByLabelText(m.join_name_label()), 'New Person');
+  await user.type(screen.getByLabelText(m.join_password_label()), password);
+  await user.click(screen.getByRole('button', { name: m.join_submit() }));
+}
+
+describe('the public Church Invitation join route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    getVolunteerDashboard.mockResolvedValue(EMPTY_DASHBOARD);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('renders only the permitted preview fields with the email read-only', async () => {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
+  it('shows a plain first-admin invitation in step 1 with Send code and Decline but no Ministry', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
 
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
 
-    expect(await screen.findByText('Join St. Peter')).toBeVisible();
-    expect(screen.getByText(/Worship/)).toBeVisible();
-    const emailInput = screen.getByLabelText('Email') as HTMLInputElement;
-    expect(emailInput.value).toBe('invitee@example.test');
-    expect(emailInput).toBeDisabled();
+    expect(
+      await screen.findByRole('heading', {
+        name: m.join_title({ churchName: 'St. Peter' }),
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        m.join_church_access({ accessLevel: m.join_church_access_admin() }),
+      ),
+    ).toBeVisible();
+    const email = screen.getByLabelText(
+      m.join_email_label(),
+    ) as HTMLInputElement;
+    expect(email.value).toBe('first-admin@example.test');
+    expect(email).toHaveAttribute('readonly');
+    expect(
+      screen.getByRole('button', { name: m.join_send_code() }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByLabelText(m.join_name_label()),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Worship/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: m.join_decline() }),
+    ).toBeEnabled();
+    expect(previewChurchInvitation).toHaveBeenCalledWith('church-invitation-1');
   });
 
-  it('shows an unavailable message for an expired or unknown invitation', async () => {
-    previewChurchInvitation.mockRejectedValue(notFoundError());
+  describe('declining from step 1', () => {
+    async function openDecline() {
+      const { default: userEvent } = await import(
+        '@testing-library/user-event'
+      );
+      previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
+      renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
+      const user = userEvent.setup();
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline() }),
+      );
+      return user;
+    }
 
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
+    it('does nothing when the confirmation is cancelled', async () => {
+      const user = await openDecline();
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: m.join_decline_confirm_title(),
+        }),
+      ).toBeVisible();
+
+      await user.click(
+        screen.getByRole('button', { name: m.join_decline_cancel() }),
+      );
+
+      expect(declineChurchInvitation).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: m.join_send_code() }),
+      ).toBeVisible();
     });
 
-    expect(await screen.findByText(/no longer available/i)).toBeVisible();
+    it('declines on confirmation and tells the recipient they may close the page', async () => {
+      declineChurchInvitation.mockResolvedValue({ kind: 'declined' });
+      const user = await openDecline();
+
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline_confirm() }),
+      );
+
+      expect(await screen.findByText(m.join_declined_title())).toBeVisible();
+      expect(screen.getByText(m.join_declined_description())).toBeVisible();
+      expect(declineChurchInvitation).toHaveBeenCalledWith(
+        'church-invitation-1',
+      );
+      expect(
+        screen.queryByRole('button', { name: m.join_send_code() }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the unavailable recovery UI when the invitation is gone', async () => {
+      declineChurchInvitation.mockRejectedValue(axiosErrorWithStatus(404));
+      const user = await openDecline();
+
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline_confirm() }),
+      );
+
+      expect(
+        await screen.findByText(m.redemption_failure_unavailable_title()),
+      ).toBeVisible();
+      expect(screen.getByRole('link', { name: m.join_log_in() })).toBeVisible();
+    });
+
+    it('says Too many requests when throttled and keeps the invitation actionable', async () => {
+      declineChurchInvitation.mockRejectedValue(axiosErrorWithStatus(429));
+      const user = await openDecline();
+
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline_confirm() }),
+      );
+
+      expect(await screen.findByText(m.join_too_many_requests())).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: m.join_send_code() }),
+      ).toBeVisible();
+    });
+
+    it('renders the decline copy in pt-BR from the catalog', async () => {
+      await openDecline();
+
+      expect(
+        await screen.findByRole('alertdialog', { name: 'Recusar convite?' }),
+      ).toBeVisible();
+    });
   });
 
-  it('requests a verification code and enters a resend cooldown', async () => {
-    const { default: userEvent } = await import('@testing-library/user-event');
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
-    requestChurchInvitationVerificationCode.mockResolvedValue({
-      status: 'sent',
-    });
+  it('shows the paired Ministry, its Ministry Access Level and Roles', async () => {
+    previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
 
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
-    const user = userEvent.setup();
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
 
-    const sendButton = await screen.findByRole('button', {
-      name: 'Send code',
-    });
-    await user.click(sendButton);
+    expect(
+      await screen.findByText(
+        m.join_ministry_access({
+          ministryName: 'Worship',
+          accessLevel: m.join_ministry_access_leader(),
+        }),
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.join_ministry_roles({ roles: 'Singer, Guitar' })),
+    ).toBeVisible();
+  });
+
+  it('explains an unavailable invitation and offers Log in', async () => {
+    previewChurchInvitation.mockRejectedValue(axiosErrorWithStatus(404));
+
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
+
+    expect(
+      await screen.findByText(m.redemption_failure_unavailable_title()),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.redemption_failure_unavailable_description()),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: m.join_log_in() })).toHaveAttribute(
+      'href',
+      '/login',
+    );
+  });
+
+  it('keeps throttling distinct from an unavailable invitation', async () => {
+    previewChurchInvitation.mockRejectedValue(axiosErrorWithStatus(429));
+
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
+
+    expect(await screen.findByText(m.join_too_many_requests())).toBeVisible();
+    expect(
+      screen.queryByText(m.redemption_failure_unavailable_title()),
+    ).not.toBeInTheDocument();
+  });
+
+  it('moves to step 2 after Send code, keeps the email fixed and starts the resend cooldown', async () => {
+    previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
+
+    await openStepTwo();
 
     expect(requestChurchInvitationVerificationCode).toHaveBeenCalledWith(
-      'invitation-1',
+      'church-invitation-1',
     );
     expect(
-      await screen.findByRole('button', { name: /Resend in \d+s/ }),
+      screen.getByText(m.join_code_sent({ email: 'invitee@example.test' })),
+    ).toBeVisible();
+    expect(screen.getByLabelText(m.join_name_label())).toBeEnabled();
+    expect(screen.getByLabelText(m.join_password_label())).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: /Reenviar em \d+s/ }),
     ).toBeDisabled();
+    expect(
+      screen.queryByRole('textbox', { name: m.join_email_label() }),
+    ).toBeNull();
   });
 
-  it('resumes at code entry on a fresh mount rather than restarting — a reload never re-gates name/password/code behind a prior step', async () => {
-    // Interrupted new-account journeys resume at email verification (spec
-    // §7.3): the route has no separate "step" state to lose on reload — a
-    // fresh mount always presents name, password and the code field
-    // together, so a code already sent in an earlier tab/session before the
-    // reload is still enough to finish, with no "Send code" click required.
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
-    redeemChurchInvitation.mockResolvedValue({
-      kind: 'full-success',
-      volunteerId: 'volunteer-1',
-    });
-    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
-    getVolunteerDashboard.mockResolvedValue({
-      availabilityTasks: [],
-      upcomingAssignmentGroups: [],
-      unreadNotificationCount: 0,
-      notificationPreview: [],
-      defaultMinistryId: undefined,
-      ministryOptions: [],
-    });
-
+  it('stays on step 1 and says Too many requests when the code request is throttled', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
-    const { router } = renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+    requestChurchInvitationVerificationCode.mockRejectedValue(
+      axiosErrorWithStatus(429),
+    );
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
     const user = userEvent.setup();
 
-    await screen.findByRole('heading', { name: /Join/ });
-    expect(screen.getByLabelText('Name')).toBeEnabled();
-    expect(screen.getByLabelText('Password')).toBeEnabled();
-    expect(screen.getByPlaceholderText('123456')).toBeEnabled();
-    expect(requestChurchInvitationVerificationCode).not.toHaveBeenCalled();
-
-    await user.type(screen.getByLabelText('Name'), 'New Volunteer');
-    await user.type(
-      screen.getByLabelText('Password'),
-      'correct-horse-battery-staple',
+    await user.click(
+      await screen.findByRole('button', { name: m.join_send_code() }),
     );
-    await user.type(screen.getByPlaceholderText('123456'), '654321');
-    await user.click(screen.getByRole('button', { name: 'Join' }));
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
-    });
-    expect(requestChurchInvitationVerificationCode).not.toHaveBeenCalled();
+    expect(await screen.findByText(m.join_too_many_requests())).toBeVisible();
+    expect(
+      screen.queryByLabelText(m.join_code_label()),
+    ).not.toBeInTheDocument();
   });
 
-  it('on full success, refreshes the session and navigates directly to the dashboard', async () => {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
+  it('refuses a password shorter than eight characters without submitting', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+    const { user } = await openStepTwo();
+
+    await fillAndJoin({ user, password: 'short' });
+
+    expect(await screen.findByText(m.join_validation_password())).toBeVisible();
+    expect(redeemChurchInvitation).not.toHaveBeenCalled();
+  });
+
+  it('joins a plain invitation and continues to Home', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
     redeemChurchInvitation.mockResolvedValue({
       kind: 'full-success',
-      volunteerId: 'volunteer-1',
+      volunteerId: null,
     });
-    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
-    getVolunteerDashboard.mockResolvedValue({
-      availabilityTasks: [],
-      upcomingAssignmentGroups: [],
-      unreadNotificationCount: 0,
-      notificationPreview: [],
-      defaultMinistryId: undefined,
-      ministryOptions: [],
-    });
+    const { user, router } = await openStepTwo();
 
-    const { default: userEvent } = await import('@testing-library/user-event');
-    const { router } = renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
-    const user = userEvent.setup();
+    await fillAndJoin({ user });
 
-    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
-    await user.type(
-      screen.getByLabelText('Password'),
-      'correct-horse-battery-staple',
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(redeemChurchInvitation).toHaveBeenCalledWith(
+      'church-invitation-1',
+      expect.objectContaining({ code: '123456', name: 'New Person' }),
     );
-    await user.type(screen.getByPlaceholderText('123456'), '123456');
-    await user.click(screen.getByRole('button', { name: 'Join' }));
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
-    });
     expect(getSession).toHaveBeenCalled();
   });
 
-  it('on a terminal verification failure, clears the stale code and keeps Join enabled to retry', async () => {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
+  it('continues a Church-only join to Home carrying the Church and Ministry names', async () => {
+    previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: 'church-1',
+      destinationChurchName: 'St. Peter',
+      ministryInvitationId: 'ministry-invitation-1',
+      ministryName: 'Worship',
+    });
+    const { user, router } = await openStepTwo();
+
+    await fillAndJoin({ user });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(router.state.location.search).toMatchObject({
+      joinedChurch: 'St. Peter',
+      invitedMinistry: 'Worship',
+    });
+  });
+
+  it('after a failed code, clears it and offers a new code', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
     redeemChurchInvitation.mockResolvedValue({
       kind: 'terminal-failure',
       reason: 'VERIFICATION_FAILED',
     });
+    const { user } = await openStepTwo();
 
-    const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
-    const user = userEvent.setup();
-
-    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
-    await user.type(
-      screen.getByLabelText('Password'),
-      'correct-horse-battery-staple',
-    );
-    const codeInput = screen.getByPlaceholderText('123456') as HTMLInputElement;
-    await user.type(codeInput, '000000');
-    await user.click(screen.getByRole('button', { name: 'Join' }));
-
-    expect(await screen.findByText("That code didn't work")).toBeVisible();
-    await waitFor(() => expect(codeInput.value).toBe(''));
-    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
-  });
-
-  it('on a retryable ministry-acceptance failure, keeps Join enabled without clearing the code', async () => {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
-    redeemChurchInvitation.mockResolvedValue({
-      kind: 'retryable-failure',
-      reason: 'MINISTRY_ACCEPTANCE_FAILED',
-    });
-
-    const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
-    const user = userEvent.setup();
-
-    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
-    await user.type(
-      screen.getByLabelText('Password'),
-      'correct-horse-battery-staple',
-    );
-    const codeInput = screen.getByPlaceholderText('123456') as HTMLInputElement;
-    await user.type(codeInput, '123456');
-    await user.click(screen.getByRole('button', { name: 'Join' }));
+    await fillAndJoin({ user });
 
     expect(
-      await screen.findByText(m.common_generic_error_title()),
+      await screen.findByText(m.redemption_failure_code_title()),
     ).toBeVisible();
-    expect(codeInput.value).toBe('123456');
-    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
+    const code = screen.getByLabelText(m.join_code_label()) as HTMLInputElement;
+    await waitFor(() => expect(code.value).toBe(''));
+    expect(screen.getByRole('button', { name: m.join_submit() })).toBeEnabled();
   });
 
-  it('on a non-retryable terminal failure, disables Join so the caller cannot resubmit a doomed request', async () => {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
+  it('offers Try again after a retryable failure without clearing the code', async () => {
+    previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'retryable-failure',
+      reason: 'IDENTITY_FAILED',
+    });
+    const { user } = await openStepTwo();
+
+    await fillAndJoin({ user });
+
+    expect(
+      await screen.findByText(m.redemption_failure_retryable_description()),
+    ).toBeVisible();
+    expect(
+      (screen.getByLabelText(m.join_code_label()) as HTMLInputElement).value,
+    ).toBe('123456');
+    expect(
+      screen.getByRole('button', { name: 'Tente novamente' }),
+    ).toBeEnabled();
+  });
+
+  it('tells a recipient whose email already has a login to ask their inviter, without a retry', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'terminal-failure',
+      reason: 'EMAIL_ALREADY_REGISTERED',
+    });
+    const { user } = await openStepTwo();
+
+    await fillAndJoin({ user });
+
+    expect(
+      await screen.findByText(
+        'Este email já tem uma conta; fale com quem convidou você.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: m.join_submit() }),
+    ).toBeDisabled();
+  });
+
+  it('disables Join when the invitation became unavailable mid-join', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
     redeemChurchInvitation.mockResolvedValue({
       kind: 'terminal-failure',
       reason: 'INVITATION_UNAVAILABLE',
     });
+    const { user } = await openStepTwo();
 
-    const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
-    const user = userEvent.setup();
-
-    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
-    await user.type(
-      screen.getByLabelText('Password'),
-      'correct-horse-battery-staple',
-    );
-    await user.type(screen.getByPlaceholderText('123456'), '123456');
-    await user.click(screen.getByRole('button', { name: 'Join' }));
+    await fillAndJoin({ user });
 
     expect(
-      await screen.findByText('This invitation is no longer available'),
+      await screen.findByText(m.redemption_failure_unavailable_title()),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled();
-  });
-
-  it('on an identity failure, shows a retry-eligible message', async () => {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
-    redeemChurchInvitation.mockResolvedValue({
-      kind: 'terminal-failure',
-      reason: 'IDENTITY_FAILED',
-    });
-
-    const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
-    const user = userEvent.setup();
-
-    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
-    await user.type(
-      screen.getByLabelText('Password'),
-      'correct-horse-battery-staple',
-    );
-    await user.type(screen.getByPlaceholderText('123456'), '123456');
-    await user.click(screen.getByRole('button', { name: 'Join' }));
-
     expect(
-      await screen.findByText("We couldn't create your account"),
-    ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
-  });
-
-  async function redeemToSplit() {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
-    redeemChurchInvitation.mockResolvedValue({
-      kind: 'church-only',
-      sourceChurchName: 'Riverside Fellowship',
-      destinationChurchName: 'St. Peter',
-      ministryInvitationId: 'invitation-1',
-    });
-    const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({
-      initialPath: '/invitations/church/invitation-1',
-      churchTimezone: 'UTC',
-    });
-    const user = userEvent.setup();
-    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
-    await user.type(
-      screen.getByLabelText('Password'),
-      'correct-horse-battery-staple',
-    );
-    await user.type(screen.getByPlaceholderText('123456'), '123456');
-    await user.click(screen.getByRole('button', { name: 'Join' }));
-    return user;
-  }
-
-  it('on the cross-Church split, offers the transfer naming both Churches', async () => {
-    await redeemToSplit();
-
-    expect(
-      await screen.findByRole('heading', {
-        name: /You're a member of St\. Peter/,
-      }),
-    ).toBeVisible();
-    expect(screen.getAllByText(/Riverside Fellowship/).length).toBeGreaterThan(
-      0,
-    );
-    expect(
-      screen.getByRole('button', { name: /Move my Volunteer profile/ }),
-    ).toBeVisible();
-  });
-
-  it('reaches the transfer flow on a plain-HTTP origin without crypto.randomUUID', async () => {
-    // Plain HTTP off localhost (a LAN IP or `*.dev.home.arpa`) is not a
-    // secure context: the browser has `getRandomValues` but no `randomUUID`.
-    vi.stubGlobal('crypto', {
-      getRandomValues: crypto.getRandomValues.bind(crypto),
-    });
-
-    await redeemToSplit();
-
-    expect(
-      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
-    ).toBeVisible();
-  });
-
-  it('walks all three transfer layers and confirms only on an exact name + password', async () => {
-    getVolunteerTransferPreview.mockResolvedValue({
-      kind: 'reviewable',
-      sourceChurchName: 'Riverside Fellowship',
-      destinationChurchName: 'St. Peter',
-      endedMemberships: [{ ministryName: 'Hospitality' }],
-      withdrawnAssignments: [
-        {
-          eventName: 'Transfer Sunday',
-          eventTimeBlockStart: '2099-02-01T09:00:00.000Z',
-          roleName: 'Greeter',
-        },
-      ],
-    });
-    confirmVolunteerTransfer.mockResolvedValue({
-      kind: 'transferred',
-      destinationVolunteerId: 'vol-new',
-    });
-    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
-    getVolunteerDashboard.mockResolvedValue({
-      availabilityTasks: [],
-      upcomingAssignmentGroups: [],
-      unreadNotificationCount: 0,
-      notificationPreview: [],
-      defaultMinistryId: undefined,
-      ministryOptions: [],
-    });
-
-    const user = await redeemToSplit();
-
-    // Layer 1 → 2
-    await user.click(
-      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
-    );
-    expect(await screen.findByText('Hospitality')).toBeVisible();
-    expect(screen.getByText(/Transfer Sunday/)).toBeVisible();
-
-    // Continue is gated on the acknowledgement checkbox.
-    const continueButton = screen.getByRole('button', { name: 'Continue' });
-    expect(continueButton).toBeDisabled();
-    await user.click(screen.getByRole('checkbox'));
-    expect(continueButton).toBeEnabled();
-    await user.click(continueButton);
-
-    // Layer 3 — wrong name keeps Confirm disabled.
-    const confirmButton = await screen.findByRole('button', {
-      name: 'Confirm Volunteer Transfer',
-    });
-    await user.type(screen.getByLabelText('Password'), 'correct-horse-staple');
-    await user.type(
-      screen.getByLabelText(/Type .* to confirm/),
-      'Wrong Church',
-    );
-    expect(confirmButton).toBeDisabled();
-    expect(confirmVolunteerTransfer).not.toHaveBeenCalled();
-
-    // Exact name enables it.
-    await user.clear(screen.getByLabelText(/Type .* to confirm/));
-    await user.type(screen.getByLabelText(/Type .* to confirm/), 'St. Peter');
-    expect(confirmButton).toBeEnabled();
-    await user.click(confirmButton);
-
-    expect(confirmVolunteerTransfer).toHaveBeenCalledWith(
-      'invitation-1',
-      expect.objectContaining({
-        destinationChurchName: 'St. Peter',
-        password: 'correct-horse-staple',
-      }),
-    );
-  });
-
-  // #342 — the User now belongs to both Churches, so without an explicit
-  // selection the dashboard guard would send them to /select-church.
-  function givenDestinationChurchOption() {
-    activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({
-      churches: [
-        {
-          churchId: 'church-1',
-          name: 'St. Peter',
-          timezone: 'UTC',
-          accessLevel: 'member',
-          availableAreas: ['dashboard'],
-          lastOpenedAt: null,
-        },
-      ],
-    });
-    activeChurchApiMock.selectActiveChurch.mockResolvedValue({
-      churchId: 'church-1',
-    });
-  }
-
-  it('after the transfer commits, makes the destination Church active', async () => {
-    getVolunteerTransferPreview.mockResolvedValue({
-      kind: 'reviewable',
-      sourceChurchName: 'Riverside Fellowship',
-      destinationChurchName: 'St. Peter',
-      endedMemberships: [{ ministryName: 'Hospitality' }],
-      withdrawnAssignments: [],
-    });
-    confirmVolunteerTransfer.mockResolvedValue({
-      kind: 'transferred',
-      destinationVolunteerId: 'vol-new',
-    });
-    givenDestinationChurchOption();
-    const user = await redeemToSplit();
-
-    await user.click(
-      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
-    );
-    await user.click(await screen.findByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-    await user.type(
-      await screen.findByLabelText('Password'),
-      'correct-horse-staple',
-    );
-    await user.type(screen.getByLabelText(/Type .* to confirm/), 'St. Peter');
-    await user.click(
-      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
-    );
-
-    await waitFor(() => {
-      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
-    });
-  });
-
-  it('continuing as a member makes the destination Church active', async () => {
-    givenDestinationChurchOption();
-    const user = await redeemToSplit();
-
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'Continue to St. Peter as a member',
-      }),
-    );
-
-    await waitFor(() => {
-      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
-    });
-  });
-
-  it('shows an inline error on a password mismatch and stays on the confirm step', async () => {
-    getVolunteerTransferPreview.mockResolvedValue({
-      kind: 'reviewable',
-      sourceChurchName: 'Riverside Fellowship',
-      destinationChurchName: 'St. Peter',
-      endedMemberships: [],
-      withdrawnAssignments: [],
-    });
-    confirmVolunteerTransfer.mockResolvedValue({ kind: 'password-mismatch' });
-
-    const user = await redeemToSplit();
-    await user.click(
-      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
-    );
-    await user.click(await screen.findByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-
-    await user.type(screen.getByLabelText('Password'), 'wrong-password');
-    await user.type(screen.getByLabelText(/Type .* to confirm/), 'St. Peter');
-    await user.click(
-      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
-    );
-
-    expect(await screen.findByText(/password did not match/i)).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
-    ).toBeVisible();
+      screen.getByRole('button', { name: m.join_submit() }),
+    ).toBeDisabled();
   });
 });

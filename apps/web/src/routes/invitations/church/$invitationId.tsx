@@ -4,46 +4,70 @@ import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { CalendarClock, CircleAlert, MailCheck } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { z } from 'zod';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { VolunteerTransferFlow } from '@/features/volunteer-transfer';
 import type {
-  PreviewChurchInvitation200MinistryAccessLevel,
+  PreviewChurchInvitation200,
+  PreviewChurchInvitation200ChurchAccessLevel,
+  PreviewChurchInvitation200MinistryMinistryAccessLevel,
   RedeemChurchInvitation200,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
-import { useContinueToChurch } from '@/shared/hooks/use-continue-to-church';
-import { finishRedemptionAtDashboard } from '@/shared/utils/active-church-switch';
+import { finishRedemptionAtHome } from '@/shared/utils/active-church-switch';
+import type { churchOnlyWarningSearchSchema } from '@/shared/utils/church-only-warning';
 import { randomId } from '@/shared/utils/id';
 import { redemptionApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/invitations/church/$invitationId')({
-  component: ChurchInvitationRedemptionRoute,
+  component: ChurchInvitationJoinRoute,
 });
 
-const redeemFormSchema = z.object({
-  name: z.string().trim().min(1, 'Enter your name'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
-});
+const MIN_PASSWORD_LENGTH = 8;
+const MS_PER_SECOND = 1000;
 
-type RedeemFormValues = z.infer<typeof redeemFormSchema>;
+// Built per render so validation messages follow the active locale.
+function joinFormSchema() {
+  return z.object({
+    code: z.string().regex(/^\d{6}$/, m.join_validation_code()),
+    name: z.string().trim().min(1, m.join_validation_name()),
+    password: z.string().min(MIN_PASSWORD_LENGTH, m.join_validation_password()),
+  });
+}
 
-const ACCESS_LEVEL_LABELS: Record<
-  PreviewChurchInvitation200MinistryAccessLevel,
-  string
+type JoinFormValues = z.infer<ReturnType<typeof joinFormSchema>>;
+
+type ChurchOnlyWarningSearch = z.infer<typeof churchOnlyWarningSearchSchema>;
+
+const CHURCH_ACCESS_LABELS: Record<
+  PreviewChurchInvitation200ChurchAccessLevel,
+  () => string
 > = {
-  volunteer: 'Volunteer',
-  leader: 'Leader',
+  member: m.join_church_access_member,
+  admin: m.join_church_access_admin,
 };
 
-const MS_PER_SECOND = 1000;
+const MINISTRY_ACCESS_LABELS: Record<
+  PreviewChurchInvitation200MinistryMinistryAccessLevel,
+  () => string
+> = {
+  volunteer: m.join_ministry_access_volunteer,
+  leader: m.join_ministry_access_leader,
+};
 
 interface RemainingCooldownSecondsInput {
   codeSentAt: number | null;
@@ -58,6 +82,14 @@ function remainingCooldownSeconds({
   const { resendCooldownMs } = appConfig.verificationCode;
   const remainingMs = resendCooldownMs - (now - codeSentAt);
   return remainingMs > 0 ? Math.ceil(remainingMs / MS_PER_SECOND) : 0;
+}
+
+interface StatusOfInput {
+  error: unknown;
+}
+
+function statusOf({ error }: StatusOfInput): number | undefined {
+  return isAxiosError(error) ? error.response?.status : undefined;
 }
 
 interface RedemptionFailureDescription {
@@ -77,46 +109,50 @@ interface DescribeRedemptionOutcomeInput {
 function describeRedemptionOutcome({
   outcome,
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
+  // Retryable failures rolled every write back, so the same form can resubmit.
   if (outcome.kind === 'retryable-failure') {
     return {
       title: m.common_generic_error_title(),
-      description:
-        "Your account was created, but we couldn't finish adding you to the Ministry yet. Try again.",
+      description: m.redemption_failure_retryable_description(),
       canRetry: true,
       clearCode: false,
     };
   }
   if (outcome.reason === 'VERIFICATION_FAILED') {
     return {
-      title: "That code didn't work",
-      description: 'Request a new code and enter it again to continue.',
+      title: m.redemption_failure_code_title(),
+      description: m.redemption_failure_code_description(),
       canRetry: true,
       clearCode: true,
     };
   }
-  if (outcome.reason === 'IDENTITY_FAILED') {
+  if (outcome.reason === 'EMAIL_ALREADY_REGISTERED') {
     return {
-      title: "We couldn't create your account",
-      description: 'Try again with a different password.',
-      canRetry: true,
+      title: m.redemption_failure_registered_title(),
+      description: m.redemption_failure_registered_description(),
+      canRetry: false,
       clearCode: false,
     };
   }
   return {
-    title: 'This invitation is no longer available',
-    description:
-      'It may have expired or already been used. Ask your Ministry leader for a new invitation.',
+    title: m.redemption_failure_unavailable_title(),
+    description: m.redemption_failure_unavailable_description(),
     canRetry: false,
     clearCode: false,
   };
 }
 
-function ChurchInvitationRedemptionRoute() {
+/**
+ * The public join page for a plain or paired Church Invitation, outside the
+ * app shell. Step 1 reviews the invitation and sends a code to the addressed
+ * email; step 2 takes the code, name and password.
+ */
+function ChurchInvitationJoinRoute() {
   const { invitationId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const continueToChurch = useContinueToChurch();
   const [idempotencyKey] = useState(() => randomId());
+  const [confirmingDecline, setConfirmingDecline] = useState(false);
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => nowAsDate().getTime());
 
@@ -138,22 +174,45 @@ function ChurchInvitationRedemptionRoute() {
   const requestCodeMutation = useMutation({
     mutationFn: () =>
       redemptionApi.requestChurchInvitationVerificationCode(invitationId),
-    onSuccess: () => setCodeSentAt(nowAsDate().getTime()),
+    onSuccess: () => {
+      const sentAt = nowAsDate().getTime();
+      setNow(sentAt);
+      setCodeSentAt(sentAt);
+    },
+  });
+
+  function finishAtHome(search?: ChurchOnlyWarningSearch): Promise<void> {
+    return finishRedemptionAtHome({
+      queryClient,
+      getSession: authClient.getSession,
+      navigateToHome: () => navigate({ to: '/', search }),
+    });
+  }
+
+  const declineMutation = useMutation({
+    mutationFn: () => redemptionApi.declineChurchInvitation(invitationId),
+    onSettled: () => setConfirmingDecline(false),
   });
 
   const redeemMutation = useMutation({
-    mutationFn: (values: RedeemFormValues) =>
+    mutationFn: (values: JoinFormValues) =>
       redemptionApi.redeemChurchInvitation(invitationId, {
         ...values,
         idempotencyKey,
       }),
     onSuccess: async (outcome) => {
       if (outcome.kind === 'full-success') {
-        await finishAtDashboard();
+        await finishAtHome();
         return;
       }
-      // The cross-Church split renders its own flow, not a form error.
-      if (outcome.kind === 'church-only') return;
+      // Committed: the Church Membership stands, so Home warns about the Ministry.
+      if (outcome.kind === 'church-only') {
+        await finishAtHome({
+          joinedChurch: outcome.destinationChurchName,
+          invitedMinistry: outcome.ministryName,
+        });
+        return;
+      }
       if (describeRedemptionOutcome({ outcome }).clearCode) {
         form.setFieldValue('code', '');
       }
@@ -161,50 +220,29 @@ function ChurchInvitationRedemptionRoute() {
   });
 
   const form = useForm({
-    defaultValues: { name: '', password: '', code: '' },
+    defaultValues: { code: '', name: '', password: '' },
     onSubmit: async ({ value }) => {
       await redeemMutation.mutateAsync(value);
     },
-    validators: { onSubmit: redeemFormSchema },
+    validators: { onSubmit: joinFormSchema() },
   });
-
-  const cooldownSeconds = remainingCooldownSeconds({ codeSentAt, now });
-  const outcome = redeemMutation.data;
-  const failure =
-    outcome && outcome.kind !== 'full-success' && outcome.kind !== 'church-only'
-      ? describeRedemptionOutcome({ outcome })
-      : null;
-
-  function finishAtDashboard(): Promise<void> {
-    return finishRedemptionAtDashboard({
-      queryClient,
-      getSession: authClient.getSession,
-      navigateToDashboard: () => navigate({ to: '/dashboard' }),
-    });
-  }
 
   if (previewQuery.isLoading) {
     return (
       <RedemptionShell>
-        <p className="text-muted-foreground text-sm">Loading invitation…</p>
+        <p className="text-muted-foreground text-sm">{m.join_loading()}</p>
       </RedemptionShell>
     );
   }
 
   if (previewQuery.isError) {
-    const status = isAxiosError(previewQuery.error)
-      ? previewQuery.error.response?.status
-      : undefined;
     return (
       <RedemptionShell>
-        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3">
-          <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-          <p className="text-sm">
-            {status === 429
-              ? 'Too many requests. Try again in a moment.'
-              : 'This invitation is no longer available. It may have expired or already been used.'}
-          </p>
-        </div>
+        {statusOf({ error: previewQuery.error }) === 429 ? (
+          <Notice title={m.join_too_many_requests()} />
+        ) : (
+          <UnavailableNotice />
+        )}
       </RedemptionShell>
     );
   }
@@ -212,206 +250,330 @@ function ChurchInvitationRedemptionRoute() {
   const preview = previewQuery.data;
   if (!preview) return null;
 
-  if (outcome?.kind === 'full-success') {
+  if (declineMutation.isSuccess) {
     return (
       <RedemptionShell>
-        <p className="text-muted-foreground text-sm">
-          Welcome! Setting up your account…
-        </p>
+        <div className="space-y-1.5">
+          <h1 className="font-semibold text-2xl tracking-tight">
+            {m.join_declined_title()}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {m.join_declined_description()}
+          </p>
+        </div>
       </RedemptionShell>
     );
   }
 
-  if (outcome?.kind === 'church-only') {
-    // The User now belongs to both Churches: land in the one just joined.
-    const continueToDestination = (): Promise<void> =>
-      continueToChurch({ churchName: outcome.destinationChurchName });
+  if (
+    declineMutation.isError &&
+    statusOf({ error: declineMutation.error }) !== 429
+  ) {
     return (
       <RedemptionShell>
-        <VolunteerTransferFlow
-          invitationId={invitationId}
-          sourceChurchName={outcome.sourceChurchName}
-          destinationChurchName={outcome.destinationChurchName}
-          onContinueAsMember={continueToDestination}
-          onTransferred={continueToDestination}
-        />
+        <UnavailableNotice />
+      </RedemptionShell>
+    );
+  }
+
+  const outcome = redeemMutation.data;
+  if (outcome?.kind === 'full-success' || outcome?.kind === 'church-only') {
+    return (
+      <RedemptionShell>
+        <p className="text-muted-foreground text-sm">{m.join_welcome()}</p>
+      </RedemptionShell>
+    );
+  }
+
+  const failure = outcome ? describeRedemptionOutcome({ outcome }) : null;
+  const cooldownSeconds = remainingCooldownSeconds({ codeSentAt, now });
+  const declineThrottled = declineMutation.isError;
+  const codeRequestThrottled =
+    requestCodeMutation.isError &&
+    statusOf({ error: requestCodeMutation.error }) !== 404;
+  const codeRequestUnavailable =
+    requestCodeMutation.isError &&
+    statusOf({ error: requestCodeMutation.error }) === 404;
+
+  if (codeRequestUnavailable) {
+    return (
+      <RedemptionShell>
+        <UnavailableNotice />
       </RedemptionShell>
     );
   }
 
   return (
     <RedemptionShell>
-      <div className="space-y-1.5 border-border border-b pb-4">
-        <h1 className="text-balance font-semibold text-2xl tracking-tight">
-          Join {preview.churchName}
-        </h1>
-        <p className="text-pretty text-muted-foreground text-sm">
-          You've been invited to serve in{' '}
-          <strong>{preview.ministryName}</strong> as a{' '}
-          {ACCESS_LEVEL_LABELS[preview.ministryAccessLevel]}
-          {preview.roleNames.length > 0
-            ? ` (${preview.roleNames.join(', ')})`
-            : ''}
-          .
-        </p>
-        <p className="text-muted-foreground text-xs">
-          Expires{' '}
-          {formatRelative({
-            instant: parseInstant({ value: preview.expiresAt }),
-            timeZone: 'UTC',
-            locale: getLocale(),
-          })}
-        </p>
-      </div>
+      <InvitationSummary preview={preview} />
 
-      {failure ? (
-        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3">
-          <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-          <div className="text-sm">
-            <p className="font-medium">{failure.title}</p>
-            <p className="text-muted-foreground">{failure.description}</p>
+      {codeSentAt === null ? (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="invitation-email">{m.join_email_label()}</Label>
+            <Input id="invitation-email" value={preview.email} readOnly />
           </div>
-        </div>
-      ) : null}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        className="space-y-4"
-      >
-        <div className="space-y-2">
-          <Label htmlFor="invitation-email">Email</Label>
-          <Input
-            id="invitation-email"
-            value={preview.email}
-            disabled
-            readOnly
-          />
-        </div>
-
-        <form.Field name="name">
-          {(field) => (
-            <div className="space-y-2">
-              <Label htmlFor={field.name}>Name</Label>
-              <Input
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors.map((error) => (
-                <p key={error?.message} className="text-destructive text-xs">
-                  {error?.message}
-                </p>
-              ))}
-            </div>
-          )}
-        </form.Field>
-
-        <form.Field name="password">
-          {(field) => (
-            <div className="space-y-2">
-              <Label htmlFor={field.name}>Password</Label>
-              <Input
-                id={field.name}
-                name={field.name}
-                type="password"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors.map((error) => (
-                <p key={error?.message} className="text-destructive text-xs">
-                  {error?.message}
-                </p>
-              ))}
-            </div>
-          )}
-        </form.Field>
-
-        <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="verification-code-request" className="text-xs">
-              Verification code
-            </Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={requestCodeMutation.isPending || cooldownSeconds > 0}
-              onClick={() => requestCodeMutation.mutate()}
-            >
-              <MailCheck />
-              {cooldownSeconds > 0
-                ? `Resend in ${cooldownSeconds}s`
-                : codeSentAt
-                  ? 'Resend code'
-                  : 'Send code'}
-            </Button>
-          </div>
-          {requestCodeMutation.isSuccess && !requestCodeMutation.isPending ? (
-            <p className="text-muted-foreground text-xs">
-              Code sent to {preview.email}.
-            </p>
+          {codeRequestThrottled || declineThrottled ? (
+            <Notice title={m.join_too_many_requests()} />
           ) : null}
-          {requestCodeMutation.isError ? (
-            <p className="text-destructive text-xs">
-              {isAxiosError(requestCodeMutation.error) &&
-              requestCodeMutation.error.response?.status === 404
-                ? 'This invitation is no longer available.'
-                : 'Too many requests. Wait a moment before trying again.'}
-            </p>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={requestCodeMutation.isPending}
+            onClick={() => requestCodeMutation.mutate()}
+          >
+            <MailCheck />
+            {requestCodeMutation.isPending
+              ? m.join_sending_code()
+              : m.join_send_code()}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            disabled={declineMutation.isPending}
+            onClick={() => setConfirmingDecline(true)}
+          >
+            {m.join_decline()}
+          </Button>
+          <AlertDialog
+            open={confirmingDecline}
+            onOpenChange={setConfirmingDecline}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {m.join_decline_confirm_title()}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {m.join_decline_confirm_description()}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{m.join_decline_cancel()}</AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  disabled={declineMutation.isPending}
+                  onClick={() => declineMutation.mutate()}
+                >
+                  {declineMutation.isPending
+                    ? m.join_declining()
+                    : m.join_decline_confirm()}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ) : (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="space-y-4"
+        >
+          <p className="text-muted-foreground text-sm">
+            {m.join_code_sent({ email: preview.email })}
+          </p>
+
+          {failure ? (
+            <Notice title={failure.title} description={failure.description} />
           ) : null}
+
           <form.Field name="code">
             {(field) => (
-              <div className="space-y-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor={field.name}>{m.join_code_label()}</Label>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto px-0"
+                    disabled={
+                      requestCodeMutation.isPending || cooldownSeconds > 0
+                    }
+                    onClick={() => requestCodeMutation.mutate()}
+                  >
+                    {cooldownSeconds > 0
+                      ? m.join_resend_in({ seconds: String(cooldownSeconds) })
+                      : m.join_resend_code()}
+                  </Button>
+                </div>
                 <Input
-                  id="verification-code-request"
+                  id={field.name}
                   name={field.name}
                   inputMode="numeric"
+                  autoComplete="one-time-code"
                   maxLength={6}
-                  placeholder="123456"
                   value={field.state.value}
                   onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
+                  onChange={(event) => field.handleChange(event.target.value)}
                 />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-destructive text-xs">
-                    {error?.message}
+                <FieldErrors errors={field.state.meta.errors} />
+                {codeRequestThrottled ? (
+                  <p className="text-destructive text-xs">
+                    {m.join_too_many_requests()}
                   </p>
-                ))}
+                ) : null}
               </div>
             )}
           </form.Field>
-        </div>
 
-        <form.Subscribe
-          selector={(state) => ({
-            canSubmit: state.canSubmit,
-            isSubmitting: state.isSubmitting,
-          })}
-        >
-          {({ canSubmit, isSubmitting }) => (
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={
-                !canSubmit ||
-                isSubmitting ||
-                redeemMutation.isPending ||
-                failure?.canRetry === false
-              }
-            >
-              {redeemMutation.isPending ? 'Joining…' : 'Join'}
-            </Button>
-          )}
-        </form.Subscribe>
-      </form>
+          <form.Field name="name">
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>{m.join_name_label()}</Label>
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  autoComplete="name"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+                <FieldErrors errors={field.state.meta.errors} />
+              </div>
+            )}
+          </form.Field>
+
+          <form.Field name="password">
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>{m.join_password_label()}</Label>
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  type="password"
+                  autoComplete="new-password"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+                {field.state.meta.errors.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    {m.join_password_hint()}
+                  </p>
+                ) : (
+                  <FieldErrors errors={field.state.meta.errors} />
+                )}
+              </div>
+            )}
+          </form.Field>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={redeemMutation.isPending || failure?.canRetry === false}
+          >
+            {redeemMutation.isPending
+              ? m.join_submitting()
+              : outcome?.kind === 'retryable-failure'
+                ? m.redemption_try_again()
+                : m.join_submit()}
+          </Button>
+        </form>
+      )}
     </RedemptionShell>
+  );
+}
+
+interface InvitationSummaryProps {
+  preview: PreviewChurchInvitation200;
+}
+
+function InvitationSummary({ preview }: InvitationSummaryProps) {
+  const { ministry } = preview;
+  return (
+    <div className="space-y-1.5 border-border border-b pb-4">
+      <h1 className="text-balance font-semibold text-2xl tracking-tight">
+        {m.join_title({ churchName: preview.churchName })}
+      </h1>
+      <p className="text-pretty text-muted-foreground text-sm">
+        {m.join_church_access({
+          accessLevel: CHURCH_ACCESS_LABELS[preview.churchAccessLevel](),
+        })}
+      </p>
+      {ministry ? (
+        <div className="space-y-0.5 text-sm">
+          <p className="text-pretty">
+            {m.join_ministry_access({
+              ministryName: ministry.name,
+              accessLevel:
+                MINISTRY_ACCESS_LABELS[ministry.ministryAccessLevel](),
+            })}
+          </p>
+          {ministry.roleNames.length > 0 ? (
+            <p className="text-muted-foreground">
+              {m.join_ministry_roles({ roles: ministry.roleNames.join(', ') })}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      <p className="text-muted-foreground text-xs">
+        {m.join_expires({
+          relative: formatRelative({
+            instant: parseInstant({ value: preview.expiresAt }),
+            timeZone: 'UTC',
+            locale: getLocale(),
+          }),
+        })}
+      </p>
+    </div>
+  );
+}
+
+interface FieldError {
+  message?: string;
+}
+
+interface FieldErrorsProps {
+  errors: ReadonlyArray<FieldError | undefined>;
+}
+
+function FieldErrors({ errors }: FieldErrorsProps) {
+  return errors.map((error) => (
+    <p key={error?.message} className="text-destructive text-xs">
+      {error?.message}
+    </p>
+  ));
+}
+
+interface NoticeProps {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+}
+
+function Notice({ title, description, children }: NoticeProps) {
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3"
+    >
+      <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
+      <div className="space-y-1 text-sm">
+        <p className="font-medium">{title}</p>
+        {description ? (
+          <p className="text-muted-foreground">{description}</p>
+        ) : null}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function UnavailableNotice() {
+  return (
+    <Notice
+      title={m.redemption_failure_unavailable_title()}
+      description={m.redemption_failure_unavailable_description()}
+    >
+      <Link to="/login" className="font-medium text-primary underline">
+        {m.join_log_in()}
+      </Link>
+    </Notice>
   );
 }
 
@@ -428,7 +590,7 @@ function RedemptionShell({ children }: RedemptionShellProps) {
             <CalendarClock className="size-5" />
           </div>
           <p className="font-semibold text-[1.05rem] tracking-tight">
-            Church CRM
+            {appConfig.appName}
           </p>
         </div>
         {children}

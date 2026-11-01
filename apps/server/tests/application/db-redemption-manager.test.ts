@@ -139,7 +139,7 @@ function createHarness({
     listAdminUserIds: vi.fn(),
     findMemberEmail: vi.fn(),
     findMemberContact: vi.fn(),
-    findMemberName: vi.fn(),
+    findUserName: vi.fn(),
   };
   return {
     acceptedInputs,

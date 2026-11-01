@@ -165,10 +165,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       this.invitationRepository.resolveRecipientEmail({
         ministryInvitation: invitation,
       }),
-      this.churchRepository.findMemberName({
-        id: message.churchId,
-        userId: invitation.inviterId,
-      }),
+      this.churchRepository.findUserName({ userId: invitation.inviterId }),
     ]);
     const roles = await Promise.all(
       invitation.roleIds.map((roleId) =>

@@ -10,6 +10,7 @@ import {
   role,
   shift,
   shiftRequirement,
+  user as userTable,
   volunteer as volunteerTable,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
@@ -107,6 +108,18 @@ function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
   });
 }
 
+// An email with no User takes the chained path, which names the inviter.
+async function mintInvitation(): Promise<void> {
+  await manager.mint({
+    churchId: ChurchId.from(fixture.churchA.id),
+    ministryId: MinistryId.from(fixture.ministryOneA),
+    inviterId: UserId.from(fixture.adminA),
+    email: 'newcomer@fixture.test',
+    ministryAccessLevel: 'volunteer',
+    roleIds: [],
+  });
+}
+
 describe('DbOutboxDrainer (integration)', () => {
   it('sends a real minted invitation end to end and marks it sent', async () => {
     await manager.mint({
@@ -128,6 +141,36 @@ describe('DbOutboxDrainer (integration)', () => {
       to: `${fixture.memberNoVolunteerA}@fixture.test`,
       churchName: fixture.churchA.name,
     });
+  });
+
+  it('still names an inviter who left the Church before the drain', async () => {
+    await mintInvitation();
+    await testDb
+      .delete(churchMember)
+      .where(eq(churchMember.userId, fixture.adminA));
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.sent[0]).toMatchObject({
+      kind: 'invitation.chained',
+      inviterName: 'Fixture Admin A',
+    });
+  });
+
+  it('fails terminally, sending nothing, when the inviter name is blank', async () => {
+    await mintInvitation();
+    await testDb
+      .update(userTable)
+      .set({ name: '   ' })
+      .where(eq(userTable.id, fixture.adminA));
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.sent).toHaveLength(0);
   });
 
   it('two concurrent drains of the same message never send twice', async () => {

@@ -16,8 +16,11 @@ export interface ChurchRepository {
   findMemberContact(
     input: FindChurchMemberEmailInput,
   ): Promise<ChurchMemberContact | null>;
-  /** The User's display name while they hold Church Membership; `null` otherwise. */
-  findMemberName(input: FindChurchMemberEmailInput): Promise<string | null>;
+  /**
+   * The User's display name, whether or not they still hold Church Membership;
+   * `null` when the User is missing or the name is blank.
+   */
+  findUserName(input: FindUserNameInput): Promise<string | null>;
 }
 
 export interface ChurchMemberContact {
@@ -36,6 +39,10 @@ export interface GetChurchBySlugInput {
 export interface ListChurchAdminUserIdsInput {
   id: ChurchId;
   tx?: TransactionContext;
+}
+
+export interface FindUserNameInput {
+  userId: UserId;
 }
 
 export interface FindChurchMemberEmailInput {

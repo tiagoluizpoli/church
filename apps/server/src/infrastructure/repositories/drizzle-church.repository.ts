@@ -6,6 +6,7 @@ import type {
   ChurchMemberContact,
   ChurchRepository,
   FindChurchMemberEmailInput,
+  FindUserNameInput,
   GetChurchByIdInput,
   GetChurchBySlugInput,
   ListChurchAdminUserIdsInput,
@@ -93,15 +94,11 @@ export class DrizzleChurchRepository implements ChurchRepository {
     return row ?? null;
   }
 
-  async findMemberName({
-    id,
-    userId,
-  }: FindChurchMemberEmailInput): Promise<string | null> {
+  async findUserName({ userId }: FindUserNameInput): Promise<string | null> {
     const [row] = await getClient({ db: this.db })
       .select({ name: user.name })
-      .from(member)
-      .innerJoin(user, eq(user.id, member.userId))
-      .where(and(eq(member.organizationId, id), eq(member.userId, userId)));
-    return row?.name ?? null;
+      .from(user)
+      .where(eq(user.id, userId));
+    return row?.name.trim() || null;
   }
 }

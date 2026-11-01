@@ -26,7 +26,7 @@ const invitationRepository = {
   findById: vi.fn(),
   resolveRecipientEmail: vi.fn(),
 };
-const churchRepository = { getById: vi.fn(), findMemberName: vi.fn() };
+const churchRepository = { getById: vi.fn(), findUserName: vi.fn() };
 const ministryRepository = { getById: vi.fn() };
 const roleRepository = { getById: vi.fn() };
 const volunteerTransferRepository = { getDigestDetails: vi.fn() };
@@ -92,7 +92,7 @@ beforeEach(() => {
     name: 'Grace Church',
     timezone: 'America/Sao_Paulo',
   });
-  churchRepository.findMemberName.mockResolvedValue('Pastor Ana');
+  churchRepository.findUserName.mockResolvedValue('Pastor Ana');
   ministryRepository.getById.mockResolvedValue({ name: 'Worship Team' });
   roleRepository.getById.mockResolvedValue({ name: 'Vocalist' });
   invitationRepository.resolveRecipientEmail.mockResolvedValue(
@@ -129,8 +129,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     expect(emailSender.prepare).toHaveBeenCalledWith(
       expect.objectContaining({ locale: appConfig.defaultLocale }),
     );
-    expect(churchRepository.findMemberName).toHaveBeenCalledWith({
-      id: churchId,
+    expect(churchRepository.findUserName).toHaveBeenCalledWith({
       userId: inviterId,
     });
     expect(outboxRepository.markSent).toHaveBeenCalledWith(
@@ -145,7 +144,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     const message = buildMessage();
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    churchRepository.findMemberName.mockResolvedValue(null);
+    churchRepository.findUserName.mockResolvedValue(null);
 
     const result = await createDrainer().drainOnce({ limit: 10 });
 

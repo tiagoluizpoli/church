@@ -18,7 +18,6 @@ import type {
   EmailPayload,
   EmailSender,
   MinistryInvitationEmail,
-  RedemptionAcceptedEmail,
 } from '../domain/contracts/infrastructure/email-sender';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
@@ -29,7 +28,6 @@ import type {
   OutboxEmailDelivery,
   OutboxMessage,
   OutboxRepository,
-  RedemptionAcceptedOutboxMessage,
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -126,8 +124,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     switch (message.kind) {
       case 'invitation.chained':
         return this.processInvitationMessage({ message });
-      case 'redemption.accepted':
-        return this.processRedemptionAcceptedMessage({ message });
       case 'notification':
         return this.processNotificationMessage({ message });
       case 'invitation.church-bootstrap':
@@ -410,42 +406,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     return 'sent';
   }
 
-  private async processRedemptionAcceptedMessage({
-    message,
-  }: ProcessRedemptionAcceptedMessageInput): Promise<'sent' | 'failed'> {
-    const invitation = await this.invitationRepository.findById({
-      churchId: message.churchId,
-      ministryInvitationId: message.payload.ministryInvitationId,
-    });
-    if (!invitation || invitation.status !== 'accepted') {
-      await this.failTerminally({
-        message,
-        reason: 'Invitation was not accepted',
-      });
-      return 'failed';
-    }
-    if (message.emailDelivery) {
-      return this.deliverEmail({ message, delivery: message.emailDelivery });
-    }
-    const [church, ministry, email] = await Promise.all([
-      this.churchRepository.getById({ id: message.churchId }),
-      this.ministryRepository.getById({
-        churchId: message.churchId,
-        id: invitation.ministryId,
-      }),
-      this.invitationRepository.resolveRecipientEmail({
-        ministryInvitation: invitation,
-      }),
-    ]);
-    const payload: RedemptionAcceptedEmail = {
-      kind: message.kind,
-      to: email,
-      churchName: church.name,
-      ministryName: ministry.name,
-    };
-    return this.prepareAndDeliver({ message, payload });
-  }
-
   /**
    * Fixes the email before its first attempt: the prepared request, the
    * row-derived key and the first-attempt Instant commit in their own short
@@ -622,10 +582,6 @@ interface LoadTransferDigestFactsInput {
 
 interface ProcessNotificationMessageInput {
   message: NotificationOutboxMessage;
-}
-
-interface ProcessRedemptionAcceptedMessageInput {
-  message: RedemptionAcceptedOutboxMessage;
 }
 
 interface PrepareAndDeliverInput {

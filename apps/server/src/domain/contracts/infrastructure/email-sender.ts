@@ -57,13 +57,6 @@ export interface ChurchBootstrapInvitationEmail {
   redemptionUrl: string;
 }
 
-export interface RedemptionAcceptedEmail {
-  kind: 'redemption.accepted';
-  to: string;
-  churchName: string;
-  ministryName: string;
-}
-
 /**
  * One digest per affected Ministry, addressed to every active leader —
  * `to` is a list because a Ministry may have more than one. Never names the
@@ -128,7 +121,6 @@ export type EmailPayload =
   | VerificationCodeEmail
   | PasswordResetEmail
   | ChurchBootstrapInvitationEmail
-  | RedemptionAcceptedEmail
   | TransferMinistryDigestEmail
   | TransferLeaderlessMinistryEmail;
 

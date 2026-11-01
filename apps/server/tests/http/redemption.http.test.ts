@@ -501,16 +501,12 @@ describe('Church invitation redemption HTTP boundary', () => {
       .from(ministryInvitation)
       .where(eq(ministryInvitation.id, invitation.id));
     expect(acceptedMinistryInvitation?.status).toBe('accepted');
-    const confirmations = await testDb
-      .select()
-      .from(outboxMessage)
-      .where(
-        and(
-          eq(outboxMessage.kind, 'redemption.accepted'),
-          eq(outboxMessage.correlationId, idempotencyKey),
-        ),
-      );
-    expect(confirmations).toHaveLength(1);
+    expect(
+      await testDb
+        .select()
+        .from(outboxMessage)
+        .where(eq(outboxMessage.correlationId, idempotencyKey)),
+    ).toHaveLength(0);
   });
 
   it('serializes duplicate submissions so only the request that consumes the code creates grants', async () => {
@@ -568,12 +564,6 @@ describe('Church invitation redemption HTTP boundary', () => {
         .from(volunteer)
         .where(eq(volunteer.userId, redeemedUser.id)),
     ).toHaveLength(1);
-    expect(
-      await testDb
-        .select()
-        .from(outboxMessage)
-        .where(eq(outboxMessage.kind, 'redemption.accepted')),
-    ).toHaveLength(1);
   });
 
   it('rolls back checkpoint three and safely resumes with the same idempotency key', async () => {
@@ -618,12 +608,6 @@ describe('Church invitation redemption HTTP boundary', () => {
         .from(volunteer)
         .where(eq(volunteer.userId, redeemedUser.id)),
     ).toHaveLength(0);
-    expect(
-      await testDb
-        .select()
-        .from(outboxMessage)
-        .where(eq(outboxMessage.kind, 'redemption.accepted')),
-    ).toHaveLength(0);
     const [pendingInvitation] = await testDb
       .select({ status: ministryInvitation.status })
       .from(ministryInvitation)
@@ -646,12 +630,7 @@ describe('Church invitation redemption HTTP boundary', () => {
       await testDb
         .select()
         .from(outboxMessage)
-        .where(
-          and(
-            eq(outboxMessage.kind, 'redemption.accepted'),
-            eq(outboxMessage.correlationId, idempotencyKey),
-          ),
-        ),
-    ).toHaveLength(1);
+        .where(eq(outboxMessage.correlationId, idempotencyKey)),
+    ).toHaveLength(0);
   });
 });

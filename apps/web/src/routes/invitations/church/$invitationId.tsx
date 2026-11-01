@@ -77,35 +77,34 @@ interface DescribeRedemptionOutcomeInput {
 function describeRedemptionOutcome({
   outcome,
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
+  // Retryable failures rolled every write back, so the same form can resubmit.
   if (outcome.kind === 'retryable-failure') {
     return {
       title: m.common_generic_error_title(),
-      description:
-        "Your account was created, but we couldn't finish adding you to the Ministry yet. Try again.",
+      description: m.redemption_failure_retryable_description(),
       canRetry: true,
       clearCode: false,
     };
   }
   if (outcome.reason === 'VERIFICATION_FAILED') {
     return {
-      title: "That code didn't work",
-      description: 'Request a new code and enter it again to continue.',
+      title: m.redemption_failure_code_title(),
+      description: m.redemption_failure_code_description(),
       canRetry: true,
       clearCode: true,
     };
   }
-  if (outcome.reason === 'IDENTITY_FAILED') {
+  if (outcome.reason === 'EMAIL_ALREADY_REGISTERED') {
     return {
-      title: "We couldn't create your account",
-      description: 'Try again with a different password.',
-      canRetry: true,
+      title: m.redemption_failure_registered_title(),
+      description: m.redemption_failure_registered_description(),
+      canRetry: false,
       clearCode: false,
     };
   }
   return {
-    title: 'This invitation is no longer available',
-    description:
-      'It may have expired or already been used. Ask your Ministry leader for a new invitation.',
+    title: m.redemption_failure_unavailable_title(),
+    description: m.redemption_failure_unavailable_description(),
     canRetry: false,
     clearCode: false,
   };
@@ -405,7 +404,11 @@ function ChurchInvitationRedemptionRoute() {
                 failure?.canRetry === false
               }
             >
-              {redeemMutation.isPending ? 'Joining…' : 'Join'}
+              {redeemMutation.isPending
+                ? 'Joining…'
+                : outcome?.kind === 'retryable-failure'
+                  ? m.redemption_try_again()
+                  : 'Join'}
             </Button>
           )}
         </form.Subscribe>

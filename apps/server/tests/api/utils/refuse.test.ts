@@ -5,7 +5,7 @@ import { refuse } from '@/api/utils/refuse';
 import { createFastify } from '@/main/fastify/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
 }));
 

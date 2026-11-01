@@ -13,7 +13,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: {
     api: {
       getSession: vi.fn(),
@@ -23,10 +23,10 @@ vi.mock('@church/auth', () => ({
 }));
 
 const mockGetSession = vi.mocked(
-  (await import('@church/auth')).auth.api.getSession,
+  (await import('@/main/di/server-auth')).auth.api.getSession,
 );
 const mockSetActiveOrganization = vi.mocked(
-  (await import('@church/auth')).auth.api.setActiveOrganization,
+  (await import('@/main/di/server-auth')).auth.api.setActiveOrganization,
 );
 
 const activeChurchResolver = { resolve: vi.fn() };

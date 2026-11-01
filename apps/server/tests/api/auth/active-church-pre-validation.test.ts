@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: {
     api: {
       getSession: vi.fn(),
@@ -13,7 +13,7 @@ vi.mock('@church/auth', () => ({
 const { createActiveChurchPreValidation } = await import(
   '@/api/auth/active-church-pre-validation'
 );
-const { auth } = await import('@church/auth');
+const { auth } = await import('@/main/di/server-auth');
 
 const mockGetSession = vi.mocked(auth.api.getSession);
 const mockSetActiveOrganization = vi.mocked(auth.api.setActiveOrganization);

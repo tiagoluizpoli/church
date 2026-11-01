@@ -119,3 +119,5 @@ export function createAuth({
 }
 
 export const auth = createAuth({ database: createDb() });
+
+export type Auth = ReturnType<typeof createAuth>;

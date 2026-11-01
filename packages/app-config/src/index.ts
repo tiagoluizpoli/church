@@ -17,6 +17,8 @@ export const appConfigSchema = z.object({
     auditPanel: z.boolean(),
     commandPalette: z.boolean(),
   }),
+  /** Better Auth organization options; omitted or 0 there means a cap of 100. */
+  auth: z.object({ organizationMembershipLimit: positiveInt }),
   churchInvitation: z.object({ ttlMs: positiveInt }),
   ministryInvitation: z.object({ ttlMs: positiveInt }),
   invitationResend: z.object({
@@ -71,6 +73,8 @@ export const appConfig = appConfigSchema.parse({
     auditPanel: false,
     commandPalette: false,
   },
+  // No practical MVP cap on Church Members per Church.
+  auth: { organizationMembershipLimit: 1_000_000 },
   churchInvitation: { ttlMs: 48 * HOUR_MS },
   ministryInvitation: { ttlMs: 7 * DAY_MS },
   invitationResend: { cooldownMs: MINUTE_MS, dailyCap: 10, windowMs: DAY_MS },

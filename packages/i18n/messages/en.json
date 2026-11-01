@@ -293,5 +293,13 @@
   "ministry_invitation_already_accepted_description": "There is nothing left to do here.",
   "ministry_invitation_continue_home": "Go to Home",
   "ministry_invitation_joined_toast": "You joined {ministryName}",
-  "ministry_invitation_declined_toast": "Invitation declined"
+  "ministry_invitation_declined_toast": "Invitation declined",
+  "redemption_try_again": "Try again",
+  "redemption_failure_retryable_description": "We couldn't finish joining, and nothing was saved. Try again.",
+  "redemption_failure_code_title": "That code didn't work",
+  "redemption_failure_code_description": "Request a new code and enter it again to continue.",
+  "redemption_failure_registered_title": "This email already has an account",
+  "redemption_failure_registered_description": "This email already has an account; ask the person who invited you.",
+  "redemption_failure_unavailable_title": "This invitation is no longer available",
+  "redemption_failure_unavailable_description": "It may have expired or already been used. Ask the person who invited you for a new invitation."
 }

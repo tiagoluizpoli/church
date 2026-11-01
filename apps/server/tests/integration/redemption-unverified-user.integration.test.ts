@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
 import { BetterAuthRedemptionIdentityGateway } from '@/infrastructure/services/better-auth-redemption-identity-gateway';
+import { auth, createServerAuth } from '@/main/di/server-auth';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -17,7 +18,10 @@ beforeEach(async () => {
 
 describe('redemption sign-up identity', () => {
   it('lets a newly signed-up, unverified User accept the Church invitation', async () => {
-    const gateway = new BetterAuthRedemptionIdentityGateway();
+    const gateway = new BetterAuthRedemptionIdentityGateway({
+      auth,
+      createTransactionAuth: createServerAuth,
+    });
     const email = `new-${crypto.randomUUID().slice(0, 8)}@redemption.test`;
     const invitationId = crypto.randomUUID();
     await testDb.insert(invitation).values({

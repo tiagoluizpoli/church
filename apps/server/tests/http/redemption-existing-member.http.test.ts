@@ -31,6 +31,7 @@ import {
 } from '@/infrastructure/repositories';
 import { BetterAuthRedemptionIdentityGateway } from '@/infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { auth, createServerAuth } from '@/main/di/server-auth';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
@@ -78,7 +79,10 @@ beforeEach(async () => {
     verificationCodeSecret: 'test-secret',
     config: appConfig,
   });
-  const identityGateway = new BetterAuthRedemptionIdentityGateway();
+  const identityGateway = new BetterAuthRedemptionIdentityGateway({
+    auth,
+    createTransactionAuth: createServerAuth,
+  });
   const redemptionManager = new DbRedemptionManager({
     churchRepository,
     identityGateway,
@@ -87,6 +91,7 @@ beforeEach(async () => {
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    failureLog: { record: () => {} },
   });
   const volunteerTransferManager = new DbVolunteerTransferManager({
     churchRepository,

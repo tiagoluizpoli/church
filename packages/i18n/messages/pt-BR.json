@@ -293,5 +293,13 @@
   "ministry_invitation_already_accepted_description": "Não há mais nada a fazer aqui.",
   "ministry_invitation_continue_home": "Ir para o início",
   "ministry_invitation_joined_toast": "Você entrou em {ministryName}",
-  "ministry_invitation_declined_toast": "Convite recusado"
+  "ministry_invitation_declined_toast": "Convite recusado",
+  "redemption_try_again": "Tente novamente",
+  "redemption_failure_retryable_description": "Não conseguimos concluir sua entrada, e nada foi salvo. Tente novamente.",
+  "redemption_failure_code_title": "Esse código não funcionou",
+  "redemption_failure_code_description": "Peça um novo código e digite-o novamente para continuar.",
+  "redemption_failure_registered_title": "Este email já tem uma conta",
+  "redemption_failure_registered_description": "Este email já tem uma conta; fale com quem convidou você.",
+  "redemption_failure_unavailable_title": "Este convite não está mais disponível",
+  "redemption_failure_unavailable_description": "Ele pode ter expirado ou já ter sido usado. Peça um novo convite a quem convidou você."
 }

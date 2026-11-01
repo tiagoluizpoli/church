@@ -1,4 +1,4 @@
-import { cycle, member } from '@church/db';
+import { cycle, eventTemplate, member } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
 import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import { createCycleAccessRecipe } from '@/seeds/e2e/recipes/cycle-access';
 import { createCycleTenantsRecipe } from '@/seeds/e2e/recipes/cycle-tenants';
+import { createEventTemplatesRecipe } from '@/seeds/e2e/recipes/event-templates';
 import { createMinistryWorkspaceIndexRecipe } from '@/seeds/e2e/recipes/ministry-workspace-index';
 import { createPlanningAdminRecipe } from '@/seeds/e2e/recipes/planning-admin';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
@@ -62,6 +63,30 @@ describe('planning journey recipes (#329 planning cluster)', () => {
       startDate: '2027-01-02',
       endDate: '2027-01-30',
     });
+  });
+
+  it('event-templates holds an admin and two templates, with no cycle', async () => {
+    const journey = await runE2eJourneyRecipe({
+      db: testDb,
+      recipe: createEventTemplatesRecipe({
+        journeyKey: 'alpha',
+        anchor: ANCHOR,
+      }),
+    });
+
+    expect(await cyclesOf({ churchId: journey.church.id })).toEqual([]);
+    expect(await accessLevelsOf({ churchId: journey.church.id })).toEqual([
+      'admin',
+    ]);
+    expect(journey.templates.map((template) => template.name)).toEqual([
+      'Culto de domingo',
+      'Oração de quarta',
+    ]);
+    const stored = await testDb
+      .select({ name: eventTemplate.name })
+      .from(eventTemplate)
+      .where(eq(eventTemplate.churchId, journey.church.id));
+    expect(stored).toHaveLength(2);
   });
 
   it('cycle-access adds one sent cycle inside the window', async () => {

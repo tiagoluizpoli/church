@@ -22,7 +22,7 @@ export const ISOLATED_SPECS = [
   'scheduling/a11y-planning-nav.spec.ts',
   'scheduling/capability-index.spec.ts',
   'scheduling/cross-cutting.spec.ts',
-  'scheduling/overnight-template-time-block.spec.ts',
+  'scheduling/event-templates.spec.ts',
   'scheduling/planning-cross-tenant-isolation.spec.ts',
   'scheduling/cycles-table-view.spec.ts',
   'scheduling/planning-nav-restructure.spec.ts',

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
 import { planningMonth } from './planning-month.helpers';
-import { fillTimeOfDayField } from './time-field.helpers';
+import { createTemplateOnNestedPage } from './template-create.helpers';
 import {
   newPersonaContext,
   signInPersonaPage,
@@ -197,115 +197,25 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   );
   await expect(page.getByTestId('selected-cycle-state')).toHaveText('draft');
 
+  const cycleReviewUrl = page.url();
   await page.getByTestId('open-template-library-button').click();
 
-  await page.getByTestId('open-create-template-dialog-button').click();
-  const createTemplateDialog = page.getByRole('dialog', {
-    name: 'Create template',
+  await createTemplateOnNestedPage({
+    page,
+    name: sundayTemplateName,
+    weekday: 0,
+    blocks: [
+      { label: 'Welcome', startTime: '09:00', endTime: '09:30' },
+      { label: 'Message', startTime: '09:30', endTime: '10:30' },
+      { label: 'Prayer', startTime: '10:30', endTime: '11:00' },
+    ],
   });
-  await createTemplateDialog
-    .getByTestId('template-name-input')
-    .fill(sundayTemplateName);
-  await createTemplateDialog.getByTestId('template-weekday-select').click();
-  await page.getByTestId('template-weekday-option-0').click();
-  await createTemplateDialog
-    .getByTestId('add-template-time-block-button')
-    .click();
-  await createTemplateDialog
-    .getByTestId('add-template-time-block-button')
-    .click();
-
-  const sundayBlocks = createTemplateDialog.getByTestId(
-    'template-time-block-row',
-  );
-  await sundayBlocks
-    .nth(0)
-    .getByTestId('template-time-block-label-input')
-    .fill('Welcome');
-  await fillTimeOfDayField({
-    field: sundayBlocks
-      .nth(0)
-      .getByTestId('template-time-block-start-time-input'),
-    time: '09:00',
+  await createTemplateOnNestedPage({
+    page,
+    name: wednesdayTemplateName,
+    weekday: 3,
+    blocks: [{ label: 'Midweek', startTime: '19:00', endTime: '20:00' }],
   });
-  await fillTimeOfDayField({
-    field: sundayBlocks
-      .nth(0)
-      .getByTestId('template-time-block-end-time-input'),
-    time: '09:30',
-  });
-  await sundayBlocks
-    .nth(1)
-    .getByTestId('template-time-block-label-input')
-    .fill('Message');
-  await fillTimeOfDayField({
-    field: sundayBlocks
-      .nth(1)
-      .getByTestId('template-time-block-start-time-input'),
-    time: '09:30',
-  });
-  await fillTimeOfDayField({
-    field: sundayBlocks
-      .nth(1)
-      .getByTestId('template-time-block-end-time-input'),
-    time: '10:30',
-  });
-  await sundayBlocks
-    .nth(2)
-    .getByTestId('template-time-block-label-input')
-    .fill('Prayer');
-  await fillTimeOfDayField({
-    field: sundayBlocks
-      .nth(2)
-      .getByTestId('template-time-block-start-time-input'),
-    time: '10:30',
-  });
-  await fillTimeOfDayField({
-    field: sundayBlocks
-      .nth(2)
-      .getByTestId('template-time-block-end-time-input'),
-    time: '11:00',
-  });
-  await createTemplateDialog.getByTestId('create-template-button').click();
-
-  await expect(
-    page
-      .getByTestId('saved-template-row')
-      .filter({ hasText: sundayTemplateName }),
-  ).toBeVisible();
-  await expect(createTemplateDialog).not.toBeAttached();
-
-  await page.getByTestId('open-create-template-dialog-button').click();
-  const secondTemplateDialog = page.getByRole('dialog', {
-    name: 'Create template',
-  });
-  await secondTemplateDialog
-    .getByTestId('template-name-input')
-    .fill(wednesdayTemplateName);
-  await secondTemplateDialog.getByTestId('template-weekday-select').click();
-  await page.getByTestId('template-weekday-option-3').click();
-  const wednesdayBlock = secondTemplateDialog
-    .getByTestId('template-time-block-row')
-    .first();
-  await wednesdayBlock
-    .getByTestId('template-time-block-label-input')
-    .fill('Midweek');
-  await fillTimeOfDayField({
-    field: wednesdayBlock.getByTestId('template-time-block-start-time-input'),
-    time: '19:00',
-  });
-  await fillTimeOfDayField({
-    field: wednesdayBlock.getByTestId('template-time-block-end-time-input'),
-    time: '20:00',
-  });
-  await secondTemplateDialog.getByTestId('create-template-button').click();
-
-  await expect(
-    page
-      .getByTestId('saved-template-row')
-      .filter({ hasText: wednesdayTemplateName }),
-  ).toBeVisible();
-  await expect(secondTemplateDialog).not.toBeAttached();
 
   await page
     .getByTestId('saved-template-row')
@@ -313,7 +223,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     .getByTestId('open-edit-template-dialog-button')
     .click();
   const editTemplateDialog = page.getByRole('dialog', {
-    name: 'Edit template',
+    name: 'Editar modelo',
   });
   await editTemplateDialog
     .getByTestId('template-name-input')
@@ -327,7 +237,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   ).toBeVisible();
   await expect(editTemplateDialog).not.toBeAttached();
 
-  await page.getByTestId('back-from-template-library-button').click();
+  await page.goto(cycleReviewUrl);
   await page.getByTestId('open-apply-templates-dialog-button').click();
 
   const applyTemplatesDialog = page.getByRole('dialog', {

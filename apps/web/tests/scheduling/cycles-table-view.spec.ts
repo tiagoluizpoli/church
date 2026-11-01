@@ -10,6 +10,7 @@ import {
   nonSundayDay,
   planningMonth,
 } from './planning-month.helpers';
+import { createTemplateOnNestedPage } from './template-create.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
 import {
   newPersonaContext,
@@ -116,16 +117,16 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await page.getByTestId('open-template-library-button').click();
 
-    const templatesTable = page.getByRole('grid', { name: 'Saved templates' });
+    const templatesTable = page.getByRole('grid', { name: 'Modelos salvos' });
     await expect(templatesTable).toBeVisible();
     await expect(
-      templatesTable.getByRole('columnheader', { name: 'Name' }),
+      templatesTable.getByRole('columnheader', { name: 'Nome' }),
     ).toBeVisible();
     await expect(
-      templatesTable.getByRole('columnheader', { name: 'Weekday' }),
+      templatesTable.getByRole('columnheader', { name: 'Dia da semana' }),
     ).toBeVisible();
     await expect(
-      templatesTable.getByRole('columnheader', { name: 'Blocks' }),
+      templatesTable.getByRole('columnheader', { name: 'Blocos' }),
     ).toBeVisible();
 
     const templateRow = templatesTable.getByRole('row', {
@@ -133,10 +134,10 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await expect(templateRow).toBeVisible();
     await expect(
-      templateRow.getByRole('button', { name: 'Edit' }),
+      templateRow.getByRole('button', { name: 'Editar' }),
     ).toBeVisible();
     await expect(
-      templateRow.getByRole('button', { name: 'Delete' }),
+      templateRow.getByRole('button', { name: 'Excluir' }),
     ).toBeVisible();
   });
 
@@ -217,11 +218,12 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
 
+    const cycleReviewUrl = page.url();
     await page.getByTestId('open-template-library-button').click();
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('saved-template-row').first()).toBeVisible();
 
-    await page.getByTestId('back-from-template-library-button').click();
+    await page.goto(cycleReviewUrl);
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
 
@@ -260,51 +262,19 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await createCycleDialog.getByTestId('create-cycle-button').click();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
+    const cycleReviewUrl = page.url();
     await page.getByTestId('open-template-library-button').click();
-    await page.getByTestId('open-create-template-dialog-button').click();
-    const createTemplateDialog = page.getByRole('dialog', {
-      name: 'Create template',
+    await createTemplateOnNestedPage({
+      page,
+      name: templateName,
+      weekday: 0,
+      blocks: [
+        { label: 'Worship', startTime: '09:00', endTime: '10:00' },
+        { label: 'Message', startTime: '10:00', endTime: '11:00' },
+      ],
     });
-    await createTemplateDialog
-      .getByTestId('template-name-input')
-      .fill(templateName);
-    await createTemplateDialog.getByTestId('template-weekday-select').click();
-    await page.getByTestId('template-weekday-option-0').click();
-    const firstBlock = createTemplateDialog
-      .getByTestId('template-time-block-row')
-      .first();
-    await firstBlock
-      .getByTestId('template-time-block-label-input')
-      .fill('Worship');
-    await fillTimeOfDayField({
-      field: firstBlock.getByTestId('template-time-block-start-time-input'),
-      time: '09:00',
-    });
-    await fillTimeOfDayField({
-      field: firstBlock.getByTestId('template-time-block-end-time-input'),
-      time: '10:00',
-    });
-    await createTemplateDialog
-      .getByTestId('add-template-time-block-button')
-      .click();
-    const secondBlock = createTemplateDialog
-      .getByTestId('template-time-block-row')
-      .nth(1);
-    await secondBlock
-      .getByTestId('template-time-block-label-input')
-      .fill('Message');
-    await fillTimeOfDayField({
-      field: secondBlock.getByTestId('template-time-block-start-time-input'),
-      time: '10:00',
-    });
-    await fillTimeOfDayField({
-      field: secondBlock.getByTestId('template-time-block-end-time-input'),
-      time: '11:00',
-    });
-    await createTemplateDialog.getByTestId('create-template-button').click();
-    await expect(createTemplateDialog).not.toBeAttached();
 
-    await page.getByTestId('back-from-template-library-button').click();
+    await page.goto(cycleReviewUrl);
     await page.getByTestId('open-apply-templates-dialog-button').click();
     const applyTemplatesDialog = page.getByRole('dialog', {
       name: 'Apply templates',

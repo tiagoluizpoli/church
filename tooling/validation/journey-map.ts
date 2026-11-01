@@ -74,7 +74,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/builder-event-time-block-focus.spec.ts',
   'tests/scheduling/capability-index.spec.ts',
   'tests/scheduling/cross-cutting.spec.ts',
-  'tests/scheduling/overnight-template-time-block.spec.ts',
+  'tests/scheduling/event-templates.spec.ts',
   'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
   'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
@@ -113,7 +113,7 @@ const CYCLE_EDGE_SPEC_PATHS = [
 // three journeys' maps. None of these navigate /volunteer/availability, so
 // that journey stays out.
 const PLANNING_ADMIN_SPEC_PATHS = [
-  'tests/scheduling/overnight-template-time-block.spec.ts',
+  'tests/scheduling/event-templates.spec.ts',
   'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -274,7 +274,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/_planning-admin',
     specPaths: [
-      'tests/scheduling/overnight-template-time-block.spec.ts',
+      'tests/scheduling/event-templates.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
@@ -306,7 +306,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // instead of falling back to CRITICAL_SMOKE_SPEC_PATHS.
     sourcePathPrefix: 'apps/web/src/components/ui/data-table.tsx',
     specPaths: [
-      'tests/scheduling/overnight-template-time-block.spec.ts',
+      'tests/scheduling/event-templates.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
@@ -348,7 +348,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // file.
     sourcePathPrefix: 'apps/web/src/infrastructure/api/planning.ts',
     specPaths: [
-      'tests/scheduling/overnight-template-time-block.spec.ts',
+      'tests/scheduling/event-templates.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',

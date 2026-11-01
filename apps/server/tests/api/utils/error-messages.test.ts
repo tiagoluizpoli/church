@@ -8,6 +8,10 @@ import {
   DuplicateHeadcountError,
   VALIDATION_REASONS,
 } from '@/domain/errors/duplicate-headcount';
+import {
+  DuplicateTemplateBlockLabelError,
+  DuplicateTemplateNameError,
+} from '@/domain/errors/duplicate-template-name';
 
 // Codes thrown by the domain that never become an HTTP response.
 const NEVER_HTTP = [
@@ -50,5 +54,16 @@ describe('domainErrorMessage', () => {
       locale: 'pt-BR',
     });
     expect(message).toContain('Cada setor e função');
+  });
+});
+
+describe('Event template validation reasons', () => {
+  it.each([
+    [new DuplicateTemplateNameError(), 'en', 'already has this name'],
+    [new DuplicateTemplateNameError(), 'pt-BR', 'com este nome'],
+    [new DuplicateTemplateBlockLabelError(), 'en', 'same label'],
+    [new DuplicateTemplateBlockLabelError(), 'pt-BR', 'mesmo rótulo'],
+  ] as const)('words %s in %s', (error, locale, fragment) => {
+    expect(domainErrorMessage({ error, locale })).toContain(fragment);
   });
 });

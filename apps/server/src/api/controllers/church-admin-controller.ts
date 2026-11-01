@@ -44,6 +44,7 @@ import {
   eventTemplateMapper,
   eventTemplateResponseSchema,
   generatedPlanningCountsResponseSchema,
+  updateEventTemplateBodySchema,
 } from '../dtos/event-template.dto';
 import {
   createEventTimeBlockBodySchema,
@@ -335,14 +336,14 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Update an EventTemplate',
           description:
             "Replace an EventTemplate's name, weekday, and TemplateTimeBlocks.",
-          body: createEventTemplateBodySchema,
+          body: updateEventTemplateBodySchema,
           response: { 200: eventTemplateResponseSchema },
         },
       },
       async (request, reply) => {
         const { templateId } = request.params as EventTemplateRouteParams;
         const body = request.body as z.infer<
-          typeof createEventTemplateBodySchema
+          typeof updateEventTemplateBodySchema
         >;
         const template = await this.eventTemplateManager.updateTemplate({
           churchId: ChurchId.from(request.churchId),

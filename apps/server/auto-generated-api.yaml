@@ -631,11 +631,13 @@ paths:
                 name:
                   type: string
                   minLength: 1
+                  maxLength: 255
                 weekday:
                   type: integer
                   minimum: 0
                   maximum: 6
                 blocks:
+                  minItems: 1
                   type: array
                   items:
                     type: object
@@ -643,21 +645,18 @@ paths:
                       label:
                         type: string
                         minLength: 1
+                        maxLength: 255
                       startTime:
                         type: string
                         pattern: ^\d{2}:\d{2}(:\d{2})?$
                       endTime:
                         type: string
                         pattern: ^\d{2}:\d{2}(:\d{2})?$
-                      order:
-                        type: integer
-                        minimum: 0
-                        maximum: 9007199254740991
                     required:
                       - label
                       - startTime
                       - endTime
-                      - order
+                    additionalProperties: false
               required:
                 - name
                 - weekday
@@ -819,11 +818,13 @@ paths:
                 name:
                   type: string
                   minLength: 1
+                  maxLength: 255
                 weekday:
                   type: integer
                   minimum: 0
                   maximum: 6
                 blocks:
+                  minItems: 1
                   type: array
                   items:
                     type: object
@@ -831,21 +832,22 @@ paths:
                       label:
                         type: string
                         minLength: 1
+                        maxLength: 255
                       startTime:
                         type: string
                         pattern: ^\d{2}:\d{2}(:\d{2})?$
                       endTime:
                         type: string
                         pattern: ^\d{2}:\d{2}(:\d{2})?$
-                      order:
-                        type: integer
-                        minimum: 0
-                        maximum: 9007199254740991
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                     required:
                       - label
                       - startTime
                       - endTime
-                      - order
+                    additionalProperties: false
               required:
                 - name
                 - weekday

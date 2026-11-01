@@ -90,7 +90,7 @@ export const eventTemplate = pgTable(
     ),
     uniqueIndex('event_template_church_name_idx').on(
       table.churchId,
-      table.name,
+      sql`lower(${table.name})`,
     ),
   ],
 );

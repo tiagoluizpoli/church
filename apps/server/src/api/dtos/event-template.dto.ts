@@ -2,18 +2,31 @@ import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTemplate } from '../../domain/entities/event-template';
 
-export const eventTemplateTimeBlockBodySchema = z.object({
-  label: z.string().min(1),
-  startTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-  endTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-  order: z.number().int().nonnegative(),
-});
+const templateNameSchema = z.string().trim().min(1).max(255);
+
+/** Create takes no persisted id or caller-controlled order: the server derives `order`. */
+export const eventTemplateTimeBlockBodySchema = z
+  .object({
+    label: templateNameSchema,
+    startTime: timeOfDaySchema,
+    endTime: timeOfDaySchema,
+  })
+  .strict();
+
+/** Edit may name a persisted block `id`; identity-preserving edits land with #636. */
+export const updateEventTemplateTimeBlockBodySchema =
+  eventTemplateTimeBlockBodySchema.extend({ id: z.string().uuid().optional() });
 
 export const createEventTemplateBodySchema = z.object({
-  name: z.string().min(1),
+  name: templateNameSchema,
   weekday: z.number().int().min(0).max(6),
-  blocks: z.array(eventTemplateTimeBlockBodySchema),
+  blocks: z.array(eventTemplateTimeBlockBodySchema).min(1),
 });
+
+export const updateEventTemplateBodySchema =
+  createEventTemplateBodySchema.extend({
+    blocks: z.array(updateEventTemplateTimeBlockBodySchema).min(1),
+  });
 
 export const applyTemplatesBodySchema = z.object({
   templateIds: z.array(z.string()).min(1),

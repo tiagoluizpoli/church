@@ -1,7 +1,11 @@
 import { DomainError } from '@church/core';
 
 /** Rule-based reasons a `VALIDATION_ERROR` can carry; the HTTP layer words each one. */
-export const VALIDATION_REASONS = ['DUPLICATE_HEADCOUNT'] as const;
+export const VALIDATION_REASONS = [
+  'DUPLICATE_HEADCOUNT',
+  'DUPLICATE_TEMPLATE_NAME',
+  'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+] as const;
 export type ValidationReason = (typeof VALIDATION_REASONS)[number];
 
 /** One UsualSetup entry names the same Sector and Role twice. */

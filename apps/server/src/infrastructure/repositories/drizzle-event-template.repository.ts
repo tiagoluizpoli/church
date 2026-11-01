@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { eventTemplate, templateTimeBlock } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { EventTemplateId } from '../../domain/branded-ids';
 import type {
   CreateEventTemplateInput,
@@ -13,6 +13,7 @@ import type {
   UpdateEventTemplateInput,
 } from '../../domain/contracts/infrastructure/event-template.repository';
 import type { EventTemplate } from '../../domain/entities/event-template';
+import { DuplicateTemplateNameError } from '../../domain/errors/duplicate-template-name';
 import { mapEventTemplate } from '../mappers/event-template.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -25,6 +26,46 @@ interface EventTemplateGraphRow {
 interface MapTemplateGraphInput {
   template: typeof eventTemplate.$inferSelect;
   tx?: CreateEventTemplateInput['tx'];
+}
+
+const NAME_UNIQUE_CONSTRAINT = 'event_template_church_name_idx';
+
+interface UniqueViolationInput {
+  error: unknown;
+}
+
+interface PostgresErrorShape {
+  code?: string;
+  constraint?: string;
+  cause?: unknown;
+}
+
+/** drizzle wraps the raw `pg` error, so the code/constraint sit on `.cause`. */
+function isNameUniqueViolation({ error }: UniqueViolationInput): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const { code, constraint, cause } = error as PostgresErrorShape;
+  return (
+    (code === '23505' && constraint === NAME_UNIQUE_CONSTRAINT) ||
+    isNameUniqueViolation({ error: cause })
+  );
+}
+
+interface RefuseDuplicateNameInput<T> {
+  write: Promise<T>;
+}
+
+/** Turns the case-insensitive name index violation, including races, into a domain refusal. */
+async function refuseDuplicateName<T>({
+  write,
+}: RefuseDuplicateNameInput<T>): Promise<T> {
+  try {
+    return await write;
+  } catch (error) {
+    if (isNameUniqueViolation({ error })) {
+      throw new DuplicateTemplateNameError();
+    }
+    throw error;
+  }
 }
 
 interface DrizzleEventTemplateRepositoryInput {
@@ -40,14 +81,16 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
 
   async create(input: CreateEventTemplateInput): Promise<EventTemplate> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const [templateRow] = await db
-      .insert(eventTemplate)
-      .values({
-        churchId: input.churchId,
-        name: input.name,
-        weekday: input.weekday,
-      })
-      .returning();
+    const [templateRow] = await refuseDuplicateName({
+      write: db
+        .insert(eventTemplate)
+        .values({
+          churchId: input.churchId,
+          name: input.name,
+          weekday: input.weekday,
+        })
+        .returning(),
+    });
 
     if (!templateRow) {
       throw new Error('Event template insert failed');
@@ -75,23 +118,25 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
 
   async update(input: UpdateEventTemplateInput): Promise<EventTemplate> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const [templateRow] = await db
-      .update(eventTemplate)
-      .set({
-        name: input.name,
-        weekday: input.weekday,
-        updatedAt: nowAsDate(),
-      })
-      .where(
-        and(
-          eq(eventTemplate.id, input.templateId),
-          withChurchIsolation({
-            table: eventTemplate,
-            churchId: input.churchId,
-          }),
-        ),
-      )
-      .returning();
+    const [templateRow] = await refuseDuplicateName({
+      write: db
+        .update(eventTemplate)
+        .set({
+          name: input.name,
+          weekday: input.weekday,
+          updatedAt: nowAsDate(),
+        })
+        .where(
+          and(
+            eq(eventTemplate.id, input.templateId),
+            withChurchIsolation({
+              table: eventTemplate,
+              churchId: input.churchId,
+            }),
+          ),
+        )
+        .returning(),
+    });
 
     if (!templateRow) {
       throw new NotFoundError(`Event template not found: ${input.templateId}`);
@@ -142,7 +187,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .where(
         withChurchIsolation({ table: eventTemplate, churchId: input.churchId }),
       )
-      .orderBy(asc(eventTemplate.name));
+      .orderBy(asc(sql`lower(${eventTemplate.name})`), asc(eventTemplate.name));
 
     return Promise.all(
       templateRows.map((templateRow) =>

@@ -19,7 +19,10 @@ import pino from 'pino';
 import PinoPretty from 'pino-pretty';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
-import { domainErrorMessage } from '../../api/utils/error-messages';
+import {
+  domainErrorMessage,
+  validationReason,
+} from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
 import { requestLocale } from '../../api/utils/request-locale';
 
@@ -158,9 +161,11 @@ export async function createFastify({
       if (message === undefined) {
         request.log.warn({ code: error.code }, 'No catalog message for code');
       }
+      const reason = validationReason(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
+        ...(reason && { reason }),
       });
     }
 

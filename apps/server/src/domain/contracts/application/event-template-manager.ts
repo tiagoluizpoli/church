@@ -1,11 +1,13 @@
 import type { ChurchId, EventTemplateId } from '../../branded-ids';
 import type { EventTemplate } from '../../entities/event-template';
 
+/** Submitted block; `order` is derived from start time by the manager. */
 export interface EventTemplateTimeBlockManagerInput {
+  /** Persisted id on edit; ignored until identity-preserving edits land. */
+  id?: string;
   label: string;
   startTime: string;
   endTime: string;
-  order: number;
 }
 
 export interface CreateEventTemplateManagerInput {

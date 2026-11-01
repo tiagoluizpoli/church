@@ -159,7 +159,9 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
       await expect(
         page.getByRole('heading', { name: 'Confirm Volunteer Transfer' }),
       ).toBeVisible();
-      await page.getByLabel('Password').fill(transferee.password);
+      await page
+        .getByLabel('Password', { exact: true })
+        .fill(transferee.password);
       await page
         .getByLabel(new RegExp(`Type ${churchAName} to confirm`))
         .fill(churchAName);

@@ -8,6 +8,7 @@ const HOME_PATH = '/';
 
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
+  notice: z.literal('password-changed').optional().catch(undefined),
 });
 
 export const Route = createFileRoute('/login')({
@@ -24,9 +25,9 @@ export const Route = createFileRoute('/login')({
 });
 
 function RouteComponent() {
-  const { redirect: redirectSearch } = Route.useSearch();
+  const { redirect: redirectSearch, notice } = Route.useSearch();
   const redirectTo =
     validateInternalReturnTarget({ target: redirectSearch }) ?? undefined;
 
-  return <SignInForm redirectTo={redirectTo} />;
+  return <SignInForm redirectTo={redirectTo} notice={notice} />;
 }

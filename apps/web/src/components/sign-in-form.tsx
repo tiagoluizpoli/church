@@ -1,5 +1,6 @@
+import { m } from '@church/i18n/messages';
 import { useForm } from '@tanstack/react-form';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import z from 'zod';
 import Loader from './loader';
@@ -12,11 +13,14 @@ import { authErrorMessage } from '@/lib/auth-error-message';
 export interface SignInFormProps {
   onSwitchToSignUp?: () => void;
   redirectTo?: string;
+  /** Set by the password-reset flow when it returns here. */
+  notice?: 'password-changed';
 }
 
 export default function SignInForm({
   onSwitchToSignUp,
   redirectTo,
+  notice,
 }: SignInFormProps) {
   const navigate = useNavigate({
     from: '/',
@@ -66,6 +70,12 @@ export default function SignInForm({
         Access is invitation-only. Sign in with the account from your
         invitation.
       </p>
+
+      {notice === 'password-changed' && (
+        <p role="status" className="mb-4 text-center text-sm">
+          {m.password_recovery_password_changed()}
+        </p>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -119,6 +129,15 @@ export default function SignInForm({
               </div>
             )}
           </form.Field>
+        </div>
+
+        <div className="text-right">
+          <Link
+            to="/forgot-password"
+            className="text-muted-foreground text-sm underline"
+          >
+            {m.password_recovery_forgot_link()}
+          </Link>
         </div>
 
         <form.Subscribe

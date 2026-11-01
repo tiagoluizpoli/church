@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SignInForm from '@/components/sign-in-form';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -28,6 +29,7 @@ vi.mock('@/lib/auth-client', () => ({
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
 }));
 
 function simulateAuthError(code: string) {

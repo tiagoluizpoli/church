@@ -16,9 +16,14 @@ import {
   membershipRemovedMessage,
   removedFromSearchSchema,
 } from '@/shared/utils/membership-removal';
+import {
+  ministryInvitationResultSearchSchema,
+  ministryJoinedMessage,
+} from '@/shared/utils/ministry-invitation-result';
 
 export const dashboardSearchSchema = removedFromSearchSchema
   .extend(churchOnlyWarningSearchSchema.shape)
+  .extend(ministryInvitationResultSearchSchema.shape)
   .extend({
     section: z
       .enum(['availability', 'assignments', 'ministry_schedule'])
@@ -60,6 +65,20 @@ export function DashboardEntry({ search, volunteerName }: DashboardEntryProps) {
       );
     }
   }, [search.joinedChurch, search.invitedMinistry]);
+
+  useEffect(() => {
+    if (search.joinedMinistry) {
+      toast.success(
+        ministryJoinedMessage({ ministryName: search.joinedMinistry }),
+      );
+    }
+  }, [search.joinedMinistry]);
+
+  useEffect(() => {
+    if (search.invitationDeclined) {
+      toast.success(m.ministry_invitation_declined_toast());
+    }
+  }, [search.invitationDeclined]);
 
   return (
     <WorkspacePage>

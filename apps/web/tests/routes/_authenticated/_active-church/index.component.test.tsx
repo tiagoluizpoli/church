@@ -10,12 +10,13 @@ import { renderRoute } from '@/tests/setup/render-route';
 
 const getSession = vi.fn();
 const toastWarning = vi.hoisted(() => vi.fn());
+const toastSuccess = vi.hoisted(() => vi.fn());
 
 vi.mock('sonner', () => ({
   toast: {
     warning: toastWarning,
     info: vi.fn(),
-    success: vi.fn(),
+    success: toastSuccess,
     error: vi.fn(),
   },
 }));
@@ -102,6 +103,32 @@ describe('_active-church index route', () => {
           churchName: 'St. Peter',
           ministryName: 'Youth',
         }),
+      ),
+    );
+  });
+
+  it('announces the Ministry just joined', async () => {
+    renderRoute({
+      initialPath: '/?joinedMinistry=Care',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.ministry_invitation_joined_toast({ ministryName: 'Care' }),
+      ),
+    );
+  });
+
+  it('announces a declined Ministry Invitation', async () => {
+    renderRoute({
+      initialPath: '/?invitationDeclined=true',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.ministry_invitation_declined_toast(),
       ),
     );
   });

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
@@ -11,7 +12,6 @@ import {
   PlanningAdminProvider,
   useCycleHeader,
   useCycleReviewCard,
-  useCycleSelection,
   useIsPlanningAccessDenied,
 } from './planning-admin/planning-admin-context';
 import { QuickCreateEventModal } from './quick-create-event-modal';
@@ -29,18 +29,20 @@ import {
 
 const CYCLES_PATH = '/cycles';
 
-interface IsReviewingCyclePathInput {
+interface PathnameInput {
   pathname: string;
 }
 
-function isReviewingCyclePath({
-  pathname,
-}: IsReviewingCyclePathInput): boolean {
+function isTemplatesPath({ pathname }: PathnameInput): boolean {
+  return pathname.includes('/event-templates');
+}
+
+function isReviewingCyclePath({ pathname }: PathnameInput): boolean {
   return (
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&
     !pathname.endsWith('/new') &&
-    !pathname.endsWith('/event-templates')
+    !isTemplatesPath({ pathname })
   );
 }
 
@@ -58,11 +60,10 @@ function describePlanningIntro({
   pathname,
   selectedCycleName,
 }: DescribePlanningIntroInput): PlanningIntroContent {
-  if (pathname.endsWith('/event-templates')) {
+  if (isTemplatesPath({ pathname })) {
     return {
-      title: 'Template library',
-      description:
-        'Keep recurring weekday templates in a dedicated library, then return to a cycle only when you are ready to apply them.',
+      title: m.nav_event_templates(),
+      description: m.event_templates_description(),
     };
   }
 
@@ -114,7 +115,7 @@ function PlanningAdminLayout() {
   }
 
   const pathname = location.pathname;
-  const isTemplatesView = pathname.endsWith('/event-templates');
+  const isTemplatesView = isTemplatesPath({ pathname });
   const isPlainListView =
     pathname === CYCLES_PATH || pathname === `${CYCLES_PATH}/`;
   const { nameAndStatus } = useCycleHeader();
@@ -158,7 +159,6 @@ interface CyclesActionsProps {
 }
 
 function CyclesActions({ pathname }: CyclesActionsProps) {
-  const { selectedCycleId } = useCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
   const [createEventOpen, setCreateEventOpen] = useState(false);
@@ -176,11 +176,6 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
       >
         <Link
           to="/event-templates"
-          search={
-            isReviewingCycle && selectedCycleId
-              ? { returnTo: selectedCycleId }
-              : undefined
-          }
           data-testid="open-template-library-button"
           className={buttonVariants({ variant: 'outline' })}
         >

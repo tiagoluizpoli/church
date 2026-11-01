@@ -12,8 +12,11 @@ export interface CycleFormState {
   endDate: string;
 }
 
+/** One editable block row. `key` is a temporary React/row key; `persistedId`
+ * is the stored TemplateTimeBlock id and exists only for blocks loaded for edit. */
 export interface TemplateTimeBlockDraft {
-  id: string;
+  key: string;
+  persistedId?: string;
   label: string;
   startTime: TimeOfDay | null;
   endTime: TimeOfDay | null;

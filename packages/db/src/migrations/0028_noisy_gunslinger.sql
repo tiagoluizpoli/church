@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "template_time_block_template_label_idx" ON "template_time_block" USING btree ("template_id",lower("label"));

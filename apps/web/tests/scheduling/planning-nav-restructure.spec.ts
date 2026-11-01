@@ -39,8 +39,8 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
   // Opening the template library from a selected cycle changes the URL too
   // (previously `activeView` component state only).
   await page.getByTestId('open-template-library-button').click();
-  await expect(page).toHaveURL(/\/event-templates\?/);
-  await expect(page.getByText('Saved templates')).toBeVisible();
+  await expect(page).toHaveURL(/\/event-templates$/);
+  await expect(page.getByText('Modelos salvos')).toBeVisible();
 
   // Back/forward retrace: templates -> cycle review -> new -> index.
   await page.goBack();

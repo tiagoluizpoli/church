@@ -67,6 +67,7 @@ describe('error handler locale', () => {
     expect(res.statusCode).toBe(422);
     expect(res.json()).toEqual({
       error: 'VALIDATION_ERROR',
+      reason: 'DUPLICATE_HEADCOUNT',
       message: m.error_validation_duplicate_headcount({}, { locale: 'pt-BR' }),
     });
   });

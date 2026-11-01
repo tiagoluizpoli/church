@@ -254,27 +254,29 @@ export type GetCycle200 = {
 };
 
 export type CreateEventTemplateBodyBlocksItem = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
   label: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
-  /**
-     * @minimum 0
-     * @maximum 9007199254740991
-     */
-  order: number;
 };
 
 export type CreateEventTemplateBody = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
   name: string;
   /**
      * @minimum 0
      * @maximum 6
      */
   weekday: number;
+  /** @minItems 1 */
   blocks: CreateEventTemplateBodyBlocksItem[];
 };
 
@@ -300,6 +302,29 @@ export type CreateEventTemplate201 = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type CreateEventTemplate422Error = typeof CreateEventTemplate422Error[keyof typeof CreateEventTemplate422Error];
+
+
+export const CreateEventTemplate422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type CreateEventTemplate422Reason = typeof CreateEventTemplate422Reason[keyof typeof CreateEventTemplate422Reason];
+
+
+export const CreateEventTemplate422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+} as const;
+
+export type CreateEventTemplate422 = {
+  error: CreateEventTemplate422Error;
+  message: string;
+  reason?: CreateEventTemplate422Reason;
+  issues?: unknown[];
 };
 
 export type ListEventTemplates200TemplatesItemBlocksItem = {
@@ -330,28 +355,56 @@ export type ListEventTemplates200 = {
   templates: ListEventTemplates200TemplatesItem[];
 };
 
-export type UpdateEventTemplateBodyBlocksItem = {
-  /** @minLength 1 */
+export type GetEventTemplate200BlocksItem = {
+  id: string;
+  churchId: string;
+  templateId: string;
   label: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
-  /**
-     * @minimum 0
-     * @maximum 9007199254740991
-     */
   order: number;
 };
 
+export type GetEventTemplate200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  weekday: number;
+  blocks: GetEventTemplate200BlocksItem[];
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type UpdateEventTemplateBodyBlocksItem = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  label: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id?: string;
+};
+
 export type UpdateEventTemplateBody = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
   name: string;
   /**
      * @minimum 0
      * @maximum 6
      */
   weekday: number;
+  /** @minItems 1 */
   blocks: UpdateEventTemplateBodyBlocksItem[];
 };
 
@@ -377,6 +430,40 @@ export type UpdateEventTemplate200 = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type UpdateEventTemplate422Error = typeof UpdateEventTemplate422Error[keyof typeof UpdateEventTemplate422Error];
+
+
+export const UpdateEventTemplate422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdateEventTemplate422Reason = typeof UpdateEventTemplate422Reason[keyof typeof UpdateEventTemplate422Reason];
+
+
+export const UpdateEventTemplate422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+} as const;
+
+export type UpdateEventTemplate422 = {
+  error: UpdateEventTemplate422Error;
+  message: string;
+  reason?: UpdateEventTemplate422Reason;
+  issues?: unknown[];
+};
+
+export type GetEventTemplateUsage200BlocksItem = {
+  blockId: string;
+  ministryCount: number;
+};
+
+export type GetEventTemplateUsage200 = {
+  templateId: string;
+  ministryCount: number;
+  blocks: GetEventTemplateUsage200BlocksItem[];
 };
 
 export type ApplyPlanningTemplatesBody = {

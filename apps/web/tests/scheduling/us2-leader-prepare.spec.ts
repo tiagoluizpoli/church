@@ -83,9 +83,9 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
         name: 'US2 Sunday Template',
         weekday: 0,
         blocks: [
-          { label: 'Welcome', startTime: '09:00', endTime: '09:30', order: 0 },
-          { label: 'Message', startTime: '09:30', endTime: '10:30', order: 1 },
-          { label: 'Prayer', startTime: '10:30', endTime: '11:00', order: 2 },
+          { label: 'Welcome', startTime: '09:00', endTime: '09:30' },
+          { label: 'Message', startTime: '09:30', endTime: '10:30' },
+          { label: 'Prayer', startTime: '10:30', endTime: '11:00' },
         ],
       },
     },

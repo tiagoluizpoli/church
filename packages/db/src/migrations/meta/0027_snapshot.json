@@ -1,5 +1,5 @@
 {
-  "id": "215acc61-77ba-4ff5-931b-0795abfa0d65",
+  "id": "7d18f809-d3f1-4eea-bdf9-9a19d570ca1f",
   "prevId": "3b7fa82c-c0f8-44aa-bbeb-f1b9f570be15",
   "version": "7",
   "dialect": "postgresql",
@@ -3539,9 +3539,9 @@
               "nulls": "last"
             },
             {
-              "expression": "name",
-              "isExpression": false,
+              "expression": "lower(\"name\")",
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
@@ -4467,6 +4467,7 @@
       "values": [
         "invitation.chained",
         "invitation.church-bootstrap",
+        "redemption.accepted",
         "notification"
       ]
     },

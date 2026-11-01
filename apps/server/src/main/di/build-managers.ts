@@ -119,7 +119,10 @@ export function buildManagers({
     });
   const eventTemplateManager =
     overrides.eventTemplateManager ??
-    new DbEventTemplateManager({ templateRepository: eventTemplateRepository });
+    new DbEventTemplateManager({
+      templateRepository: eventTemplateRepository,
+      unitOfWork,
+    });
   const notifications = new ChurchNotifications({ outboxRepository });
   const ministryManager =
     overrides.ministryManager ??

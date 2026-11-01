@@ -102,7 +102,10 @@ function createManagers() {
       ministryRepository,
       eventTimeBlockRepository,
     }),
-    templateManager: new DbEventTemplateManager({ templateRepository }),
+    templateManager: new DbEventTemplateManager({
+      templateRepository,
+      unitOfWork,
+    }),
     eventTimeBlockRepository,
   };
 }
@@ -377,13 +380,11 @@ describe('Phase 3 planning managers', () => {
           label: 'Welcome',
           startTime: '09:00:00',
           endTime: '09:30:00',
-          order: 0,
         },
         {
           label: 'Message',
           startTime: '09:30:00',
           endTime: '10:30:00',
-          order: 1,
         },
       ],
     });
@@ -463,7 +464,6 @@ describe('Phase 3 planning managers', () => {
           label: 'Bible study',
           startTime: '19:00:00',
           endTime: '20:00:00',
-          order: 0,
         },
       ],
     });
@@ -629,13 +629,11 @@ describe('Phase 3 planning managers', () => {
           label: 'Welcome',
           startTime: '09:00:00',
           endTime: '09:30:00',
-          order: 0,
         },
         {
           label: 'Message',
           startTime: '09:30:00',
           endTime: '10:30:00',
-          order: 1,
         },
       ],
     });
@@ -888,7 +886,6 @@ describe('Phase 3 planning managers', () => {
           label: 'Service',
           startTime: '09:00:00',
           endTime: '10:00:00',
-          order: 0,
         },
       ],
     });

@@ -2,7 +2,7 @@ import { createDb } from '@church/db';
 import * as authSchema from '@church/db/schema/auth';
 import * as organizationSchema from '@church/db/schema/organization';
 import { env } from '@church/env/server';
-import { betterAuth } from 'better-auth';
+import { type BetterAuthOptions, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins/organization';
 import { assertConfiguredRole } from './organization/assert-configured-role';
@@ -13,12 +13,38 @@ import {
 
 const schema = { ...authSchema, ...organizationSchema };
 
-export function createAuth() {
-  const db = createDb();
+type AuthDatabase = Parameters<typeof drizzleAdapter>[0];
+
+type ResetPasswordMailer = NonNullable<
+  NonNullable<BetterAuthOptions['emailAndPassword']>['sendResetPassword']
+>;
+
+export interface CreateAuthInput {
+  /** Drizzle database or transaction the adapter reads and writes through. */
+  database: AuthDatabase;
+  /** Per-user Church membership cap; omitted keeps Better Auth's default. */
+  organizationMembershipLimit?: number;
+  /** Reset token lifetime in seconds; omitted keeps Better Auth's default. */
+  resetPasswordTokenExpiresIn?: number;
+  /** Omitted leaves password reset unavailable (no mail can be sent). */
+  sendResetPassword?: ResetPasswordMailer;
+  revokeSessionsOnPasswordReset?: boolean;
+}
+
+// Church-specific policy and email composition are supplied by the server at
+// construction time, so there is no startup callback to race and no
+// auth -> server import. Transaction-bound instances call this same function.
+export function createAuth({
+  database,
+  organizationMembershipLimit,
+  resetPasswordTokenExpiresIn,
+  sendResetPassword,
+  revokeSessionsOnPasswordReset,
+}: CreateAuthInput) {
   const isSecureOrigin = env.BETTER_AUTH_URL.startsWith('https://');
 
   return betterAuth({
-    database: drizzleAdapter(db, {
+    database: drizzleAdapter(database, {
       provider: 'pg',
 
       schema: schema,
@@ -26,6 +52,9 @@ export function createAuth() {
     trustedOrigins: [env.CORS_ORIGIN],
     emailAndPassword: {
       enabled: true,
+      resetPasswordTokenExpiresIn,
+      sendResetPassword,
+      revokeSessionsOnPasswordReset,
     },
     // Public registration and Church Access Level changes are deliberately
     // unavailable. Redemption and app-managed access changes use trusted
@@ -62,6 +91,7 @@ export function createAuth() {
         // Churches are provisioned by the Platform Operator, never over HTTP,
         // so the plugin's create-organization route stays shut.
         allowUserToCreateOrganization: false,
+        membershipLimit: organizationMembershipLimit,
         // Better Auth treats any custom `generateId` as predictable and then
         // requires a verified email to accept or reject an invitation by id.
         // Ours mints random UUIDs, and redemption proves the mailbox with its
@@ -88,4 +118,4 @@ export function createAuth() {
   });
 }
 
-export const auth = createAuth();
+export const auth = createAuth({ database: createDb() });

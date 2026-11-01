@@ -132,7 +132,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await expect(templateRow).toBeVisible();
     await expect(
-      templateRow.getByRole('button', { name: 'Editar' }),
+      templateRow.getByRole('link', { name: 'Editar' }),
     ).toBeVisible();
     await expect(
       templateRow.getByRole('button', { name: 'Excluir' }),

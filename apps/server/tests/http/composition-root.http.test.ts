@@ -1,11 +1,12 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { MinistryInvitationRepository } from '@/domain/contracts/infrastructure/ministry-invitation.repository';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import {
   type CompositionRootDependencies,
   createCompositionRoot,
 } from '@/main/di/composition-root';
+import { serverAuthOptions } from '@/main/di/server-auth';
 import { registerControllers } from '@/main/fastify/register-controllers';
 import { createFastify } from '@/main/fastify/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -97,6 +98,20 @@ describe('composition root', () => {
     });
     await app.close();
     expect(response.json()).toEqual({ code: '123456' });
+  });
+
+  it('mails password resets through an overridden email sender', async () => {
+    const emailSender = new CaptureEmailSender('Church');
+    createCompositionRoot({ emailSender });
+    await serverAuthOptions.sendResetPassword?.({
+      user: { email: 'a@example.test' },
+      token: 't',
+    } as never);
+    await vi.waitFor(() =>
+      expect(emailSender.sent).toMatchObject([
+        { kind: 'auth.password-reset', to: 'a@example.test' },
+      ]),
+    );
   });
 
   it('leaves parked routes out by default', async () => {

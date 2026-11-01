@@ -1,4 +1,3 @@
-import { type Auth, auth as defaultAuth } from '@church/auth';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
 import { m } from '@church/i18n/messages';
@@ -25,6 +24,7 @@ import {
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
 import { requestLocale } from '../../api/utils/request-locale';
+import { auth } from '../di/server-auth';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
@@ -38,13 +38,10 @@ export interface LocaleSettings {
 
 interface CreateFastifyInput {
   locale: LocaleSettings;
-  /** The composed instance; defaults to the package's plain one. */
-  auth?: Auth;
 }
 
 export async function createFastify({
   locale: localeSettings,
-  auth = defaultAuth,
 }: CreateFastifyInput) {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';

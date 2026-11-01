@@ -83,11 +83,31 @@ export interface TerminalRedemptionFailure {
   reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
 }
 
+/** A committed Church-only join: the new session is kept. */
+export interface NewPersonChurchOnlyOutcome
+  extends ChurchOnlyRedemptionOutcome {
+  sessionCookie: string;
+}
+
+/** Every new-person write was rolled back; the same invitation can be retried. */
+export interface RetryableNewPersonFailure {
+  kind: 'retryable-failure';
+  reason: 'IDENTITY_FAILED' | 'MINISTRY_ACCEPTANCE_FAILED';
+}
+
+export interface TerminalNewPersonFailure {
+  kind: 'terminal-failure';
+  reason:
+    | 'INVITATION_UNAVAILABLE'
+    | 'VERIFICATION_FAILED'
+    | 'EMAIL_ALREADY_REGISTERED';
+}
+
 export type RedeemNewUserOutcome =
   | FullRedemptionSuccess
-  | ChurchOnlyRedemptionOutcome
-  | RetryableRedemptionFailure
-  | TerminalRedemptionFailure;
+  | NewPersonChurchOnlyOutcome
+  | RetryableNewPersonFailure
+  | TerminalNewPersonFailure;
 
 /**
  * Post-authentication lifecycle classification for an existing Church
@@ -122,6 +142,11 @@ export interface IdentityMismatchStatus {
   kind: 'identity-mismatch';
 }
 
+/** The status read also tells a wrong login who the invitation was addressed to, masked. */
+export interface MaskedIdentityMismatchStatus extends IdentityMismatchStatus {
+  maskedEmail: string;
+}
+
 export interface UnavailableInvitationStatus {
   kind: 'unavailable';
 }
@@ -129,7 +154,7 @@ export interface UnavailableInvitationStatus {
 export type AuthenticatedInvitationStatus =
   | RedeemableInvitationStatus
   | AlreadyAcceptedInvitationStatus
-  | IdentityMismatchStatus
+  | MaskedIdentityMismatchStatus
   | UnavailableInvitationStatus;
 
 export interface AcceptExistingMemberInput {

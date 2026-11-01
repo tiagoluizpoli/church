@@ -19,7 +19,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
 import { useContinueToChurch } from '@/shared/hooks/use-continue-to-church';
-import { finishRedemptionAtDashboard } from '@/shared/utils/active-church-switch';
+import { finishRedemptionAtHome } from '@/shared/utils/active-church-switch';
 import { randomId } from '@/shared/utils/id';
 import { redemptionApi } from '@/utils/api-instances';
 
@@ -77,35 +77,34 @@ interface DescribeRedemptionOutcomeInput {
 function describeRedemptionOutcome({
   outcome,
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
+  // Retryable failures rolled every write back, so the same form can resubmit.
   if (outcome.kind === 'retryable-failure') {
     return {
       title: m.common_generic_error_title(),
-      description:
-        "Your account was created, but we couldn't finish adding you to the Ministry yet. Try again.",
+      description: m.redemption_failure_retryable_description(),
       canRetry: true,
       clearCode: false,
     };
   }
   if (outcome.reason === 'VERIFICATION_FAILED') {
     return {
-      title: "That code didn't work",
-      description: 'Request a new code and enter it again to continue.',
+      title: m.redemption_failure_code_title(),
+      description: m.redemption_failure_code_description(),
       canRetry: true,
       clearCode: true,
     };
   }
-  if (outcome.reason === 'IDENTITY_FAILED') {
+  if (outcome.reason === 'EMAIL_ALREADY_REGISTERED') {
     return {
-      title: "We couldn't create your account",
-      description: 'Try again with a different password.',
-      canRetry: true,
+      title: m.redemption_failure_registered_title(),
+      description: m.redemption_failure_registered_description(),
+      canRetry: false,
       clearCode: false,
     };
   }
   return {
-    title: 'This invitation is no longer available',
-    description:
-      'It may have expired or already been used. Ask your Ministry leader for a new invitation.',
+    title: m.redemption_failure_unavailable_title(),
+    description: m.redemption_failure_unavailable_description(),
     canRetry: false,
     clearCode: false,
   };
@@ -149,7 +148,7 @@ function ChurchInvitationRedemptionRoute() {
       }),
     onSuccess: async (outcome) => {
       if (outcome.kind === 'full-success') {
-        await finishAtDashboard();
+        await finishAtHome();
         return;
       }
       // The cross-Church split renders its own flow, not a form error.
@@ -175,11 +174,11 @@ function ChurchInvitationRedemptionRoute() {
       ? describeRedemptionOutcome({ outcome })
       : null;
 
-  function finishAtDashboard(): Promise<void> {
-    return finishRedemptionAtDashboard({
+  function finishAtHome(): Promise<void> {
+    return finishRedemptionAtHome({
       queryClient,
       getSession: authClient.getSession,
-      navigateToDashboard: () => navigate({ to: '/dashboard' }),
+      navigateToHome: () => navigate({ to: '/' }),
     });
   }
 
@@ -224,8 +223,7 @@ function ChurchInvitationRedemptionRoute() {
 
   if (outcome?.kind === 'church-only') {
     // The User now belongs to both Churches: land in the one just joined.
-    const continueToDestination = (): Promise<void> =>
-      continueToChurch({ churchName: outcome.destinationChurchName });
+    const continueToDestination = (): Promise<void> => continueToChurch({});
     return (
       <RedemptionShell>
         <VolunteerTransferFlow
@@ -406,7 +404,11 @@ function ChurchInvitationRedemptionRoute() {
                 failure?.canRetry === false
               }
             >
-              {redeemMutation.isPending ? 'Joining…' : 'Join'}
+              {redeemMutation.isPending
+                ? 'Joining…'
+                : outcome?.kind === 'retryable-failure'
+                  ? m.redemption_try_again()
+                  : 'Join'}
             </Button>
           )}
         </form.Subscribe>

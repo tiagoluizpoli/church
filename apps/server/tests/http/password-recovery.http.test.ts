@@ -4,8 +4,8 @@ import { hashPassword } from 'better-auth/crypto';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PasswordResetEmail } from '@/domain/contracts/infrastructure/email-sender';
-import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
-import { createCompositionRoot } from '@/main/di/composition-root';
+import type { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { captureEmailSender } from '@/main/di/server-email-sender';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildAuthenticatableUser } from '@/seeds/builders/identity';
@@ -31,9 +31,9 @@ beforeEach(async () => {
     email: EMAIL,
     passwordHash: await hashPassword(OLD_PASSWORD),
   });
-  capture = new CaptureEmailSender('Church');
-  const root = createCompositionRoot({ emailSender: capture });
-  app = await createFastify({ locale: testLocale, auth: root.auth });
+  capture = captureEmailSender as CaptureEmailSender;
+  capture.sent.length = 0;
+  app = await createFastify({ locale: testLocale });
   await app.ready();
 });
 

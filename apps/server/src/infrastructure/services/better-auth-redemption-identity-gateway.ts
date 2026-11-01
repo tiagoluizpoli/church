@@ -1,71 +1,75 @@
-import { type Auth, auth as defaultAuth } from '@church/auth';
-import { z } from 'zod';
+import type { Auth, CreateAuthInput } from '@church/auth';
 import { UserId } from '../../domain/branded-ids';
 import type {
   AcceptChurchInvitationInput,
   CreateRedemptionAccountInput,
   CreateRedemptionAccountOutput,
+  IsEmailRegisteredInput,
   RedemptionIdentityGateway,
   RejectChurchInvitationInput,
   SetActiveRedemptionChurchInput,
   VerifyPasswordInput,
 } from '../../domain/contracts/infrastructure/redemption-identity-gateway';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import { DrizzleTransactionContext } from '../repositories/drizzle-transaction-context';
 
-const signInResponseSchema = z.object({
-  user: z.object({ id: z.string() }),
-});
+export type TransactionAuthFactoryInput = Pick<CreateAuthInput, 'database'>;
 
-export interface BetterAuthRedemptionIdentityGatewayInput {
-  auth?: Auth;
+export type TransactionAuthFactory = (
+  input: TransactionAuthFactoryInput,
+) => Auth;
+
+interface BetterAuthRedemptionIdentityGatewayInput {
+  /** The request-serving instance. */
+  auth: Auth;
+  /** Builds the same configuration over a transaction. */
+  createTransactionAuth: TransactionAuthFactory;
+}
+
+interface AuthForInput {
+  tx?: TransactionContext;
 }
 
 export class BetterAuthRedemptionIdentityGateway
   implements RedemptionIdentityGateway
 {
   private readonly auth: Auth;
+  private readonly createTransactionAuth: TransactionAuthFactory;
+  /** One transaction-bound instance per open transaction. */
+  private readonly transactionAuth = new WeakMap<object, Auth>();
 
   constructor({
-    auth = defaultAuth,
-  }: BetterAuthRedemptionIdentityGatewayInput = {}) {
+    auth,
+    createTransactionAuth,
+  }: BetterAuthRedemptionIdentityGatewayInput) {
     this.auth = auth;
+    this.createTransactionAuth = createTransactionAuth;
   }
 
   async createAccount({
     email,
     name,
     password,
+    tx,
   }: CreateRedemptionAccountInput): Promise<CreateRedemptionAccountOutput> {
-    let userId: string;
-    try {
-      const account = await this.auth.api.signUpEmail({
-        body: { email, name, password },
-      });
-      userId = account.user.id;
-    } catch {
-      // A retry may resume after the account checkpoint completed but before
-      // the Ministry Invitation transaction did. The password still proves
-      // ownership of the invitation email before a new browser session exists.
-      const session = await this.createAuthenticatedSession({
-        email,
-        password,
-      });
-      return {
-        userId: UserId.from(session.userId),
-        sessionCookie: session.cookie,
-      };
-    }
-    const session = await this.createAuthenticatedSession({ email, password });
-    return {
-      userId: UserId.from(userId),
-      sessionCookie: session.cookie,
-    };
+    // Sign-up also opens the session (auto sign-in); an existing User is
+    // refused here rather than signed in with the supplied password.
+    const { headers, response } = await this.authFor({ tx }).api.signUpEmail({
+      body: { email, name, password },
+      returnHeaders: true,
+    });
+    const sessionCookie = headers.get('set-cookie');
+    if (!sessionCookie)
+      throw new Error('Better Auth did not create a session cookie.');
+    return { userId: UserId.from(response.user.id), sessionCookie };
   }
 
   async acceptChurchInvitation({
     churchInvitationId,
     sessionCookie,
+    tx,
   }: AcceptChurchInvitationInput): Promise<void> {
-    await this.auth.api.acceptInvitation({
+    await this.authFor({ tx }).api.acceptInvitation({
       headers: new Headers({ cookie: sessionCookie }),
       body: { invitationId: churchInvitationId },
     });
@@ -84,11 +88,18 @@ export class BetterAuthRedemptionIdentityGateway
   async setActiveChurch({
     churchId,
     sessionCookie,
+    tx,
   }: SetActiveRedemptionChurchInput): Promise<void> {
-    await this.auth.api.setActiveOrganization({
+    await this.authFor({ tx }).api.setActiveOrganization({
       headers: new Headers({ cookie: sessionCookie }),
       body: { organizationId: churchId },
     });
+  }
+
+  async isEmailRegistered({ email }: IsEmailRegisteredInput): Promise<boolean> {
+    const context = await this.auth.$context;
+    const found = await context.internalAdapter.findUserByEmail(email);
+    return Boolean(found);
   }
 
   async verifyPassword({
@@ -123,34 +134,12 @@ export class BetterAuthRedemptionIdentityGateway
     return true;
   }
 
-  private async createAuthenticatedSession({
-    email,
-    password,
-  }: CreateAuthenticatedSessionInput): Promise<AuthenticatedSession> {
-    const response = await this.auth.handler(
-      new Request('http://localhost/api/auth/sign-in/email', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      }),
-    );
-    const cookie = response.headers.get('set-cookie');
-    const responseBody = signInResponseSchema.safeParse(await response.json());
-    if (!response.ok || !cookie || !responseBody.success)
-      throw new Error('Better Auth did not create a session cookie.');
-    return {
-      userId: responseBody.data.user.id,
-      cookie,
-    };
+  private authFor({ tx }: AuthForInput): Auth {
+    if (!(tx instanceof DrizzleTransactionContext)) return this.auth;
+    const existing = this.transactionAuth.get(tx.tx);
+    if (existing) return existing;
+    const bound = this.createTransactionAuth({ database: tx.tx });
+    this.transactionAuth.set(tx.tx, bound);
+    return bound;
   }
-}
-
-interface CreateAuthenticatedSessionInput {
-  email: string;
-  password: string;
-}
-
-interface AuthenticatedSession {
-  userId: string;
-  cookie: string;
 }

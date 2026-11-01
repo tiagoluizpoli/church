@@ -59,16 +59,21 @@ export const churchOnlyOutcomeSchema = z.object({
   ministryInvitationId: z.string().uuid(),
 });
 
+/** New-person joins roll back fully, so identity failure is retryable there. */
 export const redemptionOutcomeResponseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('full-success'), volunteerId: z.string() }),
   churchOnlyOutcomeSchema,
   z.object({
     kind: z.literal('retryable-failure'),
-    reason: z.literal('MINISTRY_ACCEPTANCE_FAILED'),
+    reason: z.enum(['IDENTITY_FAILED', 'MINISTRY_ACCEPTANCE_FAILED']),
   }),
   z.object({
     kind: z.literal('terminal-failure'),
-    reason: z.enum(terminalFailureReasons),
+    reason: z.enum([
+      'INVITATION_UNAVAILABLE',
+      'VERIFICATION_FAILED',
+      'EMAIL_ALREADY_REGISTERED',
+    ]),
   }),
 ]);
 
@@ -92,7 +97,10 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
       expiresAt: instantSchema,
     }),
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
-    z.object({ kind: z.literal('identity-mismatch') }),
+    z.object({
+      kind: z.literal('identity-mismatch'),
+      maskedEmail: z.string(),
+    }),
     z.object({ kind: z.literal('unavailable') }),
   ],
 );

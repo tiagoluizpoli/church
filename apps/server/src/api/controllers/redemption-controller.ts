@@ -1,5 +1,4 @@
 import type { AppConfig } from '@church/app-config';
-import { auth } from '@church/auth';
 import { fromDate, nowAsDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
@@ -7,6 +6,7 @@ import { MinistryInvitationId, UserId } from '../../domain/branded-ids';
 import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
+import { auth } from '../../main/di/server-auth';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -201,12 +201,11 @@ export class RedemptionController implements FastifyController {
           code: body.code,
           idempotencyKey: body.idempotencyKey,
         });
-        if (outcome.kind === 'full-success') {
-          reply.header('set-cookie', outcome.sessionCookie);
-          return reply.send({
-            kind: outcome.kind,
-            volunteerId: outcome.volunteerId,
-          });
+        // Only committed outcomes carry a session; failures never set a cookie.
+        if ('sessionCookie' in outcome) {
+          const { sessionCookie, ...committed } = outcome;
+          reply.header('set-cookie', sessionCookie);
+          return reply.send(committed);
         }
         return reply.send(outcome);
       },

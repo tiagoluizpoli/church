@@ -2,18 +2,12 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, parseInstant } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import {
-  ArrowRight,
-  CalendarClock,
-  CircleAlert,
-  ShieldAlert,
-} from 'lucide-react';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { isAxiosError } from 'axios';
+import { ArrowRight, CircleAlert, ShieldAlert } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { VolunteerTransferFlow } from '@/features/volunteer-transfer';
 import type {
   AcceptMinistryInvitation200,
@@ -31,14 +25,23 @@ export const Route = createFileRoute(
   component: MinistryInvitationRoute,
 });
 
-const ACCESS_LEVEL_LABELS: Record<'volunteer' | 'leader', string> = {
-  volunteer: 'Volunteer',
-  leader: 'Leader',
-};
+const THROTTLED_STATUS = 429;
 
 type RedeemableStatus = Extract<
   GetMinistryInvitationStatus200,
   { kind: 'redeemable' }
+>;
+
+type AcceptFailure = Exclude<
+  AcceptMinistryInvitation200,
+  | { kind: 'full-success' }
+  | { kind: 'already-accepted' }
+  | { kind: 'church-only' }
+>;
+
+type DeclineFailure = Exclude<
+  DeclineMinistryInvitation200,
+  { kind: 'declined' }
 >;
 
 interface AcceptFailureDescription {
@@ -48,70 +51,82 @@ interface AcceptFailureDescription {
 }
 
 interface DescribeAcceptFailureInput {
-  outcome: Exclude<
-    AcceptMinistryInvitation200,
-    | { kind: 'full-success' }
-    | { kind: 'already-accepted' }
-    | { kind: 'church-only' }
-  >;
+  outcome: AcceptFailure;
 }
 
 function describeAcceptFailure({
   outcome,
 }: DescribeAcceptFailureInput): AcceptFailureDescription {
-  if (outcome.kind === 'identity-mismatch') {
-    return {
-      title: 'This invitation belongs to another account',
-      description: 'Reload the page to see the current state.',
-      canRetry: false,
-    };
-  }
   if (outcome.kind === 'retryable-failure') {
     return {
       title: m.common_generic_error_title(),
-      description: "We couldn't finish adding you to the Ministry. Try again.",
+      description: m.ministry_invitation_accept_retry_description(),
       canRetry: true,
     };
   }
   return {
-    title: 'This invitation is no longer available',
-    description:
-      'It may have expired or already been used. Ask your Ministry leader for a new invitation.',
+    title: m.ministry_invitation_unavailable_title(),
+    description: m.ministry_invitation_unavailable_description(),
     canRetry: false,
   };
 }
 
 interface DescribeDeclineFailureInput {
-  outcome: Exclude<DeclineMinistryInvitation200, { kind: 'declined' }>;
+  outcome: DeclineFailure;
 }
 
 function describeDeclineFailure({
   outcome,
 }: DescribeDeclineFailureInput): string {
-  if (outcome.kind === 'identity-mismatch') {
-    return 'This invitation belongs to another account. Reload the page to see the current state.';
-  }
-  return 'This invitation is no longer available.';
+  return outcome.kind === 'identity-mismatch'
+    ? m.ministry_invitation_wrong_login_title()
+    : m.ministry_invitation_unavailable_title();
+}
+
+interface ReturnTargetInput {
+  invitationId: string;
+}
+
+function returnTarget({ invitationId }: ReturnTargetInput): string {
+  return `/invitations/ministry/${invitationId}`;
 }
 
 function MinistryInvitationRoute() {
-  const signOut = useSignOut();
   const { invitationId } = Route.useParams();
-  const navigate = useNavigate();
+  // The path's own segments are not crumbs: Home › Ministry invitation.
+  const breadcrumbOverrides = [
+    { segment: 'invitations', label: null },
+    { segment: 'ministry', label: null },
+    { segment: invitationId, label: m.breadcrumb_ministry_invitation() },
+  ];
+
+  return (
+    <AppShell breadcrumbOverrides={breadcrumbOverrides} notificationBell={null}>
+      <div className="mx-auto w-full max-w-xl space-y-5 p-4 md:p-8">
+        <MinistryInvitationContent invitationId={invitationId} />
+      </div>
+    </AppShell>
+  );
+}
+
+interface MinistryInvitationContentProps {
+  invitationId: string;
+}
+
+function MinistryInvitationContent({
+  invitationId,
+}: MinistryInvitationContentProps) {
+  const signOut = useSignOut();
   const [idempotencyKey] = useState(() => randomId());
   const [confirmingDecline, setConfirmingDecline] = useState(false);
-  const [confirmingSwitch, setConfirmingSwitch] = useState(false);
 
   const statusQuery = useQuery({
     queryKey: ['redemption', 'ministry-invitation', invitationId],
     queryFn: () => redemptionApi.getMinistryInvitationStatus(invitationId),
+    retry: false,
   });
 
   const continueToChurch = useContinueToChurch();
-
-  const continueMutation = useMutation({
-    mutationFn: continueToChurch,
-  });
 
   const acceptMutation = useMutation({
     mutationFn: () =>
@@ -123,12 +138,14 @@ function MinistryInvitationRoute() {
         outcome.kind === 'full-success' &&
         statusQuery.data?.kind === 'redeemable'
       ) {
-        await continueToChurch({ churchName: statusQuery.data.churchName });
+        await continueToChurch({
+          homeSearch: { joinedMinistry: statusQuery.data.ministryName },
+        });
         return;
       }
       // A double-submit or a second tab accepted first — the invitation is
       // still gone, so finish the same way the already-accepted screen does
-      // rather than leaving the caller stuck on a stale form (spec §7.3).
+      // rather than leaving the caller stuck on a stale form.
       if (outcome.kind === 'already-accepted') {
         await continueToChurch({ churchId: outcome.churchId });
       }
@@ -137,193 +154,186 @@ function MinistryInvitationRoute() {
 
   const declineMutation = useMutation({
     mutationFn: () => redemptionApi.declineMinistryInvitation(invitationId),
-    onSuccess: () => setConfirmingDecline(false),
+    onSuccess: async (outcome) => {
+      setConfirmingDecline(false);
+      if (outcome.kind === 'declined') {
+        await continueToChurch({ homeSearch: { invitationDeclined: true } });
+      }
+    },
   });
 
-  const handleSwitchAccount = (): void => {
+  const continueMutation = useMutation({ mutationFn: continueToChurch });
+
+  const handleLogOut = (): void => {
     signOut({
       to: '/login',
-      search: { redirect: `/invitations/ministry/${invitationId}` },
+      search: { redirect: returnTarget({ invitationId }) },
     });
   };
 
   if (statusQuery.isLoading) {
     return (
-      <InvitationShell>
-        <p className="text-muted-foreground text-sm">Loading invitation…</p>
-      </InvitationShell>
+      <p className="text-muted-foreground text-sm">
+        {m.ministry_invitation_loading()}
+      </p>
     );
   }
 
-  if (statusQuery.isError || !statusQuery.data) {
-    return (
-      <InvitationShell>
-        <UnavailableNotice />
-      </InvitationShell>
+  if (statusQuery.isError) {
+    const throttled =
+      isAxiosError(statusQuery.error) &&
+      statusQuery.error.response?.status === THROTTLED_STATUS;
+    return throttled ? (
+      <ThrottledNotice onRetry={() => statusQuery.refetch()} />
+    ) : (
+      <UnavailableNotice invitationId={invitationId} />
     );
   }
 
   const status = statusQuery.data;
 
-  if (status.kind === 'unavailable') {
-    return (
-      <InvitationShell>
-        <UnavailableNotice />
-      </InvitationShell>
-    );
+  if (!status || status.kind === 'unavailable') {
+    return <UnavailableNotice invitationId={invitationId} />;
   }
 
   if (status.kind === 'identity-mismatch') {
     return (
-      <InvitationShell>
-        <WrongAccountNotice
-          confirming={confirmingSwitch}
-          onRequestSwitch={() => setConfirmingSwitch(true)}
-          onCancelSwitch={() => setConfirmingSwitch(false)}
-          onConfirmSwitch={handleSwitchAccount}
-        />
-      </InvitationShell>
+      <WrongLoginNotice
+        maskedEmail={status.maskedEmail}
+        onLogOut={handleLogOut}
+      />
     );
   }
 
   if (status.kind === 'already-accepted') {
     return (
-      <InvitationShell>
-        <AlreadyAcceptedNotice
-          isPending={continueMutation.isPending}
-          onContinue={() =>
-            continueMutation.mutate({ churchId: status.churchId })
-          }
-        />
-      </InvitationShell>
-    );
-  }
-
-  if (declineMutation.data?.kind === 'declined') {
-    return (
-      <InvitationShell>
-        <DeclinedNotice
-          onGoToDashboard={() => navigate({ to: '/dashboard' })}
-        />
-      </InvitationShell>
+      <AlreadyAcceptedNotice
+        isPending={continueMutation.isPending}
+        onContinue={() =>
+          continueMutation.mutate({ churchId: status.churchId })
+        }
+      />
     );
   }
 
   if (acceptMutation.data?.kind === 'church-only') {
     const split = acceptMutation.data;
     // The User now belongs to both Churches: land in the one just joined.
-    const continueToDestination = (): Promise<void> =>
-      continueToChurch({ churchName: split.destinationChurchName });
+    const continueToDestination = (): Promise<void> => continueToChurch({});
     return (
-      <InvitationShell>
-        <VolunteerTransferFlow
-          invitationId={invitationId}
-          sourceChurchName={split.sourceChurchName}
-          destinationChurchName={split.destinationChurchName}
-          onContinueAsMember={continueToDestination}
-          onTransferred={continueToDestination}
-        />
-      </InvitationShell>
+      <VolunteerTransferFlow
+        invitationId={invitationId}
+        sourceChurchName={split.sourceChurchName}
+        destinationChurchName={split.destinationChurchName}
+        onContinueAsMember={continueToDestination}
+        onTransferred={continueToDestination}
+      />
     );
   }
 
+  const { data: acceptData } = acceptMutation;
+  const { data: declineData } = declineMutation;
   return (
-    <InvitationShell>
-      <RedeemableInvitationCard
-        status={status}
-        confirmingDecline={confirmingDecline}
-        isAccepting={acceptMutation.isPending}
-        isDeclining={declineMutation.isPending}
-        acceptOutcome={
-          acceptMutation.data?.kind &&
-          acceptMutation.data.kind !== 'full-success' &&
-          acceptMutation.data.kind !== 'already-accepted'
-            ? acceptMutation.data
-            : null
-        }
-        declineOutcome={
-          declineMutation.data?.kind === 'terminal-failure' ||
-          declineMutation.data?.kind === 'identity-mismatch'
-            ? declineMutation.data
-            : null
-        }
-        onAccept={() => acceptMutation.mutate()}
-        onRequestDecline={() => setConfirmingDecline(true)}
-        onCancelDecline={() => setConfirmingDecline(false)}
-        onConfirmDecline={() => declineMutation.mutate()}
-      />
-    </InvitationShell>
+    <RedeemableInvitationCard
+      status={status}
+      confirmingDecline={confirmingDecline}
+      isAccepting={acceptMutation.isPending}
+      isDeclining={declineMutation.isPending}
+      acceptOutcome={
+        acceptData &&
+        acceptData.kind !== 'full-success' &&
+        acceptData.kind !== 'already-accepted'
+          ? acceptData
+          : null
+      }
+      declineOutcome={
+        declineData && declineData.kind !== 'declined' ? declineData : null
+      }
+      onAccept={() => acceptMutation.mutate()}
+      onRequestDecline={() => setConfirmingDecline(true)}
+      onCancelDecline={() => setConfirmingDecline(false)}
+      onConfirmDecline={() => declineMutation.mutate()}
+    />
   );
 }
 
-function UnavailableNotice() {
+interface AlertProps {
+  children: ReactNode;
+}
+
+function Alert({ children }: AlertProps) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3">
       <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-      <p className="text-sm">
-        This invitation is no longer available. It may have expired or already
-        been used.
-      </p>
+      <div className="text-sm">{children}</div>
     </div>
   );
 }
 
-interface DeclinedNoticeProps {
-  onGoToDashboard: () => void;
+interface UnavailableNoticeProps {
+  invitationId: string;
 }
 
-function DeclinedNotice({ onGoToDashboard }: DeclinedNoticeProps) {
+function UnavailableNotice({ invitationId }: UnavailableNoticeProps) {
   return (
     <div className="space-y-4">
-      <p className="text-pretty text-sm">You've declined this invitation.</p>
-      <Button variant="outline" className="w-full" onClick={onGoToDashboard}>
-        Go to dashboard
+      <Alert>
+        <p className="font-medium">
+          {m.ministry_invitation_unavailable_title()}
+        </p>
+        <p className="text-muted-foreground">
+          {m.ministry_invitation_unavailable_description()}
+        </p>
+      </Alert>
+      <Link
+        to="/login"
+        search={{ redirect: returnTarget({ invitationId }) }}
+        className="inline-flex min-h-11 items-center font-medium text-primary text-sm underline-offset-4 hover:underline"
+      >
+        {m.ministry_invitation_login()}
+      </Link>
+    </div>
+  );
+}
+
+interface ThrottledNoticeProps {
+  onRetry: () => void;
+}
+
+function ThrottledNotice({ onRetry }: ThrottledNoticeProps) {
+  return (
+    <div className="space-y-4">
+      <Alert>
+        <p className="font-medium">{m.ministry_invitation_throttled_title()}</p>
+        <p className="text-muted-foreground">
+          {m.ministry_invitation_throttled_description()}
+        </p>
+      </Alert>
+      <Button variant="outline" onClick={onRetry}>
+        {m.ministry_invitation_retry()}
       </Button>
     </div>
   );
 }
 
-interface WrongAccountNoticeProps {
-  confirming: boolean;
-  onRequestSwitch: () => void;
-  onCancelSwitch: () => void;
-  onConfirmSwitch: () => void;
+interface WrongLoginNoticeProps {
+  maskedEmail: string;
+  onLogOut: () => void;
 }
 
-function WrongAccountNotice({
-  confirming,
-  onRequestSwitch,
-  onCancelSwitch,
-  onConfirmSwitch,
-}: WrongAccountNoticeProps) {
+function WrongLoginNotice({ maskedEmail, onLogOut }: WrongLoginNoticeProps) {
   return (
     <div className="space-y-4">
       <div className="flex size-11 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
         <ShieldAlert className="size-5" />
       </div>
       <h1 className="text-balance font-semibold text-2xl tracking-tight">
-        This invitation belongs to another account
+        {m.ministry_invitation_wrong_login_title()}
       </h1>
       <p className="text-pretty text-muted-foreground text-sm">
-        You're signed in as a different person than the one this invitation was
-        sent to. Switch accounts to accept it.
+        {m.ministry_invitation_wrong_login_description({ maskedEmail })}
       </p>
-      {confirming ? (
-        <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-          <p className="text-sm">
-            You'll be signed out and returned to sign-in. Your current session
-            won't change until you sign in again.
-          </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={onCancelSwitch}>
-              Cancel
-            </Button>
-            <Button onClick={onConfirmSwitch}>Sign out and switch</Button>
-          </div>
-        </div>
-      ) : (
-        <Button onClick={onRequestSwitch}>Switch account</Button>
-      )}
+      <Button onClick={onLogOut}>{m.ministry_invitation_logout()}</Button>
     </div>
   );
 }
@@ -340,15 +350,29 @@ function AlreadyAcceptedNotice({
   return (
     <div className="space-y-4">
       <h1 className="text-balance font-semibold text-2xl tracking-tight">
-        You've already accepted this invitation
+        {m.ministry_invitation_already_accepted_title()}
       </h1>
       <p className="text-pretty text-muted-foreground text-sm">
-        There's nothing left to do here — continue into your Church.
+        {m.ministry_invitation_already_accepted_description()}
       </p>
       <Button className="w-full" disabled={isPending} onClick={onContinue}>
-        Continue to Church
+        {m.ministry_invitation_continue_home()}
         <ArrowRight />
       </Button>
+    </div>
+  );
+}
+
+interface InvitationFactProps {
+  label: string;
+  value: string;
+}
+
+function InvitationFact({ label, value }: InvitationFactProps) {
+  return (
+    <div className="flex justify-between gap-4 text-sm">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium">{value}</dd>
     </div>
   );
 }
@@ -358,16 +382,8 @@ interface RedeemableInvitationCardProps {
   confirmingDecline: boolean;
   isAccepting: boolean;
   isDeclining: boolean;
-  acceptOutcome: Exclude<
-    AcceptMinistryInvitation200,
-    | { kind: 'full-success' }
-    | { kind: 'already-accepted' }
-    | { kind: 'church-only' }
-  > | null;
-  declineOutcome: Exclude<
-    DeclineMinistryInvitation200,
-    { kind: 'declined' }
-  > | null;
+  acceptOutcome: AcceptFailure | null;
+  declineOutcome: DeclineFailure | null;
   onAccept: () => void;
   onRequestDecline: () => void;
   onCancelDecline: () => void;
@@ -386,57 +402,67 @@ function RedeemableInvitationCard({
   onCancelDecline,
   onConfirmDecline,
 }: RedeemableInvitationCardProps) {
+  const { ministryName, churchName, roleNames, ministryAccessLevel } = status;
   const acceptFailure = acceptOutcome
     ? describeAcceptFailure({ outcome: acceptOutcome })
     : null;
+  const accessLevelLabel =
+    ministryAccessLevel === 'leader'
+      ? m.ministry_invitation_access_leader()
+      : m.ministry_invitation_access_volunteer();
+  const rolesLabel =
+    roleNames.length > 0
+      ? roleNames.join(', ')
+      : m.ministry_invitation_roles_none();
+  const declineNotice =
+    status.invitationKind === 'chained'
+      ? m.ministry_invitation_decline_notice_chained()
+      : m.ministry_invitation_decline_notice_ministry_only({ ministryName });
 
   return (
     <div className="space-y-5">
       <div className="space-y-1.5 border-border border-b pb-4">
         <h1 className="text-balance font-semibold text-2xl tracking-tight">
-          Join {status.ministryName}
+          {m.ministry_invitation_title({ ministryName })}
         </h1>
         <p className="text-pretty text-muted-foreground text-sm">
-          You've been invited to serve in <strong>{status.ministryName}</strong>{' '}
-          at <strong>{status.churchName}</strong> as a{' '}
-          {ACCESS_LEVEL_LABELS[status.ministryAccessLevel]}
-          {status.roleNames.length > 0
-            ? ` (${status.roleNames.join(', ')})`
-            : ''}
-          .
+          {m.ministry_invitation_intro({ churchName })}
         </p>
         <p className="text-muted-foreground text-xs">
-          Expires{' '}
-          {formatRelative({
-            instant: parseInstant({ value: status.expiresAt }),
-            timeZone: 'UTC',
-            locale: getLocale(),
+          {m.ministry_invitation_expires({
+            when: formatRelative({
+              instant: parseInstant({ value: status.expiresAt }),
+              timeZone: 'UTC',
+              locale: getLocale(),
+            }),
           })}
         </p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="invitation-email">Email</Label>
-        <Input id="invitation-email" value={status.email} disabled readOnly />
-      </div>
+      <dl className="space-y-2">
+        <InvitationFact
+          label={m.ministry_invitation_ministry_label()}
+          value={ministryName}
+        />
+        <InvitationFact
+          label={m.ministry_invitation_access_level_label()}
+          value={accessLevelLabel}
+        />
+        <InvitationFact
+          label={m.ministry_invitation_roles_label()}
+          value={rolesLabel}
+        />
+      </dl>
 
       {acceptFailure ? (
-        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3">
-          <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-          <div className="text-sm">
-            <p className="font-medium">{acceptFailure.title}</p>
-            <p className="text-muted-foreground">{acceptFailure.description}</p>
-          </div>
-        </div>
+        <Alert>
+          <p className="font-medium">{acceptFailure.title}</p>
+          <p className="text-muted-foreground">{acceptFailure.description}</p>
+        </Alert>
       ) : null}
 
       {declineOutcome ? (
-        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3">
-          <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-          <p className="text-sm">
-            {describeDeclineFailure({ outcome: declineOutcome })}
-          </p>
-        </div>
+        <Alert>{describeDeclineFailure({ outcome: declineOutcome })}</Alert>
       ) : null}
 
       <Button
@@ -446,30 +472,30 @@ function RedeemableInvitationCard({
         }
         onClick={onAccept}
       >
-        {isAccepting ? 'Joining…' : 'Accept'}
+        {isAccepting
+          ? m.ministry_invitation_accepting()
+          : m.ministry_invitation_accept()}
       </Button>
 
       {confirmingDecline ? (
         <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-          <p className="text-sm">
-            {status.invitationKind === 'chained'
-              ? "Declining will also cancel your Church invitation — you won't be able to accept it later without a new invitation."
-              : `Declining will cancel only your invitation to ${status.ministryName}. Your Church access is not affected.`}
-          </p>
+          <p className="text-sm">{declineNotice}</p>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               disabled={isDeclining}
               onClick={onCancelDecline}
             >
-              Cancel
+              {m.ministry_invitation_decline_cancel()}
             </Button>
             <Button
               variant="destructive"
               disabled={isDeclining}
               onClick={onConfirmDecline}
             >
-              {isDeclining ? 'Declining…' : 'Yes, decline'}
+              {isDeclining
+                ? m.ministry_invitation_declining()
+                : m.ministry_invitation_decline_confirm()}
             </Button>
           </div>
         </div>
@@ -480,33 +506,9 @@ function RedeemableInvitationCard({
           disabled={isAccepting}
           onClick={onRequestDecline}
         >
-          Decline
+          {m.ministry_invitation_decline()}
         </Button>
       )}
-    </div>
-  );
-}
-
-interface InvitationShellProps {
-  children: ReactNode;
-}
-
-function InvitationShell({ children }: InvitationShellProps) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
-      <Card className="w-full max-w-md">
-        <CardContent className="space-y-5 p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <CalendarClock className="size-5" />
-            </div>
-            <p className="font-semibold text-[1.05rem] tracking-tight">
-              Church CRM
-            </p>
-          </div>
-          {children}
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -177,7 +177,7 @@ describe('the chained-invitation redemption route', () => {
     await user.click(screen.getByRole('button', { name: 'Join' }));
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
     expect(requestChurchInvitationVerificationCode).not.toHaveBeenCalled();
   });
@@ -214,7 +214,7 @@ describe('the chained-invitation redemption route', () => {
     await user.click(screen.getByRole('button', { name: 'Join' }));
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
     expect(getSession).toHaveBeenCalled();
   });
@@ -242,7 +242,9 @@ describe('the chained-invitation redemption route', () => {
     await user.type(codeInput, '000000');
     await user.click(screen.getByRole('button', { name: 'Join' }));
 
-    expect(await screen.findByText("That code didn't work")).toBeVisible();
+    expect(
+      await screen.findByText(m.redemption_failure_code_title()),
+    ).toBeVisible();
     await waitFor(() => expect(codeInput.value).toBe(''));
     expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
   });
@@ -274,7 +276,9 @@ describe('the chained-invitation redemption route', () => {
       await screen.findByText(m.common_generic_error_title()),
     ).toBeVisible();
     expect(codeInput.value).toBe('123456');
-    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: m.redemption_try_again() }),
+    ).toBeEnabled();
   });
 
   it('on a non-retryable terminal failure, disables Join so the caller cannot resubmit a doomed request', async () => {
@@ -300,25 +304,18 @@ describe('the chained-invitation redemption route', () => {
     await user.click(screen.getByRole('button', { name: 'Join' }));
 
     expect(
-      await screen.findByText('This invitation is no longer available'),
+      await screen.findByText(m.redemption_failure_unavailable_title()),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled();
   });
 
-  it('on an identity failure, shows a retry-eligible message', async () => {
-    previewChurchInvitation.mockResolvedValue(PREVIEW);
-    redeemChurchInvitation.mockResolvedValue({
-      kind: 'terminal-failure',
-      reason: 'IDENTITY_FAILED',
-    });
-
+  async function submitJoin() {
     const { default: userEvent } = await import('@testing-library/user-event');
     renderRoute({
       initialPath: '/invitations/church/invitation-1',
       churchTimezone: 'UTC',
     });
     const user = userEvent.setup();
-
     await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
     await user.type(
       screen.getByLabelText('Password'),
@@ -326,11 +323,40 @@ describe('the chained-invitation redemption route', () => {
     );
     await user.type(screen.getByPlaceholderText('123456'), '123456');
     await user.click(screen.getByRole('button', { name: 'Join' }));
+  }
+
+  it('on a retryable identity failure, offers Try again', async () => {
+    previewChurchInvitation.mockResolvedValue(PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'retryable-failure',
+      reason: 'IDENTITY_FAILED',
+    });
+
+    await submitJoin();
 
     expect(
-      await screen.findByText("We couldn't create your account"),
+      await screen.findByText(m.redemption_failure_retryable_description()),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Tente novamente' }),
+    ).toBeEnabled();
+  });
+
+  it('tells a recipient whose email already has a login to ask their inviter, without a retry', async () => {
+    previewChurchInvitation.mockResolvedValue(PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'terminal-failure',
+      reason: 'EMAIL_ALREADY_REGISTERED',
+    });
+
+    await submitJoin();
+
+    expect(
+      await screen.findByText(
+        'Este email já tem uma conta; fale com quem convidou você.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled();
   });
 
   async function redeemToSplit() {
@@ -342,7 +368,7 @@ describe('the chained-invitation redemption route', () => {
       ministryInvitationId: 'invitation-1',
     });
     const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({
+    const { router } = renderRoute({
       initialPath: '/invitations/church/invitation-1',
       churchTimezone: 'UTC',
     });
@@ -354,7 +380,7 @@ describe('the chained-invitation redemption route', () => {
     );
     await user.type(screen.getByPlaceholderText('123456'), '123456');
     await user.click(screen.getByRole('button', { name: 'Join' }));
-    return user;
+    return { user, router };
   }
 
   it('on the cross-Church split, offers the transfer naming both Churches', async () => {
@@ -415,7 +441,7 @@ describe('the chained-invitation redemption route', () => {
       ministryOptions: [],
     });
 
-    const user = await redeemToSplit();
+    const { user } = await redeemToSplit();
 
     // Layer 1 → 2
     await user.click(
@@ -478,7 +504,7 @@ describe('the chained-invitation redemption route', () => {
     });
   }
 
-  it('after the transfer commits, makes the destination Church active', async () => {
+  it('after the transfer commits, continues to Home without selecting a Church by name', async () => {
     getVolunteerTransferPreview.mockResolvedValue({
       kind: 'reviewable',
       sourceChurchName: 'Riverside Fellowship',
@@ -491,7 +517,7 @@ describe('the chained-invitation redemption route', () => {
       destinationVolunteerId: 'vol-new',
     });
     givenDestinationChurchOption();
-    const user = await redeemToSplit();
+    const { user, router } = await redeemToSplit();
 
     await user.click(
       await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
@@ -508,15 +534,14 @@ describe('the chained-invitation redemption route', () => {
     );
 
     await waitFor(() => {
-      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
+      expect(router.state.location.pathname).toBe('/');
     });
+    expect(activeChurchApiMock.selectActiveChurch).not.toHaveBeenCalled();
   });
 
-  it('continuing as a member makes the destination Church active', async () => {
+  it('continuing as a member continues to Home without selecting a Church by name', async () => {
     givenDestinationChurchOption();
-    const user = await redeemToSplit();
+    const { user, router } = await redeemToSplit();
 
     await user.click(
       await screen.findByRole('button', {
@@ -525,10 +550,9 @@ describe('the chained-invitation redemption route', () => {
     );
 
     await waitFor(() => {
-      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
+      expect(router.state.location.pathname).toBe('/');
     });
+    expect(activeChurchApiMock.selectActiveChurch).not.toHaveBeenCalled();
   });
 
   it('shows an inline error on a password mismatch and stays on the confirm step', async () => {
@@ -541,7 +565,7 @@ describe('the chained-invitation redemption route', () => {
     });
     confirmVolunteerTransfer.mockResolvedValue({ kind: 'password-mismatch' });
 
-    const user = await redeemToSplit();
+    const { user } = await redeemToSplit();
     await user.click(
       await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
     );

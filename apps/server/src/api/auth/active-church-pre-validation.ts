@@ -1,7 +1,7 @@
-import { auth } from '@church/auth';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ChurchId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import { auth } from '../../main/di/server-auth';
 import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
 import { resolveActiveChurchAndPersist } from './resolve-active-church-and-persist';

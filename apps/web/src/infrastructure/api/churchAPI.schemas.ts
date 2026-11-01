@@ -2336,10 +2336,10 @@ export type RedeemChurchInvitation200 = {
   ministryInvitationId: string;
 } | {
   kind: 'retryable-failure';
-  reason: 'MINISTRY_ACCEPTANCE_FAILED';
+  reason: 'IDENTITY_FAILED' | 'MINISTRY_ACCEPTANCE_FAILED';
 } | {
   kind: 'terminal-failure';
-  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
+  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'EMAIL_ALREADY_REGISTERED';
 };
 
 export type DeclineChurchInvitation200 = {
@@ -2379,6 +2379,7 @@ export type GetMinistryInvitationStatus200 = {
   churchId: string;
 } | {
   kind: 'identity-mismatch';
+  maskedEmail: string;
 } | {
   kind: 'unavailable';
 };

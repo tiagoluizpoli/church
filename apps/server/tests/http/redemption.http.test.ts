@@ -1,5 +1,6 @@
 import { appConfig } from '@church/app-config';
 import {
+  account,
   invitation as churchInvitation,
   member,
   ministryInvitation,
@@ -30,12 +31,13 @@ import type {
   RedemptionRepository,
 } from '@/domain/contracts/infrastructure/redemption.repository';
 import type {
+  RedemptionFailureEntry,
+  RedemptionFailureLog,
+} from '@/domain/contracts/infrastructure/redemption-failure-log';
+import type {
   AcceptChurchInvitationInput,
   CreateRedemptionAccountInput,
   CreateRedemptionAccountOutput,
-  RedemptionIdentityGateway,
-  RejectChurchInvitationInput,
-  SetActiveRedemptionChurchInput,
 } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
 import {
   DrizzleInvitationVerificationCodeRepository,
@@ -45,9 +47,13 @@ import {
   DrizzleVolunteerRepository,
   DrizzleVolunteerTransferRepository,
 } from '@/infrastructure/repositories';
+import { BetterAuthRedemptionIdentityGateway } from '@/infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { auth, createServerAuth } from '@/main/di/server-auth';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -56,131 +62,51 @@ import {
 } from '@/tests/test-support/identity-fixtures';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
-interface TestRedemptionIdentityGatewayInput {
-  db: typeof testDb;
-}
+type IdentityFault = 'after-account' | 'after-church-admission';
 
-class TestRedemptionIdentityGateway implements RedemptionIdentityGateway {
-  constructor({ db }: TestRedemptionIdentityGatewayInput) {
-    this.db = db;
+/** The real Better Auth gateway, with failures injected after its writes. */
+class FaultInjectingIdentityGateway extends BetterAuthRedemptionIdentityGateway {
+  failNext: IdentityFault | undefined;
+  /** Runs before sign-up: lets a test commit a racing User first. */
+  beforeAccount: (() => Promise<void>) | undefined;
+
+  constructor() {
+    super({ auth, createTransactionAuth: createServerAuth });
   }
 
-  private readonly db: typeof testDb;
-  createAccountCalls = 0;
-
-  async createAccount({
-    email,
-    name,
-  }: CreateRedemptionAccountInput): Promise<CreateRedemptionAccountOutput> {
-    this.createAccountCalls += 1;
-    const [existingUser] = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.email, email))
-      .limit(1);
-    const userId = existingUser?.id ?? crypto.randomUUID();
-    if (!existingUser) {
-      await this.db.insert(user).values({
-        id: userId,
-        name,
-        email,
-        emailVerified: true,
-      });
-    }
-
-    const sessionToken = crypto.randomUUID();
-    await this.db.insert(session).values({
-      id: crypto.randomUUID(),
-      expiresAt: new Date(Date.now() + 60 * 60_000),
-      token: sessionToken,
-      userId,
-    });
-    return {
-      userId: UserId.from(userId),
-      sessionCookie: `session_token=${sessionToken}; HttpOnly; Path=/`,
-    };
+  async createAccount(
+    input: CreateRedemptionAccountInput,
+  ): Promise<CreateRedemptionAccountOutput> {
+    await this.beforeAccount?.();
+    const account = await super.createAccount(input);
+    this.trip({ fault: 'after-account' });
+    return account;
   }
 
-  async acceptChurchInvitation({
-    churchInvitationId,
-    sessionCookie,
-  }: AcceptChurchInvitationInput): Promise<void> {
-    const [pendingInvitation] = await this.db
-      .select()
-      .from(churchInvitation)
-      .where(
-        and(
-          eq(churchInvitation.id, churchInvitationId),
-          eq(churchInvitation.status, 'pending'),
-        ),
-      )
-      .limit(1);
-    if (!pendingInvitation)
-      throw new Error('Church invitation was unavailable.');
-
-    const [activeSession] = await this.db
-      .select({ userId: session.userId })
-      .from(session)
-      .where(eq(session.token, tokenFromCookie({ sessionCookie })))
-      .limit(1);
-    if (!activeSession) throw new Error('Session was unavailable.');
-
-    await this.db.insert(member).values({
-      id: crypto.randomUUID(),
-      organizationId: pendingInvitation.organizationId,
-      userId: activeSession.userId,
-      role: pendingInvitation.role ?? 'member',
-    });
-    await this.db
-      .update(churchInvitation)
-      .set({ status: 'accepted' })
-      .where(eq(churchInvitation.id, churchInvitationId));
+  async acceptChurchInvitation(
+    input: AcceptChurchInvitationInput,
+  ): Promise<void> {
+    await super.acceptChurchInvitation(input);
+    this.trip({ fault: 'after-church-admission' });
   }
 
-  async rejectChurchInvitation({
-    churchInvitationId,
-    sessionCookie,
-  }: RejectChurchInvitationInput): Promise<void> {
-    const [activeSession] = await this.db
-      .select({ userId: session.userId })
-      .from(session)
-      .where(eq(session.token, tokenFromCookie({ sessionCookie })))
-      .limit(1);
-    if (!activeSession) throw new Error('Session was unavailable.');
-    await this.db
-      .update(churchInvitation)
-      .set({ status: 'rejected' })
-      .where(
-        and(
-          eq(churchInvitation.id, churchInvitationId),
-          eq(churchInvitation.status, 'pending'),
-        ),
-      );
-  }
-
-  async setActiveChurch({
-    churchId,
-    sessionCookie,
-  }: SetActiveRedemptionChurchInput): Promise<void> {
-    await this.db
-      .update(session)
-      .set({ activeOrganizationId: churchId })
-      .where(eq(session.token, tokenFromCookie({ sessionCookie })));
-  }
-
-  async verifyPassword(): Promise<boolean> {
-    return true;
+  private trip({ fault }: TripInput): void {
+    if (this.failNext !== fault) return;
+    this.failNext = undefined;
+    throw new Error(`Injected identity failure ${fault}.`);
   }
 }
 
-interface TokenFromCookieInput {
-  sessionCookie: string;
+interface TripInput {
+  fault: IdentityFault;
 }
 
-function tokenFromCookie({ sessionCookie }: TokenFromCookieInput): string {
-  const [, value] = /session_token=([^;]+)/.exec(sessionCookie) ?? [];
-  if (!value) throw new Error('Session cookie did not carry a session token.');
-  return value;
+class RecordingFailureLog implements RedemptionFailureLog {
+  entries: RedemptionFailureEntry[] = [];
+
+  record(entry: RedemptionFailureEntry): void {
+    this.entries.push(entry);
+  }
 }
 
 class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
@@ -219,7 +145,8 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
 
 interface RedemptionHttpHarness {
   app: FastifyTypedInstance;
-  identityGateway: TestRedemptionIdentityGateway;
+  identityGateway: FaultInjectingIdentityGateway;
+  failureLog: RecordingFailureLog;
 }
 
 interface FailOnceAfterCheckpointThreeRepositoryInput {
@@ -258,12 +185,16 @@ const {
   notifications,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
+/** Users and Volunteers `seedTwoChurchIdentityFixture` creates. */
+const FIXTURE_USER_COUNT = 8;
+let fixtureVolunteerCount = 0;
 let app: FastifyTypedInstance | undefined;
 let fixture: TwoChurchIdentityFixture;
 
 beforeEach(async () => {
   await truncateAll();
   fixture = await seedTwoChurchIdentityFixture({ db: testDb });
+  fixtureVolunteerCount = (await testDb.select().from(volunteer)).length;
 });
 
 afterEach(async () => {
@@ -274,7 +205,8 @@ afterEach(async () => {
 async function createHarness({
   redemptionRepository = drizzleRedemptionRepository,
 }: CreateHarnessInput = {}): Promise<RedemptionHttpHarness> {
-  const identityGateway = new TestRedemptionIdentityGateway({ db: testDb });
+  const identityGateway = new FaultInjectingIdentityGateway();
+  const failureLog = new RecordingFailureLog();
   const verificationCodeManager = new InvitationVerificationCodeManager({
     repository: verificationCodeRepository,
     emailSender: new CaptureEmailSender('Church'),
@@ -290,6 +222,7 @@ async function createHarness({
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    failureLog,
   });
   const volunteerTransferManager = new DbVolunteerTransferManager({
     churchRepository,
@@ -316,7 +249,7 @@ async function createHarness({
     { prefix: '/api/v1' },
   );
   await app.ready();
-  return { app, identityGateway };
+  return { app, identityGateway, failureLog };
 }
 
 async function mintInvitation() {
@@ -408,7 +341,7 @@ describe('Church invitation redemption HTTP boundary', () => {
 
   it('verifies the code before creating identity state and returns a terminal verification failure', async () => {
     const invitation = await mintInvitation();
-    const { app, identityGateway } = await createHarness();
+    const { app } = await createHarness();
 
     const response = await app.inject({
       method: 'POST',
@@ -426,9 +359,8 @@ describe('Church invitation redemption HTTP boundary', () => {
       kind: 'terminal-failure',
       reason: 'VERIFICATION_FAILED',
     });
-    expect(identityGateway.createAccountCalls).toBe(0);
     const users = await testDb.select().from(user);
-    expect(users).toHaveLength(8);
+    expect(users).toHaveLength(FIXTURE_USER_COUNT);
   });
 
   it('redeems through Fastify, persists every checkpoint, and returns the authenticated cookie', async () => {
@@ -566,18 +498,33 @@ describe('Church invitation redemption HTTP boundary', () => {
     ).toHaveLength(1);
   });
 
-  it('rolls back checkpoint three and safely resumes with the same idempotency key', async () => {
+  it.each([
+    {
+      fault: 'after-account',
+      reason: 'IDENTITY_FAILED',
+    },
+    {
+      fault: 'after-church-admission',
+      reason: 'IDENTITY_FAILED',
+    },
+    {
+      fault: 'after-ministry-grant',
+      reason: 'MINISTRY_ACCEPTANCE_FAILED',
+    },
+  ] as const)('rolls back every new-person write on a failure $fault and lets the same invitation retry', async ({
+    fault,
+    reason,
+  }) => {
     const invitation = await mintInvitation();
     const failingRepository = new FailOnceAfterCheckpointThreeRepository({
       delegate: drizzleRedemptionRepository,
     });
-    const { app } = await createHarness({
+    failingRepository.failNextAcceptance = fault === 'after-ministry-grant';
+    const { app, identityGateway, failureLog } = await createHarness({
       redemptionRepository: failingRepository,
     });
-    await app.inject({
-      method: 'POST',
-      url: `${redemptionUrl({ invitationId: invitation.id })}/code`,
-    });
+    if (fault !== 'after-ministry-grant') identityGateway.failNext = fault;
+    await requestCode({ invitationId: invitation.id });
     const idempotencyKey = '33333333-3333-4333-8333-333333333333';
     const payload = {
       name: 'Retry HTTP User',
@@ -586,51 +533,260 @@ describe('Church invitation redemption HTTP boundary', () => {
       idempotencyKey,
     };
 
-    const firstResponse = await app.inject({
-      method: 'POST',
-      url: `${redemptionUrl({ invitationId: invitation.id })}/redeem`,
-      payload,
-    });
+    const firstResponse = await redeem({ app, invitation, payload });
+
     expect(firstResponse.json()).toEqual({
       kind: 'retryable-failure',
-      reason: 'MINISTRY_ACCEPTANCE_FAILED',
+      reason,
     });
-    const email = `redemption-${fixture.churchA.slug}@fixture.test`;
-    const [redeemedUser] = await testDb
-      .select()
-      .from(user)
-      .where(eq(user.email, email));
-    expect(redeemedUser).toBeDefined();
-    if (!redeemedUser) throw new Error('Expected identity checkpoint user.');
+    expect(firstResponse.headers['set-cookie']).toBeUndefined();
+    expect(await testDb.select().from(user)).toHaveLength(FIXTURE_USER_COUNT);
     expect(
       await testDb
         .select()
-        .from(volunteer)
-        .where(eq(volunteer.userId, redeemedUser.id)),
+        .from(account)
+        .where(eq(account.providerId, 'credential')),
     ).toHaveLength(0);
-    const [pendingInvitation] = await testDb
-      .select({ status: ministryInvitation.status })
-      .from(ministryInvitation)
-      .where(eq(ministryInvitation.id, invitation.id));
-    expect(pendingInvitation?.status).toBe('pending');
+    expect(await testDb.select().from(session)).toHaveLength(0);
+    expect(await testDb.select().from(volunteer)).toHaveLength(
+      fixtureVolunteerCount,
+    );
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'pending',
+      ministry: 'pending',
+    });
+    expect(failureLog.entries).toEqual([
+      {
+        reason,
+        ministryInvitationId: invitation.id,
+        correlationId: idempotencyKey,
+        errorName: 'Error',
+      },
+    ]);
+    expect(JSON.stringify(failureLog.entries)).not.toMatch(
+      /correct horse|123456|session_token/,
+    );
 
-    const retryResponse = await app.inject({
-      method: 'POST',
-      url: `${redemptionUrl({ invitationId: invitation.id })}/redeem`,
-      payload,
+    const retryResponse = await redeem({
+      app,
+      invitation,
+      payload: { ...payload, name: 'Corrected Retry User' },
     });
     expect(retryResponse.json()).toMatchObject({ kind: 'full-success' });
+    expect(retryResponse.headers['set-cookie']).toContain('session_token=');
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'accepted',
+      ministry: 'accepted',
+    });
+    const redeemedUser = await findInvitedUser();
+    expect(redeemedUser.name).toBe('Corrected Retry User');
     expect(
       await testDb
         .select()
         .from(volunteer)
         .where(eq(volunteer.userId, redeemedUser.id)),
     ).toHaveLength(1);
+  });
+
+  it('refuses a verified recipient who already has a login, leaving that User untouched', async () => {
+    const invitation = await mintInvitation();
+    const existing = await buildUser({
+      db: testDb,
+      id: crypto.randomUUID(),
+      name: 'Already Registered',
+      email: invitedEmail(),
+    });
+    const { app } = await createHarness();
+    await requestCode({ invitationId: invitation.id });
+
+    const response = await redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Someone Else',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '66666666-6666-4666-8666-666666666666',
+      },
+    });
+
+    expect(response.json()).toEqual({
+      kind: 'terminal-failure',
+      reason: 'EMAIL_ALREADY_REGISTERED',
+    });
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(await findInvitedUser()).toEqual(existing);
+    expect(await testDb.select().from(session)).toHaveLength(0);
+    expect(
+      await testDb.select().from(member).where(eq(member.userId, existing.id)),
+    ).toHaveLength(0);
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'pending',
+      ministry: 'pending',
+    });
+  });
+
+  it('preserves a User that a concurrent signup commits mid-join', async () => {
+    const invitation = await mintInvitation();
+    const { app, identityGateway } = await createHarness();
+    const racingUserId = crypto.randomUUID();
+    identityGateway.beforeAccount = async () => {
+      identityGateway.beforeAccount = undefined;
+      await buildUser({
+        db: testDb,
+        id: racingUserId,
+        name: 'Racing Signup',
+        email: invitedEmail(),
+      });
+    };
+    await requestCode({ invitationId: invitation.id });
+
+    const response = await redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Second Signup',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '77777777-7777-4777-8777-777777777777',
+      },
+    });
+
+    expect(response.json()).toEqual({
+      kind: 'terminal-failure',
+      reason: 'EMAIL_ALREADY_REGISTERED',
+    });
+    const preserved = await findInvitedUser();
+    expect(preserved).toMatchObject({
+      id: racingUserId,
+      name: 'Racing Signup',
+    });
+  });
+
+  it.each([
+    99, 100, 101,
+  ])('admits a new person into a Church that already has %i Church Members', async (memberCount) => {
+    await seedChurchMembers({ total: memberCount });
+    const invitation = await mintInvitation();
+    const { app } = await createHarness();
+    await requestCode({ invitationId: invitation.id });
+
+    const response = await redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Large Church Joiner',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '88888888-8888-4888-8888-888888888888',
+      },
+    });
+
+    expect(response.json()).toMatchObject({ kind: 'full-success' });
     expect(
       await testDb
         .select()
-        .from(outboxMessage)
-        .where(eq(outboxMessage.correlationId, idempotencyKey)),
-    ).toHaveLength(0);
+        .from(member)
+        .where(eq(member.organizationId, fixture.churchA.id)),
+    ).toHaveLength(memberCount + 1);
   });
 });
+
+interface RedeemInput {
+  app: FastifyTypedInstance;
+  invitation: InvitationRef;
+  payload: Record<string, string>;
+}
+
+interface InvitationRef {
+  id: string;
+}
+
+interface RequestCodeInput {
+  invitationId: string;
+}
+
+interface InvitationStatusesInput {
+  invitation: InvitationRef;
+}
+
+interface InvitationStatuses {
+  church: string | undefined;
+  ministry: string | undefined;
+}
+
+interface SeedChurchMembersInput {
+  total: number;
+}
+
+async function redeem({ app, invitation, payload }: RedeemInput) {
+  return app.inject({
+    method: 'POST',
+    url: `${redemptionUrl({ invitationId: invitation.id })}/redeem`,
+    payload,
+  });
+}
+
+async function requestCode({ invitationId }: RequestCodeInput): Promise<void> {
+  const response = await app?.inject({
+    method: 'POST',
+    url: `${redemptionUrl({ invitationId })}/code`,
+  });
+  expect(response?.statusCode).toBe(200);
+}
+
+function invitedEmail(): string {
+  return `redemption-${fixture.churchA.slug}@fixture.test`;
+}
+
+async function findInvitedUser() {
+  const [found] = await testDb
+    .select()
+    .from(user)
+    .where(eq(user.email, invitedEmail()));
+  if (!found) throw new Error('Expected the invited User.');
+  return found;
+}
+
+async function invitationStatuses({
+  invitation,
+}: InvitationStatusesInput): Promise<InvitationStatuses> {
+  const [ministry] = await testDb
+    .select({
+      status: ministryInvitation.status,
+      churchInvitationId: ministryInvitation.churchInvitationId,
+    })
+    .from(ministryInvitation)
+    .where(eq(ministryInvitation.id, invitation.id));
+  const churchInvitationId = ministry?.churchInvitationId ?? '';
+  const [church] = await testDb
+    .select({ status: churchInvitation.status })
+    .from(churchInvitation)
+    .where(eq(churchInvitation.id, churchInvitationId));
+  return { church: church?.status, ministry: ministry?.status };
+}
+
+/** Tops Church A up to `total` Church Members with shared builders. */
+async function seedChurchMembers({
+  total,
+}: SeedChurchMembersInput): Promise<void> {
+  const existing = await testDb
+    .select({ id: member.id })
+    .from(member)
+    .where(eq(member.organizationId, fixture.churchA.id));
+  for (let index = existing.length; index < total; index += 1) {
+    const userId = crypto.randomUUID();
+    await buildUser({
+      db: testDb,
+      id: userId,
+      name: `Bulk Member ${index}`,
+      email: `bulk-${index}@fixture.test`,
+    });
+    await buildChurchMembership({
+      db: testDb,
+      churchId: fixture.churchA.id,
+      userId,
+      accessLevel: 'member',
+    });
+  }
+}

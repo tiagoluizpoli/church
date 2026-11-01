@@ -1,37 +1,26 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
-import { switchActiveChurch } from '@/shared/utils/active-church-switch';
+import {
+  clearActiveChurchScopedCache,
+  switchActiveChurch,
+} from '@/shared/utils/active-church-switch';
+import type { MinistryInvitationResultSearch } from '@/shared/utils/ministry-invitation-result';
 import { activeChurchApi } from '@/utils/api-instances';
 
 export interface ContinueToChurchInput {
+  /** An explicit Church to make active; omitted, the entry gate resolves it. */
   churchId?: string;
-  churchName?: string;
-}
-
-interface ResolveChurchOptionInput extends ContinueToChurchInput {
-  churches: ListActiveChurchOptions200ChurchesItem[];
-}
-
-function resolveChurchOption({
-  churches,
-  churchId,
-  churchName,
-}: ResolveChurchOptionInput):
-  | ListActiveChurchOptions200ChurchesItem
-  | undefined {
-  if (churchId) return churches.find((church) => church.churchId === churchId);
-  if (churchName) return churches.find((church) => church.name === churchName);
-  return undefined;
+  /** Result for Home to announce, e.g. the Ministry just joined. */
+  homeSearch?: MinistryInvitationResultSearch;
 }
 
 /**
- * Refreshes the session, makes the Church a redemption just joined the
- * Active Church, then lands on its dashboard. A User who now belongs to
- * several Churches would otherwise reach `/select-church` and be asked to
- * choose the Church they just picked. Falls back to `/dashboard` (and the
- * entry gate) when the Church is not among the caller's options.
+ * Refreshes the session, then lands on Home. With an explicit Church ID the
+ * Church is made the Active Church first, so a User who now belongs to
+ * several Churches is not asked to choose the Church they just picked.
+ * Without one (or when the Church is not among the caller's options) nothing
+ * is selected: the entry gate on Home decides, never a Church display name.
  */
 export function useContinueToChurch(): (
   input: ContinueToChurchInput,
@@ -39,20 +28,25 @@ export function useContinueToChurch(): (
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  return async (input) => {
+  return async ({ churchId, homeSearch }) => {
     await authClient.getSession();
-    const { churches } = await activeChurchApi.listActiveChurchOptions();
-    const church = resolveChurchOption({ churches, ...input });
+    const church = churchId
+      ? (await activeChurchApi.listActiveChurchOptions()).churches.find(
+          (option) => option.churchId === churchId,
+        )
+      : undefined;
     if (!church) {
-      navigate({ to: '/dashboard' });
+      await clearActiveChurchScopedCache({ queryClient });
+      navigate({ to: '/', search: homeSearch });
       return;
     }
     await switchActiveChurch({
       availableAreas: church.availableAreas,
       churchId: church.churchId,
       churchName: church.name,
-      destination: '/dashboard',
-      navigate: ({ destination }) => navigate({ to: destination }),
+      destination: '/',
+      navigate: ({ destination }) =>
+        navigate({ to: destination, search: homeSearch }),
       queryClient,
       selectActiveChurch: async ({ churchId }) => {
         await activeChurchApi.selectActiveChurch({ churchId });

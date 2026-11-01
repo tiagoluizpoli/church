@@ -50,7 +50,8 @@ import { activeChurchApi } from '@/utils/api-instances';
 
 export interface BreadcrumbSegmentOverride {
   segment: string;
-  label: string;
+  /** Null hides the segment's crumb. */
+  label: string | null;
 }
 
 interface AppShellProps {
@@ -83,7 +84,7 @@ interface IsEntryActiveInput {
 
 interface ResolveBreadcrumbLabelInput {
   segment: string;
-  overridesBySegment: Map<string, string>;
+  overridesBySegment: Map<string, string | null>;
 }
 
 interface BreadcrumbItemModel {
@@ -410,9 +411,12 @@ export function AppShell({
     queryFn: () => activeChurchApi.listActiveChurchOptions(),
   });
   const churches = churchOptions?.churches ?? [];
-  const churchName =
-    churches.find((church) => church.churchId === churchScope?.churchId)
-      ?.name ?? null;
+  // Outside an Active Church (e.g. a Ministry Invitation for someone with no
+  // Church Membership yet) there is no Church name to wait for.
+  const churchName = churchScope
+    ? (churches.find((church) => church.churchId === churchScope.churchId)
+        ?.name ?? null)
+    : appConfig.appName;
   const canSwitchChurch = churches.length >= 2;
   const selectChurchDestination = getSelectChurchDestination({
     destination: location.href,
@@ -442,10 +446,12 @@ export function AppShell({
   const overridesBySegment = React.useMemo(
     () =>
       new Map([
-        ...(breadcrumbOverrides ?? []).map((override): [string, string] => [
-          override.segment,
-          override.label,
-        ]),
+        ...(breadcrumbOverrides ?? []).map(
+          (override): [string, string | null] => [
+            override.segment,
+            override.label,
+          ],
+        ),
       ]),
     [breadcrumbOverrides],
   );

@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoute } from '@/tests/setup/render-route';
 
@@ -87,25 +87,60 @@ describe('the existing-member Ministry Invitation redemption route', () => {
 
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
 
-    expect(await screen.findByText('Join Care')).toBeVisible();
+    expect(
+      await screen.findByText(
+        m.ministry_invitation_title({ ministryName: 'Care' }),
+      ),
+    ).toBeVisible();
   });
 
-  it('renders only the permitted preview fields, with the email read-only', async () => {
+  it('renders within the app shell with Ministry, Ministry Access Level and Roles', async () => {
     getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
 
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
 
-    expect(await screen.findByText('Join Care')).toBeVisible();
-    expect(screen.getByText(/St\. Peter/)).toBeVisible();
-    expect(screen.getByText(/Host/)).toBeVisible();
-    const emailInput = screen.getByLabelText('Email') as HTMLInputElement;
-    expect(emailInput.value).toBe('existing-member@example.test');
-    expect(emailInput).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Decline' })).toBeVisible();
+    expect(
+      await screen.findByText(
+        m.ministry_invitation_title({ ministryName: 'Care' }),
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.ministry_invitation_ministry_label()),
+    ).toBeVisible();
+    expect(screen.getByText('Care', { selector: 'dd' })).toBeVisible();
+    expect(
+      screen.getByText(m.ministry_invitation_access_level_label()),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.ministry_invitation_access_volunteer()),
+    ).toBeVisible();
+    expect(screen.getByText('Host')).toBeVisible();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    // Home › Ministry invitation, not the raw path segments.
+    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i });
+    expect(within(breadcrumb).getByText(m.nav_home())).toBeVisible();
+    expect(
+      within(breadcrumb).getByText(m.breadcrumb_ministry_invitation()),
+    ).toBeVisible();
+    expect(within(breadcrumb).queryByText(m.nav_invitations())).toBeNull();
   });
 
-  it('on accept, resolves the invited Church by name and continues into it', async () => {
+  it('shows Leader access and no Roles for a leader invitation without Roles', async () => {
+    getMinistryInvitationStatus.mockResolvedValue({
+      ...REDEEMABLE,
+      ministryAccessLevel: 'leader',
+      roleNames: [],
+    });
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+
+    expect(
+      await screen.findByText(m.ministry_invitation_access_leader()),
+    ).toBeVisible();
+    expect(screen.getByText(m.ministry_invitation_roles_none())).toBeVisible();
+  });
+
+  it('on accept, continues to Home without selecting a Church by name', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
     acceptMinistryInvitation.mockResolvedValue({
@@ -120,16 +155,19 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
 
     await waitFor(() => {
-      expect(selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
+      expect(router.state.location.pathname).toBe('/');
     });
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+    expect(router.state.location.search).toMatchObject({
+      joinedMinistry: 'Care',
     });
+    expect(selectActiveChurch).not.toHaveBeenCalled();
   });
 
   it('on the cross-Church split, renders the Volunteer Transfer flow naming both Churches', async () => {
@@ -145,7 +183,11 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
 
     expect(
       await screen.findByRole('heading', {
@@ -192,7 +234,11 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
     await user.click(
       await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
     );
@@ -229,7 +275,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     await user.click(confirmButton);
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 
@@ -251,11 +297,15 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       initialPath: '/invitations/ministry/invitation-1',
     });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
     return { router, user };
   }
 
-  it('after the transfer commits, makes the destination Church active and continues into it', async () => {
+  it('after the transfer commits, continues to Home without selecting a Church by name', async () => {
     getVolunteerTransferPreview.mockResolvedValue({
       kind: 'reviewable',
       sourceChurchName: 'Riverside Fellowship',
@@ -287,16 +337,12 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     );
 
     await waitFor(() => {
-      expect(selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
+      expect(router.state.location.pathname).toBe('/');
     });
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
-    });
+    expect(selectActiveChurch).not.toHaveBeenCalled();
   });
 
-  it('continuing as a member makes the destination Church active and continues into it', async () => {
+  it('continuing as a member continues to Home without selecting a Church by name', async () => {
     const { router, user } = await acceptIntoSplit();
 
     await user.click(
@@ -306,31 +352,33 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     );
 
     await waitFor(() => {
-      expect(selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
+      expect(router.state.location.pathname).toBe('/');
     });
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
-    });
+    expect(selectActiveChurch).not.toHaveBeenCalled();
   });
 
-  it('falls back to /dashboard, selecting nothing, when the destination is not among the caller options', async () => {
-    const { router, user } = await acceptIntoSplit();
-    listActiveChurchOptions.mockResolvedValue({ churches: [] });
+  it('falls back to Home, selecting nothing, when an explicit Church is not among the caller options', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
+    acceptMinistryInvitation.mockResolvedValue({
+      kind: 'already-accepted',
+      churchId: 'church-9',
+    });
+    listActiveChurchOptions.mockResolvedValue({ churches: [CHURCH_OPTION] });
 
+    const { router } = renderRoute({
+      initialPath: '/invitations/ministry/invitation-1',
+    });
+    const user = userEvent.setup();
     await user.click(
       await screen.findByRole('button', {
-        name: 'Continue to St. Peter as a member',
+        name: m.ministry_invitation_accept(),
       }),
     );
 
     await waitFor(() => {
-      expect(router.state.location.pathname).not.toBe(
-        '/invitations/ministry/invitation-1',
-      );
+      expect(router.state.location.pathname).toBe('/');
     });
-    expect(listActiveChurchOptions).toHaveBeenCalled();
     expect(selectActiveChurch).not.toHaveBeenCalled();
   });
 
@@ -349,7 +397,11 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
 
     await waitFor(() => {
       expect(selectActiveChurch).toHaveBeenCalledWith({
@@ -357,7 +409,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       });
     });
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 
@@ -372,32 +424,57 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
 
     expect(
       await screen.findByText(m.common_generic_error_title()),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: m.ministry_invitation_accept() }),
+    ).toBeEnabled();
   });
 
-  it('requires explicit confirmation before declining, with ministry-only copy', async () => {
+  it('requires explicit confirmation before declining, then continues Home with the declined result', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
     declineMinistryInvitation.mockResolvedValue({ kind: 'declined' });
 
-    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+    const { router } = renderRoute({
+      initialPath: '/invitations/ministry/invitation-1',
+    });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Decline' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_decline(),
+      }),
+    );
     expect(declineMinistryInvitation).not.toHaveBeenCalled();
-    expect(screen.getByText(/only your invitation to Care/)).toBeVisible();
+    expect(
+      screen.getByText(
+        m.ministry_invitation_decline_notice_ministry_only({
+          ministryName: 'Care',
+        }),
+      ),
+    ).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Yes, decline' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: m.ministry_invitation_decline_confirm(),
+      }),
+    );
 
     expect(declineMinistryInvitation).toHaveBeenCalledWith('invitation-1');
-    expect(
-      await screen.findByText("You've declined this invitation."),
-    ).toBeVisible();
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/');
+    });
+    expect(router.state.location.search).toMatchObject({
+      invitationDeclined: true,
+    });
   });
 
   it('cancels the decline confirmation without calling the API', async () => {
@@ -407,12 +484,22 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Decline' }));
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_decline(),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.ministry_invitation_decline_cancel(),
+      }),
+    );
 
     expect(declineMinistryInvitation).not.toHaveBeenCalled();
     expect(
-      await screen.findByRole('button', { name: 'Decline' }),
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_decline(),
+      }),
     ).toBeVisible();
   });
 
@@ -426,10 +513,14 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Decline' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_decline(),
+      }),
+    );
 
     expect(
-      screen.getByText(/also cancel your Church invitation/),
+      screen.getByText(m.ministry_invitation_decline_notice_chained()),
     ).toBeVisible();
   });
 
@@ -448,10 +539,12 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     const user = userEvent.setup();
 
     expect(
-      await screen.findByText("You've already accepted this invitation"),
+      await screen.findByText(m.ministry_invitation_already_accepted_title()),
     ).toBeVisible();
     await user.click(
-      screen.getByRole('button', { name: 'Continue to Church' }),
+      screen.getByRole('button', {
+        name: new RegExp(m.ministry_invitation_continue_home()),
+      }),
     );
 
     await waitFor(() => {
@@ -460,14 +553,15 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       });
     });
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 
-  it('never reveals the invited email for a wrong signed-in account, and requires confirmation to switch', async () => {
+  it('shows a wrong login only the masked addressed email and a Log out that returns to the invitation', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     getMinistryInvitationStatus.mockResolvedValue({
       kind: 'identity-mismatch',
+      maskedEmail: 'e***@example.test',
     });
     // `/login`'s own beforeLoad redirects an already-authenticated visitor
     // straight back — signOut must clear the session getSession() reports,
@@ -483,26 +577,26 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     const user = userEvent.setup();
 
     expect(
-      await screen.findByText('This invitation belongs to another account'),
+      await screen.findByText(
+        m.ministry_invitation_wrong_login_description({
+          maskedEmail: 'e***@example.test',
+        }),
+      ),
     ).toBeVisible();
-    expect(container.textContent).not.toContain('@');
+    expect(container.textContent).not.toContain('existing-member@');
+    expect(
+      screen.queryByRole('button', { name: m.ministry_invitation_accept() }),
+    ).toBeNull();
     const capabilityKey = ['caller-capabilities', 'u1', 'church-1'];
     queryClient.setQueryData(capabilityKey, { isChurchAdmin: true });
 
-    await user.click(screen.getByRole('button', { name: 'Switch account' }));
-    expect(signOut).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole('button', { name: 'Sign out and switch' }),
-    ).toBeVisible();
-
     await user.click(
-      screen.getByRole('button', { name: 'Sign out and switch' }),
+      screen.getByRole('button', { name: m.ministry_invitation_logout() }),
     );
 
     await waitFor(() =>
       expect(queryClient.getQueryData(capabilityKey)).toBeUndefined(),
     );
-
     expect(signOut).toHaveBeenCalled();
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/login');
@@ -510,13 +604,66 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     expect(router.state.location.search).toEqual({
       redirect: '/invitations/ministry/invitation-1',
     });
+    expect(acceptMinistryInvitation).not.toHaveBeenCalled();
+    expect(declineMinistryInvitation).not.toHaveBeenCalled();
   });
 
-  it('shows a generic unavailable message for a nonexistent, expired, canceled or already-declined invitation', async () => {
+  it('shows the agreed unavailable recovery with a Log in link back to the invitation', async () => {
     getMinistryInvitationStatus.mockResolvedValue({ kind: 'unavailable' });
 
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
 
-    expect(await screen.findByText(/no longer available/i)).toBeVisible();
+    expect(
+      await screen.findByText(m.ministry_invitation_unavailable_description()),
+    ).toBeVisible();
+    const hrefs = screen
+      .getAllByRole('link', { name: m.ministry_invitation_login() })
+      .map((link) => link.getAttribute('href'));
+    expect(hrefs).toContainEqual(
+      expect.stringContaining(
+        encodeURIComponent('/invitations/ministry/invitation-1'),
+      ),
+    );
+  });
+
+  it('keeps throttling distinct from unavailable and lets the person retry', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const throttled = Object.assign(new Error('throttled'), {
+      isAxiosError: true,
+      response: { status: 429 },
+    });
+    getMinistryInvitationStatus
+      .mockRejectedValueOnce(throttled)
+      .mockResolvedValueOnce(REDEEMABLE);
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+    const user = userEvent.setup();
+
+    expect(
+      await screen.findByText(m.ministry_invitation_throttled_title()),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(m.ministry_invitation_unavailable_title()),
+    ).toBeNull();
+
+    await user.click(
+      screen.getByRole('button', { name: m.ministry_invitation_retry() }),
+    );
+
+    expect(
+      await screen.findByText(
+        m.ministry_invitation_title({ ministryName: 'Care' }),
+      ),
+    ).toBeVisible();
+  });
+
+  it('renders the invitation in pt-BR from the catalog, with no gendered article before the Ministry name', async () => {
+    getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+
+    expect(await screen.findByText('Convite para Care')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Aceitar' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Recusar' })).toBeVisible();
   });
 });

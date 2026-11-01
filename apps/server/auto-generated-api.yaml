@@ -5696,6 +5696,7 @@ paths:
                       reason:
                         type: string
                         enum:
+                          - IDENTITY_FAILED
                           - MINISTRY_ACCEPTANCE_FAILED
                     required:
                       - kind
@@ -5712,7 +5713,7 @@ paths:
                         enum:
                           - INVITATION_UNAVAILABLE
                           - VERIFICATION_FAILED
-                          - IDENTITY_FAILED
+                          - EMAIL_ALREADY_REGISTERED
                     required:
                       - kind
                       - reason
@@ -5874,8 +5875,11 @@ paths:
                         type: string
                         enum:
                           - identity-mismatch
+                      maskedEmail:
+                        type: string
                     required:
                       - kind
+                      - maskedEmail
                     additionalProperties: false
                   - type: object
                     properties:

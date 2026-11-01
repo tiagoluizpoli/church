@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
 import type {
   ChurchId,
@@ -51,7 +51,9 @@ const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
 const outboxRepository = { findLatestStatusForMinistryInvitation: vi.fn() };
 const notifications = { enqueue: vi.fn() };
 
-function createManager(): DbMinistryInvitationManager {
+function createManager(
+  config: typeof appConfig = appConfig,
+): DbMinistryInvitationManager {
   return new DbMinistryInvitationManager({
     repo: repo as never,
     roleRepository: roleRepository as never,
@@ -60,7 +62,7 @@ function createManager(): DbMinistryInvitationManager {
     unitOfWork: unitOfWork as never,
     outboxRepository: outboxRepository as never,
     notifications,
-    config: appConfig,
+    config,
   });
 }
 
@@ -439,5 +441,80 @@ describe('DbMinistryInvitationManager.getDeliveryStatus', () => {
         ministryInvitationId: 'invitation-1' as MinistryInvitationId,
       }),
     ).rejects.toThrow(MissingOutboxDeliveryRecordError);
+  });
+});
+
+describe('DbMinistryInvitation lifetime', () => {
+  const NOW = new Date('2030-03-01T12:00:00Z');
+  const INJECTED_TTL_MS = 3 * 60 * 60 * 1000;
+  const injected = {
+    ...appConfig,
+    ministryInvitation: { ttlMs: INJECTED_TTL_MS },
+  };
+  const EXPECTED_EXPIRY = new Date(NOW.getTime() + INJECTED_TTL_MS);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('mints a Ministry-only invitation expiring after the injected lifetime', async () => {
+    repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
+    repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
+    repo.findPendingByInvitee.mockResolvedValueOnce(null);
+    repo.create.mockResolvedValueOnce({
+      id: 'invitation-1',
+      kind: 'ministry-only',
+    });
+
+    await createManager(injected).mint(baseMintInput());
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ expiresAt: EXPECTED_EXPIRY }),
+    );
+  });
+
+  it('restarts the clock from the resend moment, not the previous expiry', async () => {
+    const existing = {
+      id: 'invitation-1',
+      kind: 'ministry-only',
+      resendCount: 0,
+    };
+    repo.findPendingById.mockResolvedValueOnce(existing);
+    repo.applyResend.mockResolvedValueOnce(existing);
+
+    await createManager(injected).resend({
+      churchId,
+      ministryId,
+      ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+      callerId: adminId,
+    });
+
+    expect(repo.applyResend).toHaveBeenCalledWith(
+      expect.objectContaining({ expiresAt: EXPECTED_EXPIRY }),
+    );
+  });
+
+  it('defaults to seven days', async () => {
+    repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
+    repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
+    repo.findPendingByInvitee.mockResolvedValueOnce(null);
+    repo.create.mockResolvedValueOnce({
+      id: 'invitation-1',
+      kind: 'ministry-only',
+    });
+
+    await createManager().mint(baseMintInput());
+
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expiresAt: new Date(NOW.getTime() + SEVEN_DAYS_MS),
+      }),
+    );
   });
 });

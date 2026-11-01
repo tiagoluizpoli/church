@@ -7,7 +7,7 @@ import { OutboxPoller } from './outbox-poller';
 async function start(): Promise<void> {
   const root = createCompositionRoot();
 
-  const app = await createFastify({ locale: root.locale, auth: root.auth });
+  const app = await createFastify({ locale: root.locale });
 
   await app.register(
     async (instance) => {

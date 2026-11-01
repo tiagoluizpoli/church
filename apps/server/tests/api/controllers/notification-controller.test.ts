@@ -16,12 +16,12 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
 }));
 
 const mockGetSession = vi.mocked(
-  (await import('@church/auth')).auth.api.getSession,
+  (await import('@/main/di/server-auth')).auth.api.getSession,
 );
 
 const CHURCH_ID = '11111111-1111-4111-8111-111111111111';

@@ -134,7 +134,7 @@ describe('select-church route (compare-access selector)', () => {
       });
     });
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 

@@ -45,7 +45,8 @@ const DESTINATION_BASE_URL = 'https://church.local';
 // resource routes deliberately fall back because their identifiers are owned
 // by the previous Church context.
 const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
-  { pattern: /^\/$/, policy: 'fallback' },
+  // Home is the common entry; it keeps dashboard-area Churches on `/`.
+  { pattern: /^\/$/, policy: 'preserve', requiredArea: 'dashboard' },
   {
     pattern: /^\/dashboard$/,
     policy: 'preserve',
@@ -135,25 +136,25 @@ export async function switchActiveChurch({
   });
 }
 
-interface FinishRedemptionAtDashboardInput {
+interface FinishRedemptionAtHomeInput {
   queryClient: QueryClient;
   /** Typically `authClient.getSession` — refreshes the client's session cache. */
   getSession: () => Promise<unknown>;
-  navigateToDashboard: () => void;
+  navigateToHome: () => void;
 }
 
 /**
- * Lands a full-success redemption on `/dashboard` with a fresh session and
+ * Lands a full-success redemption on Home (`/`) with a fresh session and
  * no stale Church-scoped cache; the entry gate resolves its one Church. The
  * cross-Church split's outcomes, which leave the User in several Churches,
  * select the destination instead (`useContinueToChurch`).
  */
-export async function finishRedemptionAtDashboard({
+export async function finishRedemptionAtHome({
   queryClient,
   getSession,
-  navigateToDashboard,
-}: FinishRedemptionAtDashboardInput): Promise<void> {
+  navigateToHome,
+}: FinishRedemptionAtHomeInput): Promise<void> {
   await getSession();
   await clearActiveChurchScopedCache({ queryClient });
-  navigateToDashboard();
+  navigateToHome();
 }

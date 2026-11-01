@@ -177,7 +177,7 @@ describe('the chained-invitation redemption route', () => {
     await user.click(screen.getByRole('button', { name: 'Join' }));
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
     expect(requestChurchInvitationVerificationCode).not.toHaveBeenCalled();
   });
@@ -214,7 +214,7 @@ describe('the chained-invitation redemption route', () => {
     await user.click(screen.getByRole('button', { name: 'Join' }));
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
     expect(getSession).toHaveBeenCalled();
   });
@@ -342,7 +342,7 @@ describe('the chained-invitation redemption route', () => {
       ministryInvitationId: 'invitation-1',
     });
     const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({
+    const { router } = renderRoute({
       initialPath: '/invitations/church/invitation-1',
       churchTimezone: 'UTC',
     });
@@ -354,7 +354,7 @@ describe('the chained-invitation redemption route', () => {
     );
     await user.type(screen.getByPlaceholderText('123456'), '123456');
     await user.click(screen.getByRole('button', { name: 'Join' }));
-    return user;
+    return { user, router };
   }
 
   it('on the cross-Church split, offers the transfer naming both Churches', async () => {
@@ -415,7 +415,7 @@ describe('the chained-invitation redemption route', () => {
       ministryOptions: [],
     });
 
-    const user = await redeemToSplit();
+    const { user } = await redeemToSplit();
 
     // Layer 1 → 2
     await user.click(
@@ -478,7 +478,7 @@ describe('the chained-invitation redemption route', () => {
     });
   }
 
-  it('after the transfer commits, makes the destination Church active', async () => {
+  it('after the transfer commits, continues to Home without selecting a Church by name', async () => {
     getVolunteerTransferPreview.mockResolvedValue({
       kind: 'reviewable',
       sourceChurchName: 'Riverside Fellowship',
@@ -491,7 +491,7 @@ describe('the chained-invitation redemption route', () => {
       destinationVolunteerId: 'vol-new',
     });
     givenDestinationChurchOption();
-    const user = await redeemToSplit();
+    const { user, router } = await redeemToSplit();
 
     await user.click(
       await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
@@ -508,15 +508,14 @@ describe('the chained-invitation redemption route', () => {
     );
 
     await waitFor(() => {
-      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
+      expect(router.state.location.pathname).toBe('/');
     });
+    expect(activeChurchApiMock.selectActiveChurch).not.toHaveBeenCalled();
   });
 
-  it('continuing as a member makes the destination Church active', async () => {
+  it('continuing as a member continues to Home without selecting a Church by name', async () => {
     givenDestinationChurchOption();
-    const user = await redeemToSplit();
+    const { user, router } = await redeemToSplit();
 
     await user.click(
       await screen.findByRole('button', {
@@ -525,10 +524,9 @@ describe('the chained-invitation redemption route', () => {
     );
 
     await waitFor(() => {
-      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
-        churchId: 'church-1',
-      });
+      expect(router.state.location.pathname).toBe('/');
     });
+    expect(activeChurchApiMock.selectActiveChurch).not.toHaveBeenCalled();
   });
 
   it('shows an inline error on a password mismatch and stays on the confirm step', async () => {
@@ -541,7 +539,7 @@ describe('the chained-invitation redemption route', () => {
     });
     confirmVolunteerTransfer.mockResolvedValue({ kind: 'password-mismatch' });
 
-    const user = await redeemToSplit();
+    const { user } = await redeemToSplit();
     await user.click(
       await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
     );

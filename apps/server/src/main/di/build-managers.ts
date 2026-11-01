@@ -21,6 +21,7 @@ import {
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
+import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
 import type { Auth } from './build-auth';
 import type { Repositories } from './build-repositories';
 import type { Services } from './build-services';
@@ -160,6 +161,7 @@ export function buildManagers({
       redemptionRepository,
       securityLogRepository,
       unitOfWork,
+      failureLog: new ConsoleRedemptionFailureLog(),
       verificationCodeInspector: debugEndpointsEnabled()
         ? verificationCodeInspector
         : undefined,

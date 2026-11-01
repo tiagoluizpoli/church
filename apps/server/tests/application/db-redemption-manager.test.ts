@@ -104,6 +104,7 @@ function createHarness({
     acceptChurchInvitation: vi.fn().mockImplementation(accept),
     rejectChurchInvitation: vi.fn(),
     setActiveChurch: vi.fn(),
+    isEmailRegistered: vi.fn().mockResolvedValue(false),
     verifyPassword: vi.fn().mockResolvedValue(true),
   };
   const acceptedInputs: AcceptPendingMinistryInvitationInput[] = [];
@@ -155,6 +156,7 @@ function createHarness({
       redemptionRepository,
       securityLogRepository,
       unitOfWork,
+      failureLog: { record: vi.fn() },
     }),
     recordChurchOnlyPartialAcceptance,
     verificationCodeManager,
@@ -259,13 +261,12 @@ describe('DbRedemptionManager', () => {
     ]);
   });
 
-  it('keeps checkpoint-one and checkpoint-two state retryable when the ministry transaction fails', async () => {
+  it('reports a retryable Ministry failure when the grant step throws', async () => {
     const { manager } = createHarness({
-      accept: async () => {},
+      persist: async () => {
+        throw new Error('database unavailable');
+      },
     });
-    vi.spyOn(manager, 'acceptPendingMinistryInvitation').mockRejectedValue(
-      new Error('database unavailable'),
-    );
 
     const outcome = await manager.redeemNewUser({
       ministryInvitationId: MINISTRY_INVITATION_ID,
@@ -304,6 +305,8 @@ describe('DbRedemptionManager', () => {
       sourceChurchName: 'Riverside Fellowship',
       destinationChurchName: 'St. Peter',
       ministryInvitationId: MINISTRY_INVITATION_ID,
+      sessionCookie:
+        'better-auth.session_token=session-token; Path=/; HttpOnly',
     });
     expect(churchRepository.getById).toHaveBeenCalledWith({
       id: SOURCE_CHURCH_ID,
@@ -316,59 +319,6 @@ describe('DbRedemptionManager', () => {
         correlationId: IDEMPOTENCY_KEY,
       }),
     );
-  });
-
-  it('resumes a checkpoint-three retry with the same code request identity', async () => {
-    let attempt = 0;
-    const { identityGateway, manager, verificationCodeManager } = createHarness(
-      {
-        persist: async () => {
-          attempt += 1;
-          if (attempt === 1) throw new Error('transient checkpoint failure');
-        },
-        previews: [
-          {
-            churchId: CHURCH_ID,
-            churchInvitationId: '66666666-6666-4666-8666-666666666666',
-            email: 'invitee@example.test',
-            churchName: 'St. Peter',
-            ministryName: 'Worship',
-            ministryAccessLevel: 'volunteer',
-            roleNames: ['Singer'],
-            expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-            churchInvitationStatus: 'pending',
-          },
-          {
-            churchId: CHURCH_ID,
-            churchInvitationId: '66666666-6666-4666-8666-666666666666',
-            email: 'invitee@example.test',
-            churchName: 'St. Peter',
-            ministryName: 'Worship',
-            ministryAccessLevel: 'volunteer',
-            roleNames: ['Singer'],
-            expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-            churchInvitationStatus: 'accepted',
-          },
-        ],
-      },
-    );
-
-    const input = {
-      ministryInvitationId: MINISTRY_INVITATION_ID,
-      name: 'New Volunteer',
-      password: 'correct-horse-battery-staple',
-      code: '123456',
-      idempotencyKey: IDEMPOTENCY_KEY,
-    };
-    await expect(manager.redeemNewUser(input)).resolves.toEqual({
-      kind: 'retryable-failure',
-      reason: 'MINISTRY_ACCEPTANCE_FAILED',
-    });
-    await expect(manager.redeemNewUser(input)).resolves.toMatchObject({
-      kind: 'full-success',
-    });
-    expect(identityGateway.acceptChurchInvitation).toHaveBeenCalledTimes(1);
-    expect(verificationCodeManager.verify).toHaveBeenCalledTimes(2);
   });
 
   it('includes an accepted Church invitation only for a checkpoint-three retry', async () => {

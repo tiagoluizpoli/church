@@ -21,12 +21,12 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
 }));
 
 const mockGetSession = vi.mocked(
-  (await import('@church/auth')).auth.api.getSession,
+  (await import('@/main/di/server-auth')).auth.api.getSession,
 );
 
 const INVITATION_ID = '11111111-1111-4111-8111-111111111111';
@@ -206,12 +206,13 @@ describe('RedemptionController', () => {
     });
   });
 
-  it('passes the cross-Church split outcome through, naming both Churches', async () => {
+  it('passes the committed cross-Church split through with its session, naming both Churches', async () => {
     vi.mocked(redemptionManager.redeemNewUser).mockResolvedValue({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
       destinationChurchName: 'Northgate Community Church',
       ministryInvitationId: MinistryInvitationId.from(INVITATION_ID),
+      sessionCookie: 'better-auth.session_token=split-session; HttpOnly',
     });
 
     const response = await app.inject({
@@ -226,6 +227,7 @@ describe('RedemptionController', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers['set-cookie']).toContain('split-session');
     expect(response.json()).toEqual({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',

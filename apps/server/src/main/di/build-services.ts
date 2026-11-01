@@ -4,6 +4,7 @@ import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/servic
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
 import type { CompositionRootDependencies } from './dependencies';
+import { auth, createServerAuth } from './server-auth';
 
 export type Services = Pick<
   CompositionRootDependencies,
@@ -19,7 +20,10 @@ export interface BuildServicesInput {
 export function buildServices({ overrides }: BuildServicesInput): Services {
   const redemptionIdentityGateway =
     overrides.redemptionIdentityGateway ??
-    new BetterAuthRedemptionIdentityGateway();
+    new BetterAuthRedemptionIdentityGateway({
+      auth,
+      createTransactionAuth: createServerAuth,
+    });
   // One shared capture instance outside production: the redemption debug route
   // reads back what the verification-code manager just sent through it.
   const isProduction = env.NODE_ENV === 'production';

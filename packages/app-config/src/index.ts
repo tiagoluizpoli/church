@@ -29,6 +29,7 @@ export const appConfigSchema = z.object({
     resendCooldownMs: positiveInt,
     maxAttempts: positiveInt,
   }),
+  passwordReset: z.object({ ttlMs: positiveInt }),
   redemptionRateLimit: z.object({
     windowMs: positiveInt,
     maxRequests: positiveInt,
@@ -79,6 +80,7 @@ export const appConfig = appConfigSchema.parse({
     resendCooldownMs: MINUTE_MS,
     maxAttempts: 5,
   },
+  passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
   outbox: {
     maxAttempts: 5,

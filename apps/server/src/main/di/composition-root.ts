@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import type { Auth } from '@church/auth';
 import { db } from '@church/db';
 import type { FastifyController } from '../../api/contracts/fastify-controller';
 import type { IOutboxDrainer } from '../../domain/contracts/application';
@@ -14,6 +15,8 @@ export type { CompositionRootDependencies } from './dependencies';
 
 interface CompositionRoot {
   controllers: FastifyController[];
+  /** The Better Auth instance HTTP auth must serve. */
+  auth: Auth;
   outboxDrainer: IOutboxDrainer;
   locale: LocaleSettings;
 }
@@ -25,7 +28,7 @@ export function createCompositionRoot(
   const database = overrides.db ?? db;
 
   const repositories = buildRepositories({ config, database, overrides });
-  const services = buildServices({ overrides });
+  const services = buildServices({ config, database, overrides });
   const auth = buildAuth({ database, repositories, overrides });
   const managers = buildManagers({
     config,
@@ -38,6 +41,7 @@ export function createCompositionRoot(
 
   return {
     controllers,
+    auth: services.betterAuth,
     outboxDrainer: managers.outboxDrainer,
     locale: {
       localeCookieName: config.localeCookieName,

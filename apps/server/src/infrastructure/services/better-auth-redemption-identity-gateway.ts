@@ -1,4 +1,4 @@
-import { auth } from '@church/auth';
+import { type Auth, auth as defaultAuth } from '@church/auth';
 import { z } from 'zod';
 import { UserId } from '../../domain/branded-ids';
 import type {
@@ -15,9 +15,21 @@ const signInResponseSchema = z.object({
   user: z.object({ id: z.string() }),
 });
 
+export interface BetterAuthRedemptionIdentityGatewayInput {
+  auth?: Auth;
+}
+
 export class BetterAuthRedemptionIdentityGateway
   implements RedemptionIdentityGateway
 {
+  private readonly auth: Auth;
+
+  constructor({
+    auth = defaultAuth,
+  }: BetterAuthRedemptionIdentityGatewayInput = {}) {
+    this.auth = auth;
+  }
+
   async createAccount({
     email,
     name,
@@ -25,7 +37,7 @@ export class BetterAuthRedemptionIdentityGateway
   }: CreateRedemptionAccountInput): Promise<CreateRedemptionAccountOutput> {
     let userId: string;
     try {
-      const account = await auth.api.signUpEmail({
+      const account = await this.auth.api.signUpEmail({
         body: { email, name, password },
       });
       userId = account.user.id;
@@ -53,7 +65,7 @@ export class BetterAuthRedemptionIdentityGateway
     churchInvitationId,
     sessionCookie,
   }: AcceptChurchInvitationInput): Promise<void> {
-    await auth.api.acceptInvitation({
+    await this.auth.api.acceptInvitation({
       headers: new Headers({ cookie: sessionCookie }),
       body: { invitationId: churchInvitationId },
     });
@@ -63,7 +75,7 @@ export class BetterAuthRedemptionIdentityGateway
     churchInvitationId,
     sessionCookie,
   }: RejectChurchInvitationInput): Promise<void> {
-    await auth.api.rejectInvitation({
+    await this.auth.api.rejectInvitation({
       headers: new Headers({ cookie: sessionCookie }),
       body: { invitationId: churchInvitationId },
     });
@@ -73,7 +85,7 @@ export class BetterAuthRedemptionIdentityGateway
     churchId,
     sessionCookie,
   }: SetActiveRedemptionChurchInput): Promise<void> {
-    await auth.api.setActiveOrganization({
+    await this.auth.api.setActiveOrganization({
       headers: new Headers({ cookie: sessionCookie }),
       body: { organizationId: churchId },
     });
@@ -91,7 +103,7 @@ export class BetterAuthRedemptionIdentityGateway
     // *caller* from ever holding that session; the row would otherwise sit
     // valid and unused until it expires. So a successful check immediately
     // signs that session back out, deleting the row, before reporting true.
-    const response = await auth.handler(
+    const response = await this.auth.handler(
       new Request('http://localhost/api/auth/sign-in/email', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -101,7 +113,7 @@ export class BetterAuthRedemptionIdentityGateway
     if (!response.ok) return false;
     const cookie = response.headers.get('set-cookie');
     if (cookie) {
-      await auth.handler(
+      await this.auth.handler(
         new Request('http://localhost/api/auth/sign-out', {
           method: 'POST',
           headers: { cookie },
@@ -115,7 +127,7 @@ export class BetterAuthRedemptionIdentityGateway
     email,
     password,
   }: CreateAuthenticatedSessionInput): Promise<AuthenticatedSession> {
-    const response = await auth.handler(
+    const response = await this.auth.handler(
       new Request('http://localhost/api/auth/sign-in/email', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

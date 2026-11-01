@@ -1,4 +1,4 @@
-import { auth } from '@church/auth';
+import { type Auth, auth as defaultAuth } from '@church/auth';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
 import { m } from '@church/i18n/messages';
@@ -38,10 +38,13 @@ export interface LocaleSettings {
 
 interface CreateFastifyInput {
   locale: LocaleSettings;
+  /** The composed instance; defaults to the package's plain one. */
+  auth?: Auth;
 }
 
 export async function createFastify({
   locale: localeSettings,
+  auth = defaultAuth,
 }: CreateFastifyInput) {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';

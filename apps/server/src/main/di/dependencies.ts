@@ -1,4 +1,5 @@
 import type { AppConfig } from '@church/app-config';
+import type { Auth } from '@church/auth';
 import type { db } from '@church/db';
 import type { AuthorityGuard } from '../../api/auth/authority-guard';
 import type {
@@ -87,6 +88,8 @@ export interface CompositionRootDependencies {
   // Services
   emailSender: EmailSender;
   redemptionIdentityGateway: RedemptionIdentityGateway;
+  /** The one Better Auth instance behind HTTP auth and redemption. */
+  betterAuth: Auth;
   /** Non-production only; set alongside a capturing `emailSender`. */
   verificationCodeInspector: VerificationCodeInspector;
   // Auth

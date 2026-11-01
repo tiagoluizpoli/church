@@ -189,7 +189,6 @@
   "notification_unknown_title": "New notification",
   "notification_unknown_body": "This notification can’t be shown in this version of the app.",
   "home_church_only_warning": "You joined {churchName}, but we couldn't add you to {ministryName}. Ask your leader to invite you again.",
-  "invitation_declined_go_home": "Go to Home",
   "no_access_removed_from": "You no longer have access to {churchName}. Your Church Membership was removed.",
   "select_church_app_name": "Church CRM",
   "select_church_app_subtitle": "Scheduling workspace",

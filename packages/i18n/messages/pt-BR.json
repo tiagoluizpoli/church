@@ -189,7 +189,6 @@
   "notification_unknown_title": "Nova notificação",
   "notification_unknown_body": "Esta notificação não pode ser exibida nesta versão do aplicativo.",
   "home_church_only_warning": "Você entrou em {churchName}, mas não conseguimos adicionar você ao Ministério {ministryName}. Peça ao seu líder um novo convite.",
-  "invitation_declined_go_home": "Ir para o início",
   "no_access_removed_from": "Você não tem mais acesso a {churchName}. Seu acesso à Igreja foi removido.",
   "select_church_app_name": "Church CRM",
   "select_church_app_subtitle": "Espaço de escalação",

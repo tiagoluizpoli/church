@@ -1,4 +1,4 @@
-import { fromDate } from '@church/time';
+import { fromDate, type Instant } from '@church/time';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   ChurchBootstrapInvitationEmail,
@@ -42,6 +42,8 @@ function buildBootstrapPayload(): ChurchBootstrapInvitationEmail {
     kind: 'invitation.church-bootstrap',
     to: 'admin@example.com',
     churchName: 'Grace Church',
+    expiresAt: '2026-12-01T02:30:00.000Z' as Instant,
+    churchTimezone: 'America/Sao_Paulo',
     redemptionUrl: 'https://app.church.test/invitations/church/xyz',
   };
 }
@@ -120,10 +122,11 @@ describe('ResendEmailSender', () => {
     });
 
     expect(sendMock).toHaveBeenCalledWith({
-      from: 'Church <hi@church.test>',
+      from: '"Grace Church" <hi@church.test>',
       to: 'invitee@example.com',
-      subject: expect.stringContaining('Grace Church'),
+      subject: expect.stringContaining('Worship Team'),
       html: expect.stringContaining('Worship Team'),
+      text: expect.stringContaining('Worship Team'),
     });
     expect(result).toEqual({ providerMessageId: 'email-1' });
   });

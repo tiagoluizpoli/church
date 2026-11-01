@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { CalendarDay, Instant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
+  ChurchBootstrapInvitationEmail,
   MinistryInvitationEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
@@ -21,38 +22,123 @@ const memberInvitation: MinistryInvitationEmail = {
   redemptionUrl: 'https://app.church.test/invitations/ministry/abc',
 };
 
-describe('prepareEmail — member Ministry Invitation', () => {
-  it('renders the shared catalog in the recipient locale, in the Church Timezone', () => {
-    const email = prepareEmail({
-      payload: memberInvitation,
-      from: 'church@example.com',
-      locale: 'pt-BR',
-    });
+const ptBR = { locale: 'pt-BR' } as const;
+const from = 'church@example.com';
+
+function prepare(
+  payload: MinistryInvitationEmail | ChurchBootstrapInvitationEmail,
+) {
+  return prepareEmail({ payload, from, locale: 'pt-BR' });
+}
+
+describe('prepareEmail — T1 paired Ministry invitations', () => {
+  const leader = {
+    ...memberInvitation,
+    kind: 'invitation.chained',
+    ministryAccessLevel: 'leader',
+    inviterName: 'Ana <Pastor>',
+  } satisfies MinistryInvitationEmail;
+
+  it('names inviter, Ministry and lead intent with Roles, expiry in the Church Timezone and one Accept button', () => {
+    const email = prepare(leader);
+    const { subject, html, text } = email.request;
 
     expect(email.locale).toBe('pt-BR');
-    expect(email.request.subject).toBe(
-      m.notification_ministry_invitation_title(
-        { ministryName: '<b>Worship</b>' },
-        { locale: 'pt-BR' },
-      ),
+    expect(subject).toBe(
+      m.email_invitation_lead_title({ ministryName: '<b>Worship</b>' }, ptBR),
     );
-    expect(email.request.html).toContain(
-      m.email_ministry_invitation_accept({}, { locale: 'pt-BR' }),
+    const body = m.email_invitation_lead_body_inviter(
+      {
+        inviterName: 'Ana <Pastor>',
+        ministryName: '<b>Worship</b>',
+        churchName: 'Grace & <Truth>',
+      },
+      ptBR,
     );
-    expect(email.request.html).toContain('30/11/2026 23:30');
+    const roles = m.email_invitation_roles(
+      { roles: 'Vocalist <i>lead</i>' },
+      ptBR,
+    );
+    const expires = m.email_invitation_expires(
+      { expiresAt: '30/11/2026 23:30' },
+      ptBR,
+    );
+    for (const line of [body, roles, expires, leader.redemptionUrl]) {
+      expect(text).toContain(line);
+    }
+    expect(text).toContain(m.email_invitation_accept({}, ptBR));
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toContain(`href="${leader.redemptionUrl}"`);
   });
 
-  it('escapes interpolated facts so they never become markup', () => {
-    const { html } = prepareEmail({
-      payload: memberInvitation,
-      from: 'church@example.com',
-      locale: 'pt-BR',
-    }).request;
+  it('uses serve wording, the Church as inviter fallback and omits empty Roles', () => {
+    const email = prepare({
+      ...memberInvitation,
+      ministryAccessLevel: 'volunteer',
+      roleNames: [],
+    });
+    const { text } = email.request;
+
+    expect(text).toContain(
+      m.email_invitation_serve_body(
+        {
+          churchName: 'Grace & <Truth>',
+          ministryName: '<b>Worship</b>',
+        },
+        ptBR,
+      ),
+    );
+    expect(text).not.toContain(m.email_invitation_roles({ roles: '' }, ptBR));
+  });
+
+  it('uses the neutral greeting, the Church From and the invitation-to-address footer', () => {
+    const { request } = prepare(memberInvitation);
+
+    expect(request.from).toBe('"Grace & <Truth>" <church@example.com>');
+    expect(request.text).toContain(m.email_greeting_transactional({}, ptBR));
+    expect(request.text).toContain(
+      m.email_footer_invitation(
+        { email: 'member@example.com', churchName: 'Grace & <Truth>' },
+        ptBR,
+      ),
+    );
+  });
+
+  it('keeps hostile names text in HTML and readable in text', () => {
+    const { html, text } = prepare(memberInvitation).request;
 
     expect(html).toContain('&lt;b&gt;Worship&lt;/b&gt;');
     expect(html).toContain('Grace &amp; &lt;Truth&gt;');
     expect(html).toContain('Vocalist &lt;i&gt;lead&lt;/i&gt;');
     expect(html).not.toContain('<b>Worship</b>');
+    expect(text).toContain('<b>Worship</b>');
+  });
+});
+
+describe('prepareEmail — T1 ChurchAdmin invitation', () => {
+  const bootstrap: ChurchBootstrapInvitationEmail = {
+    kind: 'invitation.church-bootstrap',
+    to: 'admin@example.com',
+    churchName: 'Grace Church',
+    expiresAt: '2026-12-01T02:30:00.000Z' as Instant,
+    churchTimezone: 'America/Sao_Paulo',
+    redemptionUrl: 'https://app.church.test/invitations/church/xyz',
+  };
+
+  it('renders admin wording with expiry and one Accept button', () => {
+    const { subject, text, html } = prepare(bootstrap).request;
+
+    expect(subject).toBe(
+      m.email_invitation_admin_title({ churchName: 'Grace Church' }, ptBR),
+    );
+    expect(text).toContain(
+      m.email_invitation_admin_body({ churchName: 'Grace Church' }, ptBR),
+    );
+    expect(text).toContain(
+      m.email_invitation_expires({ expiresAt: '30/11/2026 23:30' }, ptBR),
+    );
+    expect(text).toContain(bootstrap.redemptionUrl);
+    expect(html.match(/<a /g)).toHaveLength(1);
   });
 });
 

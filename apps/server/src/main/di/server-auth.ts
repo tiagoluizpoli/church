@@ -30,12 +30,13 @@ export const serverAuthOptions: ServerAuthOptions = {
   sendResetPassword: createPasswordResetMailer({
     emailSender: { send: (input) => resetMailSender.send(input) },
     config: appConfig,
+    // The web app is the only allowed origin; no separate web-origin setting.
     webOrigin: env.CORS_ORIGIN,
-    // Message only: the error object may carry the request, token included.
+    // Name only: the message or object may carry the reset URL and token.
     onSendError: (error) =>
       console.error(
         'Password reset email failed',
-        error instanceof Error ? error.message : 'unknown error',
+        error instanceof Error ? error.name : 'unknown error',
       ),
   }),
 };

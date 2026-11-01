@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import {
   assignBuilderPath,
@@ -89,7 +90,12 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
         new RegExp(`/invitations/ministry/${churchAMinistryInvitation.id}$`),
       );
       await expect(
-        page.getByRole('heading', { name: `Join ${churchAMinistry.name}` }),
+        page.getByRole('heading', {
+          name: m.ministry_invitation_title(
+            { ministryName: churchAMinistry.name },
+            { locale: 'pt-BR' },
+          ),
+        }),
       ).toBeVisible();
 
       const [acceptResponse] = await Promise.all([
@@ -100,7 +106,11 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
               `/redemption/ministry/${churchAMinistryInvitation.id}/accept`,
             ),
         ),
-        page.getByRole('button', { name: 'Accept' }).click(),
+        page
+          .getByRole('button', {
+            name: m.ministry_invitation_accept({}, { locale: 'pt-BR' }),
+          })
+          .click(),
       ]);
       const acceptOutcome =
         (await acceptResponse.json()) as AcceptMinistryInvitationOutcome;

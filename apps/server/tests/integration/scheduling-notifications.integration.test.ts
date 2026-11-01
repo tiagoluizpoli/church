@@ -194,7 +194,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
   it('freezes the facts at first resolution: a retry writes the inbox row after the Cycle is gone', async () => {
     await askOneMember();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     const inbox = new FlakyInboxRepository({ db: schedulingTestDb });
     inbox.failuresLeft = 100;
     const drainer = buildDrainer(emailSender, inbox);
@@ -218,10 +218,26 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
   });
 
+  it('carries the Church name and a single-word first name to the email', async () => {
+    await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    await buildAvailabilityManager().askAvailability({
+      churchId: ChurchId.from(ids.churchId),
+      participationId: MinistryParticipationId.from(participationId),
+    });
+    const emailSender = new CaptureEmailSender('Church');
+
+    await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(emailSender.sent[0]).toMatchObject({
+      recipientFirstName: expect.stringMatching(/^\S+$/),
+      churchName: expect.any(String),
+    });
+  });
+
   it('settles every sink as skipped, not failed, when the Cycle is gone before first resolution', async () => {
     await askOneMember();
     await dropCycle();
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -258,7 +274,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     );
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     const drainer = buildDrainer(emailSender);
     expect(await drainer.drainOnce({ limit: 10 })).toEqual({
       claimed: 3,
@@ -334,7 +350,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     expect(queued).toHaveLength(2);
     expect(queued.every((row) => row.kind === 'notification')).toBe(true);
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(emailSender.sent.map((email) => email.kind)).toEqual([
       'availability.reminder',
@@ -407,7 +423,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       data: { participationId },
     });
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(emailSender.sent).toHaveLength(1);
     expect(emailSender.sent[0]).toMatchObject({
@@ -445,7 +461,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       participationId: MinistryParticipationId.from(participationId),
     });
 
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
     expect(emailSender.sent.map((email) => email.to)).toEqual([

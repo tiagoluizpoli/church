@@ -8,6 +8,8 @@ const DAY_MS = 24 * HOUR_MS;
 const positiveInt = z.number().int().positive();
 
 export const appConfigSchema = z.object({
+  /** Product name on app-branded (church-less) email. Placeholder until branding is decided. */
+  appName: z.string().trim().min(1),
   /** Parked features: false = UI hidden and server route not registered. */
   parked: z.object({
     assignmentResponse: z.boolean(),
@@ -62,6 +64,7 @@ export const appConfigSchema = z.object({
 export type AppConfig = z.infer<typeof appConfigSchema>;
 
 export const appConfig = appConfigSchema.parse({
+  appName: 'Church',
   parked: {
     assignmentResponse: false,
     volunteerCancel: false,

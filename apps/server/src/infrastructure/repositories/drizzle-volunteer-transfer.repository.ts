@@ -2,6 +2,7 @@ import { NotFoundError } from '@church/core';
 import {
   assignment,
   assignmentAudit,
+  church,
   event,
   eventTimeBlock,
   identityAudit,
@@ -11,8 +12,11 @@ import {
   ministryInvitationRole,
   ministryMembership,
   ministryParticipation,
+  organization,
   role,
+  sector,
   shift,
+  shiftRequirement,
   user,
   volunteer,
   volunteerTransfer,
@@ -406,6 +410,7 @@ export class DrizzleVolunteerTransferRepository
     ministryId,
     volunteerId,
     correlationId,
+    recipientUserId,
   }: GetTransferDigestDetailsInput): Promise<TransferDigestDetails> {
     const db = getClient({ db: this.db });
 
@@ -441,11 +446,37 @@ export class DrizzleVolunteerTransferRepository
       );
     }
 
+    const [churchRow] = await db
+      .select({ name: organization.name, timezone: church.timezone })
+      .from(church)
+      .innerJoin(organization, eq(organization.id, church.id))
+      .where(eq(church.id, churchId));
+    if (!churchRow) {
+      throw new NotFoundError(
+        `Church not found for transfer digest: ${churchId}`,
+      );
+    }
+
+    // Membership is rechecked by the email sink; this only names the greeting.
+    const [recipientRow] = await db
+      .select({ name: user.name })
+      .from(user)
+      .where(eq(user.id, recipientUserId));
+    if (!recipientRow) {
+      throw new NotFoundError(
+        `Recipient not found for transfer digest: ${recipientUserId}`,
+      );
+    }
+
+    // The cancelled Assignment keeps its Shift and requirement, so the actual
+    // Shift bounds and Sector stay readable after the transfer.
     const withdrawnAssignments = await db
       .select({
-        eventName: event.title,
-        eventTimeBlockStart: eventTimeBlock.startTime,
+        startsAt: shift.startTime,
+        endsAt: shift.endTime,
+        eventTitle: event.title,
         roleName: role.name,
+        sectorName: sector.name,
       })
       .from(assignmentAudit)
       .innerJoin(assignment, eq(assignment.id, assignmentAudit.assignmentId))
@@ -457,6 +488,11 @@ export class DrizzleVolunteerTransferRepository
       .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
       .innerJoin(role, eq(role.id, assignment.roleId))
+      .innerJoin(
+        shiftRequirement,
+        eq(shiftRequirement.id, assignment.shiftRequirementId),
+      )
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .where(
         and(
           eq(assignmentAudit.correlationId, correlationId),
@@ -464,9 +500,12 @@ export class DrizzleVolunteerTransferRepository
           eq(ministryParticipation.ministryId, ministryId),
         ),
       )
-      .orderBy(asc(eventTimeBlock.startTime));
+      .orderBy(asc(shift.startTime));
 
     return {
+      churchName: churchRow.name,
+      churchTimezone: churchRow.timezone,
+      recipientName: recipientRow.name,
       ministryName: ministryRow.name,
       volunteerName: volunteerRow.name,
       withdrawnAssignments,

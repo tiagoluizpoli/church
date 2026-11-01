@@ -1,303 +1,415 @@
 import { m } from '@church/i18n/messages';
-import { formatCalendarDay, formatInstant, toDate } from '@church/time';
+import { formatCalendarDay, formatInstant } from '@church/time';
 import type {
   AvailabilityEmail,
+  ChainedInvitationEmail,
+  ChurchBootstrapInvitationEmail,
   EmailLocale,
   EmailPayload,
   MinistryInvitationEmail,
+  PasswordResetEmail,
   PreparedEmail,
   SchedulePublishedEmail,
-  TransferLeaderlessMinistryEmail,
-  TransferMinistryDigestEmail,
+  TransferDigestEmail,
+  VerificationCodeEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
+import {
+  type EmailContent,
+  emailSender,
+  formatEmailDuration,
+  renderEmailLayout,
+} from './email-layout';
+import { formatShiftLine } from './email-shift-line';
 
 export interface PrepareEmailFromInput {
   payload: EmailPayload;
   from: string;
   locale?: EmailLocale;
+  /** Display name for app-branded kinds; injected from composition. */
+  appName: string;
 }
 
 /**
  * The one renderer every EmailSender adapter prepares with, so capture and
- * Resend agree on content. The member Ministry Invitation and the transfer
- * digests render from the shared catalog in `locale`; the rest stay English
- * until Spec 10 moves them.
+ * Resend agree on content. Every kind renders on the shared layout, with plain
+ * text and the Church sender (the app name for church-less kinds).
  */
 export function prepareEmail({
   payload,
   from,
   locale = 'en',
+  appName,
 }: PrepareEmailFromInput): PreparedEmail {
-  if (payload.kind === 'invitation.ministry') {
-    const { subject, html } = composeMinistryInvitationEmail({
-      payload,
-      locale,
-    });
-    return {
-      payload,
-      locale,
-      request: { from, to: payload.to, subject, html },
-    };
-  }
-  if (
-    payload.kind === 'availability.opened' ||
-    payload.kind === 'availability.reminder'
-  ) {
-    const { subject, html } = composeAvailabilityEmail({ payload, locale });
-    return {
-      payload,
-      locale,
-      request: { from, to: payload.to, subject, html },
-    };
-  }
-  if (payload.kind === 'schedule.published') {
-    const { subject, html } = composeSchedulePublishedEmail({
-      payload,
-      locale,
-    });
-    return {
-      payload,
-      locale,
-      request: { from, to: payload.to, subject, html },
-    };
-  }
-  if (
-    payload.kind === 'transfer.ministry-digest' ||
-    payload.kind === 'transfer.leaderless-ministry'
-  ) {
-    const { subject, html } = composeTransferDigestEmail({ payload, locale });
-    return {
-      payload,
-      locale,
-      request: { from, to: payload.to, subject, html },
-    };
-  }
-  const { subject, html } = composeEmail({ payload });
-  return {
-    payload,
-    locale: 'en',
-    request: { from, to: payload.to, subject, html },
-  };
-}
-
-interface ComposeMinistryInvitationEmailInput {
-  payload: MinistryInvitationEmail;
-  locale: EmailLocale;
-}
-
-function composeMinistryInvitationEmail({
-  payload,
-  locale,
-}: ComposeMinistryInvitationEmailInput): ComposedEmail {
-  const options = { locale };
-  const ministryName = escapeHtml(payload.ministryName);
-  const accessLevel =
-    payload.ministryAccessLevel === 'leader'
-      ? m.email_ministry_invitation_access_leader({}, options)
-      : m.email_ministry_invitation_access_volunteer({}, options);
-  const roles =
-    payload.roleNames.length > 0
-      ? `<p>${m.email_ministry_invitation_roles({ roles: payload.roleNames.map(escapeHtml).join(', ') }, options)}</p>`
-      : '';
-  const expiresAt = formatInstant({
-    instant: payload.expiresAt,
-    timeZone: payload.churchTimezone,
-  });
-  return {
-    // The subject is plain text: no markup to escape.
-    subject: m.notification_ministry_invitation_title(
-      { ministryName: payload.ministryName },
-      options,
-    ),
-    html: `
-          <p>${m.notification_ministry_invitation_body({ ministryName }, options)}</p>
-          <p>${m.email_ministry_invitation_details({ churchName: escapeHtml(payload.churchName), ministryName, accessLevel }, options)}</p>
-          ${roles}
-          <p>${m.email_ministry_invitation_expires({ expiresAt }, options)}</p>
-          <p><a href="${escapeHtml(payload.redemptionUrl)}">${m.email_ministry_invitation_accept({}, options)}</a></p>
-        `,
-  };
-}
-
-interface ComposeAvailabilityEmailInput {
-  payload: AvailabilityEmail;
-  locale: EmailLocale;
-}
-
-function composeAvailabilityEmail({
-  payload,
-  locale,
-}: ComposeAvailabilityEmailInput): ComposedEmail {
-  const options = { locale };
-  const isReminder = payload.kind === 'availability.reminder';
-  const subjectInput = { ministryName: payload.ministryName };
-  const bodyInput = {
-    ministryName: escapeHtml(payload.ministryName),
-    cycleName: escapeHtml(payload.cycleName),
-    startDate: formatCalendarDay({ day: payload.cycleStartDate }),
-    endDate: formatCalendarDay({ day: payload.cycleEndDate }),
-  };
-  return {
-    subject: isReminder
-      ? m.email_availability_reminder_subject(subjectInput, options)
-      : m.email_availability_opened_subject(subjectInput, options),
-    html: `
-          <p>${isReminder ? m.email_availability_reminder_body(bodyInput, options) : m.email_availability_opened_body(bodyInput, options)}</p>
-          <p><a href="${escapeHtml(payload.actionUrl)}">${m.email_availability_action({}, options)}</a></p>
-        `,
-  };
-}
-
-interface ComposeSchedulePublishedEmailInput {
-  payload: SchedulePublishedEmail;
-  locale: EmailLocale;
-}
-
-function composeSchedulePublishedEmail({
-  payload,
-  locale,
-}: ComposeSchedulePublishedEmailInput): ComposedEmail {
-  const options = { locale };
-  const at = (instant: SchedulePublishedEmail['eventStart']) =>
-    formatInstant({ instant, timeZone: payload.churchTimezone });
-  const shifts =
-    payload.shifts.length > 0
-      ? `<p>${m.email_schedule_published_shifts({}, options)}</p><ul>${payload.shifts
-          .map(
-            (shift) =>
-              `<li>${m.email_schedule_published_shift({ roleName: escapeHtml(shift.roleName), startsAt: at(shift.startsAt) }, options)}</li>`,
-          )
-          .join('')}</ul>`
-      : '';
-  return {
-    subject: m.email_schedule_published_subject(
-      { ministryName: payload.ministryName },
-      options,
-    ),
-    html: `
-          <p>${m.email_schedule_published_body({ eventTitle: escapeHtml(payload.eventTitle), startsAt: at(payload.eventStart), ministryName: escapeHtml(payload.ministryName) }, options)}</p>
-          ${shifts}
-          <p><a href="${escapeHtml(payload.actionUrl)}">${m.email_schedule_published_action({}, options)}</a></p>
-        `,
-  };
-}
-
-const HTML_ESCAPES: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-};
-
-/** Interpolated facts are text, never markup. */
-export function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
-}
-
-interface ComposedEmail {
-  subject: string;
-  html: string;
-}
-
-interface ComposeEmailInput {
-  payload: EmailPayload;
-}
-
-function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
+  const sender = (displayName: string) =>
+    emailSender({ displayName, configuredFrom: from });
   switch (payload.kind) {
+    case 'invitation.verification-code':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: verificationCodeContent({ payload, locale }),
+      });
+    case 'auth.password-reset':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(appName),
+        content: passwordResetContent({ payload, locale, appName }),
+      });
     case 'invitation.chained':
+    case 'invitation.church-bootstrap':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: invitationContent({ payload, locale }),
+      });
     case 'invitation.ministry':
-      // `invitation.ministry` is rendered from the catalog in prepareEmail.
-      return {
-        subject: `You're invited to serve at ${payload.churchName}`,
-        html: `
-          <p>You've been invited to join <strong>${payload.ministryName}</strong> at ${payload.churchName} as a ${payload.ministryAccessLevel}.</p>
-          ${payload.roleNames.length > 0 ? `<p>Roles: ${payload.roleNames.join(', ')}</p>` : ''}
-          <p>This invitation expires on ${toDate({ instant: payload.expiresAt }).toDateString()}.</p>
-          <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
-        `,
-      };
     case 'availability.opened':
     case 'availability.reminder':
     case 'schedule.published':
-      // Rendered from the catalog in prepareEmail.
-      throw new Error(`Email kind "${payload.kind}" renders in prepareEmail`);
-    case 'invitation.verification-code':
-      return {
-        subject: `Your ${payload.churchName} verification code`,
-        html: `<p>Your verification code is <strong>${payload.code}</strong>.</p><p>It expires in 10 minutes.</p>`,
-      };
-    case 'invitation.church-bootstrap':
-      return {
-        subject: `You're invited to administer ${payload.churchName}`,
-        html: `
-          <p>You've been invited to become an administrator of ${payload.churchName}.</p>
-          <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
-        `,
-      };
-    case 'redemption.accepted':
-      return {
-        subject: `Welcome to ${payload.ministryName} at ${payload.churchName}`,
-        html: `<p>Your invitation to serve with <strong>${payload.ministryName}</strong> at ${payload.churchName} has been accepted.</p>`,
-      };
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: memberNotificationContent({ payload, locale }),
+      });
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
-      // Rendered from the catalog in prepareEmail.
-      return composeTransferDigestEmail({ payload, locale: 'en' });
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: transferDigestContent({ payload, locale }),
+      });
+    default: {
+      const unhandled: never = payload;
+      throw new Error(`No email template for ${JSON.stringify(unhandled)}`);
+    }
   }
 }
 
-interface ComposeTransferDigestEmailInput {
-  payload: TransferMinistryDigestEmail | TransferLeaderlessMinistryEmail;
+interface PrepareLayoutEmailInput {
+  payload: EmailPayload;
+  locale: EmailLocale;
+  /** The composed sender (see `emailSender`). */
+  from: string;
+  content: EmailContent;
+}
+
+/** A kind on the shared layout: HTML and text from the same content. */
+export function prepareLayoutEmail({
+  payload,
+  locale,
+  from,
+  content,
+}: PrepareLayoutEmailInput): PreparedEmail {
+  const { subject, html, text } = renderEmailLayout(content);
+  return {
+    payload,
+    locale,
+    request: { from, to: payload.to, subject, html, text },
+  };
+}
+
+interface VerificationCodeContentInput {
+  payload: VerificationCodeEmail;
   locale: EmailLocale;
 }
 
-/** Both transfer kinds share the digest body; the leaderless escalation adds
- * its framing. Never names the destination Church. Times read UTC until
- * Spec 10 adds the Church Timezone. */
-function composeTransferDigestEmail({
+/** T2: the code leads; no action, since there is nothing to open. */
+function verificationCodeContent({
   payload,
   locale,
-}: ComposeTransferDigestEmailInput): ComposedEmail {
+}: VerificationCodeContentInput): EmailContent {
   const options = { locale };
-  const volunteerName = escapeHtml(payload.volunteerName);
-  const ministryName = `<strong>${escapeHtml(payload.ministryName)}</strong>`;
-  const items = payload.withdrawnAssignments
-    .map(
-      (line) =>
-        `<li>${escapeHtml(line.eventName)} — ${formatInstant({ instant: line.eventTimeBlockStart, timeZone: 'UTC' })} — ${escapeHtml(line.roleName)}</li>`,
-    )
-    .join('');
-  const assignments =
-    items.length > 0
-      ? `<ul>${items}</ul>`
-      : `<p>${m.email_transfer_digest_no_assignments({}, options)}</p>`;
-  const digest = `
-    <p>${m.email_transfer_digest_body({ volunteerName, ministryName }, options)}</p>
-    ${assignments}
-  `;
-  // Subjects are plain text: no markup to escape.
-  if (payload.kind === 'transfer.leaderless-ministry') {
-    return {
-      subject: m.email_transfer_leaderless_subject(
-        { ministryName: payload.ministryName },
-        options,
-      ),
-      html: `
-          <p>${m.email_transfer_leaderless_body({ ministryName, volunteerName }, options)}</p>
-          ${digest}
-        `,
-    };
-  }
+  const { code, churchName, to } = payload;
+  const duration = formatEmailDuration({
+    duration: payload.codeLifetime,
+    locale,
+  });
   return {
-    subject: m.email_transfer_digest_subject(
+    subject: m.email_verification_code_subject({ code, churchName }, options),
+    greeting: m.email_greeting_transactional({}, options),
+    heading: m.email_verification_code_heading({ code }, options),
+    facts: [
+      m.email_verification_code_body({ churchName }, options),
+      m.email_verification_code_expires({ duration }, options),
+    ],
+    footer: m.email_footer_invitation({ email: to, churchName }, options),
+  };
+}
+
+type MemberNotificationEmail =
+  | MinistryInvitationEmail
+  | AvailabilityEmail
+  | SchedulePublishedEmail;
+
+interface MemberNotificationContentInput {
+  payload: MemberNotificationEmail;
+  locale: EmailLocale;
+}
+
+/** Title and body reuse the bell's catalog keys, so both channels agree. */
+function memberNotificationContent({
+  payload,
+  locale,
+}: MemberNotificationContentInput): EmailContent {
+  const options = { locale };
+  const { churchName, ministryName } = payload;
+  const firstName = payload.recipientFirstName.trim();
+  const base = {
+    greeting: firstName
+      ? m.email_greeting_notification({ firstName }, options)
+      : m.email_greeting_transactional({}, options),
+    footer: m.email_footer_membership({ churchName }, options),
+  };
+  if (payload.kind === 'schedule.published') {
+    const at = (instant: SchedulePublishedEmail['eventStart']) =>
+      formatInstant({ instant, timeZone: payload.churchTimezone });
+    const title = m.notification_schedule_published_title(
+      { ministryName },
+      options,
+    );
+    const body = m.notification_schedule_published_body(
       {
-        volunteerName: payload.volunteerName,
-        ministryName: payload.ministryName,
+        eventTitle: payload.eventTitle,
+        startsAt: at(payload.eventStart),
+        ministryName,
       },
       options,
+    );
+    return {
+      ...base,
+      subject: title,
+      heading: title,
+      facts:
+        payload.shifts.length > 0
+          ? [body, m.email_schedule_published_shifts({}, options)]
+          : [body],
+      list: payload.shifts.map((shift) =>
+        m.email_schedule_published_shift(
+          { roleName: shift.roleName, startsAt: at(shift.startsAt) },
+          options,
+        ),
+      ),
+      action: {
+        label: m.email_schedule_published_action({}, options),
+        url: payload.actionUrl,
+      },
+    };
+  }
+  if (payload.kind === 'invitation.ministry') {
+    const title = m.notification_ministry_invitation_title(
+      { ministryName },
+      options,
+    );
+    const accessLevel =
+      payload.ministryAccessLevel === 'leader'
+        ? m.email_ministry_invitation_access_leader({}, options)
+        : m.email_ministry_invitation_access_volunteer({}, options);
+    const body = m.notification_ministry_invitation_body(
+      { ministryName },
+      options,
+    );
+    const details = m.email_ministry_invitation_details(
+      { churchName, ministryName, accessLevel },
+      options,
+    );
+    const expires = m.email_ministry_invitation_expires(
+      {
+        expiresAt: formatInstant({
+          instant: payload.expiresAt,
+          timeZone: payload.churchTimezone,
+        }),
+      },
+      options,
+    );
+    const roles = m.email_invitation_roles(
+      { roles: payload.roleNames.join(', ') },
+      options,
+    );
+    return {
+      ...base,
+      subject: title,
+      heading: title,
+      facts: [
+        body,
+        payload.roleNames.length > 0 ? `${details} ${roles}` : details,
+        expires,
+      ],
+      action: {
+        label: m.email_ministry_invitation_accept({}, options),
+        url: payload.redemptionUrl,
+      },
+    };
+  }
+  const isReminder = payload.kind === 'availability.reminder';
+  const input = {
+    ministryName,
+    cycleName: payload.cycleName,
+    startDate: formatCalendarDay({ day: payload.cycleStartDate }),
+    endDate: formatCalendarDay({ day: payload.cycleEndDate }),
+  };
+  const title = isReminder
+    ? m.notification_availability_reminder_title({ ministryName }, options)
+    : m.notification_availability_opened_title({ ministryName }, options);
+  return {
+    ...base,
+    subject: title,
+    heading: title,
+    facts: [
+      isReminder
+        ? m.notification_availability_reminder_body(input, options)
+        : m.notification_availability_opened_body(input, options),
+    ],
+    action: {
+      label: m.email_availability_action({}, options),
+      url: payload.actionUrl,
+    },
+  };
+}
+
+interface PasswordResetContentInput {
+  payload: PasswordResetEmail;
+  locale: EmailLocale;
+  appName: string;
+}
+
+/** T3: no Church; the action opens the supplied reset URL. */
+function passwordResetContent({
+  payload,
+  locale,
+  appName,
+}: PasswordResetContentInput): EmailContent {
+  const options = { locale };
+  const { to: email, resetUrl } = payload;
+  const duration = formatEmailDuration({
+    duration: payload.linkLifetime,
+    locale,
+  });
+  return {
+    subject: m.email_password_reset_subject({ appName }, options),
+    greeting: m.email_greeting_transactional({}, options),
+    heading: m.email_password_reset_heading({}, options),
+    facts: [
+      m.email_password_reset_body({ email }, options),
+      m.email_password_reset_ignore({}, options),
+      m.email_password_reset_expires({ duration }, options),
+    ],
+    action: {
+      label: m.email_password_reset_action({}, options),
+      url: resetUrl,
+    },
+    footer: m.email_footer_password_reset({ email, appName }, options),
+  };
+}
+
+interface InvitationContentInput {
+  payload: ChainedInvitationEmail | ChurchBootstrapInvitationEmail;
+  locale: EmailLocale;
+}
+
+/** T1: ChurchAdmin-only (bootstrap) and paired Ministry invitations. */
+function invitationContent({
+  payload,
+  locale,
+}: InvitationContentInput): EmailContent {
+  const options = { locale };
+  const { to, churchName, churchTimezone, redemptionUrl } = payload;
+  const expiresAt = formatInstant({
+    instant: payload.expiresAt,
+    timeZone: churchTimezone,
+  });
+  const common = {
+    greeting: m.email_greeting_transactional({}, options),
+    action: {
+      label: m.email_invitation_accept({}, options),
+      url: redemptionUrl,
+    },
+    footer: m.email_footer_invitation({ email: to, churchName }, options),
+  };
+  const expires = m.email_invitation_expires({ expiresAt }, options);
+  if (payload.kind === 'invitation.church-bootstrap') {
+    const title = m.email_invitation_admin_title({ churchName }, options);
+    return {
+      ...common,
+      subject: title,
+      heading: title,
+      facts: [m.email_invitation_admin_body({ churchName }, options), expires],
+    };
+  }
+  const { ministryName, inviterName, roleNames } = payload;
+  const isLeader = payload.ministryAccessLevel === 'leader';
+  const input = { churchName, ministryName, inviterName };
+  const title = isLeader
+    ? m.email_invitation_lead_title(input, options)
+    : m.email_invitation_serve_title(input, options);
+  const body = isLeader
+    ? m.email_invitation_lead_body_inviter(input, options)
+    : m.email_invitation_serve_body_inviter(input, options);
+  const roles = m.email_invitation_roles(
+    { roles: roleNames.join(', ') },
+    options,
+  );
+  return {
+    ...common,
+    subject: title,
+    heading: title,
+    facts: roleNames.length > 0 ? [body, roles, expires] : [body, expires],
+  };
+}
+
+interface TransferDigestContentInput {
+  payload: TransferDigestEmail;
+  locale: EmailLocale;
+}
+
+/** N11–12: both kinds share the digest; the leaderless escalation adds why
+ * the recipient got it. Never names the destination Church. */
+function transferDigestContent({
+  payload,
+  locale,
+}: TransferDigestContentInput): EmailContent {
+  const options = { locale };
+  const { churchName, churchTimezone, ministryName, volunteerName } = payload;
+  const subject = m.email_transfer_digest_subject(
+    { volunteerName, ministryName },
+    options,
+  );
+  const list = payload.withdrawnAssignments.map((line) =>
+    formatShiftLine({ ...line, churchTimezone, locale }),
+  );
+  const withdrawals: [string] | [string, string] =
+    list.length > 0
+      ? [
+          m.email_transfer_digest_body({}, options),
+          m.email_transfer_digest_timezone(
+            { timeZone: churchTimezone },
+            options,
+          ),
+        ]
+      : [m.email_transfer_digest_no_assignments({}, options)];
+  return {
+    subject,
+    greeting: m.email_greeting_notification(
+      { firstName: payload.recipientFirstName },
+      options,
     ),
-    html: digest,
+    heading: subject,
+    facts:
+      payload.kind === 'transfer.leaderless-ministry'
+        ? [
+            ...withdrawals,
+            m.email_transfer_leaderless_body({ ministryName }, options),
+          ]
+        : withdrawals,
+    list,
+    action: {
+      label: m.email_transfer_digest_action({}, options),
+      url: payload.actionUrl,
+    },
+    footer: m.email_footer_membership({ churchName }, options),
   };
 }

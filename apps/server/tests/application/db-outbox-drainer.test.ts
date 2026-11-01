@@ -26,7 +26,7 @@ const invitationRepository = {
   findById: vi.fn(),
   resolveRecipientEmail: vi.fn(),
 };
-const churchRepository = { getById: vi.fn() };
+const churchRepository = { getById: vi.fn(), findUserName: vi.fn() };
 const ministryRepository = { getById: vi.fn() };
 const roleRepository = { getById: vi.fn() };
 const volunteerTransferRepository = { getDigestDetails: vi.fn() };
@@ -88,7 +88,11 @@ function buildInvitation(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  churchRepository.getById.mockResolvedValue({ name: 'Grace Church' });
+  churchRepository.getById.mockResolvedValue({
+    name: 'Grace Church',
+    timezone: 'America/Sao_Paulo',
+  });
+  churchRepository.findUserName.mockResolvedValue('Pastor Ana');
   ministryRepository.getById.mockResolvedValue({ name: 'Worship Team' });
   roleRepository.getById.mockResolvedValue({ name: 'Vocalist' });
   invitationRepository.resolveRecipientEmail.mockResolvedValue(
@@ -116,14 +120,42 @@ describe('DbOutboxDrainer.drainOnce', () => {
             churchName: 'Grace Church',
             ministryName: 'Worship Team',
             roleNames: ['Vocalist'],
+            inviterName: 'Pastor Ana',
+            churchTimezone: 'America/Sao_Paulo',
           }),
         }),
       }),
     );
+    expect(emailSender.prepare).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: appConfig.defaultLocale }),
+    );
+    expect(churchRepository.findUserName).toHaveBeenCalledWith({
+      userId: inviterId,
+    });
     expect(outboxRepository.markSent).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'outbox_1',
         providerMessageId: 'provider-1',
+      }),
+    );
+  });
+
+  it('fails terminally without sending when the inviter cannot be resolved', async () => {
+    const message = buildMessage();
+    outboxRepository.claimPending.mockResolvedValue([message]);
+    invitationRepository.findById.mockResolvedValue(buildInvitation());
+    churchRepository.findUserName.mockResolvedValue(null);
+
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.prepare).not.toHaveBeenCalled();
+    expect(emailSender.deliver).not.toHaveBeenCalled();
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'outbox_1',
+        status: 'failed',
+        lastError: 'Invitation inviter could not be resolved',
       }),
     );
   });

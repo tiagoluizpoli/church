@@ -20,6 +20,12 @@ describe('withAllParkedOn', () => {
 });
 
 describe('appConfigSchema', () => {
+  it('refuses a blank app name', () => {
+    expect(
+      appConfigSchema.safeParse({ ...appConfig, appName: '  ' }).success,
+    ).toBe(false);
+  });
+
   it('refuses a zero or negative TTL', () => {
     const zero = { ...appConfig, churchInvitation: { ttlMs: 0 } };
     const negative = { ...appConfig, churchInvitation: { ttlMs: -1 } };

@@ -83,13 +83,7 @@ function transferDigestEmail({
   data,
   address,
 }: TransferDigestEmailInput): EmailPayload {
-  return {
-    kind,
-    to: [address.email],
-    ministryName: data.ministryName,
-    volunteerName: data.volunteerName,
-    withdrawnAssignments: data.withdrawnAssignments,
-  };
+  return { kind, to: [address.email], ...data };
 }
 
 export interface BuildChurchNotifierInput {
@@ -123,14 +117,15 @@ export function buildChurchNotifier({
     name: CHURCH_SINK_NAMES.email,
     enabled: config.notifications.email.enabled,
     lookup: async ({ to }) => {
-      const address = await churchRepository.findMemberEmail({
+      const contact = await churchRepository.findMemberContact({
         id: to.churchId,
         userId: to.userId,
       });
-      return address === null
+      return contact === null
         ? null
         : {
-            email: address,
+            email: contact.email,
+            firstName: contact.name.trim().split(/\s+/)[0] ?? '',
             locale: recipientLocale({
               recipient: to,
               defaultLocale: config.defaultLocale,
@@ -143,6 +138,7 @@ export function buildChurchNotifier({
         kind: 'invitation.ministry',
         to: address.email,
         churchName: data.churchName,
+        recipientFirstName: address.firstName,
         ministryName: data.ministryName,
         ministryAccessLevel: data.ministryAccessLevel,
         roleNames: data.roleNames,
@@ -154,18 +150,22 @@ export function buildChurchNotifier({
       availability_opened: ({ data, address }) => ({
         kind: 'availability.opened',
         to: address.email,
+        recipientFirstName: address.firstName,
         ...availabilityEmailFacts(data),
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       availability_reminder: ({ data, address }) => ({
         kind: 'availability.reminder',
         to: address.email,
+        recipientFirstName: address.firstName,
         ...availabilityEmailFacts(data),
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       schedule_published: ({ data, address }) => ({
         kind: 'schedule.published',
         to: address.email,
+        churchName: data.churchName,
+        recipientFirstName: address.firstName,
         ministryName: data.ministryName,
         eventTitle: data.eventTitle,
         eventStart: data.eventStart,
@@ -244,6 +244,7 @@ export function buildChurchNotifier({
 /** The facts both availability emails render. */
 function availabilityEmailFacts(data: AvailabilityDeliveryFacts) {
   return {
+    churchName: data.churchName,
     ministryName: data.ministryName,
     cycleName: data.cycleName,
     cycleStartDate: data.cycleStartDate,

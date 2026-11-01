@@ -93,7 +93,8 @@ export class SchedulingNotificationFacts {
     data,
   }: ResolveAvailabilityInput): Promise<AvailabilityDeliveryFacts | null> {
     try {
-      const [ministry, cycle] = await Promise.all([
+      const [church, ministry, cycle] = await Promise.all([
+        this.churchRepository.getById({ id: churchId }),
         this.ministryRepository.getById({
           churchId,
           id: MinistryId.from(data.ministryId),
@@ -107,6 +108,7 @@ export class SchedulingNotificationFacts {
         cycleId: cycle.id,
         ministryId: ministry.id,
         ministryName: ministry.name,
+        churchName: church.name,
         cycleName: cycle.name,
         cycleStartDate: cycle.startDate,
         cycleEndDate: cycle.endDate,
@@ -170,6 +172,7 @@ export class SchedulingNotificationFacts {
         cycleId: event.cycleId,
         ministryId: ministry.id,
         ministryName: ministry.name,
+        churchName: church.name,
         eventTitle: event.title,
         eventStart: event.start,
         eventEnd: event.end,

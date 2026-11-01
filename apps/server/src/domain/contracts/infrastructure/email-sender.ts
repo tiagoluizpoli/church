@@ -1,4 +1,5 @@
 import type { CalendarDay, Instant } from '@church/time';
+import type { TransferDigestDeliveryFacts } from '../../notification-kinds';
 
 /**
  * Typed per-kind email payloads for invitation delivery (issue #56) and
@@ -10,11 +11,27 @@ import type { CalendarDay, Instant } from '@church/time';
  * persisted and never appears in an API response.
  */
 
-/** Chained and Ministry-only invitations render identically — same fields. */
-export interface MinistryInvitationEmail {
-  kind: 'invitation.chained' | 'invitation.ministry';
+/** T1: a Ministry invitation paired with a Church invitation; names who sent it. */
+export interface ChainedInvitationEmail {
+  kind: 'invitation.chained';
   to: string;
   churchName: string;
+  ministryName: string;
+  ministryAccessLevel: string;
+  roleNames: string[];
+  inviterName: string;
+  expiresAt: Instant;
+  /** The Church Timezone `expiresAt` is read in. */
+  churchTimezone: string;
+  redemptionUrl: string;
+}
+
+/** N1: a Ministry invitation to an existing Church Member; Spec 15 owns its wording. */
+export interface MinistryInvitationEmail {
+  kind: 'invitation.ministry';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
   ministryName: string;
   ministryAccessLevel: string;
   roleNames: string[];
@@ -24,25 +41,45 @@ export interface MinistryInvitationEmail {
   redemptionUrl: string;
 }
 
+/** A policy-derived length of time, translated at render time. */
+export interface EmailDuration {
+  minutes: number;
+}
+
+/** A Transactional recipient known only by address (no Church Membership). */
+export interface AddressRecipient {
+  email: string;
+}
+
 export interface VerificationCodeEmail {
   kind: 'invitation.verification-code';
   to: string;
   churchName: string;
   code: string;
+  /** How long the code stays valid, from the same policy that enforces it. */
+  codeLifetime: EmailDuration;
+}
+
+/**
+ * App-branded and church-less: sent to an address, never a Church Member.
+ * The caller (Spec 11) supplies the absolute reset URL and the lifetime from
+ * the policy that enforces the link.
+ */
+export interface PasswordResetEmail {
+  kind: 'auth.password-reset';
+  to: string;
+  resetUrl: string;
+  linkLifetime: EmailDuration;
 }
 
 export interface ChurchBootstrapInvitationEmail {
   kind: 'invitation.church-bootstrap';
   to: string;
   churchName: string;
+  expiresAt: Instant;
+  /** The Church Timezone `expiresAt` is read in. */
+  churchTimezone: string;
   redemptionUrl: string;
-}
-
-export interface RedemptionAcceptedEmail {
-  kind: 'redemption.accepted';
-  to: string;
-  churchName: string;
-  ministryName: string;
 }
 
 /**
@@ -51,38 +88,33 @@ export interface RedemptionAcceptedEmail {
  * destination Church (spec §8.8): disclosing where the Volunteer went is not
  * required to re-schedule, and the move is one the former Church cannot veto.
  */
-/** JSON-safe copy of a withdrawn assignment, so a prepared email survives
- * persistence unchanged (an Instant, never a `Date`). */
-export interface WithdrawnAssignmentEmailLine {
-  eventName: string;
-  eventTimeBlockStart: Instant;
-  roleName: string;
-}
-
-export interface TransferMinistryDigestEmail {
+export interface TransferMinistryDigestEmail
+  extends TransferDigestDeliveryFacts {
   kind: 'transfer.ministry-digest';
   to: string[];
-  ministryName: string;
-  volunteerName: string;
-  withdrawnAssignments: WithdrawnAssignmentEmailLine[];
 }
 
 /**
  * Escalation to every ChurchAdmin when the departure left the Ministry with
- * no active leader to reach — same content as the digest, flagged leaderless.
+ * no active leader to reach — same content as the digest, plus the no-leader
+ * explanation.
  */
-export interface TransferLeaderlessMinistryEmail {
+export interface TransferLeaderlessMinistryEmail
+  extends TransferDigestDeliveryFacts {
   kind: 'transfer.leaderless-ministry';
   to: string[];
-  ministryName: string;
-  volunteerName: string;
-  withdrawnAssignments: WithdrawnAssignmentEmailLine[];
 }
+
+export type TransferDigestEmail =
+  | TransferMinistryDigestEmail
+  | TransferLeaderlessMinistryEmail;
 
 /** Availability opened (initial Ask) and its reminder: same facts, own words. */
 export interface AvailabilityEmail {
   kind: 'availability.opened' | 'availability.reminder';
   to: string;
+  churchName: string;
+  recipientFirstName: string;
   ministryName: string;
   cycleName: string;
   cycleStartDate: CalendarDay;
@@ -93,6 +125,8 @@ export interface AvailabilityEmail {
 export interface SchedulePublishedEmail {
   kind: 'schedule.published';
   to: string;
+  churchName: string;
+  recipientFirstName: string;
   ministryName: string;
   eventTitle: string;
   eventStart: Instant;
@@ -105,22 +139,31 @@ export interface SchedulePublishedEmail {
 export type EmailPayload =
   | AvailabilityEmail
   | SchedulePublishedEmail
+  | ChainedInvitationEmail
   | MinistryInvitationEmail
   | VerificationCodeEmail
+  | PasswordResetEmail
   | ChurchBootstrapInvitationEmail
-  | RedemptionAcceptedEmail
   | TransferMinistryDigestEmail
   | TransferLeaderlessMinistryEmail;
 
 export type EmailLocale = 'en' | 'pt-BR';
 
-/** The exact provider request: what a retry must resend byte for byte. */
+/** The exact provider request: what a retry must resend byte for byte.
+ * Every newly prepared layout request carries its plain-text alternative. */
 export interface EmailRequest {
   from: string;
   to: string | string[];
   subject: string;
   html: string;
+  text: string;
 }
+
+/** A request without plain text: saved before the shared layout existed.
+ * Replayed as stored, never re-rendered to add text. */
+export type HtmlOnlyEmailRequest = Omit<EmailRequest, 'text'> & {
+  text?: never;
+};
 
 /**
  * A rendered email, fixed once before its first external attempt. Every field
@@ -134,6 +177,17 @@ export interface PreparedEmail {
   request: EmailRequest;
 }
 
+/** A prepared email whose request has no plain text (see HtmlOnlyEmailRequest). */
+export interface HtmlOnlyPreparedEmail {
+  payload: EmailPayload;
+  locale: EmailLocale;
+  request: HtmlOnlyEmailRequest;
+}
+
+/** What the outbox stores and a transport replays: a layout email, or a
+ * historical html-only one. New preparations are always `PreparedEmail`. */
+export type ReplayableEmail = PreparedEmail | HtmlOnlyPreparedEmail;
+
 export interface SendEmailResult {
   /** Absent for the capture adapter — nothing was actually dispatched. */
   providerMessageId?: string;
@@ -141,12 +195,12 @@ export interface SendEmailResult {
 
 export interface PrepareEmailInput {
   payload: EmailPayload;
-  /** The recipient's language; templates not yet on the catalog stay English. */
+  /** The recipient's language. */
   locale?: EmailLocale;
 }
 
 export interface DeliverEmailInput {
-  email: PreparedEmail;
+  email: ReplayableEmail;
   /**
    * Stable per delivery (derived from the outbox row), so a replay inside the
    * provider's retention window is deduplicated rather than sent twice.
@@ -156,6 +210,8 @@ export interface DeliverEmailInput {
 
 export interface SendEmailInput {
   payload: EmailPayload;
+  /** Resolved by the caller through `recipientLocale`. */
+  locale: EmailLocale;
 }
 
 /** Renders a payload into the exact request a transport will send. */

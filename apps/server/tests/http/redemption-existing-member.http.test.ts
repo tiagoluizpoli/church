@@ -72,7 +72,7 @@ beforeEach(async () => {
   fixture = await seedTwoChurchIdentityFixture({ db: testDb });
   const verificationCodeManager = new InvitationVerificationCodeManager({
     repository: verificationCodeRepository,
-    emailSender: new CaptureEmailSender(),
+    emailSender: new CaptureEmailSender('Church'),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,

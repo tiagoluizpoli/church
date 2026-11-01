@@ -13,6 +13,7 @@ import { prepareEmail } from './email-templates';
 export interface ResendEmailSenderOptions {
   apiKey: string;
   from: string;
+  appName: string;
 }
 
 interface SendViaResendInput {
@@ -42,8 +43,9 @@ const RETRYABLE_ERROR_NAMES = new Set(['concurrent_idempotent_requests']);
 export class ResendEmailSender implements EmailSender {
   private readonly client: Resend;
   private readonly from: string;
+  private readonly appName: string;
 
-  constructor({ apiKey, from }: ResendEmailSenderOptions) {
+  constructor({ apiKey, from, appName }: ResendEmailSenderOptions) {
     if (!apiKey) {
       throw new Error(
         'ResendEmailSender requires a non-empty apiKey (RESEND_API_KEY).',
@@ -51,14 +53,21 @@ export class ResendEmailSender implements EmailSender {
     }
     this.client = new Resend(apiKey);
     this.from = from;
+    this.appName = appName;
   }
 
   prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
-    return prepareEmail({ payload, locale, from: this.from });
+    return prepareEmail({
+      payload,
+      locale,
+      from: this.from,
+      appName: this.appName,
+    });
   }
 
-  async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
-    return this.deliver({ email: this.prepare({ payload }) });
+  async send({ payload, locale }: SendEmailInput): Promise<SendEmailResult> {
+    const email = this.prepare({ payload, locale });
+    return this.deliver({ email });
   }
 
   async deliver({

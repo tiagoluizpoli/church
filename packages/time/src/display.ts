@@ -128,6 +128,24 @@ export function formatDayAndMonth({ day }: CalendarDayFormatInput): string {
   return `${dayOfMonth}/${month}`;
 }
 
+function monthShort({ day, locale }: CalendarDayLocaleInput): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
+}
+
+/** `Sun 12 Oct` / `dom 12 out`: weekday, day of month, month; no dots, no zero pad. */
+export function formatDayLabel({
+  day,
+  locale,
+}: CalendarDayLocaleInput): string {
+  const dayOfMonth = Number(splitCalendarDay({ day }).dayOfMonth);
+  const label = `${weekdayName({ index: weekdayIndex({ day }), locale, style: 'short' })} ${dayOfMonth} ${monthShort({ day, locale })}`;
+  const plain = label.replaceAll('.', '');
+  return locale === 'pt-BR' ? plain.toLowerCase() : plain;
+}
+
 export interface TimeOfDayFormatInput {
   time: TimeOfDay;
 }

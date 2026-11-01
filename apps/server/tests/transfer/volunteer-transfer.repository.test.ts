@@ -2,6 +2,7 @@ import {
   assignment,
   assignmentAudit,
   availabilityCheck,
+  church,
   identityAudit,
   ministryInvitation,
   ministryInvitationRole,
@@ -9,6 +10,8 @@ import {
   ministryMembershipRole,
   ministryMembershipTeam,
   outboxMessage,
+  shift,
+  shiftRequirement,
   volunteer,
   volunteerTransfer,
 } from '@church/db';
@@ -24,6 +27,7 @@ import {
 } from '@/domain/branded-ids';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories';
 import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
+import { buildSector } from '@/seeds/builders/ministry';
 import {
   buildAssignedShift,
   buildCycle,
@@ -567,14 +571,71 @@ describe('DrizzleVolunteerTransferRepository.getDigestDetails', () => {
       ministryId: MinistryId.from(fixture.ministryInB),
       volunteerId: VolunteerId.from(fixture.dualMemberABVolunteerInB),
       correlationId: CORRELATION_ID,
+      recipientUserId: UserId.from(fixture.adminB),
     });
 
     expect(details.ministryName).toContain('Hospitality');
     expect(details.volunteerName).toBe('Fixture Dual Member AB');
     expect(details.withdrawnAssignments).toHaveLength(1);
     expect(details.withdrawnAssignments[0]).toMatchObject({
-      eventName: 'Transfer Sunday',
+      eventTitle: 'Transfer Sunday',
       roleName: expect.stringContaining('Greeter'),
     });
+  });
+
+  it('reads the actual Shift bounds and Sector, never the EventTimeBlock bounds, with the former Church and recipient', async () => {
+    // The Shift sits inside its EventTimeBlock: 12:15–12:45 within 12:00:01–13:00:01.
+    const [booked] = await testDb
+      .select({
+        shiftId: assignment.shiftId,
+        requirementId: assignment.shiftRequirementId,
+      })
+      .from(assignment)
+      .where(eq(assignment.id, assignmentIds.cancelledAfter));
+    await testDb
+      .update(shift)
+      .set({
+        startTime: new Date('2026-09-15T12:15:00Z'),
+        endTime: new Date('2026-09-15T12:45:00Z'),
+      })
+      .where(eq(shift.id, booked?.shiftId ?? ''));
+    const door = await buildSector({
+      db: testDb,
+      churchId: fixture.churchB.id,
+      ministryId: fixture.ministryInB,
+      name: 'Main <door>',
+    });
+    await testDb
+      .update(shiftRequirement)
+      .set({ sectorId: door.id })
+      .where(eq(shiftRequirement.id, booked?.requirementId ?? ''));
+    await testDb
+      .update(church)
+      .set({ timezone: 'America/Sao_Paulo' })
+      .where(eq(church.id, fixture.churchB.id));
+    await runTransfer();
+
+    const details = await repository.getDigestDetails({
+      churchId: ChurchId.from(fixture.churchB.id),
+      ministryId: MinistryId.from(fixture.ministryInB),
+      volunteerId: VolunteerId.from(fixture.dualMemberABVolunteerInB),
+      correlationId: CORRELATION_ID,
+      recipientUserId: UserId.from(fixture.adminB),
+    });
+
+    expect(details).toMatchObject({
+      churchName: fixture.churchB.name,
+      churchTimezone: 'America/Sao_Paulo',
+      recipientName: 'Fixture Admin B',
+    });
+    expect(details.withdrawnAssignments).toEqual([
+      {
+        startsAt: new Date('2026-09-15T12:15:00Z'),
+        endsAt: new Date('2026-09-15T12:45:00Z'),
+        eventTitle: 'Transfer Sunday',
+        roleName: expect.stringContaining('Greeter'),
+        sectorName: 'Main <door>',
+      },
+    ]);
   });
 });

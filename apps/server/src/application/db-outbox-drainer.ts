@@ -15,10 +15,10 @@ import type {
 } from '../domain/contracts/application/outbox-drainer';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
+  ChainedInvitationEmail,
+  EmailLocale,
   EmailPayload,
   EmailSender,
-  MinistryInvitationEmail,
-  RedemptionAcceptedEmail,
 } from '../domain/contracts/infrastructure/email-sender';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
@@ -29,19 +29,16 @@ import type {
   OutboxEmailDelivery,
   OutboxMessage,
   OutboxRepository,
-  RedemptionAcceptedOutboxMessage,
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type {
-  VolunteerTransferRepository,
-  WithdrawnAssignmentPreview,
-} from '../domain/contracts/infrastructure/volunteer-transfer.repository';
+import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { EmailSendError } from '../domain/errors/email-send-error';
 import {
   type MinistryInvitationDeliveryFacts,
   type NotificationDeliveryData,
   type NotificationRequest,
+  notificationDeliveryFactsSchemas,
   notificationRequestDataSchemas,
   type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
@@ -50,6 +47,7 @@ import {
   hasExhaustedRetries,
   nextRetryAt,
 } from '../domain/services/outbox-retry-policy';
+import { recipientLocale } from '../domain/services/recipient-locale';
 import { webLink } from '../domain/services/web-link';
 import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
@@ -68,6 +66,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
   private readonly webBaseUrl: string;
+  private readonly defaultLocale: AppConfig['defaultLocale'];
 
   constructor({
     outboxRepository,
@@ -94,7 +93,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.schedulingFacts = schedulingFacts;
     this.unitOfWork = unitOfWork;
     this.webBaseUrl = webBaseUrl;
-    const { outbox } = config;
+    const { outbox, defaultLocale } = config;
+    this.defaultLocale = defaultLocale;
     this.outboxPolicy = outbox;
     this.emailIdempotencyRetentionMs = outbox.emailIdempotencyRetentionMs;
   }
@@ -126,8 +126,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     switch (message.kind) {
       case 'invitation.chained':
         return this.processInvitationMessage({ message });
-      case 'redemption.accepted':
-        return this.processRedemptionAcceptedMessage({ message });
       case 'notification':
         return this.processNotificationMessage({ message });
       case 'invitation.church-bootstrap':
@@ -158,7 +156,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return this.deliverEmail({ message, delivery: message.emailDelivery });
     }
 
-    const [church, ministry, email] = await Promise.all([
+    const [church, ministry, email, inviterName] = await Promise.all([
       this.churchRepository.getById({ id: message.churchId }),
       this.ministryRepository.getById({
         churchId: message.churchId,
@@ -167,6 +165,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       this.invitationRepository.resolveRecipientEmail({
         ministryInvitation: invitation,
       }),
+      this.churchRepository.findUserName({ userId: invitation.inviterId }),
     ]);
     const roles = await Promise.all(
       invitation.roleIds.map((roleId) =>
@@ -174,13 +173,23 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ),
     );
 
-    const payload: MinistryInvitationEmail = {
+    if (inviterName === null) {
+      // T1 names who invited; without it there is nothing correct to send.
+      await this.failTerminally({
+        message,
+        reason: 'Invitation inviter could not be resolved',
+      });
+      return 'failed';
+    }
+
+    const payload: ChainedInvitationEmail = {
       kind: message.kind,
       to: email,
       churchName: church.name,
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
+      inviterName,
       expiresAt: invitation.expiresAt,
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -189,7 +198,18 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       }),
     };
 
-    return this.prepareAndDeliver({ message, payload });
+    return this.prepareAndDeliver({
+      message,
+      payload,
+      locale: this.localeFor({ email }),
+    });
+  }
+
+  private localeFor({ email }: LocaleForInput): EmailLocale {
+    return recipientLocale({
+      recipient: { email },
+      defaultLocale: this.defaultLocale,
+    });
   }
 
   /** The invitation's display facts, read now; `null` once it is no longer pending. */
@@ -253,7 +273,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         });
       case 'transfer_ministry_digest':
       case 'transfer_leaderless_ministry':
-        return this.loadTransferDigestFacts({ churchId, request });
+        return this.loadTransferDigestFacts({ churchId, to, request });
     }
   }
 
@@ -261,6 +281,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
    * never change, so they always resolve. */
   private async loadTransferDigestFacts({
     churchId,
+    to,
     request,
   }: LoadTransferDigestFactsInput): Promise<TransferDigestDeliveryFacts> {
     const details = await this.volunteerTransferRepository.getDigestDetails({
@@ -268,13 +289,22 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryId: request.data.ministryId,
       volunteerId: request.data.volunteerId,
       correlationId: request.data.transferCorrelationId,
+      recipientUserId: to.userId,
     });
     return {
+      churchName: details.churchName,
+      churchTimezone: details.churchTimezone,
+      recipientFirstName: firstNameOf(details.recipientName),
       ministryName: details.ministryName,
       volunteerName: details.volunteerName,
-      withdrawnAssignments: toEmailLines({
-        assignments: details.withdrawnAssignments,
-      }),
+      withdrawnAssignments: details.withdrawnAssignments.map(
+        ({ startsAt, endsAt, ...names }) => ({
+          ...names,
+          startsAt: fromDate({ date: startsAt }),
+          endsAt: fromDate({ date: endsAt }),
+        }),
+      ),
+      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/schedules' }),
     };
   }
 
@@ -297,6 +327,19 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return 'failed';
     }
     let facts = message.payload.facts;
+    // A saved email replays as stored; only an unprepared row renders from facts.
+    if (
+      facts &&
+      !message.emailDelivery &&
+      !notificationDeliveryFactsSchemas[kind].safeParse(facts).success
+    ) {
+      // Frozen before a required fact existed: never render a guess.
+      await this.skipDelivery({
+        message,
+        why: 'its frozen facts predate a required field',
+      });
+      return 'sent';
+    }
     if (!facts) {
       const resolved = await this.loadDeliveryFacts({
         churchId: message.churchId,
@@ -313,21 +356,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           return 'failed';
         }
         // The change is gone before anything was delivered: nothing to render.
-        console.warn(
-          `[Outbox] notification ${message.id} (${kind}) skipped: its context no longer exists`,
-        );
-        await this.unitOfWork.run((tx) =>
-          this.outboxRepository.markSent({
-            id: message.id,
-            sentAt: nowAsDate(),
-            channelOutcomes: {
-              ...message.channelOutcomes,
-              [CHURCH_SINK_NAMES.email]: 'skipped',
-              [CHURCH_SINK_NAMES.inbox]: 'skipped',
-            },
-            tx,
-          }),
-        );
+        await this.skipDelivery({
+          message,
+          why: 'its context no longer exists',
+        });
         return 'sent';
       }
       facts = resolved;
@@ -410,40 +442,26 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     return 'sent';
   }
 
-  private async processRedemptionAcceptedMessage({
+  /** Settles every unsettled sink as skipped: nothing can be rendered. */
+  private async skipDelivery({
     message,
-  }: ProcessRedemptionAcceptedMessageInput): Promise<'sent' | 'failed'> {
-    const invitation = await this.invitationRepository.findById({
-      churchId: message.churchId,
-      ministryInvitationId: message.payload.ministryInvitationId,
-    });
-    if (!invitation || invitation.status !== 'accepted') {
-      await this.failTerminally({
-        message,
-        reason: 'Invitation was not accepted',
-      });
-      return 'failed';
-    }
-    if (message.emailDelivery) {
-      return this.deliverEmail({ message, delivery: message.emailDelivery });
-    }
-    const [church, ministry, email] = await Promise.all([
-      this.churchRepository.getById({ id: message.churchId }),
-      this.ministryRepository.getById({
-        churchId: message.churchId,
-        id: invitation.ministryId,
+    why,
+  }: SkipDeliveryInput): Promise<void> {
+    console.warn(
+      `[Outbox] notification ${message.id} (${message.payload.kind}) skipped: ${why}`,
+    );
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markSent({
+        id: message.id,
+        sentAt: nowAsDate(),
+        channelOutcomes: {
+          [CHURCH_SINK_NAMES.email]: 'skipped',
+          [CHURCH_SINK_NAMES.inbox]: 'skipped',
+          ...message.channelOutcomes,
+        },
+        tx,
       }),
-      this.invitationRepository.resolveRecipientEmail({
-        ministryInvitation: invitation,
-      }),
-    ]);
-    const payload: RedemptionAcceptedEmail = {
-      kind: message.kind,
-      to: email,
-      churchName: church.name,
-      ministryName: ministry.name,
-    };
-    return this.prepareAndDeliver({ message, payload });
+    );
   }
 
   /**
@@ -454,9 +472,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private async prepareAndDeliver({
     message,
     payload,
+    locale,
   }: PrepareAndDeliverInput): Promise<'sent' | 'failed'> {
     const delivery: OutboxEmailDelivery = {
-      email: this.emailSender.prepare({ payload }),
+      email: this.emailSender.prepare({ payload, locale }),
       idempotencyKey: emailIdempotencyKeyFor({ message }),
       firstAttemptAt: now(),
     };
@@ -593,6 +612,10 @@ interface DbOutboxDrainerDependencies {
   webBaseUrl: string;
 }
 
+interface LocaleForInput {
+  email: string;
+}
+
 interface ProcessOneInput {
   message: OutboxMessage;
 }
@@ -614,6 +637,7 @@ interface LoadDeliveryFactsInput {
 
 interface LoadTransferDigestFactsInput {
   churchId: ChurchId;
+  to: ChurchRecipient;
   request: Extract<
     NotificationRequest,
     { kind: 'transfer_ministry_digest' | 'transfer_leaderless_ministry' }
@@ -624,18 +648,20 @@ interface ProcessNotificationMessageInput {
   message: NotificationOutboxMessage;
 }
 
-interface ProcessRedemptionAcceptedMessageInput {
-  message: RedemptionAcceptedOutboxMessage;
-}
-
 interface PrepareAndDeliverInput {
   message: OutboxMessage;
   payload: EmailPayload;
+  locale: EmailLocale;
 }
 
 interface DeliverEmailInput {
   message: OutboxMessage;
   delivery: OutboxEmailDelivery;
+}
+
+interface SkipDeliveryInput {
+  message: NotificationOutboxMessage;
+  why: string;
 }
 
 interface MarkSentInput {
@@ -653,16 +679,9 @@ function emailIdempotencyKeyFor({
   return `outbox-message/${message.id}`;
 }
 
-interface ToEmailLinesInput {
-  assignments: WithdrawnAssignmentPreview[];
-}
-
-function toEmailLines({ assignments }: ToEmailLinesInput) {
-  return assignments.map(({ eventName, eventTimeBlockStart, roleName }) => ({
-    eventName,
-    eventTimeBlockStart: fromDate({ date: eventTimeBlockStart }),
-    roleName,
-  }));
+/** The greeting's name: the first word of the User's display name. */
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? name;
 }
 
 interface HandleSendFailureInput {

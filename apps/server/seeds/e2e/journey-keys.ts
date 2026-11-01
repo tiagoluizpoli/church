@@ -24,6 +24,7 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   ministryRedemption: 'ministry-redemption',
   crossTenantInvitation: 'cross-tenant-invitation',
   planningAdmin: 'planning-admin',
+  eventTemplates: 'event-templates',
   cycleAccess: 'cycle-access',
   cycleTenants: 'cycle-tenants',
   ministryWorkspaceIndex: 'ministry-workspace-index',

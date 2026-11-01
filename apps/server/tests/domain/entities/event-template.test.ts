@@ -5,6 +5,7 @@ import {
   TemplateTimeBlock,
   type TemplateTimeBlockProps,
 } from '@/domain/entities/template-time-block';
+import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
 import { InvalidTimeRangeError } from '@/domain/errors/invalid-time-range';
 import { InvalidWeekdayError } from '@/domain/errors/invalid-weekday';
 
@@ -128,6 +129,25 @@ describe('EventTemplate and TemplateTimeBlock', () => {
           },
         }),
     ).toThrow(InvalidWeekdayError);
+  });
+
+  it('rejects two blocks sharing a label, ignoring case', () => {
+    expect(
+      () =>
+        new EventTemplate({
+          props: {
+            churchId: '11111111-1111-1111-1111-111111111111',
+            name: 'Broken',
+            weekday: 0,
+            blocks: [
+              createTemplateTimeBlock({ props: { order: 0 } }),
+              createTemplateTimeBlock({
+                props: { label: 'WELCOME', order: 1 },
+              }),
+            ],
+          },
+        }),
+    ).toThrow(DuplicateTemplateBlockLabelError);
   });
 
   it('preserves stable block ids for later event time block generation', () => {

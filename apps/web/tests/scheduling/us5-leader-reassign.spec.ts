@@ -128,7 +128,6 @@ async function setUpLiveChanges({
             label: 'Gathering',
             startTime: '09:00',
             endTime: '10:00',
-            order: 0,
           },
         ],
       },

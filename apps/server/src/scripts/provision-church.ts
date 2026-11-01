@@ -12,6 +12,7 @@ import { now } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ChurchSlugTakenError } from '../domain/errors/church-slug-taken';
+import { isUniqueViolation } from '../infrastructure/repositories/unique-violation';
 import { expiresAtAfter } from './shared-time';
 
 const ORGANIZATION_SLUG_UNIQUE_CONSTRAINT = 'organization_slug_unique';
@@ -44,34 +45,6 @@ async function assertOperatorExists({
       `Platform Operator User not found: ${operatorUserId}`,
     );
   }
-}
-
-interface PostgresUniqueViolation {
-  code: '23505';
-  constraint?: string;
-  cause?: unknown;
-}
-
-interface IsSlugUniqueViolationInput {
-  error: unknown;
-}
-
-/**
- * `createChurch`'s insert throws through drizzle-orm's node-postgres driver,
- * which wraps the raw `pg` error in a `DrizzleQueryError` rather than
- * surfacing it directly — the unique-violation `code`/`constraint` live one
- * level down, on `.cause`.
- */
-function isSlugUniqueViolation({ error }: IsSlugUniqueViolationInput): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const candidate = error as Partial<PostgresUniqueViolation>;
-  if (
-    candidate.code === '23505' &&
-    candidate.constraint === ORGANIZATION_SLUG_UNIQUE_CONSTRAINT
-  ) {
-    return true;
-  }
-  return isSlugUniqueViolation({ error: candidate.cause });
 }
 
 interface RedemptionPathForInput {
@@ -153,7 +126,12 @@ export async function provisionChurch(
         timezone: input.timezone,
       });
     } catch (error) {
-      if (isSlugUniqueViolation({ error })) {
+      if (
+        isUniqueViolation({
+          error,
+          constraint: ORGANIZATION_SLUG_UNIQUE_CONSTRAINT,
+        })
+      ) {
         throw new ChurchSlugTakenError(input.churchSlug);
       }
       throw error;

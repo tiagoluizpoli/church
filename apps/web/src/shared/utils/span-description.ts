@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { compareInstants, type Instant, type Span } from '@church/time';
 
 export interface IsInvalidInstantRangeInput {
@@ -24,10 +25,12 @@ function formatSpanDuration({ durationMinutes }: FormatSpanDurationInput) {
   const minutes = durationMinutes % 60;
 
   if (hours === 0) {
-    return `${minutes}m`;
+    return m.span_duration_minutes({ minutes });
   }
 
-  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+  return minutes === 0
+    ? m.span_duration_hours({ hours })
+    : m.span_duration_hours_minutes({ hours, minutes });
 }
 
 export interface DescribeSpanInput {
@@ -42,6 +45,6 @@ export function describeSpan({ span }: DescribeSpanInput): string {
   });
 
   return span.crossesToNextDay
-    ? `Runs ${duration} · ends next day`
-    : `Runs ${duration}`;
+    ? m.span_runs_next_day({ duration })
+    : m.span_runs({ duration });
 }

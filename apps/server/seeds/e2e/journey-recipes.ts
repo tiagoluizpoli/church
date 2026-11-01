@@ -53,6 +53,8 @@ export const E2E_JOURNEY_RECIPES: Record<
       .createCrossTenantInvitationRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.planningAdmin]: async () =>
     (await import('./recipes/planning-admin')).createPlanningAdminRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.eventTemplates]: async () =>
+    (await import('./recipes/event-templates')).createEventTemplatesRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.cycleAccess]: async () =>
     (await import('./recipes/cycle-access')).createCycleAccessRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.cycleTenants]: async () =>

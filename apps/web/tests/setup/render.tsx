@@ -5,6 +5,8 @@ import { TimezoneProvider } from '@/shared/components/timezone-provider';
 
 interface ProviderOptions {
   churchTimezone?: string;
+  /** Pass one to inspect cache writes; defaults to a fresh client. */
+  queryClient?: QueryClient;
 }
 
 interface WrapperProps {
@@ -20,12 +22,14 @@ export function renderWithProviders(
   ui: ReactElement,
   options: ProviderOptions = {},
 ): RenderResult {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
+  const queryClient =
+    options.queryClient ??
+    new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
 
   function Wrapper({ children }: WrapperProps) {
     return (

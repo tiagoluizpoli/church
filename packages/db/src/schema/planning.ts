@@ -90,7 +90,7 @@ export const eventTemplate = pgTable(
     ),
     uniqueIndex('event_template_church_name_idx').on(
       table.churchId,
-      table.name,
+      sql`lower(${table.name})`,
     ),
   ],
 );
@@ -118,6 +118,10 @@ export const templateTimeBlock = pgTable(
     uniqueIndex('template_time_block_template_order_idx').on(
       table.templateId,
       table.order,
+    ),
+    uniqueIndex('template_time_block_template_label_idx').on(
+      table.templateId,
+      sql`lower(${table.label})`,
     ),
   ],
 );

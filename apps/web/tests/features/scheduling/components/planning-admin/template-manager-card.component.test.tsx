@@ -1,6 +1,31 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    to,
+    params,
+    ...props
+  }: {
+    children: ReactNode;
+    to: string;
+    params?: { templateId: string };
+    className?: string;
+    'data-testid'?: string;
+  }) => (
+    <a
+      href={to.replace('$templateId', params?.templateId ?? '')}
+      className={props.className}
+      data-testid={props['data-testid']}
+    >
+      {children}
+    </a>
+  ),
+}));
+
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -9,6 +34,11 @@ const listCycles = vi.fn().mockResolvedValue({ cycles: [] });
 const listEventTemplates = vi.fn();
 const getCycle = vi.fn();
 const deleteEventTemplate = vi.fn().mockResolvedValue(undefined);
+const getEventTemplateUsage = vi.fn().mockResolvedValue({
+  templateId: 'template-1',
+  ministryCount: 0,
+  blocks: [],
+});
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -16,13 +46,15 @@ vi.mock('@/utils/api-instances', () => ({
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
     getCycle: (...args: unknown[]) => getCycle(...args),
     deleteEventTemplate: (...args: unknown[]) => deleteEventTemplate(...args),
+    getEventTemplateUsage: (...args: unknown[]) =>
+      getEventTemplateUsage(...args),
   },
 }));
 
 function render() {
   return renderWithProviders(
     <PlanningAdminProvider>
-      <TemplateManagerCard onEditTemplate={() => undefined} />
+      <TemplateManagerCard />
     </PlanningAdminProvider>,
   );
 }
@@ -59,27 +91,28 @@ describe('TemplateManagerCard table view (US1)', () => {
 
     const table = await screen.findByRole('grid');
     expect(
-      within(table).getByRole('columnheader', { name: 'Name' }),
+      within(table).getByRole('columnheader', { name: 'Nome' }),
     ).toBeInTheDocument();
     expect(
-      within(table).getByRole('columnheader', { name: 'Weekday' }),
+      within(table).getByRole('columnheader', { name: 'Dia da semana' }),
     ).toBeInTheDocument();
     expect(
-      within(table).getByRole('columnheader', { name: 'Blocks' }),
+      within(table).getByRole('columnheader', { name: 'Blocos' }),
     ).toBeInTheDocument();
 
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
     expect(row).toHaveTextContent('Domingo');
     expect(row).toHaveTextContent('2');
+    expect(within(row).getByRole('link', { name: 'Editar' })).toHaveAttribute(
+      'href',
+      '/event-templates/template-1',
+    );
     expect(
-      within(row).getByRole('button', { name: 'Edit' }),
-    ).toBeInTheDocument();
-    expect(
-      within(row).getByRole('button', { name: 'Delete' }),
+      within(row).getByRole('button', { name: 'Excluir' }),
     ).toBeInTheDocument();
   });
 
-  it('deletes a template from the table row action', async () => {
+  it('opens a confirmation from the table row action without deleting', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
         {
@@ -97,9 +130,12 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    await user.click(within(row).getByRole('button', { name: 'Delete' }));
+    await user.click(within(row).getByRole('button', { name: 'Excluir' }));
 
-    expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Excluir este modelo?' }),
+    ).toBeInTheDocument();
+    expect(deleteEventTemplate).not.toHaveBeenCalled();
   });
 
   it('renders the Delete action with destructive styling, distinct from Edit', async () => {
@@ -119,10 +155,10 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    expect(within(row).getByRole('button', { name: 'Delete' })).toHaveClass(
+    expect(within(row).getByRole('button', { name: 'Excluir' })).toHaveClass(
       'text-destructive',
     );
-    expect(within(row).getByRole('button', { name: 'Edit' })).not.toHaveClass(
+    expect(within(row).getByRole('link', { name: 'Editar' })).not.toHaveClass(
       'text-destructive',
     );
   });
@@ -152,14 +188,14 @@ describe('TemplateManagerCard table view (US1)', () => {
     const mobileRow = await screen.findByTestId('saved-template-row');
     expect(mobileRow).toHaveTextContent('Sunday Service');
     expect(
-      within(mobileRow).getByTestId('open-edit-template-dialog-button'),
+      within(mobileRow).getByTestId('edit-template-button'),
     ).toBeInTheDocument();
     expect(
       within(mobileRow).getByTestId('delete-template-button'),
     ).toBeInTheDocument();
   });
 
-  it('deletes a template from the mobile card action', async () => {
+  it('opens a confirmation from the mobile card action without deleting', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
         {
@@ -177,19 +213,51 @@ describe('TemplateManagerCard table view (US1)', () => {
     const mobileRow = await screen.findByTestId('saved-template-row');
     await user.click(within(mobileRow).getByTestId('delete-template-button'));
 
-    expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    expect(deleteEventTemplate).not.toHaveBeenCalled();
   });
 
-  it('shows the empty-state message instead of an empty table when there are no templates', async () => {
+  it('shows the empty state with a New template action instead of an empty table', async () => {
     listEventTemplates.mockResolvedValue({ templates: [] });
 
     render();
 
     expect(
       await screen.findByText(
-        'No templates yet. Use the create action above to start a reusable library.',
+        'Nenhum modelo de evento ainda. Crie seu primeiro encontro reutilizável.',
       ),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Novo modelo' })).toHaveAttribute(
+      'href',
+      '/event-templates/new',
+    );
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
+  });
+
+  it('shows a load failure with retry that refetches the list', async () => {
+    listEventTemplates.mockRejectedValueOnce(new Error('boom'));
+    listEventTemplates.mockResolvedValueOnce({
+      templates: [
+        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+      ],
+    });
+    const user = userEvent.setup();
+
+    render();
+
+    const alert = await screen.findByTestId('templates-load-error');
+    expect(alert).toHaveTextContent(
+      'Não foi possível carregar os modelos de evento.',
+    );
+    await user.click(
+      within(alert).getByRole('button', { name: 'Tentar novamente' }),
+    );
+
+    expect(
+      await screen.findByRole('row', { name: /Sunday Service/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('templates-load-error'),
+    ).not.toBeInTheDocument();
   });
 });

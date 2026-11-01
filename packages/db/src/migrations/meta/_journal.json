@@ -190,6 +190,20 @@
       "when": 1793475834059,
       "tag": "0026_drop-legacy-outbox-kinds",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793505145197,
+      "tag": "0027_freezing_johnny_blaze",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793514858875,
+      "tag": "0028_noisy_gunslinger",
+      "breakpoints": true
     }
   ]
 }

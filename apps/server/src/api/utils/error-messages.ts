@@ -3,15 +3,18 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import {
-  DuplicateHeadcountError,
   type ValidationReason,
-} from '@/domain/errors/duplicate-headcount';
+  ValidationRuleError,
+} from '@/domain/errors/validation-rule-error';
 
 export const VALIDATION_REASON_MESSAGES: Record<
   ValidationReason,
   ErrorMessage
 > = {
   DUPLICATE_HEADCOUNT: m.error_validation_duplicate_headcount,
+  DUPLICATE_TEMPLATE_NAME: m.error_validation_duplicate_template_name,
+  DUPLICATE_TEMPLATE_BLOCK_LABEL:
+    m.error_validation_duplicate_template_block_label,
 };
 
 interface DomainErrorMessageInput {
@@ -19,8 +22,11 @@ interface DomainErrorMessageInput {
   locale: Locale;
 }
 
-function validationReason(error: DomainError): ValidationReason | undefined {
-  return error instanceof DuplicateHeadcountError ? error.reason : undefined;
+/** The rule-based reason a `VALIDATION_ERROR` carries, also sent to the client. */
+export function validationReason(
+  error: DomainError,
+): ValidationReason | undefined {
+  return error instanceof ValidationRuleError ? error.reason : undefined;
 }
 
 /** The catalog text for a domain error, or undefined when its code has no entry. */

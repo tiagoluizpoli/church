@@ -12,7 +12,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const initialBlock: TemplateTimeBlockDraft = {
-  id: 'block-1',
+  key: 'block-1',
   label: 'Welcome',
   startTime: parseTimeOfDay({ value: '09:00' }),
   endTime: parseTimeOfDay({ value: '09:30' }),
@@ -58,7 +58,7 @@ describe('TemplateTimeBlockRow', () => {
     });
 
     expect(onBlockChange).toHaveBeenLastCalledWith({
-      blockId: 'block-1',
+      blockKey: 'block-1',
       field: 'startTime',
       value: '10:15',
     });
@@ -76,7 +76,7 @@ describe('TemplateTimeBlockRow', () => {
     });
 
     expect(onBlockChange).toHaveBeenLastCalledWith({
-      blockId: 'block-1',
+      blockKey: 'block-1',
       field: 'endTime',
       value: '11:45',
     });
@@ -114,7 +114,7 @@ describe('TemplateTimeBlockRow', () => {
     );
 
     expect(screen.getByTestId('template-time-block-span')).toHaveTextContent(
-      'Runs 4h · ends next day',
+      'Dura 4 h · termina no dia seguinte',
     );
   });
 
@@ -130,7 +130,7 @@ describe('TemplateTimeBlockRow', () => {
     );
 
     expect(screen.getByTestId('template-time-block-span')).toHaveTextContent(
-      'Runs 30m',
+      'Dura 30 min',
     );
   });
 });

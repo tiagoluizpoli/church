@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: {
     api: {
       setActiveOrganization: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock('@church/auth', () => ({
 const { resolveActiveChurchAndPersist } = await import(
   '@/api/auth/resolve-active-church-and-persist'
 );
-const { auth } = await import('@church/auth');
+const { auth } = await import('@/main/di/server-auth');
 
 const mockSetActiveOrganization = vi.mocked(auth.api.setActiveOrganization);
 

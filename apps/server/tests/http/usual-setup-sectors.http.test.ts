@@ -28,12 +28,12 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
-vi.mock('@church/auth', () => ({
+vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
 }));
 
 const mockGetSession = vi.mocked(
-  (await import('@church/auth')).auth.api.getSession,
+  (await import('@/main/di/server-auth')).auth.api.getSession,
 );
 
 const activeChurchResolver = { resolve: vi.fn() };

@@ -8,10 +8,11 @@ import { renderWithProviders } from '@/tests/setup/render';
 
 const mockSignInEmail = vi.fn();
 const mockToastError = vi.fn();
+const mockToastSuccess = vi.fn();
 
 vi.mock('sonner', () => ({
   toast: {
-    success: vi.fn(),
+    success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }));
@@ -43,6 +44,55 @@ function simulateAuthError(code: string) {
   );
 }
 
+describe('SignInForm pt-BR copy', () => {
+  it('renders the heading, invitation-only note and labels from the catalog', () => {
+    renderWithProviders(<SignInForm />);
+
+    expect(
+      screen.getByRole('heading', { name: m.auth_sign_in_title() }),
+    ).toBeVisible();
+    expect(screen.getByText(m.auth_sign_in_invitation_only())).toBeVisible();
+    expect(
+      screen.getByLabelText(m.password_recovery_email_label()),
+    ).toBeVisible();
+    expect(screen.getByLabelText(m.auth_password_label())).toBeVisible();
+  });
+
+  it('shows catalog validation errors and the catalog success toast', async () => {
+    renderWithProviders(<SignInForm />);
+    await userEvent.type(
+      screen.getByLabelText(m.password_recovery_email_label()),
+      'user@example.test',
+    );
+    await userEvent.type(
+      screen.getByLabelText(m.auth_password_label()),
+      'short',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.auth_sign_in_submit() }),
+    );
+    expect(
+      await screen.findByText(m.password_recovery_password_too_short()),
+    ).toBeVisible();
+
+    mockSignInEmail.mockImplementation(
+      (_data: unknown, callbacks: { onSuccess: () => void }) =>
+        callbacks.onSuccess(),
+    );
+    await userEvent.clear(screen.getByLabelText(m.auth_password_label()));
+    await userEvent.type(
+      screen.getByLabelText(m.auth_password_label()),
+      'longenough1',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.auth_sign_in_submit() }),
+    );
+    await waitFor(() =>
+      expect(mockToastSuccess).toHaveBeenCalledWith(m.auth_sign_in_success()),
+    );
+  });
+});
+
 describe('SignInForm Better Auth error messages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,9 +102,17 @@ describe('SignInForm Better Auth error messages', () => {
     simulateAuthError('INVALID_EMAIL_OR_PASSWORD');
     renderWithProviders(<SignInForm />);
 
-    await userEvent.type(screen.getByLabelText(/email/i), 'user@example.test');
-    await userEvent.type(screen.getByLabelText(/password/i), 'wrongpassword');
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await userEvent.type(
+      screen.getByLabelText(m.password_recovery_email_label()),
+      'user@example.test',
+    );
+    await userEvent.type(
+      screen.getByLabelText(m.auth_password_label()),
+      'wrongpassword',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.auth_sign_in_submit() }),
+    );
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith(
@@ -67,9 +125,17 @@ describe('SignInForm Better Auth error messages', () => {
     simulateAuthError('SOME_UNKNOWN_CODE');
     renderWithProviders(<SignInForm />);
 
-    await userEvent.type(screen.getByLabelText(/email/i), 'user@example.test');
-    await userEvent.type(screen.getByLabelText(/password/i), 'somepassword1');
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await userEvent.type(
+      screen.getByLabelText(m.password_recovery_email_label()),
+      'user@example.test',
+    );
+    await userEvent.type(
+      screen.getByLabelText(m.auth_password_label()),
+      'somepassword1',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.auth_sign_in_submit() }),
+    );
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith(m.common_generic_error());

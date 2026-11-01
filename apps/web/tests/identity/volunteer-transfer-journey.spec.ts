@@ -14,6 +14,8 @@ import {
 } from '@/tests/fixtures/journeys/identity-actions';
 import { loadVolunteerTransferJourney } from '@/tests/fixtures/journeys/volunteer-transfer';
 
+const PT = { locale: 'pt-BR' } as const;
+
 // #65 — proves the hardest identity journey end to end: a User who is a
 // member of both Churches and an active Volunteer in the second (Church B)
 // redeems a Ministry Invitation from the first (Church A), receives the
@@ -121,24 +123,35 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
       // AC — the split result names both Churches and offers the transfer.
       await expect(
         page.getByRole('heading', {
-          name: `You're a member of ${churchAName}`,
+          name: m.volunteer_transfer_split_title(
+            { churchName: churchAName },
+            PT,
+          ),
         }),
       ).toBeVisible();
-      // `destinationChurchName` (Church A) also renders inside a <strong> on
-      // this screen, but only Church B's real name is the *source* — scoping
-      // to the one <strong> that names it (rather than a bare substring match
-      // across the whole panel) keeps this from passing against a mislabeled
-      // split.
+      // Church B is the *source*: the exact sentence naming both Churches in
+      // their roles keeps this from passing against a mislabeled split.
       await expect(
-        page.locator('strong', { hasText: churchBName }),
+        page.getByText(
+          m.volunteer_transfer_split_current(
+            {
+              sourceChurchName: churchBName,
+              destinationChurchName: churchAName,
+            },
+            PT,
+          ),
+        ),
       ).toBeVisible();
       const moveButton = page.getByRole('button', {
-        name: 'Move my Volunteer profile',
+        name: m.volunteer_transfer_move_action({}, PT),
       });
       await expect(moveButton).toBeVisible();
       await expect(
         page.getByRole('button', {
-          name: `Continue to ${churchAName} as a member`,
+          name: m.volunteer_transfer_continue_as_member(
+            { churchName: churchAName },
+            PT,
+          ),
         }),
       ).toBeVisible();
 
@@ -147,23 +160,33 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
 
       // Layer 2 — review the *actual* affected memberships and assignments.
       await expect(
-        page.getByRole('heading', { name: 'Review the move' }),
+        page.getByRole('heading', {
+          name: m.volunteer_transfer_review_title({}, PT),
+        }),
       ).toBeVisible();
       await expect(page.getByText(churchBMinistry.name)).toBeVisible();
       await expect(page.getByText(seat.event.title)).toBeVisible();
       await expect(page.getByText(churchBRole.name)).toBeVisible();
       await page.getByRole('checkbox').click();
-      await page.getByRole('button', { name: 'Continue' }).click();
+      await page
+        .getByRole('button', { name: m.volunteer_transfer_continue({}, PT) })
+        .click();
 
       // Layer 3 — re-authenticate and type the destination Church name.
       await expect(
-        page.getByRole('heading', { name: 'Confirm Volunteer Transfer' }),
+        page.getByRole('heading', {
+          name: m.volunteer_transfer_confirm_title({}, PT),
+        }),
       ).toBeVisible();
       await page
-        .getByLabel('Password', { exact: true })
+        .getByLabel(m.volunteer_transfer_password_label({}, PT), {
+          exact: true,
+        })
         .fill(transferee.password);
       await page
-        .getByLabel(new RegExp(`Type ${churchAName} to confirm`))
+        .getByLabel(
+          m.volunteer_transfer_type_name({ churchName: churchAName }, PT),
+        )
         .fill(churchAName);
 
       const [confirmResponse] = await Promise.all([
@@ -175,7 +198,9 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
             ),
         ),
         page
-          .getByRole('button', { name: 'Confirm Volunteer Transfer' })
+          .getByRole('button', {
+            name: m.volunteer_transfer_confirm_title({}, PT),
+          })
           .click(),
       ]);
       const confirmOutcome =
@@ -183,14 +208,8 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
       expect(confirmOutcome.kind).toBe('transferred');
       expect(confirmOutcome.destinationVolunteerId).toEqual(expect.any(String));
 
-      // Spec 11.3 — the continuation no longer selects a Church by display
-      // name, so the dual-membership User chooses Church A explicitly.
-      await expect(page).toHaveURL(/\/select-church(\?.*)?$/);
-      await page
-        .locator(
-          `[data-testid="select-church-option-${journey.churchA.church.id}"]:visible`,
-        )
-        .click();
+      // The continuation makes the destination Church (A) active and lands
+      // on Home, so the dual-membership User is not asked to choose.
       await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
 
       expect(

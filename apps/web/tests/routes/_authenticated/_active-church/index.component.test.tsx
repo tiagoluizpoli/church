@@ -62,6 +62,12 @@ describe('_active-church index route', () => {
 
     expect(await screen.findByText('Volunteer dashboard stub')).toBeVisible();
     expect(router.state.location.pathname).toBe('/');
+    expect(screen.getByText(m.dashboard_entry_title())).toBeVisible();
+    expect(
+      screen.getByText(
+        m.dashboard_entry_description_named({ name: 'Any Caller' }),
+      ),
+    ).toBeVisible();
   });
 
   it('sends a caller who must choose a Church to /select-church', async () => {

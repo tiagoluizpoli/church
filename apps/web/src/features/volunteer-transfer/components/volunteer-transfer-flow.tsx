@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { formatInstant, parseInstant } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowRight, CircleAlert, Repeat2 } from 'lucide-react';
@@ -99,26 +100,31 @@ function SplitResultPanel({
         <Repeat2 className="size-5" />
       </div>
       <h1 className="text-balance font-semibold text-2xl tracking-tight">
-        You're a member of {destinationChurchName}
+        {m.volunteer_transfer_split_title({
+          churchName: destinationChurchName,
+        })}
       </h1>
       <p className="text-pretty text-muted-foreground text-sm">
-        You already serve as a Volunteer at <strong>{sourceChurchName}</strong>,
-        and a Volunteer profile can be active at only one Church at a time. Your
-        Ministry invitation at <strong>{destinationChurchName}</strong> is still
-        waiting for you.
+        {m.volunteer_transfer_split_current({
+          sourceChurchName,
+          destinationChurchName,
+        })}
       </p>
       <p className="text-pretty text-muted-foreground text-sm">
-        Move your Volunteer profile to <strong>{destinationChurchName}</strong>{' '}
-        to accept it. This ends your serving at {sourceChurchName}; they cannot
-        stop the move.
+        {m.volunteer_transfer_split_move({
+          sourceChurchName,
+          destinationChurchName,
+        })}
       </p>
       <div className="flex flex-col gap-2">
         <Button className="w-full" onClick={onMove}>
-          Move my Volunteer profile
+          {m.volunteer_transfer_move_action()}
           <ArrowRight />
         </Button>
         <Button variant="ghost" className="w-full" onClick={onContinueAsMember}>
-          Continue to {destinationChurchName} as a member
+          {m.volunteer_transfer_continue_as_member({
+            churchName: destinationChurchName,
+          })}
         </Button>
       </div>
     </div>
@@ -145,7 +151,9 @@ function TransferReview({
 
   if (previewQuery.isLoading) {
     return (
-      <p className="text-muted-foreground text-sm">Checking what changes…</p>
+      <p className="text-muted-foreground text-sm">
+        {m.volunteer_transfer_checking()}
+      </p>
     );
   }
 
@@ -155,7 +163,7 @@ function TransferReview({
       <div className="space-y-4">
         <TransferProblemNotice />
         <Button variant="outline" className="w-full" onClick={onBack}>
-          Back
+          {m.volunteer_transfer_back()}
         </Button>
       </div>
     );
@@ -164,11 +172,13 @@ function TransferReview({
   return (
     <div className="space-y-4">
       <h1 className="text-balance font-semibold text-2xl tracking-tight">
-        Review the move
+        {m.volunteer_transfer_review_title()}
       </h1>
       <p className="text-pretty text-muted-foreground text-sm">
-        Moving to <strong>{preview.destinationChurchName}</strong> ends your
-        participation at <strong>{preview.sourceChurchName}</strong>:
+        {m.volunteer_transfer_review_intro({
+          sourceChurchName: preview.sourceChurchName,
+          destinationChurchName: preview.destinationChurchName,
+        })}
       </p>
       <AffectedMembershipsList memberships={preview.endedMemberships} />
       <WithdrawnAssignmentsList assignments={preview.withdrawnAssignments} />
@@ -182,16 +192,15 @@ function TransferReview({
           htmlFor="transfer-acknowledge"
           className="font-normal leading-snug"
         >
-          I understand these memberships end and these upcoming assignments are
-          cancelled.
+          {m.volunteer_transfer_acknowledge()}
         </Label>
       </div>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={onBack}>
-          Back
+          {m.volunteer_transfer_back()}
         </Button>
         <Button disabled={!acknowledged} onClick={onContinue}>
-          Continue
+          {m.volunteer_transfer_continue()}
         </Button>
       </div>
     </div>
@@ -207,12 +216,16 @@ function AffectedMembershipsList({
 }: AffectedMembershipsListProps) {
   if (memberships.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm">No Ministry memberships.</p>
+      <p className="text-muted-foreground text-sm">
+        {m.volunteer_transfer_no_memberships()}
+      </p>
     );
   }
   return (
     <div className="space-y-1">
-      <p className="font-medium text-sm">Ministry memberships ending</p>
+      <p className="font-medium text-sm">
+        {m.volunteer_transfer_memberships_ending()}
+      </p>
       <ul className="list-inside list-disc text-muted-foreground text-sm">
         {memberships.map((membership) => (
           <li key={membership.ministryName}>{membership.ministryName}</li>
@@ -235,13 +248,15 @@ function WithdrawnAssignmentsList({
   if (assignments.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
-        No upcoming assignments will be cancelled.
+        {m.volunteer_transfer_no_assignments()}
       </p>
     );
   }
   return (
     <div className="space-y-1">
-      <p className="font-medium text-sm">Upcoming assignments cancelled</p>
+      <p className="font-medium text-sm">
+        {m.volunteer_transfer_assignments_cancelled()}
+      </p>
       <ul className="space-y-1 text-muted-foreground text-sm">
         {assignments.map((assignment) => (
           <li
@@ -311,14 +326,16 @@ function TransferConfirm({
       }}
     >
       <h1 className="text-balance font-semibold text-2xl tracking-tight">
-        Confirm Volunteer Transfer
+        {m.volunteer_transfer_confirm_title()}
       </h1>
       <p className="text-pretty text-muted-foreground text-sm">
-        Re-enter your password and type the destination Church name to move.
+        {m.volunteer_transfer_confirm_intro()}
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="transfer-password">Password</Label>
+        <Label htmlFor="transfer-password">
+          {m.volunteer_transfer_password_label()}
+        </Label>
         <Input
           id="transfer-password"
           type="password"
@@ -329,7 +346,9 @@ function TransferConfirm({
 
       <div className="space-y-2">
         <Label htmlFor="transfer-church-name">
-          Type <strong>{destinationChurchName}</strong> to confirm
+          {m.volunteer_transfer_type_name({
+            churchName: destinationChurchName,
+          })}
         </Label>
         <Input
           id="transfer-church-name"
@@ -352,7 +371,7 @@ function TransferConfirm({
           disabled={confirmMutation.isPending}
           onClick={onBack}
         >
-          Back
+          {m.volunteer_transfer_back()}
         </Button>
         <Button
           type="submit"
@@ -360,7 +379,9 @@ function TransferConfirm({
             !nameMatches || password.length < 8 || confirmMutation.isPending
           }
         >
-          {confirmMutation.isPending ? 'Moving…' : 'Confirm Volunteer Transfer'}
+          {confirmMutation.isPending
+            ? m.volunteer_transfer_moving()
+            : m.volunteer_transfer_confirm_title()}
         </Button>
       </div>
     </form>
@@ -377,15 +398,15 @@ function describeConfirmError({
   if (!outcome) return null;
   switch (outcome.kind) {
     case 'password-mismatch':
-      return 'That password did not match. Try again.';
+      return m.volunteer_transfer_password_mismatch();
     case 'name-mismatch':
-      return 'The Church name did not match exactly.';
+      return m.volunteer_transfer_name_mismatch();
     case 'identity-mismatch':
-      return 'This invitation belongs to another account.';
+      return m.volunteer_transfer_identity_mismatch();
     case 'terminal-failure':
       return outcome.reason === 'NO_TRANSFER_NEEDED'
-        ? 'There is nothing to transfer.'
-        : 'This invitation is no longer available.';
+        ? m.volunteer_transfer_nothing()
+        : m.volunteer_transfer_unavailable();
     default:
       return null;
   }
@@ -395,10 +416,7 @@ function TransferProblemNotice() {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3">
       <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-      <p className="text-sm">
-        We couldn't load the transfer details. This invitation may no longer be
-        available.
-      </p>
+      <p className="text-sm">{m.volunteer_transfer_load_failed()}</p>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
 import { type AssignPersona, newPersonaRequest } from './assign-church';
 import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
@@ -8,6 +9,8 @@ import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
  * transfer, cross-tenant) share: minting a Ministry Invitation through the
  * product, the `/login` form, and typed reads of the server's JSON.
  */
+
+const PT = { locale: 'pt-BR' } as const;
 
 interface ServerUrlInput {
   path: string;
@@ -100,9 +103,15 @@ export interface SignInInput {
 
 /** `/login` renders the sign-in view only (#62) — no toggle to reach it. */
 export async function signIn({ page, persona }: SignInInput): Promise<void> {
-  await page.getByLabel('Email').fill(persona.email);
-  await page.getByLabel('Password', { exact: true }).fill(persona.password);
-  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page
+    .getByLabel(m.password_recovery_email_label({}, PT))
+    .fill(persona.email);
+  await page
+    .getByLabel(m.auth_password_label({}, PT), { exact: true })
+    .fill(persona.password);
+  await page
+    .getByRole('button', { name: m.auth_sign_in_submit({}, PT) })
+    .click();
 }
 
 export interface FetchJsonInput {

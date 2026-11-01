@@ -46,8 +46,10 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         token,
       });
       if (!error) {
-        // Every old session was revoked server-side; drop what they cached.
+        // Every old session was revoked server-side; drop what they cached and
+        // make the Better Auth client re-read its session.
         queryClient.clear();
+        authClient.$store.notify('$sessionSignal');
         clearNotificationCache();
         await navigate({
           to: '/login',

@@ -1,4 +1,3 @@
-import { createDb } from '@church/db';
 import * as authSchema from '@church/db/schema/auth';
 import * as organizationSchema from '@church/db/schema/organization';
 import { env } from '@church/env/server';
@@ -117,7 +116,5 @@ export function createAuth({
     ],
   });
 }
-
-export const auth = createAuth({ database: createDb() });
 
 export type Auth = ReturnType<typeof createAuth>;

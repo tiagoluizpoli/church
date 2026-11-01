@@ -8,6 +8,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getSession = vi.fn();
 const requestPasswordReset = vi.fn();
 const resetPassword = vi.fn();
+const notifyStore = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -15,6 +16,8 @@ vi.mock('@/lib/auth-client', () => ({
     requestPasswordReset: (...args: unknown[]) => requestPasswordReset(...args),
     resetPassword: (...args: unknown[]) => resetPassword(...args),
     useSession: () => ({ isPending: false }),
+    // biome-ignore lint/style/useNamingConvention: matches Better Auth API shape
+    $store: { notify: (...args: unknown[]) => notifyStore(...args) },
   },
 }));
 
@@ -174,6 +177,7 @@ describe('the reset-password route', () => {
       newPassword: 'brand-new-pass',
       token: 'abc',
     });
+    expect(notifyStore).toHaveBeenCalledWith('$sessionSignal');
     expect(
       await screen.findByText(m.password_recovery_password_changed()),
     ).toBeVisible();

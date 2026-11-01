@@ -218,8 +218,9 @@ function MinistryInvitationContent({
 
   if (acceptMutation.data?.kind === 'church-only') {
     const split = acceptMutation.data;
-    // The User now belongs to both Churches: land in the one just joined.
-    const continueToDestination = (): Promise<void> => continueToChurch({});
+    // The User now belongs to both Churches: make the one just joined active.
+    const continueToDestination = (): Promise<void> =>
+      continueToChurch({ churchId: split.destinationChurchId });
     return (
       <VolunteerTransferFlow
         invitationId={invitationId}

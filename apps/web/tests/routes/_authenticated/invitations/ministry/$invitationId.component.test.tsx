@@ -140,7 +140,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     expect(screen.getByText(m.ministry_invitation_roles_none())).toBeVisible();
   });
 
-  it('on accept, continues to Home without selecting a Church by name', async () => {
+  it('on accept, continues to Home with the destination Church active', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
     acceptMinistryInvitation.mockResolvedValue({
@@ -176,6 +176,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     acceptMinistryInvitation.mockResolvedValue({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: 'church-1',
       destinationChurchName: 'St. Peter',
       ministryInvitationId: 'invitation-1',
     });
@@ -191,14 +192,14 @@ describe('the existing-member Ministry Invitation redemption route', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: /You're a member of St\. Peter/,
+        name: m.volunteer_transfer_split_title({ churchName: 'St. Peter' }),
       }),
     ).toBeVisible();
     expect(screen.getAllByText(/Riverside Fellowship/).length).toBeGreaterThan(
       0,
     );
     expect(
-      screen.getByRole('button', { name: /Move my Volunteer profile/ }),
+      screen.getByRole('button', { name: m.volunteer_transfer_move_action() }),
     ).toBeVisible();
   });
 
@@ -214,6 +215,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     acceptMinistryInvitation.mockResolvedValue({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: 'church-1',
       destinationChurchName: 'St. Peter',
       ministryInvitationId: 'invitation-1',
     });
@@ -240,11 +242,13 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       }),
     );
     await user.click(
-      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
+      await screen.findByRole('button', {
+        name: m.volunteer_transfer_move_action(),
+      }),
     );
 
     const continueButton = await screen.findByRole('button', {
-      name: 'Continue',
+      name: m.volunteer_transfer_continue(),
     });
     expect(continueButton).toBeDisabled();
     await user.click(screen.getByRole('checkbox'));
@@ -252,22 +256,38 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     await user.click(continueButton);
 
     const confirmButton = await screen.findByRole('button', {
-      name: 'Confirm Volunteer Transfer',
+      name: m.volunteer_transfer_confirm_title(),
     });
     expect(confirmButton).toBeDisabled();
 
-    await user.type(screen.getByLabelText('Password'), 'short');
     await user.type(
-      screen.getByLabelText(/Type St\. Peter to confirm/),
+      screen.getByLabelText(m.volunteer_transfer_password_label()),
+      'short',
+    );
+    await user.type(
+      screen.getByLabelText(
+        m.volunteer_transfer_type_name({ churchName: 'St. Peter' }),
+      ),
       'Not St. Peter',
     );
     expect(confirmButton).toBeDisabled();
 
-    await user.clear(screen.getByLabelText('Password'));
-    await user.type(screen.getByLabelText('Password'), 'a-strong-password');
-    await user.clear(screen.getByLabelText(/Type St\. Peter to confirm/));
+    await user.clear(
+      screen.getByLabelText(m.volunteer_transfer_password_label()),
+    );
     await user.type(
-      screen.getByLabelText(/Type St\. Peter to confirm/),
+      screen.getByLabelText(m.volunteer_transfer_password_label()),
+      'a-strong-password',
+    );
+    await user.clear(
+      screen.getByLabelText(
+        m.volunteer_transfer_type_name({ churchName: 'St. Peter' }),
+      ),
+    );
+    await user.type(
+      screen.getByLabelText(
+        m.volunteer_transfer_type_name({ churchName: 'St. Peter' }),
+      ),
       'St. Peter',
     );
     expect(confirmButton).toBeEnabled();
@@ -287,6 +307,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     acceptMinistryInvitation.mockResolvedValue({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: 'church-1',
       destinationChurchName: 'St. Peter',
       ministryInvitationId: 'invitation-1',
     });
@@ -305,7 +326,7 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     return { router, user };
   }
 
-  it('after the transfer commits, continues to Home without selecting a Church by name', async () => {
+  it('after the transfer commits, continues to Home with the destination Church active', async () => {
     getVolunteerTransferPreview.mockResolvedValue({
       kind: 'reviewable',
       sourceChurchName: 'Riverside Fellowship',
@@ -320,41 +341,51 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     const { router, user } = await acceptIntoSplit();
 
     await user.click(
-      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
+      await screen.findByRole('button', {
+        name: m.volunteer_transfer_move_action(),
+      }),
     );
     await user.click(await screen.findByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(
+      screen.getByRole('button', { name: m.volunteer_transfer_continue() }),
+    );
     await user.type(
-      await screen.findByLabelText('Password'),
+      await screen.findByLabelText(m.volunteer_transfer_password_label()),
       'a-strong-password',
     );
     await user.type(
-      screen.getByLabelText(/Type St\. Peter to confirm/),
+      screen.getByLabelText(
+        m.volunteer_transfer_type_name({ churchName: 'St. Peter' }),
+      ),
       'St. Peter',
     );
     await user.click(
-      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
-    );
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/');
-    });
-    expect(selectActiveChurch).not.toHaveBeenCalled();
-  });
-
-  it('continuing as a member continues to Home without selecting a Church by name', async () => {
-    const { router, user } = await acceptIntoSplit();
-
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'Continue to St. Peter as a member',
+      screen.getByRole('button', {
+        name: m.volunteer_transfer_confirm_title(),
       }),
     );
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/');
     });
-    expect(selectActiveChurch).not.toHaveBeenCalled();
+    expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-1' });
+  });
+
+  it('continuing as a member continues to Home with the destination Church active', async () => {
+    const { router, user } = await acceptIntoSplit();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.volunteer_transfer_continue_as_member({
+          churchName: 'St. Peter',
+        }),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/');
+    });
+    expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-1' });
   });
 
   it('falls back to Home, selecting nothing, when an explicit Church is not among the caller options', async () => {

@@ -18,6 +18,8 @@ import {
   isMultiDayEvent,
   shiftedEnd,
   stateBadgeVariant,
+  templateBlockErrors,
+  toTemplateRequestBlocks,
 } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
 
 function makeCycle(overrides: Partial<SelectedCycle> = {}): SelectedCycle {
@@ -77,7 +79,7 @@ function makeTemplateTimeBlock(
   overrides: Partial<TemplateTimeBlockDraft> = {},
 ): TemplateTimeBlockDraft {
   return {
-    id: 'template-time-block-1',
+    key: 'template-time-block-1',
     label: 'Welcome',
     startTime: fromTimeColumn({ value: '09:00:00' }),
     endTime: fromTimeColumn({ value: '09:30:00' }),
@@ -279,7 +281,7 @@ describe('describeTemplateTimeBlockSpan', () => {
         startTime: fromTimeColumn({ value: '09:00:00' }),
         endTime: fromTimeColumn({ value: '09:30:00' }),
       }),
-    ).toBe('Runs 30m');
+    ).toBe('Dura 30 min');
   });
 
   it('marks an overnight block as ending the next day (ADR-0003)', () => {
@@ -288,7 +290,7 @@ describe('describeTemplateTimeBlockSpan', () => {
         startTime: fromTimeColumn({ value: '22:00:00' }),
         endTime: fromTimeColumn({ value: '02:00:00' }),
       }),
-    ).toBe('Runs 4h · ends next day');
+    ).toBe('Dura 4 h · termina no dia seguinte');
   });
 });
 
@@ -328,5 +330,59 @@ describe('eventStatusBadgeVariant', () => {
       'destructive',
     );
     expect(eventStatusBadgeVariant({ status: 'draft' })).toBe('secondary');
+  });
+});
+
+describe('templateBlockErrors', () => {
+  it('flags case-insensitive duplicate labels and equal endpoints by row key', () => {
+    const errors = templateBlockErrors({
+      blocks: [
+        makeTemplateTimeBlock({ key: 'a', label: 'Welcome' }),
+        makeTemplateTimeBlock({ key: 'b', label: ' welcome ' }),
+        makeTemplateTimeBlock({
+          key: 'c',
+          label: 'Same',
+          endTime: fromTimeColumn({ value: '09:00:00' }),
+        }),
+        makeTemplateTimeBlock({ key: 'd', label: '' }),
+        makeTemplateTimeBlock({ key: 'e', label: '' }),
+      ],
+    });
+
+    expect([...errors.duplicateLabelKeys].sort()).toEqual(['a', 'b']);
+    expect([...errors.equalTimeKeys]).toEqual(['c']);
+  });
+
+  it('keeps a template with duplicate labels from being saved', () => {
+    expect(
+      canCreateTemplate({
+        templateForm: makeTemplateForm({
+          blocks: [
+            makeTemplateTimeBlock({ key: 'a', label: 'Same' }),
+            makeTemplateTimeBlock({ key: 'b', label: 'same' }),
+          ],
+        }),
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('toTemplateRequestBlocks', () => {
+  it('trims labels, sends no order, and sends an id only for persisted blocks', () => {
+    expect(
+      toTemplateRequestBlocks({
+        blocks: [
+          makeTemplateTimeBlock({ key: 'row-1', label: ' New ' }),
+          makeTemplateTimeBlock({
+            key: 'row-2',
+            persistedId: 'stored-id',
+            label: 'Kept',
+          }),
+        ],
+      }),
+    ).toEqual([
+      { label: 'New', startTime: '09:00', endTime: '09:30' },
+      { id: 'stored-id', label: 'Kept', startTime: '09:00', endTime: '09:30' },
+    ]);
   });
 });

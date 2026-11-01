@@ -1,6 +1,14 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to }: { children: ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -59,23 +67,23 @@ describe('TemplateManagerCard table view (US1)', () => {
 
     const table = await screen.findByRole('grid');
     expect(
-      within(table).getByRole('columnheader', { name: 'Name' }),
+      within(table).getByRole('columnheader', { name: 'Nome' }),
     ).toBeInTheDocument();
     expect(
-      within(table).getByRole('columnheader', { name: 'Weekday' }),
+      within(table).getByRole('columnheader', { name: 'Dia da semana' }),
     ).toBeInTheDocument();
     expect(
-      within(table).getByRole('columnheader', { name: 'Blocks' }),
+      within(table).getByRole('columnheader', { name: 'Blocos' }),
     ).toBeInTheDocument();
 
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
     expect(row).toHaveTextContent('Domingo');
     expect(row).toHaveTextContent('2');
     expect(
-      within(row).getByRole('button', { name: 'Edit' }),
+      within(row).getByRole('button', { name: 'Editar' }),
     ).toBeInTheDocument();
     expect(
-      within(row).getByRole('button', { name: 'Delete' }),
+      within(row).getByRole('button', { name: 'Excluir' }),
     ).toBeInTheDocument();
   });
 
@@ -97,7 +105,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    await user.click(within(row).getByRole('button', { name: 'Delete' }));
+    await user.click(within(row).getByRole('button', { name: 'Excluir' }));
 
     expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
   });
@@ -119,10 +127,10 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    expect(within(row).getByRole('button', { name: 'Delete' })).toHaveClass(
+    expect(within(row).getByRole('button', { name: 'Excluir' })).toHaveClass(
       'text-destructive',
     );
-    expect(within(row).getByRole('button', { name: 'Edit' })).not.toHaveClass(
+    expect(within(row).getByRole('button', { name: 'Editar' })).not.toHaveClass(
       'text-destructive',
     );
   });
@@ -180,16 +188,47 @@ describe('TemplateManagerCard table view (US1)', () => {
     expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
   });
 
-  it('shows the empty-state message instead of an empty table when there are no templates', async () => {
+  it('shows the empty state with a New template action instead of an empty table', async () => {
     listEventTemplates.mockResolvedValue({ templates: [] });
 
     render();
 
     expect(
       await screen.findByText(
-        'No templates yet. Use the create action above to start a reusable library.',
+        'Nenhum modelo de evento ainda. Crie seu primeiro encontro reutilizável.',
       ),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Novo modelo' })).toHaveAttribute(
+      'href',
+      '/event-templates/new',
+    );
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
+  });
+
+  it('shows a load failure with retry that refetches the list', async () => {
+    listEventTemplates.mockRejectedValueOnce(new Error('boom'));
+    listEventTemplates.mockResolvedValueOnce({
+      templates: [
+        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+      ],
+    });
+    const user = userEvent.setup();
+
+    render();
+
+    const alert = await screen.findByTestId('templates-load-error');
+    expect(alert).toHaveTextContent(
+      'Não foi possível carregar os modelos de evento.',
+    );
+    await user.click(
+      within(alert).getByRole('button', { name: 'Tentar novamente' }),
+    );
+
+    expect(
+      await screen.findByRole('row', { name: /Sunday Service/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('templates-load-error'),
+    ).not.toBeInTheDocument();
   });
 });

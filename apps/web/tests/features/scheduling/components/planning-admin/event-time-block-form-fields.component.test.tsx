@@ -142,6 +142,6 @@ describe('EventTimeBlockFormFields', () => {
 
     expect(
       screen.getByTestId('create-event-time-block-span'),
-    ).toHaveTextContent(/Runs \d+h/);
+    ).toHaveTextContent(/Dura \d+ h/);
   });
 });

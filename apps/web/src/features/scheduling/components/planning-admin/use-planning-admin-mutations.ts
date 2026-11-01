@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { type Dispatch, type SetStateAction, useCallback } from 'react';
@@ -12,7 +13,7 @@ import {
   createEmptyTemplateForm,
   getErrorMessage,
   getSelectedCycleIdOrThrow,
-  sortTemplateTimeBlocks,
+  toTemplateRequestBlocks,
 } from './planning-admin.utils';
 import { adminApi } from '@/utils/api-instances';
 
@@ -199,7 +200,7 @@ export function usePlanningAdminMutations({
     mutationFn: (body: CreateEventTemplateBody) =>
       adminApi.createEventTemplate(body),
     invalidateQueryKeys: [['planning-templates']],
-    successMessage: 'Template saved',
+    successMessage: m.event_templates_created_toast(),
     onSuccess: async (template) => {
       setEditingTemplateId(null);
       setTemplateForm(createEmptyTemplateForm());
@@ -215,7 +216,7 @@ export function usePlanningAdminMutations({
     mutationFn: ({ body, templateId }: UpdateTemplateParams) =>
       adminApi.updateEventTemplate(templateId, body),
     invalidateQueryKeys: [['planning-templates']],
-    successMessage: 'Template updated',
+    successMessage: m.event_templates_updated_toast(),
     onSuccess: async () => {
       setEditingTemplateId(null);
       setTemplateForm(createEmptyTemplateForm());
@@ -228,7 +229,7 @@ export function usePlanningAdminMutations({
     mutationFn: (templateId: string) =>
       adminApi.deleteEventTemplate(templateId),
     invalidateQueryKeys: [['planning-templates']],
-    successMessage: 'Template deleted',
+    successMessage: m.event_templates_deleted_toast(),
     queryClient,
   });
 
@@ -326,7 +327,7 @@ export function usePlanningAdminMutations({
     const body = {
       name: templateForm.name.trim(),
       weekday: Number.parseInt(templateForm.weekday, 10),
-      blocks: sortTemplateTimeBlocks({ blocks: templateForm.blocks }),
+      blocks: toTemplateRequestBlocks({ blocks: templateForm.blocks }),
     };
 
     if (editingTemplateId) {

@@ -26,9 +26,9 @@ import type {
   TemplateTimeBlockDraft,
 } from './planning-admin.types';
 import type {
-  CreateEventTemplateBody,
   GetCycle200EventsItemEventStatus,
   ListCycles200CyclesItemState,
+  UpdateEventTemplateBody,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { describeSpan } from '@/shared/utils/span-description';
@@ -60,7 +60,7 @@ interface SelectedCycleIdInput {
   selectedCycleId: string | null;
 }
 
-interface SortTemplateTimeBlocksInput {
+interface TemplateRequestBlocksInput {
   blocks: TemplateTimeBlockDraft[];
 }
 
@@ -113,7 +113,7 @@ export function createEmptyTemplateTimeBlock(): TemplateTimeBlockDraft {
   templateTemplateTimeBlockDraftCounter += 1;
 
   return {
-    id: `template-time-block-${templateTemplateTimeBlockDraftCounter}`,
+    key: `template-time-block-${templateTemplateTimeBlockDraftCounter}`,
     label: '',
     startTime: null,
     endTime: null,
@@ -137,7 +137,8 @@ export function createTemplateFormFromTemplate({
     blocks: [...template.blocks]
       .sort((leftBlock, rightBlock) => leftBlock.order - rightBlock.order)
       .map((block) => ({
-        id: block.id,
+        key: block.id,
+        persistedId: block.id,
         label: block.label,
         startTime: parseTimeOfDay({ value: block.startTime }),
         endTime: parseTimeOfDay({ value: block.endTime }),
@@ -201,7 +202,8 @@ export function describeTemplate({
     index: template.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
     locale,
   });
-  return `${day} · ${template.blocks.length} block${template.blocks.length === 1 ? '' : 's'}`;
+  const count = template.blocks.length;
+  return `${day} · ${count === 1 ? m.event_templates_block_count_one() : m.event_templates_block_count_other({ count })}`;
 }
 
 export interface DescribeTemplateTimeBlockSpanInput {
@@ -220,21 +222,54 @@ export function describeTemplateTimeBlockSpan({
   });
 }
 
-export function sortTemplateTimeBlocks({
+/** Request blocks in entered order (the server derives `order`); only blocks
+ * loaded for edit carry their persisted `id`, so create never sends one. */
+export function toTemplateRequestBlocks({
   blocks,
-}: SortTemplateTimeBlocksInput): CreateEventTemplateBody['blocks'] {
-  return blocks.map((block, index) => {
+}: TemplateRequestBlocksInput): UpdateEventTemplateBody['blocks'] {
+  return blocks.map((block) => {
     if (!block.startTime || !block.endTime) {
       throw new Error('Block is missing a start or end time');
     }
 
     return {
+      ...(block.persistedId && { id: block.persistedId }),
       label: block.label.trim(),
       startTime: block.startTime,
       endTime: block.endTime,
-      order: index,
     };
   });
+}
+
+export interface TemplateBlockErrors {
+  /** Row keys whose label repeats another row's, ignoring case and spacing. */
+  duplicateLabelKeys: Set<string>;
+  /** Row keys whose start equals their end. */
+  equalTimeKeys: Set<string>;
+}
+
+/** Inline validation the editor can show before the server is asked. */
+export function templateBlockErrors({
+  blocks,
+}: TemplateRequestBlocksInput): TemplateBlockErrors {
+  const seen = new Map<string, string>();
+  const duplicateLabelKeys = new Set<string>();
+  const equalTimeKeys = new Set<string>();
+  for (const block of blocks) {
+    const label = block.label.trim().toLowerCase();
+    if (label !== '') {
+      const first = seen.get(label);
+      if (first === undefined) {
+        seen.set(label, block.key);
+      } else {
+        duplicateLabelKeys.add(first).add(block.key);
+      }
+    }
+    if (block.startTime && block.startTime === block.endTime) {
+      equalTimeKeys.add(block.key);
+    }
+  }
+  return { duplicateLabelKeys, equalTimeKeys };
 }
 
 export function stateBadgeVariant({
@@ -317,6 +352,8 @@ export function canCreateTemplate({
   return (
     templateForm.name.trim() !== '' &&
     templateForm.blocks.length > 0 &&
+    templateBlockErrors({ blocks: templateForm.blocks }).duplicateLabelKeys
+      .size === 0 &&
     templateForm.blocks.every(
       (block) =>
         block.label.trim() !== '' &&

@@ -1,57 +1,38 @@
+import { m } from '@church/i18n/messages';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { z } from 'zod';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { useTemplateEditor } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { TemplateEditorDialog } from '@/features/scheduling/components/planning-admin/template-editor-dialog';
 import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';
 
-const templatesSearchSchema = z.object({
-  returnTo: z.string().optional(),
-});
-
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/_planning-admin/event-templates',
+  '/_authenticated/_active-church/_planning-admin/event-templates/',
 )({
-  validateSearch: (search) => templatesSearchSchema.parse(search),
   component: TemplateLibraryRoute,
 });
 
 function TemplateLibraryRoute() {
-  const { returnTo } = Route.useSearch();
-  const {
-    handleStartCreateTemplate,
-    handleResetTemplateEditor,
-    templateSaveSuccessCount,
-  } = useTemplateEditor();
-  const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
-  const [templateSaveBaseline, setTemplateSaveBaseline] = useState(0);
+  // Edit still opens the legacy dialog until its nested page replaces it.
+  const { handleResetTemplateEditor, templateSaveSuccessCount } =
+    useTemplateEditor();
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [saveBaseline, setSaveBaseline] = useState(0);
 
   useEffect(() => {
-    if (
-      templateEditorOpen &&
-      templateSaveSuccessCount !== templateSaveBaseline
-    ) {
-      setTemplateEditorOpen(false);
+    if (editorOpen && templateSaveSuccessCount !== saveBaseline) {
+      setEditorOpen(false);
       handleResetTemplateEditor();
     }
   }, [
+    editorOpen,
     handleResetTemplateEditor,
-    templateEditorOpen,
-    templateSaveBaseline,
+    saveBaseline,
     templateSaveSuccessCount,
   ]);
 
-  const backTo = returnTo
-    ? ({
-        to: '/cycles/$cycleId',
-        params: { cycleId: returnTo },
-      } as const)
-    : ({ to: '/cycles' } as const);
-
-  function handleTemplateEditorOpenChange(open: boolean) {
-    setTemplateEditorOpen(open);
-
+  function handleEditorOpenChange(open: boolean) {
+    setEditorOpen(open);
     if (!open) {
       handleResetTemplateEditor();
     }
@@ -59,37 +40,26 @@ function TemplateLibraryRoute() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex justify-end">
         <Link
-          {...backTo}
-          data-testid="back-from-template-library-button"
-          className={buttonVariants({ variant: 'outline' })}
+          to="/event-templates/new"
+          data-testid="new-template-button"
+          className={buttonVariants()}
         >
-          {returnTo ? 'Back to selected cycle' : 'Back to cycles'}
+          {m.event_templates_new()}
         </Link>
-        <Button
-          type="button"
-          data-testid="open-create-template-dialog-button"
-          onClick={() => {
-            handleStartCreateTemplate();
-            setTemplateSaveBaseline(templateSaveSuccessCount);
-            setTemplateEditorOpen(true);
-          }}
-        >
-          Create template
-        </Button>
       </div>
 
       <TemplateManagerCard
         onEditTemplate={() => {
-          setTemplateSaveBaseline(templateSaveSuccessCount);
-          setTemplateEditorOpen(true);
+          setSaveBaseline(templateSaveSuccessCount);
+          setEditorOpen(true);
         }}
       />
 
       <TemplateEditorDialog
-        open={templateEditorOpen}
-        onOpenChange={handleTemplateEditorOpenChange}
+        open={editorOpen}
+        onOpenChange={handleEditorOpenChange}
       />
     </>
   );

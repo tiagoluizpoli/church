@@ -254,27 +254,29 @@ export type GetCycle200 = {
 };
 
 export type CreateEventTemplateBodyBlocksItem = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
   label: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
-  /**
-     * @minimum 0
-     * @maximum 9007199254740991
-     */
-  order: number;
 };
 
 export type CreateEventTemplateBody = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
   name: string;
   /**
      * @minimum 0
      * @maximum 6
      */
   weekday: number;
+  /** @minItems 1 */
   blocks: CreateEventTemplateBodyBlocksItem[];
 };
 
@@ -331,27 +333,31 @@ export type ListEventTemplates200 = {
 };
 
 export type UpdateEventTemplateBodyBlocksItem = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
   label: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
-  /**
-     * @minimum 0
-     * @maximum 9007199254740991
-     */
-  order: number;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id?: string;
 };
 
 export type UpdateEventTemplateBody = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
   name: string;
   /**
      * @minimum 0
      * @maximum 6
      */
   weekday: number;
+  /** @minItems 1 */
   blocks: UpdateEventTemplateBodyBlocksItem[];
 };
 

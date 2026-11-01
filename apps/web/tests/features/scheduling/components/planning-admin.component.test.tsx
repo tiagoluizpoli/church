@@ -156,7 +156,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     expect(document.querySelector('h1')).toHaveTextContent('Cycles');
   });
 
-  it('keeps the template library as a saved-list view and opens creation in a dialog', async () => {
+  it('keeps the template library as a saved-list view and opens creation on a nested page without loading a cycle', async () => {
     listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
@@ -165,15 +165,18 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-template-library-button'));
 
-    expect(await screen.findByText('Saved templates')).toBeVisible();
+    expect(await screen.findByText('Modelos salvos')).toBeVisible();
     expect(screen.queryByTestId('template-name-input')).not.toBeInTheDocument();
-
-    await user.click(screen.getByTestId('open-create-template-dialog-button'));
-
     expect(
-      await screen.findByRole('dialog', { name: 'Create template' }),
-    ).toBeVisible();
+      screen.queryByTestId('back-from-template-library-button'),
+    ).toBeNull();
+
+    await user.click(screen.getByTestId('new-template-button'));
+
+    expect(await screen.findByTestId('template-create-page')).toBeVisible();
     expect(screen.getByTestId('template-name-input')).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(getCycle).not.toHaveBeenCalled();
   });
 
   it('opens a saved template in edit mode from the library list', async () => {
@@ -207,7 +210,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     );
 
     expect(
-      await screen.findByRole('dialog', { name: 'Edit template' }),
+      await screen.findByRole('dialog', { name: 'Editar modelo' }),
     ).toBeVisible();
     expect(screen.getByTestId('template-name-input')).toHaveValue(
       'Sunday Service',

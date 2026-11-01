@@ -305,7 +305,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       setTemplateForm((currentForm) => ({
         ...currentForm,
         blocks: currentForm.blocks.map((block) => {
-          if (block.id !== input.blockId) {
+          if (block.key !== input.blockId) {
             return block;
           }
 
@@ -321,7 +321,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     }: RemoveTemplateTimeBlockInput) =>
       setTemplateForm((currentForm) => ({
         ...currentForm,
-        blocks: currentForm.blocks.filter((block) => block.id !== blockId),
+        blocks: currentForm.blocks.filter((block) => block.key !== blockId),
       })),
     handleAddTemplateTimeBlock: () =>
       setTemplateForm((currentForm) => ({

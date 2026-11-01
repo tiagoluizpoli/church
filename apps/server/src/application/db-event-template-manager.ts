@@ -13,12 +13,10 @@ import type {
   EventTemplateTimeBlockInput,
 } from '../domain/contracts/infrastructure/event-template.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type {
+import {
   EventTemplate,
-  EventTemplateUsage,
+  type EventTemplateUsage,
 } from '../domain/entities/event-template';
-import { DuplicateTemplateBlockLabelError } from '../domain/errors/duplicate-template-name';
-import { InvalidTimeRangeError } from '../domain/errors/invalid-time-range';
 
 interface DbEventTemplateManagerDependencies {
   templateRepository: EventTemplateRepository;
@@ -32,28 +30,22 @@ interface NormalizeBlocksInput {
 /**
  * Validates the desired blocks and derives contiguous zero-based `order` by
  * ascending start time; equal starts keep their submitted relative order.
+ * Text arrives trimmed by the API schema.
  */
 function normalizeBlocks({
   blocks,
 }: NormalizeBlocksInput): EventTemplateTimeBlockInput[] {
-  const labels = new Set<string>();
-  for (const block of blocks) {
-    if (block.startTime === block.endTime) {
-      throw new InvalidTimeRangeError('Start time must not equal end time');
-    }
-    const key = block.label.trim().toLowerCase();
-    if (labels.has(key)) {
-      throw new DuplicateTemplateBlockLabelError();
-    }
-    labels.add(key);
-  }
+  EventTemplate.assertBlocks({ blocks });
   return blocks
-    .map(({ id, label, startTime, endTime }) => ({
-      ...(id ? { id: TemplateTimeBlockId.from(id.toLowerCase()) } : {}),
-      label: label.trim(),
-      startTime,
-      endTime,
-    }))
+    .map(({ id, label, startTime, endTime }) => {
+      const normalizedId = id?.toLowerCase();
+      return {
+        ...(normalizedId ? { id: TemplateTimeBlockId.from(normalizedId) } : {}),
+        label,
+        startTime,
+        endTime,
+      };
+    })
     .sort((left, right) => left.startTime.localeCompare(right.startTime))
     .map((block, order) => ({ ...block, order }));
 }
@@ -77,7 +69,7 @@ export class DbEventTemplateManager implements IEventTemplateManager {
     return this.unitOfWork.run((tx) =>
       this.templateRepository.create({
         churchId: input.churchId,
-        name: input.name.trim(),
+        name: input.name,
         weekday: input.weekday,
         blocks,
         tx,
@@ -93,7 +85,7 @@ export class DbEventTemplateManager implements IEventTemplateManager {
       this.templateRepository.update({
         churchId: input.churchId,
         templateId: input.templateId,
-        name: input.name.trim(),
+        name: input.name,
         weekday: input.weekday,
         blocks,
         tx,

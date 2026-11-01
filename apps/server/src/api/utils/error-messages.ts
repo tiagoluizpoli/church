@@ -3,13 +3,9 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import {
-  DuplicateHeadcountError,
   type ValidationReason,
-} from '@/domain/errors/duplicate-headcount';
-import {
-  DuplicateTemplateBlockLabelError,
-  DuplicateTemplateNameError,
-} from '@/domain/errors/duplicate-template-name';
+  ValidationRuleError,
+} from '@/domain/errors/validation-rule-error';
 
 export const VALIDATION_REASON_MESSAGES: Record<
   ValidationReason,
@@ -30,11 +26,7 @@ interface DomainErrorMessageInput {
 export function validationReason(
   error: DomainError,
 ): ValidationReason | undefined {
-  return error instanceof DuplicateHeadcountError ||
-    error instanceof DuplicateTemplateNameError ||
-    error instanceof DuplicateTemplateBlockLabelError
-    ? error.reason
-    : undefined;
+  return error instanceof ValidationRuleError ? error.reason : undefined;
 }
 
 /** The catalog text for a domain error, or undefined when its code has no entry. */

@@ -2,11 +2,15 @@ import { NotFoundError } from '@church/core';
 import { eventTemplate, templateTimeBlock, usualSetup } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
-import type { EventTemplateId } from '../../domain/branded-ids';
+import {
+  type EventTemplateId,
+  TemplateTimeBlockId,
+} from '../../domain/branded-ids';
 import type {
   CreateEventTemplateInput,
   DeleteEventTemplateInput,
   EventTemplateRepository,
+  EventTemplateTimeBlockInput,
   GetEventTemplateInput,
   GetEventTemplatesByIdsInput,
   ListEventTemplatesInput,
@@ -16,10 +20,12 @@ import type {
   EventTemplate,
   EventTemplateUsage,
 } from '../../domain/entities/event-template';
+import { DuplicateTemplateBlockLabelError } from '../../domain/errors/duplicate-template-block-label';
 import { DuplicateTemplateNameError } from '../../domain/errors/duplicate-template-name';
 import { mapEventTemplate } from '../mappers/event-template.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
+import { isUniqueViolation } from './unique-violation';
 
 interface EventTemplateGraphRow {
   template: typeof eventTemplate.$inferSelect;
@@ -32,43 +38,52 @@ interface MapTemplateGraphInput {
 }
 
 const NAME_UNIQUE_CONSTRAINT = 'event_template_church_name_idx';
+const BLOCK_LABEL_UNIQUE_CONSTRAINT = 'template_time_block_template_label_idx';
 
-interface UniqueViolationInput {
-  error: unknown;
-}
-
-interface PostgresErrorShape {
-  code?: string;
-  constraint?: string;
-  cause?: unknown;
-}
-
-/** drizzle wraps the raw `pg` error, so the code/constraint sit on `.cause`. */
-function isNameUniqueViolation({ error }: UniqueViolationInput): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const { code, constraint, cause } = error as PostgresErrorShape;
-  return (
-    (code === '23505' && constraint === NAME_UNIQUE_CONSTRAINT) ||
-    isNameUniqueViolation({ error: cause })
-  );
-}
-
-interface RefuseDuplicateNameInput<T> {
+interface RefuseUniqueViolationsInput<T> {
   write: Promise<T>;
 }
 
-/** Turns the case-insensitive name index violation, including races, into a domain refusal. */
-async function refuseDuplicateName<T>({
+/**
+ * Turns the case-insensitive name and block-label index violations, including
+ * races and writers that skip the manager, into domain refusals.
+ */
+async function refuseUniqueViolations<T>({
   write,
-}: RefuseDuplicateNameInput<T>): Promise<T> {
+}: RefuseUniqueViolationsInput<T>): Promise<T> {
   try {
     return await write;
   } catch (error) {
-    if (isNameUniqueViolation({ error })) {
+    if (isUniqueViolation({ error, constraint: NAME_UNIQUE_CONSTRAINT })) {
       throw new DuplicateTemplateNameError();
+    }
+    if (
+      isUniqueViolation({ error, constraint: BLOCK_LABEL_UNIQUE_CONSTRAINT })
+    ) {
+      throw new DuplicateTemplateBlockLabelError();
     }
     throw error;
   }
+}
+
+interface TemplateNotFoundInput {
+  templateId: string;
+}
+
+function templateNotFound({
+  templateId,
+}: TemplateNotFoundInput): NotFoundError {
+  return new NotFoundError(`Event template not found: ${templateId}`);
+}
+
+type RetainedBlockInput = EventTemplateTimeBlockInput & {
+  id: TemplateTimeBlockId;
+};
+
+function isRetainedBlock(
+  block: EventTemplateTimeBlockInput,
+): block is RetainedBlockInput {
+  return block.id !== undefined;
 }
 
 interface DrizzleEventTemplateRepositoryInput {
@@ -83,17 +98,21 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
   private readonly db: AnyDrizzleDb;
 
   async create(input: CreateEventTemplateInput): Promise<EventTemplate> {
+    return refuseUniqueViolations({ write: this.insertGraph(input) });
+  }
+
+  private async insertGraph(
+    input: CreateEventTemplateInput,
+  ): Promise<EventTemplate> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const [templateRow] = await refuseDuplicateName({
-      write: db
-        .insert(eventTemplate)
-        .values({
-          churchId: input.churchId,
-          name: input.name,
-          weekday: input.weekday,
-        })
-        .returning(),
-    });
+    const [templateRow] = await db
+      .insert(eventTemplate)
+      .values({
+        churchId: input.churchId,
+        name: input.name,
+        weekday: input.weekday,
+      })
+      .returning();
 
     if (!templateRow) {
       throw new Error('Event template insert failed');
@@ -125,9 +144,14 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
    * (cascading only their Usual setup). Run inside a transaction.
    */
   async update(input: UpdateEventTemplateInput): Promise<EventTemplate> {
+    return refuseUniqueViolations({ write: this.applyDesiredState(input) });
+  }
+
+  private async applyDesiredState(
+    input: UpdateEventTemplateInput,
+  ): Promise<EventTemplate> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const notFound = () =>
-      new NotFoundError(`Event template not found: ${input.templateId}`);
+    const notFound = () => templateNotFound({ templateId: input.templateId });
     if (!isValidUuid(input.templateId)) throw notFound();
 
     // Row lock serializes concurrent edits of one template, so each validated
@@ -147,32 +171,27 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .for('update');
     if (!locked) throw notFound();
 
-    const currentIds = new Set(
-      (
-        await db
-          .select({ id: templateTimeBlock.id })
-          .from(templateTimeBlock)
-          .where(eq(templateTimeBlock.templateId, input.templateId))
-      ).map((row) => row.id),
-    );
-    const retained = input.blocks.filter((block) => block.id !== undefined);
+    const currentRows = await db
+      .select({ id: templateTimeBlock.id })
+      .from(templateTimeBlock)
+      .where(eq(templateTimeBlock.templateId, input.templateId));
+    const currentIds = new Set(currentRows.map((row) => row.id));
+    const retained = input.blocks.filter(isRetainedBlock);
     // A stale, foreign-template or foreign-Church id is refused before any write.
-    if (retained.some((block) => !currentIds.has(block.id as string))) {
+    if (retained.some((block) => !currentIds.has(block.id))) {
       throw notFound();
     }
 
-    await refuseDuplicateName({
-      write: db
-        .update(eventTemplate)
-        .set({
-          name: input.name,
-          weekday: input.weekday,
-          updatedAt: nowAsDate(),
-        })
-        .where(eq(eventTemplate.id, input.templateId)),
-    });
+    await db
+      .update(eventTemplate)
+      .set({
+        name: input.name,
+        weekday: input.weekday,
+        updatedAt: nowAsDate(),
+      })
+      .where(eq(eventTemplate.id, input.templateId));
 
-    const retainedIds = retained.map((block) => block.id as string);
+    const retainedIds = retained.map((block) => block.id);
     await db
       .delete(templateTimeBlock)
       .where(
@@ -184,11 +203,15 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
         ),
       );
 
-    // Park retained rows on distinct negative orders so the final orders can
-    // be written without colliding on the (template, order) unique index.
+    // Park retained rows on distinct negative orders and on labels no trimmed
+    // label can equal (a leading space plus the row id), so final orders and
+    // swapped labels are written without colliding on either unique index.
     await db
       .update(templateTimeBlock)
-      .set({ order: sql`-1 - ${templateTimeBlock.order}` })
+      .set({
+        order: sql`-1 - ${templateTimeBlock.order}`,
+        label: sql`' ' || ${templateTimeBlock.id}`,
+      })
       .where(eq(templateTimeBlock.templateId, input.templateId));
 
     for (const block of retained) {
@@ -200,10 +223,10 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           endTime: block.endTime,
           order: block.order,
         })
-        .where(eq(templateTimeBlock.id, block.id as string));
+        .where(eq(templateTimeBlock.id, block.id));
     }
 
-    const added = input.blocks.filter((block) => block.id === undefined);
+    const added = input.blocks.filter((block) => !isRetainedBlock(block));
     if (added.length > 0) {
       await db.insert(templateTimeBlock).values(
         added.map((block) => ({
@@ -242,7 +265,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
         churchId: input.churchId,
       }),
     );
-    const blocks = await db
+    const blockRows = await db
       .select({
         blockId: templateTimeBlock.id,
         ministryCount: sql<number>`count(distinct ${usualSetup.ministryId})::int`,
@@ -262,14 +285,17 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     return {
       templateId: input.templateId,
       ministryCount: total?.ministryCount ?? 0,
-      blocks,
+      blocks: blockRows.map((row) => ({
+        blockId: TemplateTimeBlockId.from(row.blockId),
+        ministryCount: row.ministryCount,
+      })),
     };
   }
 
   async delete(input: DeleteEventTemplateInput): Promise<void> {
     const db = getClient({ db: this.db, tx: input.tx });
     if (!isValidUuid(input.templateId)) {
-      throw new NotFoundError(`Event template not found: ${input.templateId}`);
+      throw templateNotFound({ templateId: input.templateId });
     }
     // One statement: blocks and setup cascade, generated-source links SET NULL.
     const deleted = await db
@@ -285,7 +311,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       )
       .returning({ id: eventTemplate.id });
     if (deleted.length === 0) {
-      throw new NotFoundError(`Event template not found: ${input.templateId}`);
+      throw templateNotFound({ templateId: input.templateId });
     }
   }
 
@@ -311,7 +337,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
 
   async getById(input: GetEventTemplateInput): Promise<EventTemplate> {
     if (!isValidUuid(input.templateId)) {
-      throw new NotFoundError(`Event template not found: ${input.templateId}`);
+      throw templateNotFound({ templateId: input.templateId });
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
@@ -329,7 +355,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       );
 
     if (!templateRow) {
-      throw new NotFoundError(`Event template not found: ${input.templateId}`);
+      throw templateNotFound({ templateId: input.templateId });
     }
 
     return this.mapTemplateGraph({

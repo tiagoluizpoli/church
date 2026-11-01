@@ -23,7 +23,14 @@ import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
-import { ChurchId, UserId } from '@/domain/branded-ids';
+import {
+  ChurchId,
+  EventTemplateId,
+  MinistryId,
+  UserId,
+  VolunteerId,
+} from '@/domain/branded-ids';
+import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -107,17 +114,20 @@ beforeEach(async () => {
   await resetSchedulingPhase3Db();
 });
 
-type AccessLevel = 'admin' | 'member';
+/** `leader` and `volunteer` are plain Church Members with that Ministry Membership. */
+type Persona = 'admin' | 'member' | 'leader' | 'volunteer';
 
 interface SignInInput {
-  accessLevel?: AccessLevel;
+  persona?: Persona;
 }
 
 /** A signed-in actor of Church A; a ChurchAdmin has no Volunteer profile. */
-async function signIn({ accessLevel = 'admin' }: SignInInput = {}) {
+async function signIn({ persona = 'admin' }: SignInInput = {}) {
   const seed = await seedSchedulingPhase3Base();
   const churchId = ChurchId.from(seed.churchAId);
   const userId = UserId.from(seed.adminUserId);
+  const ministryAccessLevel =
+    persona === 'leader' || persona === 'volunteer' ? persona : null;
   mockGetSession.mockResolvedValue({
     user: { id: seed.adminUserId },
     session: { activeOrganizationId: null },
@@ -131,9 +141,23 @@ async function signIn({ accessLevel = 'admin' }: SignInInput = {}) {
   actorRepository.resolveActor.mockResolvedValue({
     userId,
     activeChurchId: churchId,
-    volunteerId: null,
-    churchMembership: { churchId, accessLevel },
-    ministryMemberships: [],
+    volunteerId: ministryAccessLevel
+      ? VolunteerId.from(seed.adminVolunteerId)
+      : null,
+    churchMembership: {
+      churchId,
+      accessLevel: persona === 'admin' ? 'admin' : 'member',
+    },
+    ministryMemberships: ministryAccessLevel
+      ? [
+          {
+            churchId,
+            ministryId: MinistryId.from(seed.ministryAId),
+            accessLevel: ministryAccessLevel,
+            qualifiedRoleIds: [],
+          },
+        ]
+      : [],
   });
   return seed;
 }
@@ -882,6 +906,46 @@ describe('PATCH /event-templates/:templateId identity', () => {
     expect(labels).toHaveLength(4);
     expect(new Set(labels).size).toBe(4);
   });
+
+  it('refuses a duplicate label from a writer that skips the manager with the domain reason, via the database index', async () => {
+    const graph = await seedEditGraph();
+    const before = await storedState();
+    const repository = new DrizzleEventTemplateRepository({
+      db: schedulingTestDb,
+    });
+    const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
+    const desired = (label: string, order: number) => ({
+      label,
+      startTime: `1${order}:00`,
+      endTime: `1${order}:30`,
+      order,
+    });
+
+    await expect(
+      unitOfWork.run((tx) =>
+        repository.update({
+          churchId: ChurchId.from(graph.seed.churchAId),
+          templateId: EventTemplateId.from(ids.template),
+          name: 'Sunday',
+          weekday: 0,
+          blocks: [desired('Same', 0), desired('SAME', 1)],
+          tx,
+        }),
+      ),
+    ).rejects.toThrow(DuplicateTemplateBlockLabelError);
+    await expect(
+      unitOfWork.run((tx) =>
+        repository.create({
+          churchId: ChurchId.from(graph.seed.churchAId),
+          name: 'Bypass',
+          weekday: 1,
+          blocks: [desired('Same', 0), desired('same', 1)],
+          tx,
+        }),
+      ),
+    ).rejects.toThrow(DuplicateTemplateBlockLabelError);
+    expect(await storedState()).toEqual(before);
+  });
 });
 
 function del(templateId: string) {
@@ -980,16 +1044,25 @@ describe('GET /event-templates and authorization', () => {
     ).toEqual(['Apple', 'banana', 'Cherry']);
   });
 
-  it('answers 401 without a session', async () => {
+  it('answers 401 without a session on every endpoint', async () => {
     mockGetSession.mockResolvedValue(null as never);
 
     expect((await list()).statusCode).toBe(401);
     expect((await post(body())).statusCode).toBe(401);
+    expect((await getDetail(ids.template)).statusCode).toBe(401);
+    expect((await getUsage(ids.template)).statusCode).toBe(401);
+    expect(
+      (await patch({ templateId: ids.template, payload: body() })).statusCode,
+    ).toBe(401);
     expect((await del(ids.template)).statusCode).toBe(401);
   });
 
-  it('answers 403 to a signed-in member without ChurchAdmin authority and writes nothing', async () => {
-    await signIn({ accessLevel: 'member' });
+  it.each([
+    'member',
+    'leader',
+    'volunteer',
+  ] as const)('answers 403 to a signed-in %s without ChurchAdmin authority and writes nothing', async (persona) => {
+    await signIn({ persona });
 
     expect((await list()).statusCode).toBe(403);
     expect((await post(body())).statusCode).toBe(403);

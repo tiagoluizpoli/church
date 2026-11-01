@@ -304,6 +304,29 @@ export type CreateEventTemplate201 = {
   updatedAt: string;
 };
 
+export type CreateEventTemplate422Error = typeof CreateEventTemplate422Error[keyof typeof CreateEventTemplate422Error];
+
+
+export const CreateEventTemplate422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type CreateEventTemplate422Reason = typeof CreateEventTemplate422Reason[keyof typeof CreateEventTemplate422Reason];
+
+
+export const CreateEventTemplate422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+} as const;
+
+export type CreateEventTemplate422 = {
+  error: CreateEventTemplate422Error;
+  message: string;
+  reason?: CreateEventTemplate422Reason;
+  issues?: unknown[];
+};
+
 export type ListEventTemplates200TemplatesItemBlocksItem = {
   id: string;
   churchId: string;
@@ -407,6 +430,29 @@ export type UpdateEventTemplate200 = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type UpdateEventTemplate422Error = typeof UpdateEventTemplate422Error[keyof typeof UpdateEventTemplate422Error];
+
+
+export const UpdateEventTemplate422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdateEventTemplate422Reason = typeof UpdateEventTemplate422Reason[keyof typeof UpdateEventTemplate422Reason];
+
+
+export const UpdateEventTemplate422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+} as const;
+
+export type UpdateEventTemplate422 = {
+  error: UpdateEventTemplate422Error;
+  message: string;
+  reason?: UpdateEventTemplate422Reason;
+  issues?: unknown[];
 };
 
 export type GetEventTemplateUsage200BlocksItem = {

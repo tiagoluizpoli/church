@@ -62,6 +62,7 @@ import {
   usualSetupMapper,
   usualSetupResponseSchema,
 } from '../dtos/usual-setup.dto';
+import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
 import { refuse } from '../utils/refuse';
 import {
   dateFromCalendarDayString,
@@ -292,7 +293,10 @@ export class ChurchAdminController implements FastifyController {
           description:
             'Create a church-owned EventTemplate with its ordered TemplateTimeBlocks for a given weekday.',
           body: createEventTemplateBodySchema,
-          response: { 201: eventTemplateResponseSchema },
+          response: {
+            201: eventTemplateResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -382,7 +386,10 @@ export class ChurchAdminController implements FastifyController {
           description:
             "Apply an EventTemplate's complete desired name, weekday and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.",
           body: updateEventTemplateBodySchema,
-          response: { 200: eventTemplateResponseSchema },
+          response: {
+            200: eventTemplateResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {

@@ -4,14 +4,10 @@ import {
   VALIDATION_REASON_MESSAGES,
 } from '@/api/utils/error-messages';
 import { ERROR_TABLE, errorStatus } from '@/api/utils/error-table';
-import {
-  DuplicateHeadcountError,
-  VALIDATION_REASONS,
-} from '@/domain/errors/duplicate-headcount';
-import {
-  DuplicateTemplateBlockLabelError,
-  DuplicateTemplateNameError,
-} from '@/domain/errors/duplicate-template-name';
+import { DuplicateHeadcountError } from '@/domain/errors/duplicate-headcount';
+import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
+import { DuplicateTemplateNameError } from '@/domain/errors/duplicate-template-name';
+import { VALIDATION_REASONS } from '@/domain/errors/validation-rule-error';
 
 // Codes thrown by the domain that never become an HTTP response.
 const NEVER_HTTP = [

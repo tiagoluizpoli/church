@@ -119,6 +119,10 @@ export const templateTimeBlock = pgTable(
       table.templateId,
       table.order,
     ),
+    uniqueIndex('template_time_block_template_label_idx').on(
+      table.templateId,
+      sql`lower(${table.label})`,
+    ),
   ],
 );
 

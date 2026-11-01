@@ -4,7 +4,7 @@ import { ChurchId, EventTemplateId } from '@/domain/branded-ids';
 import type { EventTemplateRepository } from '@/domain/contracts/infrastructure/event-template.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import type { EventTemplate } from '@/domain/entities/event-template';
-import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-name';
+import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
 import { InvalidTimeRangeError } from '@/domain/errors/invalid-time-range';
 
 describe('DbEventTemplateManager', () => {
@@ -35,16 +35,16 @@ describe('DbEventTemplateManager', () => {
     });
   }
 
-  it('creates inside one transaction, trimming and ordering blocks by start time with stable ties', async () => {
+  it('creates inside one transaction, ordering blocks by start time with stable ties', async () => {
     const repository = createRepository();
 
     const result = await createManager(repository).createTemplate({
       churchId,
-      name: '  Sunday Service ',
+      name: 'Sunday Service',
       weekday: 0,
       blocks: [
         { label: 'Late', startTime: '11:00', endTime: '12:00' },
-        { label: ' Tie A ', startTime: '09:00', endTime: '10:00' },
+        { label: 'Tie A', startTime: '09:00', endTime: '10:00' },
         { label: 'Tie B', startTime: '09:00', endTime: '09:30' },
       ],
     });
@@ -82,7 +82,7 @@ describe('DbEventTemplateManager', () => {
         weekday: 0,
         blocks: [
           { label: 'Welcome', startTime: '09:00', endTime: '10:00' },
-          { label: ' welcome ', startTime: '10:00', endTime: '11:00' },
+          { label: 'welcome', startTime: '10:00', endTime: '11:00' },
         ],
       }),
     ).rejects.toThrow(DuplicateTemplateBlockLabelError);

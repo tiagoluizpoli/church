@@ -2,12 +2,13 @@ import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTemplate } from '../../domain/entities/event-template';
 
-const templateNameSchema = z.string().trim().min(1).max(255);
+/** The single trim point for template names and block labels. */
+const requiredTextSchema = z.string().trim().min(1).max(255);
 
 /** Create takes no persisted id or caller-controlled order: the server derives `order`. */
 export const eventTemplateTimeBlockBodySchema = z
   .object({
-    label: templateNameSchema,
+    label: requiredTextSchema,
     startTime: timeOfDaySchema,
     endTime: timeOfDaySchema,
   })
@@ -30,7 +31,7 @@ function hasRepeatedIds(blocks: UpdateEventTemplateTimeBlockBody[]): boolean {
 }
 
 export const createEventTemplateBodySchema = z.object({
-  name: templateNameSchema,
+  name: requiredTextSchema,
   weekday: z.number().int().min(0).max(6),
   blocks: z.array(eventTemplateTimeBlockBodySchema).min(1),
 });

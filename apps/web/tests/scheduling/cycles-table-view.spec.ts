@@ -57,9 +57,7 @@ async function createCycleWithSundayTemplateApplied({
     page,
     name: templateName,
     weekday: 0,
-    blocks: [
-      { label: 'Worship', startTime: '09:00', endTime: '10:00', order: 0 },
-    ],
+    blocks: [{ label: 'Worship', startTime: '09:00', endTime: '10:00' }],
   });
   await applyTemplatesViaApi({
     page,

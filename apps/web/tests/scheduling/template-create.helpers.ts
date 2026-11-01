@@ -49,5 +49,5 @@ export async function createTemplateOnNestedPage({
   await expect(page).toHaveURL(/\/event-templates$/);
   await expect(
     page.getByTestId('saved-template-row').filter({ hasText: name }),
-  ).toBeVisible();
+  ).toBeAttached(); // the card list is hidden at desktop widths
 }

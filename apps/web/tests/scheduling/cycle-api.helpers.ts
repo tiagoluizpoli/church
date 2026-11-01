@@ -52,7 +52,6 @@ export interface EventTemplateTimeBlockInput {
   label: string;
   startTime: string;
   endTime: string;
-  order: number;
 }
 
 interface CreateEventTemplateViaApiParams {

@@ -15,7 +15,12 @@ test('church admin lists Event templates, then creates an overnight one on the n
   const templateName = 'Vigília da madrugada';
 
   await page.goto('/');
-  await page.getByRole('link', { name: 'Modelos de evento' }).first().click();
+  // At this viewport the Scheduling navigation lives in the drawer.
+  await page.getByRole('button', { name: 'Abrir menu' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: 'Modelos de evento' })
+    .click();
 
   await expect(page).toHaveURL(/\/event-templates$/);
   const rows = page.getByTestId('saved-template-row');

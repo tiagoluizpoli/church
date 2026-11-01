@@ -1,10 +1,6 @@
 import type { Locale } from '@church/time';
 import type { ChurchRecipient } from '@/domain/contracts/application/church-notifications';
-
-/** A Transactional recipient known only by address (no Church Membership). */
-export interface AddressRecipient {
-  email: string;
-}
+import type { AddressRecipient } from '@/domain/contracts/infrastructure/email-sender';
 
 export interface RecipientLocaleInput {
   recipient: ChurchRecipient | AddressRecipient;

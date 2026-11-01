@@ -46,6 +46,11 @@ export interface EmailDuration {
   minutes: number;
 }
 
+/** A Transactional recipient known only by address (no Church Membership). */
+export interface AddressRecipient {
+  email: string;
+}
+
 export interface VerificationCodeEmail {
   kind: 'invitation.verification-code';
   to: string;

@@ -352,5 +352,13 @@
   "join_validation_code": "Informe o código de 6 dígitos.",
   "join_too_many_requests": "Muitas solicitações. Tente novamente em instantes.",
   "join_log_in": "Entrar",
-  "join_welcome": "Bem-vindo! Preparando sua conta…"
+  "join_welcome": "Bem-vindo! Preparando sua conta…",
+  "join_decline": "Recusar",
+  "join_declining": "Recusando…",
+  "join_decline_confirm_title": "Recusar convite?",
+  "join_decline_confirm_description": "Você não vai entrar, e qualquer convite associado a este também será recusado. Não é possível desfazer sem um novo convite.",
+  "join_decline_confirm": "Sim, recusar",
+  "join_decline_cancel": "Cancelar",
+  "join_declined_title": "Convite recusado",
+  "join_declined_description": "Você recusou o convite. Pode fechar esta página."
 }

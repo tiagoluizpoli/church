@@ -352,5 +352,13 @@
   "join_validation_code": "Enter the 6-digit code.",
   "join_too_many_requests": "Too many requests. Try again in a moment.",
   "join_log_in": "Log in",
-  "join_welcome": "Welcome! Setting up your account…"
+  "join_welcome": "Welcome! Setting up your account…",
+  "join_decline": "Decline",
+  "join_declining": "Declining…",
+  "join_decline_confirm_title": "Decline this invitation?",
+  "join_decline_confirm_description": "You will not join, and anyone paired with this invitation is declined too. You can't undo this without a new invitation.",
+  "join_decline_confirm": "Yes, decline",
+  "join_decline_cancel": "Cancel",
+  "join_declined_title": "Invitation declined",
+  "join_declined_description": "You declined the invitation. You can close this page."
 }

@@ -9,6 +9,15 @@ import { isAxiosError } from 'axios';
 import { CalendarClock, CircleAlert, MailCheck } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { z } from 'zod';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -143,6 +152,7 @@ function ChurchInvitationJoinRoute() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [idempotencyKey] = useState(() => randomId());
+  const [confirmingDecline, setConfirmingDecline] = useState(false);
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => nowAsDate().getTime());
 
@@ -178,6 +188,11 @@ function ChurchInvitationJoinRoute() {
       navigateToHome: () => navigate({ to: '/', search }),
     });
   }
+
+  const declineMutation = useMutation({
+    mutationFn: () => redemptionApi.declineChurchInvitation(invitationId),
+    onSettled: () => setConfirmingDecline(false),
+  });
 
   const redeemMutation = useMutation({
     mutationFn: (values: JoinFormValues) =>
@@ -235,6 +250,32 @@ function ChurchInvitationJoinRoute() {
   const preview = previewQuery.data;
   if (!preview) return null;
 
+  if (declineMutation.isSuccess) {
+    return (
+      <RedemptionShell>
+        <div className="space-y-1.5">
+          <h1 className="font-semibold text-2xl tracking-tight">
+            {m.join_declined_title()}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {m.join_declined_description()}
+          </p>
+        </div>
+      </RedemptionShell>
+    );
+  }
+
+  if (
+    declineMutation.isError &&
+    statusOf({ error: declineMutation.error }) !== 429
+  ) {
+    return (
+      <RedemptionShell>
+        <UnavailableNotice />
+      </RedemptionShell>
+    );
+  }
+
   const outcome = redeemMutation.data;
   if (outcome?.kind === 'full-success' || outcome?.kind === 'church-only') {
     return (
@@ -246,6 +287,7 @@ function ChurchInvitationJoinRoute() {
 
   const failure = outcome ? describeRedemptionOutcome({ outcome }) : null;
   const cooldownSeconds = remainingCooldownSeconds({ codeSentAt, now });
+  const declineThrottled = declineMutation.isError;
   const codeRequestThrottled =
     requestCodeMutation.isError &&
     statusOf({ error: requestCodeMutation.error }) !== 404;
@@ -271,10 +313,9 @@ function ChurchInvitationJoinRoute() {
             <Label htmlFor="invitation-email">{m.join_email_label()}</Label>
             <Input id="invitation-email" value={preview.email} readOnly />
           </div>
-          {codeRequestThrottled ? (
+          {codeRequestThrottled || declineThrottled ? (
             <Notice title={m.join_too_many_requests()} />
           ) : null}
-          {/* The public Decline action joins Send code here (ticket #644). */}
           <Button
             type="button"
             className="w-full"
@@ -286,6 +327,42 @@ function ChurchInvitationJoinRoute() {
               ? m.join_sending_code()
               : m.join_send_code()}
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            disabled={declineMutation.isPending}
+            onClick={() => setConfirmingDecline(true)}
+          >
+            {m.join_decline()}
+          </Button>
+          <AlertDialog
+            open={confirmingDecline}
+            onOpenChange={setConfirmingDecline}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {m.join_decline_confirm_title()}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {m.join_decline_confirm_description()}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{m.join_decline_cancel()}</AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  disabled={declineMutation.isPending}
+                  onClick={() => declineMutation.mutate()}
+                >
+                  {declineMutation.isPending
+                    ? m.join_declining()
+                    : m.join_decline_confirm()}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       ) : (
         <form

@@ -83,6 +83,7 @@ export function createEventTemplatesRecipe({
         weekday: seeded.weekday,
         blocks: [
           {
+            id: idOf({ kind: `${seeded.kind}-block` }),
             label: 'Principal',
             startTime: parseTimeOfDay({ value: '10:00' }),
             endTime: parseTimeOfDay({ value: '12:00' }),

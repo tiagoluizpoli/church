@@ -84,7 +84,7 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
     expect(acceptOutcome.kind).toBe('full-success');
     expect(acceptOutcome.volunteerId).toEqual(expect.any(String));
 
-    await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
 
     expect(
       await fetchActiveChurchStatus({ request: page.request }),

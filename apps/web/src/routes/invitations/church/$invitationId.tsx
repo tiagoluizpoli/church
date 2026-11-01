@@ -19,7 +19,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
 import { useContinueToChurch } from '@/shared/hooks/use-continue-to-church';
-import { finishRedemptionAtDashboard } from '@/shared/utils/active-church-switch';
+import { finishRedemptionAtHome } from '@/shared/utils/active-church-switch';
 import { randomId } from '@/shared/utils/id';
 import { redemptionApi } from '@/utils/api-instances';
 
@@ -148,7 +148,7 @@ function ChurchInvitationRedemptionRoute() {
       }),
     onSuccess: async (outcome) => {
       if (outcome.kind === 'full-success') {
-        await finishAtDashboard();
+        await finishAtHome();
         return;
       }
       // The cross-Church split renders its own flow, not a form error.
@@ -174,11 +174,11 @@ function ChurchInvitationRedemptionRoute() {
       ? describeRedemptionOutcome({ outcome })
       : null;
 
-  function finishAtDashboard(): Promise<void> {
-    return finishRedemptionAtDashboard({
+  function finishAtHome(): Promise<void> {
+    return finishRedemptionAtHome({
       queryClient,
       getSession: authClient.getSession,
-      navigateToDashboard: () => navigate({ to: '/dashboard' }),
+      navigateToHome: () => navigate({ to: '/' }),
     });
   }
 
@@ -223,8 +223,7 @@ function ChurchInvitationRedemptionRoute() {
 
   if (outcome?.kind === 'church-only') {
     // The User now belongs to both Churches: land in the one just joined.
-    const continueToDestination = (): Promise<void> =>
-      continueToChurch({ churchName: outcome.destinationChurchName });
+    const continueToDestination = (): Promise<void> => continueToChurch({});
     return (
       <RedemptionShell>
         <VolunteerTransferFlow

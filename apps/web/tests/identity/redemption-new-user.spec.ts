@@ -112,7 +112,7 @@ function uniqueOutsiderEmail(): string {
 }
 
 test.describe('DL#100 — a new person redeems a chained invitation', () => {
-  test('signs up, verifies a code, becomes a Volunteer, and lands on the dashboard with the invitation Church active', async ({
+  test('signs up, verifies a code, becomes a Volunteer, and lands on Home with the invitation Church active', async ({
     page,
   }, testInfo) => {
     const journey = loadMinistryRedemptionJourney({ testInfo });
@@ -159,7 +159,7 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
       expect(redeemOutcome.volunteerId.length).toBeGreaterThan(0);
     }
 
-    await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
 
     const status = await fetchActiveChurchStatus({ request: page.request });
     expect(status.churchId).toBe(journey.churchA.church.id);

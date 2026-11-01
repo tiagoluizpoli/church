@@ -196,3 +196,56 @@ export interface NotificationDeliveryDataByKind {
 
 export type NotificationDeliveryData =
   NotificationDeliveryDataByKind[NotificationRequestKind];
+
+const transferDigestDeliveryFactsSchema = z.object({
+  churchName: z.string(),
+  churchTimezone: z.string(),
+  recipientFirstName: z.string(),
+  ministryName: z.string(),
+  volunteerName: z.string(),
+  withdrawnAssignments: z.array(
+    z.object({
+      startsAt: instantSchema,
+      endsAt: instantSchema,
+      eventTitle: z.string(),
+      roleName: z.string(),
+      sectorName: z.string(),
+    }),
+  ),
+  actionUrl: z.string(),
+});
+
+const emailFactsSchema = z.object({ churchName: z.string() });
+
+/**
+ * What a frozen `facts` row must hold to render its email. Rows frozen before
+ * a field joined the facts fail here and are skipped, never rendered with
+ * invented or `undefined` values.
+ */
+export const notificationDeliveryFactsSchemas = {
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  ministry_invitation: ministryInvitationNotificationDataSchema.extend({
+    churchName: z.string(),
+    churchTimezone: z.string(),
+    ministryAccessLevel: z.string(),
+    roleNames: z.array(z.string()),
+    expiresAt: instantSchema,
+    redemptionUrl: z.string(),
+  }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_opened: availabilityNotificationDataSchema
+    .extend(emailFactsSchema.shape)
+    .extend({ actionUrl: z.string() }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_reminder: availabilityNotificationDataSchema
+    .extend(emailFactsSchema.shape)
+    .extend({ actionUrl: z.string() }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_published: schedulePublishedNotificationDataSchema
+    .extend(emailFactsSchema.shape)
+    .extend({ actionUrl: z.string() }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_ministry_digest: transferDigestDeliveryFactsSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_leaderless_ministry: transferDigestDeliveryFactsSchema,
+} as const satisfies Record<NotificationRequestKind, z.ZodType>;

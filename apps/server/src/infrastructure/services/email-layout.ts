@@ -20,8 +20,12 @@ export interface EmailContent {
   greeting: string;
   /** One line. */
   heading: string;
-  /** One to three paragraphs. */
-  facts: [string] | [string, string] | [string, string, string];
+  /** One to three paragraphs; four for an invitation that also lists Roles. */
+  facts:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string];
   list?: string[];
   action?: EmailAction;
   /** Why the recipient received this email. */

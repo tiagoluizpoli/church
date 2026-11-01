@@ -2,8 +2,8 @@ import { Resend } from 'resend';
 import type {
   DeliverEmailInput,
   EmailSender,
+  PreparedEmail,
   PrepareEmailInput,
-  ReplayableEmail,
   SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -56,7 +56,7 @@ export class ResendEmailSender implements EmailSender {
     this.appName = appName;
   }
 
-  prepare({ payload, locale }: PrepareEmailInput): ReplayableEmail {
+  prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
     return prepareEmail({
       payload,
       locale,

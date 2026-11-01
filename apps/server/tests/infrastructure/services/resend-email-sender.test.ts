@@ -1,9 +1,9 @@
 import { fromDate, type Instant } from '@church/time';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
+  ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
   EmailPayload,
-  MinistryInvitationEmail,
   TransferLeaderlessMinistryEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
@@ -23,7 +23,7 @@ const { ResendEmailSender } = await import(
   '@/infrastructure/services/resend-email-sender'
 );
 
-function buildChainedPayload(): MinistryInvitationEmail {
+function buildChainedPayload(): ChainedInvitationEmail {
   return {
     kind: 'invitation.chained',
     to: 'invitee@example.com',
@@ -31,6 +31,7 @@ function buildChainedPayload(): MinistryInvitationEmail {
     ministryName: 'Worship Team',
     ministryAccessLevel: 'volunteer',
     roleNames: ['Vocalist'],
+    inviterName: 'Ana',
     expiresAt: fromDate({ date: new Date('2026-08-01T00:00:00Z') }),
     churchTimezone: 'UTC',
     redemptionUrl: 'https://app.church.test/invitations/church/abc',
@@ -184,7 +185,7 @@ describe('ResendEmailSender', () => {
         subject: expect.stringContaining('Hospitality'),
         html: expect.stringContaining('Greeter'),
         text: expect.stringContaining(
-          'Sun 20/09 · 10:00–11:00 · Sunday Gathering · Greeter · Lobby',
+          'Sun 20 Sep · 10:00–11:00 · Sunday Gathering · Greeter · Lobby',
         ),
       }),
     );

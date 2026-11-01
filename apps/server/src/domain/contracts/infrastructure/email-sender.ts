@@ -11,22 +11,34 @@ import type { TransferDigestDeliveryFacts } from '../../notification-kinds';
  * persisted and never appears in an API response.
  */
 
-/** Chained and Ministry-only invitations render identically — same fields. */
-export interface MinistryInvitationEmail {
-  kind: 'invitation.chained' | 'invitation.ministry';
+/** T1: a Ministry invitation paired with a Church invitation; names who sent it. */
+export interface ChainedInvitationEmail {
+  kind: 'invitation.chained';
   to: string;
   churchName: string;
   ministryName: string;
   ministryAccessLevel: string;
   roleNames: string[];
-  /** Who sent the invitation; omitted when it cannot be resolved. */
-  inviterName?: string;
+  inviterName: string;
   expiresAt: Instant;
   /** The Church Timezone `expiresAt` is read in. */
   churchTimezone: string;
   redemptionUrl: string;
-  /** The Church Member's first name; set for `invitation.ministry`. */
-  recipientFirstName?: string;
+}
+
+/** N1: a Ministry invitation to an existing Church Member; Spec 15 owns its wording. */
+export interface MinistryInvitationEmail {
+  kind: 'invitation.ministry';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  ministryName: string;
+  ministryAccessLevel: string;
+  roleNames: string[];
+  expiresAt: Instant;
+  /** The Church Timezone `expiresAt` is read in. */
+  churchTimezone: string;
+  redemptionUrl: string;
 }
 
 /** A policy-derived length of time, translated at render time. */
@@ -122,6 +134,7 @@ export interface SchedulePublishedEmail {
 export type EmailPayload =
   | AvailabilityEmail
   | SchedulePublishedEmail
+  | ChainedInvitationEmail
   | MinistryInvitationEmail
   | VerificationCodeEmail
   | PasswordResetEmail
@@ -141,9 +154,8 @@ export interface EmailRequest {
   text: string;
 }
 
-/** A request without plain text: saved before the shared layout existed, or
- * prepared by a kind not yet moved onto it. Replayed as stored, never
- * re-rendered to add text. */
+/** A request without plain text: saved before the shared layout existed.
+ * Replayed as stored, never re-rendered to add text. */
 export type HtmlOnlyEmailRequest = Omit<EmailRequest, 'text'> & {
   text?: never;
 };
@@ -167,11 +179,8 @@ export interface HtmlOnlyPreparedEmail {
   request: HtmlOnlyEmailRequest;
 }
 
-/**
- * What the outbox stores and a transport replays: a layout email, or a
- * historical/unmigrated html-only one. Collapses to `PreparedEmail` for new
- * preparations once every kind renders through the layout (Spec 10).
- */
+/** What the outbox stores and a transport replays: a layout email, or a
+ * historical html-only one. New preparations are always `PreparedEmail`. */
 export type ReplayableEmail = PreparedEmail | HtmlOnlyPreparedEmail;
 
 export interface SendEmailResult {
@@ -181,7 +190,7 @@ export interface SendEmailResult {
 
 export interface PrepareEmailInput {
   payload: EmailPayload;
-  /** The recipient's language; templates not yet on the catalog stay English. */
+  /** The recipient's language. */
   locale?: EmailLocale;
 }
 
@@ -202,8 +211,7 @@ export interface SendEmailInput {
 
 /** Renders a payload into the exact request a transport will send. */
 export interface EmailPreparer {
-  /** Layout kinds return a `PreparedEmail`; unmigrated kinds stay html-only. */
-  prepare(input: PrepareEmailInput): ReplayableEmail;
+  prepare(input: PrepareEmailInput): PreparedEmail;
 }
 
 /** Delivers an already-prepared email; never renders. */

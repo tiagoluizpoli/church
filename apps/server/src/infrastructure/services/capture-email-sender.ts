@@ -2,6 +2,7 @@ import type {
   DeliverEmailInput,
   EmailPayload,
   EmailSender,
+  PreparedEmail,
   PrepareEmailInput,
   ReplayableEmail,
   SendEmailInput,
@@ -30,7 +31,7 @@ export class CaptureEmailSender
 
   constructor(private readonly appName: string) {}
 
-  prepare({ payload, locale }: PrepareEmailInput): ReplayableEmail {
+  prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
     return prepareEmail({
       payload,
       locale,

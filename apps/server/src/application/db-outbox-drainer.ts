@@ -15,10 +15,10 @@ import type {
 } from '../domain/contracts/application/outbox-drainer';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
+  ChainedInvitationEmail,
   EmailLocale,
   EmailPayload,
   EmailSender,
-  MinistryInvitationEmail,
 } from '../domain/contracts/infrastructure/email-sender';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
@@ -38,6 +38,7 @@ import {
   type MinistryInvitationDeliveryFacts,
   type NotificationDeliveryData,
   type NotificationRequest,
+  notificationDeliveryFactsSchemas,
   notificationRequestDataSchemas,
   type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
@@ -175,14 +176,23 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ),
     );
 
-    const payload: MinistryInvitationEmail = {
+    if (inviterName === null) {
+      // T1 names who invited; without it there is nothing correct to send.
+      await this.failTerminally({
+        message,
+        reason: 'Invitation inviter could not be resolved',
+      });
+      return 'failed';
+    }
+
+    const payload: ChainedInvitationEmail = {
       kind: message.kind,
       to: email,
       churchName: church.name,
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
-      ...(inviterName === null ? {} : { inviterName }),
+      inviterName,
       expiresAt: invitation.expiresAt,
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -320,6 +330,19 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return 'failed';
     }
     let facts = message.payload.facts;
+    // A saved email replays as stored; only an unprepared row renders from facts.
+    if (
+      facts &&
+      !message.emailDelivery &&
+      !notificationDeliveryFactsSchemas[kind].safeParse(facts).success
+    ) {
+      // Frozen before a required fact existed: never render a guess.
+      await this.skipDelivery({
+        message,
+        why: 'its frozen facts predate a required field',
+      });
+      return 'sent';
+    }
     if (!facts) {
       const resolved = await this.loadDeliveryFacts({
         churchId: message.churchId,
@@ -336,21 +359,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           return 'failed';
         }
         // The change is gone before anything was delivered: nothing to render.
-        console.warn(
-          `[Outbox] notification ${message.id} (${kind}) skipped: its context no longer exists`,
-        );
-        await this.unitOfWork.run((tx) =>
-          this.outboxRepository.markSent({
-            id: message.id,
-            sentAt: nowAsDate(),
-            channelOutcomes: {
-              ...message.channelOutcomes,
-              [CHURCH_SINK_NAMES.email]: 'skipped',
-              [CHURCH_SINK_NAMES.inbox]: 'skipped',
-            },
-            tx,
-          }),
-        );
+        await this.skipDelivery({
+          message,
+          why: 'its context no longer exists',
+        });
         return 'sent';
       }
       facts = resolved;
@@ -431,6 +443,28 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       }),
     );
     return 'sent';
+  }
+
+  /** Settles every unsettled sink as skipped: nothing can be rendered. */
+  private async skipDelivery({
+    message,
+    why,
+  }: SkipDeliveryInput): Promise<void> {
+    console.warn(
+      `[Outbox] notification ${message.id} (${message.payload.kind}) skipped: ${why}`,
+    );
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markSent({
+        id: message.id,
+        sentAt: nowAsDate(),
+        channelOutcomes: {
+          [CHURCH_SINK_NAMES.email]: 'skipped',
+          [CHURCH_SINK_NAMES.inbox]: 'skipped',
+          ...message.channelOutcomes,
+        },
+        tx,
+      }),
+    );
   }
 
   /**
@@ -626,6 +660,11 @@ interface PrepareAndDeliverInput {
 interface DeliverEmailInput {
   message: OutboxMessage;
   delivery: OutboxEmailDelivery;
+}
+
+interface SkipDeliveryInput {
+  message: NotificationOutboxMessage;
+  why: string;
 }
 
 interface MarkSentInput {

@@ -4,6 +4,7 @@ import {
   formatCalendarDay,
   formatCalendarDayWithWeekday,
   formatDayAndMonth,
+  formatDayLabel,
   formatInstant,
   formatInstantPrecise,
   formatRecency,
@@ -445,5 +446,22 @@ describe('formatRecency', () => {
         locale: 'en',
       }),
     ).toBe('in 3 days');
+  });
+});
+
+describe('formatDayLabel', () => {
+  it('reads like `dom 12 out` in pt-BR', () => {
+    expect(formatDayLabel({ day: day('2026-10-12'), locale: 'pt-BR' })).toBe(
+      'seg 12 out',
+    );
+    expect(formatDayLabel({ day: day('2026-10-11'), locale: 'pt-BR' })).toBe(
+      'dom 11 out',
+    );
+  });
+
+  it('reads like `Sun 11 Oct` in en, without padding the day', () => {
+    expect(formatDayLabel({ day: day('2026-10-04'), locale: 'en' })).toBe(
+      'Sun 4 Oct',
+    );
   });
 });

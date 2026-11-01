@@ -666,7 +666,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
       [`${secondLeader}@fixture.test`],
     ]);
     // São Paulo is UTC−3: the actual Shift, not its EventTimeBlock.
-    const shiftLine = `Seg. 15/01 · 10:15–10:45 · Transfer Sunday · ${await roleInBName()} · Lobby & <door>`;
+    const shiftLine = `seg 15 jan · 10:15–10:45 · Transfer Sunday · ${await roleInBName()} · Lobby & <door>`;
     const greetings = emailSender.delivered.map(
       ({ request }) => (request.text ?? '').split('\n\n')[0],
     );
@@ -793,6 +793,39 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
       status: 'sent',
       channelOutcomes: { email: 'skipped', inbox: 'skipped' },
     });
+  });
+
+  it('skips a row whose frozen facts predate the required fields instead of rendering undefined', async () => {
+    await leadMinistryInB(fixture.adminB);
+    await confirmTransfer();
+    // The shape frozen before the layout: no recipient name, no Shift Sector or end.
+    const oldFacts = {
+      churchName: 'Church B',
+      churchTimezone: 'UTC',
+      ministryName: 'Ministry',
+      volunteerName: 'Volunteer',
+      withdrawnAssignments: [
+        { startsAt: '2024-01-15T13:30:00.000Z', eventTitle: 'Sunday' },
+      ],
+    };
+    for (const row of await outboxRows()) {
+      await testDb
+        .update(outboxMessage)
+        .set({ payload: { ...(row.payload as object), facts: oldFacts } })
+        .where(eq(outboxMessage.id, row.id));
+    }
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await drain(emailSender);
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(0);
+    for (const row of await outboxRows()) {
+      expect(row).toMatchObject({
+        status: 'sent',
+        channelOutcomes: { email: 'skipped', inbox: 'skipped' },
+      });
+    }
   });
 
   it('keeps the recipients fixed at the transfer: a leader added before delivery is not notified', async () => {

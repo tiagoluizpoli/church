@@ -141,6 +141,26 @@ describe('DbOutboxDrainer.drainOnce', () => {
     );
   });
 
+  it('fails terminally without sending when the inviter cannot be resolved', async () => {
+    const message = buildMessage();
+    outboxRepository.claimPending.mockResolvedValue([message]);
+    invitationRepository.findById.mockResolvedValue(buildInvitation());
+    churchRepository.findMemberName.mockResolvedValue(null);
+
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.prepare).not.toHaveBeenCalled();
+    expect(emailSender.deliver).not.toHaveBeenCalled();
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'outbox_1',
+        status: 'failed',
+        lastError: 'Invitation inviter could not be resolved',
+      }),
+    );
+  });
+
   it('fails terminally without sending when the invitation no longer exists', async () => {
     const message = buildMessage();
     outboxRepository.claimPending.mockResolvedValue([message]);

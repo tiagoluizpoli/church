@@ -1,12 +1,12 @@
 import { m } from '@church/i18n/messages';
 import { fromDate } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import type { MinistryInvitationEmail } from '@/domain/contracts/infrastructure/email-sender';
+import type { ChainedInvitationEmail } from '@/domain/contracts/infrastructure/email-sender';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 
 function buildPayload(
-  overrides: Partial<MinistryInvitationEmail> = {},
-): MinistryInvitationEmail {
+  overrides: Partial<ChainedInvitationEmail> = {},
+): ChainedInvitationEmail {
   return {
     kind: 'invitation.chained',
     to: 'invitee@example.com',
@@ -14,6 +14,7 @@ function buildPayload(
     ministryName: 'Worship Team',
     ministryAccessLevel: 'volunteer',
     roleNames: ['Vocalist'],
+    inviterName: 'Ana',
     expiresAt: fromDate({ date: new Date('2026-08-01T00:00:00Z') }),
     churchTimezone: 'UTC',
     redemptionUrl: 'https://app.church.test/invitations/church/abc',

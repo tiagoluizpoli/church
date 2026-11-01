@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { CalendarDay, Instant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
+  ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
   MinistryInvitationEmail,
   TransferDigestEmail,
@@ -25,22 +26,26 @@ const memberInvitation: MinistryInvitationEmail = {
   recipientFirstName: 'Maria',
 };
 
+const appName = 'Igreja App';
+
 const ptBR = { locale: 'pt-BR' } as const;
 const from = 'church@example.com';
 
 function prepare(
-  payload: MinistryInvitationEmail | ChurchBootstrapInvitationEmail,
+  payload: ChainedInvitationEmail | ChurchBootstrapInvitationEmail,
 ) {
-  return prepareEmail({ payload, from, locale: 'pt-BR' });
+  return prepareEmail({ payload, from, locale: 'pt-BR', appName });
 }
 
 describe('prepareEmail — T1 paired Ministry invitations', () => {
-  const leader = {
-    ...memberInvitation,
+  const { recipientFirstName: _name, ...chainedFacts } = memberInvitation;
+  const chained: ChainedInvitationEmail = {
+    ...chainedFacts,
     kind: 'invitation.chained',
-    ministryAccessLevel: 'leader',
+    ministryAccessLevel: 'volunteer',
     inviterName: 'Ana <Pastor>',
-  } satisfies MinistryInvitationEmail;
+  };
+  const leader = { ...chained, ministryAccessLevel: 'leader' };
 
   it('names inviter, Ministry and lead intent with Roles, expiry in the Church Timezone and one Accept button', () => {
     const email = prepare(leader);
@@ -74,18 +79,14 @@ describe('prepareEmail — T1 paired Ministry invitations', () => {
     expect(html).toContain(`href="${leader.redemptionUrl}"`);
   });
 
-  it('uses serve wording, the Church as inviter fallback and omits empty Roles', () => {
-    const email = prepare({
-      ...memberInvitation,
-      kind: 'invitation.chained',
-      ministryAccessLevel: 'volunteer',
-      roleNames: [],
-    });
+  it('uses serve wording with the inviter and omits empty Roles', () => {
+    const email = prepare({ ...chained, roleNames: [] });
     const { text } = email.request;
 
     expect(text).toContain(
-      m.email_invitation_serve_body(
+      m.email_invitation_serve_body_inviter(
         {
+          inviterName: 'Ana <Pastor>',
           churchName: 'Grace & <Truth>',
           ministryName: '<b>Worship</b>',
         },
@@ -96,10 +97,7 @@ describe('prepareEmail — T1 paired Ministry invitations', () => {
   });
 
   it('uses the neutral greeting, the Church From and the invitation-to-address footer', () => {
-    const { request } = prepare({
-      ...memberInvitation,
-      kind: 'invitation.chained',
-    });
+    const { request } = prepare(chained);
 
     expect(request.from).toBe('"Grace & <Truth>" <church@example.com>');
     expect(request.text).toContain(m.email_greeting_transactional({}, ptBR));
@@ -112,10 +110,7 @@ describe('prepareEmail — T1 paired Ministry invitations', () => {
   });
 
   it('keeps hostile names text in HTML and readable in text', () => {
-    const { html, text } = prepare({
-      ...memberInvitation,
-      kind: 'invitation.chained',
-    }).request;
+    const { html, text } = prepare(chained).request;
 
     expect(html).toContain('&lt;b&gt;Worship&lt;/b&gt;');
     expect(html).toContain('Grace &amp; &lt;Truth&gt;');
@@ -158,6 +153,7 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       payload: memberInvitation,
       from: 'Church <church@example.com>',
       locale: 'pt-BR',
+      appName,
     });
 
   it('renders the layout in the Church Timezone with bell title/body, one action and the raw URL', () => {
@@ -179,7 +175,9 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       ),
     );
     expect(request.text).toContain('30/11/2026 23:30');
-    expect(request.text).toContain('- Vocalist <i>lead</i>');
+    expect(request.text).toContain(
+      m.email_invitation_roles({ roles: 'Vocalist <i>lead</i>' }, ptBR),
+    );
     expect(request.text).toContain(
       `${m.email_ministry_invitation_accept({}, ptBR)}: ${memberInvitation.redemptionUrl}`,
     );
@@ -208,6 +206,7 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       payload: { ...memberInvitation, recipientFirstName: '' },
       from: 'church@example.com',
       locale: 'pt-BR',
+      appName,
     }).request;
 
     expect(text?.startsWith(m.email_greeting_transactional({}, ptBR))).toBe(
@@ -243,12 +242,13 @@ describe('prepareEmail — Volunteer Transfer digests (N11–12)', () => {
     ],
   };
   const shiftLine =
-    'Dom. 06/12 · 23:30–00:30 · Culto <Domingo> · Recepção · Porta "principal"';
+    'dom 6 dez · 23:30–00:30 · Culto <Domingo> · Recepção · Porta "principal"';
   const prepare = (payload: TransferDigestEmail = digest) =>
     prepareEmail({
       payload,
       from: 'Church <hi@church.test>',
       locale: 'pt-BR',
+      appName,
     });
 
   it('lists each actual Shift line in the Church Timezone, with the See schedules action and membership footer', () => {
@@ -277,7 +277,7 @@ describe('prepareEmail — Volunteer Transfer digests (N11–12)', () => {
       ].join('\n\n'),
     );
     expect(request.html).toContain(
-      '<li>Dom. 06/12 · 23:30–00:30 · Culto &lt;Domingo&gt; · Recepção · Porta &quot;principal&quot;</li>',
+      '<li>dom 6 dez · 23:30–00:30 · Culto &lt;Domingo&gt; · Recepção · Porta &quot;principal&quot;</li>',
     );
     expect(request.html).toContain(`<a href="${actionUrl}">`);
     expect(request.html).not.toContain('<b>Hospitality</b>');
@@ -328,7 +328,7 @@ describe('formatShiftLine', () => {
         churchTimezone: 'America/Sao_Paulo',
         locale: 'en',
       }),
-    ).toBe('Sun 11/10 · 10:30–12:00 · Morning service · Usher · Main door');
+    ).toBe('Sun 11 Oct · 10:30–12:00 · Morning service · Usher · Main door');
   });
 });
 
@@ -356,11 +356,13 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
       payload: { kind: 'availability.opened', ...facts },
       from: 'church@example.com',
       locale: 'pt-BR',
+      appName,
     });
     const reminder = prepareEmail({
       payload: { kind: 'availability.reminder', ...facts },
       from: 'church@example.com',
       locale: 'pt-BR',
+      appName,
     });
     const ministryName = 'Louvor & <Banda>';
     const days = { startDate: '01/12/2026', endDate: '31/12/2026' };
@@ -418,6 +420,7 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
       },
       from: 'church@example.com',
       locale: 'pt-BR',
+      appName,
     });
 
     expect(email.request.subject).toBe(
@@ -446,6 +449,7 @@ describe('prepareEmail — verification code (T2)', () => {
       },
       from: 'Church <hi@church.test>',
       locale: 'pt-BR',
+      appName,
     });
 
   it('puts the code in the subject and both bodies, with the policy lifetime and invitation footer', () => {
@@ -507,6 +511,7 @@ describe('prepareEmail — Church sender display name', () => {
       },
       from: 'hi@church.test',
       locale: 'pt-BR',
+      appName,
     });
 
     expect(request.from).toBe(
@@ -575,19 +580,5 @@ describe('prepareEmail — password reset (T3)', () => {
 
     expect(request.from).toBe('"Igreja <Fé> & \\"Paz\\"" <hi@church.test>');
     expect(request).not.toHaveProperty('replyTo');
-  });
-
-  it('refuses to render without an app name', () => {
-    expect(() =>
-      prepareEmail({
-        payload: {
-          kind: 'auth.password-reset',
-          to: 'a@example.com',
-          resetUrl,
-          linkLifetime: { minutes: 60 },
-        },
-        from: 'hi@church.test',
-      }),
-    ).toThrow(/appName/);
   });
 });

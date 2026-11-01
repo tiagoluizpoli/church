@@ -1,7 +1,6 @@
 import {
-  formatDayAndMonth,
+  formatDayLabel,
   formatTimeOfDay,
-  formatWeekdayShort,
   type Instant,
   today,
   toTimeOfDay,
@@ -20,7 +19,7 @@ export interface ShiftLineInput {
 }
 
 /**
- * `Dom. 12/10 · 10:30–12:00 · Event · Role · Sector`: day, start–end on the
+ * `dom 12 out · 10:30–12:00 · Event · Role · Sector`: day, start–end on the
  * Church Timezone's 24-hour wall clock, Event title, Role, Sector. Plain text;
  * the layout escapes it.
  */
@@ -41,7 +40,7 @@ export function formatShiftLine({
     time: toTimeOfDay({ instant: endsAt, timeZone }),
   });
   return [
-    `${formatWeekdayShort({ day, locale })} ${formatDayAndMonth({ day })}`,
+    formatDayLabel({ day, locale }),
     `${start}–${end}`,
     eventTitle,
     roleName,

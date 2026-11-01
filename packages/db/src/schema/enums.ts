@@ -70,7 +70,6 @@ export const ministryInvitationStatusEnum = pgEnum(
 export const outboxMessageKindEnum = pgEnum('outbox_message_kind', [
   'invitation.chained',
   'invitation.church-bootstrap',
-  'redemption.accepted',
   'notification',
 ]);
 

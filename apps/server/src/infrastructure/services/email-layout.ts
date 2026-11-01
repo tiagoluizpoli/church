@@ -94,11 +94,32 @@ export function formatEmailDuration({
   duration,
   locale,
 }: FormatEmailDurationInput): string {
+  const options = { locale };
+  if ('hours' in duration) {
+    const { hours: count } = duration;
+    return pluralFor({ count, locale }) === 'one'
+      ? m.email_duration_hours_one({ count }, options)
+      : m.email_duration_hours_other({ count }, options);
+  }
+  if ('days' in duration) {
+    const { days: count } = duration;
+    return pluralFor({ count, locale }) === 'one'
+      ? m.email_duration_days_one({ count }, options)
+      : m.email_duration_days_other({ count }, options);
+  }
   const { minutes: count } = duration;
-  const plural = new Intl.PluralRules(locale).select(count);
-  return plural === 'one'
-    ? m.email_duration_minutes_one({ count }, { locale })
-    : m.email_duration_minutes_other({ count }, { locale });
+  return pluralFor({ count, locale }) === 'one'
+    ? m.email_duration_minutes_one({ count }, options)
+    : m.email_duration_minutes_other({ count }, options);
+}
+
+interface PluralForInput {
+  count: number;
+  locale: EmailLocale;
+}
+
+function pluralFor({ count, locale }: PluralForInput): Intl.LDMLPluralRule {
+  return new Intl.PluralRules(locale).select(count);
 }
 
 export interface EmailSenderInput {

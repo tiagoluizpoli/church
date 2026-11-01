@@ -819,7 +819,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
       idempotencyKey: CORRELATION_ID,
       now: COMMIT,
     });
-    const emailSender = new CaptureEmailSender();
+    const emailSender = new CaptureEmailSender('Church');
     await drain(emailSender);
 
     expect(emailSender.delivered).toHaveLength(1);
@@ -832,7 +832,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
   it('resends the frozen digest after the Church and Shift change, under the same key', async () => {
     await leadMinistryInB(fixture.adminB);
     await confirmTransfer();
-    const emailSender = new FlakyEmailSender();
+    const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: true });
     const drainer = buildDrainer({ emailSender });
     await drainer.drainOnce({ limit: 10 });

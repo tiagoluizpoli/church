@@ -17,6 +17,18 @@ export interface EventTemplateInput {
   updatedAt?: Date;
 }
 
+export interface TemplateTimeBlockUsage {
+  blockId: string;
+  ministryCount: number;
+}
+
+/** Distinct Ministries with Usual setup per block and across the template. */
+export interface EventTemplateUsage {
+  templateId: EventTemplateId;
+  ministryCount: number;
+  blocks: TemplateTimeBlockUsage[];
+}
+
 export class EventTemplate extends Entity<EventTemplateProps, EventTemplateId> {
   constructor({ props, id, createdAt, updatedAt }: EventTemplateInput) {
     if (props.weekday < 0 || props.weekday > 6) {

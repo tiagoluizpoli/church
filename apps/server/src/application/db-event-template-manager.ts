@@ -1,7 +1,9 @@
+import { TemplateTimeBlockId } from '../domain/branded-ids';
 import type {
   CreateEventTemplateManagerInput,
   DeleteEventTemplateManagerInput,
   EventTemplateTimeBlockManagerInput,
+  GetEventTemplateManagerInput,
   IEventTemplateManager,
   ListEventTemplatesManagerInput,
   UpdateEventTemplateManagerInput,
@@ -11,7 +13,10 @@ import type {
   EventTemplateTimeBlockInput,
 } from '../domain/contracts/infrastructure/event-template.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { EventTemplate } from '../domain/entities/event-template';
+import type {
+  EventTemplate,
+  EventTemplateUsage,
+} from '../domain/entities/event-template';
 import { DuplicateTemplateBlockLabelError } from '../domain/errors/duplicate-template-name';
 import { InvalidTimeRangeError } from '../domain/errors/invalid-time-range';
 
@@ -43,7 +48,8 @@ function normalizeBlocks({
     labels.add(key);
   }
   return blocks
-    .map(({ label, startTime, endTime }) => ({
+    .map(({ id, label, startTime, endTime }) => ({
+      ...(id ? { id: TemplateTimeBlockId.from(id.toLowerCase()) } : {}),
       label: label.trim(),
       startTime,
       endTime,
@@ -97,6 +103,18 @@ export class DbEventTemplateManager implements IEventTemplateManager {
 
   async deleteTemplate(input: DeleteEventTemplateManagerInput): Promise<void> {
     await this.templateRepository.delete(input);
+  }
+
+  async getTemplate(
+    input: GetEventTemplateManagerInput,
+  ): Promise<EventTemplate> {
+    return this.templateRepository.getById(input);
+  }
+
+  async getTemplateUsage(
+    input: GetEventTemplateManagerInput,
+  ): Promise<EventTemplateUsage> {
+    return this.templateRepository.getUsage(input);
   }
 
   async listTemplates(

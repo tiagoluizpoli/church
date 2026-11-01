@@ -20,6 +20,7 @@ describe('DbEventTemplateManager', () => {
       list: vi.fn().mockResolvedValue([template]),
       getById: vi.fn().mockResolvedValue(template),
       getByIds: vi.fn().mockResolvedValue([template]),
+      getUsage: vi.fn(),
     };
   }
 

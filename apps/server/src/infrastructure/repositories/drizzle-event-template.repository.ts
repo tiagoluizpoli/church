@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
-import { eventTemplate, templateTimeBlock } from '@church/db';
+import { eventTemplate, templateTimeBlock, usualSetup } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import type { EventTemplateId } from '../../domain/branded-ids';
 import type {
   CreateEventTemplateInput,
@@ -12,7 +12,10 @@ import type {
   ListEventTemplatesInput,
   UpdateEventTemplateInput,
 } from '../../domain/contracts/infrastructure/event-template.repository';
-import type { EventTemplate } from '../../domain/entities/event-template';
+import type {
+  EventTemplate,
+  EventTemplateUsage,
+} from '../../domain/entities/event-template';
 import { DuplicateTemplateNameError } from '../../domain/errors/duplicate-template-name';
 import { mapEventTemplate } from '../mappers/event-template.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
@@ -116,9 +119,49 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     });
   }
 
+  /**
+   * Applies the complete desired state in place: supplied ids update their
+   * block, blocks without an id are inserted, omitted blocks are deleted
+   * (cascading only their Usual setup). Run inside a transaction.
+   */
   async update(input: UpdateEventTemplateInput): Promise<EventTemplate> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const [templateRow] = await refuseDuplicateName({
+    const notFound = () =>
+      new NotFoundError(`Event template not found: ${input.templateId}`);
+    if (!isValidUuid(input.templateId)) throw notFound();
+
+    // Row lock serializes concurrent edits of one template, so each validated
+    // desired state (unique labels, contiguous order) is applied whole.
+    const [locked] = await db
+      .select({ id: eventTemplate.id })
+      .from(eventTemplate)
+      .where(
+        and(
+          eq(eventTemplate.id, input.templateId),
+          withChurchIsolation({
+            table: eventTemplate,
+            churchId: input.churchId,
+          }),
+        ),
+      )
+      .for('update');
+    if (!locked) throw notFound();
+
+    const currentIds = new Set(
+      (
+        await db
+          .select({ id: templateTimeBlock.id })
+          .from(templateTimeBlock)
+          .where(eq(templateTimeBlock.templateId, input.templateId))
+      ).map((row) => row.id),
+    );
+    const retained = input.blocks.filter((block) => block.id !== undefined);
+    // A stale, foreign-template or foreign-Church id is refused before any write.
+    if (retained.some((block) => !currentIds.has(block.id as string))) {
+      throw notFound();
+    }
+
+    await refuseDuplicateName({
       write: db
         .update(eventTemplate)
         .set({
@@ -126,29 +169,44 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           weekday: input.weekday,
           updatedAt: nowAsDate(),
         })
-        .where(
-          and(
-            eq(eventTemplate.id, input.templateId),
-            withChurchIsolation({
-              table: eventTemplate,
-              churchId: input.churchId,
-            }),
-          ),
-        )
-        .returning(),
+        .where(eq(eventTemplate.id, input.templateId)),
     });
 
-    if (!templateRow) {
-      throw new NotFoundError(`Event template not found: ${input.templateId}`);
-    }
-
+    const retainedIds = retained.map((block) => block.id as string);
     await db
       .delete(templateTimeBlock)
+      .where(
+        and(
+          eq(templateTimeBlock.templateId, input.templateId),
+          retainedIds.length > 0
+            ? notInArray(templateTimeBlock.id, retainedIds)
+            : undefined,
+        ),
+      );
+
+    // Park retained rows on distinct negative orders so the final orders can
+    // be written without colliding on the (template, order) unique index.
+    await db
+      .update(templateTimeBlock)
+      .set({ order: sql`-1 - ${templateTimeBlock.order}` })
       .where(eq(templateTimeBlock.templateId, input.templateId));
 
-    if (input.blocks.length > 0) {
+    for (const block of retained) {
+      await db
+        .update(templateTimeBlock)
+        .set({
+          label: block.label,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          order: block.order,
+        })
+        .where(eq(templateTimeBlock.id, block.id as string));
+    }
+
+    const added = input.blocks.filter((block) => block.id === undefined);
+    if (added.length > 0) {
       await db.insert(templateTimeBlock).values(
-        input.blocks.map((block) => ({
+        added.map((block) => ({
           churchId: input.churchId,
           templateId: input.templateId,
           label: block.label,
@@ -164,6 +222,48 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       templateId: input.templateId,
       tx: input.tx,
     });
+  }
+
+  /**
+   * Distinct Ministries whose persisted Usual setup entries (including
+   * `serves: false`) reference each current block, and their union.
+   */
+  async getUsage(input: GetEventTemplateInput): Promise<EventTemplateUsage> {
+    await this.getById(input);
+    const db = getClient({ db: this.db, tx: input.tx });
+    const setupJoin = and(
+      eq(usualSetup.sourceTemplateTimeBlockId, templateTimeBlock.id),
+      eq(usualSetup.churchId, templateTimeBlock.churchId),
+    );
+    const scope = and(
+      eq(templateTimeBlock.templateId, input.templateId),
+      withChurchIsolation({
+        table: templateTimeBlock,
+        churchId: input.churchId,
+      }),
+    );
+    const blocks = await db
+      .select({
+        blockId: templateTimeBlock.id,
+        ministryCount: sql<number>`count(distinct ${usualSetup.ministryId})::int`,
+      })
+      .from(templateTimeBlock)
+      .leftJoin(usualSetup, setupJoin)
+      .where(scope)
+      .groupBy(templateTimeBlock.id, templateTimeBlock.order)
+      .orderBy(asc(templateTimeBlock.order));
+    const [total] = await db
+      .select({
+        ministryCount: sql<number>`count(distinct ${usualSetup.ministryId})::int`,
+      })
+      .from(templateTimeBlock)
+      .innerJoin(usualSetup, setupJoin)
+      .where(scope);
+    return {
+      templateId: input.templateId,
+      ministryCount: total?.ministryCount ?? 0,
+      blocks,
+    };
   }
 
   async delete(input: DeleteEventTemplateInput): Promise<void> {

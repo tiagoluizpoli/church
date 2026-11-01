@@ -1,8 +1,17 @@
-import type { ChurchId, EventTemplateId } from '../../branded-ids';
-import type { EventTemplate } from '../../entities/event-template';
+import type {
+  ChurchId,
+  EventTemplateId,
+  TemplateTimeBlockId,
+} from '../../branded-ids';
+import type {
+  EventTemplate,
+  EventTemplateUsage,
+} from '../../entities/event-template';
 import type { TransactionContext } from './transaction-context';
 
 export interface EventTemplateTimeBlockInput {
+  /** Persisted block to update in place; absent means a new block (edit only). */
+  id?: TemplateTimeBlockId;
   label: string;
   startTime: string;
   endTime: string;
@@ -56,4 +65,5 @@ export interface EventTemplateRepository {
   list(input: ListEventTemplatesInput): Promise<EventTemplate[]>;
   getById(input: GetEventTemplateInput): Promise<EventTemplate>;
   getByIds(input: GetEventTemplatesByIdsInput): Promise<EventTemplate[]>;
+  getUsage(input: GetEventTemplateInput): Promise<EventTemplateUsage>;
 }

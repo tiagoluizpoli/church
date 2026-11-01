@@ -43,6 +43,7 @@ import {
   eventTemplateListResponseSchema,
   eventTemplateMapper,
   eventTemplateResponseSchema,
+  eventTemplateUsageResponseSchema,
   generatedPlanningCountsResponseSchema,
   updateEventTemplateBodySchema,
 } from '../dtos/event-template.dto';
@@ -327,6 +328,50 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.get(
+      '/event-templates/:templateId',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'getEventTemplate',
+          summary: 'Get an EventTemplate',
+          description:
+            'Get one Church EventTemplate with its ordered TemplateTimeBlocks for direct editing.',
+          response: { 200: eventTemplateResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { templateId } = request.params as EventTemplateRouteParams;
+        const template = await this.eventTemplateManager.getTemplate({
+          churchId: ChurchId.from(request.churchId),
+          templateId: EventTemplateId.from(templateId),
+        });
+        return reply.send(eventTemplateMapper.toResponse(template));
+      },
+    );
+
+    app.get(
+      '/event-templates/:templateId/usage',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'getEventTemplateUsage',
+          summary: 'Get EventTemplate usage',
+          description:
+            'Count the distinct Ministries whose UsualSetup references each current TemplateTimeBlock, and across the template.',
+          response: { 200: eventTemplateUsageResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { templateId } = request.params as EventTemplateRouteParams;
+        const usage = await this.eventTemplateManager.getTemplateUsage({
+          churchId: ChurchId.from(request.churchId),
+          templateId: EventTemplateId.from(templateId),
+        });
+        return reply.send(usage);
+      },
+    );
+
     app.patch(
       '/event-templates/:templateId',
       {
@@ -335,7 +380,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'updateEventTemplate',
           summary: 'Update an EventTemplate',
           description:
-            "Replace an EventTemplate's name, weekday, and TemplateTimeBlocks.",
+            "Apply an EventTemplate's complete desired name, weekday and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.",
           body: updateEventTemplateBodySchema,
           response: { 200: eventTemplateResponseSchema },
         },

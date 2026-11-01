@@ -13,9 +13,21 @@ export const eventTemplateTimeBlockBodySchema = z
   })
   .strict();
 
-/** Edit may name a persisted block `id`; identity-preserving edits land with #636. */
+/** Edit may name a persisted block `id` to update it in place; absent creates a block. */
 export const updateEventTemplateTimeBlockBodySchema =
   eventTemplateTimeBlockBodySchema.extend({ id: z.string().uuid().optional() });
+
+type UpdateEventTemplateTimeBlockBody = z.infer<
+  typeof updateEventTemplateTimeBlockBodySchema
+>;
+
+/** True when two blocks name the same persisted id, ignoring case. */
+function hasRepeatedIds(blocks: UpdateEventTemplateTimeBlockBody[]): boolean {
+  const ids = blocks.flatMap((block) =>
+    block.id ? [block.id.toLowerCase()] : [],
+  );
+  return new Set(ids).size !== ids.length;
+}
 
 export const createEventTemplateBodySchema = z.object({
   name: templateNameSchema,
@@ -25,7 +37,12 @@ export const createEventTemplateBodySchema = z.object({
 
 export const updateEventTemplateBodySchema =
   createEventTemplateBodySchema.extend({
-    blocks: z.array(updateEventTemplateTimeBlockBodySchema).min(1),
+    blocks: z
+      .array(updateEventTemplateTimeBlockBodySchema)
+      .min(1)
+      .refine((blocks) => !hasRepeatedIds(blocks), {
+        message: 'Each block id may appear only once',
+      }),
   });
 
 export const applyTemplatesBodySchema = z.object({
@@ -54,6 +71,12 @@ export const eventTemplateResponseSchema = z.object({
 
 export const eventTemplateListResponseSchema = z.object({
   templates: z.array(eventTemplateResponseSchema),
+});
+
+export const eventTemplateUsageResponseSchema = z.object({
+  templateId: z.string(),
+  ministryCount: z.number(),
+  blocks: z.array(z.object({ blockId: z.string(), ministryCount: z.number() })),
 });
 
 export const generatedPlanningCountsResponseSchema = z.object({

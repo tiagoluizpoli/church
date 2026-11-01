@@ -332,6 +332,30 @@ export type ListEventTemplates200 = {
   templates: ListEventTemplates200TemplatesItem[];
 };
 
+export type GetEventTemplate200BlocksItem = {
+  id: string;
+  churchId: string;
+  templateId: string;
+  label: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+  order: number;
+};
+
+export type GetEventTemplate200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  weekday: number;
+  blocks: GetEventTemplate200BlocksItem[];
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
 export type UpdateEventTemplateBodyBlocksItem = {
   /**
      * @minLength 1
@@ -383,6 +407,17 @@ export type UpdateEventTemplate200 = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type GetEventTemplateUsage200BlocksItem = {
+  blockId: string;
+  ministryCount: number;
+};
+
+export type GetEventTemplateUsage200 = {
+  templateId: string;
+  ministryCount: number;
+  blocks: GetEventTemplateUsage200BlocksItem[];
 };
 
 export type ApplyPlanningTemplatesBody = {

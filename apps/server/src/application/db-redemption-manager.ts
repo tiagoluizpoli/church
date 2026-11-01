@@ -34,6 +34,7 @@ import type { VerificationCodeInspector } from '../domain/contracts/infrastructu
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
+import { maskEmail } from '../domain/services/mask-email';
 
 interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
@@ -68,7 +69,7 @@ interface ResolveInvitationContextInput {
 
 type ResolvedInvitationContext =
   | { status: 'unavailable' }
-  | { status: 'identity-mismatch' }
+  | { status: 'identity-mismatch'; addressedEmail: string }
   | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
   | { status: 'redeemable'; context: MinistryInvitationContext };
 
@@ -324,7 +325,7 @@ export class DbRedemptionManager implements RedemptionManager {
         correlationId: correlationId ?? crypto.randomUUID(),
         now,
       });
-      return { status: 'identity-mismatch' };
+      return { status: 'identity-mismatch', addressedEmail: context.email };
     }
     if (context.ministryInvitation.status === 'accepted') {
       return {
@@ -346,8 +347,12 @@ export class DbRedemptionManager implements RedemptionManager {
       now,
     });
     if (resolved.status === 'unavailable') return { kind: 'unavailable' };
-    if (resolved.status === 'identity-mismatch')
-      return { kind: 'identity-mismatch' };
+    if (resolved.status === 'identity-mismatch') {
+      return {
+        kind: 'identity-mismatch',
+        maskedEmail: maskEmail({ email: resolved.addressedEmail }),
+      };
+    }
     if (resolved.status === 'already-accepted') {
       return {
         kind: 'already-accepted',

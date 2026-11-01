@@ -5874,8 +5874,11 @@ paths:
                         type: string
                         enum:
                           - identity-mismatch
+                      maskedEmail:
+                        type: string
                     required:
                       - kind
+                      - maskedEmail
                     additionalProperties: false
                   - type: object
                     properties:

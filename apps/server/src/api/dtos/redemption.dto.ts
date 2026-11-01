@@ -92,7 +92,10 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
       expiresAt: instantSchema,
     }),
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
-    z.object({ kind: z.literal('identity-mismatch') }),
+    z.object({
+      kind: z.literal('identity-mismatch'),
+      maskedEmail: z.string(),
+    }),
     z.object({ kind: z.literal('unavailable') }),
   ],
 );

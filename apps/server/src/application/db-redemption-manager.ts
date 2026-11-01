@@ -13,6 +13,7 @@ import type {
   GetAuthenticatedInvitationStatusInput,
   GetDebugVerificationCodeInput,
   GetPublicRedemptionPreviewInput,
+  PublicRedemptionMinistry,
   PublicRedemptionPreview,
   RedeemNewUserInput,
   RedeemNewUserOutcome,
@@ -23,7 +24,6 @@ import type { ChurchRepository } from '../domain/contracts/infrastructure/church
 import type {
   MinistryInvitationContext,
   MinistryInvitationRepository,
-  PublicRedemptionPreview as PublicRedemptionPreviewRecord,
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionRepository } from '../domain/contracts/infrastructure/redemption.repository';
 import type { RedemptionFailureLog } from '../domain/contracts/infrastructure/redemption-failure-log';
@@ -55,14 +55,14 @@ interface DescribeChurchOnlySplitInput {
   churchId: AcceptPendingMinistryInvitationInput['churchId'];
   destinationChurchName: string;
   ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
+  ministryName: string;
   userId: AcceptPendingMinistryInvitationInput['userId'];
   correlationId: string;
   now: Date;
 }
 
 interface AdmitNewPersonInput {
-  preview: PublicRedemptionPreviewRecord;
-  ministryInvitationId: RedeemNewUserInput['ministryInvitationId'];
+  preview: PublicRedemptionPreview;
   name: string;
   password: string;
   correlationId: string;
@@ -73,6 +73,7 @@ interface AdmitNewPersonInput {
 interface AdmittedChurchOnly {
   kind: 'church-only';
   sourceChurchId: ChurchId;
+  ministry: PublicRedemptionMinistry;
   sessionCookie: string;
 }
 
@@ -84,8 +85,10 @@ interface ClassifyIdentityFailureInput {
 
 interface ChurchOnlyOutcomeInput {
   sourceChurchId: ChurchId;
+  destinationChurchId: ChurchId;
   destinationChurchName: string;
   ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
+  ministryName: string;
 }
 
 interface MinistryGrantFailureInput {
@@ -173,27 +176,23 @@ export class DbRedemptionManager implements RedemptionManager {
   }
 
   async getPublicPreview({
-    ministryInvitationId,
+    churchInvitationId,
     now = nowAsDate(),
   }: GetPublicRedemptionPreviewInput): Promise<PublicRedemptionPreview | null> {
-    const preview = await this.invitationRepository.findPublicRedemptionPreview(
-      {
-        ministryInvitationId,
-        now,
-      },
-    );
-    if (!preview) return null;
-    return preview;
+    return this.invitationRepository.findPublicRedemptionPreview({
+      churchInvitationId,
+      now,
+    });
   }
 
   async requestVerificationCode({
-    ministryInvitationId,
+    churchInvitationId,
     now = nowAsDate(),
   }: RequestRedemptionCodeInput): Promise<boolean> {
-    const preview = await this.getPublicPreview({ ministryInvitationId, now });
+    const preview = await this.getPublicPreview({ churchInvitationId, now });
     if (!preview) return false;
     await this.invitationVerificationCodeManager.issue({
-      ministryInvitationId,
+      churchInvitationId,
       recipientEmail: preview.email,
       churchName: preview.churchName,
       now,
@@ -202,21 +201,19 @@ export class DbRedemptionManager implements RedemptionManager {
   }
 
   async redeemNewUser({
-    ministryInvitationId,
+    churchInvitationId,
     name,
     password,
     code,
     idempotencyKey,
     now = nowAsDate(),
   }: RedeemNewUserInput): Promise<RedeemNewUserOutcome> {
-    const preview = await this.invitationRepository.findPublicRedemptionPreview(
-      { ministryInvitationId, now, includeAcceptedChurchInvitation: true },
-    );
+    const preview = await this.getPublicPreview({ churchInvitationId, now });
     if (!preview)
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     try {
       await this.invitationVerificationCodeManager.verify({
-        ministryInvitationId,
+        churchInvitationId,
         code,
         idempotencyKey,
         now,
@@ -231,7 +228,6 @@ export class DbRedemptionManager implements RedemptionManager {
       const committed = await this.unitOfWork.run((tx) =>
         this.admitNewPerson({
           preview,
-          ministryInvitationId,
           name,
           password,
           correlationId: idempotencyKey,
@@ -242,8 +238,10 @@ export class DbRedemptionManager implements RedemptionManager {
       if (committed.kind === 'full-success') return committed;
       const outcome = await this.churchOnlyOutcome({
         sourceChurchId: committed.sourceChurchId,
+        destinationChurchId: preview.churchId,
         destinationChurchName: preview.churchName,
-        ministryInvitationId,
+        ministryInvitationId: committed.ministry.ministryInvitationId,
+        ministryName: committed.ministry.ministryName,
       });
       return { ...outcome, sessionCookie: committed.sessionCookie };
     } catch (error) {
@@ -254,7 +252,8 @@ export class DbRedemptionManager implements RedemptionManager {
       const cause = error instanceof MinistryGrantFailure ? error.cause : error;
       this.failureLog.record({
         reason,
-        ministryInvitationId,
+        churchInvitationId,
+        ministryInvitationId: preview.ministry?.ministryInvitationId ?? null,
         correlationId: idempotencyKey,
         errorName: cause instanceof Error ? cause.name : typeof cause,
       });
@@ -265,14 +264,13 @@ export class DbRedemptionManager implements RedemptionManager {
   }
 
   /**
-   * One transaction for identity, session, Church admission and Ministry
-   * grants: any throw rolls all of them back, and the caller only sees the
-   * session cookie after commit. The verification code is consumed before,
-   * keyed by the idempotency key, so the same request can be retried.
+   * One transaction for identity, session, Church admission and any paired
+   * Ministry grants: any throw rolls all of them back, and the caller only
+   * sees the session cookie after commit. The verification code is consumed
+   * before, keyed by the idempotency key, so the same request can be retried.
    */
   private async admitNewPerson({
     preview,
-    ministryInvitationId,
     name,
     password,
     correlationId,
@@ -286,21 +284,22 @@ export class DbRedemptionManager implements RedemptionManager {
       tx,
     });
     const { sessionCookie, userId } = account;
-    if (preview.churchInvitationStatus === 'pending') {
-      await this.identityGateway.acceptChurchInvitation({
-        churchInvitationId: preview.churchInvitationId,
-        sessionCookie,
-        tx,
-      });
-    }
+    await this.identityGateway.acceptChurchInvitation({
+      churchInvitationId: preview.churchInvitationId,
+      sessionCookie,
+      tx,
+    });
     await this.identityGateway.setActiveChurch({
       churchId: preview.churchId,
       sessionCookie,
       tx,
     });
+    const { ministry } = preview;
+    if (!ministry)
+      return { kind: 'full-success', volunteerId: null, sessionCookie };
     const grant = {
       churchId: preview.churchId,
-      ministryInvitationId,
+      ministryInvitationId: ministry.ministryInvitationId,
       userId,
       correlationId,
       tx,
@@ -324,6 +323,7 @@ export class DbRedemptionManager implements RedemptionManager {
       return {
         kind: 'church-only',
         sourceChurchId: error.sourceChurchId,
+        ministry,
         sessionCookie,
       };
     }
@@ -343,8 +343,10 @@ export class DbRedemptionManager implements RedemptionManager {
 
   private async churchOnlyOutcome({
     sourceChurchId,
+    destinationChurchId,
     destinationChurchName,
     ministryInvitationId,
+    ministryName,
   }: ChurchOnlyOutcomeInput): Promise<ChurchOnlyRedemptionOutcome> {
     const sourceChurch = await this.churchRepository.getById({
       id: sourceChurchId,
@@ -352,8 +354,10 @@ export class DbRedemptionManager implements RedemptionManager {
     return {
       kind: 'church-only',
       sourceChurchName: sourceChurch.name,
+      destinationChurchId,
       destinationChurchName,
       ministryInvitationId,
+      ministryName,
     };
   }
 
@@ -369,6 +373,7 @@ export class DbRedemptionManager implements RedemptionManager {
     churchId,
     destinationChurchName,
     ministryInvitationId,
+    ministryName,
     userId,
     correlationId,
     now,
@@ -385,8 +390,10 @@ export class DbRedemptionManager implements RedemptionManager {
     );
     return this.churchOnlyOutcome({
       sourceChurchId: error.sourceChurchId,
+      destinationChurchId: churchId,
       destinationChurchName,
       ministryInvitationId,
+      ministryName,
     });
   }
 
@@ -544,6 +551,7 @@ export class DbRedemptionManager implements RedemptionManager {
           churchId: ministryInvitation.churchId,
           destinationChurchName: resolved.context.churchName,
           ministryInvitationId,
+          ministryName: resolved.context.ministryName,
           userId,
           correlationId: idempotencyKey,
           now,
@@ -606,11 +614,11 @@ export class DbRedemptionManager implements RedemptionManager {
   }
 
   async getDebugVerificationCode({
-    ministryInvitationId,
+    churchInvitationId,
     now = nowAsDate(),
   }: GetDebugVerificationCodeInput): Promise<string | null> {
     if (!this.verificationCodeInspector) return null;
-    const preview = await this.getPublicPreview({ ministryInvitationId, now });
+    const preview = await this.getPublicPreview({ churchInvitationId, now });
     if (!preview) return null;
     return (
       this.verificationCodeInspector.lastVerificationCodeFor({

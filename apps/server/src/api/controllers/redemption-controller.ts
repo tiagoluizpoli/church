@@ -2,8 +2,15 @@ import type { AppConfig } from '@church/app-config';
 import { fromDate, nowAsDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
-import { MinistryInvitationId, UserId } from '../../domain/branded-ids';
-import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
+import {
+  ChurchInvitationId,
+  MinistryInvitationId,
+  UserId,
+} from '../../domain/branded-ids';
+import type {
+  PublicRedemptionPreview,
+  RedemptionManager,
+} from '../../domain/contracts/application/redemption-manager';
 import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import { auth } from '../../main/di/server-auth';
@@ -46,7 +53,7 @@ interface RequireRedeemerInput {
   reply: FastifyReply;
 }
 
-/** The restricted preview field set both the chained and existing-member routes expose (spec §7.1). */
+/** The restricted preview field set the existing-member route exposes (spec §7.1). */
 interface InvitationPreviewFields {
   email: string;
   churchName: string;
@@ -127,11 +134,11 @@ export class RedemptionController implements FastifyController {
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         const preview = await this.redemptionManager.getPublicPreview({
-          ministryInvitationId: MinistryInvitationId.from(params.invitationId),
+          churchInvitationId: ChurchInvitationId.from(params.invitationId),
         });
         if (!preview)
           return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
-        return reply.send(toInvitationPreviewFields(preview));
+        return reply.send(toPublicPreview(preview));
       },
     );
 
@@ -159,9 +166,7 @@ export class RedemptionController implements FastifyController {
         let sent: boolean;
         try {
           sent = await this.redemptionManager.requestVerificationCode({
-            ministryInvitationId: MinistryInvitationId.from(
-              params.invitationId,
-            ),
+            churchInvitationId: ChurchInvitationId.from(params.invitationId),
           });
         } catch (error) {
           if (error instanceof VerificationCodeError) {
@@ -195,7 +200,7 @@ export class RedemptionController implements FastifyController {
         const params = request.params as RedemptionParams;
         const body = request.body as RedeemNewUserBody;
         const outcome = await this.redemptionManager.redeemNewUser({
-          ministryInvitationId: MinistryInvitationId.from(params.invitationId),
+          churchInvitationId: ChurchInvitationId.from(params.invitationId),
           name: body.name,
           password: body.password,
           code: body.code,
@@ -419,9 +424,7 @@ export class RedemptionController implements FastifyController {
         async (request, reply) => {
           const params = request.params as RedemptionParams;
           const code = await this.redemptionManager.getDebugVerificationCode({
-            ministryInvitationId: MinistryInvitationId.from(
-              params.invitationId,
-            ),
+            churchInvitationId: ChurchInvitationId.from(params.invitationId),
           });
           if (!code)
             return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
@@ -489,7 +492,28 @@ function isRateLimited({
   return attempts.length > maxRequests;
 }
 
-/** Shared by the chained and existing-member previews — both expose the same restricted field set (spec §7.1). */
+/** The public Church Invitation preview: the Ministry block only for a paired invitation. */
+function toPublicPreview(preview: PublicRedemptionPreview) {
+  const { ministry } = preview;
+  return {
+    email: preview.email,
+    churchName: preview.churchName,
+    churchAccessLevel: preview.churchAccessLevel,
+    expiresAt: fromDate({ date: preview.expiresAt }),
+    ...(ministry
+      ? {
+          ministry: {
+            invitationId: ministry.ministryInvitationId,
+            name: ministry.ministryName,
+            ministryAccessLevel: ministry.ministryAccessLevel,
+            roleNames: ministry.roleNames,
+          },
+        }
+      : {}),
+  };
+}
+
+/** Shared by the existing-member previews — both expose the same restricted field set (spec §7.1). */
 function toInvitationPreviewFields(preview: InvitationPreviewFields) {
   return {
     email: preview.email,

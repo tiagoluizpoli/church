@@ -36,23 +36,20 @@ export class DrizzleInvitationVerificationCodeRepository
   private readonly maxAttempts: number;
 
   async find({
-    ministryInvitationId,
+    churchInvitationId,
   }: FindVerificationCodeInput): Promise<VerificationCodeState | null> {
     const [row] = await this.db
       .select()
       .from(invitationVerificationCode)
       .where(
-        eq(
-          invitationVerificationCode.ministryInvitationId,
-          ministryInvitationId,
-        ),
+        eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
       )
       .limit(1);
     return row ? mapVerificationCode({ row }) : null;
   }
 
   async claimDelivery({
-    ministryInvitationId,
+    churchInvitationId,
     codeHash,
     expiresAt,
     sentAt,
@@ -65,7 +62,7 @@ export class DrizzleInvitationVerificationCodeRepository
     const [row] = await this.db
       .insert(invitationVerificationCode)
       .values({
-        ministryInvitationId,
+        churchInvitationId,
         codeHash,
         expiresAt,
         lastSentAt: sentAt,
@@ -74,7 +71,7 @@ export class DrizzleInvitationVerificationCodeRepository
         redemptionIdempotencyKey: null,
       })
       .onConflictDoUpdate({
-        target: invitationVerificationCode.ministryInvitationId,
+        target: invitationVerificationCode.churchInvitationId,
         set: {
           codeHash,
           expiresAt,
@@ -94,7 +91,7 @@ export class DrizzleInvitationVerificationCodeRepository
   }
 
   async releaseDeliveryClaim({
-    ministryInvitationId,
+    churchInvitationId,
     codeHash,
     sentAt,
   }: ReleaseVerificationCodeDeliveryClaimInput): Promise<void> {
@@ -102,10 +99,7 @@ export class DrizzleInvitationVerificationCodeRepository
       .delete(invitationVerificationCode)
       .where(
         and(
-          eq(
-            invitationVerificationCode.ministryInvitationId,
-            ministryInvitationId,
-          ),
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
           eq(invitationVerificationCode.codeHash, codeHash),
           eq(invitationVerificationCode.lastSentAt, sentAt),
         ),
@@ -113,7 +107,7 @@ export class DrizzleInvitationVerificationCodeRepository
   }
 
   async consumeIfValid({
-    ministryInvitationId,
+    churchInvitationId,
     candidateHash,
     consumedAt,
     now,
@@ -124,10 +118,7 @@ export class DrizzleInvitationVerificationCodeRepository
       .set({ consumedAt, redemptionIdempotencyKey })
       .where(
         and(
-          eq(
-            invitationVerificationCode.ministryInvitationId,
-            ministryInvitationId,
-          ),
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
           eq(invitationVerificationCode.codeHash, candidateHash),
           isNull(invitationVerificationCode.consumedAt),
           gt(invitationVerificationCode.expiresAt, now),
@@ -139,7 +130,7 @@ export class DrizzleInvitationVerificationCodeRepository
   }
 
   async recordFailedAttemptIfAllowed({
-    ministryInvitationId,
+    churchInvitationId,
     candidateHash,
     now,
   }: RecordFailedVerificationAttemptIfAllowedInput): Promise<boolean> {
@@ -150,10 +141,7 @@ export class DrizzleInvitationVerificationCodeRepository
       })
       .where(
         and(
-          eq(
-            invitationVerificationCode.ministryInvitationId,
-            ministryInvitationId,
-          ),
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
           ne(invitationVerificationCode.codeHash, candidateHash),
           isNull(invitationVerificationCode.consumedAt),
           gt(invitationVerificationCode.expiresAt, now),

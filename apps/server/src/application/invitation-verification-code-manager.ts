@@ -7,7 +7,7 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import type { MinistryInvitationId } from '../domain/branded-ids';
+import type { ChurchInvitationId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager as InvitationVerificationCodeManagerContract } from '../domain/contracts/application/invitation-verification-code-manager';
 import type { EmailSender } from '../domain/contracts/infrastructure/email-sender';
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
@@ -18,14 +18,14 @@ import { recipientLocale } from '../domain/services/recipient-locale';
 const MS_PER_MINUTE = 60_000;
 
 export interface IssueVerificationCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   recipientEmail: string;
   churchName: string;
   now?: Date;
 }
 
 export interface VerifyInvitationCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   code: string;
   idempotencyKey?: string;
   now?: Date;
@@ -88,7 +88,7 @@ export class InvitationVerificationCodeManager
   }
 
   async issue({
-    ministryInvitationId,
+    churchInvitationId,
     recipientEmail,
     churchName,
     now = nowAsDate(),
@@ -103,7 +103,7 @@ export class InvitationVerificationCodeManager
       milliseconds: this.codeTtlMs,
     });
     const claimed = await this.repository.claimDelivery({
-      ministryInvitationId,
+      churchInvitationId,
       codeHash,
       expiresAt: toDate({ instant: expiresAt }),
       sentAt: now,
@@ -130,7 +130,7 @@ export class InvitationVerificationCodeManager
       });
     } catch (error) {
       await this.repository.releaseDeliveryClaim({
-        ministryInvitationId,
+        churchInvitationId,
         codeHash,
         sentAt: now,
       });
@@ -139,13 +139,13 @@ export class InvitationVerificationCodeManager
   }
 
   async verify({
-    ministryInvitationId,
+    churchInvitationId,
     code,
     idempotencyKey,
     now = nowAsDate(),
   }: VerifyInvitationCodeInput): Promise<void> {
     const nowInstant = fromDate({ date: now });
-    const state = await this.repository.find({ ministryInvitationId });
+    const state = await this.repository.find({ churchInvitationId });
     if (!state)
       throw new VerificationCodeError({ code: 'VERIFICATION_CODE_NOT_FOUND' });
     const candidateHash = hashVerificationCode({
@@ -176,7 +176,7 @@ export class InvitationVerificationCodeManager
     });
     if (outcome.status === 'valid') {
       const consumed = await this.repository.consumeIfValid({
-        ministryInvitationId,
+        churchInvitationId,
         candidateHash,
         consumedAt: now,
         now,
@@ -186,7 +186,7 @@ export class InvitationVerificationCodeManager
     }
     if (outcome.status === 'invalid') {
       const recorded = await this.repository.recordFailedAttemptIfAllowed({
-        ministryInvitationId,
+        churchInvitationId,
         candidateHash,
         now,
       });
@@ -194,7 +194,7 @@ export class InvitationVerificationCodeManager
         throw new VerificationCodeError({ code: 'VERIFICATION_CODE_INVALID' });
       }
     }
-    const current = await this.repository.find({ ministryInvitationId });
+    const current = await this.repository.find({ churchInvitationId });
     if (!current) {
       throw new VerificationCodeError({ code: 'VERIFICATION_CODE_NOT_FOUND' });
     }

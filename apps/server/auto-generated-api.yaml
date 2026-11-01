@@ -5484,27 +5484,43 @@ paths:
                     pattern: ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
                   churchName:
                     type: string
-                  ministryName:
-                    type: string
-                  ministryAccessLevel:
+                  churchAccessLevel:
                     type: string
                     enum:
-                      - volunteer
-                      - leader
-                  roleNames:
-                    type: array
-                    items:
-                      type: string
+                      - member
+                      - admin
                   expiresAt:
                     type: string
                     format: date-time
                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  ministry:
+                    type: object
+                    properties:
+                      invitationId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      name:
+                        type: string
+                      ministryAccessLevel:
+                        type: string
+                        enum:
+                          - volunteer
+                          - leader
+                      roleNames:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                      - invitationId
+                      - name
+                      - ministryAccessLevel
+                      - roleNames
+                    additionalProperties: false
                 required:
                   - email
                   - churchName
-                  - ministryName
-                  - ministryAccessLevel
-                  - roleNames
+                  - churchAccessLevel
                   - expiresAt
                 additionalProperties: false
         "404":
@@ -5662,6 +5678,7 @@ paths:
                         enum:
                           - full-success
                       volunteerId:
+                        nullable: true
                         type: string
                     required:
                       - kind
@@ -5675,17 +5692,23 @@ paths:
                           - church-only
                       sourceChurchName:
                         type: string
+                      destinationChurchId:
+                        type: string
                       destinationChurchName:
                         type: string
                       ministryInvitationId:
                         type: string
                         format: uuid
                         pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      ministryName:
+                        type: string
                     required:
                       - kind
                       - sourceChurchName
+                      - destinationChurchId
                       - destinationChurchName
                       - ministryInvitationId
+                      - ministryName
                     additionalProperties: false
                   - type: object
                     properties:
@@ -5960,17 +5983,23 @@ paths:
                           - church-only
                       sourceChurchName:
                         type: string
+                      destinationChurchId:
+                        type: string
                       destinationChurchName:
                         type: string
                       ministryInvitationId:
                         type: string
                         format: uuid
                         pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      ministryName:
+                        type: string
                     required:
                       - kind
                       - sourceChurchName
+                      - destinationChurchId
                       - destinationChurchName
                       - ministryInvitationId
+                      - ministryName
                     additionalProperties: false
                   - type: object
                     properties:

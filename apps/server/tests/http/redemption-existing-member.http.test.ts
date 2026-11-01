@@ -295,8 +295,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.json()).toEqual({
         kind: 'church-only',
         sourceChurchName: fixture.churchB.name,
+        destinationChurchId: fixture.churchA.id,
         destinationChurchName: fixture.churchA.name,
         ministryInvitationId: invitation.id,
+        ministryName: expect.stringMatching(/^Worship /),
       });
 
       // The Ministry half is refused: invitation stays pending, no grant, no

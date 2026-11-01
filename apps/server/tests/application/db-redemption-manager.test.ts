@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DbRedemptionManager } from '@/application/db-redemption-manager';
 import {
   ChurchId,
+  ChurchInvitationId,
   MinistryInvitationId,
   UserId,
   VolunteerId,
@@ -26,6 +27,9 @@ const CHURCH_ID = ChurchId.from('11111111-1111-4111-8111-111111111111');
 const MINISTRY_INVITATION_ID = MinistryInvitationId.from(
   '22222222-2222-4222-8222-222222222222',
 );
+const CHURCH_INVITATION_ID = ChurchInvitationId.from(
+  '66666666-6666-4666-8666-666666666666',
+);
 const USER_ID = UserId.from('33333333-3333-4333-8333-333333333333');
 const VOLUNTEER_ID = VolunteerId.from('44444444-4444-4444-8444-444444444444');
 const SOURCE_CHURCH_ID = ChurchId.from('77777777-7777-4777-8777-777777777777');
@@ -47,7 +51,7 @@ interface RedemptionManagerHarness {
 interface CreateHarnessInput {
   accept?: () => Promise<void>;
   persist?: () => Promise<void>;
-  previews?: PublicRedemptionPreview[];
+  previews?: (PublicRedemptionPreview | null)[];
   verify?: () => Promise<void>;
 }
 
@@ -59,37 +63,26 @@ function createHarness({
 }: CreateHarnessInput = {}): RedemptionManagerHarness {
   const preview: PublicRedemptionPreview = {
     churchId: CHURCH_ID,
-    churchInvitationId: '66666666-6666-4666-8666-666666666666',
+    churchInvitationId: CHURCH_INVITATION_ID,
     email: 'invitee@example.test',
     churchName: 'St. Peter',
-    ministryName: 'Worship',
-    ministryAccessLevel: 'volunteer',
-    roleNames: ['Singer'],
+    churchAccessLevel: 'member',
     expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-    churchInvitationStatus: 'pending',
+    ministry: {
+      ministryInvitationId: MINISTRY_INVITATION_ID,
+      ministryName: 'Worship',
+      ministryAccessLevel: 'volunteer',
+      roleNames: ['Singer'],
+    },
   };
   let previewIndex = 0;
   const invitationRepository = {
-    findPublicRedemptionPreview: vi
-      .fn()
-      .mockImplementation(
-        (
-          input: Parameters<
-            MinistryInvitationRepository['findPublicRedemptionPreview']
-          >[0],
-        ) => {
-          const results = previews ?? [preview];
-          const result = results[Math.min(previewIndex, results.length - 1)];
-          previewIndex += 1;
-          if (
-            result?.churchInvitationStatus === 'accepted' &&
-            !input.includeAcceptedChurchInvitation
-          ) {
-            return Promise.resolve(null);
-          }
-          return Promise.resolve(result);
-        },
-      ),
+    findPublicRedemptionPreview: vi.fn().mockImplementation(() => {
+      const results = previews ?? [preview];
+      const result = results[Math.min(previewIndex, results.length - 1)];
+      previewIndex += 1;
+      return Promise.resolve(result ?? null);
+    }),
   } as Pick<MinistryInvitationRepository, 'findPublicRedemptionPreview'>;
   const verificationCodeManager: InvitationVerificationCodeManager = {
     issue: vi.fn(),
@@ -168,38 +161,26 @@ describe('DbRedemptionManager', () => {
     const { manager, verificationCodeManager } = createHarness();
 
     const sent = await manager.requestVerificationCode({
-      ministryInvitationId: MINISTRY_INVITATION_ID,
+      churchInvitationId: CHURCH_INVITATION_ID,
     });
 
     expect(sent).toBe(true);
     expect(verificationCodeManager.issue).toHaveBeenCalledWith({
-      ministryInvitationId: MINISTRY_INVITATION_ID,
+      churchInvitationId: CHURCH_INVITATION_ID,
       recipientEmail: 'invitee@example.test',
       churchName: 'St. Peter',
       now: expect.any(Date),
     });
   });
 
-  it('keeps accepted Church invitations unavailable to public code requests', async () => {
+  it('sends no code for an unavailable Church Invitation', async () => {
     const { manager, verificationCodeManager } = createHarness({
-      previews: [
-        {
-          churchId: CHURCH_ID,
-          churchInvitationId: '66666666-6666-4666-8666-666666666666',
-          email: 'invitee@example.test',
-          churchName: 'St. Peter',
-          ministryName: 'Worship',
-          ministryAccessLevel: 'volunteer',
-          roleNames: ['Singer'],
-          expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-          churchInvitationStatus: 'accepted',
-        },
-      ],
+      previews: [null],
     });
 
     await expect(
       manager.requestVerificationCode({
-        ministryInvitationId: MINISTRY_INVITATION_ID,
+        churchInvitationId: CHURCH_INVITATION_ID,
       }),
     ).resolves.toBe(false);
 
@@ -217,7 +198,7 @@ describe('DbRedemptionManager', () => {
     });
 
     const outcome = await manager.redeemNewUser({
-      ministryInvitationId: MINISTRY_INVITATION_ID,
+      churchInvitationId: CHURCH_INVITATION_ID,
       name: 'New Volunteer',
       password: 'correct-horse-battery-staple',
       code: '000000',
@@ -235,7 +216,7 @@ describe('DbRedemptionManager', () => {
     const { acceptedInputs, identityGateway, manager } = createHarness();
 
     const outcome = await manager.redeemNewUser({
-      ministryInvitationId: MINISTRY_INVITATION_ID,
+      churchInvitationId: CHURCH_INVITATION_ID,
       name: 'New Volunteer',
       password: 'correct-horse-battery-staple',
       code: '123456',
@@ -269,7 +250,7 @@ describe('DbRedemptionManager', () => {
     });
 
     const outcome = await manager.redeemNewUser({
-      ministryInvitationId: MINISTRY_INVITATION_ID,
+      churchInvitationId: CHURCH_INVITATION_ID,
       name: 'New Volunteer',
       password: 'correct-horse-battery-staple',
       code: '123456',
@@ -293,7 +274,7 @@ describe('DbRedemptionManager', () => {
       });
 
     const outcome = await manager.redeemNewUser({
-      ministryInvitationId: MINISTRY_INVITATION_ID,
+      churchInvitationId: CHURCH_INVITATION_ID,
       name: 'New Volunteer',
       password: 'correct-horse-battery-staple',
       code: '123456',
@@ -303,8 +284,10 @@ describe('DbRedemptionManager', () => {
     expect(outcome).toEqual({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: CHURCH_ID,
       destinationChurchName: 'St. Peter',
       ministryInvitationId: MINISTRY_INVITATION_ID,
+      ministryName: 'Worship',
       sessionCookie:
         'better-auth.session_token=session-token; Path=/; HttpOnly',
     });
@@ -318,24 +301,6 @@ describe('DbRedemptionManager', () => {
         userId: USER_ID,
         correlationId: IDEMPOTENCY_KEY,
       }),
-    );
-  });
-
-  it('includes an accepted Church invitation only for a checkpoint-three retry', async () => {
-    const { invitationRepository, manager } = createHarness();
-
-    await manager.redeemNewUser({
-      ministryInvitationId: MINISTRY_INVITATION_ID,
-      name: 'New Volunteer',
-      password: 'correct-horse-battery-staple',
-      code: '123456',
-      idempotencyKey: IDEMPOTENCY_KEY,
-    });
-
-    expect(
-      invitationRepository.findPublicRedemptionPreview,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({ includeAcceptedChurchInvitation: true }),
     );
   });
 });

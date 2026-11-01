@@ -75,7 +75,7 @@ export const appConfig = appConfigSchema.parse({
   },
   // No practical MVP cap on Church Members per Church.
   auth: { organizationMembershipLimit: 1_000_000 },
-  churchInvitation: { ttlMs: 48 * HOUR_MS },
+  churchInvitation: { ttlMs: 7 * DAY_MS },
   ministryInvitation: { ttlMs: 14 * DAY_MS },
   invitationResend: { cooldownMs: MINUTE_MS, dailyCap: 10, windowMs: DAY_MS },
   verificationCode: {

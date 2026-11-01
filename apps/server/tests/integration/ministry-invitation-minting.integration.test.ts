@@ -1,6 +1,15 @@
 import { appConfig } from '@church/app-config';
-import { compareInstants } from '@church/time';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { invitation as churchInvitation, ministryInvitation } from '@church/db';
+import {
+  addMilliseconds,
+  compareInstants,
+  fromDate,
+  parseInstant,
+  resetClock,
+  setTestClock,
+} from '@church/time';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
@@ -319,5 +328,106 @@ describe('DbMinistryInvitationManager.resend', () => {
         callerId: UserId.from(fixture.leaderOfMinistryTwoA),
       }),
     ).rejects.toBeInstanceOf(MinistryInvitationNotFoundError);
+  });
+});
+
+const DAY_MS = 24 * 60 * 60_000;
+const MINTED_AT = parseInstant({ value: '2026-11-01T12:00:00.000Z' });
+const RESENT_AT = addMilliseconds({
+  instant: MINTED_AT,
+  milliseconds: 3 * DAY_MS,
+});
+
+interface CreateManagerWithChurchTtlInput {
+  churchInvitationTtlMs: number;
+}
+
+/** The same composition with an overridden Church Invitation lifetime. */
+function createManagerWithChurchTtl({
+  churchInvitationTtlMs,
+}: CreateManagerWithChurchTtlInput): DbMinistryInvitationManager {
+  const config = {
+    ...appConfig,
+    churchInvitation: { ttlMs: churchInvitationTtlMs },
+  };
+  return new DbMinistryInvitationManager({
+    repo: new DrizzleMinistryInvitationRepository({ db: testDb, config }),
+    roleRepository,
+    ministryRepository,
+    authorityManager,
+    unitOfWork,
+    outboxRepository,
+    notifications: new ChurchNotifications({ outboxRepository }),
+    config,
+  });
+}
+
+interface PairExpiriesInput {
+  ministryInvitationId: string;
+}
+
+async function pairExpiries({ ministryInvitationId }: PairExpiriesInput) {
+  const [row] = await testDb
+    .select({
+      ministry: ministryInvitation.expiresAt,
+      church: churchInvitation.expiresAt,
+    })
+    .from(ministryInvitation)
+    .innerJoin(
+      churchInvitation,
+      eq(churchInvitation.id, ministryInvitation.churchInvitationId),
+    )
+    .where(eq(ministryInvitation.id, ministryInvitationId));
+  if (!row) throw new Error('Expected a paired invitation.');
+  return {
+    ministry: fromDate({ date: row.ministry }),
+    church: fromDate({ date: row.church }),
+  };
+}
+
+describe('paired Church Invitation expiry', () => {
+  afterEach(() => resetClock());
+
+  it.each([
+    { label: 'the central 7-day policy', ttlMs: 7 * DAY_MS },
+    { label: 'an overridden policy', ttlMs: 2 * DAY_MS },
+  ])('issues and resends both halves on $label', async ({ ttlMs }) => {
+    const pairedManager = createManagerWithChurchTtl({
+      churchInvitationTtlMs: ttlMs,
+    });
+    setTestClock({ instant: MINTED_AT });
+    const minted = await pairedManager.mint({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: UserId.from(fixture.adminA),
+      email: 'paired-expiry@fixture.test',
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+    const mintedExpiry = addMilliseconds({
+      instant: MINTED_AT,
+      milliseconds: ttlMs,
+    });
+    expect(await pairExpiries({ ministryInvitationId: minted.id })).toEqual({
+      ministry: mintedExpiry,
+      church: mintedExpiry,
+    });
+
+    setTestClock({ instant: RESENT_AT });
+    await pairedManager.resend({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      ministryInvitationId: minted.id,
+      callerId: UserId.from(fixture.adminA),
+    });
+
+    const resentExpiry = addMilliseconds({
+      instant: RESENT_AT,
+      milliseconds: ttlMs,
+    });
+    expect(await pairExpiries({ ministryInvitationId: minted.id })).toEqual({
+      ministry: resentExpiry,
+      church: resentExpiry,
+    });
   });
 });

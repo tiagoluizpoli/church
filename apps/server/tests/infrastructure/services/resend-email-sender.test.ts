@@ -46,19 +46,27 @@ function buildBootstrapPayload(): ChurchBootstrapInvitationEmail {
   };
 }
 
+const digestFacts = {
+  churchName: 'Grace Church',
+  churchTimezone: 'UTC',
+  recipientFirstName: 'Sam',
+  ministryName: 'Hospitality',
+  volunteerName: 'Jamie Rivera',
+  actionUrl: 'https://app.church.test/schedules',
+};
+
 function buildDigestPayload(): TransferMinistryDigestEmail {
   return {
     kind: 'transfer.ministry-digest',
     to: ['leader-one@example.com', 'leader-two@example.com'],
-    ministryName: 'Hospitality',
-    volunteerName: 'Jamie Rivera',
+    ...digestFacts,
     withdrawnAssignments: [
       {
-        eventName: 'Sunday Gathering',
-        eventTimeBlockStart: fromDate({
-          date: new Date('2026-09-20T10:00:00Z'),
-        }),
+        startsAt: fromDate({ date: new Date('2026-09-20T10:00:00Z') }),
+        endsAt: fromDate({ date: new Date('2026-09-20T11:00:00Z') }),
+        eventTitle: 'Sunday Gathering',
         roleName: 'Greeter',
+        sectorName: 'Lobby',
       },
     ],
   };
@@ -68,8 +76,7 @@ function buildLeaderlessPayload(): TransferLeaderlessMinistryEmail {
   return {
     kind: 'transfer.leaderless-ministry',
     to: ['admin@example.com'],
-    ministryName: 'Hospitality',
-    volunteerName: 'Jamie Rivera',
+    ...digestFacts,
     withdrawnAssignments: [],
   };
 }
@@ -145,6 +152,9 @@ describe('ResendEmailSender', () => {
         to: ['leader-one@example.com', 'leader-two@example.com'],
         subject: expect.stringContaining('Hospitality'),
         html: expect.stringContaining('Greeter'),
+        text: expect.stringContaining(
+          'Sun 20/09 · 10:00–11:00 · Sunday Gathering · Greeter · Lobby',
+        ),
       }),
     );
     // The destination Church is never named (spec §8.8).
@@ -160,8 +170,10 @@ describe('ResendEmailSender', () => {
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: ['admin@example.com'],
-        subject: expect.stringContaining('no active leader'),
-        html: expect.stringContaining('Jamie Rivera'),
+        subject: expect.stringContaining('Jamie Rivera'),
+        text: expect.stringContaining(
+          'The Hospitality ministry now has no leader.',
+        ),
       }),
     );
   });

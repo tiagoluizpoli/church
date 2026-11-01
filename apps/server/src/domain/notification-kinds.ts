@@ -147,18 +147,29 @@ export type AvailabilityDeliveryFacts =
 export type SchedulePublishedDeliveryFacts =
   NotificationDataOf<'schedule_published'> & { actionUrl: string };
 
+/** JSON-safe copy of a withdrawn Assignment's actual Shift, so a prepared
+ * email survives persistence unchanged (Instants, never `Date`s). */
+export interface WithdrawnAssignmentEmailLine {
+  startsAt: Instant;
+  endsAt: Instant;
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
+}
+
 /**
- * Everything both transfer email templates render, resolved at delivery.
- * Never names the destination Church.
+ * Everything both transfer email templates render, resolved and frozen at
+ * first delivery. The Church is the *former* one; never the destination.
  */
 export interface TransferDigestDeliveryFacts {
+  churchName: string;
+  churchTimezone: string;
+  recipientFirstName: string;
   ministryName: string;
   volunteerName: string;
-  withdrawnAssignments: {
-    eventName: string;
-    eventTimeBlockStart: Instant;
-    roleName: string;
-  }[];
+  withdrawnAssignments: WithdrawnAssignmentEmailLine[];
+  /** Absolute `/schedules` link. */
+  actionUrl: string;
 }
 
 /** Delivery facts by kind; later kinds add their entry here. */

@@ -181,3 +181,86 @@ describe('prepareEmail — retained scheduling Notifications', () => {
     expect(email.request.html).toContain('Ver escala');
   });
 });
+
+describe('prepareEmail — verification code (T2)', () => {
+  const churchName = `Grace & "Truth" <Church>`;
+  const ptBR = { locale: 'pt-BR' } as const;
+  const prepare = () =>
+    prepareEmail({
+      payload: {
+        kind: 'invitation.verification-code',
+        to: 'invitee@example.com',
+        churchName,
+        code: '042137',
+        codeLifetime: { minutes: 10 },
+      },
+      from: 'Church <hi@church.test>',
+      locale: 'pt-BR',
+    });
+
+  it('puts the code in the subject and both bodies, with the policy lifetime and invitation footer', () => {
+    const { locale, request } = prepare();
+    const duration = m.email_duration_minutes_other({ count: 10 }, ptBR);
+
+    expect(locale).toBe('pt-BR');
+    expect(request.subject).toBe(
+      m.email_verification_code_subject({ code: '042137', churchName }, ptBR),
+    );
+    expect(request.text).toBe(
+      [
+        m.email_greeting_transactional({}, ptBR),
+        m.email_verification_code_heading({ code: '042137' }, ptBR),
+        m.email_verification_code_body({ churchName }, ptBR),
+        m.email_verification_code_expires({ duration }, ptBR),
+        `--\n${m.email_footer_invitation({ email: 'invitee@example.com', churchName }, ptBR)}`,
+      ].join('\n\n'),
+    );
+    expect(request.html).toContain(
+      m.email_verification_code_heading({ code: '042137' }, ptBR),
+    );
+    expect(request.html).toContain(
+      m.email_verification_code_expires({ duration }, ptBR),
+    );
+  });
+
+  it('escapes the Church name exactly once in HTML and keeps it readable in subject and text', () => {
+    const { request } = prepare();
+    const escaped = 'Grace &amp; &quot;Truth&quot; &lt;Church&gt;';
+
+    expect(request.html).toContain(escaped);
+    expect(request.html).not.toContain(churchName);
+    expect(request.html).not.toContain('&amp;amp;');
+    expect(request.subject).toContain(churchName);
+    expect(request.text).toContain(churchName);
+  });
+
+  it('has no button or link, and sends as the Church from the configured mailbox', () => {
+    const { request } = prepare();
+
+    expect(request.html).not.toContain('<a ');
+    expect(request.text).not.toContain('http');
+    expect(request.from).toBe(
+      '"Grace & \\"Truth\\" <Church>" <hi@church.test>',
+    );
+  });
+});
+
+describe('prepareEmail — Church sender display name', () => {
+  it('flattens line breaks so a Church name never adds a header or recipient', () => {
+    const { request } = prepareEmail({
+      payload: {
+        kind: 'invitation.verification-code',
+        to: 'invitee@example.com',
+        churchName: 'Grace\r\nBcc: victim@example.com',
+        code: '042137',
+        codeLifetime: { minutes: 10 },
+      },
+      from: 'hi@church.test',
+      locale: 'pt-BR',
+    });
+
+    expect(request.from).toBe(
+      '"Grace Bcc: victim@example.com" <hi@church.test>',
+    );
+  });
+});

@@ -72,7 +72,9 @@ describe('composition root', () => {
         to: 'invitee@example.com',
         churchName: 'Church',
         code: '123456',
+        codeLifetime: { minutes: 10 },
       },
+      locale: 'en',
     });
     const { controllers } = createCompositionRoot({
       emailSender,

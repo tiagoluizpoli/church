@@ -24,11 +24,18 @@ export interface MinistryInvitationEmail {
   redemptionUrl: string;
 }
 
+/** A policy-derived length of time, translated at render time. */
+export interface EmailDuration {
+  minutes: number;
+}
+
 export interface VerificationCodeEmail {
   kind: 'invitation.verification-code';
   to: string;
   churchName: string;
   code: string;
+  /** How long the code stays valid, from the same policy that enforces it. */
+  codeLifetime: EmailDuration;
 }
 
 export interface ChurchBootstrapInvitationEmail {
@@ -106,13 +113,22 @@ export type EmailPayload =
 
 export type EmailLocale = 'en' | 'pt-BR';
 
-/** The exact provider request: what a retry must resend byte for byte. */
+/** The exact provider request: what a retry must resend byte for byte.
+ * Every newly prepared layout request carries its plain-text alternative. */
 export interface EmailRequest {
   from: string;
   to: string | string[];
   subject: string;
   html: string;
+  text: string;
 }
+
+/** A request without plain text: saved before the shared layout existed, or
+ * prepared by a kind not yet moved onto it. Replayed as stored, never
+ * re-rendered to add text. */
+export type HtmlOnlyEmailRequest = Omit<EmailRequest, 'text'> & {
+  text?: never;
+};
 
 /**
  * A rendered email, fixed once before its first external attempt. Every field
@@ -126,6 +142,20 @@ export interface PreparedEmail {
   request: EmailRequest;
 }
 
+/** A prepared email whose request has no plain text (see HtmlOnlyEmailRequest). */
+export interface HtmlOnlyPreparedEmail {
+  payload: EmailPayload;
+  locale: EmailLocale;
+  request: HtmlOnlyEmailRequest;
+}
+
+/**
+ * What the outbox stores and a transport replays: a layout email, or a
+ * historical/unmigrated html-only one. Collapses to `PreparedEmail` for new
+ * preparations once every kind renders through the layout (Spec 10).
+ */
+export type ReplayableEmail = PreparedEmail | HtmlOnlyPreparedEmail;
+
 export interface SendEmailResult {
   /** Absent for the capture adapter — nothing was actually dispatched. */
   providerMessageId?: string;
@@ -138,7 +168,7 @@ export interface PrepareEmailInput {
 }
 
 export interface DeliverEmailInput {
-  email: PreparedEmail;
+  email: ReplayableEmail;
   /**
    * Stable per delivery (derived from the outbox row), so a replay inside the
    * provider's retention window is deduplicated rather than sent twice.
@@ -148,11 +178,14 @@ export interface DeliverEmailInput {
 
 export interface SendEmailInput {
   payload: EmailPayload;
+  /** Resolved by the caller through `recipientLocale`. */
+  locale: EmailLocale;
 }
 
 /** Renders a payload into the exact request a transport will send. */
 export interface EmailPreparer {
-  prepare(input: PrepareEmailInput): PreparedEmail;
+  /** Layout kinds return a `PreparedEmail`; unmigrated kinds stay html-only. */
+  prepare(input: PrepareEmailInput): ReplayableEmail;
 }
 
 /** Delivers an already-prepared email; never renders. */

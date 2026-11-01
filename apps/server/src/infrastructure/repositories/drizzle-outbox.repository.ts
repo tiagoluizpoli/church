@@ -2,7 +2,7 @@ import { outboxMessage } from '@church/db';
 import { fromDate, toDate } from '@church/time';
 import { and, asc, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
-import type { PreparedEmail } from '../../domain/contracts/infrastructure/email-sender';
+import type { ReplayableEmail } from '../../domain/contracts/infrastructure/email-sender';
 import type {
   ChainedInvitationOutboxMessage,
   ChannelOutcomes,
@@ -226,7 +226,7 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
 }
 
 /** `email_request` is jsonb written only by `recordEmailPrepared`, from a
- * JSON-safe `PreparedEmail`, so the read-back is that same shape. */
+ * JSON-safe `ReplayableEmail` (with or without text), so the read-back is that same shape. */
 function mapEmailDelivery(
   row: OutboxMessageRow,
 ): OutboxEmailDelivery | undefined {
@@ -235,7 +235,7 @@ function mapEmailDelivery(
     return undefined;
   }
   return {
-    email: emailRequest as PreparedEmail,
+    email: emailRequest as ReplayableEmail,
     idempotencyKey: emailIdempotencyKey,
     firstAttemptAt: fromDate({ date: emailFirstAttemptAt }),
     deliveredAt: row.emailDeliveredAt

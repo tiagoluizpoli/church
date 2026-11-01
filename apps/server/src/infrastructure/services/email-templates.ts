@@ -6,10 +6,19 @@ import type {
   EmailPayload,
   MinistryInvitationEmail,
   PreparedEmail,
+  ReplayableEmail,
   SchedulePublishedEmail,
   TransferLeaderlessMinistryEmail,
   TransferMinistryDigestEmail,
+  VerificationCodeEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
+import {
+  type EmailContent,
+  emailSender,
+  escapeHtml,
+  formatEmailDuration,
+  renderEmailLayout,
+} from './email-layout';
 
 export interface PrepareEmailFromInput {
   payload: EmailPayload;
@@ -19,15 +28,26 @@ export interface PrepareEmailFromInput {
 
 /**
  * The one renderer every EmailSender adapter prepares with, so capture and
- * Resend agree on content. The member Ministry Invitation and the transfer
- * digests render from the shared catalog in `locale`; the rest stay English
- * until Spec 10 moves them.
+ * Resend agree on content. Kinds on the shared layout return a request with
+ * plain text and the Church sender; the rest stay html-only until Spec 10
+ * moves them.
  */
 export function prepareEmail({
   payload,
   from,
   locale = 'en',
-}: PrepareEmailFromInput): PreparedEmail {
+}: PrepareEmailFromInput): ReplayableEmail {
+  if (payload.kind === 'invitation.verification-code') {
+    return prepareLayoutEmail({
+      payload,
+      locale,
+      from: emailSender({
+        displayName: payload.churchName,
+        configuredFrom: from,
+      }),
+      content: verificationCodeContent({ payload, locale }),
+    });
+  }
   if (payload.kind === 'invitation.ministry') {
     const { subject, html } = composeMinistryInvitationEmail({
       payload,
@@ -77,6 +97,57 @@ export function prepareEmail({
     payload,
     locale: 'en',
     request: { from, to: payload.to, subject, html },
+  };
+}
+
+interface PrepareLayoutEmailInput {
+  payload: EmailPayload;
+  locale: EmailLocale;
+  /** The composed sender (see `emailSender`). */
+  from: string;
+  content: EmailContent;
+}
+
+/** A kind on the shared layout: HTML and text from the same content. */
+export function prepareLayoutEmail({
+  payload,
+  locale,
+  from,
+  content,
+}: PrepareLayoutEmailInput): PreparedEmail {
+  const { subject, html, text } = renderEmailLayout(content);
+  return {
+    payload,
+    locale,
+    request: { from, to: payload.to, subject, html, text },
+  };
+}
+
+interface VerificationCodeContentInput {
+  payload: VerificationCodeEmail;
+  locale: EmailLocale;
+}
+
+/** T2: the code leads; no action, since there is nothing to open. */
+function verificationCodeContent({
+  payload,
+  locale,
+}: VerificationCodeContentInput): EmailContent {
+  const options = { locale };
+  const { code, churchName, to } = payload;
+  const duration = formatEmailDuration({
+    duration: payload.codeLifetime,
+    locale,
+  });
+  return {
+    subject: m.email_verification_code_subject({ code, churchName }, options),
+    greeting: m.email_greeting_transactional({}, options),
+    heading: m.email_verification_code_heading({ code }, options),
+    facts: [
+      m.email_verification_code_body({ churchName }, options),
+      m.email_verification_code_expires({ duration }, options),
+    ],
+    footer: m.email_footer_invitation({ email: to, churchName }, options),
   };
 }
 
@@ -182,19 +253,6 @@ function composeSchedulePublishedEmail({
   };
 }
 
-const HTML_ESCAPES: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-};
-
-/** Interpolated facts are text, never markup. */
-export function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
-}
-
 interface ComposedEmail {
   subject: string;
   html: string;
@@ -221,13 +279,9 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
     case 'availability.opened':
     case 'availability.reminder':
     case 'schedule.published':
+    case 'invitation.verification-code':
       // Rendered from the catalog in prepareEmail.
       throw new Error(`Email kind "${payload.kind}" renders in prepareEmail`);
-    case 'invitation.verification-code':
-      return {
-        subject: `Your ${payload.churchName} verification code`,
-        html: `<p>Your verification code is <strong>${payload.code}</strong>.</p><p>It expires in 10 minutes.</p>`,
-      };
     case 'invitation.church-bootstrap':
       return {
         subject: `You're invited to administer ${payload.churchName}`,

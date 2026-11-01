@@ -32,6 +32,7 @@ export const CRITICAL_SMOKE_SPEC_PATHS: string[] = [
 ];
 
 const REDEMPTION_SPEC_PATHS = [
+  'tests/identity/first-admin-onboarding.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
 ];
@@ -64,6 +65,7 @@ const NOTIFICATION_BELL_SPEC_PATHS = [
 const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+  'tests/identity/first-admin-onboarding.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
   // Signs in as the shared personas global setup loads from a recipe.

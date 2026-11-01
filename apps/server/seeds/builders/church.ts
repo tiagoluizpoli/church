@@ -30,6 +30,8 @@ export interface ProvisionedChurch {
   church: ChurchRecord;
   /** The pending first Church Invitation provisioning addressed to `adminEmail`. */
   adminInvitationId: string;
+  /** The relative link provisioning prints for hand delivery. */
+  redemptionPath: string;
 }
 
 /**
@@ -66,6 +68,7 @@ export async function buildProvisionedChurch({
   return {
     church: provisioned.church,
     adminInvitationId: provisioned.invitationId,
+    redemptionPath: provisioned.redemptionPath,
   };
 }
 

@@ -168,3 +168,38 @@ export interface AcceptMinistryInvitationOutcome {
   sourceChurchName?: string;
   destinationChurchName?: string;
 }
+
+export interface FetchDebugVerificationCodeInput {
+  request: APIRequestContext;
+  /** The Church Invitation id the public join page was opened with. */
+  churchInvitationId: string;
+}
+
+interface DebugVerificationCodeResponse {
+  code: string;
+}
+
+/** The code the capture sender recorded, through the non-production inspector. */
+export async function fetchDebugVerificationCode({
+  request,
+  churchInvitationId,
+}: FetchDebugVerificationCodeInput): Promise<string> {
+  const { code } = await fetchJson<DebugVerificationCodeResponse>({
+    request,
+    path: `/api/v1/redemption/church/${churchInvitationId}/debug-code`,
+  });
+  return code;
+}
+
+export interface ChurchInvitationIdOfInput {
+  redemptionPath: string;
+}
+
+/** A Church Invitation link is `/invitations/church/<Church Invitation id>`. */
+export function churchInvitationIdOf({
+  redemptionPath,
+}: ChurchInvitationIdOfInput): string {
+  const id = redemptionPath.match(/^\/invitations\/church\/([^/?#]+)$/)?.[1];
+  if (!id) throw new Error(`Not a Church Invitation link: ${redemptionPath}`);
+  return id;
+}

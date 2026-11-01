@@ -137,7 +137,9 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
     });
 
     await page.getByLabel('Name').fill('E2E Outsider');
-    await page.getByLabel('Password').fill('correct-horse-battery-staple');
+    await page
+      .getByLabel('Password', { exact: true })
+      .fill('correct-horse-battery-staple');
     await page.getByPlaceholder('123456').fill(code);
     const [redeemResponse] = await Promise.all([
       page.waitForResponse((response) =>

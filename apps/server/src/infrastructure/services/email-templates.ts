@@ -1,7 +1,8 @@
 import { m } from '@church/i18n/messages';
-import { formatCalendarDay, formatInstant, toDate } from '@church/time';
+import { formatCalendarDay, formatInstant } from '@church/time';
 import type {
   AvailabilityEmail,
+  ChurchBootstrapInvitationEmail,
   EmailLocale,
   EmailPayload,
   MinistryInvitationEmail,
@@ -48,16 +49,20 @@ export function prepareEmail({
       content: verificationCodeContent({ payload, locale }),
     });
   }
-  if (payload.kind === 'invitation.ministry') {
-    const { subject, html } = composeMinistryInvitationEmail({
+  if (
+    payload.kind === 'invitation.ministry' ||
+    payload.kind === 'invitation.chained' ||
+    payload.kind === 'invitation.church-bootstrap'
+  ) {
+    return prepareLayoutEmail({
       payload,
       locale,
+      from: emailSender({
+        displayName: payload.churchName,
+        configuredFrom: from,
+      }),
+      content: invitationContent({ payload, locale }),
     });
-    return {
-      payload,
-      locale,
-      request: { from, to: payload.to, subject, html },
-    };
   }
   if (
     payload.kind === 'availability.opened' ||
@@ -154,42 +159,62 @@ function verificationCodeContent({
   };
 }
 
-interface ComposeMinistryInvitationEmailInput {
-  payload: MinistryInvitationEmail;
+interface InvitationContentInput {
+  payload: MinistryInvitationEmail | ChurchBootstrapInvitationEmail;
   locale: EmailLocale;
 }
 
-function composeMinistryInvitationEmail({
+/** T1: ChurchAdmin-only (bootstrap) and paired Ministry invitations. */
+function invitationContent({
   payload,
   locale,
-}: ComposeMinistryInvitationEmailInput): ComposedEmail {
+}: InvitationContentInput): EmailContent {
   const options = { locale };
-  const ministryName = escapeHtml(payload.ministryName);
-  const accessLevel =
-    payload.ministryAccessLevel === 'leader'
-      ? m.email_ministry_invitation_access_leader({}, options)
-      : m.email_ministry_invitation_access_volunteer({}, options);
-  const roles =
-    payload.roleNames.length > 0
-      ? `<p>${m.email_ministry_invitation_roles({ roles: payload.roleNames.map(escapeHtml).join(', ') }, options)}</p>`
-      : '';
+  const { to, churchName, churchTimezone, redemptionUrl } = payload;
   const expiresAt = formatInstant({
     instant: payload.expiresAt,
-    timeZone: payload.churchTimezone,
+    timeZone: churchTimezone,
   });
+  const common = {
+    greeting: m.email_greeting_transactional({}, options),
+    action: {
+      label: m.email_invitation_accept({}, options),
+      url: redemptionUrl,
+    },
+    footer: m.email_footer_invitation({ email: to, churchName }, options),
+  };
+  const expires = m.email_invitation_expires({ expiresAt }, options);
+  if (payload.kind === 'invitation.church-bootstrap') {
+    const title = m.email_invitation_admin_title({ churchName }, options);
+    return {
+      ...common,
+      subject: title,
+      heading: title,
+      facts: [m.email_invitation_admin_body({ churchName }, options), expires],
+    };
+  }
+  const { ministryName, inviterName, roleNames } = payload;
+  const isLeader = payload.ministryAccessLevel === 'leader';
+  const input = { churchName, ministryName, inviterName: inviterName ?? '' };
+  const title = isLeader
+    ? m.email_invitation_lead_title(input, options)
+    : m.email_invitation_serve_title(input, options);
+  const body = isLeader
+    ? inviterName
+      ? m.email_invitation_lead_body_inviter(input, options)
+      : m.email_invitation_lead_body(input, options)
+    : inviterName
+      ? m.email_invitation_serve_body_inviter(input, options)
+      : m.email_invitation_serve_body(input, options);
+  const roles = m.email_invitation_roles(
+    { roles: roleNames.join(', ') },
+    options,
+  );
   return {
-    // The subject is plain text: no markup to escape.
-    subject: m.notification_ministry_invitation_title(
-      { ministryName: payload.ministryName },
-      options,
-    ),
-    html: `
-          <p>${m.notification_ministry_invitation_body({ ministryName }, options)}</p>
-          <p>${m.email_ministry_invitation_details({ churchName: escapeHtml(payload.churchName), ministryName, accessLevel }, options)}</p>
-          ${roles}
-          <p>${m.email_ministry_invitation_expires({ expiresAt }, options)}</p>
-          <p><a href="${escapeHtml(payload.redemptionUrl)}">${m.email_ministry_invitation_accept({}, options)}</a></p>
-        `,
+    ...common,
+    subject: title,
+    heading: title,
+    facts: roleNames.length > 0 ? [body, roles, expires] : [body, expires],
   };
 }
 
@@ -267,32 +292,15 @@ interface ComposeEmailInput {
 
 function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
   switch (payload.kind) {
-    case 'invitation.chained':
-    case 'invitation.ministry':
-      // `invitation.ministry` is rendered from the catalog in prepareEmail.
-      return {
-        subject: `You're invited to serve at ${payload.churchName}`,
-        html: `
-          <p>You've been invited to join <strong>${payload.ministryName}</strong> at ${payload.churchName} as a ${payload.ministryAccessLevel}.</p>
-          ${payload.roleNames.length > 0 ? `<p>Roles: ${payload.roleNames.join(', ')}</p>` : ''}
-          <p>This invitation expires on ${toDate({ instant: payload.expiresAt }).toDateString()}.</p>
-          <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
-        `,
-      };
     case 'availability.opened':
     case 'availability.reminder':
     case 'schedule.published':
     case 'invitation.verification-code':
+    case 'invitation.chained':
+    case 'invitation.ministry':
+    case 'invitation.church-bootstrap':
       // Rendered from the catalog in prepareEmail.
       throw new Error(`Email kind "${payload.kind}" renders in prepareEmail`);
-    case 'invitation.church-bootstrap':
-      return {
-        subject: `You're invited to administer ${payload.churchName}`,
-        html: `
-          <p>You've been invited to become an administrator of ${payload.churchName}.</p>
-          <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
-        `,
-      };
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
       // Rendered from the catalog in prepareEmail.

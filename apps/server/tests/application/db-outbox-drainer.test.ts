@@ -26,7 +26,7 @@ const invitationRepository = {
   findById: vi.fn(),
   resolveRecipientEmail: vi.fn(),
 };
-const churchRepository = { getById: vi.fn() };
+const churchRepository = { getById: vi.fn(), findMemberName: vi.fn() };
 const ministryRepository = { getById: vi.fn() };
 const roleRepository = { getById: vi.fn() };
 const volunteerTransferRepository = { getDigestDetails: vi.fn() };
@@ -88,7 +88,11 @@ function buildInvitation(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  churchRepository.getById.mockResolvedValue({ name: 'Grace Church' });
+  churchRepository.getById.mockResolvedValue({
+    name: 'Grace Church',
+    timezone: 'America/Sao_Paulo',
+  });
+  churchRepository.findMemberName.mockResolvedValue('Pastor Ana');
   ministryRepository.getById.mockResolvedValue({ name: 'Worship Team' });
   roleRepository.getById.mockResolvedValue({ name: 'Vocalist' });
   invitationRepository.resolveRecipientEmail.mockResolvedValue(
@@ -116,10 +120,19 @@ describe('DbOutboxDrainer.drainOnce', () => {
             churchName: 'Grace Church',
             ministryName: 'Worship Team',
             roleNames: ['Vocalist'],
+            inviterName: 'Pastor Ana',
+            churchTimezone: 'America/Sao_Paulo',
           }),
         }),
       }),
     );
+    expect(emailSender.prepare).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: appConfig.defaultLocale }),
+    );
+    expect(churchRepository.findMemberName).toHaveBeenCalledWith({
+      id: churchId,
+      userId: inviterId,
+    });
     expect(outboxRepository.markSent).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'outbox_1',

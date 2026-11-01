@@ -15,6 +15,7 @@ import type {
 } from '../domain/contracts/application/outbox-drainer';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
+  EmailLocale,
   EmailPayload,
   EmailSender,
   MinistryInvitationEmail,
@@ -45,6 +46,7 @@ import {
   hasExhaustedRetries,
   nextRetryAt,
 } from '../domain/services/outbox-retry-policy';
+import { recipientLocale } from '../domain/services/recipient-locale';
 import { webLink } from '../domain/services/web-link';
 import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
@@ -63,6 +65,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
   private readonly webBaseUrl: string;
+  private readonly defaultLocale: AppConfig['defaultLocale'];
 
   constructor({
     outboxRepository,
@@ -89,7 +92,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.schedulingFacts = schedulingFacts;
     this.unitOfWork = unitOfWork;
     this.webBaseUrl = webBaseUrl;
-    const { outbox } = config;
+    const { outbox, defaultLocale } = config;
+    this.defaultLocale = defaultLocale;
     this.outboxPolicy = outbox;
     this.emailIdempotencyRetentionMs = outbox.emailIdempotencyRetentionMs;
   }
@@ -151,7 +155,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return this.deliverEmail({ message, delivery: message.emailDelivery });
     }
 
-    const [church, ministry, email] = await Promise.all([
+    const [church, ministry, email, inviterName] = await Promise.all([
       this.churchRepository.getById({ id: message.churchId }),
       this.ministryRepository.getById({
         churchId: message.churchId,
@@ -159,6 +163,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       }),
       this.invitationRepository.resolveRecipientEmail({
         ministryInvitation: invitation,
+      }),
+      this.churchRepository.findMemberName({
+        id: message.churchId,
+        userId: invitation.inviterId,
       }),
     ]);
     const roles = await Promise.all(
@@ -174,6 +182,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
+      ...(inviterName === null ? {} : { inviterName }),
       expiresAt: invitation.expiresAt,
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -182,7 +191,18 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       }),
     };
 
-    return this.prepareAndDeliver({ message, payload });
+    return this.prepareAndDeliver({
+      message,
+      payload,
+      locale: this.localeFor({ email }),
+    });
+  }
+
+  private localeFor({ email }: LocaleForInput): EmailLocale {
+    return recipientLocale({
+      recipient: { email },
+      defaultLocale: this.defaultLocale,
+    });
   }
 
   /** The invitation's display facts, read now; `null` once it is no longer pending. */
@@ -421,9 +441,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private async prepareAndDeliver({
     message,
     payload,
+    locale,
   }: PrepareAndDeliverInput): Promise<'sent' | 'failed'> {
     const delivery: OutboxEmailDelivery = {
-      email: this.emailSender.prepare({ payload }),
+      email: this.emailSender.prepare({ payload, locale }),
       idempotencyKey: emailIdempotencyKeyFor({ message }),
       firstAttemptAt: now(),
     };
@@ -560,6 +581,10 @@ interface DbOutboxDrainerDependencies {
   webBaseUrl: string;
 }
 
+interface LocaleForInput {
+  email: string;
+}
+
 interface ProcessOneInput {
   message: OutboxMessage;
 }
@@ -595,6 +620,7 @@ interface ProcessNotificationMessageInput {
 interface PrepareAndDeliverInput {
   message: OutboxMessage;
   payload: EmailPayload;
+  locale: EmailLocale;
 }
 
 interface DeliverEmailInput {

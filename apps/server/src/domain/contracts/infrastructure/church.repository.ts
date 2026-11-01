@@ -12,6 +12,8 @@ export interface ChurchRepository {
    * `null` otherwise. Volunteer status plays no part.
    */
   findMemberEmail(input: FindChurchMemberEmailInput): Promise<string | null>;
+  /** The User's display name while they hold Church Membership; `null` otherwise. */
+  findMemberName(input: FindChurchMemberEmailInput): Promise<string | null>;
 }
 
 export interface GetChurchByIdInput {

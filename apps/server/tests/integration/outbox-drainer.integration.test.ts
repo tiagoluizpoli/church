@@ -284,6 +284,43 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
     expect(secondKey).toBe(firstKey);
   });
 
+  it('replays a saved html-only request exactly as stored, without adding text', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender();
+    emailSender.queueFailure({ mode: 'before-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    const prepared = await onlyRow();
+    const historical = {
+      payload: { kind: 'invitation.ministry', to: memberEmail() },
+      locale: 'en',
+      request: {
+        from: 'Church <old@church.test>',
+        to: memberEmail(),
+        subject: 'Saved before plain text existed',
+        html: '<p>Saved body</p>',
+      },
+    };
+    await testDb
+      .update(outboxMessage)
+      .set({ emailRequest: historical })
+      .where(eq(outboxMessage.id, prepared.id));
+    advanceClockFromFirstAttempt({ ms: backoffCapMinutes * 60_000 });
+
+    const result = await drainer.drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.delivered).toEqual([historical]);
+    expect(emailSender.attemptedKeys).toEqual([
+      `outbox-message/${prepared.id}`,
+      `outbox-message/${prepared.id}`,
+    ]);
+    expect(await onlyRow()).toMatchObject({
+      emailFirstAttemptAt: new Date(firstAttempt),
+      emailRequest: historical,
+    });
+  });
+
   it('captures one email when an ambiguous attempt is replayed', async () => {
     await mintFor({ email: memberEmail() });
     const emailSender = new FlakyEmailSender();

@@ -2,8 +2,8 @@ import { Resend } from 'resend';
 import type {
   DeliverEmailInput,
   EmailSender,
-  PreparedEmail,
   PrepareEmailInput,
+  ReplayableEmail,
   SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -53,12 +53,13 @@ export class ResendEmailSender implements EmailSender {
     this.from = from;
   }
 
-  prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
+  prepare({ payload, locale }: PrepareEmailInput): ReplayableEmail {
     return prepareEmail({ payload, locale, from: this.from });
   }
 
-  async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
-    return this.deliver({ email: this.prepare({ payload }) });
+  async send({ payload, locale }: SendEmailInput): Promise<SendEmailResult> {
+    const email = this.prepare({ payload, locale });
+    return this.deliver({ email });
   }
 
   async deliver({

@@ -98,7 +98,7 @@ describe('ResendEmailSender', () => {
     const sender = makeSender();
 
     await expect(
-      sender.send({ payload: buildChainedPayload() }),
+      sender.send({ payload: buildChainedPayload(), locale: 'en' }),
     ).rejects.toMatchObject({
       message: 'fetch failed',
       retryable: true,
@@ -109,7 +109,10 @@ describe('ResendEmailSender', () => {
     sendMock.mockResolvedValue({ data: { id: 'email-1' }, error: null });
     const sender = makeSender();
 
-    const result = await sender.send({ payload: buildChainedPayload() });
+    const result = await sender.send({
+      payload: buildChainedPayload(),
+      locale: 'en',
+    });
 
     expect(sendMock).toHaveBeenCalledWith({
       from: 'Church <hi@church.test>',
@@ -124,7 +127,7 @@ describe('ResendEmailSender', () => {
     sendMock.mockResolvedValue({ data: { id: 'email-2' }, error: null });
     const sender = makeSender();
 
-    await sender.send({ payload: buildBootstrapPayload() });
+    await sender.send({ payload: buildBootstrapPayload(), locale: 'en' });
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({ html: expect.not.stringContaining('Roles:') }),
@@ -135,7 +138,7 @@ describe('ResendEmailSender', () => {
     sendMock.mockResolvedValue({ data: { id: 'email-3' }, error: null });
     const sender = makeSender();
 
-    await sender.send({ payload: buildDigestPayload() });
+    await sender.send({ payload: buildDigestPayload(), locale: 'en' });
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -152,7 +155,7 @@ describe('ResendEmailSender', () => {
     sendMock.mockResolvedValue({ data: { id: 'email-4' }, error: null });
     const sender = makeSender();
 
-    await sender.send({ payload: buildLeaderlessPayload() });
+    await sender.send({ payload: buildLeaderlessPayload(), locale: 'en' });
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -177,6 +180,61 @@ describe('ResendEmailSender', () => {
       idempotencyKey: 'outbox-message/row-1',
     });
     expect(result).toEqual({ providerMessageId: 'email-5' });
+  });
+
+  it('sends a layout email with its plain text and Church sender exactly as prepared', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email-6' }, error: null });
+    const sender = makeSender();
+    const email = sender.prepare({
+      payload: {
+        kind: 'invitation.verification-code',
+        to: 'invitee@example.com',
+        churchName: 'Grace, "Truth" <Church>',
+        code: '123456',
+        codeLifetime: { minutes: 10 },
+      },
+      locale: 'pt-BR',
+    });
+
+    await sender.deliver({ email, idempotencyKey: 'outbox-message/row-2' });
+
+    expect(email.request).toMatchObject({
+      from: '"Grace, \\"Truth\\" <Church>" <hi@church.test>',
+      text: expect.stringContaining('123456'),
+    });
+    expect(sendMock).toHaveBeenCalledWith(email.request, {
+      idempotencyKey: 'outbox-message/row-2',
+    });
+  });
+
+  it('replays a historical html-only request unchanged, without adding text', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email-7' }, error: null });
+    const sender = makeSender();
+    const historical = {
+      payload: buildChainedPayload(),
+      locale: 'en' as const,
+      request: {
+        from: 'Old Name <old@church.test>',
+        to: 'invitee@example.com',
+        subject: 'Saved subject',
+        html: '<p>Saved body</p>',
+      },
+    };
+
+    await sender.deliver({
+      email: historical,
+      idempotencyKey: 'outbox-message/row-3',
+    });
+
+    expect(sendMock).toHaveBeenCalledWith(
+      {
+        from: 'Old Name <old@church.test>',
+        to: 'invitee@example.com',
+        subject: 'Saved subject',
+        html: '<p>Saved body</p>',
+      },
+      { idempotencyKey: 'outbox-message/row-3' },
+    );
   });
 
   it.each([
@@ -212,7 +270,10 @@ describe('ResendEmailSender', () => {
     const sender = makeSender();
 
     await expect(
-      sender.send({ payload: buildChainedPayload() as EmailPayload }),
+      sender.send({
+        payload: buildChainedPayload() as EmailPayload,
+        locale: 'en',
+      }),
     ).rejects.toMatchObject({
       message: 'send failed',
       retryable,

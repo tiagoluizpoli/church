@@ -2,8 +2,8 @@ import type {
   DeliverEmailInput,
   EmailPayload,
   EmailSender,
-  PreparedEmail,
   PrepareEmailInput,
+  ReplayableEmail,
   SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -25,15 +25,16 @@ export class CaptureEmailSender
   implements EmailSender, VerificationCodeInspector
 {
   readonly sent: EmailPayload[] = [];
-  readonly delivered: PreparedEmail[] = [];
+  readonly delivered: ReplayableEmail[] = [];
   private readonly seenKeys = new Set<string>();
 
-  prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
+  prepare({ payload, locale }: PrepareEmailInput): ReplayableEmail {
     return prepareEmail({ payload, locale, from: CAPTURE_FROM });
   }
 
-  async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
-    return this.deliver({ email: this.prepare({ payload }) });
+  async send({ payload, locale }: SendEmailInput): Promise<SendEmailResult> {
+    const email = this.prepare({ payload, locale });
+    return this.deliver({ email });
   }
 
   async deliver({

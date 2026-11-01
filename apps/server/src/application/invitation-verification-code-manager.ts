@@ -13,6 +13,9 @@ import type { EmailSender } from '../domain/contracts/infrastructure/email-sende
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
 import { validateVerificationCode } from '../domain/entities/invitation-verification-code';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
+import { recipientLocale } from '../domain/services/recipient-locale';
+
+const MS_PER_MINUTE = 60_000;
 
 export interface IssueVerificationCodeInput {
   ministryInvitationId: MinistryInvitationId;
@@ -60,6 +63,9 @@ export class InvitationVerificationCodeManager
   private readonly verificationCodeSecret: string;
   private readonly codeTtlMs: number;
   private readonly verificationPolicy: AppConfig['verificationCode'];
+  private readonly defaultLocale: AppConfig['defaultLocale'];
+  /** Whole minutes, so the email never promises longer than the policy. */
+  private readonly codeLifetimeMinutes: number;
 
   constructor({
     repository,
@@ -72,9 +78,13 @@ export class InvitationVerificationCodeManager
     this.emailSender = emailSender;
     this.generateCode = generateCode ?? generateVerificationCode;
     this.verificationCodeSecret = verificationCodeSecret;
-    const { verificationCode } = config;
+    const { verificationCode, defaultLocale } = config;
     this.codeTtlMs = verificationCode.ttlMs;
     this.verificationPolicy = verificationCode;
+    this.defaultLocale = defaultLocale;
+    this.codeLifetimeMinutes = Math.floor(
+      verificationCode.ttlMs / MS_PER_MINUTE,
+    );
   }
 
   async issue({
@@ -103,6 +113,10 @@ export class InvitationVerificationCodeManager
         code: 'VERIFICATION_CODE_RESEND_COOLDOWN_ACTIVE',
       });
     }
+    const locale = recipientLocale({
+      recipient: { email: recipientEmail },
+      defaultLocale: this.defaultLocale,
+    });
     try {
       await this.emailSender.send({
         payload: {
@@ -110,7 +124,9 @@ export class InvitationVerificationCodeManager
           to: recipientEmail,
           churchName,
           code,
+          codeLifetime: { minutes: this.codeLifetimeMinutes },
         },
+        locale,
       });
     } catch (error) {
       await this.repository.releaseDeliveryClaim({

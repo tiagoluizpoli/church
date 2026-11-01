@@ -4,7 +4,7 @@ import type {
   NotificationDeliveryData,
   NotificationRequest,
 } from '../../notification-kinds';
-import type { PreparedEmail } from './email-sender';
+import type { ReplayableEmail } from './email-sender';
 import type { TransactionContext } from './transaction-context';
 import type { ChurchRecipient } from '@/domain/contracts/application/church-notifications';
 
@@ -50,7 +50,7 @@ export type ChannelOutcomes = Record<string, SettledChannelOutcome>;
  * provider confirmed it, the receipt Instant that suppresses a replay.
  */
 export interface OutboxEmailDelivery {
-  email: PreparedEmail;
+  email: ReplayableEmail;
   idempotencyKey: string;
   firstAttemptAt: Instant;
   deliveredAt?: Instant;
@@ -140,7 +140,7 @@ export interface MarkOutboxMessageFailedInput {
 
 export interface RecordOutboxEmailPreparedInput {
   id: string;
-  email: PreparedEmail;
+  email: ReplayableEmail;
   idempotencyKey: string;
   firstAttemptAt: Instant;
   tx: TransactionContext;

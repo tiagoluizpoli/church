@@ -1,4 +1,4 @@
-import { appConfig } from '@church/app-config';
+import { type AppConfig, appConfig } from '@church/app-config';
 import { compareInstants, fromDate, millisecondsBetween } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
@@ -6,27 +6,34 @@ import {
   InvitationVerificationCodeManager,
 } from '@/application/invitation-verification-code-manager';
 import { MinistryInvitationId } from '@/domain/branded-ids';
-import type { EmailSender } from '@/domain/contracts/infrastructure/email-sender';
+import type {
+  EmailSender,
+  SendEmailInput,
+} from '@/domain/contracts/infrastructure/email-sender';
 import type { InvitationVerificationCodeRepository } from '@/domain/contracts/infrastructure/invitation-verification-code.repository';
 import type { VerificationCodeState } from '@/domain/entities/invitation-verification-code';
 import { VerificationCodeError } from '@/domain/errors/verification-code-error';
 
 interface TestHarness {
   manager: InvitationVerificationCodeManager;
-  sent: unknown[];
+  sent: SendEmailInput[];
   state: VerificationCodeState | null;
 }
 
 interface CreateHarnessInput {
   send?: () => Promise<void>;
+  config?: AppConfig;
 }
 
 const ONE_SECOND_MS = 1_000;
 
-function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
+function createHarness({
+  send,
+  config = appConfig,
+}: CreateHarnessInput = {}): TestHarness {
   const { resendCooldownMs, maxAttempts } = appConfig.verificationCode;
   let state: VerificationCodeState | null = null;
-  const sent: unknown[] = [];
+  const sent: SendEmailInput[] = [];
   const repository: InvitationVerificationCodeRepository = {
     async find() {
       return state;
@@ -95,9 +102,9 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
     },
   };
   const emailSender: Pick<EmailSender, 'send'> = {
-    async send({ payload }) {
+    async send(input) {
       await send?.();
-      sent.push(payload);
+      sent.push(input);
       return {};
     },
   };
@@ -107,7 +114,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
       emailSender,
       generateCode: () => '123456',
       verificationCodeSecret: 'test-secret',
-      config: appConfig,
+      config,
     }),
     sent,
     get state() {
@@ -258,6 +265,40 @@ describe('InvitationVerificationCodeManager', () => {
     });
     expect(harness.state?.failedAttempts).toBe(0);
     expect(harness.sent).toHaveLength(2);
+  });
+
+  it('sends the code with the policy lifetime in the address recipient locale', async () => {
+    const config: AppConfig = {
+      ...appConfig,
+      defaultLocale: 'en',
+      verificationCode: {
+        ...appConfig.verificationCode,
+        ttlMs: 15 * 60_000,
+      },
+    };
+    const harness = createHarness({ config });
+
+    await harness.manager.issue({
+      ministryInvitationId: MinistryInvitationId.from(
+        '00000000-0000-4000-8000-000000000005',
+      ),
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Grace Church',
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(harness.sent).toEqual([
+      {
+        payload: {
+          kind: 'invitation.verification-code',
+          to: 'invitee@example.test',
+          churchName: 'Grace Church',
+          code: '123456',
+          codeLifetime: { minutes: 15 },
+        },
+        locale: 'en',
+      },
+    ]);
   });
 
   it('releases its delivery claim when synchronous dispatch fails so a retry is safe', async () => {

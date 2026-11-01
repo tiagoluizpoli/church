@@ -89,7 +89,7 @@ test.describe('a plain Volunteer', () => {
 
     await page.goto('/cycles');
 
-    // The guard redirects to "/", which redirects to /dashboard until Spec 31.
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
+    // The guard redirects to "/", the Home entry.
+    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/, { timeout: 15_000 });
   });
 });

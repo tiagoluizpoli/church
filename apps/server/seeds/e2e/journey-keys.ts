@@ -22,6 +22,7 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   activeChurchSwitching: 'active-church-switching',
   volunteerTransfer: 'volunteer-transfer',
   ministryRedemption: 'ministry-redemption',
+  firstAdminOnboarding: 'first-admin-onboarding',
   crossTenantInvitation: 'cross-tenant-invitation',
   planningAdmin: 'planning-admin',
   eventTemplates: 'event-templates',

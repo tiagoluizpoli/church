@@ -1,9 +1,14 @@
 import type {
   ChurchId,
+  ChurchInvitationId,
   MinistryInvitationId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
+import type {
+  PublicRedemptionMinistry,
+  PublicRedemptionPreview,
+} from '../../entities/public-redemption-preview';
 
 export interface AcceptPendingMinistryInvitationInput {
   churchId: ChurchId;
@@ -15,35 +20,25 @@ export interface AcceptPendingMinistryInvitationInput {
   auditAction?: 'acceptance' | 'ministry_acceptance';
 }
 
-export interface PublicRedemptionPreview {
-  churchId: ChurchId;
-  churchInvitationId: string;
-  email: string;
-  churchName: string;
-  ministryName: string;
-  ministryAccessLevel: 'volunteer' | 'leader';
-  roleNames: string[];
-  expiresAt: Date;
-  churchInvitationStatus: 'pending' | 'accepted';
-}
+export type { PublicRedemptionMinistry, PublicRedemptionPreview };
 
 export interface GetPublicRedemptionPreviewInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   now?: Date;
 }
 
 export interface GetDebugVerificationCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   now?: Date;
 }
 
 export interface RequestRedemptionCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   now?: Date;
 }
 
 export interface RedeemNewUserInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   name: string;
   password: string;
   code: string;
@@ -51,9 +46,10 @@ export interface RedeemNewUserInput {
   now?: Date;
 }
 
+/** A plain Church Invitation admits a Church Member only: no Volunteer. */
 export interface FullRedemptionSuccess {
   kind: 'full-success';
-  volunteerId: VolunteerId;
+  volunteerId: VolunteerId | null;
   sessionCookie: string;
 }
 
@@ -70,7 +66,10 @@ export interface ChurchOnlyRedemptionOutcome {
   sourceChurchName: string;
   /** The invitation's Church, now the redeemer's Active Church. */
   destinationChurchName: string;
+  destinationChurchId: ChurchId;
   ministryInvitationId: MinistryInvitationId;
+  /** The invited Ministry the warning names. */
+  ministryName: string;
 }
 
 export interface RetryableRedemptionFailure {

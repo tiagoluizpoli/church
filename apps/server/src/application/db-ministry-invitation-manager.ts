@@ -100,6 +100,8 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   private readonly notifications: IChurchNotifications;
 
   private readonly invitationTtlMs: number;
+  /** A paired invitation follows its Church half's lifetime. */
+  private readonly churchInvitationTtlMs: number;
   private readonly resendPolicy: AppConfig['invitationResend'];
 
   constructor({
@@ -119,8 +121,9 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     this.unitOfWork = unitOfWork;
     this.outboxRepository = outboxRepository;
     this.notifications = notifications;
-    const { ministryInvitation, invitationResend } = config;
+    const { ministryInvitation, churchInvitation, invitationResend } = config;
     this.invitationTtlMs = ministryInvitation.ttlMs;
+    this.churchInvitationTtlMs = churchInvitation.ttlMs;
     this.resendPolicy = invitationResend;
   }
 
@@ -194,10 +197,22 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       };
       this.ensureResendAllowed({ throttleState, now });
 
+      const { churchInvitationId } = existing;
       const expiresAt = addMilliseconds({
         instant: now,
-        milliseconds: this.invitationTtlMs,
+        milliseconds: churchInvitationId
+          ? this.churchInvitationTtlMs
+          : this.invitationTtlMs,
       });
+      // Both halves of a pair restart together, so neither outlives the other.
+      if (churchInvitationId) {
+        await this.repo.refreshChurchInvitationExpiry({
+          churchId,
+          churchInvitationId,
+          expiresAt: toDate({ instant: expiresAt }),
+          tx,
+        });
+      }
       const nextThrottle = nextResendThrottleState({
         state: throttleState,
         policy: this.resendPolicy,

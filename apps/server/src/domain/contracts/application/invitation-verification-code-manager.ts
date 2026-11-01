@@ -1,14 +1,14 @@
-import type { MinistryInvitationId } from '../../branded-ids';
+import type { ChurchInvitationId } from '../../branded-ids';
 
 export interface IssueInvitationVerificationCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   recipientEmail: string;
   churchName: string;
   now?: Date;
 }
 
 export interface VerifyInvitationVerificationCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   code: string;
   idempotencyKey?: string;
   now?: Date;

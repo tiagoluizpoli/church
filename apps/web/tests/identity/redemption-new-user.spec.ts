@@ -1,9 +1,10 @@
-import { expect, request, test } from '@playwright/test';
+import { m } from '@church/i18n/messages';
+import { expect, test } from '@playwright/test';
 import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
-import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
-  assertOk,
+  churchInvitationIdOf,
   fetchActiveChurchStatus,
+  fetchDebugVerificationCode,
   fetchJson,
   fetchVolunteerMinistryOptions,
   type MintedMinistryInvitation,
@@ -15,7 +16,8 @@ import {
 } from '@/tests/fixtures/journeys/ministry-redemption';
 
 // #63/DL#100 — a person outside the Church (the "outsider" — never before
-// registered) follows a chained Ministry Invitation link, verifies a
+// registered) follows a paired Church Invitation link (keyed by its Church
+// half), verifies a
 // one-time code read from the capture `EmailSender` (never a log or the
 // database), and becomes a Volunteer in the invited Ministry with the
 // invitation Church active, landing on /dashboard with that Ministry access
@@ -25,7 +27,7 @@ import {
 // re-asserted here. The inviting Church (A) and the second tenant (B) the
 // outsider must never join are the journey's own graph (`ministry-redemption`
 // recipe); the outsider is created by the redemption itself.
-const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
+const PT = { locale: 'pt-BR' } as const;
 
 interface MintChainedInvitationInput {
   journey: MinistryRedemptionJourney;
@@ -45,36 +47,9 @@ async function mintChainedInvitation({
   });
 }
 
-interface FetchDebugVerificationCodeInput {
-  invitationId: string;
-}
-
-interface DebugVerificationCodeResponse {
-  code: string;
-}
-
-async function fetchDebugVerificationCode({
-  invitationId,
-}: FetchDebugVerificationCodeInput): Promise<string> {
-  const ctx = await request.newContext({ baseURL: SERVER_URL });
-  try {
-    const res = await ctx.get(
-      `/api/v1/redemption/church/${invitationId}/debug-code`,
-    );
-    await assertOk({
-      res,
-      action: `read the verification code captured for ${invitationId}`,
-    });
-    const { code } = (await res.json()) as DebugVerificationCodeResponse;
-    return code;
-  } finally {
-    await ctx.dispose();
-  }
-}
-
 interface FullSuccessOutcome {
   kind: 'full-success';
-  volunteerId: string;
+  volunteerId: string | null;
 }
 
 interface ChurchOnlyOutcome {
@@ -120,32 +95,42 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
     const invitation = await mintChainedInvitation({ journey, email });
     expect(invitation.kind).toBe('chained');
 
+    const churchInvitationId = churchInvitationIdOf({
+      redemptionPath: invitation.redemptionPath,
+    });
     await page.goto(invitation.redemptionPath);
-    await expect(page.getByRole('heading', { name: /Join/ })).toBeVisible();
-    await expect(page.getByLabel('Email')).toHaveValue(email);
+    await expect(
+      page.getByRole('heading', {
+        name: m.join_title({ churchName: journey.churchA.church.name }, PT),
+      }),
+    ).toBeVisible();
+    await expect(page.getByLabel(m.join_email_label({}, PT))).toHaveValue(
+      email,
+    );
     await expect(
       page.getByText(journey.churchA.ministries.worship.name),
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Send code' }).click();
-    await expect(
-      page.getByRole('button', { name: /Resend in \d+s/ }),
-    ).toBeVisible();
+    await page.getByRole('button', { name: m.join_send_code({}, PT) }).click();
+    await expect(page.getByLabel(m.join_code_label({}, PT))).toBeVisible();
 
     const code = await fetchDebugVerificationCode({
-      invitationId: invitation.id,
+      request: page.request,
+      churchInvitationId,
     });
 
-    await page.getByLabel('Name').fill('E2E Outsider');
+    await page.getByLabel(m.join_code_label({}, PT)).fill(code);
+    await page.getByLabel(m.join_name_label({}, PT)).fill('E2E Outsider');
     await page
-      .getByLabel('Password', { exact: true })
+      .getByLabel(m.join_password_label({}, PT), { exact: true })
       .fill('correct-horse-battery-staple');
-    await page.getByPlaceholder('123456').fill(code);
     const [redeemResponse] = await Promise.all([
       page.waitForResponse((response) =>
-        response.url().endsWith(`/redemption/church/${invitation.id}/redeem`),
+        response
+          .url()
+          .endsWith(`/redemption/church/${churchInvitationId}/redeem`),
       ),
-      page.getByRole('button', { name: 'Join' }).click(),
+      page.getByRole('button', { name: m.join_submit({}, PT) }).click(),
     ]);
     // #253 redemption gate: the invitation above was provisioned and is now
     // redeemed against the run's one pinned target (the original failure
@@ -156,9 +141,9 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
     });
     const redeemOutcome = (await redeemResponse.json()) as RedeemOutcome;
     expect(redeemOutcome.kind).toBe('full-success');
+    // A paired join carries the actual Volunteer it created.
     if (redeemOutcome.kind === 'full-success') {
       expect(redeemOutcome.volunteerId).toEqual(expect.any(String));
-      expect(redeemOutcome.volunteerId.length).toBeGreaterThan(0);
     }
 
     await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);

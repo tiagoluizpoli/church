@@ -1,4 +1,7 @@
-import type { MinistryInvitationId } from '../../branded-ids';
+import type {
+  ChurchInvitationId,
+  MinistryInvitationId,
+} from '../../branded-ids';
 
 /** Only identifiers and the failure class: never credentials, codes or cookies. */
 export interface RedemptionFailureEntry {
@@ -6,7 +9,9 @@ export interface RedemptionFailureEntry {
     | 'IDENTITY_FAILED'
     | 'MINISTRY_ACCEPTANCE_FAILED'
     | 'EMAIL_ALREADY_REGISTERED';
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
+  /** Null for a plain Church Invitation. */
+  ministryInvitationId: MinistryInvitationId | null;
   correlationId: string;
   errorName: string;
 }

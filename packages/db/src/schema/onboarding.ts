@@ -99,7 +99,8 @@ export const ministryInvitation = pgTable(
 );
 
 /**
- * One replaceable verification-code lifecycle per pending Ministry Invitation.
+ * One replaceable verification-code lifecycle per pending Church Invitation,
+ * plain or paired: a new person proves the addressed mailbox before joining.
  * Only the SHA-256 digest persists. A resend replaces the digest, expiry and
  * attempt count, deliberately invalidating every previously issued code.
  */
@@ -107,9 +108,9 @@ export const invitationVerificationCode = pgTable(
   'invitation_verification_code',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    ministryInvitationId: uuid('ministry_invitation_id')
+    churchInvitationId: text('church_invitation_id')
       .notNull()
-      .references(() => ministryInvitation.id, { onDelete: 'cascade' })
+      .references(() => churchInvitation.id, { onDelete: 'cascade' })
       .unique(),
     codeHash: text('code_hash').notNull(),
     expiresAt: timestamp('expires_at', {

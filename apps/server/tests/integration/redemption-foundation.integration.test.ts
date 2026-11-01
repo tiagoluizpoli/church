@@ -17,12 +17,14 @@ import { DbRedemptionManager } from '@/application/db-redemption-manager';
 import { InvitationVerificationCodeManager } from '@/application/invitation-verification-code-manager';
 import {
   ChurchId,
+  ChurchInvitationId,
   MinistryId,
   MinistryInvitationId,
   RoleId,
   UserId,
 } from '@/domain/branded-ids';
 import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
+import type { MinistryInvitation } from '@/domain/entities/ministry-invitation';
 import {
   DrizzleInvitationVerificationCodeRepository,
   DrizzleRedemptionRepository,
@@ -178,13 +180,26 @@ async function mintMinistryOnlyInvitation({
   });
 }
 
+interface PairedChurchInvitationIdInput {
+  invitation: MinistryInvitation;
+}
+
+/** Verification codes key on the Church half of a paired invitation. */
+function pairedChurchInvitationId({
+  invitation,
+}: PairedChurchInvitationIdInput): ChurchInvitationId {
+  if (!invitation.churchInvitationId)
+    throw new Error('Expected a paired invitation.');
+  return ChurchInvitationId.from(invitation.churchInvitationId);
+}
+
 describe('verification code persistence', () => {
   it('allows only one concurrent correct submission to consume a code', async () => {
     const invitation = await mintInvitation();
     const { verificationCodeManager } = createHarness();
     const now = new Date('2026-01-01T00:00:00.000Z');
     await verificationCodeManager.issue({
-      ministryInvitationId: invitation.id,
+      churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
       now,
@@ -192,12 +207,12 @@ describe('verification code persistence', () => {
 
     const outcomes = await Promise.allSettled([
       verificationCodeManager.verify({
-        ministryInvitationId: invitation.id,
+        churchInvitationId: pairedChurchInvitationId({ invitation }),
         code: '123456',
         now,
       }),
       verificationCodeManager.verify({
-        ministryInvitationId: invitation.id,
+        churchInvitationId: pairedChurchInvitationId({ invitation }),
         code: '123456',
         now,
       }),
@@ -217,21 +232,21 @@ describe('verification code persistence', () => {
     const now = new Date('2026-01-01T00:00:00.000Z');
     const idempotencyKey = '11111111-1111-4111-8111-111111111111';
     await verificationCodeManager.issue({
-      ministryInvitationId: invitation.id,
+      churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
       now,
     });
 
     await verificationCodeManager.verify({
-      ministryInvitationId: invitation.id,
+      churchInvitationId: pairedChurchInvitationId({ invitation }),
       code: '123456',
       idempotencyKey,
       now,
     });
     await expect(
       verificationCodeManager.verify({
-        ministryInvitationId: invitation.id,
+        churchInvitationId: pairedChurchInvitationId({ invitation }),
         code: '123456',
         idempotencyKey,
         now,
@@ -239,7 +254,7 @@ describe('verification code persistence', () => {
     ).resolves.toBeUndefined();
     await expect(
       verificationCodeManager.verify({
-        ministryInvitationId: invitation.id,
+        churchInvitationId: pairedChurchInvitationId({ invitation }),
         code: '123456',
         idempotencyKey: '22222222-2222-4222-8222-222222222222',
         now,
@@ -252,7 +267,7 @@ describe('verification code persistence', () => {
     const { verificationCodeManager } = createHarness();
     const now = new Date('2026-01-01T00:00:00.000Z');
     await verificationCodeManager.issue({
-      ministryInvitationId: invitation.id,
+      churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
       now,
@@ -261,7 +276,7 @@ describe('verification code persistence', () => {
     const outcomes = await Promise.allSettled(
       Array.from({ length: 12 }, () =>
         verificationCodeManager.verify({
-          ministryInvitationId: invitation.id,
+          churchInvitationId: pairedChurchInvitationId({ invitation }),
           code: '000000',
           now,
         }),
@@ -271,7 +286,10 @@ describe('verification code persistence', () => {
       .select({ failedAttempts: invitationVerificationCode.failedAttempts })
       .from(invitationVerificationCode)
       .where(
-        eq(invitationVerificationCode.ministryInvitationId, invitation.id),
+        eq(
+          invitationVerificationCode.churchInvitationId,
+          pairedChurchInvitationId({ invitation }),
+        ),
       );
 
     expect(outcomes).toHaveLength(12);
@@ -300,13 +318,13 @@ describe('verification code persistence', () => {
 
     const outcomes = await Promise.allSettled([
       managerA.issue({
-        ministryInvitationId: invitation.id,
+        churchInvitationId: pairedChurchInvitationId({ invitation }),
         recipientEmail: 'new-redemption-user@fixture.test',
         churchName: fixture.churchA.name,
         now,
       }),
       managerB.issue({
-        ministryInvitationId: invitation.id,
+        churchInvitationId: pairedChurchInvitationId({ invitation }),
         recipientEmail: 'new-redemption-user@fixture.test',
         churchName: fixture.churchA.name,
         now,

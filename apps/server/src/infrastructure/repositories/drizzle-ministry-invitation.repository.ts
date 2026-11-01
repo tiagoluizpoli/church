@@ -14,8 +14,13 @@ import {
   volunteer,
 } from '@church/db';
 import { addMilliseconds, now, toDate } from '@church/time';
-import { and, eq, gt, inArray, sql } from 'drizzle-orm';
-import type { ChurchId, RoleId, UserId } from '../../domain/branded-ids';
+import { and, asc, desc, eq, gt, sql } from 'drizzle-orm';
+import type {
+  ChurchId,
+  MinistryInvitationId,
+  RoleId,
+  UserId,
+} from '../../domain/branded-ids';
 import type {
   AcquireMintLockInput,
   AcquireResendLockInput,
@@ -36,11 +41,15 @@ import type {
   IsInvitationAddressedToUserInput,
   MinistryInvitationContext,
   MinistryInvitationRepository,
-  PublicRedemptionPreview,
+  RefreshChurchInvitationExpiryInput,
   RefreshMinistryInvitationExpiryInput,
   ResolveRecipientEmailInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import type {
+  PublicRedemptionMinistry,
+  PublicRedemptionPreview,
+} from '../../domain/entities/public-redemption-preview';
 import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
@@ -199,31 +208,58 @@ export class DrizzleMinistryInvitationRepository
   }
 
   async findPublicRedemptionPreview({
-    ministryInvitationId,
+    churchInvitationId,
     now,
-    includeAcceptedChurchInvitation = false,
   }: FindPublicRedemptionPreviewInput): Promise<PublicRedemptionPreview | null> {
-    if (!isValidUuid(ministryInvitationId)) return null;
+    if (!isValidUuid(churchInvitationId)) return null;
+    const [found] = await this.db
+      .select({
+        churchId: churchInvitation.organizationId,
+        email: churchInvitation.email,
+        role: churchInvitation.role,
+        churchName: organization.name,
+        expiresAt: churchInvitation.expiresAt,
+      })
+      .from(churchInvitation)
+      .innerJoin(
+        organization,
+        eq(organization.id, churchInvitation.organizationId),
+      )
+      .where(
+        and(
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+          gt(churchInvitation.expiresAt, now),
+        ),
+      );
+    if (!found) return null;
+    return {
+      churchId: found.churchId as ChurchId,
+      churchInvitationId,
+      email: found.email,
+      churchName: found.churchName,
+      churchAccessLevel: found.role === 'admin' ? 'admin' : 'member',
+      expiresAt: found.expiresAt,
+      ministry: await this.findPendingPairedMinistry({
+        churchInvitationId,
+        now,
+      }),
+    };
+  }
+
+  /** The newest pending, unexpired Ministry half paired with the Church Invitation. */
+  private async findPendingPairedMinistry({
+    churchInvitationId,
+    now,
+  }: FindPublicRedemptionPreviewInput): Promise<PublicRedemptionMinistry | null> {
     const rows = await this.db
       .select({
         ministryInvitationId: ministryInvitation.id,
-        churchId: ministryInvitation.churchId,
-        churchInvitationId: ministryInvitation.churchInvitationId,
-        churchInvitationStatus: churchInvitation.status,
-        email: churchInvitation.email,
-        churchName: organization.name,
         ministryName: ministry.name,
         ministryAccessLevel: ministryInvitation.ministryAccessLevel,
         roleName: role.name,
-        expiresAt: ministryInvitation.expiresAt,
       })
       .from(ministryInvitation)
-      .innerJoin(
-        churchInvitation,
-        eq(churchInvitation.id, ministryInvitation.churchInvitationId),
-      )
-      .innerJoin(church, eq(church.id, ministryInvitation.churchId))
-      .innerJoin(organization, eq(organization.id, church.id))
       .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
       .leftJoin(
         ministryInvitationRole,
@@ -232,31 +268,24 @@ export class DrizzleMinistryInvitationRepository
       .leftJoin(role, eq(role.id, ministryInvitationRole.roleId))
       .where(
         and(
-          eq(ministryInvitation.id, ministryInvitationId),
+          eq(ministryInvitation.churchInvitationId, churchInvitationId),
           eq(ministryInvitation.status, 'pending'),
-          eq(churchInvitation.organizationId, ministryInvitation.churchId),
           gt(ministryInvitation.expiresAt, now),
-          includeAcceptedChurchInvitation
-            ? inArray(churchInvitation.status, ['pending', 'accepted'])
-            : eq(churchInvitation.status, 'pending'),
-          gt(churchInvitation.expiresAt, now),
         ),
-      );
+      )
+      .orderBy(desc(ministryInvitation.createdAt), asc(role.name));
     const first = rows[0];
-    if (!first?.churchInvitationId) return null;
+    if (!first) return null;
+    const halfRows = rows.filter(
+      (row) => row.ministryInvitationId === first.ministryInvitationId,
+    );
     return {
-      ministryInvitationId: first.ministryInvitationId,
-      churchId: first.churchId as ChurchId,
-      churchInvitationId: first.churchInvitationId,
-      email: first.email,
-      churchName: first.churchName,
+      ministryInvitationId: first.ministryInvitationId as MinistryInvitationId,
       ministryName: first.ministryName,
       ministryAccessLevel: first.ministryAccessLevel,
-      roleNames: rows.flatMap((row) => (row.roleName ? [row.roleName] : [])),
-      expiresAt: first.expiresAt,
-      churchInvitationStatus: first.churchInvitationStatus as
-        | 'pending'
-        | 'accepted',
+      roleNames: halfRows.flatMap((row) =>
+        row.roleName ? [row.roleName] : [],
+      ),
     };
   }
 
@@ -460,6 +489,24 @@ export class DrizzleMinistryInvitationRepository
       .returning();
     if (!row) throw new Error('Ministry invitation not found for refresh');
     return this.hydrate({ row });
+  }
+
+  async refreshChurchInvitationExpiry({
+    churchId,
+    churchInvitationId,
+    expiresAt,
+    tx,
+  }: RefreshChurchInvitationExpiryInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .update(churchInvitation)
+      .set({ expiresAt })
+      .where(
+        and(
+          eq(churchInvitation.organizationId, churchId),
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+        ),
+      );
   }
 
   async applyResend(input: ApplyResendInput) {

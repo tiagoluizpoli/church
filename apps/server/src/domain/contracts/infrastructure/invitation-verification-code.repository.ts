@@ -1,24 +1,24 @@
-import type { MinistryInvitationId } from '../../branded-ids';
+import type { ChurchInvitationId } from '../../branded-ids';
 import type { VerificationCodeState } from '../../entities/invitation-verification-code';
 export interface ClaimVerificationCodeDeliveryInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   codeHash: string;
   expiresAt: Date;
   sentAt: Date;
 }
 
 export interface FindVerificationCodeInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
 }
 
 export interface ReleaseVerificationCodeDeliveryClaimInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   codeHash: string;
   sentAt: Date;
 }
 
 export interface ConsumeVerificationCodeIfValidInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   candidateHash: string;
   consumedAt: Date;
   now: Date;
@@ -26,7 +26,7 @@ export interface ConsumeVerificationCodeIfValidInput {
 }
 
 export interface RecordFailedVerificationAttemptIfAllowedInput {
-  ministryInvitationId: MinistryInvitationId;
+  churchInvitationId: ChurchInvitationId;
   candidateHash: string;
   now: Date;
 }

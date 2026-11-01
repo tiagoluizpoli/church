@@ -1,5 +1,6 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
+import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
 
 const ministryAccessLevelValues = ['volunteer', 'leader'] as const;
 const terminalFailureReasons = [
@@ -29,13 +30,21 @@ export const rateLimitedResponseSchema = z.object({
   message: z.string(),
 });
 
+/** The Ministry half a paired Church Invitation also grants. */
+export const redemptionPreviewMinistrySchema = z.object({
+  invitationId: z.string().uuid(),
+  name: z.string(),
+  ministryAccessLevel: z.enum(ministryAccessLevelValues),
+  roleNames: z.array(z.string()),
+});
+
+/** A plain Church Invitation (such as the first-admin one) has no `ministry`. */
 export const redemptionPreviewResponseSchema = z.object({
   email: z.string().email(),
   churchName: z.string(),
-  ministryName: z.string(),
-  ministryAccessLevel: z.enum(ministryAccessLevelValues),
-  roleNames: z.array(z.string()),
+  churchAccessLevel: z.enum(CHURCH_ACCESS_LEVEL_OPTIONS),
   expiresAt: instantSchema,
+  ministry: redemptionPreviewMinistrySchema.optional(),
 });
 
 export const verificationCodeRequestedResponseSchema = z.object({
@@ -55,13 +64,21 @@ export const debugVerificationCodeResponseSchema = z.object({
 export const churchOnlyOutcomeSchema = z.object({
   kind: z.literal('church-only'),
   sourceChurchName: z.string(),
+  destinationChurchId: z.string(),
   destinationChurchName: z.string(),
   ministryInvitationId: z.string().uuid(),
+  ministryName: z.string(),
 });
 
-/** New-person joins roll back fully, so identity failure is retryable there. */
+/**
+ * New-person joins roll back fully, so identity failure is retryable there.
+ * A plain join admits no Volunteer, so its success carries a null id.
+ */
 export const redemptionOutcomeResponseSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('full-success'), volunteerId: z.string() }),
+  z.object({
+    kind: z.literal('full-success'),
+    volunteerId: z.string().nullable(),
+  }),
   churchOnlyOutcomeSchema,
   z.object({
     kind: z.literal('retryable-failure'),

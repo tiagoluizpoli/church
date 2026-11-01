@@ -11,6 +11,7 @@ import {
 import { RedemptionController } from '@/api/controllers/redemption-controller';
 import {
   ChurchId,
+  ChurchInvitationId,
   MinistryInvitationId,
   VolunteerId,
 } from '@/domain/branded-ids';
@@ -79,17 +80,15 @@ beforeEach(() => {
 });
 
 describe('RedemptionController', () => {
-  it('returns only the public preview fields for an available invitation', async () => {
+  it('returns only the public preview fields for an available plain invitation', async () => {
     vi.mocked(redemptionManager.getPublicPreview).mockResolvedValue({
       churchId: ChurchId.from('33333333-3333-4333-8333-333333333333'),
-      churchInvitationId: '44444444-4444-4444-8444-444444444444',
+      churchInvitationId: ChurchInvitationId.from(INVITATION_ID),
       email: 'invitee@example.test',
       churchName: 'St. Peter',
-      ministryName: 'Worship',
-      ministryAccessLevel: 'volunteer',
-      roleNames: ['Singer'],
+      churchAccessLevel: 'admin',
       expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-      churchInvitationStatus: 'pending',
+      ministry: null,
     });
 
     const response = await app.inject({
@@ -101,9 +100,7 @@ describe('RedemptionController', () => {
     expect(response.json()).toEqual({
       email: 'invitee@example.test',
       churchName: 'St. Peter',
-      ministryName: 'Worship',
-      ministryAccessLevel: 'volunteer',
-      roleNames: ['Singer'],
+      churchAccessLevel: 'admin',
       expiresAt: '2026-08-03T12:00:00.000Z',
     });
   });
@@ -210,8 +207,12 @@ describe('RedemptionController', () => {
     vi.mocked(redemptionManager.redeemNewUser).mockResolvedValue({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: ChurchId.from(
+        '33333333-3333-4333-8333-333333333333',
+      ),
       destinationChurchName: 'Northgate Community Church',
       ministryInvitationId: MinistryInvitationId.from(INVITATION_ID),
+      ministryName: 'Worship',
       sessionCookie: 'better-auth.session_token=split-session; HttpOnly',
     });
 
@@ -231,8 +232,10 @@ describe('RedemptionController', () => {
     expect(response.json()).toEqual({
       kind: 'church-only',
       sourceChurchName: 'Riverside Fellowship',
+      destinationChurchId: '33333333-3333-4333-8333-333333333333',
       destinationChurchName: 'Northgate Community Church',
       ministryInvitationId: INVITATION_ID,
+      ministryName: 'Worship',
     });
   });
 

@@ -72,7 +72,7 @@ export const appConfig = appConfigSchema.parse({
     commandPalette: false,
   },
   churchInvitation: { ttlMs: 48 * HOUR_MS },
-  ministryInvitation: { ttlMs: 14 * DAY_MS },
+  ministryInvitation: { ttlMs: 7 * DAY_MS },
   invitationResend: { cooldownMs: MINUTE_MS, dailyCap: 10, windowMs: DAY_MS },
   verificationCode: {
     ttlMs: 10 * MINUTE_MS,

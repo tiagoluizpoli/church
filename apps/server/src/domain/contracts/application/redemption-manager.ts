@@ -142,6 +142,11 @@ export interface IdentityMismatchStatus {
   kind: 'identity-mismatch';
 }
 
+/** The status read also tells a wrong login who the invitation was addressed to, masked. */
+export interface MaskedIdentityMismatchStatus extends IdentityMismatchStatus {
+  maskedEmail: string;
+}
+
 export interface UnavailableInvitationStatus {
   kind: 'unavailable';
 }
@@ -149,7 +154,7 @@ export interface UnavailableInvitationStatus {
 export type AuthenticatedInvitationStatus =
   | RedeemableInvitationStatus
   | AlreadyAcceptedInvitationStatus
-  | IdentityMismatchStatus
+  | MaskedIdentityMismatchStatus
   | UnavailableInvitationStatus;
 
 export interface AcceptExistingMemberInput {

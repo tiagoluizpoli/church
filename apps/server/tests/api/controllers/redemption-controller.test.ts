@@ -350,14 +350,17 @@ describe('GET /redemption/ministry/:invitationId', () => {
     });
   });
 
-  it('never surfaces the invited email for a wrong signed-in account', async () => {
+  it('surfaces only the masked addressed email for a wrong signed-in account', async () => {
     mockGetSession.mockResolvedValueOnce({
       user: { id: USER_ID },
       session: { activeOrganizationId: null },
     } as never);
     vi.mocked(
       redemptionManager.getAuthenticatedInvitationStatus,
-    ).mockResolvedValue({ kind: 'identity-mismatch' });
+    ).mockResolvedValue({
+      kind: 'identity-mismatch',
+      maskedEmail: 'e***@example.test',
+    });
 
     const response = await app.inject({
       method: 'GET',
@@ -366,8 +369,10 @@ describe('GET /redemption/ministry/:invitationId', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ kind: 'identity-mismatch' });
-    expect(response.body).not.toContain('@');
+    expect(response.json()).toEqual({
+      kind: 'identity-mismatch',
+      maskedEmail: 'e***@example.test',
+    });
   });
 
   it('offers Continue to Church for an already-accepted invitation', async () => {

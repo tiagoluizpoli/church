@@ -5,11 +5,14 @@ import {
   clearActiveChurchScopedCache,
   switchActiveChurch,
 } from '@/shared/utils/active-church-switch';
+import type { MinistryInvitationResultSearch } from '@/shared/utils/ministry-invitation-result';
 import { activeChurchApi } from '@/utils/api-instances';
 
 export interface ContinueToChurchInput {
   /** An explicit Church to make active; omitted, the entry gate resolves it. */
   churchId?: string;
+  /** Result for Home to announce, e.g. the Ministry just joined. */
+  homeSearch?: MinistryInvitationResultSearch;
 }
 
 /**
@@ -25,7 +28,7 @@ export function useContinueToChurch(): (
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  return async ({ churchId }) => {
+  return async ({ churchId, homeSearch }) => {
     await authClient.getSession();
     const church = churchId
       ? (await activeChurchApi.listActiveChurchOptions()).churches.find(
@@ -34,7 +37,7 @@ export function useContinueToChurch(): (
       : undefined;
     if (!church) {
       await clearActiveChurchScopedCache({ queryClient });
-      navigate({ to: '/' });
+      navigate({ to: '/', search: homeSearch });
       return;
     }
     await switchActiveChurch({
@@ -42,7 +45,8 @@ export function useContinueToChurch(): (
       churchId: church.churchId,
       churchName: church.name,
       destination: '/',
-      navigate: ({ destination }) => navigate({ to: destination }),
+      navigate: ({ destination }) =>
+        navigate({ to: destination, search: homeSearch }),
       queryClient,
       selectActiveChurch: async ({ churchId }) => {
         await activeChurchApi.selectActiveChurch({ churchId });

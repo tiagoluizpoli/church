@@ -9,6 +9,13 @@ describe('appConfig', () => {
   });
 });
 
+describe('invitation lifetime policy', () => {
+  it('gives a Ministry-only invitation seven days', () => {
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    expect(appConfig.ministryInvitation.ttlMs).toBe(SEVEN_DAYS_MS);
+  });
+});
+
 describe('withAllParkedOn', () => {
   it('turns every parked switch on and leaves other values untouched', () => {
     const result = withAllParkedOn(appConfig);

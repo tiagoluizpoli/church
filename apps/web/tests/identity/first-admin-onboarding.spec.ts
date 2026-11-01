@@ -66,7 +66,7 @@ test.describe('J0→J1 — the first ChurchAdmin joins a provisioned Church', ()
     await page.getByLabel(m.join_code_label({}, PT)).fill(code);
     await page.getByLabel(m.join_name_label({}, PT)).fill('E2E First Admin');
     await page
-      .getByLabel(m.join_password_label({}, PT))
+      .getByLabel(m.join_password_label({}, PT), { exact: true })
       .fill('correct-horse-battery-staple');
     const [joinResponse] = await Promise.all([
       page.waitForResponse((response) =>

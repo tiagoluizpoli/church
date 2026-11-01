@@ -2397,6 +2397,7 @@ export type GetMinistryInvitationStatus200 = {
   churchId: string;
 } | {
   kind: 'identity-mismatch';
+  maskedEmail: string;
 } | {
   kind: 'unavailable';
 };

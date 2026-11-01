@@ -101,7 +101,7 @@ export interface SignInInput {
 /** `/login` renders the sign-in view only (#62) — no toggle to reach it. */
 export async function signIn({ page, persona }: SignInInput): Promise<void> {
   await page.getByLabel('Email').fill(persona.email);
-  await page.getByLabel('Password').fill(persona.password);
+  await page.getByLabel('Password', { exact: true }).fill(persona.password);
   await page.getByRole('button', { name: 'Sign In' }).click();
 }
 

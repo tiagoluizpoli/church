@@ -11,7 +11,6 @@ import type { ChurchRecipient } from '@/domain/contracts/application/church-noti
 export type OutboxMessageKind =
   | 'invitation.chained'
   | 'invitation.church-bootstrap'
-  | 'redemption.accepted'
   | 'notification';
 
 export const OUTBOX_MESSAGE_STATUS_OPTIONS = [
@@ -81,17 +80,6 @@ export interface ChurchBootstrapOutboxMessage extends OutboxMessageBase {
   payload: ChurchBootstrapOutboxPayload;
 }
 
-/** Confirmation sent once a Ministry Invitation has been redeemed. */
-export interface RedemptionAcceptedOutboxPayload {
-  ministryInvitationId: string;
-  volunteerId: string;
-}
-
-export interface RedemptionAcceptedOutboxMessage extends OutboxMessageBase {
-  kind: 'redemption.accepted';
-  payload: RedemptionAcceptedOutboxPayload;
-}
-
 /** One Notification to one recipient (ADR-0008), written by `notifications.enqueue`. */
 export type NotificationOutboxPayload = NotificationRequest & {
   to: ChurchRecipient;
@@ -108,7 +96,6 @@ export interface NotificationOutboxMessage extends OutboxMessageBase {
 export type OutboxMessage =
   | ChainedInvitationOutboxMessage
   | ChurchBootstrapOutboxMessage
-  | RedemptionAcceptedOutboxMessage
   | NotificationOutboxMessage;
 
 export interface ClaimPendingOutboxMessagesInput {

@@ -10,8 +10,7 @@ import type {
   PreparedEmail,
   ReplayableEmail,
   SchedulePublishedEmail,
-  TransferLeaderlessMinistryEmail,
-  TransferMinistryDigestEmail,
+  TransferDigestEmail,
   VerificationCodeEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
 import {
@@ -21,6 +20,7 @@ import {
   formatEmailDuration,
   renderEmailLayout,
 } from './email-layout';
+import { formatShiftLine } from './email-shift-line';
 
 export interface PrepareEmailFromInput {
   payload: EmailPayload;
@@ -103,12 +103,15 @@ export function prepareEmail({
     payload.kind === 'transfer.ministry-digest' ||
     payload.kind === 'transfer.leaderless-ministry'
   ) {
-    const { subject, html } = composeTransferDigestEmail({ payload, locale });
-    return {
+    return prepareLayoutEmail({
       payload,
       locale,
-      request: { from, to: payload.to, subject, html },
-    };
+      from: emailSender({
+        displayName: payload.churchName,
+        configuredFrom: from,
+      }),
+      content: transferDigestContent({ payload, locale }),
+    });
   }
   const { subject, html } = composeEmail({ payload });
   return {
@@ -350,60 +353,57 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
       // Rendered from the catalog in prepareEmail.
-      return composeTransferDigestEmail({ payload, locale: 'en' });
+      throw new Error(`Email kind "${payload.kind}" renders in prepareEmail`);
   }
 }
 
-interface ComposeTransferDigestEmailInput {
-  payload: TransferMinistryDigestEmail | TransferLeaderlessMinistryEmail;
+interface TransferDigestContentInput {
+  payload: TransferDigestEmail;
   locale: EmailLocale;
 }
 
-/** Both transfer kinds share the digest body; the leaderless escalation adds
- * its framing. Never names the destination Church. Times read UTC until
- * Spec 10 adds the Church Timezone. */
-function composeTransferDigestEmail({
+/** N11–12: both kinds share the digest; the leaderless escalation adds why
+ * the recipient got it. Never names the destination Church. */
+function transferDigestContent({
   payload,
   locale,
-}: ComposeTransferDigestEmailInput): ComposedEmail {
+}: TransferDigestContentInput): EmailContent {
   const options = { locale };
-  const volunteerName = escapeHtml(payload.volunteerName);
-  const ministryName = `<strong>${escapeHtml(payload.ministryName)}</strong>`;
-  const items = payload.withdrawnAssignments
-    .map(
-      (line) =>
-        `<li>${escapeHtml(line.eventName)} — ${formatInstant({ instant: line.eventTimeBlockStart, timeZone: 'UTC' })} — ${escapeHtml(line.roleName)}</li>`,
-    )
-    .join('');
-  const assignments =
-    items.length > 0
-      ? `<ul>${items}</ul>`
-      : `<p>${m.email_transfer_digest_no_assignments({}, options)}</p>`;
-  const digest = `
-    <p>${m.email_transfer_digest_body({ volunteerName, ministryName }, options)}</p>
-    ${assignments}
-  `;
-  // Subjects are plain text: no markup to escape.
-  if (payload.kind === 'transfer.leaderless-ministry') {
-    return {
-      subject: m.email_transfer_leaderless_subject(
-        { ministryName: payload.ministryName },
-        options,
-      ),
-      html: `
-          <p>${m.email_transfer_leaderless_body({ ministryName, volunteerName }, options)}</p>
-          ${digest}
-        `,
-    };
-  }
+  const { churchName, churchTimezone, ministryName, volunteerName } = payload;
+  const subject = m.email_transfer_digest_subject(
+    { volunteerName, ministryName },
+    options,
+  );
+  const list = payload.withdrawnAssignments.map((line) =>
+    formatShiftLine({ ...line, churchTimezone, locale }),
+  );
+  const withdrawals: string[] =
+    list.length > 0
+      ? [
+          m.email_transfer_digest_body({}, options),
+          m.email_transfer_digest_timezone(
+            { timeZone: churchTimezone },
+            options,
+          ),
+        ]
+      : [m.email_transfer_digest_no_assignments({}, options)];
+  const leaderless =
+    payload.kind === 'transfer.leaderless-ministry'
+      ? [m.email_transfer_leaderless_body({ ministryName }, options)]
+      : [];
   return {
-    subject: m.email_transfer_digest_subject(
-      {
-        volunteerName: payload.volunteerName,
-        ministryName: payload.ministryName,
-      },
+    subject,
+    greeting: m.email_greeting_notification(
+      { firstName: payload.recipientFirstName },
       options,
     ),
-    html: digest,
+    heading: subject,
+    facts: [...withdrawals, ...leaderless] as EmailContent['facts'],
+    list,
+    action: {
+      label: m.email_transfer_digest_action({}, options),
+      url: payload.actionUrl,
+    },
+    footer: m.email_footer_membership({ churchName }, options),
   };
 }

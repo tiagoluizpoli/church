@@ -32,10 +32,7 @@ import type {
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type {
-  VolunteerTransferRepository,
-  WithdrawnAssignmentPreview,
-} from '../domain/contracts/infrastructure/volunteer-transfer.repository';
+import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { EmailSendError } from '../domain/errors/email-send-error';
 import {
   type MinistryInvitationDeliveryFacts,
@@ -269,7 +266,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         });
       case 'transfer_ministry_digest':
       case 'transfer_leaderless_ministry':
-        return this.loadTransferDigestFacts({ churchId, request });
+        return this.loadTransferDigestFacts({ churchId, to, request });
     }
   }
 
@@ -277,6 +274,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
    * never change, so they always resolve. */
   private async loadTransferDigestFacts({
     churchId,
+    to,
     request,
   }: LoadTransferDigestFactsInput): Promise<TransferDigestDeliveryFacts> {
     const details = await this.volunteerTransferRepository.getDigestDetails({
@@ -284,13 +282,22 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryId: request.data.ministryId,
       volunteerId: request.data.volunteerId,
       correlationId: request.data.transferCorrelationId,
+      recipientUserId: to.userId,
     });
     return {
+      churchName: details.churchName,
+      churchTimezone: details.churchTimezone,
+      recipientFirstName: firstNameOf(details.recipientName),
       ministryName: details.ministryName,
       volunteerName: details.volunteerName,
-      withdrawnAssignments: toEmailLines({
-        assignments: details.withdrawnAssignments,
-      }),
+      withdrawnAssignments: details.withdrawnAssignments.map(
+        ({ startsAt, endsAt, ...names }) => ({
+          ...names,
+          startsAt: fromDate({ date: startsAt }),
+          endsAt: fromDate({ date: endsAt }),
+        }),
+      ),
+      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/schedules' }),
     };
   }
 
@@ -599,6 +606,7 @@ interface LoadDeliveryFactsInput {
 
 interface LoadTransferDigestFactsInput {
   churchId: ChurchId;
+  to: ChurchRecipient;
   request: Extract<
     NotificationRequest,
     { kind: 'transfer_ministry_digest' | 'transfer_leaderless_ministry' }
@@ -635,16 +643,9 @@ function emailIdempotencyKeyFor({
   return `outbox-message/${message.id}`;
 }
 
-interface ToEmailLinesInput {
-  assignments: WithdrawnAssignmentPreview[];
-}
-
-function toEmailLines({ assignments }: ToEmailLinesInput) {
-  return assignments.map(({ eventName, eventTimeBlockStart, roleName }) => ({
-    eventName,
-    eventTimeBlockStart: fromDate({ date: eventTimeBlockStart }),
-    roleName,
-  }));
+/** The greeting's name: the first word of the User's display name. */
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? name;
 }
 
 interface HandleSendFailureInput {

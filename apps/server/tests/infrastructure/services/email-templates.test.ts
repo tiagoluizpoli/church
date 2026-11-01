@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import type {
   ChurchBootstrapInvitationEmail,
   MinistryInvitationEmail,
+  TransferDigestEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
 import { escapeHtml } from '@/infrastructure/services/email-layout';
+import { formatShiftLine } from '@/infrastructure/services/email-shift-line';
 import { prepareEmail } from '@/infrastructure/services/email-templates';
 
 const memberInvitation: MinistryInvitationEmail = {
@@ -142,62 +144,119 @@ describe('prepareEmail — T1 ChurchAdmin invitation', () => {
   });
 });
 
-describe('prepareEmail — Volunteer Transfer digests', () => {
+describe('prepareEmail — Volunteer Transfer digests (N11–12)', () => {
+  const ptBR = { locale: 'pt-BR' } as const;
+  const churchName = 'Grace & <Truth>';
+  const ministryName = '<b>Hospitality</b>';
+  const volunteerName = 'Ana & <Bia>';
+  const actionUrl = 'https://app.church.test/schedules';
   const digest: TransferMinistryDigestEmail = {
     kind: 'transfer.ministry-digest',
     to: ['leader@example.com'],
-    ministryName: '<b>Hospitality</b>',
-    volunteerName: 'Ana & <Bia>',
+    churchName,
+    churchTimezone: 'America/Sao_Paulo',
+    recipientFirstName: 'Léo',
+    ministryName,
+    volunteerName,
+    actionUrl,
     withdrawnAssignments: [
       {
-        eventName: 'Culto <Domingo>',
-        eventTimeBlockStart: '2026-12-06T12:00:00.000Z' as Instant,
+        // 02:30 UTC on the 7th is 23:30 on the 6th on São Paulo's wall clock.
+        startsAt: '2026-12-07T02:30:00.000Z' as Instant,
+        endsAt: '2026-12-07T03:30:00.000Z' as Instant,
+        eventTitle: 'Culto <Domingo>',
         roleName: 'Recepção',
+        sectorName: 'Porta "principal"',
       },
     ],
   };
-
-  it('renders the shared catalog in the recipient locale, escaping every fact', () => {
-    const email = prepareEmail({
-      payload: digest,
-      from: 'church@example.com',
+  const shiftLine =
+    'Dom. 06/12 · 23:30–00:30 · Culto <Domingo> · Recepção · Porta "principal"';
+  const prepare = (payload: TransferDigestEmail = digest) =>
+    prepareEmail({
+      payload,
+      from: 'Church <hi@church.test>',
       locale: 'pt-BR',
     });
 
-    expect(email.locale).toBe('pt-BR');
-    expect(email.request.to).toEqual(['leader@example.com']);
-    expect(email.request.subject).toBe(
-      m.email_transfer_digest_subject(
-        { volunteerName: 'Ana & <Bia>', ministryName: '<b>Hospitality</b>' },
-        { locale: 'pt-BR' },
-      ),
+  it('lists each actual Shift line in the Church Timezone, with the See schedules action and membership footer', () => {
+    const { locale, request } = prepare();
+    const subject = m.email_transfer_digest_subject(
+      { volunteerName, ministryName },
+      ptBR,
     );
-    expect(email.request.html).toContain('Ana &amp; &lt;Bia&gt;');
-    expect(email.request.html).toContain('Culto &lt;Domingo&gt;');
-    expect(email.request.html).toContain('06/12/2026 12:00');
-    expect(email.request.html).not.toContain('<b>Hospitality</b>');
+
+    expect(locale).toBe('pt-BR');
+    expect(request.to).toEqual(['leader@example.com']);
+    expect(request.from).toBe('"Grace & <Truth>" <hi@church.test>');
+    expect(request.subject).toBe(subject);
+    expect(request.text).toBe(
+      [
+        m.email_greeting_notification({ firstName: 'Léo' }, ptBR),
+        subject,
+        m.email_transfer_digest_body({}, ptBR),
+        m.email_transfer_digest_timezone(
+          { timeZone: 'America/Sao_Paulo' },
+          ptBR,
+        ),
+        `- ${shiftLine}`,
+        `${m.email_transfer_digest_action({}, ptBR)}: ${actionUrl}`,
+        `--\n${m.email_footer_membership({ churchName }, ptBR)}`,
+      ].join('\n\n'),
+    );
+    expect(request.html).toContain(
+      '<li>Dom. 06/12 · 23:30–00:30 · Culto &lt;Domingo&gt; · Recepção · Porta &quot;principal&quot;</li>',
+    );
+    expect(request.html).toContain(`<a href="${actionUrl}">`);
+    expect(request.html).not.toContain('<b>Hospitality</b>');
+    expect(request.html).not.toContain('&amp;amp;');
   });
 
-  it('frames the leaderless escalation and says when nothing was withdrawn', () => {
-    const email = prepareEmail({
-      payload: {
-        ...digest,
-        kind: 'transfer.leaderless-ministry',
-        withdrawnAssignments: [],
-      },
-      from: 'church@example.com',
-      locale: 'pt-BR',
+  it('says explicitly when no Shifts were withdrawn, and the leaderless variant explains the missing leader', () => {
+    const { request } = prepare({
+      ...digest,
+      kind: 'transfer.leaderless-ministry',
+      withdrawnAssignments: [],
     });
 
-    expect(email.request.subject).toBe(
-      m.email_transfer_leaderless_subject(
-        { ministryName: '<b>Hospitality</b>' },
-        { locale: 'pt-BR' },
-      ),
+    expect(request.subject).toBe(
+      m.email_transfer_digest_subject({ volunteerName, ministryName }, ptBR),
     );
-    expect(email.request.html).toContain(
-      m.email_transfer_digest_no_assignments({}, { locale: 'pt-BR' }),
+    expect(request.text).toContain(
+      m.email_transfer_digest_no_assignments({}, ptBR),
     );
+    expect(request.text).toContain(
+      m.email_transfer_leaderless_body({ ministryName }, ptBR),
+    );
+    expect(request.html).toContain(
+      escapeHtml(m.email_transfer_leaderless_body({ ministryName }, ptBR)),
+    );
+    expect(request.text).not.toContain(m.email_transfer_digest_body({}, ptBR));
+    expect(request.html).not.toContain('<li>');
+  });
+
+  it('keeps the ordinary digest free of the leaderless explanation', () => {
+    const { request } = prepare();
+
+    expect(request.text).not.toContain(
+      m.email_transfer_leaderless_body({ ministryName }, ptBR),
+    );
+  });
+});
+
+describe('formatShiftLine', () => {
+  it('reads day, start–end, Event, Role and Sector in that order, in the Church Timezone with 24-hour time', () => {
+    expect(
+      formatShiftLine({
+        startsAt: '2026-10-11T13:30:00.000Z' as Instant,
+        endsAt: '2026-10-11T15:00:00.000Z' as Instant,
+        eventTitle: 'Morning service',
+        roleName: 'Usher',
+        sectorName: 'Main door',
+        churchTimezone: 'America/Sao_Paulo',
+        locale: 'en',
+      }),
+    ).toBe('Sun 11/10 · 10:30–12:00 · Morning service · Usher · Main door');
   });
 });
 

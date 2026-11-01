@@ -1,4 +1,5 @@
 import type { CalendarDay, Instant } from '@church/time';
+import type { TransferDigestDeliveryFacts } from '../../notification-kinds';
 
 /**
  * Typed per-kind email payloads for invitation delivery (issue #56) and
@@ -68,33 +69,26 @@ export interface ChurchBootstrapInvitationEmail {
  * destination Church (spec §8.8): disclosing where the Volunteer went is not
  * required to re-schedule, and the move is one the former Church cannot veto.
  */
-/** JSON-safe copy of a withdrawn assignment, so a prepared email survives
- * persistence unchanged (an Instant, never a `Date`). */
-export interface WithdrawnAssignmentEmailLine {
-  eventName: string;
-  eventTimeBlockStart: Instant;
-  roleName: string;
-}
-
-export interface TransferMinistryDigestEmail {
+export interface TransferMinistryDigestEmail
+  extends TransferDigestDeliveryFacts {
   kind: 'transfer.ministry-digest';
   to: string[];
-  ministryName: string;
-  volunteerName: string;
-  withdrawnAssignments: WithdrawnAssignmentEmailLine[];
 }
 
 /**
  * Escalation to every ChurchAdmin when the departure left the Ministry with
- * no active leader to reach — same content as the digest, flagged leaderless.
+ * no active leader to reach — same content as the digest, plus the no-leader
+ * explanation.
  */
-export interface TransferLeaderlessMinistryEmail {
+export interface TransferLeaderlessMinistryEmail
+  extends TransferDigestDeliveryFacts {
   kind: 'transfer.leaderless-ministry';
   to: string[];
-  ministryName: string;
-  volunteerName: string;
-  withdrawnAssignments: WithdrawnAssignmentEmailLine[];
 }
+
+export type TransferDigestEmail =
+  | TransferMinistryDigestEmail
+  | TransferLeaderlessMinistryEmail;
 
 /** Availability opened (initial Ask) and its reminder: same facts, own words. */
 export interface AvailabilityEmail {

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import type { BreadcrumbSegmentOverride } from './use-cycle-breadcrumb';
-import { templateDetailQueryKey } from '@/features/scheduling/components/planning-admin/use-edit-template';
+import { templateDetailQueryKey } from '@/features/scheduling/components/planning-admin/template-query-keys';
 import { adminApi } from '@/utils/api-instances';
 
 /** Labels the `/event-templates/$templateId` segment with the saved template name. */

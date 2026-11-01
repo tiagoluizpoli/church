@@ -6,8 +6,15 @@ import { toast } from 'sonner';
 import type { PlanningTemplateSummary } from './planning-admin.types';
 import {
   createTemplateFormFromTemplate,
-  toTemplateRequestBlocks,
+  toTemplateRequestBody,
 } from './planning-admin.utils';
+import type { TemplateEditorState } from './template-editor-form';
+import {
+  TEMPLATE_LIST_QUERY_KEY,
+  templateDetailQueryKey,
+  templateUsageQueryKey,
+  USUAL_SETUP_QUERY_KEY,
+} from './template-query-keys';
 import { toSaveRefusal, useTemplateForm } from './use-template-form';
 import { adminApi } from '@/utils/api-instances';
 
@@ -21,16 +28,13 @@ export interface UseEditTemplateInput {
   template: PlanningTemplateSummary;
 }
 
-interface TemplateQueryKeyInput {
-  templateId: string;
-}
-
-export function templateDetailQueryKey({ templateId }: TemplateQueryKeyInput) {
-  return ['planning-template', templateId] as const;
-}
-
-export function templateUsageQueryKey({ templateId }: TemplateQueryKeyInput) {
-  return ['planning-template-usage', templateId] as const;
+export interface UseEditTemplateResult extends TemplateEditorState {
+  /** The fresh usage read before a removal failed; Save retries it. */
+  usageFailed: boolean;
+  /** Removed blocks that still carry Usual setup, awaiting confirmation. */
+  confirmation: RemovedBlockUsage[] | null;
+  onConfirmRemoval: () => void;
+  onCancelRemoval: () => void;
 }
 
 /**
@@ -39,7 +43,9 @@ export function templateUsageQueryKey({ templateId }: TemplateQueryKeyInput) {
  * removed it first reads fresh usage and asks for confirmation if any removed
  * block still carries Usual setup.
  */
-export function useEditTemplate({ template }: UseEditTemplateInput) {
+export function useEditTemplate({
+  template,
+}: UseEditTemplateInput): UseEditTemplateResult {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const templateId = template.id;
@@ -56,18 +62,15 @@ export function useEditTemplate({ template }: UseEditTemplateInput) {
 
   const save = useMutation({
     mutationFn: () =>
-      adminApi.updateEventTemplate(templateId, {
-        name: form.name.trim(),
-        weekday: Number.parseInt(form.weekday, 10),
-        blocks: toTemplateRequestBlocks({ blocks: form.blocks }),
-      }),
+      adminApi.updateEventTemplate(templateId, toTemplateRequestBody({ form })),
     onSuccess: async () => {
       setConfirmation(null);
       await Promise.all(
         [
-          ['planning-templates'],
+          TEMPLATE_LIST_QUERY_KEY,
           templateDetailQueryKey({ templateId }),
           templateUsageQueryKey({ templateId }),
+          USUAL_SETUP_QUERY_KEY,
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
       toast.success(m.event_templates_updated_toast());
@@ -119,7 +122,7 @@ export function useEditTemplate({ template }: UseEditTemplateInput) {
 
   return {
     ...fields,
-    mode: 'edit' as const,
+    mode: 'edit',
     pending,
     onSave,
     usageFailed: usageCheck.isError,

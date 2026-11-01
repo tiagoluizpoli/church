@@ -1,7 +1,14 @@
+import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TemplateDeleteDialog } from '@/features/scheduling/components/planning-admin/template-delete-dialog';
+import {
+  TEMPLATE_LIST_QUERY_KEY,
+  templateDetailQueryKey,
+  templateUsageQueryKey,
+  USUAL_SETUP_QUERY_KEY,
+} from '@/features/scheduling/components/planning-admin/template-query-keys';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const getEventTemplateUsage = vi.fn();
@@ -28,13 +35,14 @@ function usage(ministryCount: number) {
   return { templateId: 'template-1', ministryCount, blocks: [] };
 }
 
-function renderDialog() {
+function renderDialog(queryClient?: QueryClient) {
   renderWithProviders(
     <TemplateDeleteDialog
       templateId="template-1"
       onClose={onClose}
       onDeleted={onDeleted}
     />,
+    { queryClient },
   );
   return userEvent.setup();
 }
@@ -111,6 +119,29 @@ describe('TemplateDeleteDialog', () => {
     finish();
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
     expect(toastSuccess).toHaveBeenCalledWith('Modelo excluído');
+  });
+
+  it('drops the deleted template detail and usage and refreshes the list and Usual setup reads', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const removeQueries = vi.spyOn(queryClient, 'removeQueries');
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const user = renderDialog(queryClient);
+    await waitFor(async () => expect(await confirmButton()).toBeEnabled());
+
+    await user.click(screen.getByTestId('confirm-template-delete-button'));
+
+    await waitFor(() => expect(onDeleted).toHaveBeenCalled());
+    for (const queryKey of [
+      templateDetailQueryKey({ templateId: 'template-1' }),
+      templateUsageQueryKey({ templateId: 'template-1' }),
+    ]) {
+      expect(removeQueries).toHaveBeenCalledWith({ queryKey });
+    }
+    for (const queryKey of [TEMPLATE_LIST_QUERY_KEY, USUAL_SETUP_QUERY_KEY]) {
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey });
+    }
   });
 
   it('shows recoverable feedback when the delete fails and allows another attempt', async () => {

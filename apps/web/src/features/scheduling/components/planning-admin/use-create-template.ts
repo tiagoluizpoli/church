@@ -4,16 +4,20 @@ import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import {
   createEmptyTemplateForm,
-  toTemplateRequestBlocks,
+  toTemplateRequestBody,
 } from './planning-admin.utils';
+import type { TemplateEditorState } from './template-editor-form';
+import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import { toSaveRefusal, useTemplateForm } from './use-template-form';
 import { adminApi } from '@/utils/api-instances';
+
+export type UseCreateTemplateResult = TemplateEditorState;
 
 /**
  * Create-page state: independent of any Cycle. A failed save keeps every
  * entered value; success refreshes the shared template list and returns to it.
  */
-export function useCreateTemplate() {
+export function useCreateTemplate(): UseCreateTemplateResult {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { form, setRefusal, fields } = useTemplateForm({
@@ -22,13 +26,11 @@ export function useCreateTemplate() {
 
   const mutation = useMutation({
     mutationFn: () =>
-      adminApi.createEventTemplate({
-        name: form.name.trim(),
-        weekday: Number.parseInt(form.weekday, 10),
-        blocks: toTemplateRequestBlocks({ blocks: form.blocks }),
-      }),
+      adminApi.createEventTemplate(toTemplateRequestBody({ form })),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['planning-templates'] });
+      await queryClient.invalidateQueries({
+        queryKey: TEMPLATE_LIST_QUERY_KEY,
+      });
       toast.success(m.event_templates_created_toast());
       await navigate({ to: '/event-templates' });
     },
@@ -37,7 +39,7 @@ export function useCreateTemplate() {
 
   return {
     ...fields,
-    mode: 'create' as const,
+    mode: 'create',
     pending: mutation.isPending,
     onSave: () => {
       if (!mutation.isPending) {

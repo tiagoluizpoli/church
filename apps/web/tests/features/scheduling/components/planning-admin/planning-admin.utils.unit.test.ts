@@ -10,7 +10,7 @@ import type {
 import {
   calculateTotalEventTimeBlocks,
   canCreateCycle,
-  canCreateTemplate,
+  canSaveTemplate,
   cycleIsSent,
   describeTemplateTimeBlockSpan,
   eventSpanLabel,
@@ -138,14 +138,14 @@ describe('canCreateCycle', () => {
   });
 });
 
-describe('canCreateTemplate', () => {
+describe('canSaveTemplate', () => {
   it('allows a named template whose blocks are all fully filled', () => {
-    expect(canCreateTemplate({ templateForm: makeTemplateForm() })).toBe(true);
+    expect(canSaveTemplate({ templateForm: makeTemplateForm() })).toBe(true);
   });
 
   it('rejects a blank name', () => {
     expect(
-      canCreateTemplate({
+      canSaveTemplate({
         templateForm: makeTemplateForm({ name: '  ' }),
       }),
     ).toBe(false);
@@ -153,27 +153,27 @@ describe('canCreateTemplate', () => {
 
   it('rejects a template with no blocks', () => {
     expect(
-      canCreateTemplate({ templateForm: makeTemplateForm({ blocks: [] }) }),
+      canSaveTemplate({ templateForm: makeTemplateForm({ blocks: [] }) }),
     ).toBe(false);
   });
 
   it('rejects a block missing its label or either time', () => {
     expect(
-      canCreateTemplate({
+      canSaveTemplate({
         templateForm: makeTemplateForm({
           blocks: [makeTemplateTimeBlock({ label: '' })],
         }),
       }),
     ).toBe(false);
     expect(
-      canCreateTemplate({
+      canSaveTemplate({
         templateForm: makeTemplateForm({
           blocks: [makeTemplateTimeBlock({ startTime: null })],
         }),
       }),
     ).toBe(false);
     expect(
-      canCreateTemplate({
+      canSaveTemplate({
         templateForm: makeTemplateForm({
           blocks: [makeTemplateTimeBlock({ endTime: null })],
         }),
@@ -183,7 +183,7 @@ describe('canCreateTemplate', () => {
 
   it('allows an overnight block whose end time is earlier than its start time', () => {
     expect(
-      canCreateTemplate({
+      canSaveTemplate({
         templateForm: makeTemplateForm({
           blocks: [
             makeTemplateTimeBlock({
@@ -199,7 +199,7 @@ describe('canCreateTemplate', () => {
   it('rejects a zero-length block whose start equals its end (ADR-0003)', () => {
     const time = fromTimeColumn({ value: '09:00:00' });
     expect(
-      canCreateTemplate({
+      canSaveTemplate({
         templateForm: makeTemplateForm({
           blocks: [makeTemplateTimeBlock({ startTime: time, endTime: time })],
         }),
@@ -355,7 +355,7 @@ describe('templateBlockErrors', () => {
 
   it('keeps a template with duplicate labels from being saved', () => {
     expect(
-      canCreateTemplate({
+      canSaveTemplate({
         templateForm: makeTemplateForm({
           blocks: [
             makeTemplateTimeBlock({ key: 'a', label: 'Same' }),

@@ -5,7 +5,9 @@ import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { TemplateLibraryTableRow } from './planning-admin.types';
 import { toTemplateLibraryTableRow } from './planning-admin.utils';
+import { RetryAlert } from './retry-alert';
 import { TemplateDeleteDialog } from './template-delete-dialog';
+import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -26,9 +28,44 @@ function templateTableColumns(): DataTableColumn[] {
   ];
 }
 
+interface TemplateRowActionsProps {
+  templateId: string;
+  onDelete: () => void;
+  /** Only one copy (the mobile card) carries test ids; both are in the DOM. */
+  withTestIds?: boolean;
+}
+
+function TemplateRowActions({
+  templateId,
+  onDelete,
+  withTestIds,
+}: TemplateRowActionsProps) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Link
+        to="/event-templates/$templateId"
+        params={{ templateId }}
+        data-testid={withTestIds ? 'edit-template-button' : undefined}
+        className={buttonVariants({ size: 'xs', variant: 'outline' })}
+      >
+        {m.event_templates_edit()}
+      </Link>
+      <Button
+        type="button"
+        size="xs"
+        variant="destructive"
+        data-testid={withTestIds ? 'delete-template-button' : undefined}
+        onClick={onDelete}
+      >
+        {m.event_templates_delete()}
+      </Button>
+    </div>
+  );
+}
+
 export function TemplateManagerCard() {
   const templatesQuery = useQuery({
-    queryKey: ['planning-templates'],
+    queryKey: TEMPLATE_LIST_QUERY_KEY,
     queryFn: () => adminApi.listEventTemplates(),
     retry: false,
   });
@@ -47,23 +84,11 @@ export function TemplateManagerCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         {templatesQuery.isError ? (
-          <div
-            className="flex flex-wrap items-center gap-3"
-            role="alert"
-            data-testid="templates-load-error"
-          >
-            <p className="text-destructive text-sm">
-              {m.event_templates_load_failed()}
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => templatesQuery.refetch()}
-            >
-              {m.event_templates_retry()}
-            </Button>
-          </div>
+          <RetryAlert
+            message={m.event_templates_load_failed()}
+            testId="templates-load-error"
+            onRetry={() => templatesQuery.refetch()}
+          />
         ) : (
           <DataTable<TemplateLibraryTableRow>
             aria-label={m.event_templates_library_title()}
@@ -96,26 +121,10 @@ export function TemplateManagerCard() {
                 {column.id === 'weekday' ? item.weekday : null}
                 {column.id === 'blocks' ? item.blockCount : null}
                 {column.id === 'actions' ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      to="/event-templates/$templateId"
-                      params={{ templateId: item.id }}
-                      className={buttonVariants({
-                        size: 'xs',
-                        variant: 'outline',
-                      })}
-                    >
-                      {m.event_templates_edit()}
-                    </Link>
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="destructive"
-                      onClick={() => setDeleteTargetId(item.id)}
-                    >
-                      {m.event_templates_delete()}
-                    </Button>
-                  </div>
+                  <TemplateRowActions
+                    templateId={item.id}
+                    onDelete={() => setDeleteTargetId(item.id)}
+                  />
                 ) : null}
               </>
             )}
@@ -130,28 +139,11 @@ export function TemplateManagerCard() {
                     {item.description}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link
-                    to="/event-templates/$templateId"
-                    params={{ templateId: item.id }}
-                    data-testid="edit-template-button"
-                    className={buttonVariants({
-                      size: 'xs',
-                      variant: 'outline',
-                    })}
-                  >
-                    {m.event_templates_edit()}
-                  </Link>
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="destructive"
-                    data-testid="delete-template-button"
-                    onClick={() => setDeleteTargetId(item.id)}
-                  >
-                    {m.event_templates_delete()}
-                  </Button>
-                </div>
+                <TemplateRowActions
+                  templateId={item.id}
+                  onDelete={() => setDeleteTargetId(item.id)}
+                  withTestIds
+                />
               </div>
             )}
           />

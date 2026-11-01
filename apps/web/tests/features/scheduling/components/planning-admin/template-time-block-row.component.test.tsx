@@ -58,7 +58,7 @@ describe('TemplateTimeBlockRow', () => {
     });
 
     expect(onBlockChange).toHaveBeenLastCalledWith({
-      blockId: 'block-1',
+      blockKey: 'block-1',
       field: 'startTime',
       value: '10:15',
     });
@@ -76,7 +76,7 @@ describe('TemplateTimeBlockRow', () => {
     });
 
     expect(onBlockChange).toHaveBeenLastCalledWith({
-      blockId: 'block-1',
+      blockKey: 'block-1',
       field: 'endTime',
       value: '11:45',
     });

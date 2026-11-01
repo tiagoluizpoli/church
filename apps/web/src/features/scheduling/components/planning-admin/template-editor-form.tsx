@@ -19,16 +19,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-interface NameChangeInput {
+export interface NameChangeInput {
   name: string;
 }
 
-interface WeekdayChangeInput {
+export interface WeekdayChangeInput {
   weekday: string;
 }
 
-/** Everything the editor renders and reports, independent of where its state
- * lives (a nested page or the legacy edit dialog). */
+/** Everything the editor renders and reports, independent of which page owns
+ * its state. */
 export interface TemplateEditorFormProps {
   form: TemplateFormState;
   /** Whether the form is saving an existing template or creating a new one. */
@@ -44,10 +44,18 @@ export interface TemplateEditorFormProps {
   onRemoveBlock: TemplateTimeBlockRowProps['onRemoveBlock'];
   onAddBlock: () => void;
   onSave: () => void;
-  submitButtonClassName?: string;
   /** Rendered beside Save (e.g. Cancel). */
   actions?: ReactNode;
 }
+
+/** What a create or edit hook hands the editor. */
+export type TemplateEditorState = Omit<TemplateEditorFormProps, 'actions'>;
+
+/** The draft fields shared by both hooks, before mode and save are added. */
+export type TemplateEditorFields = Omit<
+  TemplateEditorState,
+  'mode' | 'pending' | 'onSave'
+>;
 
 export function TemplateEditorForm({
   form: templateForm,
@@ -62,7 +70,6 @@ export function TemplateEditorForm({
   onRemoveBlock,
   onAddBlock,
   onSave,
-  submitButtonClassName,
   actions,
 }: TemplateEditorFormProps) {
   const blockErrors = templateBlockErrors({ blocks: templateForm.blocks });
@@ -177,7 +184,6 @@ export function TemplateEditorForm({
         <Button
           type="button"
           data-testid="create-template-button"
-          className={submitButtonClassName}
           disabled={!canSave || pending}
           onClick={onSave}
         >

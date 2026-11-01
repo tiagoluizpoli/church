@@ -29,17 +29,15 @@ import {
 
 const CYCLES_PATH = '/cycles';
 
-interface IsReviewingCyclePathInput {
+interface PathnameInput {
   pathname: string;
 }
 
-function isTemplatesPath({ pathname }: IsReviewingCyclePathInput): boolean {
+function isTemplatesPath({ pathname }: PathnameInput): boolean {
   return pathname.includes('/event-templates');
 }
 
-function isReviewingCyclePath({
-  pathname,
-}: IsReviewingCyclePathInput): boolean {
+function isReviewingCyclePath({ pathname }: PathnameInput): boolean {
   return (
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&

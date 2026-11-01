@@ -1,9 +1,11 @@
+import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TemplateEditPage } from '@/features/scheduling/components/planning-admin/template-edit-page';
+import { USUAL_SETUP_QUERY_KEY } from '@/features/scheduling/components/planning-admin/template-query-keys';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const getEventTemplate = vi.fn();
@@ -93,9 +95,11 @@ beforeEach(() => {
   });
 });
 
-async function renderLoaded() {
+async function renderLoaded(queryClient?: QueryClient) {
   const user = userEvent.setup();
-  renderWithProviders(<TemplateEditPage templateId="template-1" />);
+  renderWithProviders(<TemplateEditPage templateId="template-1" />, {
+    queryClient,
+  });
   await screen.findByDisplayValue('Sunday');
   return user;
 }
@@ -174,6 +178,23 @@ describe('TemplateEditPage', () => {
       ],
     });
     expect(toastSuccess).toHaveBeenCalledWith('Modelo atualizado');
+  });
+
+  it('refreshes existing Usual setup reads after a successful save', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const user = await renderLoaded(queryClient);
+
+    await user.click(screen.getByTestId('create-template-button'));
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: '/event-templates' }),
+    );
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: USUAL_SETUP_QUERY_KEY,
+    });
   });
 
   it('shows not found for a missing or foreign template', async () => {
@@ -301,6 +322,28 @@ describe('TemplateEditPage', () => {
     expect(
       await screen.findByTestId('template-block-removal-dialog'),
     ).toBeInTheDocument();
+    expect(updateEventTemplate).not.toHaveBeenCalled();
+  });
+
+  it('re-reads usage when Save is pressed after a usage failure, so the removal warning cannot be bypassed', async () => {
+    getEventTemplateUsage
+      .mockRejectedValueOnce(httpError(500))
+      .mockResolvedValueOnce({
+        templateId: 'template-1',
+        ministryCount: 2,
+        blocks: [{ blockId: 'block-vigil', ministryCount: 2 }],
+      });
+    const user = await renderLoaded();
+    await removeVigil(user);
+
+    await user.click(screen.getByTestId('create-template-button'));
+    await screen.findByTestId('template-usage-error');
+    await user.click(screen.getByTestId('create-template-button'));
+
+    expect(
+      await screen.findByTestId('template-block-removal-dialog'),
+    ).toBeInTheDocument();
+    expect(getEventTemplateUsage).toHaveBeenCalledTimes(2);
     expect(updateEventTemplate).not.toHaveBeenCalled();
   });
 

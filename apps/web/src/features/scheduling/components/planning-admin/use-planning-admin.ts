@@ -14,6 +14,7 @@ import {
   getSelectedCycleIdOrThrow,
   isForbiddenError,
 } from './planning-admin.utils';
+import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import {
   type ApplyTemplatesOptions,
   type CreateEventTimeBlockInput,
@@ -99,7 +100,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     retry: false,
   });
   const templatesQuery = useQuery({
-    queryKey: ['planning-templates'],
+    queryKey: TEMPLATE_LIST_QUERY_KEY,
     queryFn: () => adminApi.listEventTemplates(),
     retry: false,
   });

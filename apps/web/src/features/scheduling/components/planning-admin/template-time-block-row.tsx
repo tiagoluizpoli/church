@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 interface LabelChangeInput {
-  blockId: string;
+  blockKey: string;
   field: 'label';
   value: string;
 }
 
 interface TimeChangeInput {
-  blockId: string;
+  blockKey: string;
   field: 'startTime' | 'endTime';
   value: TimeOfDay;
 }
@@ -22,7 +22,7 @@ interface TimeChangeInput {
 type BlockChangeInput = LabelChangeInput | TimeChangeInput;
 
 interface RemoveBlockInput {
-  blockId: string;
+  blockKey: string;
 }
 
 export interface TemplateTimeBlockRowProps {
@@ -60,7 +60,7 @@ export function TemplateTimeBlockRow({
             type="button"
             size="xs"
             variant="ghost"
-            onClick={() => onRemoveBlock({ blockId: block.key })}
+            onClick={() => onRemoveBlock({ blockKey: block.key })}
           >
             {m.event_templates_block_remove()}
           </Button>
@@ -78,7 +78,7 @@ export function TemplateTimeBlockRow({
           value={block.label}
           onChange={(event) =>
             onBlockChange({
-              blockId: block.key,
+              blockKey: block.key,
               field: 'label',
               value: event.target.value,
             })
@@ -106,7 +106,7 @@ export function TemplateTimeBlockRow({
             value={block.startTime}
             onChange={(value) =>
               onBlockChange({
-                blockId: block.key,
+                blockKey: block.key,
                 field: 'startTime',
                 value,
               })
@@ -123,7 +123,7 @@ export function TemplateTimeBlockRow({
             value={block.endTime}
             onChange={(value) =>
               onBlockChange({
-                blockId: block.key,
+                blockKey: block.key,
                 field: 'endTime',
                 value,
               })

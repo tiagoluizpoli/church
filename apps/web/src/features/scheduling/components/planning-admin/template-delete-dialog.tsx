@@ -1,10 +1,13 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { RetryAlert } from './retry-alert';
 import {
+  TEMPLATE_LIST_QUERY_KEY,
   templateDetailQueryKey,
   templateUsageQueryKey,
-} from './use-edit-template';
+  USUAL_SETUP_QUERY_KEY,
+} from './template-query-keys';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { pluralMessage } from '@/shared/utils/plural';
 import { adminApi } from '@/utils/api-instances';
 
 export interface TemplateDeleteDialogProps {
@@ -43,10 +46,17 @@ export function TemplateDeleteDialog({
   const remove = useMutation({
     mutationFn: () => adminApi.deleteEventTemplate(templateId),
     onSuccess: async () => {
-      queryClient.removeQueries({
-        queryKey: templateDetailQueryKey({ templateId }),
-      });
-      await queryClient.invalidateQueries({ queryKey: ['planning-templates'] });
+      for (const queryKey of [
+        templateDetailQueryKey({ templateId }),
+        templateUsageQueryKey({ templateId }),
+      ]) {
+        queryClient.removeQueries({ queryKey });
+      }
+      await Promise.all(
+        [TEMPLATE_LIST_QUERY_KEY, USUAL_SETUP_QUERY_KEY].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
       toast.success(m.event_templates_deleted_toast());
       onDeleted();
     },
@@ -72,29 +82,19 @@ export function TemplateDeleteDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         {usage.isError ? (
-          <div
-            className="flex flex-wrap items-center gap-3"
-            role="alert"
-            data-testid="template-delete-usage-error"
-          >
-            <p className="text-destructive text-sm">
-              {m.event_templates_delete_usage_failed()}
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => usage.refetch()}
-            >
-              {m.event_templates_retry()}
-            </Button>
-          </div>
+          <RetryAlert
+            message={m.event_templates_delete_usage_failed()}
+            testId="template-delete-usage-error"
+            onRetry={() => usage.refetch()}
+          />
         ) : usageReady ? (
           count > 0 ? (
             <p className="text-sm" data-testid="template-delete-count">
-              {count === 1
-                ? m.event_templates_delete_count_one()
-                : m.event_templates_delete_count_other({ count })}
+              {pluralMessage({
+                count,
+                one: m.event_templates_delete_count_one,
+                other: () => m.event_templates_delete_count_other({ count }),
+              })}
             </p>
           ) : null
         ) : (

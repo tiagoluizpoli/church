@@ -31,6 +31,7 @@ import type {
   UpdateEventTemplateBody,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
+import { pluralMessage } from '@/shared/utils/plural';
 import { describeSpan } from '@/shared/utils/span-description';
 
 let templateTemplateTimeBlockDraftCounter = 0;
@@ -203,7 +204,12 @@ export function describeTemplate({
     locale,
   });
   const count = template.blocks.length;
-  return `${day} · ${count === 1 ? m.event_templates_block_count_one() : m.event_templates_block_count_other({ count })}`;
+  const blockCount = pluralMessage({
+    count,
+    one: m.event_templates_block_count_one,
+    other: () => m.event_templates_block_count_other({ count }),
+  });
+  return `${day} · ${blockCount}`;
 }
 
 export interface DescribeTemplateTimeBlockSpanInput {
@@ -239,6 +245,21 @@ export function toTemplateRequestBlocks({
       endTime: block.endTime,
     };
   });
+}
+
+interface TemplateRequestBodyInput {
+  form: TemplateFormState;
+}
+
+/** The complete desired state sent by both create and edit. */
+export function toTemplateRequestBody({
+  form,
+}: TemplateRequestBodyInput): UpdateEventTemplateBody {
+  return {
+    name: form.name.trim(),
+    weekday: Number.parseInt(form.weekday, 10),
+    blocks: toTemplateRequestBlocks({ blocks: form.blocks }),
+  };
 }
 
 export interface TemplateBlockErrors {
@@ -346,14 +367,16 @@ export function canCreateCycle({ cycleForm }: CycleFormValidityInput): boolean {
   );
 }
 
-export function canCreateTemplate({
+export function canSaveTemplate({
   templateForm,
 }: TemplateFormValidityInput): boolean {
+  const { duplicateLabelKeys } = templateBlockErrors({
+    blocks: templateForm.blocks,
+  });
   return (
     templateForm.name.trim() !== '' &&
     templateForm.blocks.length > 0 &&
-    templateBlockErrors({ blocks: templateForm.blocks }).duplicateLabelKeys
-      .size === 0 &&
+    duplicateLabelKeys.size === 0 &&
     templateForm.blocks.every(
       (block) =>
         block.label.trim() !== '' &&

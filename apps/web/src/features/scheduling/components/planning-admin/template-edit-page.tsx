@@ -4,10 +4,12 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import type { PlanningTemplateSummary } from './planning-admin.types';
+import { RetryAlert } from './retry-alert';
 import { TemplateBlockRemovalDialog } from './template-block-removal-dialog';
 import { TemplateDeleteDialog } from './template-delete-dialog';
 import { TemplateEditorForm } from './template-editor-form';
-import { templateDetailQueryKey, useEditTemplate } from './use-edit-template';
+import { templateDetailQueryKey } from './template-query-keys';
+import { useEditTemplate } from './use-edit-template';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -17,6 +19,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { adminApi } from '@/utils/api-instances';
+
+const HTTP_NOT_FOUND = 404;
 
 export interface TemplateEditPageProps {
   templateId: string;
@@ -71,7 +75,7 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
           <TemplateEditForm template={templateQuery.data} />
         ) : templateQuery.isError ? (
           isAxiosError(templateQuery.error) &&
-          templateQuery.error.response?.status === 404 ? (
+          templateQuery.error.response?.status === HTTP_NOT_FOUND ? (
             <div
               className="flex flex-col items-start gap-3"
               data-testid="template-not-found"
@@ -84,23 +88,11 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
               </Link>
             </div>
           ) : (
-            <div
-              className="flex flex-wrap items-center gap-3"
-              role="alert"
-              data-testid="template-load-error"
-            >
-              <p className="text-destructive text-sm">
-                {m.event_templates_detail_load_failed()}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => templateQuery.refetch()}
-              >
-                {m.event_templates_retry()}
-              </Button>
-            </div>
+            <RetryAlert
+              message={m.event_templates_detail_load_failed()}
+              testId="template-load-error"
+              onRetry={() => templateQuery.refetch()}
+            />
           )
         ) : (
           <p className="text-muted-foreground text-sm" role="status">
@@ -130,24 +122,13 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
   return (
     <>
       {usageFailed ? (
-        <div
-          className="mb-4 flex flex-wrap items-center gap-3"
-          role="alert"
-          data-testid="template-usage-error"
-        >
-          <p className="text-destructive text-sm">
-            {m.event_templates_usage_failed()}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={editor.pending}
-            onClick={editor.onSave}
-          >
-            {m.event_templates_retry()}
-          </Button>
-        </div>
+        <RetryAlert
+          className="mb-4"
+          message={m.event_templates_usage_failed()}
+          testId="template-usage-error"
+          disabled={editor.pending}
+          onRetry={editor.onSave}
+        />
       ) : null}
       <TemplateEditorForm
         {...editor}

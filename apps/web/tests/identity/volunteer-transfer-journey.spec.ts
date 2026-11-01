@@ -171,11 +171,16 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
       expect(confirmOutcome.kind).toBe('transferred');
       expect(confirmOutcome.destinationVolunteerId).toEqual(expect.any(String));
 
-      await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
+      // Spec 11.3 — the continuation no longer selects a Church by display
+      // name, so the dual-membership User chooses Church A explicitly.
+      await expect(page).toHaveURL(/\/select-church(\?.*)?$/);
+      await page
+        .locator(
+          `[data-testid="select-church-option-${journey.churchA.church.id}"]:visible`,
+        )
+        .click();
+      await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
 
-      // #342 — the app itself made Church A active: the User belongs to both
-      // Churches now, so without that selection the dashboard guard would have
-      // sent them to /select-church.
       expect(
         await fetchActiveChurchStatus({ request: page.request }),
       ).toMatchObject({

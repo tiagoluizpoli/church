@@ -132,7 +132,7 @@ function SelectChurchRoute() {
         availableAreas: selectChurchInput.availableAreas,
         churchId: selectChurchInput.churchId,
         churchName: selectChurchInput.churchName,
-        destination: redirect ?? '/dashboard',
+        destination: redirect ?? '/',
         navigate: navigateAfterChurchSelection,
         queryClient,
         selectActiveChurch: selectChurch,

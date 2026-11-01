@@ -4,7 +4,7 @@ import SignInForm from '@/components/sign-in-form';
 import { authClient } from '@/lib/auth-client';
 import { validateInternalReturnTarget } from '@/shared/utils/return-target';
 
-const DASHBOARD_PATH = '/dashboard';
+const HOME_PATH = '/';
 
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -17,8 +17,7 @@ export const Route = createFileRoute('/login')({
     const session = await authClient.getSession();
     if (session.data) {
       const target =
-        validateInternalReturnTarget({ target: search.redirect }) ??
-        DASHBOARD_PATH;
+        validateInternalReturnTarget({ target: search.redirect }) ?? HOME_PATH;
       throw redirect({ href: target });
     }
   },

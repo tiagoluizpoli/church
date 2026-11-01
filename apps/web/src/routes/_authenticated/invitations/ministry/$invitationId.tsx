@@ -123,7 +123,7 @@ function MinistryInvitationRoute() {
         outcome.kind === 'full-success' &&
         statusQuery.data?.kind === 'redeemable'
       ) {
-        await continueToChurch({ churchName: statusQuery.data.churchName });
+        await continueToChurch({});
         return;
       }
       // A double-submit or a second tab accepted first — the invitation is
@@ -202,9 +202,7 @@ function MinistryInvitationRoute() {
   if (declineMutation.data?.kind === 'declined') {
     return (
       <InvitationShell>
-        <DeclinedNotice
-          onGoToDashboard={() => navigate({ to: '/dashboard' })}
-        />
+        <DeclinedNotice onGoToHome={() => navigate({ to: '/' })} />
       </InvitationShell>
     );
   }
@@ -212,8 +210,7 @@ function MinistryInvitationRoute() {
   if (acceptMutation.data?.kind === 'church-only') {
     const split = acceptMutation.data;
     // The User now belongs to both Churches: land in the one just joined.
-    const continueToDestination = (): Promise<void> =>
-      continueToChurch({ churchName: split.destinationChurchName });
+    const continueToDestination = (): Promise<void> => continueToChurch({});
     return (
       <InvitationShell>
         <VolunteerTransferFlow
@@ -269,15 +266,15 @@ function UnavailableNotice() {
 }
 
 interface DeclinedNoticeProps {
-  onGoToDashboard: () => void;
+  onGoToHome: () => void;
 }
 
-function DeclinedNotice({ onGoToDashboard }: DeclinedNoticeProps) {
+function DeclinedNotice({ onGoToHome }: DeclinedNoticeProps) {
   return (
     <div className="space-y-4">
       <p className="text-pretty text-sm">You've declined this invitation.</p>
-      <Button variant="outline" className="w-full" onClick={onGoToDashboard}>
-        Go to dashboard
+      <Button variant="outline" className="w-full" onClick={onGoToHome}>
+        {m.invitation_declined_go_home()}
       </Button>
     </div>
   );

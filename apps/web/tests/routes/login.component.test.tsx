@@ -60,7 +60,7 @@ describe('the sign-in route (login)', () => {
     expect(router.state.location.pathname).toBe('/login');
   });
 
-  it('redirects an already-authenticated visitor onward to the dashboard by default', async () => {
+  it('redirects an already-authenticated visitor onward to Home by default', async () => {
     getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
     getVolunteerDashboard.mockResolvedValue({
       availabilityTasks: [],
@@ -77,7 +77,7 @@ describe('the sign-in route (login)', () => {
     });
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 
@@ -95,7 +95,7 @@ describe('the sign-in route (login)', () => {
     expect(await screen.findByText(m.no_access_title())).toBeVisible();
   });
 
-  it('falls back to the dashboard when the redirect target is rejected', async () => {
+  it('falls back to Home when the redirect target is rejected', async () => {
     getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
     getVolunteerDashboard.mockResolvedValue({
       availabilityTasks: [],
@@ -112,7 +112,7 @@ describe('the sign-in route (login)', () => {
     });
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 });

@@ -18,25 +18,37 @@ import {
   volunteerStatusEnum,
 } from './enums';
 
-export const ministry = pgTable('ministry', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 255 }).notNull(),
-  description: text('description'),
-  defaultDirection: defaultDirectionEnum('default_direction')
-    .default('all_out')
-    .notNull(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+/**
+ * `deleted_at` is the Ministry's archive marker. Active names are unique per
+ * Church ignoring case; an archived Ministry frees its name for a new identity.
+ */
+export const ministry = pgTable(
+  'ministry',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    defaultDirection: defaultDirectionEnum('default_direction')
+      .default('all_out')
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('ministry_church_active_name_idx')
+      .on(table.churchId, sql`lower(${table.name})`)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+);
 
 /**
  * A retired profile (`leftAt` set) keeps its original `churchId` forever, so

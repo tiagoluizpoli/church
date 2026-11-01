@@ -218,6 +218,13 @@
       "when": 1793547189692,
       "tag": "0030_verification-code-by-church-invitation",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793577336961,
+      "tag": "0031_ministry-active-name",
+      "breakpoints": true
     }
   ]
 }

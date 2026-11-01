@@ -143,9 +143,15 @@ export interface MinistryInvitationDeliveryFacts {
 
 /** Delivery facts of the kinds whose inbox data is also the email's facts. */
 export type AvailabilityDeliveryFacts =
-  NotificationDataOf<'availability_opened'> & { actionUrl: string };
+  NotificationDataOf<'availability_opened'> & {
+    churchName: string;
+    actionUrl: string;
+  };
 export type SchedulePublishedDeliveryFacts =
-  NotificationDataOf<'schedule_published'> & { actionUrl: string };
+  NotificationDataOf<'schedule_published'> & {
+    churchName: string;
+    actionUrl: string;
+  };
 
 /**
  * Everything both transfer email templates render, resolved at delivery.

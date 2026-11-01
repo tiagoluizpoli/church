@@ -48,38 +48,21 @@ export function prepareEmail({
       content: verificationCodeContent({ payload, locale }),
     });
   }
-  if (payload.kind === 'invitation.ministry') {
-    const { subject, html } = composeMinistryInvitationEmail({
-      payload,
-      locale,
-    });
-    return {
-      payload,
-      locale,
-      request: { from, to: payload.to, subject, html },
-    };
-  }
   if (
+    payload.kind === 'invitation.ministry' ||
     payload.kind === 'availability.opened' ||
-    payload.kind === 'availability.reminder'
+    payload.kind === 'availability.reminder' ||
+    payload.kind === 'schedule.published'
   ) {
-    const { subject, html } = composeAvailabilityEmail({ payload, locale });
-    return {
+    return prepareLayoutEmail({
       payload,
       locale,
-      request: { from, to: payload.to, subject, html },
-    };
-  }
-  if (payload.kind === 'schedule.published') {
-    const { subject, html } = composeSchedulePublishedEmail({
-      payload,
-      locale,
+      from: emailSender({
+        displayName: payload.churchName,
+        configuredFrom: from,
+      }),
+      content: memberNotificationContent({ payload, locale }),
     });
-    return {
-      payload,
-      locale,
-      request: { from, to: payload.to, subject, html },
-    };
   }
   if (
     payload.kind === 'transfer.ministry-digest' ||
@@ -151,105 +134,129 @@ function verificationCodeContent({
   };
 }
 
-interface ComposeMinistryInvitationEmailInput {
-  payload: MinistryInvitationEmail;
+type MemberNotificationEmail =
+  | MinistryInvitationEmail
+  | AvailabilityEmail
+  | SchedulePublishedEmail;
+
+interface MemberNotificationContentInput {
+  payload: MemberNotificationEmail;
   locale: EmailLocale;
 }
 
-function composeMinistryInvitationEmail({
+/** Title and body reuse the bell's catalog keys, so both channels agree. */
+function memberNotificationContent({
   payload,
   locale,
-}: ComposeMinistryInvitationEmailInput): ComposedEmail {
+}: MemberNotificationContentInput): EmailContent {
   const options = { locale };
-  const ministryName = escapeHtml(payload.ministryName);
+  const { churchName, ministryName } = payload;
+  const firstName = payload.recipientFirstName?.trim();
+  const base = {
+    greeting: firstName
+      ? m.email_greeting_member({ firstName }, options)
+      : m.email_greeting_transactional({}, options),
+    footer: m.email_footer_membership({ churchName }, options),
+  };
+  if (payload.kind === 'schedule.published') {
+    const at = (instant: SchedulePublishedEmail['eventStart']) =>
+      formatInstant({ instant, timeZone: payload.churchTimezone });
+    const title = m.notification_schedule_published_title(
+      { ministryName },
+      options,
+    );
+    const body = m.notification_schedule_published_body(
+      {
+        eventTitle: payload.eventTitle,
+        startsAt: at(payload.eventStart),
+        ministryName,
+      },
+      options,
+    );
+    return {
+      ...base,
+      subject: title,
+      heading: title,
+      facts:
+        payload.shifts.length > 0
+          ? [body, m.email_schedule_published_shifts({}, options)]
+          : [body],
+      list: payload.shifts.map((shift) =>
+        m.email_schedule_published_shift(
+          { roleName: shift.roleName, startsAt: at(shift.startsAt) },
+          options,
+        ),
+      ),
+      action: {
+        label: m.email_schedule_published_action({}, options),
+        url: payload.actionUrl,
+      },
+    };
+  }
+  if (
+    payload.kind === 'availability.opened' ||
+    payload.kind === 'availability.reminder'
+  ) {
+    const isReminder = payload.kind === 'availability.reminder';
+    const input = {
+      ministryName,
+      cycleName: payload.cycleName,
+      startDate: formatCalendarDay({ day: payload.cycleStartDate }),
+      endDate: formatCalendarDay({ day: payload.cycleEndDate }),
+    };
+    const title = isReminder
+      ? m.notification_availability_reminder_title({ ministryName }, options)
+      : m.notification_availability_opened_title({ ministryName }, options);
+    return {
+      ...base,
+      subject: title,
+      heading: title,
+      facts: [
+        isReminder
+          ? m.notification_availability_reminder_body(input, options)
+          : m.notification_availability_opened_body(input, options),
+      ],
+      action: {
+        label: m.email_availability_action({}, options),
+        url: payload.actionUrl,
+      },
+    };
+  }
+  // `kind` cannot narrow the invitation's two-kind union; this field can.
+  if (!('redemptionUrl' in payload)) throw new Error('unreachable');
+  const title = m.notification_ministry_invitation_title(
+    { ministryName },
+    options,
+  );
   const accessLevel =
     payload.ministryAccessLevel === 'leader'
       ? m.email_ministry_invitation_access_leader({}, options)
       : m.email_ministry_invitation_access_volunteer({}, options);
-  const roles =
-    payload.roleNames.length > 0
-      ? `<p>${m.email_ministry_invitation_roles({ roles: payload.roleNames.map(escapeHtml).join(', ') }, options)}</p>`
-      : '';
-  const expiresAt = formatInstant({
-    instant: payload.expiresAt,
-    timeZone: payload.churchTimezone,
-  });
   return {
-    // The subject is plain text: no markup to escape.
-    subject: m.notification_ministry_invitation_title(
-      { ministryName: payload.ministryName },
-      options,
-    ),
-    html: `
-          <p>${m.notification_ministry_invitation_body({ ministryName }, options)}</p>
-          <p>${m.email_ministry_invitation_details({ churchName: escapeHtml(payload.churchName), ministryName, accessLevel }, options)}</p>
-          ${roles}
-          <p>${m.email_ministry_invitation_expires({ expiresAt }, options)}</p>
-          <p><a href="${escapeHtml(payload.redemptionUrl)}">${m.email_ministry_invitation_accept({}, options)}</a></p>
-        `,
-  };
-}
-
-interface ComposeAvailabilityEmailInput {
-  payload: AvailabilityEmail;
-  locale: EmailLocale;
-}
-
-function composeAvailabilityEmail({
-  payload,
-  locale,
-}: ComposeAvailabilityEmailInput): ComposedEmail {
-  const options = { locale };
-  const isReminder = payload.kind === 'availability.reminder';
-  const subjectInput = { ministryName: payload.ministryName };
-  const bodyInput = {
-    ministryName: escapeHtml(payload.ministryName),
-    cycleName: escapeHtml(payload.cycleName),
-    startDate: formatCalendarDay({ day: payload.cycleStartDate }),
-    endDate: formatCalendarDay({ day: payload.cycleEndDate }),
-  };
-  return {
-    subject: isReminder
-      ? m.email_availability_reminder_subject(subjectInput, options)
-      : m.email_availability_opened_subject(subjectInput, options),
-    html: `
-          <p>${isReminder ? m.email_availability_reminder_body(bodyInput, options) : m.email_availability_opened_body(bodyInput, options)}</p>
-          <p><a href="${escapeHtml(payload.actionUrl)}">${m.email_availability_action({}, options)}</a></p>
-        `,
-  };
-}
-
-interface ComposeSchedulePublishedEmailInput {
-  payload: SchedulePublishedEmail;
-  locale: EmailLocale;
-}
-
-function composeSchedulePublishedEmail({
-  payload,
-  locale,
-}: ComposeSchedulePublishedEmailInput): ComposedEmail {
-  const options = { locale };
-  const at = (instant: SchedulePublishedEmail['eventStart']) =>
-    formatInstant({ instant, timeZone: payload.churchTimezone });
-  const shifts =
-    payload.shifts.length > 0
-      ? `<p>${m.email_schedule_published_shifts({}, options)}</p><ul>${payload.shifts
-          .map(
-            (shift) =>
-              `<li>${m.email_schedule_published_shift({ roleName: escapeHtml(shift.roleName), startsAt: at(shift.startsAt) }, options)}</li>`,
-          )
-          .join('')}</ul>`
-      : '';
-  return {
-    subject: m.email_schedule_published_subject(
-      { ministryName: payload.ministryName },
-      options,
-    ),
-    html: `
-          <p>${m.email_schedule_published_body({ eventTitle: escapeHtml(payload.eventTitle), startsAt: at(payload.eventStart), ministryName: escapeHtml(payload.ministryName) }, options)}</p>
-          ${shifts}
-          <p><a href="${escapeHtml(payload.actionUrl)}">${m.email_schedule_published_action({}, options)}</a></p>
-        `,
+    ...base,
+    subject: title,
+    heading: title,
+    facts: [
+      m.notification_ministry_invitation_body({ ministryName }, options),
+      m.email_ministry_invitation_details(
+        { churchName, ministryName, accessLevel },
+        options,
+      ),
+      m.email_ministry_invitation_expires(
+        {
+          expiresAt: formatInstant({
+            instant: payload.expiresAt,
+            timeZone: payload.churchTimezone,
+          }),
+        },
+        options,
+      ),
+    ],
+    list: payload.roleNames,
+    action: {
+      label: m.email_ministry_invitation_accept({}, options),
+      url: payload.redemptionUrl,
+    },
   };
 }
 

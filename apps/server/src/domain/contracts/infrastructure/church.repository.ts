@@ -12,6 +12,15 @@ export interface ChurchRepository {
    * `null` otherwise. Volunteer status plays no part.
    */
   findMemberEmail(input: FindChurchMemberEmailInput): Promise<string | null>;
+  /** The member's email and display name, under the same membership rule. */
+  findMemberContact(
+    input: FindChurchMemberEmailInput,
+  ): Promise<ChurchMemberContact | null>;
+}
+
+export interface ChurchMemberContact {
+  email: string;
+  name: string;
 }
 
 export interface GetChurchByIdInput {

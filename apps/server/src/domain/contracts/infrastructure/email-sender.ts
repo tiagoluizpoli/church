@@ -22,6 +22,8 @@ export interface MinistryInvitationEmail {
   /** The Church Timezone `expiresAt` is read in. */
   churchTimezone: string;
   redemptionUrl: string;
+  /** The Church Member's first name; set for `invitation.ministry`. */
+  recipientFirstName?: string;
 }
 
 /** A policy-derived length of time, translated at render time. */
@@ -90,6 +92,8 @@ export interface TransferLeaderlessMinistryEmail {
 export interface AvailabilityEmail {
   kind: 'availability.opened' | 'availability.reminder';
   to: string;
+  churchName: string;
+  recipientFirstName: string;
   ministryName: string;
   cycleName: string;
   cycleStartDate: CalendarDay;
@@ -100,6 +104,8 @@ export interface AvailabilityEmail {
 export interface SchedulePublishedEmail {
   kind: 'schedule.published';
   to: string;
+  churchName: string;
+  recipientFirstName: string;
   ministryName: string;
   eventTitle: string;
   eventStart: Instant;

@@ -134,6 +134,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
     getBySlug: vi.fn(),
     listAdminUserIds: vi.fn(),
     findMemberEmail: vi.fn(),
+    findMemberContact: vi.fn(),
   } as ChurchRepository;
 
   const securityLogRepository: SecurityLogRepository = {

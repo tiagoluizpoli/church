@@ -20,6 +20,8 @@ import { EmailSendError } from '../domain/errors/email-send-error';
 /** A Church Member's email address, in the language they read. */
 export interface EmailRecipientAddress {
   email: string;
+  /** First word of the member's name; empty when they have none. */
+  firstName: string;
   locale: EmailLocale;
 }
 

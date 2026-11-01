@@ -3,6 +3,7 @@ import { church, member, organization, user } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import type { UserId } from '../../domain/branded-ids';
 import type {
+  ChurchMemberContact,
   ChurchRepository,
   FindChurchMemberEmailInput,
   GetChurchByIdInput,
@@ -78,5 +79,17 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .innerJoin(user, eq(user.id, member.userId))
       .where(and(eq(member.organizationId, id), eq(member.userId, userId)));
     return row?.email ?? null;
+  }
+
+  async findMemberContact({
+    id,
+    userId,
+  }: FindChurchMemberEmailInput): Promise<ChurchMemberContact | null> {
+    const [row] = await getClient({ db: this.db })
+      .select({ email: user.email, name: user.name })
+      .from(member)
+      .innerJoin(user, eq(user.id, member.userId))
+      .where(and(eq(member.organizationId, id), eq(member.userId, userId)));
+    return row ?? null;
   }
 }

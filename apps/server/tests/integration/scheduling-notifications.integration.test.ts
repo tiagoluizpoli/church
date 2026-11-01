@@ -218,6 +218,22 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
   });
 
+  it('carries the Church name and a single-word first name to the email', async () => {
+    await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    await buildAvailabilityManager().askAvailability({
+      churchId: ChurchId.from(ids.churchId),
+      participationId: MinistryParticipationId.from(participationId),
+    });
+    const emailSender = new CaptureEmailSender();
+
+    await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(emailSender.sent[0]).toMatchObject({
+      recipientFirstName: expect.stringMatching(/^\S+$/),
+      churchName: expect.any(String),
+    });
+  });
+
   it('settles every sink as skipped, not failed, when the Cycle is gone before first resolution', async () => {
     await askOneMember();
     await dropCycle();

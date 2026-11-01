@@ -863,7 +863,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       locale: 'pt-BR',
       request: {
         to: `${fixture.memberNoVolunteerA}@fixture.test`,
-        subject: m.email_invitation_serve_title(
+        subject: m.notification_ministry_invitation_title(
           { ministryName },
           { locale: 'pt-BR' },
         ),

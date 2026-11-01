@@ -154,6 +154,11 @@ export const declineOutcomeResponseSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
+/** The public Church decline can only succeed; unavailable is a 404. */
+export const publicDeclineResponseSchema = z.object({
+  kind: z.literal('declined'),
+});
+
 /* ── Volunteer Transfer (spec §8) ─────────────────────────────────────── */
 
 /** Layer 2 review data — the actual affected rows (spec §8.7). */

@@ -43,6 +43,7 @@ const redemptionManager: RedemptionManager = {
   getAuthenticatedInvitationStatus: vi.fn(),
   acceptExistingMember: vi.fn(),
   declineInvitation: vi.fn(),
+  declineChurchInvitation: vi.fn(),
   getDebugVerificationCode: vi.fn(),
 };
 
@@ -510,40 +511,36 @@ describe('decline endpoints', () => {
     });
   });
 
-  it('POST /redemption/church/:invitationId/decline returns 401 without a session', async () => {
-    mockGetSession.mockResolvedValueOnce(null as never);
-
-    const response = await app.inject({
-      method: 'POST',
-      url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(redemptionManager.declineInvitation).not.toHaveBeenCalled();
-  });
-
-  it('POST /redemption/church/:invitationId/decline rejects the chained pair through the same manager call', async () => {
-    mockGetSession.mockResolvedValueOnce({
-      user: { id: USER_ID },
-      session: { activeOrganizationId: null },
-    } as never);
-    vi.mocked(redemptionManager.declineInvitation).mockResolvedValue({
+  it('POST /redemption/church/:invitationId/decline is public and takes the Church Invitation id', async () => {
+    vi.mocked(redemptionManager.declineChurchInvitation).mockResolvedValue({
       kind: 'declined',
     });
 
     const response = await app.inject({
       method: 'POST',
       url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
-      headers: { cookie: AUTH_COOKIE },
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ kind: 'declined' });
-    expect(redemptionManager.declineInvitation).toHaveBeenCalledWith({
-      ministryInvitationId: INVITATION_ID,
-      userId: USER_ID,
-      sessionCookie: AUTH_COOKIE,
+    expect(redemptionManager.declineChurchInvitation).toHaveBeenCalledWith({
+      churchInvitationId: INVITATION_ID,
     });
+    expect(mockGetSession).not.toHaveBeenCalled();
+  });
+
+  it('POST /redemption/church/:invitationId/decline maps an unavailable invitation to 404', async () => {
+    vi.mocked(redemptionManager.declineChurchInvitation).mockResolvedValue({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 
   it('GET /redemption/transfer/:invitationId/preview returns 401 without a session', async () => {

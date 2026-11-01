@@ -185,6 +185,15 @@ export interface DeclineInvitationInput {
   now?: Date;
 }
 
+export interface DeclineChurchInvitationInput {
+  churchInvitationId: ChurchInvitationId;
+  now?: Date;
+}
+
+export type DeclineChurchInvitationOutcome =
+  | { kind: 'declined' }
+  | { kind: 'terminal-failure'; reason: 'INVITATION_UNAVAILABLE' };
+
 export interface DeclinedOutcome {
   kind: 'declined';
 }
@@ -219,6 +228,10 @@ export interface RedemptionManager {
   declineInvitation(
     input: DeclineInvitationInput,
   ): Promise<DeclineInvitationOutcome>;
+  /** Public: link possession authorizes it; creates no User or session. */
+  declineChurchInvitation(
+    input: DeclineChurchInvitationInput,
+  ): Promise<DeclineChurchInvitationOutcome>;
   /** Non-production support only: null in production, when the invitation
    * is unavailable, or when no code has been captured yet. */
   getDebugVerificationCode(

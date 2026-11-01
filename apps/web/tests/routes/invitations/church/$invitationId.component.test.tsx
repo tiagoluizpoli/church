@@ -10,6 +10,7 @@ const getVolunteerDashboard = vi.fn();
 const previewChurchInvitation = vi.fn();
 const requestChurchInvitationVerificationCode = vi.fn();
 const redeemChurchInvitation = vi.fn();
+const declineChurchInvitation = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -35,6 +36,8 @@ vi.mock('@/utils/api-instances', async () => ({
       requestChurchInvitationVerificationCode(...args),
     redeemChurchInvitation: (...args: unknown[]) =>
       redeemChurchInvitation(...args),
+    declineChurchInvitation: (...args: unknown[]) =>
+      declineChurchInvitation(...args),
   },
 }));
 
@@ -129,7 +132,7 @@ describe('the public Church Invitation join route', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows a plain first-admin invitation in step 1 with Send code and no Ministry or decline button', async () => {
+  it('shows a plain first-admin invitation in step 1 with Send code and Decline but no Ministry', async () => {
     previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
 
     renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
@@ -156,8 +159,98 @@ describe('the public Church Invitation join route', () => {
       screen.queryByLabelText(m.join_name_label()),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Worship/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /recus|declin/i })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: m.join_decline() }),
+    ).toBeEnabled();
     expect(previewChurchInvitation).toHaveBeenCalledWith('church-invitation-1');
+  });
+
+  describe('declining from step 1', () => {
+    async function openDecline() {
+      const { default: userEvent } = await import(
+        '@testing-library/user-event'
+      );
+      previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
+      renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
+      const user = userEvent.setup();
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline() }),
+      );
+      return user;
+    }
+
+    it('does nothing when the confirmation is cancelled', async () => {
+      const user = await openDecline();
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: m.join_decline_confirm_title(),
+        }),
+      ).toBeVisible();
+
+      await user.click(
+        screen.getByRole('button', { name: m.join_decline_cancel() }),
+      );
+
+      expect(declineChurchInvitation).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: m.join_send_code() }),
+      ).toBeVisible();
+    });
+
+    it('declines on confirmation and tells the recipient they may close the page', async () => {
+      declineChurchInvitation.mockResolvedValue({ kind: 'declined' });
+      const user = await openDecline();
+
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline_confirm() }),
+      );
+
+      expect(await screen.findByText(m.join_declined_title())).toBeVisible();
+      expect(screen.getByText(m.join_declined_description())).toBeVisible();
+      expect(declineChurchInvitation).toHaveBeenCalledWith(
+        'church-invitation-1',
+      );
+      expect(
+        screen.queryByRole('button', { name: m.join_send_code() }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the unavailable recovery UI when the invitation is gone', async () => {
+      declineChurchInvitation.mockRejectedValue(axiosErrorWithStatus(404));
+      const user = await openDecline();
+
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline_confirm() }),
+      );
+
+      expect(
+        await screen.findByText(m.redemption_failure_unavailable_title()),
+      ).toBeVisible();
+      expect(screen.getByRole('link', { name: m.join_log_in() })).toBeVisible();
+    });
+
+    it('says Too many requests when throttled and keeps the invitation actionable', async () => {
+      declineChurchInvitation.mockRejectedValue(axiosErrorWithStatus(429));
+      const user = await openDecline();
+
+      await user.click(
+        await screen.findByRole('button', { name: m.join_decline_confirm() }),
+      );
+
+      expect(await screen.findByText(m.join_too_many_requests())).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: m.join_send_code() }),
+      ).toBeVisible();
+    });
+
+    it('renders the decline copy in pt-BR from the catalog', async () => {
+      await openDecline();
+
+      expect(
+        await screen.findByRole('alertdialog', { name: 'Recusar convite?' }),
+      ).toBeVisible();
+    });
   });
 
   it('shows the paired Ministry, its Ministry Access Level and Roles', async () => {

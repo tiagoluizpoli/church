@@ -2360,24 +2360,38 @@ export type RedeemChurchInvitation200 = {
   reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'EMAIL_ALREADY_REGISTERED';
 };
 
-export type DeclineChurchInvitation200 = {
-  kind: 'declined';
-} | {
-  kind: 'identity-mismatch';
-} | {
-  kind: 'terminal-failure';
-  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
-};
-
-export type DeclineChurchInvitation401Error = typeof DeclineChurchInvitation401Error[keyof typeof DeclineChurchInvitation401Error];
+export type DeclineChurchInvitation200Kind = typeof DeclineChurchInvitation200Kind[keyof typeof DeclineChurchInvitation200Kind];
 
 
-export const DeclineChurchInvitation401Error = {
-  UNAUTHORIZED: 'UNAUTHORIZED',
+export const DeclineChurchInvitation200Kind = {
+  declined: 'declined',
 } as const;
 
-export type DeclineChurchInvitation401 = {
-  error: DeclineChurchInvitation401Error;
+export type DeclineChurchInvitation200 = {
+  kind: DeclineChurchInvitation200Kind;
+};
+
+export type DeclineChurchInvitation404Error = typeof DeclineChurchInvitation404Error[keyof typeof DeclineChurchInvitation404Error];
+
+
+export const DeclineChurchInvitation404Error = {
+  INVITATION_UNAVAILABLE: 'INVITATION_UNAVAILABLE',
+} as const;
+
+export type DeclineChurchInvitation404 = {
+  error: DeclineChurchInvitation404Error;
+  message: string;
+};
+
+export type DeclineChurchInvitation429Error = typeof DeclineChurchInvitation429Error[keyof typeof DeclineChurchInvitation429Error];
+
+
+export const DeclineChurchInvitation429Error = {
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type DeclineChurchInvitation429 = {
+  error: DeclineChurchInvitation429Error;
   message: string;
 };
 

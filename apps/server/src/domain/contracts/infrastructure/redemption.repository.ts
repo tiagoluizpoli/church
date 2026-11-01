@@ -1,5 +1,6 @@
 import type {
   ChurchId,
+  ChurchInvitationId,
   MinistryInvitationId,
   UserId,
   VolunteerId,
@@ -30,6 +31,18 @@ export interface DeclineMinistryInvitationInput {
   tx: TransactionContext;
 }
 
+export interface DeclineChurchInvitationInput {
+  churchInvitationId: ChurchInvitationId;
+  declinedAt: Date;
+  tx: TransactionContext;
+}
+
+/** `unavailable`: missing, expired, canceled or accepted — nothing was changed. */
+export type DeclineChurchInvitationResult =
+  | 'declined'
+  | 'already-declined'
+  | 'unavailable';
+
 export interface RecordChurchOnlyPartialAcceptanceInput {
   /** The invitation's Church — where Church Membership was granted. */
   churchId: ChurchId;
@@ -48,6 +61,14 @@ export interface RedemptionRepository {
   declineMinistryInvitation(
     input: DeclineMinistryInvitationInput,
   ): Promise<void>;
+  /**
+   * Public decline: rejects a pending Church Invitation, every pending paired
+   * Ministry half and the verification code together. Writes no audit row
+   * (no User exists to act) and no notification.
+   */
+  declineChurchInvitation(
+    input: DeclineChurchInvitationInput,
+  ): Promise<DeclineChurchInvitationResult>;
   /**
    * Spec §7.5/§7.6: one `church_only_partial_acceptance` audit row for the
    * cross-Church split. Writes nothing else — the Ministry Invitation stays

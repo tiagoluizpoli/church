@@ -26,6 +26,8 @@ import {
 } from '@/domain/branded-ids';
 import type {
   AcceptMinistryInvitationInput,
+  DeclineChurchInvitationInput,
+  DeclineChurchInvitationResult,
   DeclineMinistryInvitationInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
@@ -135,6 +137,12 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
     input: DeclineMinistryInvitationInput,
   ): Promise<void> {
     return this.delegate.declineMinistryInvitation(input);
+  }
+
+  async declineChurchInvitation(
+    input: DeclineChurchInvitationInput,
+  ): Promise<DeclineChurchInvitationResult> {
+    return this.delegate.declineChurchInvitation(input);
   }
 
   async recordChurchOnlyPartialAcceptance(

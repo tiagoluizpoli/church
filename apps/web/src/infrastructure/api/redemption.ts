@@ -65,7 +65,7 @@ const redeemChurchInvitation = (
       );
     }
   /**
- * Decline a Church Invitation as its authenticated recipient, also declining a chained Ministry Invitation if one is paired with it.
+ * Publicly decline a pending Church Invitation and any paired Ministry Invitation. Possession of the link authorizes it; no User or session is created.
  * @summary Decline a Church Invitation
  */
 const declineChurchInvitation = (

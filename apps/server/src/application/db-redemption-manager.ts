@@ -7,6 +7,8 @@ import type {
   AcceptPendingMinistryInvitationInput,
   AuthenticatedInvitationStatus,
   ChurchOnlyRedemptionOutcome,
+  DeclineChurchInvitationInput,
+  DeclineChurchInvitationOutcome,
   DeclineInvitationInput,
   DeclineInvitationOutcome,
   FullRedemptionSuccess,
@@ -615,6 +617,22 @@ export class DbRedemptionManager implements RedemptionManager {
         tx,
       }),
     );
+    return { kind: 'declined' };
+  }
+
+  async declineChurchInvitation({
+    churchInvitationId,
+    now = nowAsDate(),
+  }: DeclineChurchInvitationInput): Promise<DeclineChurchInvitationOutcome> {
+    const result = await this.unitOfWork.run((tx) =>
+      this.redemptionRepository.declineChurchInvitation({
+        churchInvitationId,
+        declinedAt: now,
+        tx,
+      }),
+    );
+    if (result === 'unavailable')
+      return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     return { kind: 'declined' };
   }
 

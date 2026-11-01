@@ -1,5 +1,7 @@
 import {
+  invitation as churchInvitation,
   identityAudit,
+  invitationVerificationCode,
   ministry,
   ministryInvitation,
   ministryInvitationRole,
@@ -7,7 +9,7 @@ import {
   role,
   volunteer,
 } from '@church/db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, gt, inArray } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryId,
@@ -15,6 +17,8 @@ import type {
 } from '../../domain/branded-ids';
 import type {
   AcceptMinistryInvitationInput,
+  DeclineChurchInvitationInput,
+  DeclineChurchInvitationResult,
   DeclineMinistryInvitationInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
@@ -232,6 +236,51 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       correlationId,
       timestamp: declinedAt,
     });
+  }
+
+  async declineChurchInvitation({
+    churchInvitationId,
+    declinedAt,
+    tx,
+  }: DeclineChurchInvitationInput): Promise<DeclineChurchInvitationResult> {
+    const db = getClient({ db: this.db, tx });
+    // The conditional update takes the row lock, so a racing acceptance sees
+    // the final status and only one of the two ever wins.
+    const [declined] = await db
+      .update(churchInvitation)
+      .set({ status: 'rejected' })
+      .where(
+        and(
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+          gt(churchInvitation.expiresAt, declinedAt),
+        ),
+      )
+      .returning({ id: churchInvitation.id });
+    if (!declined) {
+      const [existing] = await db
+        .select({ status: churchInvitation.status })
+        .from(churchInvitation)
+        .where(eq(churchInvitation.id, churchInvitationId));
+      return existing?.status === 'rejected'
+        ? 'already-declined'
+        : 'unavailable';
+    }
+    await db
+      .update(ministryInvitation)
+      .set({ status: 'rejected' })
+      .where(
+        and(
+          eq(ministryInvitation.churchInvitationId, churchInvitationId),
+          eq(ministryInvitation.status, 'pending'),
+        ),
+      );
+    await db
+      .delete(invitationVerificationCode)
+      .where(
+        eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+      );
+    return 'declined';
   }
 
   async recordChurchOnlyPartialAcceptance({

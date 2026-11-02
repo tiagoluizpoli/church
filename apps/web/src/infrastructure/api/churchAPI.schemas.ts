@@ -1243,7 +1243,7 @@ export type ArchiveMinistry409BlockersItem = {
 export type ArchiveMinistry409 = {
   error: string;
   message: string;
-  blockers?: ArchiveMinistry409BlockersItem[];
+  blockers: ArchiveMinistry409BlockersItem[];
 };
 
 export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
@@ -1493,7 +1493,7 @@ export type ArchiveMinistryRole409BlockersItem = {
 export type ArchiveMinistryRole409 = {
   error: string;
   message: string;
-  blockers?: ArchiveMinistryRole409BlockersItem[];
+  blockers: ArchiveMinistryRole409BlockersItem[];
 };
 
 export type ListSectors200SectorsItem = {
@@ -1634,7 +1634,7 @@ export type ArchiveSector409BlockersItem = {
 export type ArchiveSector409 = {
   error: string;
   message: string;
-  blockers?: ArchiveSector409BlockersItem[];
+  blockers: ArchiveSector409BlockersItem[];
 };
 
 export type GetCycleParticipationParams = {

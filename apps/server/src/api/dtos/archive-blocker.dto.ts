@@ -31,5 +31,5 @@ export const archiveBlockerSchema = z.discriminatedUnion('kind', [
 export const archiveBlockedResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
-  blockers: z.array(archiveBlockerSchema).optional(),
+  blockers: z.array(archiveBlockerSchema),
 });

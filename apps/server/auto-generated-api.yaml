@@ -3019,6 +3019,7 @@ paths:
                 required:
                   - error
                   - message
+                  - blockers
                 additionalProperties: false
   /api/v1/ministries/{ministryId}/invitations:
     post:
@@ -3671,6 +3672,7 @@ paths:
                 required:
                   - error
                   - message
+                  - blockers
                 additionalProperties: false
   /api/v1/ministries/{ministryId}/sectors/:
     get:
@@ -4123,6 +4125,7 @@ paths:
                 required:
                   - error
                   - message
+                  - blockers
                 additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/participation:
     get:

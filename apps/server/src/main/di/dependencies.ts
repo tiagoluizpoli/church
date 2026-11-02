@@ -10,6 +10,7 @@ import type {
   ICycleManager,
   IEventManager,
   IEventTemplateManager,
+  IInvitationListManager,
   InvitationVerificationCodeManager as IInvitationVerificationCodeManager,
   IMinistryInvitationManager,
   IMinistryManager,
@@ -35,6 +36,7 @@ import type {
   EventRepository,
   EventTemplateRepository,
   EventTimeBlockRepository,
+  InvitationListRepository,
   InvitationVerificationCodeRepository,
   MinistryInvitationRepository,
   MinistryParticipationRepository,
@@ -85,6 +87,7 @@ export interface CompositionRootDependencies {
   sectorRepository: SectorRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   notificationRepository: NotificationRepository;
+  invitationListRepository: InvitationListRepository;
   unitOfWork: UnitOfWork;
   // Services
   emailSender: EmailSender;
@@ -117,4 +120,5 @@ export interface CompositionRootDependencies {
   participationManager: IParticipationManager;
   activeChurchSelectionManager: IActiveChurchSelectionManager;
   notificationManager: INotificationManager;
+  invitationListManager: IInvitationListManager;
 }

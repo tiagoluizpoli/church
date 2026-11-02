@@ -57,6 +57,11 @@ export const appConfigSchema = z.object({
     pageSize: positiveInt,
     maxPageSize: positiveInt,
   }),
+  invitations: z.object({
+    /** Invitation list page size when the request names none, and the most it may ask for. */
+    pageSize: positiveInt,
+    maxPageSize: positiveInt,
+  }),
   /** MVP choice until user settings exist. */
   defaultLocale: z.enum(['en', 'pt-BR']),
   /** Cookie holding the chosen locale; written by the `?lang=` override. */
@@ -99,6 +104,7 @@ export const appConfig = appConfigSchema.parse({
     pageSize: 20,
     maxPageSize: 50,
   },
+  invitations: { pageSize: 20, maxPageSize: 50 },
   defaultLocale: 'pt-BR',
   localeCookieName: 'church_locale',
   localeQueryParam: 'lang',

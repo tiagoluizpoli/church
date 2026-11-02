@@ -7,6 +7,7 @@ import {
   DrizzleEventRepository,
   DrizzleEventTemplateRepository,
   DrizzleEventTimeBlockRepository,
+  DrizzleInvitationListRepository,
   DrizzleInvitationVerificationCodeRepository,
   DrizzleMinistryInvitationRepository,
   DrizzleMinistryParticipationRepository,
@@ -53,6 +54,7 @@ export type Repositories = Pick<
   | 'sectorRepository'
   | 'eventTimeBlockRepository'
   | 'notificationRepository'
+  | 'invitationListRepository'
   | 'unitOfWork'
 >;
 
@@ -132,6 +134,9 @@ export function buildRepositories({
   const notificationRepository =
     overrides.notificationRepository ??
     new DrizzleNotificationRepository({ db: database });
+  const invitationListRepository =
+    overrides.invitationListRepository ??
+    new DrizzleInvitationListRepository({ db: database });
   const unitOfWork =
     overrides.unitOfWork ?? new DrizzleUnitOfWork({ db: database });
 
@@ -160,6 +165,7 @@ export function buildRepositories({
     sectorRepository,
     eventTimeBlockRepository,
     notificationRepository,
+    invitationListRepository,
     unitOfWork,
   };
 }

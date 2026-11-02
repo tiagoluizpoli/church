@@ -6,6 +6,7 @@ export { DbAvailabilityCheckManager } from './db-availability-check-manager';
 export { DbCycleManager } from './db-cycle-manager';
 export { DbEventManager } from './db-event-manager';
 export { DbEventTemplateManager } from './db-event-template-manager';
+export { DbInvitationListManager } from './db-invitation-list-manager';
 export { DbMinistryInvitationManager } from './db-ministry-invitation-manager';
 export { DbMinistryManager } from './db-ministry-manager';
 export { DbMinistryRoleManager } from './db-ministry-role-manager';

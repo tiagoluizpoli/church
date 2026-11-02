@@ -7008,6 +7008,171 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/invitations/:
+    get:
+      operationId: listInvitations
+      summary: List pending invitations
+      tags:
+        - invitations
+      description: List the offers still pending in the Active Church, expired ones
+        included and badged, newest created first. A ChurchAdmin sees every
+        Ministry offer and admin Church grant; a Ministry leader sees only
+        Ministry offers in the Ministries they lead.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: cursor
+          required: false
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          in: query
+          name: limit
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - church
+                            - ministry
+                        id:
+                          type: string
+                        churchInvitationId:
+                          type: string
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        email:
+                          type: string
+                        churchAccessLevel:
+                          type: string
+                          enum:
+                            - admin
+                        ministryAccessLevel:
+                          type: string
+                          enum:
+                            - leader
+                            - volunteer
+                        roles:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                            additionalProperties: false
+                        invitedBy:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                        createdAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        expiresAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        status:
+                          type: string
+                          enum:
+                            - pending
+                        displayStatus:
+                          type: string
+                          enum:
+                            - pending
+                            - expired
+                        emailDelivery:
+                          type: object
+                          properties:
+                            state:
+                              type: string
+                              enum:
+                                - pending
+                                - sent
+                                - failed
+                                - unavailable
+                            sentAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - state
+                          additionalProperties: false
+                      required:
+                        - kind
+                        - id
+                        - email
+                        - roles
+                        - invitedBy
+                        - createdAt
+                        - expiresAt
+                        - status
+                        - displayStatus
+                        - emailDelivery
+                      additionalProperties: false
+                  nextCursor:
+                    type: string
+                required:
+                  - items
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/church/{invitationId}:
     get:
       operationId: previewChurchInvitation

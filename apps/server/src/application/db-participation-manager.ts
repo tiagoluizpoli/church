@@ -733,9 +733,11 @@ export class DbParticipationManager implements IParticipationManager {
 
   async upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]> {
     return this.unitOfWork.run(async (tx) => {
-      await this.ministryRepository.getById({
+      // Saving a setup is new use: refused for an archived Ministry.
+      await this.ministryRepository.lockActive({
         churchId: input.churchId,
-        id: input.ministryId,
+        ministryId: input.ministryId,
+        strength: 'share',
         tx,
       });
       // Validate every entry through the domain entity before persisting.

@@ -2,7 +2,9 @@ import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import {
   INVITATION_EMAIL_STATE_OPTIONS,
+  INVITATION_INVITED_AS_OPTIONS,
   INVITATION_LIST_KIND_OPTIONS,
+  INVITATION_LIST_STATUS_OPTIONS,
   type InvitationListItem,
   type InvitationListPage,
 } from '../../domain/entities/invitation-list-item';
@@ -26,9 +28,17 @@ export const invitationListItemResponseSchema = z.object({
   createdAt: instantSchema,
   expiresAt: instantSchema,
   /** The stored lifecycle state; an expired offer is still `pending`. */
-  status: z.literal('pending'),
+  status: z.enum(['pending', 'accepted', 'rejected', 'canceled']),
   /** Derived at read time against the clock; never persisted. */
-  displayStatus: z.enum(['pending', 'expired']),
+  displayStatus: z.enum(INVITATION_LIST_STATUS_OPTIONS),
+  /** Closed offers only; each field appears only when actually recorded. */
+  closure: z
+    .object({
+      actor: z.object({ id: z.string(), name: z.string() }).optional(),
+      at: instantSchema.optional(),
+      reason: z.string().optional(),
+    })
+    .optional(),
   emailDelivery: z.object({
     state: z.enum(INVITATION_EMAIL_STATE_OPTIONS),
     /** Set only when the sender confirmed the email. */
@@ -42,9 +52,18 @@ export type InvitationListItemResponse = z.infer<
 export const invitationListResponseSchema = z.object({
   items: z.array(invitationListItemResponseSchema),
   nextCursor: z.string().optional(),
+  /** Pickers limited to what the caller's authority reaches. */
+  options: z.object({
+    ministries: z.array(z.object({ id: z.string(), name: z.string() })),
+    invitedAs: z.array(z.enum(INVITATION_INVITED_AS_OPTIONS)),
+  }),
 });
 
 export const invitationListQuerystringSchema = z.object({
+  status: z.enum(INVITATION_LIST_STATUS_OPTIONS).default('pending'),
+  ministryId: z.string().uuid().optional(),
+  invitedAs: z.enum(INVITATION_INVITED_AS_OPTIONS).optional(),
+  email: z.string().trim().min(1).max(254).optional(),
   cursor: z
     .string()
     .refine((cursor) => decodeInvitationListCursor({ cursor }) !== undefined, {
@@ -55,9 +74,13 @@ export const invitationListQuerystringSchema = z.object({
 });
 
 function toItemResponse(item: InvitationListItem): InvitationListItemResponse {
-  const { createdAt, expiresAt, emailDelivery, ...rest } = item;
+  const { createdAt, expiresAt, emailDelivery, closure, ...rest } = item;
   return {
     ...rest,
+    closure: closure && {
+      ...closure,
+      at: closure.at ? fromDate({ date: closure.at }) : undefined,
+    },
     createdAt: fromDate({ date: createdAt }),
     expiresAt: fromDate({ date: expiresAt }),
     emailDelivery: {
@@ -74,6 +97,7 @@ export const invitationListMapper = {
     return {
       items: page.items.map(toItemResponse),
       nextCursor: page.nextCursor,
+      options: page.options,
     };
   },
 };

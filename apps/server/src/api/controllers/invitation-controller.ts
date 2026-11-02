@@ -64,9 +64,9 @@ export class InvitationController implements FastifyController {
         schema: {
           tags: ['invitations'],
           operationId: 'listInvitations',
-          summary: 'List pending invitations',
+          summary: 'List invitations',
           description:
-            'List the offers still pending in the Active Church, expired ones included and badged, newest created first. A ChurchAdmin sees every Ministry offer and admin Church grant; a Ministry leader sees only Ministry offers in the Ministries they lead.',
+            "List the Active Church's offers, newest created first. Pending (the default) includes expired offers badged; Expired is pending past its expiry; Accepted, Declined and Revoked are history with the closure facts that were recorded. Status, Ministry, invited-as and email filters combine before pagination. A ChurchAdmin sees every Ministry offer and admin Church grant; a Ministry leader sees only Ministry offers in the Ministries they lead.",
           querystring: invitationListQuerystringSchema.extend({
             limit: z.coerce
               .number()
@@ -79,6 +79,7 @@ export class InvitationController implements FastifyController {
             200: invitationListResponseSchema,
             401: errorResponseSchema,
             403: errorResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -101,12 +102,13 @@ export class InvitationController implements FastifyController {
                 MinistryId.from(m.ministryId),
               ),
             };
-        const { cursor, limit } = request.query as z.infer<
+        const { cursor, limit, ...filters } = request.query as z.infer<
           typeof invitationListQuerystringSchema
         >;
-        const page = await this.invitationListManager.listPending({
+        const page = await this.invitationListManager.list({
           churchId,
           scope,
+          filters,
           cursor,
           limit,
         });

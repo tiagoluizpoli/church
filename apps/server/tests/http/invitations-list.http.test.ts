@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   invitation as churchInvitation,
+  identityAudit,
   ministry,
   ministryInvitation,
   ministryInvitationRole,
@@ -235,6 +236,11 @@ interface Row {
   displayStatus: string;
   status: string;
   emailDelivery: { state: string; sentAt?: string };
+  closure?: {
+    actor?: { id: string; name: string };
+    at?: string;
+    reason?: string;
+  };
 }
 
 async function list(query = '') {
@@ -253,6 +259,9 @@ interface ChurchOfferInput {
   expiresAt?: Date;
   status?: string;
   churchId?: string;
+  acceptedAt?: Date;
+  acceptedById?: string;
+  declinedAt?: Date;
 }
 async function churchOffer(input: ChurchOfferInput) {
   await db.insert(churchInvitation).values({
@@ -263,6 +272,9 @@ async function churchOffer(input: ChurchOfferInput) {
     status: input.status ?? 'pending',
     expiresAt: input.expiresAt ?? FUTURE,
     inviterId: fx.userIds.admin,
+    acceptedAt: input.acceptedAt,
+    acceptedById: input.acceptedById,
+    declinedAt: input.declinedAt,
     createdAt: input.createdAt ?? new Date('2026-11-01T10:00:00.000Z'),
   });
 }
@@ -275,7 +287,10 @@ interface MinistryOfferInput {
   roleIds?: string[];
   createdAt?: Date;
   expiresAt?: Date;
-  status?: 'pending' | 'accepted';
+  status?: 'pending' | 'accepted' | 'rejected' | 'canceled';
+  acceptedAt?: Date;
+  declinedAt?: Date;
+  canceledAt?: Date;
   churchId?: string;
 }
 async function ministryOffer(input: MinistryOfferInput) {
@@ -290,6 +305,9 @@ async function ministryOffer(input: MinistryOfferInput) {
     status: input.status ?? 'pending',
     inviterId: fx.userIds.worshipLeader,
     expiresAt: input.expiresAt ?? FUTURE,
+    acceptedAt: input.acceptedAt,
+    declinedAt: input.declinedAt,
+    canceledAt: input.canceledAt,
     createdAt: input.createdAt ?? new Date('2026-11-01T10:00:00.000Z'),
   });
   for (const roleId of input.roleIds ?? []) {
@@ -709,5 +727,273 @@ describe('GET /api/v1/invitations — pagination', () => {
     expect(
       [...(body.items as Row[]), ...rest].every((i) => i.kind === 'ministry'),
     ).toBe(true);
+  });
+});
+
+describe('GET /api/v1/invitations — filters and history', () => {
+  const T = (iso: string) => new Date(iso);
+
+  beforeEach(async () => {
+    await ministryOffer({
+      ministryId: fx.worshipId,
+      level: 'volunteer',
+      inviteeUserId: fx.userIds.member,
+      createdAt: T('2026-10-01T00:00:00.000Z'),
+    });
+    await ministryOffer({
+      ministryId: fx.worshipId,
+      level: 'leader',
+      inviteeUserId: fx.userIds.volunteer,
+      status: 'accepted',
+      acceptedAt: T('2026-10-02T00:00:00.000Z'),
+      createdAt: T('2026-10-02T00:00:00.000Z'),
+    });
+    await ministryOffer({
+      ministryId: fx.kidsId,
+      inviteeUserId: fx.userIds.volunteer,
+      status: 'rejected',
+      declinedAt: T('2026-10-03T00:00:00.000Z'),
+      createdAt: T('2026-10-03T00:00:00.000Z'),
+    });
+    await ministryOffer({
+      ministryId: fx.kidsId,
+      inviteeUserId: fx.userIds.member,
+      status: 'canceled',
+      canceledAt: T('2026-10-04T00:00:00.000Z'),
+      createdAt: T('2026-10-04T00:00:00.000Z'),
+    });
+    await churchOffer({
+      id: 'ci-done',
+      email: 'Done@Inv.test',
+      role: 'admin',
+      status: 'accepted',
+      acceptedAt: T('2026-10-05T00:00:00.000Z'),
+      acceptedById: fx.userIds.member,
+      createdAt: T('2026-10-05T00:00:00.000Z'),
+    });
+    await churchOffer({
+      id: 'ci-no',
+      email: 'no@inv.test',
+      role: 'admin',
+      status: 'rejected',
+      declinedAt: T('2026-10-06T00:00:00.000Z'),
+      createdAt: T('2026-10-06T00:00:00.000Z'),
+    });
+    await churchOffer({
+      id: 'ci-old',
+      email: 'old@inv.test',
+      role: 'admin',
+      status: 'rejected',
+      createdAt: T('2026-10-07T00:00:00.000Z'),
+    });
+    await churchOffer({
+      id: 'ci-gone',
+      email: 'gone@inv.test',
+      role: 'admin',
+      status: 'canceled',
+      createdAt: T('2026-10-08T00:00:00.000Z'),
+    });
+    await churchOffer({
+      id: 'ci-late',
+      email: 'late@inv.test',
+      role: 'admin',
+      expiresAt: NOW_DATE,
+      createdAt: T('2026-10-09T00:00:00.000Z'),
+    });
+    await churchOffer({
+      id: 'ci-fresh',
+      email: 'fresh@inv.test',
+      role: 'admin',
+      expiresAt: new Date(NOW_DATE.getTime() + 1),
+      createdAt: T('2026-10-10T00:00:00.000Z'),
+    });
+  });
+
+  it('defaults to Pending with expired badged and Expired holding only the exact-boundary offer', async () => {
+    signIn('admin');
+    const pending = (await list()).items;
+    expect(pending.map((r) => r.displayStatus).sort()).toEqual([
+      'expired',
+      'pending',
+      'pending',
+    ]);
+    const expired = (await list('?status=expired')).items;
+    expect(expired.map((r) => r.email)).toEqual(['late@inv.test']);
+    expect(expired[0]?.status).toBe('pending');
+  });
+
+  it('maps accepted, declined and revoked onto the storage words', async () => {
+    signIn('admin');
+    const accepted = (await list('?status=accepted')).items;
+    expect(accepted.map((r) => [r.kind, r.displayStatus, r.status])).toEqual([
+      ['church', 'accepted', 'accepted'],
+      ['ministry', 'accepted', 'accepted'],
+    ]);
+    const declined = (await list('?status=declined')).items;
+    expect(declined.map((r) => r.displayStatus)).toEqual([
+      'declined',
+      'declined',
+      'declined',
+    ]);
+    expect(declined.every((r) => r.status === 'rejected')).toBe(true);
+    const revoked = (await list('?status=revoked')).items;
+    expect(revoked.map((r) => [r.kind, r.displayStatus, r.status])).toEqual([
+      ['church', 'revoked', 'canceled'],
+      ['ministry', 'revoked', 'canceled'],
+    ]);
+  });
+
+  it('combines status, Ministry, invited-as and case-insensitive email before paging', async () => {
+    signIn('admin');
+    expect(
+      (
+        await list(
+          `?status=accepted&ministryId=${fx.worshipId}&invitedAs=leader`,
+        )
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (
+        await list(
+          `?status=accepted&ministryId=${fx.worshipId}&invitedAs=volunteer`,
+        )
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (await list('?status=accepted&invitedAs=admin')).items.map(
+        (r) => r.email,
+      ),
+    ).toEqual(['Done@Inv.test']);
+    expect((await list('?status=accepted&email=DONE@')).items).toHaveLength(1);
+    // Ministry rows match the addressed user's email; wildcards are literal.
+    expect(
+      (await list('?status=accepted&email=volunteer%40inv')).items,
+    ).toHaveLength(1);
+    expect((await list('?status=accepted&email=%25')).items).toHaveLength(0);
+    // A Ministry filter excludes standalone Church grants.
+    expect(
+      (await list(`?status=accepted&ministryId=${fx.worshipId}`)).items.every(
+        (r) => r.kind === 'ministry',
+      ),
+    ).toBe(true);
+    // Filtering before the limit: the next page is of the filtered set only.
+    const first = await list('?status=declined&limit=2');
+    expect(first.items).toHaveLength(2);
+    const second = await list(
+      `?status=declined&limit=2&cursor=${first.body.nextCursor}`,
+    );
+    expect(second.items).toHaveLength(1);
+    expect(second.body.nextCursor).toBeUndefined();
+  });
+
+  it('scopes options and rows for leaders and gives unmanaged Ministries the same 404 as missing ones', async () => {
+    signIn('admin');
+    const adminBody = (await list()).body;
+    expect(adminBody.options.invitedAs).toEqual([
+      'admin',
+      'leader',
+      'volunteer',
+    ]);
+    expect(
+      adminBody.options.ministries.map((m: { name: string }) => m.name),
+    ).toEqual(['Kids', 'Worship']);
+
+    signIn('worshipLeader');
+    const leader = (await list('?status=accepted')).body;
+    expect(leader.options.invitedAs).toEqual(['leader', 'volunteer']);
+    expect(
+      leader.options.ministries.map((m: { name: string }) => m.name),
+    ).toEqual(['Worship']);
+    expect(
+      leader.items.every(
+        (r: Row) => r.kind === 'ministry' && r.ministryId === fx.worshipId,
+      ),
+    ).toBe(true);
+    expect((await list('?status=accepted&invitedAs=admin')).items).toEqual([]);
+    const foreign = await buildMinistry({
+      db,
+      churchId: CHURCH_B,
+      name: 'Foreign',
+    });
+    const unmanaged = await list(`?ministryId=${fx.kidsId}`);
+    const missing = await list(`?ministryId=${randomUUID()}`);
+    const otherChurch = await list(`?ministryId=${foreign.id}`);
+    for (const r of [unmanaged, missing, otherChurch])
+      expect(r.res.statusCode).toBe(404);
+    expect(unmanaged.res.json()).toEqual(missing.res.json());
+    expect((await list('?ministryId=nope')).res.statusCode).toBe(422);
+
+    signIn('multiLeader');
+    expect((await list()).body.options.ministries).toHaveLength(2);
+  });
+
+  it('reports only recorded closure facts and leaves old history explicitly unknown', async () => {
+    const [ministryAccepted] = (
+      await db
+        .select()
+        .from(ministryInvitation)
+        .where(eq(ministryInvitation.status, 'accepted'))
+    ).map((r) => r.id);
+    await db.insert(identityAudit).values({
+      churchId: CHURCH_A,
+      ministryInvitationId: ministryAccepted as string,
+      actorId: fx.userIds.volunteer,
+      action: 'ministry_acceptance',
+      correlationId: 'c1',
+      timestamp: T('2026-10-02T01:00:00.000Z'),
+    });
+    signIn('admin');
+    const accepted = (await list('?status=accepted')).items;
+    const church = accepted.find((r) => r.kind === 'church');
+    expect(church?.closure).toMatchObject({
+      actor: { id: fx.userIds.member, name: 'member' },
+    });
+    expect(church?.closure?.at).toBeDefined();
+    const ministryRow = accepted.find((r) => r.kind === 'ministry');
+    expect(ministryRow?.closure?.actor?.name).toBe('volunteer');
+    // The audit time wins over the row stamp.
+    expect(ministryRow?.closure?.at).toBe('2026-10-02T01:00:00.000Z');
+
+    const declined = (await list('?status=declined')).items;
+    const publicDecline = declined.find((r) => r.email === 'no@inv.test');
+    expect(publicDecline?.closure?.actor).toBeUndefined();
+    expect(publicDecline?.closure?.at).toBe('2026-10-06T00:00:00.000Z');
+    const legacy = declined.find((r) => r.email === 'old@inv.test');
+    expect(legacy?.closure?.actor).toBeUndefined();
+    expect(legacy?.closure?.at).toBeUndefined();
+
+    const revoked = (await list('?status=revoked')).items;
+    for (const row of revoked) expect(row.closure?.actor).toBeUndefined();
+    expect(revoked.find((r) => r.kind === 'ministry')?.closure?.at).toBe(
+      '2026-10-04T00:00:00.000Z',
+    );
+    expect(
+      revoked.find((r) => r.kind === 'church')?.closure?.at,
+    ).toBeUndefined();
+  });
+
+  it('never duplicates a row through Roles or deliveries in any status', async () => {
+    const id = await ministryOffer({
+      ministryId: fx.worshipId,
+      inviteeUserId: fx.userIds.worshipLeader,
+      roleIds: [fx.singerId, fx.drumsId],
+      status: 'accepted',
+      acceptedAt: T('2026-10-02T00:00:00.000Z'),
+    });
+    for (const at of ['2026-11-01T11:00:00.000Z', '2026-11-01T12:00:00.000Z']) {
+      await outbox({
+        kind: 'invitation.chained',
+        payload: { ministryInvitationId: id },
+        status: 'sent',
+        sentAt: T(at),
+        createdAt: T(at),
+      });
+    }
+    signIn('admin');
+    const rows = (await list('?status=accepted')).items.filter(
+      (r) => r.id === id,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.roles.map((r) => r.name)).toEqual(['Drums', 'Singer']);
   });
 });

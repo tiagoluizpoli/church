@@ -32,6 +32,7 @@ import {
   ChurchId,
   MinistryId,
   MinistryInvitationId,
+  RoleId,
   UserId,
 } from '@/domain/branded-ids';
 import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
@@ -1136,7 +1137,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
         inviterId: UserId.from(fixture.adminA),
         email: `${fixture.memberNoVolunteerA}@fixture.test`,
         ministryAccessLevel: 'volunteer',
-        roleIds: [fixture.roleInMinistryOneA],
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
       })
     ).id;
     const [roleRow] = await testDb

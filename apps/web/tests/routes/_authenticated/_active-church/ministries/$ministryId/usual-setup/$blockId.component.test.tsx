@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MINISTRY_ID,
   NIGHT,
+  NIGHT_ID,
   ROLES,
   SECTORS,
   SERVICE,
@@ -18,6 +19,7 @@ import {
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
+import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const getCallerCapabilities = vi.fn();
 const listUsualSetup = vi.fn();
@@ -286,8 +288,8 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
     const first = m.usual_setup_shift_label({ number: 1 });
     const second = m.usual_setup_shift_label({ number: 2 });
     expect(
-      screen.getByText(m.usual_setup_split_kept({ count: 2 })),
-    ).toBeVisible();
+      screen.getByRole('radio', { name: m.shift_split_mode_equal() }),
+    ).toBeChecked();
     expect(cell('Stage', first)).toHaveValue(2);
     expect(cell('Stage', second)).toHaveValue(5);
     await user.type(cell('Door', second), '1');
@@ -355,5 +357,219 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText(m.usual_setup_load_failed())).toBeVisible();
     expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+});
+
+describe('Shift split editing', () => {
+  const mode = (name: () => string) =>
+    screen.getByRole('radio', { name: name() });
+  const shiftLabel = (number: number) => m.usual_setup_shift_label({ number });
+  const stage = {
+    shiftIndex: 0,
+    sectorId: 'sector-stage',
+    roleId: 'role-singer',
+  };
+
+  async function chooseEqual(
+    user: ReturnType<typeof userEvent.setup>,
+    count: string,
+  ) {
+    await user.click(mode(m.shift_split_mode_equal));
+    const field = screen.getByLabelText(m.shift_split_equal_count());
+    await user.clear(field);
+    await user.type(field, count);
+  }
+
+  it('saves N equal Shifts with independent counts per Shift', async () => {
+    const user = userEvent.setup();
+    saveUsualSetupBlock.mockResolvedValue(WELCOME);
+    await openForm(WELCOME_ID);
+    await user.click(serves());
+
+    await chooseEqual(user, '3');
+    await user.type(cell('Stage', shiftLabel(1)), '2');
+    await user.type(cell('Stage', shiftLabel(3)), '4');
+    await user.type(cell('Door', shiftLabel(2)), '1');
+
+    expect(cell('Stage', shiftLabel(2))).toHaveValue(null);
+    await user.click(saveButton());
+    expect(saveUsualSetupBlock).toHaveBeenCalledWith(MINISTRY_ID, WELCOME_ID, {
+      serves: true,
+      shiftSplit: { kind: 'equal', count: 3 },
+      headcounts: [
+        { ...stage, shiftIndex: 0, peopleNeeded: 2 },
+        { ...stage, shiftIndex: 1, sectorId: 'sector-door', peopleNeeded: 1 },
+        { ...stage, shiftIndex: 2, peopleNeeded: 4 },
+      ],
+    });
+  });
+
+  it('never copies counts to new Shifts, and keeps them for an unchanged Shift identity', async () => {
+    const user = userEvent.setup();
+    await openForm(SERVICE_ID);
+
+    await chooseEqual(user, '2');
+    expect(cell('Stage', shiftLabel(1))).toHaveValue(null);
+    expect(screen.getAllByText(m.headcount_grid_empty_shift())).toHaveLength(2);
+
+    await user.click(mode(m.shift_split_mode_whole));
+    expect(cell('Stage')).toHaveValue(2);
+    expect(cell('Door')).toHaveValue(1);
+  });
+
+  it('blocks Save on an invalid equal count and keeps the typed text', async () => {
+    const user = userEvent.setup();
+    await openForm(SERVICE_ID);
+
+    await chooseEqual(user, '0');
+
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByLabelText(m.shift_split_equal_count())).toHaveValue(0);
+    expect(
+      screen.getByText(m.shift_split_count_invalid({ max: 50 })),
+    ).toBeVisible();
+    expect(screen.getByText(m.shift_split_fix_times())).toBeVisible();
+
+    await user.clear(screen.getByLabelText(m.shift_split_equal_count()));
+    await user.type(screen.getByLabelText(m.shift_split_equal_count()), '2');
+    expect(saveButton()).toBeDisabled(); // both new Shifts are still empty
+    await user.type(cell('Stage', shiftLabel(2)), '1');
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it('saves manual Shifts ordered inside the block, each with its own counts', async () => {
+    const user = userEvent.setup();
+    saveUsualSetupBlock.mockResolvedValue(SERVICE);
+    await openForm(SERVICE_ID);
+
+    await user.click(mode(m.shift_split_mode_manual));
+    // The span covering the block is the whole-block Shift: counts stay.
+    expect(cell('Stage', `${shiftLabel(1)} · 10:00–12:00`)).toHaveValue(2);
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-end-1'),
+      time: '11:00',
+    });
+    await user.click(screen.getByRole('button', { name: m.shift_split_add() }));
+    await user.type(cell('Stage', `${shiftLabel(1)} · 10:00–11:00`), '2');
+    await user.type(cell('Door', `${shiftLabel(2)} · 11:00–12:00`), '3');
+
+    await user.click(saveButton());
+
+    expect(saveUsualSetupBlock).toHaveBeenCalledWith(MINISTRY_ID, SERVICE_ID, {
+      serves: true,
+      shiftSplit: {
+        kind: 'manual',
+        spans: [
+          { startTime: '10:00', endTime: '11:00' },
+          { startTime: '11:00', endTime: '12:00' },
+        ],
+      },
+      headcounts: [
+        { ...stage, peopleNeeded: 2 },
+        { ...stage, shiftIndex: 1, sectorId: 'sector-door', peopleNeeded: 3 },
+      ],
+    });
+  });
+
+  it('refuses spans outside the block or overlapping, preserving the draft', async () => {
+    const user = userEvent.setup();
+    await openForm(SERVICE_ID);
+    await user.click(mode(m.shift_split_mode_manual));
+
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-end-1'),
+      time: '13:00',
+    });
+
+    expect(saveButton()).toBeDisabled();
+    expect(
+      screen.getByText(
+        m.shift_split_span_outside_block({ range: '10:00–12:00' }),
+      ),
+    ).toBeVisible();
+    expect(screen.getByText(m.shift_split_fix_times())).toBeVisible();
+
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-end-1'),
+      time: '11:00',
+    });
+    await user.click(screen.getByRole('button', { name: m.shift_split_add() }));
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-start-2'),
+      time: '10:30',
+    });
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByText(m.shift_split_span_overlap())).toBeVisible();
+
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-start-2'),
+      time: '11:00',
+    });
+    await user.type(cell('Stage', `${shiftLabel(1)} · 10:00–11:00`), '2');
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it('describes and accepts an overnight Shift on an overnight block', async () => {
+    const user = userEvent.setup();
+    saveUsualSetupBlock.mockResolvedValue(NIGHT);
+    await openForm(NIGHT_ID);
+    await user.click(serves());
+    await user.click(mode(m.shift_split_mode_manual));
+
+    expect(
+      screen.getByText(
+        m.span_runs_next_day({ duration: m.span_duration_hours({ hours: 4 }) }),
+      ),
+    ).toBeVisible();
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-end-1'),
+      time: '00:00',
+    });
+    await user.click(screen.getByRole('button', { name: m.shift_split_add() }));
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-end-2'),
+      time: '02:00',
+    });
+    await user.type(cell('Stage', `${shiftLabel(2)} · 00:00–02:00`), '2');
+    await user.click(saveButton());
+
+    expect(saveUsualSetupBlock).toHaveBeenCalledWith(MINISTRY_ID, NIGHT_ID, {
+      serves: true,
+      shiftSplit: {
+        kind: 'manual',
+        spans: [
+          { startTime: '22:00', endTime: '00:00' },
+          { startTime: '00:00', endTime: '02:00' },
+        ],
+      },
+      headcounts: [{ ...stage, shiftIndex: 1, peopleNeeded: 2 }],
+    });
+  });
+
+  it('keeps the whole draft when the API refuses the split', async () => {
+    const user = userEvent.setup();
+    saveUsualSetupBlock.mockRejectedValueOnce(
+      refusal(400, {
+        error: 'INVALID_SHIFT_SPLIT',
+        message: m.error_invalid_shift_split(),
+      }),
+    );
+    await openForm(SERVICE_ID);
+
+    await chooseEqual(user, '2');
+    await user.type(cell('Stage', shiftLabel(1)), '3');
+    await user.click(saveButton());
+
+    expect(
+      await screen.findByText(m.error_invalid_shift_split()),
+    ).toBeVisible();
+    expect(cell('Stage', shiftLabel(1))).toHaveValue(3);
   });
 });

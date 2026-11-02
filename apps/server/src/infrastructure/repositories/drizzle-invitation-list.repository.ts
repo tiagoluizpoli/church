@@ -93,6 +93,16 @@ function containsPattern(value: string): string {
 const inviter = alias(user, 'inviter');
 const invitee = alias(user, 'invitee');
 
+interface FilterOptionsInput {
+  churchId: string;
+  scope: InvitationListScope;
+}
+
+interface ClosuresInput {
+  churchId: string;
+  rows: { kind: InvitationListKind; id: string; closureFacts: ClosureFacts }[];
+}
+
 type ChurchStatus = 'pending' | 'accepted' | 'rejected' | 'canceled';
 
 /** What the row itself recorded about its closure; the audit trail adds the Ministry-side actor. */
@@ -257,10 +267,7 @@ export class DrizzleInvitationListRepository
   private async filterOptions({
     churchId,
     scope,
-  }: {
-    churchId: string;
-    scope: InvitationListScope;
-  }): Promise<InvitationListOptions> {
+  }: FilterOptionsInput): Promise<InvitationListOptions> {
     const isAdmin = scope.kind === 'church';
     const ministries = await getClient({ db: this.db })
       .select({ id: ministry.id, name: ministry.name })
@@ -285,14 +292,7 @@ export class DrizzleInvitationListRepository
   private async closures({
     churchId,
     rows,
-  }: {
-    churchId: string;
-    rows: {
-      kind: InvitationListKind;
-      id: string;
-      closureFacts: ClosureFacts;
-    }[];
-  }): Promise<Map<string, InvitationClosure>> {
+  }: ClosuresInput): Promise<Map<string, InvitationClosure>> {
     const closed = rows.filter((row) => row.closureFacts.status !== 'pending');
     const ministryClosed = closed.filter((row) => row.kind === 'ministry');
     const audits = new Map<

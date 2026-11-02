@@ -1,6 +1,6 @@
-import { minutesBetween } from './arithmetic';
-import type { Instant, TimeOfDay } from './brands';
-import { today } from './conversion';
+import { addCalendarDays, minutesBetween } from './arithmetic';
+import type { CalendarDay, Instant, TimeOfDay } from './brands';
+import { today, toInstant } from './conversion';
 import { DAY_MS, MINUTE_MS } from './utc-calendar';
 
 export interface Span {
@@ -48,4 +48,44 @@ export function instantSpan({ start, end, timeZone }: InstantSpanInput): Span {
   const crossesToNextDay =
     today({ instant: start, timeZone }) !== today({ instant: end, timeZone });
   return { durationMinutes, crossesToNextDay };
+}
+
+export interface TimeOfDayOffsetInput {
+  from: TimeOfDay;
+  to: TimeOfDay;
+}
+
+/** Minutes forward from `from` to the next `to` on the repeating 24h clock
+ * (0 to 1439); an earlier `to` wraps past midnight. */
+export function timeOfDayOffset({ from, to }: TimeOfDayOffsetInput): number {
+  const delta =
+    timeOfDayMinutes({ time: to }) - timeOfDayMinutes({ time: from });
+  return (delta + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+}
+
+export interface ToInstantAfterInput {
+  /** The CalendarDay on which `anchor` falls. */
+  day: CalendarDay;
+  anchor: TimeOfDay;
+  time: TimeOfDay;
+  timeZone: string;
+}
+
+/** The first occurrence of `time` at or after `anchor` on `day`: that day when
+ * the clock has not wrapped, else the next CalendarDay (overnight blocks). */
+export function toInstantAfter({
+  day,
+  anchor,
+  time,
+  timeZone,
+}: ToInstantAfterInput): Instant {
+  const wraps =
+    timeOfDayMinutes({ time: anchor }) +
+      timeOfDayOffset({ from: anchor, to: time }) >=
+    MINUTES_PER_DAY;
+  return toInstant({
+    day: wraps ? addCalendarDays({ day, days: 1 }) : day,
+    time,
+    timeZone,
+  });
 }

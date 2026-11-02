@@ -67,6 +67,7 @@ import { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
 import {
+  assertManualSplitFitsBlock,
   toSaveableUsualSetupEntry,
   UsualSetup,
 } from '../domain/entities/usual-setup';
@@ -787,6 +788,11 @@ export class DbParticipationManager implements IParticipationManager {
           `Template time block not found: ${saveable.sourceTemplateTimeBlockId}`,
         );
       }
+      assertManualSplitFitsBlock({
+        shiftSplit: saveable.shiftSplit,
+        blockStartTime: target.block.startTime,
+        blockEndTime: target.block.endTime,
+      });
       await this.assertMinistryHeadcounts({
         churchId,
         ministryId,

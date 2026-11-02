@@ -514,7 +514,9 @@ describe('Usual setup review after template changes', () => {
       churchId: CHURCH_A,
       ministryId: fixture.worshipId,
       sourceTemplateTimeBlockId: fixture.serviceId,
-      ...wholeBlock([singerAt(fixture.stageId)]),
+      serves: true,
+      shiftSplit: { kind: 'equal', count: 1 },
+      headcounts: [singerAt(fixture.stageId)],
     });
 
     await retime('10:00', '10:30');

@@ -186,12 +186,16 @@ export const sector = pgTable(
       .notNull()
       .references(() => ministry.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 255 }).notNull(),
+    /** Retired from new use; history keeps resolving it by id. */
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
   },
   (table) => [
-    uniqueIndex('sector_ministry_name_idx').on(table.ministryId, table.name),
+    uniqueIndex('sector_ministry_active_name_idx')
+      .on(table.ministryId, sql`lower(${table.name})`)
+      .where(sql`${table.archivedAt} IS NULL`),
   ],
 );
 

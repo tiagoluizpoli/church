@@ -11,6 +11,7 @@ import {
 } from '@church/db';
 import { toDate } from '@church/time';
 import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import type { ArchiveBlocker } from '../../domain/archive-blockers';
 import type {
   ArchiveRoleRecordInput,
   CreateRoleRecordInput,
@@ -23,7 +24,6 @@ import type {
   RoleRepository,
 } from '../../domain/contracts/infrastructure/role.repository';
 import type { Role } from '../../domain/entities/role';
-import type { ArchiveBlocker } from '../../domain/errors/archive-blocked';
 import { RoleNameInUseError } from '../../domain/errors/role-name-in-use';
 import { mapRole } from '../mappers/role.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';

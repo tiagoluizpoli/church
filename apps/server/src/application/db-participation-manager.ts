@@ -648,8 +648,15 @@ export class DbParticipationManager implements IParticipationManager {
     tx,
   }: AssertMinistryHeadcountsInput): Promise<void> {
     if (headcounts.length === 0) return;
-    const [sectors, roles] = await Promise.all([
-      this.sectorRepository.listByMinistry({ churchId, ministryId, tx }),
+    // Locked, not just read: an archived Sector or Role is not found for new
+    // use, and a concurrent archive cannot slip between this check and the write.
+    const [sectorIds, roles] = await Promise.all([
+      this.sectorRepository.lockActive({
+        churchId,
+        ministryId,
+        sectorIds: headcounts.map(({ sectorId }) => sectorId),
+        tx,
+      }),
       this.roleRepository.lockActiveForUse({
         churchId,
         ministryId,
@@ -657,7 +664,6 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       }),
     ]);
-    const sectorIds = new Set<string>(sectors.map((sector) => sector.id));
     const roleIds = new Set<string>(roles.map((role) => role.id));
     for (const { sectorId, roleId } of headcounts) {
       if (!sectorIds.has(sectorId)) {
@@ -726,38 +732,42 @@ export class DbParticipationManager implements IParticipationManager {
   }
 
   async upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]> {
-    await this.ministryRepository.getById({
-      churchId: input.churchId,
-      id: input.ministryId,
-    });
-    // Validate every entry through the domain entity before persisting.
-    for (const entry of input.entries) {
-      void new UsualSetup({
-        props: {
-          churchId: input.churchId,
-          ministryId: input.ministryId,
-          sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
-          serves: entry.serves,
-          shiftSplit: entry.shiftSplit,
-          headcounts: entry.headcounts,
-        },
-      });
-    }
-    // A TemplateTimeBlock of another Church is indistinguishable from a missing one.
-    const templates = await this.eventTemplateRepository.list({
-      churchId: input.churchId,
-    });
-    const churchBlockIds = new Set<string>(
-      templates.flatMap((template) => template.blocks.map((block) => block.id)),
-    );
-    for (const { sourceTemplateTimeBlockId } of input.entries) {
-      if (!churchBlockIds.has(sourceTemplateTimeBlockId)) {
-        throw new NotFoundError(
-          `Template time block not found: ${sourceTemplateTimeBlockId}`,
-        );
-      }
-    }
     return this.unitOfWork.run(async (tx) => {
+      await this.ministryRepository.getById({
+        churchId: input.churchId,
+        id: input.ministryId,
+        tx,
+      });
+      // Validate every entry through the domain entity before persisting.
+      for (const entry of input.entries) {
+        void new UsualSetup({
+          props: {
+            churchId: input.churchId,
+            ministryId: input.ministryId,
+            sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
+            serves: entry.serves,
+            shiftSplit: entry.shiftSplit,
+            headcounts: entry.headcounts,
+          },
+        });
+      }
+      // A TemplateTimeBlock of another Church is indistinguishable from a missing one.
+      const templates = await this.eventTemplateRepository.list({
+        churchId: input.churchId,
+        tx,
+      });
+      const churchBlockIds = new Set<string>(
+        templates.flatMap((template) =>
+          template.blocks.map((block) => block.id),
+        ),
+      );
+      for (const { sourceTemplateTimeBlockId } of input.entries) {
+        if (!churchBlockIds.has(sourceTemplateTimeBlockId)) {
+          throw new NotFoundError(
+            `Template time block not found: ${sourceTemplateTimeBlockId}`,
+          );
+        }
+      }
       await this.assertMinistryHeadcounts({
         churchId: input.churchId,
         ministryId: input.ministryId,
@@ -769,6 +779,7 @@ export class DbParticipationManager implements IParticipationManager {
         ),
         tx,
       });
+
       return this.usualSetupRepository.replaceForMinistry({ ...input, tx });
     });
   }

@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getIntegrationDatabaseUrl } from '../../src/integration-database-url';
 
 const MIGRATIONS = join(import.meta.dirname, '../../src/migrations');
-const MIGRATION_TAG = '0032_role-archive';
+const MIGRATION_TAG = '0033_role-archive';
 const INDEX = 'role_ministry_active_name_idx';
 const scratchName = `church_role_archive_migration_${process.pid}`;
 

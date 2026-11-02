@@ -3449,35 +3449,14 @@ paths:
                       oneOf:
                         - type: object
                           properties:
-                            ministryId:
-                              type: string
-                            ministryName:
-                              type: string
-                            kind:
-                              type: string
-                              enum:
-                                - cycle
-                            cycleId:
-                              type: string
-                            cycleName:
-                              type: string
-                          required:
-                            - ministryId
-                            - ministryName
-                            - kind
-                            - cycleId
-                            - cycleName
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            ministryId:
-                              type: string
-                            ministryName:
-                              type: string
                             kind:
                               type: string
                               enum:
                                 - requirement
+                            ministryId:
+                              type: string
+                            ministryName:
+                              type: string
                             cycleId:
                               type: string
                             cycleName:
@@ -3487,9 +3466,9 @@ paths:
                             eventTimeBlockId:
                               type: string
                           required:
+                            - kind
                             - ministryId
                             - ministryName
-                            - kind
                             - cycleId
                             - cycleName
                             - eventId
@@ -3497,26 +3476,456 @@ paths:
                           additionalProperties: false
                         - type: object
                           properties:
-                            ministryId:
-                              type: string
-                            ministryName:
-                              type: string
                             kind:
                               type: string
                               enum:
                                 - usual_setup
+                            ministryId:
+                              type: string
+                            ministryName:
+                              type: string
                             templateTimeBlockId:
                               type: string
                           required:
+                            - kind
                             - ministryId
                             - ministryName
-                            - kind
                             - templateTimeBlockId
                           additionalProperties: false
                 required:
                   - error
                   - message
-                  - blockers
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/sectors/:
+    get:
+      operationId: listSectors
+      summary: List a Ministry's active Sectors
+      tags:
+        - ministries
+      description: List the managed Ministry's active Sectors, alphabetically ignoring case.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sectors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - sectors
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    post:
+      operationId: createSector
+      summary: Add a Sector
+      tags:
+        - ministries
+      description: Add an active Sector to the managed Ministry; active names are
+        unique within it ignoring case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - name
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/sectors/{sectorId}:
+    patch:
+      operationId: renameSector
+      summary: Rename a Sector
+      tags:
+        - ministries
+      description: Rename an active Sector, keeping its identity, so history shows the
+        new name too.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - name
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: sectorId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/sectors/{sectorId}/archive:
+    post:
+      operationId: archiveSector
+      summary: Archive a Sector
+      tags:
+        - ministries
+      description: Retire an active Sector from new use, keeping its history. Refused
+        with typed blocker locations while upcoming ShiftRequirements or a
+        UsualSetup headcount use it.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: sectorId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  blockers:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            kind:
+                              type: string
+                              enum:
+                                - requirement
+                            ministryId:
+                              type: string
+                            ministryName:
+                              type: string
+                            cycleId:
+                              type: string
+                            cycleName:
+                              type: string
+                            eventId:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                          required:
+                            - kind
+                            - ministryId
+                            - ministryName
+                            - cycleId
+                            - cycleName
+                            - eventId
+                            - eventTimeBlockId
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            kind:
+                              type: string
+                              enum:
+                                - usual_setup
+                            ministryId:
+                              type: string
+                            ministryName:
+                              type: string
+                            templateTimeBlockId:
+                              type: string
+                          required:
+                            - kind
+                            - ministryId
+                            - ministryName
+                            - templateTimeBlockId
+                          additionalProperties: false
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/participation:
     get:

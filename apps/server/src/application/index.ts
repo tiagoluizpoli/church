@@ -14,6 +14,7 @@ export { DbOutboxDrainer } from './db-outbox-drainer';
 export { DbParticipationManager } from './db-participation-manager';
 export { DbPlanningEventManager } from './db-planning-event-manager';
 export { DbRedemptionManager } from './db-redemption-manager';
+export { DbSectorManager } from './db-sector-manager';
 export { DbVolunteerManager } from './db-volunteer-manager';
 export { DbVolunteerTransferManager } from './db-volunteer-transfer-manager';
 export { InvitationVerificationCodeManager } from './invitation-verification-code-manager';

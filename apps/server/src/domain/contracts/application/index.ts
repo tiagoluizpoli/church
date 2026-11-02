@@ -16,5 +16,6 @@ export * from './outbox-drainer';
 export * from './participation-manager';
 export * from './planning-event-manager';
 export * from './redemption-manager';
+export * from './sector-manager';
 export * from './volunteer-manager';
 export * from './volunteer-transfer-manager';

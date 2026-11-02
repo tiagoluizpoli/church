@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { usualSetup } from '@church/db';
+import { sector, usualSetup } from '@church/db';
 import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
 import { eq } from 'drizzle-orm';
@@ -246,6 +246,37 @@ describe('PUT /admin/ministries/:ministryId/usual-setup on Sectors', () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ error: 'NOT_FOUND' });
+  });
+
+  it('refuses an archived Sector of the Ministry with 404 and keeps the stored setup', async () => {
+    const seed = await seedUsualSetupMinistry();
+    const kept = [
+      { sectorId: seed.kidsRoomId, roleId: seed.teacherId, peopleNeeded: 1 },
+    ];
+    await putUsualSetup({ ...seed, headcounts: kept });
+    await schedulingTestDb
+      .update(sector)
+      .set({ archivedAt: new Date() })
+      .where(eq(sector.id, seed.babiesRoomId));
+
+    const response = await putUsualSetup({
+      ...seed,
+      headcounts: [
+        {
+          sectorId: seed.babiesRoomId,
+          roleId: seed.teacherId,
+          peopleNeeded: 1,
+        },
+      ],
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ error: 'NOT_FOUND' });
+    const [stored] = await schedulingTestDb
+      .select()
+      .from(usualSetup)
+      .where(eq(usualSetup.ministryId, seed.ministryId));
+    expect(stored?.headcounts).toEqual(kept);
   });
 
   it('rejects a headcount without a Sector', async () => {

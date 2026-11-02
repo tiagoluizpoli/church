@@ -76,3 +76,37 @@ export async function invalidateMinistryReads({
     ),
   );
 }
+
+export function sectorListQueryKey({
+  churchId,
+  ministryId,
+}: MinistryScopeInput) {
+  return [...MINISTRIES_QUERY_KEY, churchId, 'sectors', ministryId] as const;
+}
+
+/** The Ministry's active Sectors, alphabetical. */
+export function useSectorList({ ministryId }: UseMinistryInput) {
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  return useQuery({
+    queryKey: sectorListQueryKey({ churchId, ministryId }),
+    queryFn: () => adminApi.listSectors(ministryId),
+    retry: false,
+  });
+}
+
+/** Surfaces that offer Sectors as new-use choices. */
+const SECTOR_CHOICE_READERS = [
+  MINISTRIES_QUERY_KEY,
+  ['prepare-role-catalog'],
+  ['cycle-builder'],
+] as const;
+
+export async function invalidateSectorReads({
+  queryClient,
+}: InvalidateMinistryReadsInput): Promise<void> {
+  await Promise.all(
+    SECTOR_CHOICE_READERS.map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey }),
+    ),
+  );
+}

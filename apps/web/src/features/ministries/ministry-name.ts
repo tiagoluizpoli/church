@@ -6,6 +6,7 @@ const MAX_NAME_LENGTH = 255;
 const NAME_IN_USE_MESSAGES: Record<string, () => string> = {
   MINISTRY_NAME_IN_USE: m.error_ministry_name_in_use,
   ROLE_NAME_IN_USE: m.error_role_name_in_use,
+  SECTOR_NAME_IN_USE: m.error_sector_name_in_use,
 };
 
 export interface NameRefusal {

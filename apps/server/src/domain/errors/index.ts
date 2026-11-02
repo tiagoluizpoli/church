@@ -1,5 +1,4 @@
 export * from '../conflict/errors';
-export * from './archive-blocked';
 export * from './below-full-publish';
 export * from './check-access-denied';
 export * from './church-slug-taken';
@@ -23,4 +22,6 @@ export * from './ministry-name-in-use';
 export * from './overlapping-cycle';
 export * from './role-in-use';
 export * from './role-name-in-use';
+export * from './sector-in-use';
+export * from './sector-name-in-use';
 export * from './shift-out-of-bounds';

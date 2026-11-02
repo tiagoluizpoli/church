@@ -1,7 +1,7 @@
 import type { Instant } from '@church/time';
+import type { ArchiveBlocker } from '../../archive-blockers';
 import type { ChurchId, MinistryId, RoleId } from '../../branded-ids';
 import type { Role } from '../../entities/role';
-import type { ArchiveBlocker } from '../../errors/archive-blocked';
 import type { TransactionContext } from './transaction-context';
 
 /**

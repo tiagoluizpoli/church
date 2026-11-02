@@ -2,6 +2,9 @@ import type { DomainError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
+import type { ArchiveBlocker } from '@/domain/archive-blockers';
+import { RoleInUseError } from '@/domain/errors/role-in-use';
+import { SectorInUseError } from '@/domain/errors/sector-in-use';
 import {
   type ValidationReason,
   ValidationRuleError,
@@ -27,6 +30,15 @@ export function validationReason(
   error: DomainError,
 ): ValidationReason | undefined {
   return error instanceof ValidationRuleError ? error.reason : undefined;
+}
+
+/** The typed locations that block an archive, also sent to the client. */
+export function archiveBlockers(
+  error: DomainError,
+): ArchiveBlocker[] | undefined {
+  return error instanceof SectorInUseError || error instanceof RoleInUseError
+    ? error.blockers
+    : undefined;
 }
 
 /** The catalog text for a domain error, or undefined when its code has no entry. */

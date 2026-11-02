@@ -1,14 +1,17 @@
-import { ArchiveBlockedError, type ArchiveBlocker } from './archive-blocked';
+import { DomainError } from '@church/core';
+import type { ArchiveBlocker } from '../archive-blockers';
 
 export interface RoleInUseErrorInput {
   blockers: ArchiveBlocker[];
 }
 
-/** The Role still staffs upcoming requirements or a retained UsualSetup. */
-export class RoleInUseError extends ArchiveBlockedError {
+/** Upcoming ShiftRequirements or a UsualSetup headcount still use the Role. */
+export class RoleInUseError extends DomainError {
   readonly code = 'ROLE_IN_USE' as const;
+  readonly blockers: ArchiveBlocker[];
 
   constructor({ blockers }: RoleInUseErrorInput) {
-    super({ message: 'The Role is still used by current planning', blockers });
+    super('The Role is still used by upcoming planning or a UsualSetup');
+    this.blockers = blockers;
   }
 }

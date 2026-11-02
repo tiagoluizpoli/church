@@ -18,6 +18,7 @@ import type {
   IOutboxDrainer,
   IParticipationManager,
   IPlanningEventManager,
+  ISectorManager,
   IVolunteerManager,
   RedemptionManager,
   VolunteerTransferManager,
@@ -108,6 +109,7 @@ export interface CompositionRootDependencies {
   ministryManager: IMinistryManager;
   ministryInvitationManager: IMinistryInvitationManager;
   ministryRoleManager: IMinistryRoleManager;
+  sectorManager: ISectorManager;
   invitationVerificationCodeManager: IInvitationVerificationCodeManager;
   redemptionManager: RedemptionManager;
   volunteerTransferManager: VolunteerTransferManager;

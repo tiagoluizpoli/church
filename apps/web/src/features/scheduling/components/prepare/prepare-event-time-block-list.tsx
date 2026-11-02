@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import {
   type CalendarDay,
   compareCalendarDays,
@@ -477,6 +478,7 @@ interface EventTimeBlockRowProps {
 function EventTimeBlockRow({
   eventView,
   eventTimeBlockView,
+  ministryId,
   headcountRows,
   hasSectors,
   roleCatalogStatus,
@@ -635,6 +637,7 @@ function EventTimeBlockRow({
               <HeadcountPanel
                 eventTimeBlockView={eventTimeBlockView}
                 participationId={eventView.participation.id}
+                ministryId={ministryId}
                 headcountRows={headcountRows}
                 hasSectors={hasSectors}
                 roleCatalogStatus={roleCatalogStatus}
@@ -726,6 +729,7 @@ function SplitPanel({
 interface HeadcountPanelProps {
   eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
   participationId: string;
+  ministryId: string;
   headcountRows: HeadcountRow[];
   hasSectors: boolean;
   roleCatalogStatus: RoleCatalogStatus;
@@ -747,6 +751,7 @@ interface HeadcountPanelProps {
 function HeadcountPanel({
   eventTimeBlockView,
   participationId,
+  ministryId,
   headcountRows,
   hasSectors,
   roleCatalogStatus,
@@ -861,7 +866,17 @@ function HeadcountPanel({
                 className="text-muted-foreground text-sm"
                 data-testid={`sector-catalog-empty-${shift.id}`}
               >
-                No Sectors yet. Headcounts need at least one Sector.
+                {m.prepare_no_sectors()}{' '}
+                {/* A new tab keeps this plan; focus refetches the choices. */}
+                <a
+                  href={`/ministries/${ministryId}/sectors`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  {m.prepare_set_up_sectors()}
+                  <span className="sr-only"> {m.sectors_opens_new_tab()}</span>
+                </a>
               </p>
             ) : headcountRows.length === 0 ? (
               <p

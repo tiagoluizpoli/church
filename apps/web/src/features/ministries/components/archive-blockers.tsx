@@ -25,16 +25,13 @@ interface BlockerItemProps {
   blocker: ArchiveBlocker;
 }
 
-/** Cycle and requirement locations open the Cycle's schedule in a new tab. */
+/** A requirement location opens its Cycle's schedule in a new tab. */
 function BlockerItem({ blocker }: BlockerItemProps) {
   if (blocker.kind === 'usual_setup') {
     // shortcut: no link until Spec 14 ships the Usual setup editor (no dead links).
     return <>{m.ministry_blocker_usual_setup(blocker)}</>;
   }
-  const label =
-    blocker.kind === 'cycle'
-      ? m.ministry_blocker_cycle(blocker)
-      : m.ministry_blocker_requirement(blocker);
+  const label = m.ministry_blocker_requirement(blocker);
   return (
     <Link
       to="/schedules/$ministryId/$cycleId"
@@ -63,9 +60,7 @@ export function ArchiveBlockerList({ blockers }: ArchiveBlockerListProps) {
             key={
               blocker.kind === 'usual_setup'
                 ? `${blocker.kind}-${blocker.templateTimeBlockId}`
-                : blocker.kind === 'requirement'
-                  ? `${blocker.kind}-${blocker.eventTimeBlockId}`
-                  : `${blocker.kind}-${blocker.cycleId}`
+                : `${blocker.kind}-${blocker.eventTimeBlockId}`
             }
           >
             <BlockerItem blocker={blocker} />

@@ -11,12 +11,14 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
 const getMinistry = vi.fn();
+const listSectors = vi.fn(async () => ({ sectors: [] }));
 const renameMinistry = vi.fn();
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     getMinistry: (...args: unknown[]) => getMinistry(...args),
+    listSectors: () => listSectors(),
     renameMinistry: (...args: unknown[]) => renameMinistry(...args),
   },
   callerCapabilitiesApi: {

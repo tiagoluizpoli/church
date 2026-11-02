@@ -5,6 +5,8 @@ export interface SectorProps {
   churchId: ChurchId;
   ministryId: MinistryId;
   name: string;
+  /** Set once archived: hidden from new use, still resolvable for history. */
+  archivedAt?: Date;
 }
 
 export interface SectorInput {
@@ -28,5 +30,9 @@ export class Sector extends Entity<SectorProps, SectorId> {
 
   get name(): string {
     return this._props.name;
+  }
+
+  get archivedAt(): Date | undefined {
+    return this._props.archivedAt;
   }
 }

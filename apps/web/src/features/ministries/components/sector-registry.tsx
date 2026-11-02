@@ -1,6 +1,5 @@
 import { m } from '@church/i18n/messages';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -22,6 +21,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  type ArchiveBlocker,
+  ArchiveBlockerList,
+  archiveBlockersOf,
+} from '@/features/ministries/components/archive-blockers';
 import { MinistryNameForm } from '@/features/ministries/components/ministry-name-form';
 import {
   invalidateSectorReads,
@@ -29,7 +33,6 @@ import {
 } from '@/features/ministries/ministry-queries';
 import type {
   ArchiveSector409,
-  ArchiveSector409BlockersItem,
   ListSectors200SectorsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
@@ -261,7 +264,7 @@ interface ArchiveSectorDialogProps {
 
 interface Refusal {
   message: string;
-  blockers: ArchiveSector409BlockersItem[];
+  blockers: ArchiveBlocker[];
 }
 
 /** Confirmation, then the guarded archive; a blocker keeps the Sector as it is. */
@@ -289,7 +292,7 @@ function ArchiveSectorDialog({
         : undefined;
       setRefused({
         message: body?.message ?? m.ministries_save_failed(),
-        blockers: body?.blockers ?? [],
+        blockers: archiveBlockersOf({ error }) ?? [],
       });
     } finally {
       setPending(false);
@@ -315,18 +318,16 @@ function ArchiveSectorDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         {refused ? (
-          <div className="space-y-2" role="alert">
-            <p className="text-destructive text-sm">{refused.message}</p>
-            {refused.blockers.length > 0 ? (
-              <ul className="list-disc space-y-1 pl-5 text-sm">
-                {refused.blockers.map((blocker) => (
-                  <li key={blockerKey({ blocker })}>
-                    <BlockerLink blocker={blocker} />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
+          refused.blockers.length > 0 ? (
+            <ArchiveBlockerList
+              heading={refused.message}
+              blockers={refused.blockers}
+            />
+          ) : (
+            <p className="text-destructive text-sm" role="alert">
+              {refused.message}
+            </p>
+          )
         ) : null}
         <AlertDialogFooter>
           {refused ? (
@@ -360,50 +361,5 @@ function ArchiveSectorDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
-}
-
-interface BlockerLinkProps {
-  blocker: ArchiveSector409BlockersItem;
-}
-
-function blockerKey({ blocker }: BlockerLinkProps): string {
-  if (blocker.kind === 'cycle') return `cycle-${blocker.cycleId}`;
-  return blocker.kind === 'requirement'
-    ? `requirement-${blocker.eventTimeBlockId}`
-    : `usual-setup-${blocker.templateTimeBlockId}`;
-}
-
-/** Each location opens in a new tab, keeping this page's context. */
-function BlockerLink({ blocker }: BlockerLinkProps) {
-  const newTab = <span className="sr-only"> {m.sectors_opens_new_tab()}</span>;
-  if (blocker.kind !== 'usual_setup') {
-    return (
-      <Link
-        to="/schedules/$ministryId/$cycleId"
-        params={{ ministryId: blocker.ministryId, cycleId: blocker.cycleId }}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="underline"
-      >
-        {m.sectors_blocker_requirement({
-          ministryName: blocker.ministryName,
-          cycleName: blocker.cycleName,
-        })}
-        {newTab}
-      </Link>
-    );
-  }
-  return (
-    <Link
-      to="/ministries/$ministryId/usual-setup"
-      params={{ ministryId: blocker.ministryId }}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="underline"
-    >
-      {m.sectors_blocker_usual_setup({ ministryName: blocker.ministryName })}
-      {newTab}
-    </Link>
   );
 }

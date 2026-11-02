@@ -2,11 +2,20 @@ import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import type {
-  ArchiveMinistryRole409,
+  ArchiveMinistry409BlockersItem,
   ArchiveMinistryRole409BlockersItem,
+  ArchiveSector409BlockersItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 
-export type ArchiveBlocker = ArchiveMinistryRole409BlockersItem;
+/** The blocker shape is shared by every archive 409; orval emits one copy per route. */
+export type ArchiveBlocker =
+  | ArchiveMinistry409BlockersItem
+  | ArchiveMinistryRole409BlockersItem
+  | ArchiveSector409BlockersItem;
+
+interface ArchiveBlockedBody {
+  blockers?: ArchiveBlocker[];
+}
 
 interface ArchiveErrorInput {
   error: unknown;
@@ -16,7 +25,7 @@ interface ArchiveErrorInput {
 export function archiveBlockersOf({
   error,
 }: ArchiveErrorInput): ArchiveBlocker[] | undefined {
-  if (!isAxiosError<ArchiveMinistryRole409>(error)) return undefined;
+  if (!isAxiosError<ArchiveBlockedBody>(error)) return undefined;
   if (error.response?.status !== 409) return undefined;
   return error.response.data?.blockers;
 }
@@ -25,13 +34,23 @@ interface BlockerItemProps {
   blocker: ArchiveBlocker;
 }
 
-/** A requirement location opens its Cycle's schedule in a new tab. */
+/** Each location opens in a new tab, keeping this page's context. */
 function BlockerItem({ blocker }: BlockerItemProps) {
+  const newTab = <span className="sr-only"> {m.sectors_opens_new_tab()}</span>;
   if (blocker.kind === 'usual_setup') {
-    // shortcut: no link until Spec 14 ships the Usual setup editor (no dead links).
-    return <>{m.ministry_blocker_usual_setup(blocker)}</>;
+    return (
+      <Link
+        to="/ministries/$ministryId/usual-setup"
+        params={{ ministryId: blocker.ministryId }}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline underline-offset-4"
+      >
+        {m.ministry_blocker_usual_setup(blocker)}
+        {newTab}
+      </Link>
+    );
   }
-  const label = m.ministry_blocker_requirement(blocker);
   return (
     <Link
       to="/schedules/$ministryId/$cycleId"
@@ -40,20 +59,25 @@ function BlockerItem({ blocker }: BlockerItemProps) {
       rel="noopener noreferrer"
       className="underline underline-offset-4"
     >
-      {label}
+      {m.ministry_blocker_requirement(blocker)}
+      {newTab}
     </Link>
   );
 }
 
 interface ArchiveBlockerListProps {
+  heading: string;
   blockers: ArchiveBlocker[];
 }
 
 /** Where current planning still uses an item, derived from IDs only. */
-export function ArchiveBlockerList({ blockers }: ArchiveBlockerListProps) {
+export function ArchiveBlockerList({
+  heading,
+  blockers,
+}: ArchiveBlockerListProps) {
   return (
     <div className="space-y-2 text-sm" role="alert">
-      <p>{m.ministry_roles_archive_blocked()}</p>
+      <p>{heading}</p>
       <ul className="list-disc space-y-1 pl-5">
         {blockers.map((blocker) => (
           <li

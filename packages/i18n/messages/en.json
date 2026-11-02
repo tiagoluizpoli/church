@@ -457,8 +457,6 @@
   "sectors_archiving": "Archiving…",
   "sectors_archived_toast": "Sector archived",
   "sectors_close": "Close",
-  "sectors_blocker_requirement": "{ministryName} planning in {cycleName}",
-  "sectors_blocker_usual_setup": "{ministryName} Usual setup",
   "sectors_opens_new_tab": "(opens in a new tab)",
   "prepare_no_sectors": "No Sectors yet. Headcounts need at least one Sector.",
   "prepare_set_up_sectors": "Set up Sectors",

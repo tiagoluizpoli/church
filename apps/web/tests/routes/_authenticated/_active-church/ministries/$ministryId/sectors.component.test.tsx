@@ -262,7 +262,7 @@ describe('/ministries/$ministryId/sectors', () => {
     ).toBeVisible();
     const requirement = within(dialog).getByRole('link', {
       name: new RegExp(
-        m.sectors_blocker_requirement({
+        m.ministry_blocker_requirement({
           ministryName: 'Worship',
           cycleName: 'June',
         }),
@@ -275,7 +275,7 @@ describe('/ministries/$ministryId/sectors', () => {
     expect(requirement).toHaveAttribute('target', '_blank');
     const usualSetup = within(dialog).getByRole('link', {
       name: new RegExp(
-        m.sectors_blocker_usual_setup({ ministryName: 'Worship' }),
+        m.ministry_blocker_usual_setup({ ministryName: 'Worship' }),
       ),
     });
     expect(usualSetup).toHaveAttribute(

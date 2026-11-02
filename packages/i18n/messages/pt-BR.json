@@ -457,8 +457,6 @@
   "sectors_archiving": "Arquivando…",
   "sectors_archived_toast": "Setor arquivado",
   "sectors_close": "Fechar",
-  "sectors_blocker_requirement": "Planejamento de {ministryName} em {cycleName}",
-  "sectors_blocker_usual_setup": "Configuração padrão de {ministryName}",
   "sectors_opens_new_tab": "(abre em uma nova aba)",
   "prepare_no_sectors": "Nenhum setor ainda. As vagas precisam de pelo menos um setor.",
   "prepare_set_up_sectors": "Configurar setores",

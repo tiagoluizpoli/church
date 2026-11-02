@@ -243,7 +243,12 @@ function ArchiveRoleDialog({
             {m.ministry_roles_archive_description()}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {blockers ? <ArchiveBlockerList blockers={blockers} /> : null}
+        {blockers ? (
+          <ArchiveBlockerList
+            heading={m.ministry_roles_archive_blocked()}
+            blockers={blockers}
+          />
+        ) : null}
         {failed ? (
           <p className="text-destructive text-sm" role="alert">
             {m.ministry_roles_archive_failed()}

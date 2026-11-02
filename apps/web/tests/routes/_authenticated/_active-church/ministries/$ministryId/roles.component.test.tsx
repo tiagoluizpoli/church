@@ -292,21 +292,28 @@ describe('/ministries/$ministryId/roles', () => {
       await within(dialog).findByText(m.ministry_roles_archive_blocked()),
     ).toBeVisible();
     const link = within(dialog).getByRole('link', {
-      name: m.ministry_blocker_requirement({
-        cycleName: 'November',
-        ministryName: 'Worship',
-      }),
+      name: new RegExp(
+        m.ministry_blocker_requirement({
+          cycleName: 'November',
+          ministryName: 'Worship',
+        }),
+      ),
     });
     expect(link).toHaveAttribute(
       'href',
       `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     );
     expect(link).toHaveAttribute('target', '_blank');
-    expect(
-      within(dialog).getByText(
+    const usualSetup = within(dialog).getByRole('link', {
+      name: new RegExp(
         m.ministry_blocker_usual_setup({ ministryName: 'Worship' }),
       ),
-    ).toBeVisible();
+    });
+    expect(usualSetup).toHaveAttribute(
+      'href',
+      `/ministries/${MINISTRY_ID}/usual-setup`,
+    );
+    expect(usualSetup).toHaveAttribute('target', '_blank');
     // The Role stays listed behind the still-open dialog.
     expect(
       screen.getAllByTestId('role-name').map((row) => row.textContent),

@@ -15,8 +15,8 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { ministryArchiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import {
-  archiveBlockedResponseSchema,
   type MinistryNameBody,
   ministryListResponseSchema,
   ministryMapper,
@@ -244,7 +244,7 @@ export class MinistryController implements FastifyController {
             401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
-            409: archiveBlockedResponseSchema,
+            409: ministryArchiveBlockedResponseSchema,
           },
         },
       },

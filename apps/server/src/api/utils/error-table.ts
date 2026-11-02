@@ -35,6 +35,8 @@ export type MappedDomainCode =
   | 'MINISTRY_NOT_FOUND'
   | 'MINISTRY_NAME_IN_USE'
   | 'MINISTRY_IN_USE'
+  | 'SECTOR_NAME_IN_USE'
+  | 'SECTOR_IN_USE'
   | 'CHECK_ACCESS_DENIED'
   | 'ASSIGNMENT_ACCESS_DENIED'
   | 'ASSIGN_ACTION_NOT_AVAILABLE'
@@ -85,6 +87,8 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 409,
     message: m.error_ministry_name_in_use,
   },
+  SECTOR_NAME_IN_USE: { status: 409, message: m.error_sector_name_in_use },
+  SECTOR_IN_USE: { status: 409, message: m.error_sector_in_use },
   CHECK_ACCESS_DENIED: { status: 403, message: m.error_check_access_denied },
   ASSIGNMENT_ACCESS_DENIED: {
     status: 403,

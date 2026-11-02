@@ -206,6 +206,12 @@ function createRepos(): Repos {
   const sectorRepo: SectorRepository = {
     getById: vi.fn(),
     listByMinistry: vi.fn(async () => []),
+    lockActive: vi.fn(),
+    create: vi.fn(),
+    rename: vi.fn(),
+    lockForArchive: vi.fn(),
+    listArchiveBlockers: vi.fn(),
+    markArchived: vi.fn(),
   };
 
   const ministryParticipationRepo: MinistryParticipationRepository = {

@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { sector, shiftRequirement } from '@church/db';
+import { eq } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -268,6 +270,32 @@ describe('PUT /prepare/shifts/:shiftId/requirements on Sectors', () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ error: 'NOT_FOUND' });
+  });
+
+  it('refuses an archived Sector of the Ministry with 404 and writes nothing', async () => {
+    const seed = await seedPreparingShift();
+    await schedulingTestDb
+      .update(sector)
+      .set({ archivedAt: new Date() })
+      .where(eq(sector.id, seed.babiesRoomId));
+
+    const response = await putRequirement({
+      shiftId: seed.shiftId,
+      payload: {
+        sectorId: seed.babiesRoomId,
+        roleId: seed.teacherId,
+        peopleNeeded: 1,
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ error: 'NOT_FOUND' });
+    expect(
+      await schedulingTestDb
+        .select()
+        .from(shiftRequirement)
+        .where(eq(shiftRequirement.sectorId, seed.babiesRoomId)),
+    ).toEqual([]);
   });
 
   it('refuses a Role of another Ministry with 404', async () => {

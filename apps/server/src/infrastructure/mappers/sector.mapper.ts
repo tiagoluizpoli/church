@@ -11,6 +11,7 @@ export function mapSector(row: SectorRow): Sector {
       churchId: row.churchId as ChurchId,
       ministryId: row.ministryId as MinistryId,
       name: row.name,
+      archivedAt: row.archivedAt ?? undefined,
     },
     id: row.id,
     createdAt: row.createdAt,

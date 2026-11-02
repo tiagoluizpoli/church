@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios';
 
 const MAX_NAME_LENGTH = 255;
 const NAME_IN_USE = 'MINISTRY_NAME_IN_USE';
+const SECTOR_NAME_IN_USE = 'SECTOR_NAME_IN_USE';
 
 export interface NameRefusal {
   nameError?: string;
@@ -36,6 +37,8 @@ export function toNameRefusal({ error }: SaveErrorInput): NameRefusal {
     : undefined;
   if (code === NAME_IN_USE)
     return { nameError: m.error_ministry_name_in_use() };
+  if (code === SECTOR_NAME_IN_USE)
+    return { nameError: m.error_sector_name_in_use() };
   return { formError: m.ministries_save_failed() };
 }
 

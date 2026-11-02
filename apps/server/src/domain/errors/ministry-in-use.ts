@@ -1,14 +1,5 @@
 import { DomainError } from '@church/core';
-import type { CycleId, MinistryId } from '../branded-ids';
-
-/** A Cycle whose not-yet-ended Event the Ministry still participates in. */
-export interface CycleArchiveBlocker {
-  kind: 'cycle';
-  ministryId: MinistryId;
-  ministryName: string;
-  cycleId: CycleId;
-  cycleName: string;
-}
+import type { CycleArchiveBlocker } from '../archive-blockers';
 
 interface MinistryInUseErrorInput {
   blockers: CycleArchiveBlocker[];

@@ -26,8 +26,8 @@ export interface ArchiveSectorInput {
 }
 
 /**
- * A Ministry's Sector registry. Callers have already admitted the manager and
- * resolved the active Ministry; a Sector outside it is not found.
+ * A Ministry's Sector registry. Callers have already admitted the manager; an
+ * archived Ministry, or a Sector outside it, is not found.
  */
 export interface ISectorManager {
   /** Active Sectors, alphabetical ignoring case. */

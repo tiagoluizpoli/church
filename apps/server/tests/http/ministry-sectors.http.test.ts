@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { NotFoundError } from '@church/core';
 import { ministry, sector } from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
@@ -25,6 +26,7 @@ import { SectorController } from '@/api/controllers/sector-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DbSectorManager } from '@/application/db-sector-manager';
+import { ChurchId, MinistryId, SectorId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
@@ -106,6 +108,7 @@ beforeAll(async () => {
     }),
     sectorManager: new DbSectorManager({
       sectorRepository: new DrizzleSectorRepository({ db }),
+      ministryRepository: ministryRepo,
       unitOfWork: new DrizzleUnitOfWork({ db }),
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -859,6 +862,35 @@ describe('archive racing a UsualSetup write', () => {
     expect(read.json().entries[0].headcounts).toEqual([
       { sectorId: fixture.stageId, roleId: fixture.roleId, peopleNeeded: 2 },
     ]);
+  });
+});
+
+describe('DbSectorManager on an archived Ministry', () => {
+  it('refuses create, rename and archive itself, not only through the controller', async () => {
+    const db = schedulingTestDb;
+    const manager = new DbSectorManager({
+      sectorRepository: new DrizzleSectorRepository({ db }),
+      ministryRepository: new DrizzleMinistryRepository({ db }),
+      unitOfWork: new DrizzleUnitOfWork({ db }),
+    });
+    const scope = {
+      churchId: ChurchId.from(CHURCH_A),
+      ministryId: MinistryId.from(fixture.archivedMinistryId),
+    };
+
+    await expect(manager.create({ ...scope, name: 'Lobby' })).rejects.toThrow(
+      NotFoundError,
+    );
+    await expect(
+      manager.rename({
+        ...scope,
+        sectorId: SectorId.from(fixture.babiesId),
+        name: 'Nursery',
+      }),
+    ).rejects.toThrow(NotFoundError);
+    await expect(
+      manager.archive({ ...scope, sectorId: SectorId.from(fixture.babiesId) }),
+    ).rejects.toThrow(NotFoundError);
   });
 });
 

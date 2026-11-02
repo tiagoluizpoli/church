@@ -145,7 +145,11 @@ export function buildManagers({
     });
   const sectorManager =
     overrides.sectorManager ??
-    new DbSectorManager({ sectorRepository, unitOfWork });
+    new DbSectorManager({
+      ministryRepository,
+      sectorRepository,
+      unitOfWork,
+    });
   const ministryInvitationManager =
     overrides.ministryInvitationManager ??
     new DbMinistryInvitationManager({

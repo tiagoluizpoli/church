@@ -3,6 +3,7 @@ import type {
   ChurchId,
   EventId,
   EventTimeBlockId,
+  MinistryId,
   TemplateTimeBlockId,
 } from '../domain/branded-ids';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
@@ -19,9 +20,9 @@ import {
 
 /** The Church's Usual setup as read inside the seeding transaction. */
 export interface UsualSetupSeedContext {
-  entriesByMinistry: Map<string, ProfileSeederEntry[]>;
+  entriesByMinistry: Map<MinistryId, ProfileSeederEntry[]>;
   /** Active Ministries only; a Ministry absent here is never seeded. */
-  directionByMinistry: Map<string, DefaultDirection>;
+  directionByMinistry: Map<MinistryId, DefaultDirection>;
   globalDefaultAllIn: boolean;
   timeZone: string;
 }
@@ -94,26 +95,22 @@ export class UsualSetupStaffingSeeder {
       tx,
     });
 
-    const entriesByMinistry = new Map<string, ProfileSeederEntry[]>();
+    const entriesByMinistry = new Map<MinistryId, ProfileSeederEntry[]>();
     for (const entry of entries) {
-      const ministryEntries =
-        entriesByMinistry.get(entry.ministryId as string) ?? [];
+      const ministryEntries = entriesByMinistry.get(entry.ministryId) ?? [];
       ministryEntries.push({
         sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
         serves: entry.serves,
         shiftSplit: entry.shiftSplit,
         headcounts: entry.headcounts,
       });
-      entriesByMinistry.set(entry.ministryId as string, ministryEntries);
+      entriesByMinistry.set(entry.ministryId, ministryEntries);
     }
 
     return {
       entriesByMinistry,
       directionByMinistry: new Map(
-        ministries.map((ministry) => [
-          ministry.id as string,
-          ministry.defaultDirection,
-        ]),
+        ministries.map((ministry) => [ministry.id, ministry.defaultDirection]),
       ),
       globalDefaultAllIn: false,
       timeZone,
@@ -126,11 +123,11 @@ export class UsualSetupStaffingSeeder {
     setup,
     tx,
   }: SeedStaffingInput): Promise<void> {
-    const blocksByEvent = new Map<string, StaffingSeedEventTimeBlock[]>();
+    const blocksByEvent = new Map<EventId, StaffingSeedEventTimeBlock[]>();
     for (const block of eventTimeBlocks) {
-      const blocks = blocksByEvent.get(block.eventId as string) ?? [];
+      const blocks = blocksByEvent.get(block.eventId) ?? [];
       blocks.push(block);
-      blocksByEvent.set(block.eventId as string, blocks);
+      blocksByEvent.set(block.eventId, blocks);
     }
 
     for (const blocks of blocksByEvent.values()) {
@@ -144,7 +141,7 @@ export class UsualSetupStaffingSeeder {
 
       for (const block of blocks) {
         for (const participation of participations) {
-          const ministryId = participation.ministryId as string;
+          const ministryId = participation.ministryId;
           const direction = setup.directionByMinistry.get(ministryId);
           if (!direction) continue;
 

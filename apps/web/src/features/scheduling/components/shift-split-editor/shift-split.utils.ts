@@ -196,8 +196,9 @@ export function toShiftSplit({ draft }: DraftInput): ShiftSplitValue {
       kind: 'manual',
       spans: draft.spans.map((span) => ({
         ...(span.label.trim() ? { label: span.label.trim() } : {}),
-        startTime: span.startTime as TimeOfDay,
-        endTime: span.endTime as TimeOfDay,
+        // A draft with no problems has both times; null would throw here.
+        startTime: parseTimeOfDay({ value: span.startTime ?? '' }),
+        endTime: parseTimeOfDay({ value: span.endTime ?? '' }),
       })),
     };
   }

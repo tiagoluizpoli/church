@@ -79,7 +79,7 @@ import {
 import { ShiftSplitter } from '../domain/services/shift-splitter';
 import {
   splitFitsBlock,
-  templateBlockBounds,
+  wallClockUtcBounds,
 } from '../domain/services/usual-setup-planner';
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
@@ -1694,7 +1694,7 @@ function toUsualSetupBlockView({
       entry.shiftSplit.kind === 'manual' &&
       !splitFitsBlock({
         shiftSplit: entry.shiftSplit,
-        ...templateBlockBounds(block),
+        ...wallClockUtcBounds(block),
       }),
   };
 }

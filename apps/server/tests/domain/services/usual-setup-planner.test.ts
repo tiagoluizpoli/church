@@ -4,7 +4,7 @@ import type { RoleId, SectorId } from '@/domain/branded-ids';
 import {
   planUsualSetupShifts,
   splitFitsBlock,
-  templateBlockBounds,
+  wallClockUtcBounds,
 } from '@/domain/services/usual-setup-planner';
 
 const sectorA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as SectorId;
@@ -92,7 +92,7 @@ describe('usual setup planner', () => {
   });
 
   it('rejects overlapping and zero-length spans', () => {
-    const block = templateBlockBounds({
+    const block = wallClockUtcBounds({
       startTime: t('09:00'),
       endTime: t('12:00'),
     });

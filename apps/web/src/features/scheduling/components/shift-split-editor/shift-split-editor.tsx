@@ -85,15 +85,12 @@ export function ShiftSplitEditor({
       <legend className="font-medium text-sm">{m.shift_split_legend()}</legend>
       <RadioGroup
         value={draft.mode}
-        onValueChange={(mode) =>
-          onChange(
-            changeShiftSplitMode({
-              draft,
-              mode: mode as ShiftSplitMode,
-              block,
-            }),
-          )
-        }
+        onValueChange={(value) => {
+          const option = MODES.find(({ mode }) => mode === value);
+          if (option) {
+            onChange(changeShiftSplitMode({ draft, mode: option.mode, block }));
+          }
+        }}
       >
         {MODES.map(({ mode, label }) => (
           <div key={mode} className="flex items-center gap-2">

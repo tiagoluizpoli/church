@@ -83,7 +83,7 @@ function renderEditor(blockId: string) {
 
 const WHOLE = () => m.usual_setup_whole_block_shift();
 
-function cell(sector: string, shift = WHOLE()) {
+function cell(sector: string, shift: string = WHOLE()) {
   return screen.getByRole('spinbutton', {
     name: m.headcount_grid_cell_label({ role: 'Singer', sector, shift }),
   });

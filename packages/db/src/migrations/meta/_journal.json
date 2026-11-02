@@ -225,6 +225,13 @@
       "when": 1793577336961,
       "tag": "0031_ministry-active-name",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793579117688,
+      "tag": "0032_role-archive",
+      "breakpoints": true
     }
   ]
 }

@@ -21,7 +21,7 @@ import {
   volunteer,
   volunteerTransfer,
 } from '@church/db';
-import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import {
   type ChurchId,
   MinistryId,
@@ -221,6 +221,63 @@ export class DrizzleVolunteerTransferRepository
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
 
+    // 3b. The destination Ministry and every invited Role must still be active;
+    //     share locks serialize with a concurrent archive. Refusing here, before
+    //     any write, leaves the source profile and the invitation untouched.
+    const [activeMinistry] = await db
+      .select({ id: ministry.id })
+      .from(ministry)
+      .where(
+        and(
+          withChurchIsolation({
+            table: ministry,
+            churchId: destinationChurchId,
+          }),
+          eq(ministry.id, invitationRow.ministryId),
+          isNull(ministry.deletedAt),
+        ),
+      )
+      .for('share');
+    const invitedRoleIds = (
+      await db
+        .select({ roleId: ministryInvitationRole.roleId })
+        .from(ministryInvitationRole)
+        .where(
+          and(
+            withChurchIsolation({
+              table: ministryInvitationRole,
+              churchId: destinationChurchId,
+            }),
+            eq(
+              ministryInvitationRole.ministryInvitationId,
+              ministryInvitationId,
+            ),
+          ),
+        )
+    ).map(({ roleId }) => roleId);
+    const activeRoles =
+      invitedRoleIds.length === 0
+        ? []
+        : await db
+            .select({ id: role.id })
+            .from(role)
+            .where(
+              and(
+                withChurchIsolation({
+                  table: role,
+                  churchId: destinationChurchId,
+                }),
+                eq(role.ministryId, invitationRow.ministryId),
+                inArray(role.id, invitedRoleIds),
+                isNull(role.archivedAt),
+              ),
+            )
+            .orderBy(asc(role.id))
+            .for('share');
+    if (!activeMinistry || activeRoles.length !== invitedRoleIds.length) {
+      return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
+    }
+
     // 4. Retire the old profile (successor pointer set in step 9).
     await db
       .update(volunteer)
@@ -330,23 +387,11 @@ export class DrizzleVolunteerTransferRepository
       volunteerId: newProfile.id,
       ministryAccessLevel: invitationRow.ministryAccessLevel,
     });
-    const invitedRoles = await db
-      .select({ roleId: ministryInvitationRole.roleId })
-      .from(ministryInvitationRole)
-      .where(
-        and(
-          withChurchIsolation({
-            table: ministryInvitationRole,
-            churchId: destinationChurchId,
-          }),
-          eq(ministryInvitationRole.ministryInvitationId, ministryInvitationId),
-        ),
-      );
     await grantMinistryMembershipRoles({
       db,
       churchId: destinationChurchId,
       ministryMembershipId: newMembershipId,
-      roleIds: invitedRoles.map(({ roleId }) => roleId),
+      roleIds: invitedRoleIds,
     });
 
     // 9. Make the retirement chain walkable without an audit query.

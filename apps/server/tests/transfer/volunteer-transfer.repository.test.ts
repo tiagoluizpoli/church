@@ -4,12 +4,14 @@ import {
   availabilityCheck,
   church,
   identityAudit,
+  ministry,
   ministryInvitation,
   ministryInvitationRole,
   ministryMembership,
   ministryMembershipRole,
   ministryMembershipTeam,
   outboxMessage,
+  role,
   shift,
   shiftRequirement,
   volunteer,
@@ -404,6 +406,46 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     expect(oldProfile?.leftAt).toBeNull();
     const transfers = await testDb.select().from(volunteerTransfer);
     expect(transfers).toHaveLength(0);
+  });
+
+  it.each([
+    {
+      label: 'an archived destination Ministry',
+      archive: () =>
+        testDb
+          .update(ministry)
+          .set({ deletedAt: new Date() })
+          .where(eq(ministry.id, fixture.ministryOneA)),
+    },
+    {
+      label: 'an archived invited Role',
+      archive: () =>
+        testDb
+          .update(role)
+          .set({ archivedAt: new Date() })
+          .where(eq(role.id, fixture.roleInMinistryOneA)),
+    },
+  ])('refuses the transfer into $label, changing nothing', async ({
+    archive,
+  }) => {
+    await archive();
+
+    expect(await runTransfer()).toEqual({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+
+    const [oldProfile] = await testDb
+      .select({ leftAt: volunteer.leftAt })
+      .from(volunteer)
+      .where(eq(volunteer.id, fixture.dualMemberABVolunteerInB));
+    expect(oldProfile?.leftAt).toBeNull();
+    expect(await testDb.select().from(volunteerTransfer)).toHaveLength(0);
+    const [stillPending] = await testDb
+      .select({ status: ministryInvitation.status })
+      .from(ministryInvitation)
+      .where(eq(ministryInvitation.id, invitationId));
+    expect(stillPending?.status).toBe('pending');
   });
 });
 

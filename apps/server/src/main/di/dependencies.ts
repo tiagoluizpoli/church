@@ -13,10 +13,12 @@ import type {
   InvitationVerificationCodeManager as IInvitationVerificationCodeManager,
   IMinistryInvitationManager,
   IMinistryManager,
+  IMinistryRoleManager,
   INotificationManager,
   IOutboxDrainer,
   IParticipationManager,
   IPlanningEventManager,
+  ISectorManager,
   IVolunteerManager,
   RedemptionManager,
   VolunteerTransferManager,
@@ -106,6 +108,8 @@ export interface CompositionRootDependencies {
   availabilityCheckManager: IAvailabilityCheckManager;
   ministryManager: IMinistryManager;
   ministryInvitationManager: IMinistryInvitationManager;
+  ministryRoleManager: IMinistryRoleManager;
+  sectorManager: ISectorManager;
   invitationVerificationCodeManager: IInvitationVerificationCodeManager;
   redemptionManager: RedemptionManager;
   volunteerTransferManager: VolunteerTransferManager;

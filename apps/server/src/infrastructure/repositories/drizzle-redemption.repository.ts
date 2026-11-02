@@ -9,7 +9,7 @@ import {
   role,
   volunteer,
 } from '@church/db';
-import { and, eq, gt, inArray } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryId,
@@ -391,9 +391,12 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
         and(
           withChurchIsolation({ table: ministry, churchId }),
           eq(ministry.id, ministryId),
+          isNull(ministry.deletedAt),
         ),
       )
-      .limit(1);
+      .limit(1)
+      // Serializes with a concurrent archive (see `MinistryRepository.lockActive`).
+      .for('share');
     if (!scopedMinistry) throw new PendingMinistryInvitationNotFoundError();
 
     const roleIds = invitationRoles.map(({ roleId }) => roleId);
@@ -406,8 +409,12 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
           withChurchIsolation({ table: role, churchId }),
           eq(role.ministryId, ministryId),
           inArray(role.id, roleIds),
+          isNull(role.archivedAt),
         ),
-      );
+      )
+      .orderBy(asc(role.id))
+      // Serializes with a concurrent Role archive (see `RoleRepository.lockActiveForUse`).
+      .for('share');
     if (scopedRoles.length !== roleIds.length) {
       throw new PendingMinistryInvitationNotFoundError();
     }

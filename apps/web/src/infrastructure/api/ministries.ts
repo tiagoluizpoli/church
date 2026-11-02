@@ -5,9 +5,27 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  ArchiveMinistry204,
+  ArchiveMinistryRole204,
+  ArchiveSector204,
+  CreateMinistry201,
+  CreateMinistryBody,
+  CreateMinistryRole201,
+  CreateMinistryRoleBody,
+  CreateSector201,
+  CreateSectorBody,
+  GetMinistry200,
   ListMinistries200,
+  ListMinistryRoles200,
+  ListSectors200,
   MintMinistryInvitation201,
   MintMinistryInvitationBody,
+  RenameMinistry200,
+  RenameMinistryBody,
+  RenameMinistryRole200,
+  RenameMinistryRoleBody,
+  RenameSector200,
+  RenameSectorBody,
   ResendMinistryInvitation200
 } from './churchAPI.schemas';
 
@@ -26,6 +44,59 @@ const listMinistries = (
  ) => {
       return apiClient<ListMinistries200>(
       {url: `/api/v1/ministries/`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Create an active Ministry in the Active Church. ChurchAdmin only; active names are unique ignoring case.
+ * @summary Create a Ministry
+ */
+const createMinistry = (
+    createMinistryBody: CreateMinistryBody,
+ ) => {
+      return apiClient<CreateMinistry201>(
+      {url: `/api/v1/ministries/`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createMinistryBody
+    },
+      );
+    }
+  /**
+ * Get an active Ministry the caller manages: any for a ChurchAdmin, a led one for a Ministry leader.
+ * @summary Get a managed Ministry
+ */
+const getMinistry = (
+    ministryId: string,
+ ) => {
+      return apiClient<GetMinistry200>(
+      {url: `/api/v1/ministries/${ministryId}`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Rename an active Ministry, keeping its identity. ChurchAdmin only; active names are unique ignoring case.
+ * @summary Rename a Ministry
+ */
+const renameMinistry = (
+    ministryId: string,
+    renameMinistryBody: RenameMinistryBody,
+ ) => {
+      return apiClient<RenameMinistry200>(
+      {url: `/api/v1/ministries/${ministryId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: renameMinistryBody
+    },
+      );
+    }
+  /**
+ * Archive an active Ministry, keeping its history and freeing its name. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended.
+ * @summary Archive a Ministry
+ */
+const archiveMinistry = (
+    ministryId: string,
+ ) => {
+      return apiClient<ArchiveMinistry204>(
+      {url: `/api/v1/ministries/${ministryId}/archive`, method: 'POST'
     },
       );
     }
@@ -57,7 +128,131 @@ const resendMinistryInvitation = (
     },
       );
     }
-  return {listMinistries,mintMinistryInvitation,resendMinistryInvitation}};
+  /**
+ * Active Roles of a managed Ministry, alphabetical ignoring case. The active-choice read for new invitations, memberships and headcounts.
+ * @summary List a Ministry's active Roles
+ */
+const listMinistryRoles = (
+    ministryId: string,
+ ) => {
+      return apiClient<ListMinistryRoles200>(
+      {url: `/api/v1/ministries/${ministryId}/roles`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Add an active Role by name. Active Role names are unique per Ministry ignoring case.
+ * @summary Add a Role to a Ministry
+ */
+const createMinistryRole = (
+    ministryId: string,
+    createMinistryRoleBody: CreateMinistryRoleBody,
+ ) => {
+      return apiClient<CreateMinistryRole201>(
+      {url: `/api/v1/ministries/${ministryId}/roles`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createMinistryRoleBody
+    },
+      );
+    }
+  /**
+ * Rename an active Role, keeping its identity, qualifications and history.
+ * @summary Rename a Role
+ */
+const renameMinistryRole = (
+    ministryId: string,
+    roleId: string,
+    renameMinistryRoleBody: RenameMinistryRoleBody,
+ ) => {
+      return apiClient<RenameMinistryRole200>(
+      {url: `/api/v1/ministries/${ministryId}/roles/${roleId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: renameMinistryRoleBody
+    },
+      );
+    }
+  /**
+ * Hide a Role from new use, keeping qualifications, Memberships and Assignments. Refused with blockers while an upcoming ShiftRequirement or a UsualSetup headcount uses it.
+ * @summary Archive a Role
+ */
+const archiveMinistryRole = (
+    ministryId: string,
+    roleId: string,
+ ) => {
+      return apiClient<ArchiveMinistryRole204>(
+      {url: `/api/v1/ministries/${ministryId}/roles/${roleId}/archive`, method: 'POST'
+    },
+      );
+    }
+  /**
+ * List the managed Ministry's active Sectors, alphabetically ignoring case.
+ * @summary List a Ministry's active Sectors
+ */
+const listSectors = (
+    ministryId: string,
+ ) => {
+      return apiClient<ListSectors200>(
+      {url: `/api/v1/ministries/${ministryId}/sectors/`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Add an active Sector to the managed Ministry; active names are unique within it ignoring case.
+ * @summary Add a Sector
+ */
+const createSector = (
+    ministryId: string,
+    createSectorBody: CreateSectorBody,
+ ) => {
+      return apiClient<CreateSector201>(
+      {url: `/api/v1/ministries/${ministryId}/sectors/`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createSectorBody
+    },
+      );
+    }
+  /**
+ * Rename an active Sector, keeping its identity, so history shows the new name too.
+ * @summary Rename a Sector
+ */
+const renameSector = (
+    ministryId: string,
+    sectorId: string,
+    renameSectorBody: RenameSectorBody,
+ ) => {
+      return apiClient<RenameSector200>(
+      {url: `/api/v1/ministries/${ministryId}/sectors/${sectorId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: renameSectorBody
+    },
+      );
+    }
+  /**
+ * Retire an active Sector from new use, keeping its history. Refused with typed blocker locations while upcoming ShiftRequirements or a UsualSetup headcount use it.
+ * @summary Archive a Sector
+ */
+const archiveSector = (
+    ministryId: string,
+    sectorId: string,
+ ) => {
+      return apiClient<ArchiveSector204>(
+      {url: `/api/v1/ministries/${ministryId}/sectors/${sectorId}/archive`, method: 'POST'
+    },
+      );
+    }
+  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
+export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
+export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
+export type RenameMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistry']>>>
+export type ArchiveMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveMinistry']>>>
 export type MintMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['mintMinistryInvitation']>>>
 export type ResendMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['resendMinistryInvitation']>>>
+export type ListMinistryRolesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistryRoles']>>>
+export type CreateMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistryRole']>>>
+export type RenameMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistryRole']>>>
+export type ArchiveMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveMinistryRole']>>>
+export type ListSectorsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listSectors']>>>
+export type CreateSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createSector']>>>
+export type RenameSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameSector']>>>
+export type ArchiveSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveSector']>>>

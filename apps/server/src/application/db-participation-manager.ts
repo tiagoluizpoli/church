@@ -72,7 +72,7 @@ import { ShiftSplitter } from '../domain/services/shift-splitter';
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
-  tx?: TransactionContext;
+  tx: TransactionContext;
 }
 
 interface EnsurePrepareInput {
@@ -205,7 +205,7 @@ interface AssertMinistryHeadcountsInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   headcounts: HeadcountPlace[];
-  tx?: TransactionContext;
+  tx: TransactionContext;
 }
 
 export class DbParticipationManager implements IParticipationManager {
@@ -636,7 +636,11 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  /** A Sector or Role outside the Ministry (or Church) is not found (#385). */
+  /**
+   * A Sector or Role outside the Ministry (or Church) is not found (#385),
+   * and so is an archived Role. The active Roles stay share-locked until `tx`
+   * ends, so a concurrent Role archive sees this write or this write sees it.
+   */
   private async assertMinistryHeadcounts({
     churchId,
     ministryId,
@@ -644,11 +648,22 @@ export class DbParticipationManager implements IParticipationManager {
     tx,
   }: AssertMinistryHeadcountsInput): Promise<void> {
     if (headcounts.length === 0) return;
-    const [sectors, roles] = await Promise.all([
-      this.sectorRepository.listByMinistry({ churchId, ministryId, tx }),
-      this.roleRepository.listByMinistry({ churchId, ministryId, tx }),
+    // Locked, not just read: an archived Sector or Role is not found for new
+    // use, and a concurrent archive cannot slip between this check and the write.
+    const [sectorIds, roles] = await Promise.all([
+      this.sectorRepository.lockActive({
+        churchId,
+        ministryId,
+        sectorIds: headcounts.map(({ sectorId }) => sectorId),
+        tx,
+      }),
+      this.roleRepository.lockActiveForUse({
+        churchId,
+        ministryId,
+        roleIds: headcounts.map(({ roleId }) => roleId),
+        tx,
+      }),
     ]);
-    const sectorIds = new Set<string>(sectors.map((sector) => sector.id));
     const roleIds = new Set<string>(roles.map((role) => role.id));
     for (const { sectorId, roleId } of headcounts) {
       if (!sectorIds.has(sectorId)) {
@@ -717,46 +732,58 @@ export class DbParticipationManager implements IParticipationManager {
   }
 
   async upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]> {
-    await this.ministryRepository.getById({
-      churchId: input.churchId,
-      id: input.ministryId,
-    });
-    // Validate every entry through the domain entity before persisting.
-    for (const entry of input.entries) {
-      void new UsualSetup({
-        props: {
-          churchId: input.churchId,
-          ministryId: input.ministryId,
-          sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
-          serves: entry.serves,
-          shiftSplit: entry.shiftSplit,
-          headcounts: entry.headcounts,
-        },
+    return this.unitOfWork.run(async (tx) => {
+      // Saving a setup is new use: refused for an archived Ministry.
+      await this.ministryRepository.lockActive({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        strength: 'share',
+        tx,
       });
-    }
-    // A TemplateTimeBlock of another Church is indistinguishable from a missing one.
-    const templates = await this.eventTemplateRepository.list({
-      churchId: input.churchId,
-    });
-    const churchBlockIds = new Set<string>(
-      templates.flatMap((template) => template.blocks.map((block) => block.id)),
-    );
-    for (const { sourceTemplateTimeBlockId } of input.entries) {
-      if (!churchBlockIds.has(sourceTemplateTimeBlockId)) {
-        throw new NotFoundError(
-          `Template time block not found: ${sourceTemplateTimeBlockId}`,
-        );
+      // Validate every entry through the domain entity before persisting.
+      for (const entry of input.entries) {
+        void new UsualSetup({
+          props: {
+            churchId: input.churchId,
+            ministryId: input.ministryId,
+            sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
+            serves: entry.serves,
+            shiftSplit: entry.shiftSplit,
+            headcounts: entry.headcounts,
+          },
+        });
       }
-    }
-    await this.assertMinistryHeadcounts({
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      headcounts: input.entries.flatMap((entry) =>
-        entry.headcounts.map(({ sectorId, roleId }) => ({ sectorId, roleId })),
-      ),
-    });
+      // A TemplateTimeBlock of another Church is indistinguishable from a missing one.
+      const templates = await this.eventTemplateRepository.list({
+        churchId: input.churchId,
+        tx,
+      });
+      const churchBlockIds = new Set<string>(
+        templates.flatMap((template) =>
+          template.blocks.map((block) => block.id),
+        ),
+      );
+      for (const { sourceTemplateTimeBlockId } of input.entries) {
+        if (!churchBlockIds.has(sourceTemplateTimeBlockId)) {
+          throw new NotFoundError(
+            `Template time block not found: ${sourceTemplateTimeBlockId}`,
+          );
+        }
+      }
+      await this.assertMinistryHeadcounts({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        headcounts: input.entries.flatMap((entry) =>
+          entry.headcounts.map(({ sectorId, roleId }) => ({
+            sectorId,
+            roleId,
+          })),
+        ),
+        tx,
+      });
 
-    return this.usualSetupRepository.replaceForMinistry(input);
+      return this.usualSetupRepository.replaceForMinistry({ ...input, tx });
+    });
   }
 
   async listEligibleVolunteers(
@@ -1041,6 +1068,13 @@ export class DbParticipationManager implements IParticipationManager {
       return existing;
     }
 
+    // A new participation is new use: refused for an archived Ministry.
+    await this.ministryRepository.lockActive({
+      churchId: input.churchId,
+      ministryId: input.ministryId,
+      strength: 'share',
+      tx: input.tx,
+    });
     return this.participationRepository.create({
       churchId: input.churchId,
       ministryId: input.ministryId,

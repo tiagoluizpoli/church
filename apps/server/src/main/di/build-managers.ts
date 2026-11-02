@@ -9,11 +9,13 @@ import {
   DbEventTemplateManager,
   DbMinistryInvitationManager,
   DbMinistryManager,
+  DbMinistryRoleManager,
   DbNotificationManager,
   DbOutboxDrainer,
   DbParticipationManager,
   DbPlanningEventManager,
   DbRedemptionManager,
+  DbSectorManager,
   DbVolunteerManager,
   DbVolunteerTransferManager,
   InvitationVerificationCodeManager,
@@ -34,6 +36,8 @@ export type Managers = Pick<
   | 'eventTemplateManager'
   | 'ministryManager'
   | 'ministryInvitationManager'
+  | 'ministryRoleManager'
+  | 'sectorManager'
   | 'invitationVerificationCodeManager'
   | 'redemptionManager'
   | 'volunteerTransferManager'
@@ -130,6 +134,21 @@ export function buildManagers({
     new DbMinistryManager({
       ministryRepo: ministryRepository,
       volunteerRepo: volunteerRepository,
+      unitOfWork,
+    });
+  const ministryRoleManager =
+    overrides.ministryRoleManager ??
+    new DbMinistryRoleManager({
+      ministryRepository,
+      roleRepository,
+      unitOfWork,
+    });
+  const sectorManager =
+    overrides.sectorManager ??
+    new DbSectorManager({
+      ministryRepository,
+      sectorRepository,
+      unitOfWork,
     });
   const ministryInvitationManager =
     overrides.ministryInvitationManager ??
@@ -301,6 +320,8 @@ export function buildManagers({
     eventTemplateManager,
     ministryManager,
     ministryInvitationManager,
+    ministryRoleManager,
+    sectorManager,
     invitationVerificationCodeManager,
     redemptionManager,
     volunteerTransferManager,

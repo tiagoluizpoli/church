@@ -218,6 +218,27 @@
       "when": 1793547189692,
       "tag": "0030_verification-code-by-church-invitation",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793577336961,
+      "tag": "0031_ministry-active-name",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793579079488,
+      "tag": "0032_sector-archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793582094147,
+      "tag": "0033_role-archive",
+      "breakpoints": true
     }
   ]
 }

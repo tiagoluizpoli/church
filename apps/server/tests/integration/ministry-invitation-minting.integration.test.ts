@@ -1,5 +1,9 @@
 import { appConfig } from '@church/app-config';
-import { invitation as churchInvitation, ministryInvitation } from '@church/db';
+import {
+  invitation as churchInvitation,
+  ministryInvitation,
+  role,
+} from '@church/db';
 import {
   addMilliseconds,
   compareInstants,
@@ -30,6 +34,7 @@ import {
   DrizzleRoleRepository,
   DrizzleUnitOfWork,
 } from '@/infrastructure/repositories';
+import { buildRole } from '@/seeds/builders/ministry';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -192,6 +197,36 @@ describe('DbMinistryInvitationManager.mint', () => {
         roleIds: [RoleId.from('00000000-0000-4000-8000-000000000000')],
       }),
     ).rejects.toBeInstanceOf(InvalidInvitationRoleError);
+  });
+
+  it('rejects an archived Role while accepting an active one of the same Ministry', async () => {
+    const roleInput = {
+      db: testDb,
+      churchId: fixture.churchA.id,
+      ministryId: fixture.ministryOneA,
+    };
+    const active = await buildRole({ ...roleInput, name: 'Greeter' });
+    const archived = await buildRole({ ...roleInput, name: 'Old Greeter' });
+    await testDb
+      .update(role)
+      .set({ archivedAt: new Date() })
+      .where(eq(role.id, archived.id));
+    const mintWith = (roleId: string, email: string) =>
+      manager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [RoleId.from(roleId)],
+      });
+
+    await expect(
+      mintWith(archived.id, 'archived-role@fixture.test'),
+    ).rejects.toBeInstanceOf(InvalidInvitationRoleError);
+    await expect(
+      mintWith(active.id, 'active-role@fixture.test'),
+    ).resolves.toMatchObject({ roleIds: [active.id] });
   });
 
   it('addresses an existing Church Member by inviteeUserId rather than chaining', async () => {

@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { ChurchId, MinistryId, VolunteerId } from '@/domain/branded-ids';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { buildChurch } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
@@ -119,7 +120,11 @@ afterAll(async () => {
 describe('DbMinistryManager.listByLeader (T032)', () => {
   const ministryRepo = new DrizzleMinistryRepository({ db: db });
   const volunteerRepo = new DrizzleVolunteerRepository({ db: db });
-  const manager = new DbMinistryManager({ ministryRepo, volunteerRepo });
+  const manager = new DbMinistryManager({
+    ministryRepo,
+    volunteerRepo,
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+  });
 
   it('returns ministries where volunteer is leader', async () => {
     const result = await manager.listByLeader({
@@ -151,7 +156,11 @@ describe('DbMinistryManager.listByLeader (T032)', () => {
 describe('DbMinistryManager.setDefaultDirection', () => {
   const ministryRepo = new DrizzleMinistryRepository({ db: db });
   const volunteerRepo = new DrizzleVolunteerRepository({ db: db });
-  const manager = new DbMinistryManager({ ministryRepo, volunteerRepo });
+  const manager = new DbMinistryManager({
+    ministryRepo,
+    volunteerRepo,
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+  });
 
   it('updates the ministry default direction', async () => {
     const updated = await manager.setDefaultDirection({

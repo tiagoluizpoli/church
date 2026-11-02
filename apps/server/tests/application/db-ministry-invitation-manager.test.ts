@@ -41,8 +41,8 @@ const repo = {
   enqueueOutboxMessage: vi.fn(),
 };
 
-const roleRepository = { listByMinistry: vi.fn() };
-const ministryRepository = { getById: vi.fn() };
+const roleRepository = { lockActiveForUse: vi.fn() };
+const ministryRepository = { getById: vi.fn(), lockActive: vi.fn() };
 const authorityManager = {
   canManageMinistry: vi.fn(),
   canManageChurch: vi.fn(),
@@ -82,7 +82,7 @@ beforeEach(() => {
   ministryRepository.getById.mockResolvedValue({ id: ministryId, churchId });
   authorityManager.canManageMinistry.mockResolvedValue(true);
   authorityManager.canManageChurch.mockResolvedValue(true);
-  roleRepository.listByMinistry.mockResolvedValue([{ id: roleId }]);
+  roleRepository.lockActiveForUse.mockResolvedValue([{ id: roleId }]);
   repo.findChurchMemberByEmail.mockResolvedValue(null);
   repo.findPendingChurchInvitationByEmail.mockResolvedValue(null);
   repo.createChainedChurchInvitation.mockResolvedValue({
@@ -139,7 +139,7 @@ describe('DbMinistryInvitationManager.mint — scope resolution', () => {
   });
 
   it('rejects an invalid Role id with neither half created', async () => {
-    roleRepository.listByMinistry.mockResolvedValueOnce([
+    roleRepository.lockActiveForUse.mockResolvedValueOnce([
       { id: 'other-role' as RoleId },
     ]);
 

@@ -470,6 +470,7 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
 interface SeedRoleInput {
   churchId: string;
   ministryId: string;
+  eventTitle: string;
 }
 
 async function seedRoleFor(input: SeedRoleInput) {
@@ -477,7 +478,8 @@ async function seedRoleFor(input: SeedRoleInput) {
     db: schedulingTestDb,
     churchId: input.churchId,
     ministryId: input.ministryId,
-    name: 'Dashboard role',
+    // Active Role names are unique per Ministry; one Role per seeded Event.
+    name: `Dashboard role ${input.eventTitle}`,
   });
 }
 

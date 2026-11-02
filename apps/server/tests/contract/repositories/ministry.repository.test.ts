@@ -1,10 +1,15 @@
 import { NotFoundError } from '@church/core';
 import type { ChurchId, MinistryId } from '@/domain/branded-ids';
 import type {
+  ArchiveMinistryRecordInput,
+  CreateMinistryRecordInput,
   GetMinistryByIdInput,
   GetMinistrySettingsInput,
   ListMinistriesByChurchInput,
+  LockActiveMinistryInput,
   MinistryRepository,
+  ParticipationCycle,
+  RenameMinistryRecordInput,
   UpdateMinistryDefaultDirectionInput,
 } from '@/domain/contracts/infrastructure/ministry.repository';
 import { Ministry, type MinistrySettings } from '@/domain/entities/ministry';
@@ -55,6 +60,49 @@ class MockMinistryRepository implements MinistryRepository {
       (m) => m.churchId === churchId,
     );
     return list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async create({
+    churchId,
+    name,
+  }: CreateMinistryRecordInput): Promise<Ministry> {
+    const created = new Ministry({ props: { churchId, name } });
+    this.ministries.set(created.id, created);
+    return created;
+  }
+
+  async rename({
+    churchId,
+    ministryId,
+    name,
+  }: RenameMinistryRecordInput): Promise<Ministry> {
+    const current = await this.getById({ churchId, id: ministryId });
+    const renamed = new Ministry({
+      props: { churchId: current.churchId, name },
+      id: current.id,
+    });
+    this.ministries.set(renamed.id, renamed);
+    return renamed;
+  }
+
+  async lockActive({
+    churchId,
+    ministryId,
+  }: LockActiveMinistryInput): Promise<Ministry> {
+    const min = await this.getById({ churchId, id: ministryId });
+    if (min.deletedAt) throw new NotFoundError('Ministry not found');
+    return min;
+  }
+
+  async listUnendedParticipationCycles(): Promise<ParticipationCycle[]> {
+    return [];
+  }
+
+  async archive({
+    churchId,
+    ministryId,
+  }: ArchiveMinistryRecordInput): Promise<void> {
+    (await this.getById({ churchId, id: ministryId })).softDelete();
   }
 
   async getSettings({

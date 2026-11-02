@@ -198,14 +198,21 @@ function createRepos(): Repos {
     listActiveLeaderUserIds: vi.fn(),
   };
 
-  const roleRepo: RoleRepository = {
+  const roleRepo = {
     getById: vi.fn(),
     listByMinistry: vi.fn(async () => []),
-  };
+    listActiveByMinistry: vi.fn(async () => []),
+  } as unknown as RoleRepository;
 
   const sectorRepo: SectorRepository = {
     getById: vi.fn(),
     listByMinistry: vi.fn(async () => []),
+    lockActive: vi.fn(),
+    create: vi.fn(),
+    rename: vi.fn(),
+    lockActiveForArchive: vi.fn(),
+    listArchiveBlockers: vi.fn(),
+    markArchived: vi.fn(),
   };
 
   const ministryParticipationRepo: MinistryParticipationRepository = {
@@ -443,7 +450,7 @@ describe('DbEventManager', () => {
           id: roleId,
         }),
       ];
-      vi.mocked(repos.roleRepo.listByMinistry).mockResolvedValue(roles);
+      vi.mocked(repos.roleRepo.listActiveByMinistry).mockResolvedValue(roles);
       const unavailableShifts = [
         new UnavailableShift({
           props: {

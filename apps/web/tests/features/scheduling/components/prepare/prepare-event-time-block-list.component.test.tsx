@@ -1,4 +1,6 @@
-import { screen } from '@testing-library/react';
+import { m } from '@church/i18n/messages';
+import { focusManager } from '@tanstack/react-query';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prepare/prepare-event-time-block-list';
@@ -1000,11 +1002,51 @@ describe('PrepareEventTimeBlockList Sector × Role grid (Spec 05a #494)', () => 
     await user.click(
       screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
     );
-    expect(
-      await screen.findByText(
-        'No Sectors yet. Headcounts need at least one Sector.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(m.prepare_no_sectors())).toBeInTheDocument();
     expect(screen.queryByTestId(/^headcount-input-/)).not.toBeInTheDocument();
+    const shortcut = screen.getByRole('link', {
+      name: new RegExp(m.prepare_set_up_sectors()),
+    });
+    expect(shortcut).toHaveAttribute('href', '/ministries/ministry-1/sectors');
+    expect(shortcut).toHaveAttribute('target', '_blank');
+  });
+
+  it('refetches the Sector choices when the page regains focus after setup in another tab', async () => {
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [{ id: 'role-1', name: 'Teacher' }],
+      sectors: [],
+      events: [],
+      volunteers: [],
+    });
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PrepareEventTimeBlockList
+        {...NO_OP_PROPS}
+        splitForms={splitForms}
+        events={includedEvents}
+      />,
+    );
+    await user.click(
+      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
+    );
+    await screen.findByText(m.prepare_no_sectors());
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [{ id: 'role-1', name: 'Teacher' }],
+      sectors: [{ id: 'sector-babies', name: 'Babies Room' }],
+      events: [],
+      volunteers: [],
+    });
+
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(m.prepare_no_sectors()),
+      ).not.toBeInTheDocument(),
+    );
+    focusManager.setFocused(undefined);
   });
 });

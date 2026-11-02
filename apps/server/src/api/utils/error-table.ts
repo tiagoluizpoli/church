@@ -33,6 +33,12 @@ export type MappedDomainCode =
   | 'INVALID_SHIFT_SPLIT'
   | 'INVALID_WEEKDAY'
   | 'MINISTRY_NOT_FOUND'
+  | 'MINISTRY_NAME_IN_USE'
+  | 'MINISTRY_IN_USE'
+  | 'ROLE_NAME_IN_USE'
+  | 'ROLE_IN_USE'
+  | 'SECTOR_NAME_IN_USE'
+  | 'SECTOR_IN_USE'
   | 'CHECK_ACCESS_DENIED'
   | 'ASSIGNMENT_ACCESS_DENIED'
   | 'ASSIGN_ACTION_NOT_AVAILABLE'
@@ -78,6 +84,15 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   INVALID_SHIFT_SPLIT: { status: 400, message: m.error_invalid_shift_split },
   INVALID_WEEKDAY: { status: 400, message: m.error_invalid_weekday },
   MINISTRY_NOT_FOUND: { status: 404, message: m.error_ministry_not_found },
+  MINISTRY_IN_USE: { status: 409, message: m.error_ministry_in_use },
+  MINISTRY_NAME_IN_USE: {
+    status: 409,
+    message: m.error_ministry_name_in_use,
+  },
+  ROLE_NAME_IN_USE: { status: 409, message: m.error_role_name_in_use },
+  ROLE_IN_USE: { status: 409, message: m.error_role_in_use },
+  SECTOR_NAME_IN_USE: { status: 409, message: m.error_sector_name_in_use },
+  SECTOR_IN_USE: { status: 409, message: m.error_sector_in_use },
   CHECK_ACCESS_DENIED: { status: 403, message: m.error_check_access_denied },
   ASSIGNMENT_ACCESS_DENIED: {
     status: 403,

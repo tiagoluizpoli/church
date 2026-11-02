@@ -3,9 +3,12 @@ import {
   account,
   identityAudit,
   member,
+  ministry,
   ministryInvitation,
   ministryMembership,
+  ministryMembershipRole,
   outboxMessage,
+  role,
   securityLog,
   session,
   user,
@@ -249,6 +252,69 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .innerJoin(member, eq(member.userId, fixture.existingChurchMemberA))
         .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
       expect(membership).toBeDefined();
+    });
+
+    it('refuses acceptance into an archived Ministry, granting nothing and keeping the invitation pending', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const memberships = () =>
+        testDb
+          .select()
+          .from(ministryMembership)
+          .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
+      const before = (await memberships()).length;
+      await testDb
+        .update(ministry)
+        .set({ deletedAt: new Date() })
+        .where(eq(ministry.id, fixture.ministryOneA));
+      const cookie = await createSessionCookie({
+        userId: fixture.existingChurchMemberA,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json().kind).not.toBe('full-success');
+      const [pendingInvitation] = await testDb
+        .select({ status: ministryInvitation.status })
+        .from(ministryInvitation)
+        .where(eq(ministryInvitation.id, invitation.id));
+      expect(pendingInvitation?.status).toBe('pending');
+      expect(await memberships()).toHaveLength(before);
+    });
+
+    it('refuses acceptance when a minted Role was archived since, granting nothing and keeping the invitation pending', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      await testDb
+        .update(role)
+        .set({ archivedAt: new Date() })
+        .where(eq(role.id, fixture.roleInMinistryOneA));
+      const cookie = await createSessionCookie({
+        userId: fixture.existingChurchMemberA,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json().kind).not.toBe('full-success');
+      const [pendingInvitation] = await testDb
+        .select({ status: ministryInvitation.status })
+        .from(ministryInvitation)
+        .where(eq(ministryInvitation.id, invitation.id));
+      expect(pendingInvitation?.status).toBe('pending');
+      expect(
+        await testDb
+          .select()
+          .from(ministryMembershipRole)
+          .where(eq(ministryMembershipRole.roleId, fixture.roleInMinistryOneA)),
+      ).toHaveLength(0);
     });
 
     it('splits when the member already holds an active Volunteer profile in another Church (spec §7.5)', async () => {

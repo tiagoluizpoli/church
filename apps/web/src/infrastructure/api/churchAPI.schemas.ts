@@ -1069,6 +1069,183 @@ export type ListMinistries403 = {
   message: string;
 };
 
+export type CreateMinistryBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type CreateMinistry201DefaultDirection = typeof CreateMinistry201DefaultDirection[keyof typeof CreateMinistry201DefaultDirection];
+
+
+export const CreateMinistry201DefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type CreateMinistry201 = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  defaultDirection: CreateMinistry201DefaultDirection;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type CreateMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistry409 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistry200DefaultDirection = typeof GetMinistry200DefaultDirection[keyof typeof GetMinistry200DefaultDirection];
+
+
+export const GetMinistry200DefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type GetMinistry200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  defaultDirection: GetMinistry200DefaultDirection;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type GetMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistry404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type RenameMinistry200DefaultDirection = typeof RenameMinistry200DefaultDirection[keyof typeof RenameMinistry200DefaultDirection];
+
+
+export const RenameMinistry200DefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type RenameMinistry200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  defaultDirection: RenameMinistry200DefaultDirection;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type RenameMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistry404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistry409 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type ArchiveMinistry204 = typeof ArchiveMinistry204[keyof typeof ArchiveMinistry204] | null;
+
+
+export const ArchiveMinistry204 = {
+} as const;
+
+export type ArchiveMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistry404 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistry409BlockersItem = {
+  kind: 'cycle';
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+} | {
+  kind: 'requirement';
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+  eventId: string;
+  eventTimeBlockId: string;
+} | {
+  kind: 'usual_setup';
+  ministryId: string;
+  ministryName: string;
+  templateTimeBlockId: string;
+};
+
+export type ArchiveMinistry409 = {
+  error: string;
+  message: string;
+  blockers: ArchiveMinistry409BlockersItem[];
+};
+
 export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
 
 
@@ -1176,6 +1353,288 @@ export type ResendMinistryInvitation403 = {
 export type ResendMinistryInvitation404 = {
   error: string;
   message: string;
+};
+
+export type ListMinistryRoles200RolesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListMinistryRoles200 = {
+  roles: ListMinistryRoles200RolesItem[];
+};
+
+export type ListMinistryRoles401 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistryRoles403 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistryRoles404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRoleBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type CreateMinistryRole201 = {
+  id: string;
+  name: string;
+};
+
+export type CreateMinistryRole401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRole403 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRole404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRole409 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRoleBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type RenameMinistryRole200 = {
+  id: string;
+  name: string;
+};
+
+export type RenameMinistryRole401 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRole403 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRole404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRole409 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type ArchiveMinistryRole204 = typeof ArchiveMinistryRole204[keyof typeof ArchiveMinistryRole204] | null;
+
+
+export const ArchiveMinistryRole204 = {
+} as const;
+
+export type ArchiveMinistryRole401 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistryRole403 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistryRole404 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistryRole409BlockersItem = {
+  kind: 'cycle';
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+} | {
+  kind: 'requirement';
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+  eventId: string;
+  eventTimeBlockId: string;
+} | {
+  kind: 'usual_setup';
+  ministryId: string;
+  ministryName: string;
+  templateTimeBlockId: string;
+};
+
+export type ArchiveMinistryRole409 = {
+  error: string;
+  message: string;
+  blockers: ArchiveMinistryRole409BlockersItem[];
+};
+
+export type ListSectors200SectorsItem = {
+  id: string;
+  name: string;
+};
+
+export type ListSectors200 = {
+  sectors: ListSectors200SectorsItem[];
+};
+
+export type ListSectors401 = {
+  error: string;
+  message: string;
+};
+
+export type ListSectors403 = {
+  error: string;
+  message: string;
+};
+
+export type ListSectors404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSectorBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type CreateSector201 = {
+  id: string;
+  name: string;
+};
+
+export type CreateSector401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSector403 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSector404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSector409 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSectorBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type RenameSector200 = {
+  id: string;
+  name: string;
+};
+
+export type RenameSector401 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSector403 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSector404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSector409 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type ArchiveSector204 = typeof ArchiveSector204[keyof typeof ArchiveSector204] | null;
+
+
+export const ArchiveSector204 = {
+} as const;
+
+export type ArchiveSector401 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveSector403 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveSector404 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveSector409BlockersItem = {
+  kind: 'cycle';
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+} | {
+  kind: 'requirement';
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+  eventId: string;
+  eventTimeBlockId: string;
+} | {
+  kind: 'usual_setup';
+  ministryId: string;
+  ministryName: string;
+  templateTimeBlockId: string;
+};
+
+export type ArchiveSector409 = {
+  error: string;
+  message: string;
+  blockers: ArchiveSector409BlockersItem[];
 };
 
 export type GetCycleParticipationParams = {

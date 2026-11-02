@@ -363,6 +363,33 @@ describe('AppShell flat nav per persona (F7)', () => {
     expect(within(breadcrumbs).getByText('August 2026')).toBeVisible();
   });
 
+  it.each([
+    ['sectors', () => m.ministry_tab_sectors()],
+    ['roles', () => m.ministry_tab_roles()],
+    ['usual-setup', () => m.ministry_tab_usual_setup()],
+    ['settings', () => m.ministry_tab_settings()],
+  ])('reads Home › Ministries › name › tab on the Ministry %s tab', (tab, label) => {
+    asPersona({ isChurchAdmin: true });
+    const ministryId = '33333333-3333-4333-8333-333333333331';
+    mockPathname = `/ministries/${ministryId}/${tab}`;
+
+    renderWithProviders(
+      <AppShell
+        notificationBell={null}
+        breadcrumbOverrides={[{ segment: ministryId, label: 'Worship' }]}
+      >
+        content
+      </AppShell>,
+    );
+
+    const breadcrumbs = screen.getByTestId('breadcrumbs');
+    expect(
+      within(breadcrumbs)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([HOME, m.nav_ministries(), 'Worship', label()]);
+  });
+
   it('hides an opaque id segment from breadcrumbs when no override is supplied', () => {
     asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles/cycle-1';

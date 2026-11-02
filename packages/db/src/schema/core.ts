@@ -18,25 +18,37 @@ import {
   volunteerStatusEnum,
 } from './enums';
 
-export const ministry = pgTable('ministry', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 255 }).notNull(),
-  description: text('description'),
-  defaultDirection: defaultDirectionEnum('default_direction')
-    .default('all_out')
-    .notNull(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+/**
+ * `deleted_at` is the Ministry's archive marker. Active names are unique per
+ * Church ignoring case; an archived Ministry frees its name for a new identity.
+ */
+export const ministry = pgTable(
+  'ministry',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    defaultDirection: defaultDirectionEnum('default_direction')
+      .default('all_out')
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('ministry_church_active_name_idx')
+      .on(table.churchId, sql`lower(${table.name})`)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+);
 
 /**
  * A retired profile (`leftAt` set) keeps its original `churchId` forever, so
@@ -134,16 +146,29 @@ export const ministryMembership = pgTable('ministry_membership', {
   leftAt: timestamp('left_at', { withTimezone: true, mode: 'date' }),
 });
 
-export const role = pgTable('role', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  ministryId: uuid('ministry_id')
-    .notNull()
-    .references(() => ministry.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 255 }).notNull(),
-});
+/**
+ * A Ministry Role. Archive (`archived_at`) hides it from new use only:
+ * qualifications, ShiftRequirements and Assignments keep pointing at it.
+ */
+export const role = pgTable(
+  'role',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    ministryId: uuid('ministry_id')
+      .notNull()
+      .references(() => ministry.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
+  },
+  (table) => [
+    uniqueIndex('role_ministry_active_name_idx')
+      .on(table.ministryId, sql`lower(${table.name})`)
+      .where(sql`${table.archivedAt} IS NULL`),
+  ],
+);
 
 /**
  * A named spot or duty a Ministry staffs every Cycle (pt-BR *Setor*, ADR-0007),
@@ -161,12 +186,16 @@ export const sector = pgTable(
       .notNull()
       .references(() => ministry.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 255 }).notNull(),
+    /** Retired from new use; history keeps resolving it by id. */
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
   },
   (table) => [
-    uniqueIndex('sector_ministry_name_idx').on(table.ministryId, table.name),
+    uniqueIndex('sector_ministry_active_name_idx')
+      .on(table.ministryId, sql`lower(${table.name})`)
+      .where(sql`${table.archivedAt} IS NULL`),
   ],
 );
 

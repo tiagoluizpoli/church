@@ -7089,14 +7089,52 @@ paths:
   /api/v1/invitations/:
     get:
       operationId: listInvitations
-      summary: List pending invitations
+      summary: List invitations
       tags:
         - invitations
-      description: List the offers still pending in the Active Church, expired ones
-        included and badged, newest created first. A ChurchAdmin sees every
-        Ministry offer and admin Church grant; a Ministry leader sees only
-        Ministry offers in the Ministries they lead.
+      description: List the Active Church's offers, newest created first. Pending (the
+        default) includes expired offers badged; Expired is pending past its
+        expiry; Accepted, Declined and Revoked are history with the closure
+        facts that were recorded. Status, Ministry, invited-as and email filters
+        combine before pagination. A ChurchAdmin sees every Ministry offer and
+        admin Church grant; a Ministry leader sees only Ministry offers in the
+        Ministries they lead.
       parameters:
+        - schema:
+            default: pending
+            type: string
+            enum:
+              - pending
+              - accepted
+              - declined
+              - revoked
+              - expired
+          in: query
+          name: status
+          required: false
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: query
+          name: ministryId
+          required: false
+        - schema:
+            type: string
+            enum:
+              - admin
+              - leader
+              - volunteer
+          in: query
+          name: invitedAs
+          required: false
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 254
+          in: query
+          name: email
+          required: false
         - schema:
             type: string
           in: query
@@ -7182,11 +7220,38 @@ paths:
                           type: string
                           enum:
                             - pending
+                            - accepted
+                            - rejected
+                            - canceled
                         displayStatus:
                           type: string
                           enum:
                             - pending
+                            - accepted
+                            - declined
+                            - revoked
                             - expired
+                        closure:
+                          type: object
+                          properties:
+                            actor:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                              additionalProperties: false
+                            at:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            reason:
+                              type: string
+                          additionalProperties: false
                         emailDelivery:
                           type: object
                           properties:
@@ -7218,8 +7283,37 @@ paths:
                       additionalProperties: false
                   nextCursor:
                     type: string
+                  options:
+                    type: object
+                    properties:
+                      ministries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                      invitedAs:
+                        type: array
+                        items:
+                          type: string
+                          enum:
+                            - admin
+                            - leader
+                            - volunteer
+                    required:
+                      - ministries
+                      - invitedAs
+                    additionalProperties: false
                 required:
                   - items
+                  - options
                 additionalProperties: false
         "401":
           description: Default Response
@@ -7237,6 +7331,21 @@ paths:
                   - message
                 additionalProperties: false
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:

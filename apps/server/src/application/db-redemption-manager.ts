@@ -1,5 +1,9 @@
 import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
-import type { ChurchId, VolunteerId } from '../domain/branded-ids';
+import type {
+  ChurchId,
+  ChurchInvitationId,
+  VolunteerId,
+} from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
   AcceptExistingMemberInput,
@@ -292,6 +296,12 @@ export class DbRedemptionManager implements RedemptionManager {
       sessionCookie,
       tx,
     });
+    await this.redemptionRepository.recordChurchInvitationAcceptance({
+      churchInvitationId: preview.churchInvitationId,
+      userId,
+      acceptedAt: now,
+      tx,
+    });
     await this.identityGateway.setActiveChurch({
       churchId: preview.churchId,
       sessionCookie,
@@ -533,9 +543,20 @@ export class DbRedemptionManager implements RedemptionManager {
       resolved.context.churchInvitationStatus === 'pending'
     ) {
       try {
-        await this.identityGateway.acceptChurchInvitation({
-          churchInvitationId: ministryInvitation.churchInvitationId as string,
-          sessionCookie,
+        await this.unitOfWork.run(async (tx) => {
+          const churchInvitationId =
+            ministryInvitation.churchInvitationId as ChurchInvitationId;
+          await this.identityGateway.acceptChurchInvitation({
+            churchInvitationId,
+            sessionCookie,
+            tx,
+          });
+          await this.redemptionRepository.recordChurchInvitationAcceptance({
+            churchInvitationId,
+            userId,
+            acceptedAt: now,
+            tx,
+          });
         });
       } catch {
         return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };

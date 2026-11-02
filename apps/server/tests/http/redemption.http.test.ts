@@ -31,6 +31,7 @@ import type {
   DeclineChurchInvitationInput,
   DeclineChurchInvitationResult,
   DeclineMinistryInvitationInput,
+  RecordChurchInvitationAcceptanceInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
 } from '@/domain/contracts/infrastructure/redemption.repository';
@@ -145,6 +146,12 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
     input: DeclineChurchInvitationInput,
   ): Promise<DeclineChurchInvitationResult> {
     return this.delegate.declineChurchInvitation(input);
+  }
+
+  async recordChurchInvitationAcceptance(
+    input: RecordChurchInvitationAcceptanceInput,
+  ): Promise<void> {
+    return this.delegate.recordChurchInvitationAcceptance(input);
   }
 
   async recordChurchOnlyPartialAcceptance(
@@ -458,10 +465,23 @@ describe('Church invitation redemption HTTP boundary', () => {
     expect(grants).toHaveLength(1);
     expect(grants[0]?.roleId).toBe(fixture.roleInMinistryOneA);
     const [acceptedMinistryInvitation] = await testDb
-      .select({ status: ministryInvitation.status })
+      .select({
+        status: ministryInvitation.status,
+        acceptedAt: ministryInvitation.acceptedAt,
+      })
       .from(ministryInvitation)
       .where(eq(ministryInvitation.id, invitation.id));
     expect(acceptedMinistryInvitation?.status).toBe('accepted');
+    expect(acceptedMinistryInvitation?.acceptedAt).toBeInstanceOf(Date);
+    const [acceptedChurch] = await testDb
+      .select({
+        acceptedAt: churchInvitation.acceptedAt,
+        acceptedById: churchInvitation.acceptedById,
+      })
+      .from(churchInvitation)
+      .where(eq(churchInvitation.id, invitation.churchInvitationId));
+    expect(acceptedChurch?.acceptedById).toBe(redeemedUser.id);
+    expect(acceptedChurch?.acceptedAt).toBeInstanceOf(Date);
     expect(
       await testDb
         .select()
@@ -1092,10 +1112,17 @@ describe('plain first-admin Church Invitation over HTTP', () => {
       .where(eq(session.userId, admin.id));
     expect(activeSession?.activeOrganizationId).toBe(plain.churchId);
     const [accepted] = await testDb
-      .select({ status: churchInvitation.status })
+      .select({
+        status: churchInvitation.status,
+        acceptedAt: churchInvitation.acceptedAt,
+        acceptedById: churchInvitation.acceptedById,
+      })
       .from(churchInvitation)
       .where(eq(churchInvitation.id, plain.invitationId));
     expect(accepted?.status).toBe('accepted');
+    // The closure facts commit with the acceptance.
+    expect(accepted?.acceptedById).toBe(admin.id);
+    expect(accepted?.acceptedAt).toBeInstanceOf(Date);
   });
 
   it.each([

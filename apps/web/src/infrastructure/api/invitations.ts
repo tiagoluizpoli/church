@@ -16,8 +16,8 @@ import { apiClient } from '../../utils/api-client';
 
   export const getInvitations = () => {
 /**
- * List the offers still pending in the Active Church, expired ones included and badged, newest created first. A ChurchAdmin sees every Ministry offer and admin Church grant; a Ministry leader sees only Ministry offers in the Ministries they lead.
- * @summary List pending invitations
+ * List the Active Church's offers, newest created first. Pending (the default) includes expired offers badged; Expired is pending past its expiry; Accepted, Declined and Revoked are history with the closure facts that were recorded. Status, Ministry, invited-as and email filters combine before pagination. A ChurchAdmin sees every Ministry offer and admin Church grant; a Ministry leader sees only Ministry offers in the Ministries they lead.
+ * @summary List invitations
  */
 const listInvitations = (
     params?: ListInvitationsParams,

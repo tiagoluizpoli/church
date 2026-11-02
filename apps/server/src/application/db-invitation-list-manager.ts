@@ -1,7 +1,7 @@
 import { nowAsDate } from '@church/time';
 import type {
   IInvitationListManager,
-  ListPendingInvitationsRequest,
+  ListInvitationsRequest,
 } from '../domain/contracts/application/invitation-list-manager';
 import type { InvitationListRepository } from '../domain/contracts/infrastructure/invitation-list.repository';
 import type { InvitationListPage } from '../domain/entities/invitation-list-item';
@@ -24,15 +24,17 @@ export class DbInvitationListManager implements IInvitationListManager {
     this.defaultPageSize = defaultPageSize;
   }
 
-  listPending({
+  list({
     churchId,
     scope,
+    filters,
     cursor,
     limit,
-  }: ListPendingInvitationsRequest): Promise<InvitationListPage> {
-    return this.invitationListRepository.listPending({
+  }: ListInvitationsRequest): Promise<InvitationListPage> {
+    return this.invitationListRepository.list({
       churchId,
       scope,
+      filters,
       cursor,
       limit: limit ?? this.defaultPageSize,
       now: nowAsDate(),

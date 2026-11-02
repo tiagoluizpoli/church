@@ -1,5 +1,5 @@
 {
-  "id": "b359a7da-bfba-4bbf-b110-a1d055ca1fb1",
+  "id": "52bbe2c6-f7a5-4b8d-b153-50a40866ea73",
   "prevId": "21a77fe9-c7eb-4b22-b9e7-48a1c652ad29",
   "version": "7",
   "dialect": "postgresql",
@@ -2226,6 +2226,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "declined_at": {
+          "name": "declined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "last_resend_at": {
           "name": "last_resend_at",
           "type": "timestamp with time zone",
@@ -2966,6 +2972,30 @@
           "primaryKey": false,
           "notNull": true
         },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accepted_by_id": {
+          "name": "accepted_by_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declined_at": {
+          "name": "declined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declined_by_id": {
+          "name": "declined_by_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -3004,28 +3034,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "invitation_organization_email_pending_idx": {
-          "name": "invitation_organization_email_pending_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lower(\"email\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"invitation\".\"status\" = 'pending'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -3053,6 +3061,32 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "invitation_accepted_by_id_user_id_fk": {
+          "name": "invitation_accepted_by_id_user_id_fk",
+          "tableFrom": "invitation",
+          "tableTo": "user",
+          "columnsFrom": [
+            "accepted_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "invitation_declined_by_id_user_id_fk": {
+          "name": "invitation_declined_by_id_user_id_fk",
+          "tableFrom": "invitation",
+          "tableTo": "user",
+          "columnsFrom": [
+            "declined_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

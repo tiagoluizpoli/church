@@ -6,6 +6,7 @@ import type {
   GetCallerCapabilities200,
   ListInvitations200,
   ListInvitations200ItemsItem,
+  ListInvitations200Options,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
@@ -67,6 +68,25 @@ function row(
   };
 }
 
+const ADMIN_OPTIONS: ListInvitations200Options = {
+  ministries: [
+    { id: 'm-kids', name: 'Kids' },
+    { id: 'm-worship', name: 'Worship' },
+  ],
+  invitedAs: ['admin', 'leader', 'volunteer'],
+};
+const LEADER_OPTIONS: ListInvitations200Options = {
+  ministries: [{ id: 'm-worship', name: 'Worship' }],
+  invitedAs: ['leader', 'volunteer'],
+};
+
+function page(
+  items: ListInvitations200ItemsItem[],
+  extra: Partial<ListInvitations200> = {},
+): ListInvitations200 {
+  return { items, options: ADMIN_OPTIONS, ...extra };
+}
+
 function signInAs(capabilities: GetCallerCapabilities200) {
   getCallerCapabilities.mockResolvedValue(capabilities);
 }
@@ -90,6 +110,7 @@ beforeEach(() => {
 describe('Invitations page', () => {
   it('lists offers with Ministry, Roles, inviter, dates and delivery facts for an admin without a Volunteer profile', async () => {
     listInvitations.mockResolvedValue({
+      options: ADMIN_OPTIONS,
       items: [
         row({
           emailDelivery: { state: 'sent', sentAt: '2026-11-01T13:05:00Z' },
@@ -133,6 +154,7 @@ describe('Invitations page', () => {
 
   it('badges an expired offer, and never calls an unknown delivery sent', async () => {
     listInvitations.mockResolvedValue({
+      options: ADMIN_OPTIONS,
       items: [
         row({
           displayStatus: 'expired',
@@ -156,9 +178,11 @@ describe('Invitations page', () => {
 
   it('shows a leader-level row read-only and a zero-Role offer honestly', async () => {
     signInAs(callerCapabilitiesFixture({ ledMinistries: 1 }));
-    listInvitations.mockResolvedValue({
-      items: [row({ ministryAccessLevel: 'leader', roles: [] })],
-    });
+    listInvitations.mockResolvedValue(
+      page([row({ ministryAccessLevel: 'leader', roles: [] })], {
+        options: LEADER_OPTIONS,
+      }),
+    );
 
     renderInvitations();
 
@@ -178,7 +202,7 @@ describe('Invitations page', () => {
   });
 
   it('says in Portuguese that nothing is pending', async () => {
-    listInvitations.mockResolvedValue({ items: [] });
+    listInvitations.mockResolvedValue(page([]));
 
     renderInvitations();
 
@@ -189,7 +213,7 @@ describe('Invitations page', () => {
 
   it('shows a loading state, then recovers from an error with retry', async () => {
     listInvitations.mockRejectedValueOnce(new Error('boom'));
-    listInvitations.mockResolvedValueOnce({ items: [row({})] });
+    listInvitations.mockResolvedValueOnce(page([row({})]));
     const user = userEvent.setup();
 
     renderInvitations();
@@ -202,13 +226,12 @@ describe('Invitations page', () => {
   });
 
   it('loads the next page with the cursor and appends it without duplicating', async () => {
-    listInvitations.mockResolvedValueOnce({
-      items: [row({ id: 'mi-1' })],
-      nextCursor: 'cursor-2',
-    });
-    listInvitations.mockResolvedValueOnce({
-      items: [row({ id: 'mi-2', email: 'bia@example.com' })],
-    });
+    listInvitations.mockResolvedValueOnce(
+      page([row({ id: 'mi-1' })], { nextCursor: 'cursor-2' }),
+    );
+    listInvitations.mockResolvedValueOnce(
+      page([row({ id: 'mi-2', email: 'bia@example.com' })]),
+    );
     const user = userEvent.setup();
 
     renderInvitations();
@@ -226,10 +249,9 @@ describe('Invitations page', () => {
   });
 
   it('keeps the loaded rows and offers retry when a later page fails', async () => {
-    listInvitations.mockResolvedValueOnce({
-      items: [row({})],
-      nextCursor: 'cursor-2',
-    });
+    listInvitations.mockResolvedValueOnce(
+      page([row({})], { nextCursor: 'cursor-2' }),
+    );
     listInvitations.mockRejectedValueOnce(new Error('boom'));
     const user = userEvent.setup();
 
@@ -244,5 +266,143 @@ describe('Invitations page', () => {
     expect(
       screen.getByRole('button', { name: m.invitations_load_more() }),
     ).toBeEnabled();
+  });
+});
+
+describe('Invitations filters and history', () => {
+  async function pick(label: string, option: string) {
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('combobox', { name: label }));
+    await user.click(await screen.findByRole('option', { name: option }));
+  }
+
+  it('offers admins every picker and sends a combined filter set, restarting at the first page', async () => {
+    listInvitations.mockResolvedValueOnce(
+      page([row({})], { nextCursor: 'cursor-2' }),
+    );
+    listInvitations.mockResolvedValue(page([]));
+    const user = userEvent.setup();
+
+    renderInvitations();
+    await rows();
+    await pick(m.invitations_filter_status(), m.invitations_status_accepted());
+    await pick(m.invitations_filter_ministry(), 'Worship');
+    await pick(m.invitations_filter_invited_as(), m.join_church_access_admin());
+    await user.type(
+      screen.getByRole('searchbox', { name: m.invitations_filter_email() }),
+      'ANA',
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_filter_search() }),
+    );
+
+    await vi.waitFor(() =>
+      expect(listInvitations).toHaveBeenLastCalledWith({
+        status: 'accepted',
+        ministryId: 'm-worship',
+        invitedAs: 'admin',
+        email: 'ANA',
+      }),
+    );
+    for (const call of listInvitations.mock.calls.slice(1)) {
+      expect(call[0]).not.toHaveProperty('cursor');
+    }
+  });
+
+  it('shows the Ministry picker to a leader of two Ministries only, with just leader and volunteer grants', async () => {
+    signInAs(callerCapabilitiesFixture({ ledMinistries: 1 }));
+    listInvitations.mockResolvedValue(
+      page([row({})], { options: LEADER_OPTIONS }),
+    );
+
+    const { unmount } = renderInvitations();
+    await rows();
+    expect(
+      screen.queryByRole('combobox', { name: m.invitations_filter_ministry() }),
+    ).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole('combobox', { name: m.invitations_filter_invited_as() }),
+    );
+    expect(
+      screen.queryByRole('option', { name: m.join_church_access_admin() }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    listInvitations.mockResolvedValue(
+      page([row({})], {
+        options: { ...LEADER_OPTIONS, ministries: ADMIN_OPTIONS.ministries },
+      }),
+    );
+    renderInvitations();
+    expect(
+      await screen.findByRole('combobox', {
+        name: m.invitations_filter_ministry(),
+      }),
+    ).toBeVisible();
+  });
+
+  it('distinguishes empty history from a filtered-empty result and clears the filters', async () => {
+    listInvitations.mockResolvedValue(page([]));
+    const user = userEvent.setup();
+
+    renderInvitations();
+    await pick(m.invitations_filter_status(), m.invitations_status_declined());
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      m.invitations_empty_history(),
+    );
+
+    await pick(m.invitations_filter_invited_as(), m.join_church_access_admin());
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      m.invitations_empty_filtered(),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_clear_filters() }),
+    );
+    await vi.waitFor(() =>
+      expect(listInvitations).toHaveBeenLastCalledWith({ status: 'declined' }),
+    );
+  });
+
+  it('shows closure actor, time and reason where recorded and says plainly when they are not', async () => {
+    listInvitations.mockResolvedValue(
+      page([
+        row({
+          id: 'a',
+          status: 'accepted',
+          displayStatus: 'accepted',
+          closure: {
+            actor: { id: 'u2', name: 'Ana' },
+            at: '2026-11-02T10:00:00Z',
+          },
+        }),
+        row({
+          id: 'b',
+          status: 'rejected',
+          displayStatus: 'declined',
+          closure: { at: '2026-11-02T11:00:00Z', reason: 'Moved away' },
+        }),
+        row({ id: 'c', status: 'rejected', displayStatus: 'declined' }),
+        row({ id: 'd', status: 'canceled', displayStatus: 'revoked' }),
+      ]),
+    );
+
+    renderInvitations();
+
+    const [accepted, linkDecline, legacyDecline, revoked] = await rows();
+    expect(accepted).toHaveTextContent(
+      m.invitations_accepted_by_on({ name: 'Ana', date: '02/11/2026 10:00' }),
+    );
+    expect(linkDecline).toHaveTextContent(
+      m.invitations_declined_link_on({ date: '02/11/2026 11:00' }),
+    );
+    expect(linkDecline).toHaveTextContent(
+      m.invitations_closure_reason({ reason: 'Moved away' }),
+    );
+    expect(legacyDecline).toHaveTextContent(
+      m.invitations_closure_unavailable(),
+    );
+    expect(revoked).toHaveTextContent(m.invitations_closure_unavailable());
+    expect(revoked).toHaveTextContent(m.invitations_status_revoked());
   });
 });

@@ -26,6 +26,47 @@ export interface InvitationListRole {
   name: string;
 }
 
+/** The filterable lifecycle words; `expired` is derived (stored pending past its expiry), never persisted. */
+export const INVITATION_LIST_STATUS_OPTIONS = [
+  'pending',
+  'accepted',
+  'declined',
+  'revoked',
+  'expired',
+] as const;
+export type InvitationListStatus =
+  (typeof INVITATION_LIST_STATUS_OPTIONS)[number];
+
+/** Which grant a row carries: a Church-wide admin grant, or a Ministry leader/Volunteer offer. */
+export const INVITATION_INVITED_AS_OPTIONS = [
+  'admin',
+  'leader',
+  'volunteer',
+] as const;
+export type InvitationInvitedAs =
+  (typeof INVITATION_INVITED_AS_OPTIONS)[number];
+
+export interface InvitationListFilters {
+  status: InvitationListStatus;
+  ministryId?: string;
+  invitedAs?: InvitationInvitedAs;
+  /** Case-insensitive substring of the addressed email. */
+  email?: string;
+}
+
+/** Facts about how a closed offer ended; every field is present only when actually recorded. */
+export interface InvitationClosure {
+  actor?: { id: string; name: string };
+  at?: Date;
+  reason?: string;
+}
+
+/** The pickers the caller may use: only what their authority reaches. */
+export interface InvitationListOptions {
+  ministries: { id: string; name: string }[];
+  invitedAs: InvitationInvitedAs[];
+}
+
 /** A stored-pending offer past its expiry still has `status` pending; only `displayStatus` says expired. */
 export interface InvitationListItem {
   kind: InvitationListKind;
@@ -42,14 +83,16 @@ export interface InvitationListItem {
   invitedBy: { id: string; name: string };
   createdAt: Date;
   expiresAt: Date;
-  status: 'pending';
-  displayStatus: 'pending' | 'expired';
+  status: 'pending' | 'accepted' | 'rejected' | 'canceled';
+  displayStatus: InvitationListStatus;
+  closure?: InvitationClosure;
   emailDelivery: InvitationEmailDelivery;
 }
 
 export interface InvitationListPage {
   items: InvitationListItem[];
   nextCursor?: string;
+  options: InvitationListOptions;
 }
 
 /** What the caller may see; decided by the application, enforced in the query itself. */

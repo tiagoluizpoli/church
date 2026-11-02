@@ -80,6 +80,16 @@ export const invitation = pgTable(
     inviterId: text('inviter_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    /** Closure facts recorded by the redemption transitions; null on rows closed before they existed. */
+    acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'date' }),
+    acceptedById: text('accepted_by_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    /** A public pre-login decline sets the time but no actor. */
+    declinedAt: timestamp('declined_at', { withTimezone: true, mode: 'date' }),
+    declinedById: text('declined_by_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

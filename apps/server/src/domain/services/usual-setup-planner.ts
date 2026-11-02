@@ -1,0 +1,181 @@
+import {
+  compareInstants,
+  type Instant,
+  parseCalendarDay,
+  type TimeOfDay,
+  today,
+  toInstant,
+  toInstantAfter,
+  toTimeOfDay,
+} from '@church/time';
+import type {
+  UsualSetupHeadcount,
+  UsualSetupShiftSplit,
+} from '../entities/usual-setup';
+import { computeEqualSpans } from './shift-splitter';
+
+export interface UsualSetupBlockBounds {
+  startTime: Instant;
+  endTime: Instant;
+}
+
+export interface PlannedUsualSetupShift extends UsualSetupBlockBounds {
+  label?: string;
+  headcounts: UsualSetupHeadcount[];
+}
+
+export interface PlanUsualSetupShiftsInput {
+  shiftSplit: UsualSetupShiftSplit;
+  headcounts: UsualSetupHeadcount[];
+  /** The actual EventTimeBlock bounds: a frozen copy, not the current template. */
+  block: UsualSetupBlockBounds;
+  timeZone: string;
+}
+
+export interface UsualSetupShiftPlan {
+  /** True when the split was unusable and the whole-block fallback was planned. */
+  fallback: boolean;
+  shifts: PlannedUsualSetupShift[];
+}
+
+interface ResolveManualSpansInput {
+  spans: Extract<UsualSetupShiftSplit, { kind: 'manual' }>['spans'];
+  block: UsualSetupBlockBounds;
+  timeZone: string;
+}
+
+/** Spans resolved after the block's own start, so an overnight span ends next day. */
+function resolveManualSpans({
+  spans,
+  block,
+  timeZone,
+}: ResolveManualSpansInput) {
+  const day = today({ instant: block.startTime, timeZone });
+  const anchor = toTimeOfDay({ instant: block.startTime, timeZone });
+  return spans.map((span) => ({
+    label: span.label,
+    startTime: toInstantAfter({ day, anchor, time: span.startTime, timeZone }),
+    endTime: toInstantAfter({ day, anchor, time: span.endTime, timeZone }),
+  }));
+}
+
+export interface SplitFitsBlockInput {
+  shiftSplit: UsualSetupShiftSplit;
+  block: UsualSetupBlockBounds;
+  timeZone: string;
+}
+
+/**
+ * The one validity rule shared by the review flag, the save and Send: an
+ * equal split must tile the block; a manual one must be positive,
+ * chronological, non-overlapping and inside it. Gaps and touching ends are ok.
+ */
+export function splitFitsBlock({
+  shiftSplit,
+  block,
+  timeZone,
+}: SplitFitsBlockInput): boolean {
+  if (shiftSplit.kind === 'equal') {
+    try {
+      computeEqualSpans({ ...block, n: shiftSplit.count });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  let previousEnd = block.startTime;
+  for (const span of resolveManualSpans({
+    spans: shiftSplit.spans,
+    block,
+    timeZone,
+  })) {
+    if (
+      compareInstants({ left: span.endTime, right: span.startTime }) <= 0 ||
+      compareInstants({ left: span.startTime, right: previousEnd }) < 0 ||
+      compareInstants({ left: span.endTime, right: block.endTime }) > 0
+    ) {
+      return false;
+    }
+    previousEnd = span.endTime;
+  }
+  return true;
+}
+
+export interface TemplateBlockBoundsInput {
+  startTime: TimeOfDay;
+  endTime: TimeOfDay;
+}
+
+export interface TemplateBlockBounds {
+  block: UsualSetupBlockBounds;
+  timeZone: string;
+}
+
+/** Wall-clock template bounds as Instants on a fixed UTC day (no DST, no dates). */
+export function templateBlockBounds({
+  startTime,
+  endTime,
+}: TemplateBlockBoundsInput): TemplateBlockBounds {
+  const timeZone = 'UTC';
+  const day = parseCalendarDay({ value: '2000-01-03' });
+  return {
+    timeZone,
+    block: {
+      startTime: toInstant({ day, time: startTime, timeZone }),
+      endTime: toInstantAfter({
+        day,
+        anchor: startTime,
+        time: endTime,
+        timeZone,
+      }),
+    },
+  };
+}
+
+/** Sums counts per Sector × Role across Shift indices; positive pairs only. */
+function sumHeadcounts(
+  headcounts: UsualSetupHeadcount[],
+): UsualSetupHeadcount[] {
+  const sums = new Map<string, UsualSetupHeadcount>();
+  for (const { sectorId, roleId, peopleNeeded } of headcounts) {
+    if (!(peopleNeeded > 0)) continue;
+    const key = `${sectorId}:${roleId}`;
+    const sum = sums.get(key);
+    if (sum) sum.peopleNeeded += peopleNeeded;
+    else sums.set(key, { shiftIndex: 0, sectorId, roleId, peopleNeeded });
+  }
+  return [...sums.values()].sort(
+    (left, right) =>
+      left.sectorId.localeCompare(right.sectorId) ||
+      left.roleId.localeCompare(right.roleId),
+  );
+}
+
+/**
+ * Shifts a serving entry seeds into an EventTimeBlock. A usable split is kept
+ * as-is; otherwise one Shift spans the whole block carrying the summed counts.
+ */
+export function planUsualSetupShifts({
+  shiftSplit,
+  headcounts,
+  block,
+  timeZone,
+}: PlanUsualSetupShiftsInput): UsualSetupShiftPlan {
+  if (!splitFitsBlock({ shiftSplit, block, timeZone })) {
+    return {
+      fallback: true,
+      shifts: [{ ...block, headcounts: sumHeadcounts(headcounts) }],
+    };
+  }
+  const spans =
+    shiftSplit.kind === 'equal'
+      ? computeEqualSpans({ ...block, n: shiftSplit.count })
+      : resolveManualSpans({ spans: shiftSplit.spans, block, timeZone });
+  return {
+    fallback: false,
+    shifts: spans.map((span, shiftIndex) => ({
+      ...span,
+      headcounts: headcounts.filter((count) => count.shiftIndex === shiftIndex),
+    })),
+  };
+}

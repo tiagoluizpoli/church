@@ -36,6 +36,7 @@ export const WELCOME: ListUsualSetup200BlocksItem = {
   startTime: '09:00',
   endTime: '10:00',
   order: 0,
+  needsReview: false,
 };
 
 export const SERVICE: ListUsualSetup200BlocksItem = {
@@ -45,6 +46,7 @@ export const SERVICE: ListUsualSetup200BlocksItem = {
   startTime: '10:00',
   endTime: '12:00',
   order: 1,
+  needsReview: false,
   entry: {
     serves: true,
     shiftSplit: { kind: 'equal', count: 1 },
@@ -74,6 +76,7 @@ export const NIGHT: ListUsualSetup200BlocksItem = {
   startTime: '22:00',
   endTime: '02:00',
   order: 0,
+  needsReview: false,
   entry: {
     serves: false,
     shiftSplit: { kind: 'equal', count: 1 },
@@ -86,3 +89,34 @@ export function setupOf(
 ): ListUsualSetup200 {
   return { blocks };
 }
+
+/** Service was retimed to 10:00–11:30, so its manual 10–11 / 11–12 split no longer fits. */
+export const FLAGGED_SERVICE: ListUsualSetup200BlocksItem = {
+  ...SERVICE,
+  endTime: '11:30',
+  needsReview: true,
+  entry: {
+    serves: true,
+    shiftSplit: {
+      kind: 'manual',
+      spans: [
+        { startTime: '10:00', endTime: '11:00' },
+        { startTime: '11:00', endTime: '12:00' },
+      ],
+    },
+    headcounts: [
+      {
+        shiftIndex: 0,
+        sectorId: 'sector-stage',
+        roleId: 'role-singer',
+        peopleNeeded: 2,
+      },
+      {
+        shiftIndex: 1,
+        sectorId: 'sector-door',
+        roleId: 'role-singer',
+        peopleNeeded: 3,
+      },
+    ],
+  },
+};

@@ -3961,6 +3961,8 @@ paths:
                             - shiftSplit
                             - headcounts
                           additionalProperties: false
+                        needsReview:
+                          type: boolean
                       required:
                         - templateId
                         - templateName
@@ -3970,6 +3972,7 @@ paths:
                         - startTime
                         - endTime
                         - order
+                        - needsReview
                       additionalProperties: false
                 required:
                   - blocks
@@ -4218,6 +4221,8 @@ paths:
                       - shiftSplit
                       - headcounts
                     additionalProperties: false
+                  needsReview:
+                    type: boolean
                 required:
                   - templateId
                   - templateName
@@ -4227,6 +4232,7 @@ paths:
                   - startTime
                   - endTime
                   - order
+                  - needsReview
                 additionalProperties: false
         "401":
           description: Default Response

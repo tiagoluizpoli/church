@@ -1,11 +1,11 @@
-import { type Instant, today, toInstantAfter, toTimeOfDay } from '@church/time';
+import type { Instant } from '@church/time';
 import type { EventTimeBlockId, TemplateTimeBlockId } from '../branded-ids';
 import type { DefaultDirection } from '../entities/ministry';
 import type {
   UsualSetupHeadcount,
   UsualSetupShiftSplit,
 } from '../entities/usual-setup';
-import { computeEqualSpans } from './shift-splitter';
+import { planUsualSetupShifts } from './usual-setup-planner';
 
 export interface ProfileSeederEventTimeBlock {
   eventTimeBlockId: EventTimeBlockId;
@@ -105,40 +105,10 @@ function buildProfileShifts({
   entry,
   timeZone,
 }: BuildProfileShiftsInput): SeededShiftPlan[] {
-  if (entry.shiftSplit.kind === 'equal') {
-    return computeEqualSpans({
-      startTime: eventTimeBlock.startTime,
-      endTime: eventTimeBlock.endTime,
-      n: entry.shiftSplit.count,
-    }).map((span, shiftIndex) => ({
-      startTime: span.startTime,
-      endTime: span.endTime,
-      headcounts: headcountsOfShift({ entry, shiftIndex }),
-    }));
-  }
-
-  const day = today({ instant: eventTimeBlock.startTime, timeZone });
-  const anchor = toTimeOfDay({ instant: eventTimeBlock.startTime, timeZone });
-
-  return entry.shiftSplit.spans.map((span, shiftIndex) => ({
-    // Resolved after the block's own start, so an overnight span ends next day.
-    startTime: toInstantAfter({ day, anchor, time: span.startTime, timeZone }),
-    endTime: toInstantAfter({ day, anchor, time: span.endTime, timeZone }),
-    label: span.label,
-    headcounts: headcountsOfShift({ entry, shiftIndex }),
-  }));
-}
-
-interface HeadcountsOfShiftInput {
-  entry: ProfileSeederEntry;
-  shiftIndex: number;
-}
-
-function headcountsOfShift({
-  entry,
-  shiftIndex,
-}: HeadcountsOfShiftInput): UsualSetupHeadcount[] {
-  return entry.headcounts.filter(
-    (headcount) => headcount.shiftIndex === shiftIndex,
-  );
+  return planUsualSetupShifts({
+    shiftSplit: entry.shiftSplit,
+    headcounts: entry.headcounts,
+    block: eventTimeBlock,
+    timeZone,
+  }).shifts;
 }

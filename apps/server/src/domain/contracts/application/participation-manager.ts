@@ -168,6 +168,8 @@ export interface UsualSetupBlockView {
   endTime: TimeOfDay;
   order: number;
   entry?: UsualSetup;
+  /** Derived, never stored: a serving manual split no longer fits the block. */
+  needsReview: boolean;
 }
 
 export interface EligibleVolunteerView {

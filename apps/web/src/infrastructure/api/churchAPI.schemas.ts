@@ -2776,6 +2776,17 @@ export type MarkAllNotificationsRead422 = {
 };
 
 export type ListInvitationsParams = {
+status?: ListInvitationsStatus;
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+ministryId?: string;
+invitedAs?: ListInvitationsInvitedAs;
+/**
+ * @minLength 1
+ * @maxLength 254
+ */
+email?: string;
 cursor?: string;
 /**
  * @minimum 1
@@ -2783,6 +2794,26 @@ cursor?: string;
  */
 limit?: number;
 };
+
+export type ListInvitationsStatus = typeof ListInvitationsStatus[keyof typeof ListInvitationsStatus];
+
+
+export const ListInvitationsStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  declined: 'declined',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export type ListInvitationsInvitedAs = typeof ListInvitationsInvitedAs[keyof typeof ListInvitationsInvitedAs];
+
+
+export const ListInvitationsInvitedAs = {
+  admin: 'admin',
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
 
 export type ListInvitations200ItemsItemKind = typeof ListInvitations200ItemsItemKind[keyof typeof ListInvitations200ItemsItemKind];
 
@@ -2822,6 +2853,9 @@ export type ListInvitations200ItemsItemStatus = typeof ListInvitations200ItemsIt
 
 export const ListInvitations200ItemsItemStatus = {
   pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+  canceled: 'canceled',
 } as const;
 
 export type ListInvitations200ItemsItemDisplayStatus = typeof ListInvitations200ItemsItemDisplayStatus[keyof typeof ListInvitations200ItemsItemDisplayStatus];
@@ -2829,8 +2863,23 @@ export type ListInvitations200ItemsItemDisplayStatus = typeof ListInvitations200
 
 export const ListInvitations200ItemsItemDisplayStatus = {
   pending: 'pending',
+  accepted: 'accepted',
+  declined: 'declined',
+  revoked: 'revoked',
   expired: 'expired',
 } as const;
+
+export type ListInvitations200ItemsItemClosureActor = {
+  id: string;
+  name: string;
+};
+
+export type ListInvitations200ItemsItemClosure = {
+  actor?: ListInvitations200ItemsItemClosureActor;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  at?: string;
+  reason?: string;
+};
 
 export type ListInvitations200ItemsItemEmailDeliveryState = typeof ListInvitations200ItemsItemEmailDeliveryState[keyof typeof ListInvitations200ItemsItemEmailDeliveryState];
 
@@ -2865,12 +2914,33 @@ export type ListInvitations200ItemsItem = {
   expiresAt: string;
   status: ListInvitations200ItemsItemStatus;
   displayStatus: ListInvitations200ItemsItemDisplayStatus;
+  closure?: ListInvitations200ItemsItemClosure;
   emailDelivery: ListInvitations200ItemsItemEmailDelivery;
+};
+
+export type ListInvitations200OptionsMinistriesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListInvitations200OptionsInvitedAsItem = typeof ListInvitations200OptionsInvitedAsItem[keyof typeof ListInvitations200OptionsInvitedAsItem];
+
+
+export const ListInvitations200OptionsInvitedAsItem = {
+  admin: 'admin',
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListInvitations200Options = {
+  ministries: ListInvitations200OptionsMinistriesItem[];
+  invitedAs: ListInvitations200OptionsInvitedAsItem[];
 };
 
 export type ListInvitations200 = {
   items: ListInvitations200ItemsItem[];
   nextCursor?: string;
+  options: ListInvitations200Options;
 };
 
 export type ListInvitations401 = {
@@ -2879,6 +2949,11 @@ export type ListInvitations401 = {
 };
 
 export type ListInvitations403 = {
+  error: string;
+  message: string;
+};
+
+export type ListInvitations404 = {
   error: string;
   message: string;
 };

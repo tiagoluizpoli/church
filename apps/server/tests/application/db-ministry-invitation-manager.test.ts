@@ -42,7 +42,7 @@ const repo = {
 };
 
 const roleRepository = { listByMinistry: vi.fn() };
-const ministryRepository = { getById: vi.fn() };
+const ministryRepository = { getById: vi.fn(), lockActive: vi.fn() };
 const authorityManager = {
   canManageMinistry: vi.fn(),
   canManageChurch: vi.fn(),

@@ -67,6 +67,11 @@ export const ministryInvitation = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+    /** Set by every decline path; the actor lives in `identity_audit` and is absent for a public decline. */
+    declinedAt: timestamp('declined_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     lastResendAt: timestamp('last_resend_at', {
       withTimezone: true,
       mode: 'date',

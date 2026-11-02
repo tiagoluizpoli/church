@@ -20,4 +20,6 @@ export * from './last-remaining-event-time-block-error';
 export * from './ministry-invitation-not-found';
 export * from './ministry-name-in-use';
 export * from './overlapping-cycle';
+export * from './sector-in-use';
+export * from './sector-name-in-use';
 export * from './shift-out-of-bounds';

@@ -41,6 +41,8 @@
   "error_not_found": "Não encontramos o que você pediu.",
   "error_ministry_not_found": "Ministério não encontrado.",
   "error_ministry_name_in_use": "Outro ministério ativo desta igreja já tem este nome. Escolha outro nome.",
+  "error_sector_name_in_use": "Outro setor ativo deste ministério já tem este nome. Escolha outro nome.",
+  "error_sector_in_use": "Este setor ainda é usado no planejamento futuro ou em uma configuração padrão. Altere esses usos primeiro e depois arquive-o.",
   "error_check_access_denied": "Esta consulta de disponibilidade pertence a outro voluntário.",
   "error_assignment_access_denied": "Esta escala pertence a outro voluntário.",
   "error_assign_action_not_available": "Esta ação da escala não está disponível agora.",

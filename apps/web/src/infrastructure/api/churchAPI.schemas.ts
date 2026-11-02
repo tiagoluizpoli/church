@@ -1304,6 +1304,141 @@ export type ResendMinistryInvitation404 = {
   message: string;
 };
 
+export type ListSectors200SectorsItem = {
+  id: string;
+  name: string;
+};
+
+export type ListSectors200 = {
+  sectors: ListSectors200SectorsItem[];
+};
+
+export type ListSectors401 = {
+  error: string;
+  message: string;
+};
+
+export type ListSectors403 = {
+  error: string;
+  message: string;
+};
+
+export type ListSectors404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSectorBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type CreateSector201 = {
+  id: string;
+  name: string;
+};
+
+export type CreateSector401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSector403 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSector404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateSector409 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSectorBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type RenameSector200 = {
+  id: string;
+  name: string;
+};
+
+export type RenameSector401 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSector403 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSector404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameSector409 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type ArchiveSector204 = typeof ArchiveSector204[keyof typeof ArchiveSector204] | null;
+
+
+export const ArchiveSector204 = {
+} as const;
+
+export type ArchiveSector401 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveSector403 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveSector404 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveSector409BlockersItem = {
+  kind: 'requirement';
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+  eventId: string;
+  eventTimeBlockId: string;
+} | {
+  kind: 'usual_setup';
+  ministryId: string;
+  ministryName: string;
+  templateTimeBlockId: string;
+};
+
+export type ArchiveSector409 = {
+  error: string;
+  message: string;
+  blockers?: ArchiveSector409BlockersItem[];
+};
+
 export type GetCycleParticipationParams = {
 ministryId: string;
 };

@@ -27,9 +27,15 @@ interface MinistryArchiveProps {
   name: string;
 }
 
+type CycleBlocker = Extract<ArchiveMinistry409BlockersItem, { kind: 'cycle' }>;
+
 interface ArchiveRefusal {
-  blockers: ArchiveMinistry409BlockersItem[];
+  blockers: CycleBlocker[];
 }
+
+const isCycleBlocker = (
+  blocker: ArchiveMinistry409BlockersItem,
+): blocker is CycleBlocker => blocker.kind === 'cycle';
 
 /** Archive + confirmation; a 409 lists the blocking Cycles to resolve first. */
 export function MinistryArchive({ ministryId, name }: MinistryArchiveProps) {
@@ -54,7 +60,7 @@ export function MinistryArchive({ ministryId, name }: MinistryArchiveProps) {
         : undefined;
       setRefusal(
         body?.error === 'MINISTRY_IN_USE'
-          ? { blockers: body.blockers }
+          ? { blockers: (body.blockers ?? []).filter(isCycleBlocker) }
           : 'failed',
       );
       setOpen(false);

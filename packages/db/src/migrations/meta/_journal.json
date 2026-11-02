@@ -232,6 +232,13 @@
       "when": 1793579079488,
       "tag": "0032_sector-archive",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793582094147,
+      "tag": "0033_role-archive",
+      "breakpoints": true
     }
   ]
 }

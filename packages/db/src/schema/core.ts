@@ -146,16 +146,29 @@ export const ministryMembership = pgTable('ministry_membership', {
   leftAt: timestamp('left_at', { withTimezone: true, mode: 'date' }),
 });
 
-export const role = pgTable('role', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  ministryId: uuid('ministry_id')
-    .notNull()
-    .references(() => ministry.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 255 }).notNull(),
-});
+/**
+ * A Ministry Role. Archive (`archived_at`) hides it from new use only:
+ * qualifications, ShiftRequirements and Assignments keep pointing at it.
+ */
+export const role = pgTable(
+  'role',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    ministryId: uuid('ministry_id')
+      .notNull()
+      .references(() => ministry.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
+  },
+  (table) => [
+    uniqueIndex('role_ministry_active_name_idx')
+      .on(table.ministryId, sql`lower(${table.name})`)
+      .where(sql`${table.archivedAt} IS NULL`),
+  ],
+);
 
 /**
  * A named spot or duty a Ministry staffs every Cycle (pt-BR *Setor*, ADR-0007),

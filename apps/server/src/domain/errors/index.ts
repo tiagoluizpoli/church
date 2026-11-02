@@ -21,6 +21,8 @@ export * from './ministry-in-use';
 export * from './ministry-invitation-not-found';
 export * from './ministry-name-in-use';
 export * from './overlapping-cycle';
+export * from './role-in-use';
+export * from './role-name-in-use';
 export * from './sector-in-use';
 export * from './sector-name-in-use';
 export * from './shift-out-of-bounds';

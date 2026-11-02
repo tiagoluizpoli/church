@@ -6,6 +6,7 @@ import {
   ChurchAdminController,
   EventController,
   MinistryController,
+  MinistryRoleController,
   NotificationController,
   PrepareController,
   RedemptionController,
@@ -31,6 +32,7 @@ export function buildControllers({
     eventTemplateManager,
     ministryManager,
     ministryInvitationManager,
+    ministryRoleManager,
     sectorManager,
     redemptionManager,
     volunteerTransferManager,
@@ -62,6 +64,11 @@ export function buildControllers({
     new MinistryController({
       ministryManager,
       ministryInvitationManager,
+      activeChurchResolver,
+      authorityGuard,
+    }),
+    new MinistryRoleController({
+      ministryRoleManager,
       activeChurchResolver,
       authorityGuard,
     }),

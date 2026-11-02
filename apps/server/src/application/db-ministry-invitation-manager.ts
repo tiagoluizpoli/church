@@ -147,16 +147,20 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       throw new InsufficientInvitationAuthorityError();
     }
 
-    const ministryRoles = await this.roleRepository.listByMinistry({
-      churchId,
-      ministryId,
-    });
-    const validRoleIds = new Set(ministryRoles.map((role) => role.id));
-    if (!roleIds.every((roleId) => validRoleIds.has(roleId))) {
-      throw new InvalidInvitationRoleError();
-    }
-
     return this.unitOfWork.run(async (tx) => {
+      // Only active Roles of this Ministry; share-locked so a concurrent Role
+      // archive cannot slip between this check and the invitation write.
+      const activeRoles = await this.roleRepository.lockActiveForUse({
+        churchId,
+        ministryId,
+        roleIds,
+        tx,
+      });
+      const validRoleIds = new Set<string>(activeRoles.map((role) => role.id));
+      if (!roleIds.every((roleId) => validRoleIds.has(roleId))) {
+        throw new InvalidInvitationRoleError();
+      }
+
       // Serializes concurrent mints for this (Ministry, email) pair so two
       // simultaneous re-invites can't both observe "no pending row" and
       // both attempt `create` — see acquireMintLock's own doc comment.

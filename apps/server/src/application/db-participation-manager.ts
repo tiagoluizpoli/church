@@ -636,7 +636,11 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  /** A Sector or Role outside the Ministry (or Church) is not found (#385). */
+  /**
+   * A Sector or Role outside the Ministry (or Church) is not found (#385),
+   * and so is an archived Role. The active Roles stay share-locked until `tx`
+   * ends, so a concurrent Role archive sees this write or this write sees it.
+   */
   private async assertMinistryHeadcounts({
     churchId,
     ministryId,
@@ -644,8 +648,8 @@ export class DbParticipationManager implements IParticipationManager {
     tx,
   }: AssertMinistryHeadcountsInput): Promise<void> {
     if (headcounts.length === 0) return;
-    // Locked, not just read: an archived Sector is not found for new use, and
-    // a concurrent Sector archive cannot slip between this check and the write.
+    // Locked, not just read: an archived Sector or Role is not found for new
+    // use, and a concurrent archive cannot slip between this check and the write.
     const [sectorIds, roles] = await Promise.all([
       this.sectorRepository.lockActive({
         churchId,
@@ -653,7 +657,12 @@ export class DbParticipationManager implements IParticipationManager {
         sectorIds: headcounts.map(({ sectorId }) => sectorId),
         tx,
       }),
-      this.roleRepository.listByMinistry({ churchId, ministryId, tx }),
+      this.roleRepository.lockActiveForUse({
+        churchId,
+        ministryId,
+        roleIds: headcounts.map(({ roleId }) => roleId),
+        tx,
+      }),
     ]);
     const roleIds = new Set<string>(roles.map((role) => role.id));
     for (const { sectorId, roleId } of headcounts) {

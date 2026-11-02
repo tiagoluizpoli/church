@@ -4,6 +4,7 @@ import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
 import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
+import { RoleInUseError } from '@/domain/errors/role-in-use';
 import { SectorInUseError } from '@/domain/errors/sector-in-use';
 import {
   type ValidationReason,
@@ -37,6 +38,7 @@ export function archiveBlockers(
   error: DomainError,
 ): ArchiveBlocker[] | undefined {
   return error instanceof SectorInUseError ||
+    error instanceof RoleInUseError ||
     error instanceof MinistryInUseError
     ? error.blockers
     : undefined;

@@ -368,6 +368,7 @@ interface BlockerLinkProps {
 }
 
 function blockerKey({ blocker }: BlockerLinkProps): string {
+  if (blocker.kind === 'cycle') return `cycle-${blocker.cycleId}`;
   return blocker.kind === 'requirement'
     ? `requirement-${blocker.eventTimeBlockId}`
     : `usual-setup-${blocker.templateTimeBlockId}`;
@@ -376,7 +377,7 @@ function blockerKey({ blocker }: BlockerLinkProps): string {
 /** Each location opens in a new tab, keeping this page's context. */
 function BlockerLink({ blocker }: BlockerLinkProps) {
   const newTab = <span className="sr-only"> {m.sectors_opens_new_tab()}</span>;
-  if (blocker.kind === 'requirement') {
+  if (blocker.kind !== 'usual_setup') {
     return (
       <Link
         to="/schedules/$ministryId/$cycleId"

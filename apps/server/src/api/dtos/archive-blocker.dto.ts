@@ -7,6 +7,12 @@ const blockerMinistry = {
 
 export const archiveBlockerSchema = z.discriminatedUnion('kind', [
   z.object({
+    kind: z.literal('cycle'),
+    ...blockerMinistry,
+    cycleId: z.string(),
+    cycleName: z.string(),
+  }),
+  z.object({
     kind: z.literal('requirement'),
     ...blockerMinistry,
     cycleId: z.string(),
@@ -26,18 +32,4 @@ export const archiveBlockedResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
   blockers: z.array(archiveBlockerSchema).optional(),
-});
-
-/** Ministry archive refusal: the Cycles whose unended Events it still serves. */
-export const ministryArchiveBlockedResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-  blockers: z.array(
-    z.object({
-      kind: z.literal('cycle'),
-      ...blockerMinistry,
-      cycleId: z.string(),
-      cycleName: z.string(),
-    }),
-  ),
 });

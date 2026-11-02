@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  FLAGGED_SERVICE,
   MINISTRY_ID,
   NIGHT,
   NIGHT_ID,
@@ -111,6 +112,53 @@ function refusal(status: number, data: unknown) {
 }
 
 describe('/ministries/$ministryId/usual-setup/$blockId', () => {
+  it('shows the saved values of a block needing review, explains the fallback, and repairs explicitly', async () => {
+    const user = userEvent.setup();
+    listUsualSetup.mockResolvedValue(setupOf(FLAGGED_SERVICE));
+    saveUsualSetupBlock.mockResolvedValue({
+      ...FLAGGED_SERVICE,
+      needsReview: false,
+    });
+    await openForm(SERVICE_ID);
+
+    expect(screen.getByText(m.usual_setup_needs_review() + '.')).toBeVisible();
+    expect(
+      screen.getByText(m.usual_setup_needs_review() + '.').parentElement,
+    ).toHaveTextContent(m.usual_setup_review_fallback());
+    expect(
+      within(screen.getByTestId('shift-split-end-2'))
+        .getAllByRole('spinbutton')
+        .map((segment) => segment.textContent),
+    ).toEqual(['12', '00']);
+    expect(saveButton()).toBeDisabled();
+    expect(saveUsualSetupBlock).not.toHaveBeenCalled();
+
+    await fillTimeOfDayField({
+      user,
+      field: screen.getByTestId('shift-split-end-2'),
+      time: '11:30',
+    });
+    await user.type(
+      cell('Door', `${m.usual_setup_shift_label({ number: 2 })} · 11:00–11:30`),
+      '3',
+    );
+    await user.click(saveButton());
+
+    expect(saveUsualSetupBlock).toHaveBeenCalledWith(
+      MINISTRY_ID,
+      SERVICE_ID,
+      expect.objectContaining({
+        shiftSplit: {
+          kind: 'manual',
+          spans: [
+            { startTime: '10:00', endTime: '11:00' },
+            { startTime: '11:00', endTime: '11:30' },
+          ],
+        },
+      }),
+    );
+  });
+
   it('starts a new block as Not served and saves an explicit opt-out', async () => {
     const user = userEvent.setup();
     saveUsualSetupBlock.mockResolvedValue(WELCOME);

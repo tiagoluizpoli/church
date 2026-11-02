@@ -1577,6 +1577,7 @@ export type ListUsualSetup200BlocksItem = {
      */
   order: number;
   entry?: ListUsualSetup200BlocksItemEntry;
+  needsReview: boolean;
 };
 
 export type ListUsualSetup200 = {
@@ -1694,6 +1695,7 @@ export type SaveUsualSetupBlock200 = {
      */
   order: number;
   entry?: SaveUsualSetupBlock200Entry;
+  needsReview: boolean;
 };
 
 export type SaveUsualSetupBlock401 = {

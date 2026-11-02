@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  FLAGGED_SERVICE,
   MINISTRY_ID,
   NIGHT,
   ROLES,
@@ -77,6 +78,18 @@ function rowsOf(templateName: string) {
 }
 
 describe('/ministries/$ministryId/usual-setup', () => {
+  it('marks a block whose manual split needs review and explains the whole-block fallback', async () => {
+    listUsualSetup.mockResolvedValue(setupOf(WELCOME, FLAGGED_SERVICE));
+
+    renderList();
+
+    const row = (await screen.findByRole('link', { name: /Service/ }))
+      .textContent;
+    expect(row).toContain(m.usual_setup_needs_review());
+    expect(row).toContain(m.usual_setup_review_fallback());
+    expect(screen.getAllByText(m.usual_setup_needs_review())).toHaveLength(1);
+  });
+
   it('groups blocks by template with weekday, time and a served or Not served summary', async () => {
     renderList();
 

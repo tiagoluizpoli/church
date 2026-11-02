@@ -234,6 +234,16 @@ function UsualSetupBlockForm({
         </p>
       </div>
 
+      {block.needsReview ? (
+        <Alert role="status">
+          <AlertDescription>
+            <strong>{m.usual_setup_needs_review()}.</strong>{' '}
+            {m.usual_setup_review_fallback()}{' '}
+            {m.usual_setup_review_repair({ range: formatTimeRange(block) })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="flex items-start gap-3">
         <Checkbox
           id="usual-setup-serves"

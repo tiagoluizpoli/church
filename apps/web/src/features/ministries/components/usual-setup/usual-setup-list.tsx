@@ -128,6 +128,12 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
                     <span className="block text-muted-foreground text-xs">
                       {formatTimeRange(block)}
                     </span>
+                    {block.needsReview ? (
+                      <span className="block text-amber-700 text-xs dark:text-amber-500">
+                        <strong>{m.usual_setup_needs_review()}</strong>{' '}
+                        {m.usual_setup_review_fallback()}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="flex items-center gap-2 text-right text-sm">
                     <span data-testid="usual-setup-summary">

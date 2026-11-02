@@ -1,5 +1,5 @@
-import { m } from '@church/i18n/messages';
 import { createFileRoute } from '@tanstack/react-router';
+import { SectorRegistry } from '@/features/ministries/components/sector-registry';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/ministries/$ministryId/sectors',
@@ -7,11 +7,7 @@ export const Route = createFileRoute(
   component: MinistrySectorsRoute,
 });
 
-/** The setup instruction; the Sector registry (#650) renders here. */
 function MinistrySectorsRoute() {
-  return (
-    <p className="text-muted-foreground" role="status">
-      {m.ministry_sectors_empty()}
-    </p>
-  );
+  const { ministryId } = Route.useParams();
+  return <SectorRegistry ministryId={ministryId} />;
 }

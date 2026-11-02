@@ -188,6 +188,18 @@ describe('public Church Invitation decline over HTTP', () => {
     expect(
       await ministryStatus({ invitationId: pair.ministryInvitationId }),
     ).toBe('rejected');
+    // The time is recorded; no actor is invented for a signed-out decline.
+    const [church] = await testDb
+      .select()
+      .from(churchInvitation)
+      .where(eq(churchInvitation.id, pair.churchInvitationId));
+    expect(church?.declinedAt).toBeInstanceOf(Date);
+    expect(church?.declinedById).toBeNull();
+    const [ministryHalf] = await testDb
+      .select()
+      .from(ministryInvitation)
+      .where(eq(ministryInvitation.id, pair.ministryInvitationId));
+    expect(ministryHalf?.declinedAt).toEqual(church?.declinedAt);
     expect(await testDb.select().from(user)).toHaveLength(userCount);
     expect(await testDb.select().from(session)).toHaveLength(sessionsBefore);
     expect(await testDb.select().from(member)).toHaveLength(membersBefore);

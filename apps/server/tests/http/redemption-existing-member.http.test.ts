@@ -242,10 +242,14 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({ kind: 'full-success' });
       const [acceptedInvitation] = await testDb
-        .select({ status: ministryInvitation.status })
+        .select({
+          status: ministryInvitation.status,
+          acceptedAt: ministryInvitation.acceptedAt,
+        })
         .from(ministryInvitation)
         .where(eq(ministryInvitation.id, invitation.id));
       expect(acceptedInvitation?.status).toBe('accepted');
+      expect(acceptedInvitation?.acceptedAt).toBeInstanceOf(Date);
       const [membership] = await testDb
         .select()
         .from(ministryMembership)
@@ -543,10 +547,22 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({ kind: 'declined' });
       const [declinedInvitation] = await testDb
-        .select({ status: ministryInvitation.status })
+        .select({
+          status: ministryInvitation.status,
+          declinedAt: ministryInvitation.declinedAt,
+        })
         .from(ministryInvitation)
         .where(eq(ministryInvitation.id, invitation.id));
       expect(declinedInvitation?.status).toBe('rejected');
+      expect(declinedInvitation?.declinedAt).toBeInstanceOf(Date);
+      const [audit] = await testDb
+        .select()
+        .from(identityAudit)
+        .where(eq(identityAudit.ministryInvitationId, invitation.id));
+      expect(audit).toMatchObject({
+        action: 'decline',
+        actorId: fixture.existingChurchMemberA,
+      });
     });
   });
 

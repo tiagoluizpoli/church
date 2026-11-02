@@ -114,6 +114,7 @@ function createHarness({
     async declineChurchInvitation() {
       return 'declined' as const;
     },
+    recordChurchInvitationAcceptance: async () => {},
     recordChurchOnlyPartialAcceptance,
   };
   const unitOfWork: UnitOfWork = {

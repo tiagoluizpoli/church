@@ -43,6 +43,13 @@ export type DeclineChurchInvitationResult =
   | 'already-declined'
   | 'unavailable';
 
+export interface RecordChurchInvitationAcceptanceInput {
+  churchInvitationId: ChurchInvitationId;
+  userId: UserId;
+  acceptedAt: Date;
+  tx: TransactionContext;
+}
+
 export interface RecordChurchOnlyPartialAcceptanceInput {
   /** The invitation's Church — where Church Membership was granted. */
   churchId: ChurchId;
@@ -69,6 +76,10 @@ export interface RedemptionRepository {
   declineChurchInvitation(
     input: DeclineChurchInvitationInput,
   ): Promise<DeclineChurchInvitationResult>;
+  /** Stamps who accepted and when on a Church Invitation Better Auth just accepted; keeps any earlier stamp. */
+  recordChurchInvitationAcceptance(
+    input: RecordChurchInvitationAcceptanceInput,
+  ): Promise<void>;
   /**
    * Spec §7.5/§7.6: one `church_only_partial_acceptance` audit row for the
    * cross-Church split. Writes nothing else — the Ministry Invitation stays

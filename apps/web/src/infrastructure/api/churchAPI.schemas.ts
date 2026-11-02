@@ -320,6 +320,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -450,6 +451,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -1181,6 +1183,11 @@ export type MintMinistryInvitation201 = {
   deliveryStatus: MintMinistryInvitation201DeliveryStatus;
 };
 
+export type MintMinistryInvitation401 = {
+  error: string;
+  message: string;
+};
+
 export type MintMinistryInvitation403 = {
   error: string;
   message: string;
@@ -1189,6 +1196,53 @@ export type MintMinistryInvitation403 = {
 export type MintMinistryInvitation404 = {
   error: string;
   message: string;
+};
+
+export type MintMinistryInvitation409Error = typeof MintMinistryInvitation409Error[keyof typeof MintMinistryInvitation409Error];
+
+
+export const MintMinistryInvitation409Error = {
+  PENDING_MINISTRY_INVITATION_EXISTS: 'PENDING_MINISTRY_INVITATION_EXISTS',
+  INVITEE_ALREADY_MINISTRY_MEMBER: 'INVITEE_ALREADY_MINISTRY_MEMBER',
+} as const;
+
+export type MintMinistryInvitation409ExistingInvitation = {
+  id: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+};
+
+export type MintMinistryInvitation409 = {
+  error: MintMinistryInvitation409Error;
+  message: string;
+  existingInvitation?: MintMinistryInvitation409ExistingInvitation;
+};
+
+export type MintMinistryInvitation422Error = typeof MintMinistryInvitation422Error[keyof typeof MintMinistryInvitation422Error];
+
+
+export const MintMinistryInvitation422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  INVALID_INVITATION_ROLE: 'INVALID_INVITATION_ROLE',
+} as const;
+
+export type MintMinistryInvitation422Reason = typeof MintMinistryInvitation422Reason[keyof typeof MintMinistryInvitation422Reason];
+
+
+export const MintMinistryInvitation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+} as const;
+
+export type MintMinistryInvitation422 = {
+  error: MintMinistryInvitation422Error;
+  message: string;
+  reason?: MintMinistryInvitation422Reason;
+  issues?: unknown[];
 };
 
 export type ResendMinistryInvitation200Kind = typeof ResendMinistryInvitation200Kind[keyof typeof ResendMinistryInvitation200Kind];

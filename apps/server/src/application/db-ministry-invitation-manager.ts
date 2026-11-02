@@ -2,6 +2,8 @@ import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
+  compareInstants,
+  fromDate,
   type Instant,
   nowAsDate,
   now as nowInstant,
@@ -29,11 +31,14 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 import { InsufficientInvitationAuthorityError } from '../domain/errors/insufficient-invitation-authority';
 import { InvalidInvitationRoleError } from '../domain/errors/invalid-invitation-role';
+import { InvitationRoleRequiredError } from '../domain/errors/invitation-role-required';
 import { InviteeAlreadyMinistryMemberError } from '../domain/errors/invitee-already-ministry-member';
 import { MinistryInvitationNotFoundError } from '../domain/errors/ministry-invitation-not-found';
 import { MissingOutboxDeliveryRecordError } from '../domain/errors/missing-outbox-delivery-record';
+import { PendingMinistryInvitationExistsError } from '../domain/errors/pending-ministry-invitation-exists';
 import { ResendCooldownActiveError } from '../domain/errors/resend-cooldown-active';
 import { ResendDailyCapExceededError } from '../domain/errors/resend-daily-cap-exceeded';
+import { normalizeInvitationEmail } from '../domain/services/normalize-invitation-email';
 import {
   hasResendDailyCapExceeded,
   isResendCooldownActive,
@@ -134,8 +139,9 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   }
 
   async mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation> {
-    const { churchId, ministryId, inviterId, ministryAccessLevel, roleIds } =
-      input;
+    const { churchId, ministryId, inviterId, ministryAccessLevel } = input;
+    const email = normalizeInvitationEmail({ email: input.email });
+    const roleIds = [...new Set(input.roleIds)];
 
     const { callerIsAdmin } = await this.ensureMintableScope({
       churchId,
@@ -148,6 +154,16 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     }
 
     return this.unitOfWork.run(async (tx) => {
+      // Lock order shared with the admin invite: Church/address, then
+      // Ministry/address, then rows. Every recheck below runs under them.
+      await this.repo.acquireChurchOfferLock({ churchId, email, tx });
+      await this.repo.acquireMintLock({ ministryId, email, tx });
+      await this.lockActiveMinistry({ churchId, ministryId, tx });
+      // Leading without serving is valid; serving needs a Role.
+      if (ministryAccessLevel === 'volunteer' && roleIds.length === 0) {
+        throw new InvitationRoleRequiredError();
+      }
+
       // Only active Roles of this Ministry; share-locked so a concurrent Role
       // archive cannot slip between this check and the invitation write.
       const activeRoles = await this.roleRepository.lockActiveForUse({
@@ -161,21 +177,40 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         throw new InvalidInvitationRoleError();
       }
 
-      // Serializes concurrent mints for this (Ministry, email) pair so two
-      // simultaneous re-invites can't both observe "no pending row" and
-      // both attempt `create` — see acquireMintLock's own doc comment.
-      await this.repo.acquireMintLock({ ministryId, email: input.email, tx });
-      await this.lockActiveMinistry({ churchId, ministryId, tx });
-
       const inviteeUserId = await this.repo.findChurchMemberByEmail({
         churchId,
-        email: input.email,
+        email,
         tx,
       });
+      if (
+        inviteeUserId &&
+        (await this.repo.hasActiveMinistryMembership({
+          churchId,
+          ministryId,
+          userId: inviteeUserId,
+          tx,
+        }))
+      ) {
+        throw new InviteeAlreadyMinistryMemberError();
+      }
 
+      // Stored pending is a duplicate even past its expiry; never refreshed here.
+      const existing = await this.repo.findPendingForAddress({
+        churchId,
+        ministryId,
+        email,
+        tx,
+      });
+      if (existing) {
+        throw new PendingMinistryInvitationExistsError({
+          existingInvitation: existing,
+        });
+      }
+
+      const mintInput = { ...input, email, roleIds, tx };
       return inviteeUserId
-        ? this.mintForExistingMember({ ...input, inviteeUserId, tx })
-        : this.mintChained({ ...input, tx });
+        ? this.mintForExistingMember({ ...mintInput, inviteeUserId })
+        : this.mintChained(mintInput);
     });
   }
 
@@ -301,43 +336,22 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       tx,
     } = input;
 
-    const alreadyMember = await this.repo.hasActiveMinistryMembership({
-      churchId,
-      ministryId,
-      userId: inviteeUserId,
-      tx,
+    const expiresAt = toDate({
+      instant: addMilliseconds({
+        instant: nowInstant(),
+        milliseconds: this.invitationTtlMs,
+      }),
     });
-    if (alreadyMember) throw new InviteeAlreadyMinistryMemberError();
-
-    const existing = await this.repo.findPendingByInvitee({
+    const invitation = await this.repo.create({
       churchId,
       ministryId,
+      ministryAccessLevel,
+      inviterId,
       inviteeUserId,
+      roleIds,
+      expiresAt,
       tx,
     });
-
-    const expiresAtInstant = addMilliseconds({
-      instant: nowInstant(),
-      milliseconds: this.invitationTtlMs,
-    });
-    const expiresAt = toDate({ instant: expiresAtInstant });
-    const invitation = existing
-      ? await this.repo.refreshExpiry({
-          churchId,
-          ministryInvitation: existing,
-          expiresAt,
-          tx,
-        })
-      : await this.repo.create({
-          churchId,
-          ministryId,
-          ministryAccessLevel,
-          inviterId,
-          inviteeUserId,
-          roleIds,
-          expiresAt,
-          tx,
-        });
 
     await this.enqueueMemberNotification({
       churchId,
@@ -384,30 +398,16 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       tx,
     });
 
-    const existing = await this.repo.findPendingByChurchInvitation({
+    const invitation = await this.repo.create({
       churchId,
       ministryId,
+      ministryAccessLevel,
+      inviterId,
       churchInvitationId: churchInvitationSummary.id,
+      roleIds,
+      expiresAt: churchInvitationSummary.expiresAt,
       tx,
     });
-
-    const invitation = existing
-      ? await this.repo.refreshExpiry({
-          churchId,
-          ministryInvitation: existing,
-          expiresAt: churchInvitationSummary.expiresAt,
-          tx,
-        })
-      : await this.repo.create({
-          churchId,
-          ministryId,
-          ministryAccessLevel,
-          inviterId,
-          churchInvitationId: churchInvitationSummary.id,
-          roleIds,
-          expiresAt: churchInvitationSummary.expiresAt,
-          tx,
-        });
 
     await this.repo.enqueueOutboxMessage({
       churchId,
@@ -433,13 +433,36 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       email,
       tx,
     });
-    if (existing) return existing;
-    return this.repo.createChainedChurchInvitation({
+    if (!existing) {
+      return this.repo.createChainedChurchInvitation({
+        churchId,
+        email,
+        inviterId,
+        tx,
+      });
+    }
+    const now = nowInstant();
+    const expired =
+      compareInstants({
+        left: fromDate({ date: existing.expiresAt }),
+        right: now,
+      }) <= 0;
+    if (!expired) return existing;
+    // An expired pending Church offer is reissued with the new half, the
+    // same paired-expiry rule an admin upgrade applies (Spec 15).
+    const expiresAt = toDate({
+      instant: addMilliseconds({
+        instant: now,
+        milliseconds: this.churchInvitationTtlMs,
+      }),
+    });
+    await this.repo.alignPairedExpiry({
       churchId,
-      email,
-      inviterId,
+      churchInvitationId: existing.id,
+      expiresAt,
       tx,
     });
+    return { id: existing.id, expiresAt };
   }
 
   /**

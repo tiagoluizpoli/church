@@ -21,6 +21,7 @@ import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
 import {
   archiveBlockers,
   domainErrorMessage,
+  existingInvitation,
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
@@ -164,11 +165,13 @@ export async function createFastify({
       }
       const reason = validationReason(error);
       const blockers = archiveBlockers(error);
+      const existing = existingInvitation(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
         ...(reason && { reason }),
         ...(blockers && { blockers }),
+        ...(existing && { existingInvitation: existing }),
       });
     }
 

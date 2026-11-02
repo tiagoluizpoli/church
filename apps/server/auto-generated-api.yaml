@@ -745,6 +745,7 @@ paths:
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
                       - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
                   issues:
                     type: array
                     items: {}
@@ -1049,6 +1050,7 @@ paths:
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
                       - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
                   issues:
                     type: array
                     items: {}
@@ -2812,6 +2814,21 @@ paths:
                   - redemptionPath
                   - deliveryStatus
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -2838,6 +2855,67 @@ paths:
                     type: string
                   message:
                     type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - PENDING_MINISTRY_INVITATION_EXISTS
+                      - INVITEE_ALREADY_MINISTRY_MEMBER
+                  message:
+                    type: string
+                  existingInvitation:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                    required:
+                      - id
+                      - createdAt
+                    additionalProperties: false
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                      - INVALID_INVITATION_ROLE
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                  issues:
+                    type: array
+                    items: {}
                 required:
                   - error
                   - message

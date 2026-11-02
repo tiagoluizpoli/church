@@ -27,6 +27,8 @@ import {
   ministryInvitationMapper,
   ministryInvitationResponseSchema,
   mintMinistryInvitationBodySchema,
+  mintMinistryInvitationConflictSchema,
+  mintMinistryInvitationUnprocessableSchema,
 } from '../dtos/ministry-invitation.dto';
 import { refuse } from '../utils/refuse';
 
@@ -277,8 +279,11 @@ export class MinistryController implements FastifyController {
           body: mintMinistryInvitationBodySchema,
           response: {
             201: ministryInvitationResponseSchema,
+            401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
+            409: mintMinistryInvitationConflictSchema,
+            422: mintMinistryInvitationUnprocessableSchema,
           },
         },
       },

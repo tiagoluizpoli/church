@@ -55,6 +55,7 @@ export type MappedDomainCode =
   | 'HARD_CONSTRAINT_VIOLATION'
   | 'BELOW_FULL_PUBLISH'
   | 'INVITEE_ALREADY_MINISTRY_MEMBER'
+  | 'PENDING_MINISTRY_INVITATION_EXISTS'
   | 'RESEND_COOLDOWN_ACTIVE'
   | 'RESEND_DAILY_CAP_EXCEEDED'
   | 'INVALID_INVITATION_ROLE'
@@ -133,6 +134,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   INVITEE_ALREADY_MINISTRY_MEMBER: {
     status: 409,
     message: m.error_invitee_already_ministry_member,
+  },
+  PENDING_MINISTRY_INVITATION_EXISTS: {
+    status: 409,
+    message: m.error_pending_ministry_invitation_exists,
   },
   RESEND_COOLDOWN_ACTIVE: {
     status: 429,

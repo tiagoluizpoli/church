@@ -13,8 +13,14 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { addMilliseconds, now, toDate } from '@church/time';
-import { and, asc, desc, eq, gt, sql } from 'drizzle-orm';
+import {
+  addMilliseconds,
+  fromDate,
+  now,
+  nowAsDate,
+  toDate,
+} from '@church/time';
+import { and, asc, desc, eq, gt, or, sql } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryInvitationId,
@@ -22,8 +28,10 @@ import type {
   UserId,
 } from '../../domain/branded-ids';
 import type {
+  AcquireChurchOfferLockInput,
   AcquireMintLockInput,
   AcquireResendLockInput,
+  AlignPairedExpiryInput,
   ApplyResendInput,
   ChurchInvitationSummary,
   CreateChainedChurchInvitationInput,
@@ -32,17 +40,16 @@ import type {
   FindByIdInput,
   FindChurchMemberByEmailInput,
   FindMinistryInvitationContextInput,
-  FindPendingByChurchInvitationInput,
   FindPendingByIdInput,
-  FindPendingByInviteeInput,
   FindPendingChurchInvitationByEmailInput,
+  FindPendingForAddressInput,
   FindPublicRedemptionPreviewInput,
   HasActiveMinistryMembershipInput,
   IsInvitationAddressedToUserInput,
   MinistryInvitationContext,
   MinistryInvitationRepository,
+  PendingMinistryInvitationReference,
   RefreshChurchInvitationExpiryInput,
-  RefreshMinistryInvitationExpiryInput,
   ResolveRecipientEmailInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
@@ -50,10 +57,18 @@ import type {
   PublicRedemptionMinistry,
   PublicRedemptionPreview,
 } from '../../domain/entities/public-redemption-preview';
+import { PendingMinistryInvitationExistsError } from '../../domain/errors/pending-ministry-invitation-exists';
 import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
+import { isUniqueViolation } from './unique-violation';
+
+/** The database backstops behind the locked duplicate recheck. */
+const PENDING_HALF_CONSTRAINTS = [
+  'ministry_invitation_ministry_invitee_pending_idx',
+  'ministry_invitation_ministry_church_invitation_pending_idx',
+];
 
 interface HydrateMinistryInvitationInput {
   row: typeof ministryInvitation.$inferSelect;
@@ -83,6 +98,15 @@ export class DrizzleMinistryInvitationRepository
     );
   }
 
+  async acquireChurchOfferLock(
+    input: AcquireChurchOfferLockInput,
+  ): Promise<void> {
+    const { churchId, email, tx } = input;
+    await getClient({ db: this.db, tx }).execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`church-offer:${churchId}:${email}`}))`,
+    );
+  }
+
   async acquireResendLock(input: AcquireResendLockInput): Promise<void> {
     const { ministryInvitationId, tx } = input;
     await getClient({ db: this.db, tx }).execute(
@@ -98,47 +122,47 @@ export class DrizzleMinistryInvitationRepository
       .select({ userId: member.userId })
       .from(member)
       .innerJoin(user, eq(user.id, member.userId))
-      .where(and(eq(member.organizationId, churchId), eq(user.email, email)))
+      .where(
+        and(
+          eq(member.organizationId, churchId),
+          eq(sql`lower(${user.email})`, email),
+        ),
+      )
       .limit(1);
     return row ? (row.userId as UserId) : null;
   }
 
-  async findPendingByInvitee(input: FindPendingByInviteeInput) {
-    const { churchId, ministryId, inviteeUserId, tx } = input;
+  async findPendingForAddress(
+    input: FindPendingForAddressInput,
+  ): Promise<PendingMinistryInvitationReference | null> {
+    const { churchId, ministryId, email, tx } = input;
     const [row] = await getClient({ db: this.db, tx })
-      .select()
+      .select({
+        id: ministryInvitation.id,
+        createdAt: ministryInvitation.createdAt,
+      })
       .from(ministryInvitation)
+      .leftJoin(user, eq(user.id, ministryInvitation.inviteeUserId))
+      .leftJoin(
+        churchInvitation,
+        eq(churchInvitation.id, ministryInvitation.churchInvitationId),
+      )
       .where(
         and(
           withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.ministryId, ministryId),
-          eq(ministryInvitation.inviteeUserId, inviteeUserId),
           eq(ministryInvitation.status, 'pending'),
+          or(
+            eq(sql`lower(${user.email})`, email),
+            eq(sql`lower(${churchInvitation.email})`, email),
+          ),
         ),
       )
+      .orderBy(asc(ministryInvitation.createdAt))
       .limit(1);
-    if (!row) return null;
-    return this.hydrate({ row });
-  }
-
-  async findPendingByChurchInvitation(
-    input: FindPendingByChurchInvitationInput,
-  ) {
-    const { churchId, ministryId, churchInvitationId, tx } = input;
-    const [row] = await getClient({ db: this.db, tx })
-      .select()
-      .from(ministryInvitation)
-      .where(
-        and(
-          withChurchIsolation({ table: ministryInvitation, churchId }),
-          eq(ministryInvitation.ministryId, ministryId),
-          eq(ministryInvitation.churchInvitationId, churchInvitationId),
-          eq(ministryInvitation.status, 'pending'),
-        ),
-      )
-      .limit(1);
-    if (!row) return null;
-    return this.hydrate({ row });
+    return row
+      ? { id: row.id, createdAt: fromDate({ date: row.createdAt }) }
+      : null;
   }
 
   async findPendingById(input: FindPendingByIdInput) {
@@ -403,11 +427,12 @@ export class DrizzleMinistryInvitationRepository
       .where(
         and(
           eq(churchInvitation.organizationId, churchId),
-          eq(churchInvitation.email, email),
+          eq(sql`lower(${churchInvitation.email})`, email),
           eq(churchInvitation.status, 'pending'),
         ),
       )
-      .limit(1);
+      .limit(1)
+      .for('update');
     return row ?? null;
   }
 
@@ -457,8 +482,19 @@ export class DrizzleMinistryInvitationRepository
         inviteeUserId,
         churchInvitationId,
         expiresAt,
+        createdAt: nowAsDate(),
       })
-      .returning();
+      .returning()
+      .catch((error: unknown) => {
+        if (
+          PENDING_HALF_CONSTRAINTS.some((constraint) =>
+            isUniqueViolation({ error, constraint }),
+          )
+        ) {
+          throw new PendingMinistryInvitationExistsError({});
+        }
+        throw error;
+      });
     if (!row) throw new Error('Ministry invitation insert failed');
 
     if (roleIds.length > 0) {
@@ -474,21 +510,33 @@ export class DrizzleMinistryInvitationRepository
     return mapMinistryInvitation({ row, roleIds });
   }
 
-  async refreshExpiry(input: RefreshMinistryInvitationExpiryInput) {
-    const { churchId, ministryInvitation: invitation, expiresAt, tx } = input;
+  async alignPairedExpiry({
+    churchId,
+    churchInvitationId,
+    expiresAt,
+    tx,
+  }: AlignPairedExpiryInput): Promise<void> {
     const db = getClient({ db: this.db, tx });
-    const [row] = await db
+    await db
+      .update(churchInvitation)
+      .set({ expiresAt })
+      .where(
+        and(
+          eq(churchInvitation.organizationId, churchId),
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+        ),
+      );
+    await db
       .update(ministryInvitation)
       .set({ expiresAt })
       .where(
         and(
           withChurchIsolation({ table: ministryInvitation, churchId }),
-          eq(ministryInvitation.id, invitation.id),
+          eq(ministryInvitation.churchInvitationId, churchInvitationId),
+          eq(ministryInvitation.status, 'pending'),
         ),
-      )
-      .returning();
-    if (!row) throw new Error('Ministry invitation not found for refresh');
-    return this.hydrate({ row });
+      );
   }
 
   async refreshChurchInvitationExpiry({

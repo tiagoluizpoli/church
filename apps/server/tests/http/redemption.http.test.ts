@@ -263,15 +263,21 @@ async function createHarness({
   return { app, identityGateway, failureLog };
 }
 
+interface MintInvitationInput {
+  roleIds?: RoleId[];
+}
+
 /** A paired invitation: links and every public operation use its Church half. */
-async function mintInvitation(): Promise<InvitationRef> {
+async function mintInvitation({
+  roleIds = [RoleId.from(fixture.roleInMinistryOneA)],
+}: MintInvitationInput = {}): Promise<InvitationRef> {
   const minted = await invitationManager.mint({
     churchId: ChurchId.from(fixture.churchA.id),
     ministryId: MinistryId.from(fixture.ministryOneA),
     inviterId: UserId.from(fixture.adminA),
     email: `redemption-${fixture.churchA.slug}@fixture.test`,
     ministryAccessLevel: 'leader',
-    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    roleIds,
   });
   if (!minted.churchInvitationId)
     throw new Error('Expected a paired invitation.');
@@ -462,6 +468,57 @@ describe('Church invitation redemption HTTP boundary', () => {
         .from(outboxMessage)
         .where(eq(outboxMessage.correlationId, idempotencyKey)),
     ).toHaveLength(0);
+  });
+
+  it('joins a paired zero-Role leader with exactly one Volunteer and a leader Ministry Membership', async () => {
+    const invitation = await mintInvitation({ roleIds: [] });
+    const { app } = await createHarness();
+    const url = redemptionUrl({ invitationId: invitation.churchInvitationId });
+    await app.inject({ method: 'POST', url: `${url}/code` });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `${url}/redeem`,
+      payload: {
+        name: 'Zero Role Leader',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '33333333-3333-4333-8333-333333333333',
+      },
+    });
+
+    expect(response.json()).toMatchObject({ kind: 'full-success' });
+    const [redeemedUser] = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.email, `redemption-${fixture.churchA.slug}@fixture.test`));
+    if (!redeemedUser) throw new Error('Expected redeemed user.');
+    const profiles = await testDb
+      .select()
+      .from(volunteer)
+      .where(eq(volunteer.userId, redeemedUser.id));
+    expect(profiles).toHaveLength(1);
+    const memberships = await testDb
+      .select()
+      .from(ministryMembership)
+      .where(eq(ministryMembership.volunteerId, profiles[0]?.id ?? ''));
+    expect(memberships).toEqual([
+      expect.objectContaining({
+        ministryId: fixture.ministryOneA,
+        ministryAccessLevel: 'leader',
+      }),
+    ]);
+    expect(
+      await testDb
+        .select()
+        .from(ministryMembershipRole)
+        .where(
+          eq(
+            ministryMembershipRole.ministryMembershipId,
+            memberships[0]?.id ?? '',
+          ),
+        ),
+    ).toEqual([]);
   });
 
   it('serializes duplicate submissions so only the request that consumes the code creates grants', async () => {

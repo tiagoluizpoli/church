@@ -1,5 +1,12 @@
-import { relations } from 'drizzle-orm';
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import {
+  index,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { user } from './auth';
 
 // Better Auth's `organization` plugin owns these three tables. Their shape is
@@ -80,6 +87,10 @@ export const invitation = pgTable(
   (table) => [
     index('invitation_organizationId_idx').on(table.organizationId),
     index('invitation_email_idx').on(table.email),
+    // One stored-pending Church offer per Church and address, expired included.
+    uniqueIndex('invitation_organization_email_pending_idx')
+      .on(table.organizationId, sql`lower(${table.email})`)
+      .where(sql`${table.status} = 'pending'`),
   ],
 );
 

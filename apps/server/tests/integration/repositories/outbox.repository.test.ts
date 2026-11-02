@@ -4,6 +4,7 @@ import {
   ChurchId,
   MinistryId,
   type MinistryInvitationId,
+  RoleId,
   UserId,
 } from '@/domain/branded-ids';
 import { DrizzleTransactionContext } from '@/infrastructure/repositories';
@@ -31,7 +32,7 @@ async function mintOne() {
     inviterId: UserId.from(fixture.adminA),
     email: `${fixture.memberNoVolunteerA}@fixture.test`,
     ministryAccessLevel: 'volunteer',
-    roleIds: [],
+    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
   });
 }
 

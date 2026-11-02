@@ -118,7 +118,7 @@ async function mintInvitation(): Promise<void> {
     inviterId: UserId.from(fixture.adminA),
     email: 'newcomer@fixture.test',
     ministryAccessLevel: 'volunteer',
-    roleIds: [],
+    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
   });
 }
 
@@ -130,7 +130,7 @@ describe('DbOutboxDrainer (integration)', () => {
       inviterId: UserId.from(fixture.adminA),
       email: `${fixture.memberNoVolunteerA}@fixture.test`,
       ministryAccessLevel: 'volunteer',
-      roleIds: [],
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
 
     const emailSender = new CaptureEmailSender('Church');
@@ -188,7 +188,7 @@ describe('DbOutboxDrainer (integration)', () => {
       inviterId: UserId.from(fixture.adminA),
       email: `${fixture.memberNoVolunteerA}@fixture.test`,
       ministryAccessLevel: 'volunteer',
-      roleIds: [],
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
 
     const emailSenderA = new CaptureEmailSender('Church');
@@ -267,7 +267,7 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
       inviterId: UserId.from(fixture.adminA),
       email,
       ministryAccessLevel: 'volunteer',
-      roleIds: [],
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
   }
 
@@ -987,7 +987,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       inviterId: UserId.from(fixture.adminA),
       email: `${fixture.memberNoVolunteerA}@fixture.test`,
       ministryAccessLevel: 'volunteer',
-      roleIds: [],
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
     return invitation.id;
   }
@@ -1569,7 +1569,15 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
 
   it('keeps processing other rows after one row fails terminally', async () => {
     await inviteMember();
-    await inviteMember();
+    // A second offer needs another Ministry: a repeat is refused as a duplicate.
+    await manager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryTwoA),
+      inviterId: UserId.from(fixture.adminA),
+      email: `${fixture.memberNoVolunteerA}@fixture.test`,
+      ministryAccessLevel: 'leader',
+      roleIds: [],
+    });
     const emailSender = new FlakyEmailSender('Church');
     emailSender.queueFailure({ mode: 'before-provider', retryable: false });
 

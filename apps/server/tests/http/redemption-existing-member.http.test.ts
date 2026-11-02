@@ -16,7 +16,7 @@ import {
 } from '@church/db';
 import { env } from '@church/env/server';
 import { hashPassword, makeSignature } from 'better-auth/crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RedemptionController } from '@/api/controllers/redemption-controller';
 import { DbRedemptionManager } from '@/application/db-redemption-manager';
@@ -679,6 +679,51 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .select({ level: ministryMembership.ministryAccessLevel })
         .from(ministryMembership)
         .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
+      expect(grant?.level).toBe('leader');
+    });
+
+    it('reuses the one active Volunteer for a zero-Role leader invitation', async () => {
+      const [existingProfile] = await testDb
+        .select()
+        .from(volunteer)
+        .where(eq(volunteer.userId, fixture.leaderOfMinistryTwoA));
+      if (!existingProfile) throw new Error('Expected a Volunteer profile.');
+      const invitation = await invitationManager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email: `${fixture.leaderOfMinistryTwoA}@fixture.test`,
+        ministryAccessLevel: 'leader',
+        roleIds: [],
+      });
+      const cookie = await createSessionCookie({
+        userId: fixture.leaderOfMinistryTwoA,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json()).toMatchObject({ kind: 'full-success' });
+      const profiles = await testDb
+        .select()
+        .from(volunteer)
+        .where(eq(volunteer.userId, fixture.leaderOfMinistryTwoA));
+      expect(profiles.map((profile) => profile.id)).toEqual([
+        existingProfile.id,
+      ]);
+      const [grant] = await testDb
+        .select({ level: ministryMembership.ministryAccessLevel })
+        .from(ministryMembership)
+        .where(
+          and(
+            eq(ministryMembership.ministryId, fixture.ministryOneA),
+            eq(ministryMembership.volunteerId, existingProfile.id),
+          ),
+        );
       expect(grant?.level).toBe('leader');
     });
 

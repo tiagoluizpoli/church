@@ -8,11 +8,17 @@ import type {
   TemplateTimeBlockId,
 } from '@/domain/branded-ids';
 import {
+  assertValidUsualSetupProps,
+  toSaveableUsualSetupEntry,
   UsualSetup,
+  type UsualSetupEntryInput,
   type UsualSetupProps,
 } from '@/domain/entities/usual-setup';
+import { DuplicateHeadcountError } from '@/domain/errors/duplicate-headcount';
 import { InvalidRequiredCountError } from '@/domain/errors/invalid-required-count';
+import { InvalidShiftIndexError } from '@/domain/errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '@/domain/errors/invalid-shift-split';
+import { UsualSetupEmptyError } from '@/domain/errors/usual-setup-empty';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const ministryId = '22222222-2222-4222-8222-222222222222' as MinistryId;
@@ -25,7 +31,7 @@ interface BuildProfileInput {
   props?: Partial<UsualSetupProps>;
 }
 
-function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
+function buildLenientProfile({ props }: BuildProfileInput = {}): UsualSetup {
   return new UsualSetup({
     props: {
       churchId,
@@ -33,13 +39,38 @@ function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
       sourceTemplateTimeBlockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ sectorId, roleId, peopleNeeded: 1 }],
+      headcounts: [{ shiftIndex: 0, sectorId, roleId, peopleNeeded: 1 }],
       ...props,
     },
   });
 }
 
+/** The strict valid-write path: a save asserts before it persists. */
+function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
+  const profile = buildLenientProfile({ props });
+  assertValidUsualSetupProps(profile);
+  return profile;
+}
+
 describe('UsualSetup entity', () => {
+  it('reads a stored row with an invalid split without throwing', () => {
+    const profile = buildLenientProfile({
+      props: {
+        shiftSplit: {
+          kind: 'manual',
+          spans: [
+            {
+              startTime: parseTimeOfDay({ value: '10:00' }),
+              endTime: parseTimeOfDay({ value: '10:00' }),
+            },
+          ],
+        },
+      },
+    });
+
+    expect(profile.shiftSplit.kind).toBe('manual');
+  });
+
   it('constructs with a valid equal split and exposes its properties', () => {
     const profile = buildProfile();
 
@@ -48,7 +79,9 @@ describe('UsualSetup entity', () => {
     expect(profile.sourceTemplateTimeBlockId).toBe(sourceTemplateTimeBlockId);
     expect(profile.serves).toBe(true);
     expect(profile.shiftSplit).toEqual({ kind: 'equal', count: 2 });
-    expect(profile.headcounts).toEqual([{ sectorId, roleId, peopleNeeded: 1 }]);
+    expect(profile.headcounts).toEqual([
+      { shiftIndex: 0, sectorId, roleId, peopleNeeded: 1 },
+    ]);
   });
 
   it('constructs with a valid manual split', () => {
@@ -102,7 +135,9 @@ describe('UsualSetup entity', () => {
   it('rejects a headcount with a non-integer count', () => {
     expect(() =>
       buildProfile({
-        props: { headcounts: [{ sectorId, roleId, peopleNeeded: 1.5 }] },
+        props: {
+          headcounts: [{ shiftIndex: 0, sectorId, roleId, peopleNeeded: 1.5 }],
+        },
       }),
     ).toThrow(InvalidRequiredCountError);
   });
@@ -110,8 +145,76 @@ describe('UsualSetup entity', () => {
   it('rejects a headcount with count less than 1', () => {
     expect(() =>
       buildProfile({
-        props: { headcounts: [{ sectorId, roleId, peopleNeeded: 0 }] },
+        props: {
+          headcounts: [{ shiftIndex: 0, sectorId, roleId, peopleNeeded: 0 }],
+        },
       }),
     ).toThrow(InvalidRequiredCountError);
+  });
+
+  it('keeps the same Sector and Role distinct in different Shifts, and refuses a repeat in one Shift', () => {
+    const twoShifts = buildProfile({
+      props: {
+        headcounts: [
+          { shiftIndex: 0, sectorId, roleId, peopleNeeded: 1 },
+          { shiftIndex: 1, sectorId, roleId, peopleNeeded: 3 },
+        ],
+      },
+    });
+
+    expect(twoShifts.headcounts).toHaveLength(2);
+    expect(() =>
+      buildProfile({
+        props: {
+          headcounts: [
+            { shiftIndex: 1, sectorId, roleId, peopleNeeded: 1 },
+            { shiftIndex: 1, sectorId, roleId, peopleNeeded: 2 },
+          ],
+        },
+      }),
+    ).toThrow(DuplicateHeadcountError);
+  });
+});
+
+describe('toSaveableUsualSetupEntry', () => {
+  const serving: UsualSetupEntryInput = {
+    sourceTemplateTimeBlockId,
+    serves: true,
+    shiftSplit: { kind: 'equal', count: 2 },
+    headcounts: [{ shiftIndex: 1, sectorId, roleId, peopleNeeded: 2 }],
+  };
+
+  it('keeps a serving entry as given', () => {
+    expect(toSaveableUsualSetupEntry({ entry: serving })).toEqual(serving);
+  });
+
+  it('refuses a serving entry without any positive headcount', () => {
+    expect(() =>
+      toSaveableUsualSetupEntry({ entry: { ...serving, headcounts: [] } }),
+    ).toThrow(UsualSetupEmptyError);
+  });
+
+  it('refuses a headcount for a Shift the split does not generate', () => {
+    for (const shiftIndex of [2, -1]) {
+      expect(() =>
+        toSaveableUsualSetupEntry({
+          entry: {
+            ...serving,
+            headcounts: [{ shiftIndex, sectorId, roleId, peopleNeeded: 1 }],
+          },
+        }),
+      ).toThrow(InvalidShiftIndexError);
+    }
+  });
+
+  it('saves a non-serving entry in the canonical one-Shift, no-headcount form', () => {
+    expect(
+      toSaveableUsualSetupEntry({ entry: { ...serving, serves: false } }),
+    ).toEqual({
+      sourceTemplateTimeBlockId,
+      serves: false,
+      shiftSplit: { kind: 'equal', count: 1 },
+      headcounts: [],
+    });
   });
 });

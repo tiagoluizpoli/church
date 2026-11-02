@@ -743,6 +743,8 @@ paths:
                       - DUPLICATE_HEADCOUNT
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - INVALID_SHIFT_INDEX
                   issues:
                     type: array
                     items: {}
@@ -1045,6 +1047,8 @@ paths:
                       - DUPLICATE_HEADCOUNT
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - INVALID_SHIFT_INDEX
                   issues:
                     type: array
                     items: {}
@@ -1645,299 +1649,6 @@ paths:
                 required:
                   - error
                   - message
-                additionalProperties: false
-  /api/v1/admin/ministries/{ministryId}/usual-setup:
-    get:
-      operationId: getUsualSetup
-      summary: Get a Ministry's usual setup
-      tags:
-        - planning
-      description: Get a Ministry's UsualSetup, the standing rule declaring which
-        EventTemplate TemplateTimeBlocks it always serves.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: ministryId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  entries:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        ministryId:
-                          type: string
-                        sourceTemplateTimeBlockId:
-                          type: string
-                        serves:
-                          type: boolean
-                        shiftSplit:
-                          oneOf:
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - equal
-                                count:
-                                  type: integer
-                                  minimum: 1
-                                  maximum: 9007199254740991
-                              required:
-                                - kind
-                                - count
-                              additionalProperties: false
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - manual
-                                spans:
-                                  type: array
-                                  items:
-                                    type: object
-                                    properties:
-                                      label:
-                                        type: string
-                                      startTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                      endTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                    required:
-                                      - startTime
-                                      - endTime
-                                    additionalProperties: false
-                              required:
-                                - kind
-                                - spans
-                              additionalProperties: false
-                        headcounts:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              sectorId:
-                                type: string
-                              roleId:
-                                type: string
-                              peopleNeeded:
-                                type: integer
-                                minimum: 1
-                                maximum: 9007199254740991
-                            required:
-                              - sectorId
-                              - roleId
-                              - peopleNeeded
-                            additionalProperties: false
-                      required:
-                        - id
-                        - ministryId
-                        - sourceTemplateTimeBlockId
-                        - serves
-                        - shiftSplit
-                        - headcounts
-                      additionalProperties: false
-                required:
-                  - entries
-                additionalProperties: false
-    put:
-      operationId: upsertUsualSetup
-      summary: Set a Ministry's usual setup
-      tags:
-        - planning
-      description: Replace a Ministry's UsualSetup entries, including which
-        TemplateTimeBlocks it serves, its Shift split, and headcounts.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                entries:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      sourceTemplateTimeBlockId:
-                        type: string
-                      serves:
-                        type: boolean
-                      shiftSplit:
-                        oneOf:
-                          - type: object
-                            properties:
-                              kind:
-                                type: string
-                                enum:
-                                  - equal
-                              count:
-                                type: integer
-                                minimum: 1
-                                maximum: 9007199254740991
-                            required:
-                              - kind
-                              - count
-                          - type: object
-                            properties:
-                              kind:
-                                type: string
-                                enum:
-                                  - manual
-                              spans:
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    label:
-                                      type: string
-                                    startTime:
-                                      type: string
-                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                    endTime:
-                                      type: string
-                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                  required:
-                                    - startTime
-                                    - endTime
-                            required:
-                              - kind
-                              - spans
-                      headcounts:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            sectorId:
-                              type: string
-                            roleId:
-                              type: string
-                            peopleNeeded:
-                              type: integer
-                              minimum: 1
-                              maximum: 9007199254740991
-                          required:
-                            - sectorId
-                            - roleId
-                            - peopleNeeded
-                    required:
-                      - sourceTemplateTimeBlockId
-                      - serves
-                      - shiftSplit
-                      - headcounts
-              required:
-                - entries
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: ministryId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  entries:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        ministryId:
-                          type: string
-                        sourceTemplateTimeBlockId:
-                          type: string
-                        serves:
-                          type: boolean
-                        shiftSplit:
-                          oneOf:
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - equal
-                                count:
-                                  type: integer
-                                  minimum: 1
-                                  maximum: 9007199254740991
-                              required:
-                                - kind
-                                - count
-                              additionalProperties: false
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - manual
-                                spans:
-                                  type: array
-                                  items:
-                                    type: object
-                                    properties:
-                                      label:
-                                        type: string
-                                      startTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                      endTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                    required:
-                                      - startTime
-                                      - endTime
-                                    additionalProperties: false
-                              required:
-                                - kind
-                                - spans
-                              additionalProperties: false
-                        headcounts:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              sectorId:
-                                type: string
-                              roleId:
-                                type: string
-                              peopleNeeded:
-                                type: integer
-                                minimum: 1
-                                maximum: 9007199254740991
-                            required:
-                              - sectorId
-                              - roleId
-                              - peopleNeeded
-                            additionalProperties: false
-                      required:
-                        - id
-                        - ministryId
-                        - sourceTemplateTimeBlockId
-                        - serves
-                        - shiftSplit
-                        - headcounts
-                      additionalProperties: false
-                required:
-                  - entries
                 additionalProperties: false
   /api/v1/admin/ministries/{ministryId}/default-direction:
     patch:
@@ -4126,6 +3837,447 @@ paths:
                   - error
                   - message
                   - blockers
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/usual-setup/:
+    get:
+      operationId: listUsualSetup
+      summary: List a Ministry's Usual setup
+      tags:
+        - ministries
+      description: Every current TemplateTimeBlock, by template name and block order,
+        with the managed Ministry's saved UsualSetup entry when it has one.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        templateId:
+                          type: string
+                        templateName:
+                          type: string
+                        weekday:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        sourceTemplateTimeBlockId:
+                          type: string
+                        label:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        order:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        entry:
+                          type: object
+                          properties:
+                            serves:
+                              type: boolean
+                            shiftSplit:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - equal
+                                    count:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 9007199254740991
+                                  required:
+                                    - kind
+                                    - count
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - manual
+                                    spans:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          label:
+                                            type: string
+                                          startTime:
+                                            type: string
+                                            pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                          endTime:
+                                            type: string
+                                            pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                        required:
+                                          - startTime
+                                          - endTime
+                                        additionalProperties: false
+                                  required:
+                                    - kind
+                                    - spans
+                                  additionalProperties: false
+                            headcounts:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  shiftIndex:
+                                    type: integer
+                                    minimum: 0
+                                    maximum: 9007199254740991
+                                  sectorId:
+                                    type: string
+                                  roleId:
+                                    type: string
+                                  peopleNeeded:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 9007199254740991
+                                required:
+                                  - shiftIndex
+                                  - sectorId
+                                  - roleId
+                                  - peopleNeeded
+                                additionalProperties: false
+                          required:
+                            - serves
+                            - shiftSplit
+                            - headcounts
+                          additionalProperties: false
+                        needsReview:
+                          type: boolean
+                      required:
+                        - templateId
+                        - templateName
+                        - weekday
+                        - sourceTemplateTimeBlockId
+                        - label
+                        - startTime
+                        - endTime
+                        - order
+                        - needsReview
+                      additionalProperties: false
+                required:
+                  - blocks
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/usual-setup/{sourceTemplateTimeBlockId}:
+    put:
+      operationId: saveUsualSetupBlock
+      summary: Save one block's Usual setup
+      tags:
+        - ministries
+      description: "Insert or replace the managed Ministry's UsualSetup entry for one
+        TemplateTimeBlock: whether it serves, its Shift split and per-Shift
+        headcounts. Other blocks' entries are untouched."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                serves:
+                  type: boolean
+                shiftSplit:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - equal
+                        count:
+                          type: integer
+                          minimum: 1
+                          maximum: 9007199254740991
+                      required:
+                        - kind
+                        - count
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - manual
+                        spans:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              label:
+                                type: string
+                              startTime:
+                                type: string
+                                pattern: ^\d{2}:\d{2}(:\d{2})?$
+                              endTime:
+                                type: string
+                                pattern: ^\d{2}:\d{2}(:\d{2})?$
+                            required:
+                              - startTime
+                              - endTime
+                      required:
+                        - kind
+                        - spans
+                headcounts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      shiftIndex:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                      sectorId:
+                        type: string
+                      roleId:
+                        type: string
+                      peopleNeeded:
+                        type: integer
+                        minimum: 1
+                        maximum: 9007199254740991
+                    required:
+                      - shiftIndex
+                      - sectorId
+                      - roleId
+                      - peopleNeeded
+              required:
+                - serves
+                - shiftSplit
+                - headcounts
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: sourceTemplateTimeBlockId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templateId:
+                    type: string
+                  templateName:
+                    type: string
+                  weekday:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  sourceTemplateTimeBlockId:
+                    type: string
+                  label:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  order:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  entry:
+                    type: object
+                    properties:
+                      serves:
+                        type: boolean
+                      shiftSplit:
+                        oneOf:
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - equal
+                              count:
+                                type: integer
+                                minimum: 1
+                                maximum: 9007199254740991
+                            required:
+                              - kind
+                              - count
+                            additionalProperties: false
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - manual
+                              spans:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    label:
+                                      type: string
+                                    startTime:
+                                      type: string
+                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                    endTime:
+                                      type: string
+                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                  required:
+                                    - startTime
+                                    - endTime
+                                  additionalProperties: false
+                            required:
+                              - kind
+                              - spans
+                            additionalProperties: false
+                      headcounts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            shiftIndex:
+                              type: integer
+                              minimum: 0
+                              maximum: 9007199254740991
+                            sectorId:
+                              type: string
+                            roleId:
+                              type: string
+                            peopleNeeded:
+                              type: integer
+                              minimum: 1
+                              maximum: 9007199254740991
+                          required:
+                            - shiftIndex
+                            - sectorId
+                            - roleId
+                            - peopleNeeded
+                          additionalProperties: false
+                    required:
+                      - serves
+                      - shiftSplit
+                      - headcounts
+                    additionalProperties: false
+                  needsReview:
+                    type: boolean
+                required:
+                  - templateId
+                  - templateName
+                  - weekday
+                  - sourceTemplateTimeBlockId
+                  - label
+                  - startTime
+                  - endTime
+                  - order
+                  - needsReview
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/participation:
     get:

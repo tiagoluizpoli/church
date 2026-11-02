@@ -747,7 +747,9 @@ describe('POST /ministries/:ministryId/roles/:roleId/archive', () => {
       sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 1 },
-      headcounts: [{ sectorId, roleId: fixture.singerId, peopleNeeded: 2 }],
+      headcounts: [
+        { shiftIndex: 0, sectorId, roleId: fixture.singerId, peopleNeeded: 2 },
+      ],
     });
     signIn('admin');
 
@@ -806,23 +808,22 @@ describe('archived Roles in fresh use', () => {
       }),
     ).rejects.toMatchObject({ name: 'NotFoundError' });
     await expect(
-      participationManager.upsertUsualSetup({
+      participationManager.saveUsualSetupBlock({
         churchId: CHURCH_A as never,
         ministryId: fixture.worshipId as never,
-        entries: [
-          {
-            sourceTemplateTimeBlockId: (await templateBlockId()) as never,
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [
-              {
-                sectorId: sectorId as never,
-                roleId: fixture.archivedRoleId as never,
-                peopleNeeded: 1,
-              },
-            ],
-          },
-        ],
+        entry: {
+          sourceTemplateTimeBlockId: (await templateBlockId()) as never,
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 1 },
+          headcounts: [
+            {
+              shiftIndex: 0,
+              sectorId: sectorId as never,
+              roleId: fixture.archivedRoleId as never,
+              peopleNeeded: 1,
+            },
+          ],
+        },
       }),
     ).rejects.toMatchObject({ name: 'NotFoundError' });
   });

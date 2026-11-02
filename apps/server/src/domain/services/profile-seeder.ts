@@ -1,11 +1,11 @@
-import { type Instant, today, toInstant } from '@church/time';
+import type { Instant } from '@church/time';
 import type { EventTimeBlockId, TemplateTimeBlockId } from '../branded-ids';
 import type { DefaultDirection } from '../entities/ministry';
 import type {
   UsualSetupHeadcount,
   UsualSetupShiftSplit,
 } from '../entities/usual-setup';
-import { computeEqualSpans } from './shift-splitter';
+import { planUsualSetupShifts } from './usual-setup-planner';
 
 export interface ProfileSeederEventTimeBlock {
   eventTimeBlockId: EventTimeBlockId;
@@ -105,35 +105,10 @@ function buildProfileShifts({
   entry,
   timeZone,
 }: BuildProfileShiftsInput): SeededShiftPlan[] {
-  if (entry.shiftSplit.kind === 'equal') {
-    return computeEqualSpans({
-      startTime: eventTimeBlock.startTime,
-      endTime: eventTimeBlock.endTime,
-      n: entry.shiftSplit.count,
-    }).map((span) => ({
-      startTime: span.startTime,
-      endTime: span.endTime,
-      headcounts: entry.headcounts,
-    }));
-  }
-
-  const eventTimeBlockDate = today({
-    instant: eventTimeBlock.startTime,
-    timeZone,
-  });
-
-  return entry.shiftSplit.spans.map((span) => ({
-    startTime: toInstant({
-      day: eventTimeBlockDate,
-      time: span.startTime,
-      timeZone,
-    }),
-    endTime: toInstant({
-      day: eventTimeBlockDate,
-      time: span.endTime,
-      timeZone,
-    }),
-    label: span.label,
+  return planUsualSetupShifts({
+    shiftSplit: entry.shiftSplit,
     headcounts: entry.headcounts,
-  }));
+    block: eventTimeBlock,
+    timeZone,
+  }).shifts;
 }

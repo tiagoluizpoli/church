@@ -93,34 +93,26 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
   expect(templateResponse.ok()).toBeTruthy();
   const templateBody = (await templateResponse.json()) as TemplateResponse;
 
-  const usualSetupResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${ministryId}/usual-setup`,
-    {
-      data: {
-        entries: [
-          {
-            sourceTemplateTimeBlockId: templateBody.blocks[0]?.id,
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ sectorId, roleId, peopleNeeded: 1 }],
-          },
-          {
-            sourceTemplateTimeBlockId: templateBody.blocks[1]?.id,
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ sectorId, roleId, peopleNeeded: 1 }],
-          },
-          {
-            sourceTemplateTimeBlockId: templateBody.blocks[2]?.id,
-            serves: false,
-            shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [],
-          },
-        ],
+  const usualSetup = [
+    { block: templateBody.blocks[0], serves: true },
+    { block: templateBody.blocks[1], serves: true },
+    { block: templateBody.blocks[2], serves: false },
+  ];
+  for (const { block, serves } of usualSetup) {
+    const usualSetupResponse = await page.request.put(
+      `${SERVER_URL}/api/v1/ministries/${ministryId}/usual-setup/${block?.id}`,
+      {
+        data: {
+          serves,
+          shiftSplit: { kind: 'equal', count: 1 },
+          headcounts: serves
+            ? [{ shiftIndex: 0, sectorId, roleId, peopleNeeded: 1 }]
+            : [],
+        },
       },
-    },
-  );
-  expect(usualSetupResponse.ok()).toBeTruthy();
+    );
+    expect(usualSetupResponse.ok()).toBeTruthy();
+  }
 
   const applyResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/cycles/${cycleBody.id}/apply-templates`,

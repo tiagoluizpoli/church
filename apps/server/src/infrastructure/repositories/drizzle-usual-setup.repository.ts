@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import type {
   ListUsualSetupByMinistryInput,
   ListUsualSetupsByChurchInput,
-  ReplaceUsualSetupInput,
+  UpsertUsualSetupBlockInput,
   UsualSetupRepository,
 } from '../../domain/contracts/infrastructure/usual-setup.repository';
 import type { UsualSetup } from '../../domain/entities/usual-setup';
@@ -53,42 +53,40 @@ export class DrizzleUsualSetupRepository implements UsualSetupRepository {
     return rows.map(mapUsualSetup);
   }
 
-  async replaceForMinistry(
-    input: ReplaceUsualSetupInput,
-  ): Promise<UsualSetup[]> {
-    const db = getClient({ db: this.db, tx: input.tx });
-
-    await db
-      .delete(usualSetup)
-      .where(
-        and(
-          eq(usualSetup.ministryId, input.ministryId),
-          withChurchIsolation({ table: usualSetup, churchId: input.churchId }),
-        ),
-      );
-
-    if (input.entries.length === 0) {
-      return [];
-    }
-
-    const rows = await db
+  async upsertBlock({
+    churchId,
+    ministryId,
+    entry,
+    tx,
+  }: UpsertUsualSetupBlockInput): Promise<UsualSetup> {
+    const db = getClient({ db: this.db, tx });
+    const values = {
+      serves: entry.serves,
+      shiftSplit: entry.shiftSplit,
+      headcounts: entry.headcounts.map((headcount) => ({
+        shiftIndex: headcount.shiftIndex,
+        sectorId: headcount.sectorId as string,
+        roleId: headcount.roleId as string,
+        peopleNeeded: headcount.peopleNeeded,
+      })),
+    };
+    // One statement on the Ministry/block key, so a concurrent save of
+    // another block never reads or rewrites this one.
+    const [row] = await db
       .insert(usualSetup)
-      .values(
-        input.entries.map((entry) => ({
-          churchId: input.churchId,
-          ministryId: input.ministryId,
-          sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
-          serves: entry.serves,
-          shiftSplit: entry.shiftSplit,
-          headcounts: entry.headcounts.map((headcount) => ({
-            sectorId: headcount.sectorId as string,
-            roleId: headcount.roleId as string,
-            peopleNeeded: headcount.peopleNeeded,
-          })),
-        })),
-      )
+      .values({
+        churchId,
+        ministryId,
+        sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
+        ...values,
+      })
+      .onConflictDoUpdate({
+        target: [usualSetup.ministryId, usualSetup.sourceTemplateTimeBlockId],
+        set: values,
+      })
       .returning();
+    if (!row) throw new Error('Usual setup upsert returned no row');
 
-    return rows.map(mapUsualSetup);
+    return mapUsualSetup(row);
   }
 }

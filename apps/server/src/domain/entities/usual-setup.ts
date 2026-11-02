@@ -1,5 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
-import type { TimeOfDay } from '@church/time';
+import { type TimeOfDay, timeOfDaySpan } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -10,7 +10,13 @@ import type {
 } from '../branded-ids';
 import { DuplicateHeadcountError } from '../errors/duplicate-headcount';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
+import { InvalidShiftIndexError } from '../errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../errors/invalid-shift-split';
+import { UsualSetupEmptyError } from '../errors/usual-setup-empty';
+import {
+  splitFitsBlock,
+  wallClockUtcBounds,
+} from '../services/usual-setup-planner';
 
 export interface UsualSetupEqualSplit {
   kind: 'equal';
@@ -30,7 +36,10 @@ export interface UsualSetupManualSplit {
 
 export type UsualSetupShiftSplit = UsualSetupEqualSplit | UsualSetupManualSplit;
 
+/** One positive count for a Sector × Role in one Shift of the split. */
 export interface UsualSetupHeadcount {
+  /** Zero-based chronological Shift the split generates. */
+  shiftIndex: number;
   sectorId: SectorId;
   roleId: RoleId;
   peopleNeeded: number;
@@ -60,10 +69,8 @@ export interface UsualSetupInput {
 }
 
 export class UsualSetup extends Entity<UsualSetupProps, UsualSetupId> {
+  /** Lenient: a stored row with invalid spans must stay readable for repair. */
   constructor({ props, id, createdAt, updatedAt }: UsualSetupInput) {
-    assertValidShiftSplit({ shiftSplit: props.shiftSplit });
-    assertValidHeadcounts({ headcounts: props.headcounts });
-
     super({
       props: props as UsualSetupProps,
       id: id as UsualSetupId,
@@ -97,6 +104,15 @@ export class UsualSetup extends Entity<UsualSetupProps, UsualSetupId> {
   }
 }
 
+/** The strict valid-write rules; a save runs them, a read does not. */
+export function assertValidUsualSetupProps({
+  shiftSplit,
+  headcounts,
+}: Pick<UsualSetupProps, 'shiftSplit' | 'headcounts'>): void {
+  assertValidShiftSplit({ shiftSplit });
+  assertValidHeadcounts({ headcounts });
+}
+
 interface AssertValidShiftSplitInput {
   shiftSplit: UsualSetupShiftSplit;
 }
@@ -114,9 +130,13 @@ function assertValidShiftSplit({
   }
 
   for (const span of shiftSplit.spans) {
-    if (span.startTime >= span.endTime) {
+    // An end earlier than its start runs past midnight; only equal is empty.
+    if (
+      timeOfDaySpan({ start: span.startTime, end: span.endTime })
+        .durationMinutes === 0
+    ) {
       throw new InvalidShiftSplitError(
-        'profile manual span start must precede its end',
+        'profile manual span must have a positive duration',
       );
     }
   }
@@ -131,7 +151,7 @@ function assertValidHeadcounts({
 }: AssertValidHeadcountsInput): void {
   const places = new Set<string>();
   for (const headcount of headcounts) {
-    const place = `${headcount.sectorId}:${headcount.roleId}`;
+    const place = `${headcount.shiftIndex}:${headcount.sectorId}:${headcount.roleId}`;
     if (places.has(place)) {
       throw new DuplicateHeadcountError();
     }
@@ -143,5 +163,84 @@ function assertValidHeadcounts({
     ) {
       throw new InvalidRequiredCountError();
     }
+  }
+}
+
+interface ShiftCountInput {
+  shiftSplit: UsualSetupShiftSplit;
+}
+
+/** How many Shifts the split generates; headcount indices range below it. */
+export function shiftCountOf({ shiftSplit }: ShiftCountInput): number {
+  return shiftSplit.kind === 'equal'
+    ? shiftSplit.count
+    : shiftSplit.spans.length;
+}
+
+const NOT_SERVED_SPLIT: UsualSetupEqualSplit = { kind: 'equal', count: 1 };
+
+export interface ToSaveableUsualSetupEntryInput {
+  entry: UsualSetupEntryInput;
+}
+
+/**
+ * The entry a save persists. Rules a stored legacy row may break, so they hold
+ * on write only: a serving entry needs a positive headcount in a Shift its
+ * split generates; a non-serving entry is the canonical explicit opt-out.
+ */
+export function toSaveableUsualSetupEntry({
+  entry,
+}: ToSaveableUsualSetupEntryInput): UsualSetupEntryInput {
+  if (!entry.serves) {
+    return { ...entry, shiftSplit: NOT_SERVED_SPLIT, headcounts: [] };
+  }
+  if (entry.headcounts.length === 0) {
+    throw new UsualSetupEmptyError();
+  }
+  assertValidShiftSplit({ shiftSplit: entry.shiftSplit });
+  if (
+    entry.shiftSplit.kind === 'manual' &&
+    entry.shiftSplit.spans.length === 0
+  ) {
+    throw new InvalidShiftSplitError('manual split requires at least one span');
+  }
+  const shiftCount = shiftCountOf({ shiftSplit: entry.shiftSplit });
+  for (const { shiftIndex } of entry.headcounts) {
+    if (
+      !Number.isInteger(shiftIndex) ||
+      shiftIndex < 0 ||
+      shiftIndex >= shiftCount
+    ) {
+      throw new InvalidShiftIndexError();
+    }
+  }
+  return entry;
+}
+
+export interface AssertManualSplitFitsBlockInput {
+  shiftSplit: UsualSetupShiftSplit;
+  blockStartTime: TimeOfDay;
+  blockEndTime: TimeOfDay;
+}
+
+/**
+ * A manual split must be chronological, non-overlapping and inside the block;
+ * the same rule Send and the review flag apply (`splitFitsBlock`). Touching
+ * endpoints and gaps are allowed.
+ */
+export function assertManualSplitFitsBlock({
+  shiftSplit,
+  blockStartTime,
+  blockEndTime,
+}: AssertManualSplitFitsBlockInput): void {
+  if (shiftSplit.kind !== 'manual') return;
+  const bounds = wallClockUtcBounds({
+    startTime: blockStartTime,
+    endTime: blockEndTime,
+  });
+  if (!splitFitsBlock({ shiftSplit, ...bounds })) {
+    throw new InvalidShiftSplitError(
+      'manual spans must be chronological, must not overlap and must lie within the block',
+    );
   }
 }

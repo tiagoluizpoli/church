@@ -21,22 +21,23 @@ import type {
   GetCycleBuilderDataInput,
   GetCycleParticipationInput,
   GetParticipationCompletionInput,
-  GetUsualSetupInput,
   IParticipationManager,
   ListEligibleVolunteersInput,
   ListScheduleSummariesInput,
+  ListUsualSetupBlocksInput,
   ParticipationCompletionView,
   ParticipationEventTimeBlockView,
   ParticipationEventView,
   PublishCycleInput,
   PublishCycleParticipationOutcome,
   PublishCycleView,
+  SaveUsualSetupBlockInput,
   ScheduleSummaryView,
   SetInclusionsInput,
   SplitShiftsManagerInput,
   UpdateShiftManagerInput,
   UpsertRequirementManagerInput,
-  UpsertUsualSetupInput,
+  UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
@@ -55,6 +56,7 @@ import type { UsualSetupRepository } from '../domain/contracts/infrastructure/us
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
 import type { EventWithEventTimeBlocks } from '../domain/entities/event';
+import type { EventTemplate } from '../domain/entities/event-template';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import {
@@ -63,12 +65,22 @@ import {
 } from '../domain/entities/ministry-participation';
 import { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
-import { UsualSetup } from '../domain/entities/usual-setup';
+import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
+import {
+  assertManualSplitFitsBlock,
+  assertValidUsualSetupProps,
+  toSaveableUsualSetupEntry,
+  type UsualSetup,
+} from '../domain/entities/usual-setup';
 import {
   IllegalStateTransitionError,
   InvalidRequiredCountError,
 } from '../domain/errors';
 import { ShiftSplitter } from '../domain/services/shift-splitter';
+import {
+  splitFitsBlock,
+  wallClockUtcBounds,
+} from '../domain/services/usual-setup-planner';
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
@@ -723,66 +735,82 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  async getUsualSetup(input: GetUsualSetupInput): Promise<UsualSetup[]> {
-    await this.ministryRepository.getById({
-      churchId: input.churchId,
-      id: input.ministryId,
-    });
-    return this.usualSetupRepository.listByMinistry(input);
+  async listUsualSetupBlocks({
+    churchId,
+    ministryId,
+  }: ListUsualSetupBlocksInput): Promise<UsualSetupBlockView[]> {
+    const [templates, entries] = await Promise.all([
+      this.eventTemplateRepository.list({ churchId }),
+      this.usualSetupRepository.listByMinistry({ churchId, ministryId }),
+    ]);
+    const entriesByBlock = new Map(
+      entries.map((entry) => [entry.sourceTemplateTimeBlockId, entry]),
+    );
+    const byName = [...templates].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+    return byName.flatMap((template) =>
+      template.blocks.map((block) =>
+        toUsualSetupBlockView({
+          template,
+          block,
+          entry: entriesByBlock.get(block.id),
+        }),
+      ),
+    );
   }
 
-  async upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]> {
+  async saveUsualSetupBlock({
+    churchId,
+    ministryId,
+    entry,
+  }: SaveUsualSetupBlockInput): Promise<UsualSetupBlockView> {
+    const saveable = toSaveableUsualSetupEntry({ entry });
+    // The entity's own rules (split shape, positive counts, unique places).
+    assertValidUsualSetupProps(saveable);
+
     return this.unitOfWork.run(async (tx) => {
       // Saving a setup is new use: refused for an archived Ministry.
       await this.ministryRepository.lockActive({
-        churchId: input.churchId,
-        ministryId: input.ministryId,
+        churchId,
+        ministryId,
         strength: 'share',
         tx,
       });
-      // Validate every entry through the domain entity before persisting.
-      for (const entry of input.entries) {
-        void new UsualSetup({
-          props: {
-            churchId: input.churchId,
-            ministryId: input.ministryId,
-            sourceTemplateTimeBlockId: entry.sourceTemplateTimeBlockId,
-            serves: entry.serves,
-            shiftSplit: entry.shiftSplit,
-            headcounts: entry.headcounts,
-          },
-        });
-      }
-      // A TemplateTimeBlock of another Church is indistinguishable from a missing one.
+      // Any same-Church block is valid; another Church's is indistinguishable from a missing one.
       const templates = await this.eventTemplateRepository.list({
-        churchId: input.churchId,
+        churchId,
         tx,
       });
-      const churchBlockIds = new Set<string>(
-        templates.flatMap((template) =>
-          template.blocks.map((block) => block.id),
-        ),
+      const located = templates.flatMap((template) =>
+        template.blocks
+          .filter((block) => block.id === saveable.sourceTemplateTimeBlockId)
+          .map((block) => ({ template, block })),
       );
-      for (const { sourceTemplateTimeBlockId } of input.entries) {
-        if (!churchBlockIds.has(sourceTemplateTimeBlockId)) {
-          throw new NotFoundError(
-            `Template time block not found: ${sourceTemplateTimeBlockId}`,
-          );
-        }
+      const [target] = located;
+      if (!target) {
+        throw new NotFoundError(
+          `Template time block not found: ${saveable.sourceTemplateTimeBlockId}`,
+        );
       }
+      assertManualSplitFitsBlock({
+        shiftSplit: saveable.shiftSplit,
+        blockStartTime: target.block.startTime,
+        blockEndTime: target.block.endTime,
+      });
       await this.assertMinistryHeadcounts({
-        churchId: input.churchId,
-        ministryId: input.ministryId,
-        headcounts: input.entries.flatMap((entry) =>
-          entry.headcounts.map(({ sectorId, roleId }) => ({
-            sectorId,
-            roleId,
-          })),
-        ),
+        churchId,
+        ministryId,
+        headcounts: saveable.headcounts,
         tx,
       });
-
-      return this.usualSetupRepository.replaceForMinistry({ ...input, tx });
+      const saved = await this.usualSetupRepository.upsertBlock({
+        churchId,
+        ministryId,
+        entry: saveable,
+        tx,
+      });
+      return toUsualSetupBlockView({ ...target, entry: saved });
     });
   }
 
@@ -1636,5 +1664,37 @@ function buildEligibleVolunteerView({
     lastServedAt,
     qualifiedRoleIds,
     ministryAccessLevel,
+  };
+}
+
+interface ToUsualSetupBlockViewInput {
+  template: EventTemplate;
+  block: TemplateTimeBlock;
+  entry: UsualSetup | undefined;
+}
+
+function toUsualSetupBlockView({
+  template,
+  block,
+  entry,
+}: ToUsualSetupBlockViewInput): UsualSetupBlockView {
+  return {
+    templateId: template.id,
+    templateName: template.name,
+    weekday: template.weekday,
+    sourceTemplateTimeBlockId: block.id,
+    label: block.label,
+    startTime: block.startTime,
+    endTime: block.endTime,
+    order: block.order,
+    entry,
+    // Derived on every read from the serving manual split vs current bounds.
+    needsReview:
+      entry?.serves === true &&
+      entry.shiftSplit.kind === 'manual' &&
+      !splitFitsBlock({
+        shiftSplit: entry.shiftSplit,
+        ...wallClockUtcBounds(block),
+      }),
   };
 }

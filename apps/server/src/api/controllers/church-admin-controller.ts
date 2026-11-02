@@ -1,5 +1,4 @@
 import { NotFoundError } from '@church/core';
-import { parseTimeOfDay } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
@@ -9,16 +8,12 @@ import {
   EventTemplateId,
   EventTimeBlockId,
   MinistryId,
-  RoleId,
-  SectorId,
-  TemplateTimeBlockId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { ICycleManager } from '../../domain/contracts/application/cycle-manager';
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
-import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
 import type { IPlanningEventManager } from '../../domain/contracts/application/planning-event-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
@@ -57,10 +52,6 @@ import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
   type SetDefaultDirectionBody,
   setDefaultDirectionBodySchema,
-  type UpsertUsualSetupBody,
-  upsertUsualSetupBodySchema,
-  usualSetupMapper,
-  usualSetupResponseSchema,
 } from '../dtos/usual-setup.dto';
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
 import { refuse } from '../utils/refuse';
@@ -112,7 +103,6 @@ interface ChurchAdminControllerDependencies {
   eventTemplateManager: IEventTemplateManager;
   planningEventManager: IPlanningEventManager;
   activeChurchResolver: IActiveChurchResolver;
-  participationManager: IParticipationManager;
   ministryManager: IMinistryManager;
   authorityGuard: AuthorityGuard;
 }
@@ -130,7 +120,6 @@ export class ChurchAdminController implements FastifyController {
   private readonly eventTemplateManager: IEventTemplateManager;
   private readonly planningEventManager: IPlanningEventManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly participationManager: IParticipationManager;
   private readonly ministryManager: IMinistryManager;
   private readonly authorityGuard: AuthorityGuard;
 
@@ -139,7 +128,6 @@ export class ChurchAdminController implements FastifyController {
     eventTemplateManager,
     planningEventManager,
     activeChurchResolver,
-    participationManager,
     ministryManager,
     authorityGuard,
   }: ChurchAdminControllerDependencies) {
@@ -147,7 +135,6 @@ export class ChurchAdminController implements FastifyController {
     this.eventTemplateManager = eventTemplateManager;
     this.planningEventManager = planningEventManager;
     this.activeChurchResolver = activeChurchResolver;
-    this.participationManager = participationManager;
     this.ministryManager = ministryManager;
     this.authorityGuard = authorityGuard;
   }
@@ -644,74 +631,6 @@ export class ChurchAdminController implements FastifyController {
         });
         if (!deleted) return;
         return reply.status(204).send();
-      },
-    );
-
-    app.get(
-      '/ministries/:ministryId/usual-setup',
-      {
-        schema: {
-          tags: ['planning'],
-          operationId: 'getUsualSetup',
-          summary: "Get a Ministry's usual setup",
-          description:
-            "Get a Ministry's UsualSetup, the standing rule declaring which EventTemplate TemplateTimeBlocks it always serves.",
-          response: { 200: usualSetupResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { ministryId } = request.params as MinistryRouteParams;
-        const profiles = await this.participationManager.getUsualSetup({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(ministryId),
-        });
-        return reply.send(usualSetupMapper.toResponse(profiles));
-      },
-    );
-
-    app.put(
-      '/ministries/:ministryId/usual-setup',
-      {
-        schema: {
-          tags: ['planning'],
-          operationId: 'upsertUsualSetup',
-          summary: "Set a Ministry's usual setup",
-          description:
-            "Replace a Ministry's UsualSetup entries, including which TemplateTimeBlocks it serves, its Shift split, and headcounts.",
-          body: upsertUsualSetupBodySchema,
-          response: { 200: usualSetupResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { ministryId } = request.params as MinistryRouteParams;
-        const body = request.body as UpsertUsualSetupBody;
-        const profiles = await this.participationManager.upsertUsualSetup({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(ministryId),
-          entries: body.entries.map((entry) => ({
-            sourceTemplateTimeBlockId: TemplateTimeBlockId.from(
-              entry.sourceTemplateTimeBlockId,
-            ),
-            serves: entry.serves,
-            shiftSplit:
-              entry.shiftSplit.kind === 'manual'
-                ? {
-                    kind: 'manual' as const,
-                    spans: entry.shiftSplit.spans.map((span) => ({
-                      label: span.label,
-                      startTime: parseTimeOfDay({ value: span.startTime }),
-                      endTime: parseTimeOfDay({ value: span.endTime }),
-                    })),
-                  }
-                : entry.shiftSplit,
-            headcounts: entry.headcounts.map((headcount) => ({
-              sectorId: SectorId.from(headcount.sectorId),
-              roleId: RoleId.from(headcount.roleId),
-              peopleNeeded: headcount.peopleNeeded,
-            })),
-          })),
-        });
-        return reply.send(usualSetupMapper.toResponse(profiles));
       },
     );
 

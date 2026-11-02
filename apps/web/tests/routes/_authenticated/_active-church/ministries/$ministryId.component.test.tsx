@@ -146,19 +146,6 @@ describe('/ministries/$ministryId workspace', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the translated Usual setup placeholder', async () => {
-    asLeader();
-
-    renderWorkspace('/usual-setup');
-
-    expect(
-      await screen.findByRole('heading', {
-        name: m.ministry_tab_usual_setup(),
-      }),
-    ).toBeVisible();
-    expect(screen.getByText(m.shell_coming_soon())).toBeVisible();
-  });
-
   it('renders the not-found state for a 404 without tabs', async () => {
     asAdmin();
     getMinistry.mockRejectedValue(

@@ -82,7 +82,6 @@ beforeAll(async () => {
     }),
     planningEventManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
-    participationManager: {} as never,
     ministryManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
@@ -504,7 +503,7 @@ async function seedEditGraph(): Promise<EditGraph> {
     name: 'Greeter',
   });
   const headcounts = [
-    { sectorId: sector.id, roleId: role.id, peopleNeeded: 3 },
+    { shiftIndex: 0, sectorId: sector.id, roleId: role.id, peopleNeeded: 3 },
   ];
   const setups = [
     [seed.ministryAId, ids.welcome, true, manualSplit],

@@ -97,6 +97,8 @@ test('church admin lists Event templates, creates an overnight one, edits it on 
 
   // Delete from the edit page: confirmation first, then gone from the list.
   await editedRow.getByTestId('edit-template-button').click();
+  // The list rows share this delete test id; wait for the edit page first.
+  await expect(page.getByTestId('template-name-input')).toHaveValue(renamed);
   await page.getByTestId('delete-template-button').click();
   const dialog = page.getByRole('alertdialog', {
     name: 'Excluir este modelo?',

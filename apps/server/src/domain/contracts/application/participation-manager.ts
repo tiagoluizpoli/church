@@ -1,13 +1,15 @@
-import type { Instant } from '@church/time';
+import type { Instant, TimeOfDay } from '@church/time';
 import type {
   ChurchId,
   CycleId,
+  EventTemplateId,
   EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   RoleId,
   SectorId,
   ShiftId,
+  TemplateTimeBlockId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -144,15 +146,30 @@ export interface UpsertRequirementManagerInput {
   notes?: string;
 }
 
-export interface GetUsualSetupInput {
+export interface ListUsualSetupBlocksInput {
   churchId: ChurchId;
   ministryId: MinistryId;
 }
 
-export interface UpsertUsualSetupInput {
+export interface SaveUsualSetupBlockInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  entries: UsualSetupEntryInput[];
+  entry: UsualSetupEntryInput;
+}
+
+/** A current TemplateTimeBlock with the Ministry's saved entry for it, if any. */
+export interface UsualSetupBlockView {
+  templateId: EventTemplateId;
+  templateName: string;
+  weekday: number;
+  sourceTemplateTimeBlockId: TemplateTimeBlockId;
+  label: string;
+  startTime: TimeOfDay;
+  endTime: TimeOfDay;
+  order: number;
+  entry?: UsualSetup;
+  /** Derived, never stored: a serving manual split no longer fits the block. */
+  needsReview: boolean;
 }
 
 export interface EligibleVolunteerView {
@@ -225,8 +242,14 @@ export interface IParticipationManager {
   upsertRequirement(
     input: UpsertRequirementManagerInput,
   ): Promise<ShiftRequirement>;
-  getUsualSetup(input: GetUsualSetupInput): Promise<UsualSetup[]>;
-  upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]>;
+  /** Every current block by template name and block order, saved or not. */
+  listUsualSetupBlocks(
+    input: ListUsualSetupBlocksInput,
+  ): Promise<UsualSetupBlockView[]>;
+  /** Saves one block's entry, leaving the Ministry's other blocks untouched. */
+  saveUsualSetupBlock(
+    input: SaveUsualSetupBlockInput,
+  ): Promise<UsualSetupBlockView>;
   listEligibleVolunteers(
     input: ListEligibleVolunteersInput,
   ): Promise<EligibleVolunteerView[]>;

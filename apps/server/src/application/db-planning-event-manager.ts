@@ -3,18 +3,11 @@ import {
   addMilliseconds,
   compareCalendarDays,
   fromDate,
-  type Instant,
   millisecondsBetween,
   now,
   toDate,
   today,
 } from '@church/time';
-import type {
-  ChurchId,
-  EventId,
-  EventTimeBlockId,
-  TemplateTimeBlockId,
-} from '../domain/branded-ids';
 import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
@@ -30,19 +23,13 @@ import type { ChurchRepository } from '../domain/contracts/infrastructure/church
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
-import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
-import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
-import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { Church } from '../domain/entities/church';
 import type { Cycle } from '../domain/entities/cycle';
 import type { Event } from '../domain/entities/event';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
-import type { DefaultDirection } from '../domain/entities/ministry';
-import { Shift } from '../domain/entities/shift';
 import {
   EventOutsideCycleError,
   IllegalStateTransitionError,
@@ -52,10 +39,10 @@ import {
   CycleEventGenerator,
   type ExistingGeneratedEventTimeBlockFingerprint,
 } from '../domain/services/cycle-event-generator';
-import {
-  ProfileSeeder,
-  type ProfileSeederEntry,
-} from '../domain/services/profile-seeder';
+import type {
+  StaffingSeedEventTimeBlock,
+  UsualSetupStaffingSeeder,
+} from './usual-setup-staffing-seeder';
 
 interface EnsureCycleWritableInput {
   cycle: Cycle;
@@ -97,60 +84,25 @@ interface LoadWritableEventTimeBlockInput {
   tx: TransactionContext;
 }
 
-interface PlanningSeedContext {
-  profilesByMinistry: Map<string, ProfileSeederEntry[]>;
-  directionByMinistry: Map<string, DefaultDirection>;
-  globalDefaultAllIn: boolean;
-  timeZone: string;
-}
-
-interface GeneratedEventTimeBlockSeedInput {
-  eventTimeBlockId: EventTimeBlockId;
-  sourceTemplateTimeBlockId: TemplateTimeBlockId;
-  startTime: Instant;
-  endTime: Instant;
-}
-
-interface SeedGeneratedEventTimeBlocksInput {
-  churchId: ChurchId;
-  eventId: EventId;
-  eventTimeBlocks: GeneratedEventTimeBlockSeedInput[];
-  seedContext: PlanningSeedContext;
-  tx: TransactionContext;
-}
-
-interface BuildSeedContextInput {
-  churchId: ChurchId;
-  timeZone: string;
-  tx: TransactionContext;
-}
-
 interface DbPlanningEventManagerDependencies {
   cycleRepository: CycleRepository;
   eventRepository: PlanningEventRepository;
   templateRepository: EventTemplateRepository;
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
-  participationRepository: MinistryParticipationRepository;
-  shiftRepository: ShiftRepository;
-  usualSetupRepository: UsualSetupRepository;
-  ministryRepository: MinistryRepository;
+  staffingSeeder: UsualSetupStaffingSeeder;
   eventTimeBlockRepository: EventTimeBlockRepository;
 }
 
 export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly generator = new CycleEventGenerator();
-  private readonly profileSeeder = new ProfileSeeder();
+  private readonly staffingSeeder: UsualSetupStaffingSeeder;
 
   private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly templateRepository: EventTemplateRepository;
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
-  private readonly participationRepository: MinistryParticipationRepository;
-  private readonly shiftRepository: ShiftRepository;
-  private readonly usualSetupRepository: UsualSetupRepository;
-  private readonly ministryRepository: MinistryRepository;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
 
   constructor({
@@ -159,10 +111,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     templateRepository,
     churchRepository,
     unitOfWork,
-    participationRepository,
-    shiftRepository,
-    usualSetupRepository,
-    ministryRepository,
+    staffingSeeder,
     eventTimeBlockRepository,
   }: DbPlanningEventManagerDependencies) {
     this.cycleRepository = cycleRepository;
@@ -170,11 +119,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.templateRepository = templateRepository;
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
-    this.participationRepository = participationRepository;
-    this.shiftRepository = shiftRepository;
-    this.usualSetupRepository = usualSetupRepository;
-    this.ministryRepository = ministryRepository;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
+    this.staffingSeeder = staffingSeeder;
   }
 
   async generateFromTemplates(
@@ -231,11 +177,17 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         timeZone: church.timezone,
       });
 
-      const seedContext = await this.buildSeedContext({
-        churchId: input.churchId,
-        timeZone: church.timezone,
-        tx,
-      });
+      // A Draft gets calendar copies only: Send pre-fills its staffing from
+      // the setup saved by then. Blocks added to a Sent Cycle seed now.
+      const setup =
+        cycle.state === 'sent'
+          ? await this.staffingSeeder.loadSetup({
+              churchId: input.churchId,
+              timeZone: church.timezone,
+              tx,
+            })
+          : null;
+      const addedEventTimeBlocks: StaffingSeedEventTimeBlock[] = [];
 
       let generatedEventCount = 0;
       let generatedEventTimeBlockCount = 0;
@@ -266,8 +218,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           generatedEventCount += 1;
         }
 
-        const createdEventTimeBlocks: GeneratedEventTimeBlockSeedInput[] = [];
-
         for (const eventTimeBlock of plan.eventTimeBlocks) {
           const eventTimeBlockId =
             await this.eventRepository.createEventTimeBlock({
@@ -280,7 +230,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               label: eventTimeBlock.label,
               tx,
             });
-          createdEventTimeBlocks.push({
+          addedEventTimeBlocks.push({
+            eventId: targetEventId,
             eventTimeBlockId,
             sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
             startTime: eventTimeBlock.startTime,
@@ -288,12 +239,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           });
           generatedEventTimeBlockCount += 1;
         }
+      }
 
-        await this.seedGeneratedEventTimeBlocks({
+      if (setup) {
+        await this.staffingSeeder.seed({
           churchId: input.churchId,
-          eventId: targetEventId,
-          eventTimeBlocks: createdEventTimeBlocks,
-          seedContext,
+          eventTimeBlocks: addedEventTimeBlocks,
+          setup,
           tx,
         });
       }
@@ -303,143 +255,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         generatedEventTimeBlockCount,
       };
     });
-  }
-
-  private async buildSeedContext({
-    churchId,
-    timeZone,
-    tx,
-  }: BuildSeedContextInput): Promise<PlanningSeedContext> {
-    // Sequential awaits are required here: calling repository queries concurrently via
-    // Promise.all on a single transaction connection (tx) triggers pg deprecation warnings.
-    const profiles = await this.usualSetupRepository.listByChurch({
-      churchId,
-      tx,
-    });
-    const ministries = await this.ministryRepository.listByChurch({
-      churchId,
-      tx,
-    });
-
-    const profilesByMinistry = new Map<string, ProfileSeederEntry[]>();
-    for (const profile of profiles) {
-      const entries =
-        profilesByMinistry.get(profile.ministryId as string) ?? [];
-      entries.push({
-        sourceTemplateTimeBlockId: profile.sourceTemplateTimeBlockId,
-        serves: profile.serves,
-        shiftSplit: profile.shiftSplit,
-        headcounts: profile.headcounts,
-      });
-      profilesByMinistry.set(profile.ministryId as string, entries);
-    }
-
-    const directionByMinistry = new Map<string, DefaultDirection>();
-    for (const ministry of ministries) {
-      directionByMinistry.set(ministry.id as string, ministry.defaultDirection);
-    }
-
-    return {
-      profilesByMinistry,
-      directionByMinistry,
-      globalDefaultAllIn: false,
-      timeZone,
-    };
-  }
-
-  private async seedGeneratedEventTimeBlocks({
-    churchId,
-    eventId,
-    eventTimeBlocks,
-    seedContext,
-    tx,
-  }: SeedGeneratedEventTimeBlocksInput): Promise<void> {
-    if (eventTimeBlocks.length === 0) {
-      return;
-    }
-
-    const participations = await this.participationRepository.listByEvent({
-      churchId,
-      eventId,
-      tx,
-    });
-
-    for (const eventTimeBlock of eventTimeBlocks) {
-      for (const participation of participations) {
-        const seedPlan = this.profileSeeder.plan({
-          eventTimeBlock: {
-            eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
-            sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
-            startTime: eventTimeBlock.startTime,
-            endTime: eventTimeBlock.endTime,
-          },
-          profileEntries:
-            seedContext.profilesByMinistry.get(
-              participation.ministryId as string,
-            ) ?? [],
-          ministryDefaultDirection: seedContext.directionByMinistry.get(
-            participation.ministryId as string,
-          ),
-          globalDefaultAllIn: seedContext.globalDefaultAllIn,
-          timeZone: seedContext.timeZone,
-        });
-
-        if (!seedPlan.include) {
-          continue;
-        }
-
-        await this.participationRepository.addInclusion({
-          churchId,
-          participationId: participation.id,
-          eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
-          tx,
-        });
-
-        const shiftEntities = seedPlan.shifts.map(
-          (shiftPlan) =>
-            new Shift({
-              props: {
-                churchId,
-                participationId: participation.id,
-                eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
-                startTime: shiftPlan.startTime,
-                endTime: shiftPlan.endTime,
-                label: shiftPlan.label,
-              },
-              eventTimeBlockBounds: {
-                startTime: eventTimeBlock.startTime,
-                endTime: eventTimeBlock.endTime,
-              },
-            }),
-        );
-
-        await this.shiftRepository.createMany({
-          churchId,
-          shifts: shiftEntities,
-          tx,
-        });
-
-        for (const [index, shiftPlan] of seedPlan.shifts.entries()) {
-          const shiftEntity = shiftEntities[index];
-
-          if (!shiftEntity) {
-            continue;
-          }
-
-          for (const headcount of shiftPlan.headcounts) {
-            await this.shiftRepository.upsertRequirement({
-              churchId,
-              shiftId: shiftEntity.id,
-              participationId: participation.id,
-              sectorId: headcount.sectorId,
-              roleId: headcount.roleId,
-              peopleNeeded: headcount.peopleNeeded,
-              tx,
-            });
-          }
-        }
-      }
-    }
   }
 
   async createEvent(input: CreatePlanningEventManagerInput): Promise<Event> {

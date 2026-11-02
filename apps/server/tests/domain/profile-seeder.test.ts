@@ -46,12 +46,15 @@ function plan(input: Partial<SeedParticipationPlanInput>) {
 }
 
 describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
-  it('DL1-PS-01 profile entry with serves=true seeds inclusion, split shifts, and requirements', () => {
+  it('DL1-PS-01 profile entry with serves=true seeds inclusion, split shifts, and each Shift its own requirements', () => {
     const entry: ProfileSeederEntry = {
       sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ sectorId, roleId, peopleNeeded: 3 }],
+      headcounts: [
+        { shiftIndex: 0, sectorId, roleId, peopleNeeded: 3 },
+        { shiftIndex: 1, sectorId, roleId, peopleNeeded: 1 },
+      ],
     };
 
     const result = plan({ profileEntries: [entry] });
@@ -63,10 +66,10 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     );
     expect(result.shifts[1]?.endTime).toEqual(templatedEventTimeBlock.endTime);
     expect(result.shifts[0]?.headcounts).toEqual([
-      { sectorId, roleId, peopleNeeded: 3 },
+      { shiftIndex: 0, sectorId, roleId, peopleNeeded: 3 },
     ]);
     expect(result.shifts[1]?.headcounts).toEqual([
-      { sectorId, roleId, peopleNeeded: 3 },
+      { shiftIndex: 1, sectorId, roleId, peopleNeeded: 1 },
     ]);
   });
 
@@ -89,12 +92,16 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
           },
         ],
       },
-      headcounts: [],
+      headcounts: [{ shiftIndex: 1, sectorId, roleId, peopleNeeded: 2 }],
     };
 
     const result = plan({ profileEntries: [entry] });
 
     expect(result.shifts).toHaveLength(2);
+    expect(result.shifts[0]?.headcounts).toEqual([]);
+    expect(result.shifts[1]?.headcounts).toEqual([
+      { shiftIndex: 1, sectorId, roleId, peopleNeeded: 2 },
+    ]);
     expect(result.shifts[0]?.startTime).toEqual(
       parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
     );
@@ -105,6 +112,68 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     expect(result.shifts[1]?.endTime).toEqual(
       parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
     );
+  });
+
+  it('resolves overnight manual spans past midnight in the Church Timezone', () => {
+    // 22:00–02:00 church time (UTC-3) → 01:00–05:00 UTC the next day.
+    const overnight = {
+      ...templatedEventTimeBlock,
+      startTime: parseInstant({ value: '2026-08-03T01:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-03T05:00:00.000Z' }),
+    };
+    const entry: ProfileSeederEntry = {
+      sourceTemplateTimeBlockId: blockId,
+      serves: true,
+      shiftSplit: {
+        kind: 'manual',
+        spans: [
+          {
+            startTime: parseTimeOfDay({ value: '23:00' }),
+            endTime: parseTimeOfDay({ value: '00:00' }),
+          },
+          {
+            startTime: parseTimeOfDay({ value: '00:00' }),
+            endTime: parseTimeOfDay({ value: '01:30' }),
+          },
+        ],
+      },
+      headcounts: [],
+    };
+
+    const result = plan({ eventTimeBlock: overnight, profileEntries: [entry] });
+
+    expect(
+      result.shifts.map((shift) => [shift.startTime, shift.endTime]),
+    ).toEqual([
+      [
+        parseInstant({ value: '2026-08-03T02:00:00.000Z' }),
+        parseInstant({ value: '2026-08-03T03:00:00.000Z' }),
+      ],
+      [
+        parseInstant({ value: '2026-08-03T03:00:00.000Z' }),
+        parseInstant({ value: '2026-08-03T04:30:00.000Z' }),
+      ],
+    ]);
+  });
+
+  it('gives the equal split remainder to the final Shift', () => {
+    // 180 minutes in 7 Shifts leaves a remainder for the final Shift.
+    const result = plan({
+      profileEntries: [
+        {
+          sourceTemplateTimeBlockId: blockId,
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 7 },
+          headcounts: [],
+        },
+      ],
+    });
+
+    expect(result.shifts).toHaveLength(7);
+    expect(result.shifts[0]?.startTime).toEqual(
+      templatedEventTimeBlock.startTime,
+    );
+    expect(result.shifts[6]?.endTime).toEqual(templatedEventTimeBlock.endTime);
   });
 
   it('accepts manual span times that already include seconds', () => {

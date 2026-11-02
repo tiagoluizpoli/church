@@ -48,6 +48,7 @@ export type MappedDomainCode =
   | 'CROSS_MINISTRY_SCOPE'
   | 'OVERLAPPING_CYCLE'
   | 'ILLEGAL_STATE_TRANSITION'
+  | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
   | 'EVENT_OUTSIDE_CYCLE'
   | 'LAST_REMAINING_EVENT_TIME_BLOCK'
   | 'SHIFT_OUT_OF_BOUNDS'
@@ -113,6 +114,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   ILLEGAL_STATE_TRANSITION: {
     status: 409,
     message: m.error_illegal_state_transition,
+  },
+  DRAFT_STAFFING_RECONCILIATION_REQUIRED: {
+    status: 409,
+    message: m.error_draft_staffing_reconciliation_required,
   },
   EVENT_OUTSIDE_CYCLE: { status: 409, message: m.error_event_outside_cycle },
   LAST_REMAINING_EVENT_TIME_BLOCK: {

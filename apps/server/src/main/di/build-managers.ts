@@ -23,6 +23,7 @@ import {
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
+import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
 import type { Auth } from './build-auth';
 import type { Repositories } from './build-repositories';
@@ -231,6 +232,12 @@ export function buildManagers({
       config,
       webBaseUrl: env.CORS_ORIGIN,
     });
+  const staffingSeeder = new UsualSetupStaffingSeeder({
+    participationRepository: ministryParticipationRepository,
+    shiftRepository,
+    usualSetupRepository,
+    ministryRepository,
+  });
   const cycleManager =
     overrides.cycleManager ??
     new DbCycleManager({
@@ -238,6 +245,8 @@ export function buildManagers({
       eventRepository: planningEventRepository,
       churchRepository,
       unitOfWork,
+      participationRepository: ministryParticipationRepository,
+      staffingSeeder,
     });
   const planningEventManager =
     overrides.planningEventManager ??
@@ -247,10 +256,7 @@ export function buildManagers({
       templateRepository: eventTemplateRepository,
       churchRepository,
       unitOfWork,
-      participationRepository: ministryParticipationRepository,
-      shiftRepository,
-      usualSetupRepository: usualSetupRepository,
-      ministryRepository,
+      staffingSeeder,
       eventTimeBlockRepository,
     });
   const volunteerManager =

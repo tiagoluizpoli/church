@@ -20,6 +20,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import {
   ChurchId,
   CycleId,
@@ -83,12 +84,21 @@ function createManagers() {
     db: schedulingTestDb,
   });
 
+  const staffingSeeder = new UsualSetupStaffingSeeder({
+    participationRepository,
+    shiftRepository,
+    usualSetupRepository,
+    ministryRepository,
+  });
+
   return {
     cycleManager: new DbCycleManager({
       cycleRepository,
       eventRepository,
       churchRepository,
       unitOfWork,
+      participationRepository,
+      staffingSeeder,
     }),
     eventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -96,10 +106,7 @@ function createManagers() {
       templateRepository,
       churchRepository,
       unitOfWork,
-      participationRepository,
-      shiftRepository,
-      usualSetupRepository,
-      ministryRepository,
+      staffingSeeder,
       eventTimeBlockRepository,
     }),
     templateManager: new DbEventTemplateManager({
@@ -846,7 +853,7 @@ describe('Phase 3 planning managers', () => {
     ).rejects.toThrow(EventOutsideCycleError);
   });
 
-  it('generateFromTemplates seeds via the three-tier default: explicit profile > ministry direction > (all_out default), including split shifts and headcounts', async () => {
+  it('generateFromTemplates on a Sent Cycle seeds the added blocks via the three-tier default: explicit profile > ministry direction > (all_out default), including split shifts and headcounts', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager, templateManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -918,10 +925,21 @@ describe('Phase 3 planning managers', () => {
         sourceTemplateTimeBlockId: block.id,
         serves: true,
         shiftSplit: { kind: 'equal', count: 2 },
-        headcounts: [
-          { sectorId: babiesRoom.id, roleId: roleRow.id, peopleNeeded: 2 },
-          { sectorId: kidsRoom.id, roleId: roleRow.id, peopleNeeded: 1 },
-        ],
+        // The same counts in each of the two Shifts.
+        headcounts: [0, 1].flatMap((shiftIndex) => [
+          {
+            shiftIndex,
+            sectorId: babiesRoom.id,
+            roleId: roleRow.id,
+            peopleNeeded: 2,
+          },
+          {
+            shiftIndex,
+            sectorId: kidsRoom.id,
+            roleId: roleRow.id,
+            peopleNeeded: 1,
+          },
+        ]),
       },
       {
         churchId: seed.churchAId,
@@ -933,6 +951,9 @@ describe('Phase 3 planning managers', () => {
       },
     ]);
 
+    // A Draft Apply creates calendar copies only (Send pre-fills); blocks
+    // added to an already-Sent Cycle are seeded at Apply.
+    await cycleManager.sendCycle({ churchId: churchAId, cycleId: cycle.id });
     const result = await eventManager.generateFromTemplates({
       churchId: churchAId,
       cycleId: cycle.id,

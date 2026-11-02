@@ -21,8 +21,8 @@ import {
   vi,
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { SectorController } from '@/api/controllers/sector-controller';
+import { UsualSetupController } from '@/api/controllers/usual-setup-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DbSectorManager } from '@/application/db-sector-manager';
@@ -90,22 +90,20 @@ beforeAll(async () => {
       ministryRepository: ministryRepo,
     }),
   });
+  const ministryManager = new DbMinistryManager({
+    ministryRepo,
+    volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+  });
   // The competing UsualSetup write path, for the archive race proof.
-  const churchAdmin = new ChurchAdminController({
-    cycleManager: {} as never,
-    eventTemplateManager: {} as never,
-    planningEventManager: {} as never,
-    activeChurchResolver: activeChurchResolver as never,
+  const usualSetupController = new UsualSetupController({
+    ministryManager,
     participationManager: createSchedulingManagers().participationManager,
-    ministryManager: {} as never,
+    activeChurchResolver: activeChurchResolver as never,
     authorityGuard,
   });
   const controller = new SectorController({
-    ministryManager: new DbMinistryManager({
-      ministryRepo,
-      volunteerRepo: new DrizzleVolunteerRepository({ db }),
-      unitOfWork: new DrizzleUnitOfWork({ db }),
-    }),
+    ministryManager,
     sectorManager: new DbSectorManager({
       sectorRepository: new DrizzleSectorRepository({ db }),
       ministryRepository: ministryRepo,
@@ -116,7 +114,7 @@ beforeAll(async () => {
   });
   await app.register(
     async (instance) => {
-      for (const registered of [controller, churchAdmin]) {
+      for (const registered of [controller, usualSetupController]) {
         instance.register(registered.registerRoutes.bind(registered), {
           prefix: registered.prefix,
         });
@@ -633,7 +631,9 @@ async function seedUsualSetup(sectorId: string) {
     id: randomUUID(),
     serves: false,
     shiftSplit: { kind: 'equal', count: 1 },
-    headcounts: [{ sectorId, roleId: fixture.roleId, peopleNeeded: 2 }],
+    headcounts: [
+      { shiftIndex: 0, sectorId, roleId: fixture.roleId, peopleNeeded: 2 },
+    ],
   });
   return block;
 }
@@ -796,15 +796,12 @@ async function lockWaitObserved() {
 function putUsualSetup(templateTimeBlockId: string, sectorId: string) {
   return app.inject({
     method: 'PUT',
-    url: `/api/v1/admin/ministries/${fixture.worshipId}/usual-setup`,
+    url: `/api/v1/ministries/${fixture.worshipId}/usual-setup/${templateTimeBlockId}`,
     payload: {
-      entries: [
-        {
-          sourceTemplateTimeBlockId: templateTimeBlockId,
-          serves: true,
-          shiftSplit: { kind: 'equal', count: 1 },
-          headcounts: [{ sectorId, roleId: fixture.roleId, peopleNeeded: 1 }],
-        },
+      serves: true,
+      shiftSplit: { kind: 'equal', count: 1 },
+      headcounts: [
+        { shiftIndex: 0, sectorId, roleId: fixture.roleId, peopleNeeded: 1 },
       ],
     },
   });
@@ -814,10 +811,7 @@ describe('archive racing a UsualSetup write', () => {
   it('waits for an in-flight write that uses the Sector, then refuses with its location', async () => {
     const block = await seedUsualSetup(fixture.stageId);
     signIn('admin');
-    const write = gate(
-      DrizzleUsualSetupRepository.prototype,
-      'replaceForMinistry',
-    );
+    const write = gate(DrizzleUsualSetupRepository.prototype, 'upsertBlock');
 
     const put = putUsualSetup(block.id, fixture.babiesId);
     await write.entered;
@@ -857,10 +851,15 @@ describe('archive racing a UsualSetup write', () => {
     expect((await put).statusCode).toBe(404);
     const read = await app.inject({
       method: 'GET',
-      url: `/api/v1/admin/ministries/${fixture.worshipId}/usual-setup`,
+      url: `/api/v1/ministries/${fixture.worshipId}/usual-setup`,
     });
-    expect(read.json().entries[0].headcounts).toEqual([
-      { sectorId: fixture.stageId, roleId: fixture.roleId, peopleNeeded: 2 },
+    expect(read.json().blocks[0].entry.headcounts).toEqual([
+      {
+        shiftIndex: 0,
+        sectorId: fixture.stageId,
+        roleId: fixture.roleId,
+        peopleNeeded: 2,
+      },
     ]);
   });
 });

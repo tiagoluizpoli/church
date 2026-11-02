@@ -318,6 +318,8 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -446,6 +448,8 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -654,127 +658,6 @@ export const DeletePlanningEventTimeBlock204 = {
 export type DeletePlanningEventTimeBlock404 = {
   error: string;
   message: string;
-};
-
-export type GetUsualSetup200EntriesItemShiftSplit = {
-  kind: 'equal';
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  count: number;
-} | {
-  kind: 'manual';
-  spans: {
-  label?: string;
-  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
-  startTime: string;
-  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
-  endTime: string;
-}[];
-};
-
-export type GetUsualSetup200EntriesItemHeadcountsItem = {
-  sectorId: string;
-  roleId: string;
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  peopleNeeded: number;
-};
-
-export type GetUsualSetup200EntriesItem = {
-  id: string;
-  ministryId: string;
-  sourceTemplateTimeBlockId: string;
-  serves: boolean;
-  shiftSplit: GetUsualSetup200EntriesItemShiftSplit;
-  headcounts: GetUsualSetup200EntriesItemHeadcountsItem[];
-};
-
-export type GetUsualSetup200 = {
-  entries: GetUsualSetup200EntriesItem[];
-};
-
-export type UpsertUsualSetupBodyEntriesItemShiftSplit = {
-  kind: 'equal';
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  count: number;
-} | {
-  kind: 'manual';
-  spans: {
-  label?: string;
-  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
-  startTime: string;
-  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
-  endTime: string;
-}[];
-};
-
-export type UpsertUsualSetupBodyEntriesItemHeadcountsItem = {
-  sectorId: string;
-  roleId: string;
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  peopleNeeded: number;
-};
-
-export type UpsertUsualSetupBodyEntriesItem = {
-  sourceTemplateTimeBlockId: string;
-  serves: boolean;
-  shiftSplit: UpsertUsualSetupBodyEntriesItemShiftSplit;
-  headcounts: UpsertUsualSetupBodyEntriesItemHeadcountsItem[];
-};
-
-export type UpsertUsualSetupBody = {
-  entries: UpsertUsualSetupBodyEntriesItem[];
-};
-
-export type UpsertUsualSetup200EntriesItemShiftSplit = {
-  kind: 'equal';
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  count: number;
-} | {
-  kind: 'manual';
-  spans: {
-  label?: string;
-  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
-  startTime: string;
-  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
-  endTime: string;
-}[];
-};
-
-export type UpsertUsualSetup200EntriesItemHeadcountsItem = {
-  sectorId: string;
-  roleId: string;
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  peopleNeeded: number;
-};
-
-export type UpsertUsualSetup200EntriesItem = {
-  id: string;
-  ministryId: string;
-  sourceTemplateTimeBlockId: string;
-  serves: boolean;
-  shiftSplit: UpsertUsualSetup200EntriesItemShiftSplit;
-  headcounts: UpsertUsualSetup200EntriesItemHeadcountsItem[];
-};
-
-export type UpsertUsualSetup200 = {
-  entries: UpsertUsualSetup200EntriesItem[];
 };
 
 export type SetMinistryDefaultDirectionBodyDefaultDirection = typeof SetMinistryDefaultDirectionBodyDefaultDirection[keyof typeof SetMinistryDefaultDirectionBodyDefaultDirection];
@@ -1635,6 +1518,199 @@ export type ArchiveSector409 = {
   error: string;
   message: string;
   blockers: ArchiveSector409BlockersItem[];
+};
+
+export type ListUsualSetup200BlocksItemEntryShiftSplit = {
+  kind: 'equal';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+} | {
+  kind: 'manual';
+  spans: {
+  label?: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+}[];
+};
+
+export type ListUsualSetup200BlocksItemEntryHeadcountsItem = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftIndex: number;
+  sectorId: string;
+  roleId: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  peopleNeeded: number;
+};
+
+export type ListUsualSetup200BlocksItemEntry = {
+  serves: boolean;
+  shiftSplit: ListUsualSetup200BlocksItemEntryShiftSplit;
+  headcounts: ListUsualSetup200BlocksItemEntryHeadcountsItem[];
+};
+
+export type ListUsualSetup200BlocksItem = {
+  templateId: string;
+  templateName: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  weekday: number;
+  sourceTemplateTimeBlockId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  order: number;
+  entry?: ListUsualSetup200BlocksItemEntry;
+  needsReview: boolean;
+};
+
+export type ListUsualSetup200 = {
+  blocks: ListUsualSetup200BlocksItem[];
+};
+
+export type ListUsualSetup401 = {
+  error: string;
+  message: string;
+};
+
+export type ListUsualSetup403 = {
+  error: string;
+  message: string;
+};
+
+export type ListUsualSetup404 = {
+  error: string;
+  message: string;
+};
+
+export type SaveUsualSetupBlockBodyShiftSplit = {
+  kind: 'equal';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+} | {
+  kind: 'manual';
+  spans: {
+  label?: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+}[];
+};
+
+export type SaveUsualSetupBlockBodyHeadcountsItem = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftIndex: number;
+  sectorId: string;
+  roleId: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  peopleNeeded: number;
+};
+
+export type SaveUsualSetupBlockBody = {
+  serves: boolean;
+  shiftSplit: SaveUsualSetupBlockBodyShiftSplit;
+  headcounts: SaveUsualSetupBlockBodyHeadcountsItem[];
+};
+
+export type SaveUsualSetupBlock200EntryShiftSplit = {
+  kind: 'equal';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+} | {
+  kind: 'manual';
+  spans: {
+  label?: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+}[];
+};
+
+export type SaveUsualSetupBlock200EntryHeadcountsItem = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftIndex: number;
+  sectorId: string;
+  roleId: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  peopleNeeded: number;
+};
+
+export type SaveUsualSetupBlock200Entry = {
+  serves: boolean;
+  shiftSplit: SaveUsualSetupBlock200EntryShiftSplit;
+  headcounts: SaveUsualSetupBlock200EntryHeadcountsItem[];
+};
+
+export type SaveUsualSetupBlock200 = {
+  templateId: string;
+  templateName: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  weekday: number;
+  sourceTemplateTimeBlockId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  order: number;
+  entry?: SaveUsualSetupBlock200Entry;
+  needsReview: boolean;
+};
+
+export type SaveUsualSetupBlock401 = {
+  error: string;
+  message: string;
+};
+
+export type SaveUsualSetupBlock403 = {
+  error: string;
+  message: string;
+};
+
+export type SaveUsualSetupBlock404 = {
+  error: string;
+  message: string;
 };
 
 export type GetCycleParticipationParams = {

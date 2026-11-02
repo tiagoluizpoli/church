@@ -106,14 +106,16 @@ export interface TemplateBlockBoundsInput {
   endTime: TimeOfDay;
 }
 
+export interface TemplateBlockBounds {
+  block: UsualSetupBlockBounds;
+  timeZone: string;
+}
+
 /** Wall-clock template bounds as Instants on a fixed UTC day (no DST, no dates). */
 export function templateBlockBounds({
   startTime,
   endTime,
-}: TemplateBlockBoundsInput): {
-  block: UsualSetupBlockBounds;
-  timeZone: string;
-} {
+}: TemplateBlockBoundsInput): TemplateBlockBounds {
   const timeZone = 'UTC';
   const day = parseCalendarDay({ value: '2000-01-03' });
   return {

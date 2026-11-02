@@ -27,6 +27,21 @@ export const ministryListResponseSchema = z.object({
 
 export type MinistryListResponse = z.infer<typeof ministryListResponseSchema>;
 
+export const cycleArchiveBlockerSchema = z.object({
+  kind: z.literal('cycle'),
+  ministryId: z.string().uuid(),
+  ministryName: z.string(),
+  cycleId: z.string().uuid(),
+  cycleName: z.string(),
+});
+
+/** 409 archive refusal: the error envelope plus where the item is still used. */
+export const archiveBlockedResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  blockers: z.array(z.discriminatedUnion('kind', [cycleArchiveBlockerSchema])),
+});
+
 export const ministryMapper = {
   toResponse(ministry: Ministry): MinistryResponse {
     return {

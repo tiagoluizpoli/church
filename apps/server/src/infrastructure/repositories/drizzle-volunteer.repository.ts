@@ -7,7 +7,7 @@ import {
   volunteer,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { MinistryId, UserId, VolunteerId } from '../../domain/branded-ids';
 import type {
   FindVolunteerByUserIdGloballyInput,
@@ -297,6 +297,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryMembership.churchId, churchId),
           eq(ministryMembership.status, 'active'),
           eq(ministryMembership.ministryAccessLevel, 'leader'),
+          isNull(ministry.deletedAt),
         ),
       );
     return rows.map((r) => ({

@@ -40,6 +40,7 @@
   "error_invalid_weekday": "Escolha um dia da semana válido.",
   "error_not_found": "Não encontramos o que você pediu.",
   "error_ministry_not_found": "Ministério não encontrado.",
+  "error_ministry_in_use": "Este ministério ainda participa de eventos que não terminaram. Resolva a participação nos ciclos abaixo e depois arquive-o.",
   "error_ministry_name_in_use": "Outro ministério ativo desta igreja já tem este nome. Escolha outro nome.",
   "error_check_access_denied": "Esta consulta de disponibilidade pertence a outro voluntário.",
   "error_assignment_access_denied": "Esta escala pertence a outro voluntário.",

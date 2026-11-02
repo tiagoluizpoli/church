@@ -2865,6 +2865,121 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/ministries/{ministryId}/archive:
+    post:
+      operationId: archiveMinistry
+      summary: Archive a Ministry
+      tags:
+        - ministries
+      description: Archive an active Ministry, keeping its history and freeing its
+        name. ChurchAdmin only; refused with the blocking Cycles while it
+        participates in an Event that has not ended.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  blockers:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            kind:
+                              type: string
+                              enum:
+                                - cycle
+                            ministryId:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            ministryName:
+                              type: string
+                            cycleId:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            cycleName:
+                              type: string
+                          required:
+                            - kind
+                            - ministryId
+                            - ministryName
+                            - cycleId
+                            - cycleName
+                          additionalProperties: false
+                required:
+                  - error
+                  - message
+                  - blockers
+                additionalProperties: false
   /api/v1/ministries/{ministryId}/invitations:
     post:
       operationId: mintMinistryInvitation

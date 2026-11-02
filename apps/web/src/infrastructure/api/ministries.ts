@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  ArchiveMinistry204,
   CreateMinistry201,
   CreateMinistryBody,
   GetMinistry200,
@@ -76,6 +77,18 @@ const renameMinistry = (
       );
     }
   /**
+ * Archive an active Ministry, keeping its history and freeing its name. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended.
+ * @summary Archive a Ministry
+ */
+const archiveMinistry = (
+    ministryId: string,
+ ) => {
+      return apiClient<ArchiveMinistry204>(
+      {url: `/api/v1/ministries/${ministryId}/archive`, method: 'POST'
+    },
+      );
+    }
+  /**
  * Create a Ministry Invitation granting a Ministry Access Level and Roles to an emailed recipient.
  * @summary Mint a Ministry Invitation
  */
@@ -103,10 +116,11 @@ const resendMinistryInvitation = (
     },
       );
     }
-  return {listMinistries,createMinistry,getMinistry,renameMinistry,mintMinistryInvitation,resendMinistryInvitation}};
+  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
 export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
 export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
 export type RenameMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistry']>>>
+export type ArchiveMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveMinistry']>>>
 export type MintMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['mintMinistryInvitation']>>>
 export type ResendMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['resendMinistryInvitation']>>>

@@ -40,6 +40,7 @@
   "error_invalid_weekday": "Pick a valid day of the week.",
   "error_not_found": "We could not find what you asked for.",
   "error_ministry_not_found": "Ministry not found.",
+  "error_ministry_in_use": "This Ministry still takes part in Events that have not ended. Resolve its participation in the Cycles below, then archive it.",
   "error_ministry_name_in_use": "Another active Ministry in this Church already has this name. Choose a different name.",
   "error_check_access_denied": "This availability check belongs to another Volunteer.",
   "error_assignment_access_denied": "This Assignment belongs to another Volunteer.",

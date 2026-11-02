@@ -1,13 +1,18 @@
 import { NotFoundError } from '@church/core';
-import { ministry } from '@church/db';
-import { nowAsDate } from '@church/time';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { cycle, event, ministry, ministryParticipation } from '@church/db';
+import { nowAsDate, toDate } from '@church/time';
+import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import type { CycleId } from '../../domain/branded-ids';
 import type {
+  ArchiveMinistryRecordInput,
   CreateMinistryRecordInput,
   GetMinistryByIdInput,
   GetMinistrySettingsInput,
   ListMinistriesByChurchInput,
+  ListUnendedParticipationCyclesInput,
+  LockActiveMinistryInput,
   MinistryRepository,
+  ParticipationCycle,
   RenameMinistryRecordInput,
   UpdateMinistryDefaultDirectionInput,
 } from '../../domain/contracts/infrastructure/ministry.repository';
@@ -124,6 +129,78 @@ export class DrizzleMinistryRepository implements MinistryRepository {
     const [row] = await refuseNameInUse({ write: update });
     if (!row) throw new NotFoundError(`Ministry not found: ${ministryId}`);
     return mapMinistry(row);
+  }
+
+  async lockActive({
+    churchId,
+    ministryId,
+    strength,
+    tx,
+  }: LockActiveMinistryInput): Promise<Ministry> {
+    if (!isValidUuid(ministryId)) {
+      throw new NotFoundError(`Ministry not found: ${ministryId}`);
+    }
+    // A child insert's foreign key already waits for archive's FOR UPDATE, but
+    // its earlier read of the Ministry as active would be stale; the explicit
+    // lock re-reads it after a concurrent archive commits.
+    const [row] = await getClient({ db: this.db, tx })
+      .select()
+      .from(ministry)
+      .where(
+        and(
+          eq(ministry.id, ministryId),
+          withChurchIsolation({ table: ministry, churchId }),
+          isNull(ministry.deletedAt),
+        ),
+      )
+      .for(strength)
+      .limit(1);
+    if (!row) throw new NotFoundError(`Ministry not found: ${ministryId}`);
+    return mapMinistry(row);
+  }
+
+  async listUnendedParticipationCycles({
+    churchId,
+    ministryId,
+    now,
+    tx,
+  }: ListUnendedParticipationCyclesInput): Promise<ParticipationCycle[]> {
+    // Event end decides, not its status: cancelled and stale-status Events still block.
+    const rows = await getClient({ db: this.db, tx })
+      .selectDistinct({ cycleId: cycle.id, cycleName: cycle.name })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(cycle, eq(cycle.id, event.cycleId))
+      .where(
+        and(
+          eq(ministryParticipation.ministryId, ministryId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          gt(event.end, toDate({ instant: now })),
+        ),
+      )
+      .orderBy(asc(cycle.name), asc(cycle.id));
+    return rows.map((row) => ({
+      cycleId: row.cycleId as CycleId,
+      cycleName: row.cycleName,
+    }));
+  }
+
+  async archive({
+    churchId,
+    ministryId,
+    archivedAt,
+    tx,
+  }: ArchiveMinistryRecordInput): Promise<void> {
+    const date = toDate({ instant: archivedAt });
+    await getClient({ db: this.db, tx })
+      .update(ministry)
+      .set({ deletedAt: date, updatedAt: date })
+      .where(
+        and(
+          eq(ministry.id, ministryId),
+          withChurchIsolation({ table: ministry, churchId }),
+        ),
+      );
   }
 
   async getSettings({

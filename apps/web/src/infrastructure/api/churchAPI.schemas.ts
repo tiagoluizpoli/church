@@ -1195,6 +1195,46 @@ export type RenameMinistry409 = {
   message: string;
 };
 
+/**
+ * @nullable
+ */
+export type ArchiveMinistry204 = typeof ArchiveMinistry204[keyof typeof ArchiveMinistry204] | null;
+
+
+export const ArchiveMinistry204 = {
+} as const;
+
+export type ArchiveMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistry404 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistry409BlockersItem = {
+  kind: 'cycle';
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  cycleId: string;
+  cycleName: string;
+};
+
+export type ArchiveMinistry409 = {
+  error: string;
+  message: string;
+  blockers: ArchiveMinistry409BlockersItem[];
+};
+
 export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
 
 

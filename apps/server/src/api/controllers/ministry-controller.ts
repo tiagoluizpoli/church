@@ -16,6 +16,7 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  archiveBlockedResponseSchema,
   type MinistryNameBody,
   ministryListResponseSchema,
   ministryMapper,
@@ -226,6 +227,35 @@ export class MinistryController implements FastifyController {
           name,
         });
         return reply.send(ministryMapper.toResponse(ministry));
+      },
+    );
+
+    app.post(
+      '/:ministryId/archive',
+      {
+        schema: {
+          tags: ['ministries'],
+          operationId: 'archiveMinistry',
+          summary: 'Archive a Ministry',
+          description:
+            'Archive an active Ministry, keeping its history and freeing its name. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended.',
+          response: {
+            204: z.null(),
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: archiveBlockedResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        if (await this.denyNonAdmin({ request, reply })) return;
+        const { ministryId } = request.params as MinistryRouteParams;
+        await this.ministryManager.archive({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+        });
+        return reply.status(204).send();
       },
     );
 

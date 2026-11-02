@@ -72,7 +72,7 @@ import { ShiftSplitter } from '../domain/services/shift-splitter';
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
-  tx?: TransactionContext;
+  tx: TransactionContext;
 }
 
 interface EnsurePrepareInput {
@@ -1041,6 +1041,13 @@ export class DbParticipationManager implements IParticipationManager {
       return existing;
     }
 
+    // A new participation is new use: refused for an archived Ministry.
+    await this.ministryRepository.lockActive({
+      churchId: input.churchId,
+      ministryId: input.ministryId,
+      strength: 'share',
+      tx: input.tx,
+    });
     return this.participationRepository.create({
       churchId: input.churchId,
       ministryId: input.ministryId,

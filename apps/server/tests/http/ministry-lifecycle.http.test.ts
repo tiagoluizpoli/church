@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { ministry } from '@church/db';
+import {
+  cycle,
+  ministry,
+  ministryMembership,
+  ministryParticipation,
+} from '@church/db';
 import { m } from '@church/i18n/messages';
+import { addMinutes, fromDate, resetClock, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -17,12 +24,19 @@ import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
+import {
+  buildCycle,
+  buildEvent,
+  buildMinistryParticipation,
+} from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
   buildVolunteer,
@@ -55,6 +69,7 @@ beforeAll(async () => {
     ministryManager: new DbMinistryManager({
       ministryRepo,
       volunteerRepo: new DrizzleVolunteerRepository({ db }),
+      unitOfWork: new DrizzleUnitOfWork({ db }),
     }),
     ministryInvitationManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
@@ -462,5 +477,371 @@ describe('authentication', () => {
     expect(responses.map((res) => res.statusCode)).toEqual([
       401, 401, 401, 401,
     ]);
+  });
+});
+
+describe('POST /ministries/:ministryId/archive', () => {
+  const NOW = fromDate({ date: new Date('2026-06-10T12:00:00.000Z') });
+  const at = (minutes: number) => addMinutes({ instant: NOW, minutes });
+
+  function archive(ministryId: string) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/v1/ministries/${ministryId}/archive`,
+    });
+  }
+
+  interface ParticipateInput {
+    ministryId: string;
+    cycleName: string;
+    startMinutes: number;
+    endMinutes: number;
+    status?: 'draft' | 'scheduled' | 'cancelled' | 'past';
+  }
+
+  /** A Cycle (one per name) with one Event the Ministry participates in. */
+  async function participate({
+    ministryId,
+    cycleName,
+    startMinutes,
+    endMinutes,
+    status = 'scheduled',
+  }: ParticipateInput) {
+    const db = schedulingTestDb;
+    const existing = await db
+      .select()
+      .from(cycle)
+      .where(eq(cycle.name, cycleName));
+    const cycleRow =
+      existing[0] ??
+      (await buildCycle({
+        db,
+        churchId: CHURCH_A,
+        name: cycleName,
+        // Cycles of a Church may not overlap; the Event dates are what count.
+        startDate: `${2030 + cycleCount}-01-01` as never,
+        endDate: `${2030 + cycleCount++}-12-31` as never,
+        state: 'sent',
+      }));
+    const eventRow = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: cycleRow.id,
+      title: `${cycleName} event`,
+      start: at(startMinutes),
+      end: at(endMinutes),
+      status,
+    });
+    await buildMinistryParticipation({
+      db,
+      churchId: CHURCH_A,
+      ministryId,
+      eventId: eventRow.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    return { cycleId: cycleRow.id, eventId: eventRow.id };
+  }
+
+  let cycleCount = 0;
+
+  beforeEach(() => {
+    cycleCount = 0;
+    setTestClock({ instant: NOW });
+  });
+
+  afterEach(() => {
+    resetClock();
+  });
+
+  it('archives a Ministry with only past participation for an admin without a Volunteer profile', async () => {
+    await participate({
+      ministryId: fixture.worshipId,
+      cycleName: 'May',
+      startMinutes: -120,
+      endMinutes: 0,
+    });
+    signIn('admin');
+
+    const res = await archive(fixture.worshipId);
+
+    expect(res.statusCode).toBe(204);
+    expect(await listedNames()).toEqual(['kids']);
+    expect((await detail(fixture.worshipId)).statusCode).toBe(404);
+    expect((await archive(fixture.worshipId)).statusCode).toBe(404);
+  });
+
+  it('keeps the identity, name, memberships and participation for historical reads, and frees the name', async () => {
+    const { eventId } = await participate({
+      ministryId: fixture.worshipId,
+      cycleName: 'May',
+      startMinutes: -120,
+      endMinutes: -60,
+    });
+    signIn('admin');
+
+    expect((await archive(fixture.worshipId)).statusCode).toBe(204);
+
+    const historical = await new DrizzleMinistryRepository({
+      db: schedulingTestDb,
+    }).getById({ churchId: CHURCH_A as never, id: fixture.worshipId as never });
+    expect(historical.name).toBe('Worship');
+    expect(historical.deletedAt).toEqual(NOW);
+    const memberships = await schedulingTestDb
+      .select()
+      .from(ministryMembership)
+      .where(eq(ministryMembership.ministryId, fixture.worshipId));
+    expect(memberships).toHaveLength(2);
+    const participations = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.eventId, eventId));
+    expect(participations).toHaveLength(1);
+    expect((await create({ name: 'worship' })).statusCode).toBe(201);
+  });
+
+  it('refuses with the distinct Cycles of future, ongoing, cancelled and stale-status Events, localized', async () => {
+    const june = await participate({
+      ministryId: fixture.worshipId,
+      cycleName: 'June',
+      startMinutes: 60,
+      endMinutes: 120,
+    });
+    await participate({
+      ministryId: fixture.worshipId,
+      cycleName: 'June',
+      startMinutes: 1440,
+      endMinutes: 1500,
+      status: 'cancelled',
+    });
+    const ongoing = await participate({
+      ministryId: fixture.worshipId,
+      cycleName: 'Ongoing',
+      startMinutes: -30,
+      endMinutes: 1,
+      status: 'past',
+    });
+    await participate({
+      ministryId: fixture.worshipId,
+      cycleName: 'Ended',
+      startMinutes: -60,
+      endMinutes: 0,
+      status: 'scheduled',
+    });
+    await participate({
+      ministryId: fixture.kidsId,
+      cycleName: 'Kids only',
+      startMinutes: 60,
+      endMinutes: 120,
+    });
+    signIn('admin');
+
+    const res = await archive(fixture.worshipId);
+
+    expect(res.statusCode).toBe(409);
+    const body = res.json();
+    expect(body).toMatchObject({
+      error: 'MINISTRY_IN_USE',
+      message: m.error_ministry_in_use({}, PT_BR),
+    });
+    expect(
+      [...body.blockers].sort((a, b) => a.cycleName.localeCompare(b.cycleName)),
+    ).toEqual([
+      {
+        kind: 'cycle',
+        ministryId: fixture.worshipId,
+        ministryName: 'Worship',
+        cycleId: june.cycleId,
+        cycleName: 'June',
+      },
+      {
+        kind: 'cycle',
+        ministryId: fixture.worshipId,
+        ministryName: 'Worship',
+        cycleId: ongoing.cycleId,
+        cycleName: 'Ongoing',
+      },
+    ]);
+    expect(await listedNames()).toEqual(['kids', 'Worship']);
+  });
+
+  it('removes the management navigation of a leader whose only Ministry was archived', async () => {
+    signIn('admin');
+    expect((await archive(fixture.worshipId)).statusCode).toBe(204);
+
+    signIn('leader');
+    expect((await list()).statusCode).toBe(403);
+    expect((await detail(fixture.worshipId)).statusCode).toBe(403);
+  });
+
+  it.each([
+    'leader',
+    'volunteer',
+    'member',
+  ] as const)('refuses a %s with 403 and archives nothing', async (persona) => {
+    signIn(persona);
+
+    expect((await archive(fixture.worshipId)).statusCode).toBe(403);
+    signIn('admin');
+    expect(await listedNames()).toEqual(['kids', 'Worship']);
+  });
+
+  it('answers 404 for an archived, foreign, missing or malformed Ministry and 401 without a session', async () => {
+    signIn('admin');
+    for (const id of [
+      fixture.archivedId,
+      fixture.foreignId,
+      randomUUID(),
+      'nope',
+    ]) {
+      expect((await archive(id)).statusCode).toBe(404);
+    }
+
+    mockGetSession.mockResolvedValue(null as never);
+    expect((await archive(fixture.worshipId)).statusCode).toBe(401);
+  });
+
+  it('waits for an in-flight new-use write and then refuses with its Cycle', async () => {
+    const db = schedulingTestDb;
+    const cycleRow = await buildCycle({
+      db,
+      churchId: CHURCH_A,
+      name: 'Racing',
+      startDate: '2026-01-01' as never,
+      endDate: '2026-12-31' as never,
+      state: 'sent',
+    });
+    const eventRow = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: cycleRow.id,
+      title: 'Racing event',
+      start: at(60),
+      end: at(120),
+      status: 'scheduled',
+    });
+    signIn('admin');
+    const unitOfWork = new DrizzleUnitOfWork({ db });
+    const planning = new DrizzlePlanningEventRepository({ db });
+    let release!: () => void;
+    let seeded!: () => void;
+    const seededSignal = new Promise<void>((resolve) => {
+      seeded = resolve;
+    });
+
+    const seeding = unitOfWork.run(async (tx) => {
+      await planning.seedParticipations({
+        churchId: CHURCH_A as never,
+        eventId: eventRow.id as never,
+        tx,
+      });
+      seeded();
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    });
+    await seededSignal;
+    const archiving = archive(fixture.worshipId);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    release();
+    await seeding;
+    const res = await archiving;
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().blockers).toEqual([
+      expect.objectContaining({ cycleId: cycleRow.id, cycleName: 'Racing' }),
+    ]);
+  });
+
+  it('makes a new-use write that waited on an in-flight archive leave the Ministry out', async () => {
+    const db = schedulingTestDb;
+    const cycleRow = await buildCycle({
+      db,
+      churchId: CHURCH_A,
+      name: 'Racing',
+      startDate: '2026-01-01' as never,
+      endDate: '2026-12-31' as never,
+      state: 'draft',
+    });
+    const eventRow = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: cycleRow.id,
+      title: 'Racing event',
+      start: at(60),
+      end: at(120),
+      status: 'draft',
+    });
+    const unitOfWork = new DrizzleUnitOfWork({ db });
+    const ministryRepo = new DrizzleMinistryRepository({ db });
+    const planning = new DrizzlePlanningEventRepository({ db });
+    let release!: () => void;
+    let archived!: () => void;
+    const archivedSignal = new Promise<void>((resolve) => {
+      archived = resolve;
+    });
+    const scope = {
+      churchId: CHURCH_A as never,
+      ministryId: fixture.worshipId as never,
+    };
+
+    // The archive transaction's own steps, paused before commit.
+    const archiving = unitOfWork.run(async (tx) => {
+      await ministryRepo.lockActive({ ...scope, strength: 'update', tx });
+      await ministryRepo.archive({ ...scope, archivedAt: NOW, tx });
+      archived();
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    });
+    await archivedSignal;
+    const seeding = planning.seedParticipations({
+      churchId: CHURCH_A as never,
+      eventId: eventRow.id as never,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    release();
+    await archiving;
+    await seeding;
+
+    const seededMinistries = await db
+      .select({ ministryId: ministryParticipation.ministryId })
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.eventId, eventRow.id));
+    expect(seededMinistries).toEqual([{ ministryId: fixture.kidsId }]);
+  });
+
+  it('keeps an archived Ministry out of fresh Cycle seeding', async () => {
+    const db = schedulingTestDb;
+    signIn('admin');
+    expect((await archive(fixture.worshipId)).statusCode).toBe(204);
+    const cycleRow = await buildCycle({
+      db,
+      churchId: CHURCH_A,
+      name: 'Later',
+      startDate: '2026-01-01' as never,
+      endDate: '2026-12-31' as never,
+      state: 'draft',
+    });
+    const eventRow = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: cycleRow.id,
+      title: 'Later event',
+      start: at(60),
+      end: at(120),
+      status: 'draft',
+    });
+
+    await new DrizzlePlanningEventRepository({ db }).seedParticipations({
+      churchId: CHURCH_A as never,
+      eventId: eventRow.id as never,
+    });
+
+    const seededMinistries = await db
+      .select({ ministryId: ministryParticipation.ministryId })
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.eventId, eventRow.id));
+    expect(seededMinistries).toEqual([{ ministryId: fixture.kidsId }]);
   });
 });

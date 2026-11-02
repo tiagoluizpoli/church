@@ -9,7 +9,7 @@ import {
   shiftRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { EventTimeBlockId } from '../../domain/branded-ids';
 import type {
   CreatePlanningEventInput,
@@ -237,8 +237,13 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .select({ id: ministry.id })
       .from(ministry)
       .where(
-        withChurchIsolation({ table: ministry, churchId: input.churchId }),
-      );
+        and(
+          withChurchIsolation({ table: ministry, churchId: input.churchId }),
+          isNull(ministry.deletedAt),
+        ),
+      )
+      // Serializes with a concurrent archive (see `MinistryRepository.lockActive`).
+      .for('share');
 
     if (ministries.length === 0) {
       return;

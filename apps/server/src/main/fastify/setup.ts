@@ -19,6 +19,7 @@ import PinoPretty from 'pino-pretty';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
 import {
+  archiveBlockers,
   domainErrorMessage,
   validationReason,
 } from '../../api/utils/error-messages';
@@ -162,10 +163,12 @@ export async function createFastify({
         request.log.warn({ code: error.code }, 'No catalog message for code');
       }
       const reason = validationReason(error);
+      const blockers = archiveBlockers(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
         ...(reason && { reason }),
+        ...(blockers && { blockers }),
       });
     }
 

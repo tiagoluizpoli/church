@@ -28,6 +28,11 @@ export interface RenameMinistryInput {
   name: string;
 }
 
+export interface ArchiveMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+}
+
 export interface IMinistryManager {
   /** Active Ministries of the Church, alphabetical ignoring case. */
   listByChurch(churchId: ChurchId): Promise<Ministry[]>;
@@ -39,5 +44,10 @@ export interface IMinistryManager {
   create(input: CreateMinistryInput): Promise<Ministry>;
   /** Same identity, new name; refusals as `getActive` and `create`. */
   rename(input: RenameMinistryInput): Promise<Ministry>;
+  /**
+   * Archives an active Ministry: `MinistryInUseError` while it participates
+   * in an Event that has not ended; refusals otherwise as `getActive`.
+   */
+  archive(input: ArchiveMinistryInput): Promise<void>;
   setDefaultDirection(input: SetDefaultDirectionInput): Promise<Ministry>;
 }

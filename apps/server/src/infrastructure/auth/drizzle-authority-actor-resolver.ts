@@ -1,5 +1,6 @@
 import {
   member,
+  ministry,
   ministryMembership,
   ministryMembershipRole,
   volunteer,
@@ -165,8 +166,10 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
         id: ministryMembership.id,
         ministryId: ministryMembership.ministryId,
         ministryAccessLevel: ministryMembership.ministryAccessLevel,
+        ministryArchivedAt: ministry.deletedAt,
       })
       .from(ministryMembership)
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
       .where(
         and(
           eq(ministryMembership.volunteerId, volunteerId),
@@ -195,7 +198,10 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
     const ministryMemberships: MinistryMembershipFact[] = rows.map((row) => ({
       churchId,
       ministryId: row.ministryId as MinistryId,
-      accessLevel: row.ministryAccessLevel as MinistryAccessLevel,
+      // An archived Ministry keeps its Members' historical reads but grants no leadership.
+      accessLevel: row.ministryArchivedAt
+        ? 'volunteer'
+        : (row.ministryAccessLevel as MinistryAccessLevel),
       qualifiedRoleIds: (rolesByMembership.get(row.id) ?? []).map(
         (roleRow) => roleRow.roleId as RoleId,
       ),

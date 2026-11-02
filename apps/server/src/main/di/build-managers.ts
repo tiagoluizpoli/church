@@ -130,6 +130,7 @@ export function buildManagers({
     new DbMinistryManager({
       ministryRepo: ministryRepository,
       volunteerRepo: volunteerRepository,
+      unitOfWork,
     });
   const ministryInvitationManager =
     overrides.ministryInvitationManager ??

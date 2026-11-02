@@ -3,6 +3,10 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import {
+  type CycleArchiveBlocker,
+  MinistryInUseError,
+} from '@/domain/errors/ministry-in-use';
+import {
   type ValidationReason,
   ValidationRuleError,
 } from '@/domain/errors/validation-rule-error';
@@ -16,6 +20,13 @@ export const VALIDATION_REASON_MESSAGES: Record<
   DUPLICATE_TEMPLATE_BLOCK_LABEL:
     m.error_validation_duplicate_template_block_label,
 };
+
+/** The archive blockers an in-use refusal carries, also sent to the client. */
+export function archiveBlockers(
+  error: DomainError,
+): CycleArchiveBlocker[] | undefined {
+  return error instanceof MinistryInUseError ? error.blockers : undefined;
+}
 
 interface DomainErrorMessageInput {
   error: DomainError;

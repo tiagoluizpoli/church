@@ -11,13 +11,19 @@ import type {
 } from '../domain/contracts/application/cycle-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
+import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
+import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
+import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { Cycle } from '../domain/entities/cycle';
 import {
+  DraftStaffingReconciliationRequiredError,
   IllegalStateTransitionError,
   OverlappingCycleError,
 } from '../domain/errors';
+import { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
 interface EnsureResolvedCycleInput {
   cycle: Cycle;
@@ -29,6 +35,10 @@ interface DbCycleManagerDependencies {
   eventRepository: PlanningEventRepository;
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
+  participationRepository: MinistryParticipationRepository;
+  shiftRepository: ShiftRepository;
+  usualSetupRepository: UsualSetupRepository;
+  ministryRepository: MinistryRepository;
 }
 
 export class DbCycleManager implements ICycleManager {
@@ -36,17 +46,30 @@ export class DbCycleManager implements ICycleManager {
   private readonly eventRepository: PlanningEventRepository;
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly staffingSeeder: UsualSetupStaffingSeeder;
 
   constructor({
     cycleRepository,
     eventRepository,
     churchRepository,
     unitOfWork,
+    participationRepository,
+    shiftRepository,
+    usualSetupRepository,
+    ministryRepository,
   }: DbCycleManagerDependencies) {
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
+    this.participationRepository = participationRepository;
+    this.staffingSeeder = new UsualSetupStaffingSeeder({
+      participationRepository,
+      shiftRepository,
+      usualSetupRepository,
+      ministryRepository,
+    });
   }
 
   async createCycle(input: CreateCycleManagerInput): Promise<Cycle> {
@@ -131,6 +154,21 @@ export class DbCycleManager implements ICycleManager {
       }
 
       cycle.send();
+
+      // No staffing row records its origin, so none can be proven provisional:
+      // a Draft that already holds any is refused untouched, never replaced.
+      if (
+        await this.participationRepository.hasCycleStaffing({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          tx,
+        })
+      ) {
+        throw new DraftStaffingReconciliationRequiredError({
+          cycleId: input.cycleId,
+        });
+      }
+
       await this.cycleRepository.updateState({
         churchId: input.churchId,
         cycleId: input.cycleId,
@@ -138,24 +176,42 @@ export class DbCycleManager implements ICycleManager {
         tx,
       });
 
-      const events = await this.eventRepository.listCycleEvents({
+      const draftEvents = (
+        await this.eventRepository.listCycleEvents({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          tx,
+        })
+      ).filter((eventGroup) => eventGroup.event.status === 'draft');
+
+      // Sequential: concurrent queries on one transaction connection warn in pg.
+      for (const eventGroup of draftEvents) {
+        await this.eventRepository.updateEvent({
+          churchId: input.churchId,
+          eventId: eventGroup.event.id,
+          status: 'scheduled',
+          tx,
+        });
+      }
+
+      await this.staffingSeeder.seed({
         churchId: input.churchId,
-        cycleId: input.cycleId,
+        eventTimeBlocks: draftEvents.flatMap((eventGroup) =>
+          eventGroup.eventTimeBlocks.map((eventTimeBlock) => ({
+            eventId: eventGroup.event.id,
+            eventTimeBlockId: eventTimeBlock.id,
+            sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
+            startTime: eventTimeBlock.startTime,
+            endTime: eventTimeBlock.endTime,
+          })),
+        ),
+        setup: await this.staffingSeeder.loadSetup({
+          churchId: input.churchId,
+          timeZone: church.timezone,
+          tx,
+        }),
         tx,
       });
-
-      await Promise.all(
-        events
-          .filter((eventGroup) => eventGroup.event.status === 'draft')
-          .map((eventGroup) =>
-            this.eventRepository.updateEvent({
-              churchId: input.churchId,
-              eventId: eventGroup.event.id,
-              status: 'scheduled',
-              tx,
-            }),
-          ),
-      );
     });
   }
 

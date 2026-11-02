@@ -55,6 +55,7 @@
   "error_cross_ministry_scope": "Este item pertence a outro ministério.",
   "error_overlapping_cycle": "Este ciclo se sobrepõe a um ciclo existente.",
   "error_illegal_state_transition": "Esta mudança não é permitida no estado atual.",
+  "error_draft_staffing_reconciliation_required": "Este ciclo já tem turnos e pessoas necessárias de uma preparação anterior. Eles precisam ser conciliados antes de enviar o ciclo; nada foi alterado.",
   "error_event_outside_cycle": "A data do evento deve estar dentro do ciclo.",
   "error_last_remaining_event_time_block": "Não é possível excluir o único bloco de horário do dia. Exclua o dia.",
   "error_shift_out_of_bounds": "O turno deve estar dentro do seu bloco de horário.",

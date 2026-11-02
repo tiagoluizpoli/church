@@ -1,5 +1,6 @@
 import type {
   ChurchId,
+  CycleId,
   EventId,
   EventTimeBlockId,
   MinistryId,
@@ -55,6 +56,12 @@ export interface UpdateParticipationStateInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
   state: ParticipationState;
+  tx?: TransactionContext;
+}
+
+export interface HasCycleStaffingInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
   tx?: TransactionContext;
 }
 
@@ -115,6 +122,11 @@ export interface MinistryParticipationRepository {
   listByEvent(
     input: ListParticipationsByEventInput,
   ): Promise<MinistryParticipation[]>;
+  /**
+   * Whether any Event of the Cycle has inclusions, Shifts, a Participation
+   * past preparing, or the Cycle has an availability check.
+   */
+  hasCycleStaffing(input: HasCycleStaffingInput): Promise<boolean>;
   listByMinistry(
     input: ListParticipationsByMinistryInput,
   ): Promise<MinistryParticipation[]>;

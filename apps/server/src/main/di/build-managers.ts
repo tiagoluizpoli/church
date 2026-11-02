@@ -238,6 +238,10 @@ export function buildManagers({
       eventRepository: planningEventRepository,
       churchRepository,
       unitOfWork,
+      participationRepository: ministryParticipationRepository,
+      shiftRepository,
+      usualSetupRepository,
+      ministryRepository,
     });
   const planningEventManager =
     overrides.planningEventManager ??

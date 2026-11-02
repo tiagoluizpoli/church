@@ -1,17 +1,29 @@
 import { NotFoundError } from '@church/core';
 import {
+  availabilityCheck,
   cycle,
   event,
   ministryParticipation,
   participationEventTimeBlockInclusion,
+  shift,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, count, eq, inArray, isNull, notInArray } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  inArray,
+  isNull,
+  ne,
+  notInArray,
+} from 'drizzle-orm';
 import type {
   AddInclusionInput,
   CreateParticipationInput,
   FindParticipationByMinistryEventInput,
   GetParticipationInput,
+  HasCycleStaffingInput,
   ListInclusionsInput,
   ListParticipationsByEventInput,
   ListParticipationsByIdsInput,
@@ -214,6 +226,70 @@ export class DrizzleMinistryParticipationRepository
     }
 
     return mapMinistryParticipation(row);
+  }
+
+  async hasCycleStaffing({
+    churchId,
+    cycleId,
+    tx,
+  }: HasCycleStaffingInput): Promise<boolean> {
+    const db = getClient({ db: this.db, tx });
+    const participationIds = db
+      .select({ id: ministryParticipation.id })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          eq(event.cycleId, cycleId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+        ),
+      );
+    // Sequential: concurrent queries on one transaction connection warn in pg.
+    const checks = [
+      () =>
+        db
+          .select({ id: shift.id })
+          .from(shift)
+          .where(inArray(shift.participationId, participationIds))
+          .limit(1),
+      () =>
+        db
+          .select({ id: participationEventTimeBlockInclusion.id })
+          .from(participationEventTimeBlockInclusion)
+          .where(
+            inArray(
+              participationEventTimeBlockInclusion.participationId,
+              participationIds,
+            ),
+          )
+          .limit(1),
+      () =>
+        db
+          .select({ id: ministryParticipation.id })
+          .from(ministryParticipation)
+          .where(
+            and(
+              inArray(ministryParticipation.id, participationIds),
+              ne(ministryParticipation.state, 'preparing'),
+            ),
+          )
+          .limit(1),
+      () =>
+        db
+          .select({ id: availabilityCheck.id })
+          .from(availabilityCheck)
+          .where(
+            and(
+              eq(availabilityCheck.cycleId, cycleId),
+              withChurchIsolation({ table: availabilityCheck, churchId }),
+            ),
+          )
+          .limit(1),
+    ];
+    for (const check of checks) {
+      if ((await check()).length > 0) return true;
+    }
+    return false;
   }
 
   async listInclusions(

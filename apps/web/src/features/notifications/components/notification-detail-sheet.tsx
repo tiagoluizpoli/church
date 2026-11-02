@@ -40,7 +40,7 @@ export function NotificationDetailSheet({
           </p>
           <div className="flex justify-end">
             <Button type="button" onClick={onOpenContext}>
-              {m.notification_open_context()}
+              {notification?.actionLabel ?? m.notification_open_context()}
             </Button>
           </div>
         </div>

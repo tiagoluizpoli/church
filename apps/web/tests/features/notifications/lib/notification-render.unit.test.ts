@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveNotificationDestination } from '@/features/notifications/lib/notification-navigation';
@@ -117,5 +118,94 @@ describe('retained scheduling Notifications', () => {
       },
       isFallback: false,
     });
+  });
+});
+
+describe('Ministry invitation Notification (N1)', () => {
+  const pt = { locale: 'pt-BR' } as const;
+  const legacy = {
+    ...base,
+    kind: 'ministry_invitation',
+    data: { ministryInvitationId: ID, ministryId: ID, ministryName: 'Louvor' },
+  } as GetNotifications200ItemsItem;
+  const offer = {
+    ...legacy,
+    data: {
+      ...legacy.data,
+      churchName: 'Igreja Graça',
+      churchTimezone: 'America/Sao_Paulo',
+      inviterName: 'Ana <b>Souza</b>',
+      ministryAccessLevel: 'volunteer',
+      roleNames: ['Violão', 'Voz'],
+      // 02:00Z is 23:00 the evening before in America/Sao_Paulo.
+      expiresAt: '2026-11-09T02:00:00.000Z',
+    },
+  } as GetNotifications200ItemsItem;
+  const names = {
+    inviterName: 'Ana <b>Souza</b>',
+    ministryName: 'Louvor',
+    churchName: 'Igreja Graça',
+  };
+
+  it("renders T1's inviter-led serve offer with Roles, Church-Timezone expiry and See invitation in pt-BR", () => {
+    overwriteGetLocale(() => 'pt-BR');
+
+    expect(renderNotification(offer)).toEqual({
+      title: m.email_invitation_serve_title(names, pt),
+      body: [
+        m.email_invitation_serve_body_inviter(names, pt),
+        m.email_invitation_roles({ roles: 'Violão, Voz' }, pt),
+        m.email_invitation_expires({ expiresAt: '08/11/2026 23:00' }, pt),
+      ].join('\n'),
+      kindLabel: m.notification_kind_ministry_invitation({}, pt),
+      actionLabel: m.notification_ministry_invitation_action({}, pt),
+    });
+    expect(renderNotification(offer).actionLabel).toBe('Ver convite');
+  });
+
+  it('renders the lead offer without a Roles line for a zero-Role leader', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const leader = {
+      ...offer,
+      data: { ...offer.data, ministryAccessLevel: 'leader', roleNames: [] },
+    } as GetNotifications200ItemsItem;
+
+    const rendered = renderNotification(leader);
+
+    expect(rendered.title).toBe(m.email_invitation_lead_title(names, pt));
+    expect(rendered.body).toBe(
+      [
+        m.email_invitation_lead_body_inviter(names, pt),
+        m.email_invitation_expires({ expiresAt: '08/11/2026 23:00' }, pt),
+      ].join('\n'),
+    );
+  });
+
+  it('keeps an inbox row stored before the offer facts readable and openable, inventing nothing', () => {
+    overwriteGetLocale(() => 'pt-BR');
+
+    expect(renderNotification(legacy)).toEqual({
+      title: m.notification_ministry_invitation_title(
+        { ministryName: 'Louvor' },
+        pt,
+      ),
+      body: m.notification_ministry_invitation_body(
+        { ministryName: 'Louvor' },
+        pt,
+      ),
+      kindLabel: m.notification_kind_ministry_invitation({}, pt),
+      actionLabel: m.notification_ministry_invitation_action({}, pt),
+    });
+    expect(resolveNotificationDestination(legacy)).toEqual({
+      target: {
+        to: '/invitations/ministry/$invitationId',
+        params: { invitationId: ID },
+      },
+      isFallback: false,
+    });
+  });
+
+  it('follows the viewing locale for the same frozen facts', () => {
+    expect(renderNotification(offer).actionLabel).toBe('See invitation');
   });
 });

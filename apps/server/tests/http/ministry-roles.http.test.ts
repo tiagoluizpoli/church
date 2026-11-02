@@ -399,6 +399,22 @@ describe('POST /ministries/:ministryId/roles', () => {
     });
   });
 
+  it('answers the conflict in English when the request locale is English', async () => {
+    signIn('admin');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: rolesUrl(fixture.worshipId),
+      payload: { name: 'singer' },
+      cookies: { [testLocale.localeCookieName]: 'en' },
+    });
+
+    expect(res.json()).toEqual({
+      error: 'ROLE_NAME_IN_USE',
+      message: m.error_role_name_in_use({}, { locale: 'en' }),
+    });
+  });
+
   it('allows the name in another Ministry and reuses an archived name as a new identity', async () => {
     signIn('admin');
 

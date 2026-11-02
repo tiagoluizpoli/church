@@ -2,7 +2,11 @@ import { m } from '@church/i18n/messages';
 import { isAxiosError } from 'axios';
 
 const MAX_NAME_LENGTH = 255;
-const NAME_IN_USE = 'MINISTRY_NAME_IN_USE';
+/** Each registry's active-name conflict, shown beside the name field. */
+const NAME_IN_USE_MESSAGES: Record<string, () => string> = {
+  MINISTRY_NAME_IN_USE: m.error_ministry_name_in_use,
+  ROLE_NAME_IN_USE: m.error_role_name_in_use,
+};
 
 export interface NameRefusal {
   nameError?: string;
@@ -34,8 +38,8 @@ export function toNameRefusal({ error }: SaveErrorInput): NameRefusal {
   const code = isAxiosError<ErrorBody>(error)
     ? error.response?.data?.error
     : undefined;
-  if (code === NAME_IN_USE)
-    return { nameError: m.error_ministry_name_in_use() };
+  const inUse = code ? NAME_IN_USE_MESSAGES[code] : undefined;
+  if (inUse) return { nameError: inUse() };
   return { formError: m.ministries_save_failed() };
 }
 

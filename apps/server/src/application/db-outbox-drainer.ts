@@ -212,7 +212,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     });
   }
 
-  /** The invitation's display facts, read now; `null` once it is no longer pending. */
+  /** The invitation's display facts, read now; `null` once it is no longer
+   * pending or its inviter has no name. */
   private async loadPendingInvitationFacts({
     churchId,
     ministryInvitationId,
@@ -222,7 +223,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryInvitationId,
     });
     if (!invitation || invitation.status !== 'pending') return null;
-    const [church, ministry, roles] = await Promise.all([
+    const [church, ministry, roles, inviterName] = await Promise.all([
       this.churchRepository.getById({ id: churchId }),
       this.ministryRepository.getById({ churchId, id: invitation.ministryId }),
       Promise.all(
@@ -230,13 +231,17 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           this.roleRepository.getById({ churchId, id: roleId }),
         ),
       ),
+      this.churchRepository.findUserName({ userId: invitation.inviterId }),
     ]);
+    // N1 names who invited, as T1 does; without a name there is nothing correct to send.
+    if (inviterName === null) return null;
     return {
       ministryInvitationId: invitation.id,
       ministryId: invitation.ministryId,
       ministryName: ministry.name,
       churchName: church.name,
       churchTimezone: church.timezone,
+      inviterName,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
       expiresAt: invitation.expiresAt,
@@ -351,7 +356,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         if (kind === 'ministry_invitation') {
           await this.failTerminally({
             message,
-            reason: 'Invitation is no longer pending',
+            reason: 'Invitation is no longer pending or its inviter is unnamed',
           });
           return 'failed';
         }

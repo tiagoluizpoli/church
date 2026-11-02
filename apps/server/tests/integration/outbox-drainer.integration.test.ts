@@ -1072,7 +1072,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       locale: 'pt-BR',
       request: {
         to: `${fixture.memberNoVolunteerA}@fixture.test`,
-        subject: m.notification_ministry_invitation_title(
+        subject: m.email_invitation_serve_title(
           { ministryName },
           { locale: 'pt-BR' },
         ),
@@ -1086,11 +1086,11 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
     expect(inbox[0]).toMatchObject({
       churchId: fixture.churchA.id,
       kind: 'ministry_invitation',
-      data: {
+      data: expect.objectContaining({
         ministryInvitationId,
         ministryId: fixture.ministryOneA,
         ministryName,
-      },
+      }),
     });
     const [row] = await outboxRows();
     expect(row).toMatchObject({
@@ -1098,6 +1098,193 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       channelOutcomes: { email: 'delivered', inbox: 'delivered' },
     });
     expect(inbox[0]?.sourceOutboxId).toBe(row?.id);
+  });
+
+  interface FinalFactsFixture {
+    inviterName: string;
+    ministryName: string;
+    churchName: string;
+  }
+
+  /** A non-UTC Church, a hostile inviter name and the names the notice cites. */
+  async function finalFactsFixture(): Promise<FinalFactsFixture> {
+    const inviterName = 'Ana <script>alert(1)</script> & Co';
+    await testDb
+      .update(userTable)
+      .set({ name: inviterName })
+      .where(eq(userTable.id, fixture.adminA));
+    await testDb
+      .update(church)
+      .set({ timezone: 'America/Sao_Paulo' })
+      .where(eq(church.id, fixture.churchA.id));
+    const [row] = await testDb
+      .select({ ministryName: ministry.name })
+      .from(ministry)
+      .where(eq(ministry.id, fixture.ministryOneA));
+    if (!row) throw new Error('expected the fixture Ministry');
+    return { inviterName, ...row, churchName: fixture.churchA.name };
+  }
+
+  it('N1 carries the inviter-led serve offer, Roles and Church-Timezone expiry on email and bell', async () => {
+    // 02:00Z + 7 days is still the evening before in São Paulo.
+    setTestClock({ instant: '2026-11-02T02:00:00.000Z' as Instant });
+    const { inviterName, ministryName, churchName } = await finalFactsFixture();
+    const ministryInvitationId = (
+      await manager.mint({
+        churchId: churchId(),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email: `${fixture.memberNoVolunteerA}@fixture.test`,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [fixture.roleInMinistryOneA],
+      })
+    ).id;
+    const [roleRow] = await testDb
+      .select({ name: role.name })
+      .from(role)
+      .where(eq(role.id, fixture.roleInMinistryOneA));
+    const roleName = roleRow?.name ?? '';
+    const emailSender = new CaptureEmailSender('Church');
+
+    await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    const pt = { locale: 'pt-BR' } as const;
+    const [sent] = emailSender.delivered;
+    const text = sent?.request.text ?? '';
+    const html = sent?.request.html ?? '';
+    expect(sent?.request.subject).toBe(
+      m.email_invitation_serve_title({ ministryName }, pt),
+    );
+    expect(text).toContain(
+      m.email_invitation_serve_body_inviter(
+        { inviterName, ministryName, churchName },
+        pt,
+      ),
+    );
+    expect(text).toContain(m.email_invitation_roles({ roles: roleName }, pt));
+    expect(text).toContain(
+      m.email_invitation_expires({ expiresAt: '08/11/2026 23:00' }, pt),
+    );
+    expect(text).toContain(m.notification_ministry_invitation_action({}, pt));
+    expect(text).toContain(
+      `https://app.test/invitations/ministry/${ministryInvitationId}`,
+    );
+    expect(html).not.toContain('<script>');
+    expect(html).toContain(
+      'Ana &lt;script&gt;alert(1)&lt;/script&gt; &amp; Co',
+    );
+
+    const [inbox] = await inboxRows();
+    expect(inbox?.data).toEqual({
+      ministryInvitationId,
+      ministryId: fixture.ministryOneA,
+      ministryName,
+      churchName,
+      churchTimezone: 'America/Sao_Paulo',
+      inviterName,
+      ministryAccessLevel: 'volunteer',
+      roleNames: [roleName],
+      expiresAt: '2026-11-09T02:00:00.000Z',
+    });
+  });
+
+  it('N1 offers a zero-Role leader the lead wording without a Roles line', async () => {
+    const { inviterName, ministryName, churchName } = await finalFactsFixture();
+    await manager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: UserId.from(fixture.adminA),
+      email: `${fixture.memberNoVolunteerA}@fixture.test`,
+      ministryAccessLevel: 'leader',
+      roleIds: [],
+    });
+    const emailSender = new CaptureEmailSender('Church');
+
+    await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    const pt = { locale: 'pt-BR' } as const;
+    const request = emailSender.delivered[0]?.request;
+    expect(request?.subject).toBe(
+      m.email_invitation_lead_title({ ministryName }, pt),
+    );
+    expect(request?.text).toContain(
+      m.email_invitation_lead_body_inviter(
+        { inviterName, ministryName, churchName },
+        pt,
+      ),
+    );
+    expect(request?.text).not.toContain(
+      m.email_invitation_roles({ roles: '' }, pt).trim(),
+    );
+    expect((await inboxRows())[0]?.data).toMatchObject({
+      ministryAccessLevel: 'leader',
+      roleNames: [],
+    });
+  });
+
+  it('skips and logs an old unprepared row whose frozen facts lack the inviter', async () => {
+    const ministryInvitationId = await inviteMember();
+    // The facts shape frozen before the inviter joined them.
+    const oldFacts = {
+      ministryInvitationId,
+      ministryId: fixture.ministryOneA,
+      ministryName: 'Ministry',
+      churchName: 'Church A',
+      churchTimezone: 'UTC',
+      ministryAccessLevel: 'volunteer',
+      roleNames: [],
+      expiresAt: '2026-11-09T12:00:00.000Z',
+      redemptionUrl: `https://app.test/invitations/ministry/${ministryInvitationId}`,
+    };
+    const [row] = await outboxRows();
+    if (!row) throw new Error('expected the N1 row');
+    await testDb
+      .update(outboxMessage)
+      .set({ payload: { ...(row.payload as object), facts: oldFacts } })
+      .where(eq(outboxMessage.id, row.id));
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(0);
+    expect(await inboxRows()).toHaveLength(0);
+    expect(await outboxRows()).toMatchObject([
+      {
+        status: 'sent',
+        channelOutcomes: { email: 'skipped', inbox: 'skipped' },
+      },
+    ]);
+  });
+
+  it('replays an already-prepared N1 email byte-for-byte after the inviter, Ministry and locale change', async () => {
+    await inviteMember();
+    const emailSender = new FlakyEmailSender('Church');
+    emailSender.queueFailure({ mode: 'after-provider', retryable: true });
+    await drainerFor({ emailSender }).drainOnce({ limit: 10 });
+    const [prepared] = await outboxRows();
+    const saved = prepared?.emailRequest as { request: unknown } | null;
+    expect(saved).toBeTruthy();
+
+    await testDb
+      .update(userTable)
+      .set({ name: 'Renamed Inviter' })
+      .where(eq(userTable.id, fixture.adminA));
+    await testDb
+      .update(ministry)
+      .set({ name: 'Renamed Ministry' })
+      .where(eq(ministry.id, fixture.ministryOneA));
+    advanceToRetry();
+    await drainerFor({
+      emailSender,
+      config: { ...appConfig, defaultLocale: 'en' },
+    }).drainOnce({ limit: 10 });
+
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(new Set(emailSender.attemptedKeys).size).toBe(1);
+    expect(emailSender.delivered[0]?.request).toEqual(saved?.request);
+    const [replayed] = await outboxRows();
+    expect(replayed?.emailRequest).toEqual(saved);
   });
 
   it('a resend is a new Notification: a second row, email and inbox entry', async () => {

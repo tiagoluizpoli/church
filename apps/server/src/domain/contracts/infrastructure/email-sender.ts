@@ -26,12 +26,13 @@ export interface ChainedInvitationEmail {
   redemptionUrl: string;
 }
 
-/** N1: a Ministry invitation to an existing Church Member; Spec 15 owns its wording. */
+/** N1: a Ministry invitation to an existing Church Member, in T1's inviter-led wording. */
 export interface MinistryInvitationEmail {
   kind: 'invitation.ministry';
   to: string;
   churchName: string;
   recipientFirstName: string;
+  inviterName: string;
   ministryName: string;
   ministryAccessLevel: string;
   roleNames: string[];

@@ -201,46 +201,11 @@ function memberNotificationContent({
     };
   }
   if (payload.kind === 'invitation.ministry') {
-    const title = m.notification_ministry_invitation_title(
-      { ministryName },
-      options,
-    );
-    const accessLevel =
-      payload.ministryAccessLevel === 'leader'
-        ? m.email_ministry_invitation_access_leader({}, options)
-        : m.email_ministry_invitation_access_volunteer({}, options);
-    const body = m.notification_ministry_invitation_body(
-      { ministryName },
-      options,
-    );
-    const details = m.email_ministry_invitation_details(
-      { churchName, ministryName, accessLevel },
-      options,
-    );
-    const expires = m.email_ministry_invitation_expires(
-      {
-        expiresAt: formatInstant({
-          instant: payload.expiresAt,
-          timeZone: payload.churchTimezone,
-        }),
-      },
-      options,
-    );
-    const roles = m.email_invitation_roles(
-      { roles: payload.roleNames.join(', ') },
-      options,
-    );
     return {
       ...base,
-      subject: title,
-      heading: title,
-      facts: [
-        body,
-        payload.roleNames.length > 0 ? `${details} ${roles}` : details,
-        expires,
-      ],
+      ...ministryOfferContent({ offer: payload, locale }),
       action: {
-        label: m.email_ministry_invitation_accept({}, options),
+        label: m.notification_ministry_invitation_action({}, options),
         url: payload.redemptionUrl,
       },
     };
@@ -340,8 +305,25 @@ function invitationContent({
       facts: [m.email_invitation_admin_body({ churchName }, options), expires],
     };
   }
-  const { ministryName, inviterName, roleNames } = payload;
-  const isLeader = payload.ministryAccessLevel === 'leader';
+  return { ...common, ...ministryOfferContent({ offer: payload, locale }) };
+}
+
+interface MinistryOfferContentInput {
+  offer: ChainedInvitationEmail | MinistryInvitationEmail;
+  locale: EmailLocale;
+}
+
+/** T1 and N1 share the inviter-led lead/serve offer: title, body, Roles, expiry. */
+function ministryOfferContent({
+  offer,
+  locale,
+}: MinistryOfferContentInput): Pick<
+  EmailContent,
+  'subject' | 'heading' | 'facts'
+> {
+  const options = { locale };
+  const { churchName, ministryName, inviterName, roleNames } = offer;
+  const isLeader = offer.ministryAccessLevel === 'leader';
   const input = { churchName, ministryName, inviterName };
   const title = isLeader
     ? m.email_invitation_lead_title(input, options)
@@ -353,8 +335,16 @@ function invitationContent({
     { roles: roleNames.join(', ') },
     options,
   );
+  const expires = m.email_invitation_expires(
+    {
+      expiresAt: formatInstant({
+        instant: offer.expiresAt,
+        timeZone: offer.churchTimezone,
+      }),
+    },
+    options,
+  );
   return {
-    ...common,
     subject: title,
     heading: title,
     facts: roleNames.length > 0 ? [body, roles, expires] : [body, expires],

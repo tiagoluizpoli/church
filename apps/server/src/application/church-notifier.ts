@@ -139,6 +139,7 @@ export function buildChurchNotifier({
         to: address.email,
         churchName: data.churchName,
         recipientFirstName: address.firstName,
+        inviterName: data.inviterName,
         ministryName: data.ministryName,
         ministryAccessLevel: data.ministryAccessLevel,
         roleNames: data.roleNames,

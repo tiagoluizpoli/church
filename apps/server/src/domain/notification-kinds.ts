@@ -1,18 +1,36 @@
 import { calendarDaySchema, type Instant, instantSchema } from '@church/time';
 import { z } from 'zod';
 import { MinistryId, VolunteerId } from './branded-ids';
-import type { MinistryAccessLevel } from './entities/ministry-membership';
+import {
+  MINISTRY_ACCESS_LEVEL_OPTIONS,
+  type MinistryAccessLevel,
+} from './entities/ministry-membership';
+
+/** The offer facts N1 renders (Spec 15): who invited, as what, until when. */
+const ministryInvitationOfferFactsSchema = z.object({
+  churchName: z.string(),
+  churchTimezone: z.string(),
+  inviterName: z.string(),
+  ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
+  roleNames: z.array(z.string()),
+  expiresAt: instantSchema,
+});
 
 /**
  * The typed kind/data map of member Notifications (ADR-0008). Data holds
  * identifiers for deep links plus display facts frozen at first delivery —
  * never finished text, so the UI renders words at read time in its locale.
  * Later Flow specs add their kind here together with its catalog messages.
+ *
+ * Inbox rows stored before Spec 15 hold only the deep-link identity and
+ * Ministry name; they stay supported, so the offer facts are optional here
+ * and required only where an email is prepared.
  */
 export const ministryInvitationNotificationDataSchema = z.object({
   ministryInvitationId: z.uuid(),
   ministryId: z.uuid(),
   ministryName: z.string(),
+  ...ministryInvitationOfferFactsSchema.partial().shape,
 });
 
 /** Availability opened (initial Ask) and the reminder share their facts. */
@@ -135,6 +153,7 @@ export interface MinistryInvitationDeliveryFacts {
   ministryName: string;
   churchName: string;
   churchTimezone: string;
+  inviterName: string;
   ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
   expiresAt: Instant;
@@ -224,14 +243,9 @@ const emailFactsSchema = z.object({ churchName: z.string() });
  */
 export const notificationDeliveryFactsSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-  ministry_invitation: ministryInvitationNotificationDataSchema.extend({
-    churchName: z.string(),
-    churchTimezone: z.string(),
-    ministryAccessLevel: z.string(),
-    roleNames: z.array(z.string()),
-    expiresAt: instantSchema,
-    redemptionUrl: z.string(),
-  }),
+  ministry_invitation: ministryInvitationNotificationDataSchema
+    .extend(ministryInvitationOfferFactsSchema.shape)
+    .extend({ redemptionUrl: z.string() }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   availability_opened: availabilityNotificationDataSchema
     .extend(emailFactsSchema.shape)

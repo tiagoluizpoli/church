@@ -17,6 +17,7 @@ const memberInvitation: MinistryInvitationEmail = {
   kind: 'invitation.ministry',
   to: 'member@example.com',
   churchName: 'Grace & <Truth>',
+  inviterName: 'Ana "<Admin>"',
   ministryName: '<b>Worship</b>',
   ministryAccessLevel: 'volunteer',
   roleNames: ['Vocalist <i>lead</i>'],
@@ -157,12 +158,14 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       appName,
     });
 
-  it('renders the layout in the Church Timezone with bell title/body, one action and the raw URL', () => {
+  it("renders T1's inviter-led serve offer in the Church Timezone with See invitation and the raw URL", () => {
     const { locale, request } = prepare();
-    const title = m.notification_ministry_invitation_title(
-      { ministryName: '<b>Worship</b>' },
-      ptBR,
-    );
+    const offer = {
+      churchName: 'Grace & <Truth>',
+      ministryName: '<b>Worship</b>',
+      inviterName: 'Ana "<Admin>"',
+    };
+    const title = m.email_invitation_serve_title(offer, ptBR);
 
     expect(locale).toBe('pt-BR');
     expect(request.subject).toBe(title);
@@ -170,27 +173,16 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       m.email_greeting_notification({ firstName: 'Maria' }, ptBR),
     );
     expect(request.text).toContain(
-      m.notification_ministry_invitation_body(
-        { ministryName: '<b>Worship</b>' },
-        ptBR,
-      ),
+      m.email_invitation_serve_body_inviter(offer, ptBR),
     );
-    expect(request.text).toContain('30/11/2026 23:30');
-    const details = m.email_ministry_invitation_details(
-      {
-        churchName: 'Grace & <Truth>',
-        ministryName: '<b>Worship</b>',
-        accessLevel: m.email_ministry_invitation_access_volunteer({}, ptBR),
-      },
-      ptBR,
-    );
-    const roles = m.email_invitation_roles(
-      { roles: 'Vocalist <i>lead</i>' },
-      ptBR,
-    );
-    expect(request.text).toContain(`${details} ${roles}`);
     expect(request.text).toContain(
-      `${m.email_ministry_invitation_accept({}, ptBR)}: ${memberInvitation.redemptionUrl}`,
+      m.email_invitation_roles({ roles: 'Vocalist <i>lead</i>' }, ptBR),
+    );
+    expect(request.text).toContain(
+      m.email_invitation_expires({ expiresAt: '30/11/2026 23:30' }, ptBR),
+    );
+    expect(request.text).toContain(
+      `${m.notification_ministry_invitation_action({}, ptBR)}: ${memberInvitation.redemptionUrl}`,
     );
     expect(request.text).toContain(
       m.email_footer_membership({ churchName: 'Grace & <Truth>' }, ptBR),
@@ -205,11 +197,35 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
   it('escapes interpolated facts once so they never become markup', () => {
     const { html } = prepare().request;
 
+    expect(html).toContain('Ana &quot;&lt;Admin&gt;&quot;');
     expect(html).toContain('&lt;b&gt;Worship&lt;/b&gt;');
     expect(html).toContain('Grace &amp; &lt;Truth&gt;');
     expect(html).toContain('Vocalist &lt;i&gt;lead&lt;/i&gt;');
+    expect(html).toContain('Ana &quot;&lt;Admin&gt;&quot;');
     expect(html).not.toContain('<b>Worship</b>');
     expect(html).not.toContain('&amp;amp;');
+  });
+
+  it('offers a zero-Role leader the lead wording without a Roles line', () => {
+    const { subject, text } = prepareEmail({
+      payload: {
+        ...memberInvitation,
+        ministryAccessLevel: 'leader',
+        roleNames: [],
+      },
+      from,
+      locale: 'pt-BR',
+      appName,
+    }).request;
+    const offer = {
+      churchName: 'Grace & <Truth>',
+      ministryName: '<b>Worship</b>',
+      inviterName: 'Ana "<Admin>"',
+    };
+
+    expect(subject).toBe(m.email_invitation_lead_title(offer, ptBR));
+    expect(text).toContain(m.email_invitation_lead_body_inviter(offer, ptBR));
+    expect(text).not.toContain(m.email_invitation_roles({ roles: '' }, ptBR));
   });
 
   it('falls back to the neutral greeting without a first name', () => {

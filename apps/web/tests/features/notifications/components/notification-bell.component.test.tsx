@@ -178,6 +178,32 @@ describe('NotificationBell', () => {
     expect(setSelectedNotificationId).toHaveBeenCalledWith(undefined);
   });
 
+  it('opens a Ministry invitation through its own See invitation action', async () => {
+    const user = userEvent.setup();
+    const item = {
+      ...invitationItem(),
+      actionLabel: m.notification_ministry_invitation_action(),
+    };
+    mockedUseNotificationInbox.mockReturnValue(
+      createInboxHookResult({ items: [item], selectedNotification: item }),
+    );
+
+    renderWithProviders(<NotificationBell />);
+    expect(
+      screen.queryByRole('button', { name: m.notification_open_context() }),
+    ).toBeNull();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.notification_ministry_invitation_action(),
+      }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/invitations/ministry/$invitationId',
+      params: { invitationId: INVITATION_ID },
+    });
+  });
+
   it('falls back to the Notifications page with feedback for a kind this build cannot open', async () => {
     const user = userEvent.setup();
     const unknown = {

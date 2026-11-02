@@ -33,6 +33,7 @@ export interface NotificationInboxItem extends NotificationItemViewModel {
   createdAt: string;
   /** The stored kind and frozen data; words and links are derived from it. */
   source: GetNotifications200ItemsItem;
+  actionLabel?: string;
 }
 
 interface MapNotificationItemInput {
@@ -44,7 +45,7 @@ function mapNotificationItem({
   item,
   timeZone,
 }: MapNotificationItemInput): NotificationInboxItem {
-  const { title, body, kindLabel } = renderNotification(item);
+  const { title, body, kindLabel, actionLabel } = renderNotification(item);
   return {
     id: item.id,
     title,
@@ -54,6 +55,7 @@ function mapNotificationItem({
     createdAtLabel: formatInstantOf({ value: item.createdAt, timeZone }),
     isUnread: item.readAt == null,
     source: item,
+    actionLabel,
   };
 }
 

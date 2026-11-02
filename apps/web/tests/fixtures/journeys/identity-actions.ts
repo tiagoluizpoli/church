@@ -44,18 +44,21 @@ export interface MintMinistryInvitationInput {
   ministryId: string;
   email: string;
   roleIds: string[];
+  /** Volunteer by default; a Volunteer offer needs at least one Role. */
+  ministryAccessLevel?: 'leader' | 'volunteer';
 }
 
-/** Mints a Volunteer-level Ministry Invitation as the request's actor. */
+/** Mints a Ministry Invitation as the request's actor. */
 export async function mintMinistryInvitation({
   request,
   ministryId,
   email,
   roleIds,
+  ministryAccessLevel = 'volunteer',
 }: MintMinistryInvitationInput): Promise<MintedMinistryInvitation> {
   const res = await request.post(
     serverUrl({ path: `/api/v1/ministries/${ministryId}/invitations` }),
-    { data: { email, ministryAccessLevel: 'volunteer', roleIds } },
+    { data: { email, ministryAccessLevel, roleIds } },
   );
   await assertOk({ res, action: `mint a Ministry invitation for ${email}` });
   assertServedFromPinnedTarget({
@@ -74,6 +77,7 @@ export interface MintMinistryInvitationAsInput {
   ministryId: string;
   email: string;
   roleIds: string[];
+  ministryAccessLevel?: 'leader' | 'volunteer';
 }
 
 /** Mints as `persona` on a context of its own, disposed afterwards. */
@@ -82,6 +86,7 @@ export async function mintMinistryInvitationAs({
   ministryId,
   email,
   roleIds,
+  ministryAccessLevel,
 }: MintMinistryInvitationAsInput): Promise<MintedMinistryInvitation> {
   const request = await newPersonaRequest({ persona });
   try {
@@ -90,6 +95,7 @@ export async function mintMinistryInvitationAs({
       ministryId,
       email,
       roleIds,
+      ministryAccessLevel,
     });
   } finally {
     await request.dispose();

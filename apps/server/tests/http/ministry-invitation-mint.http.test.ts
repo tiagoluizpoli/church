@@ -645,3 +645,26 @@ describe('POST /ministries/:ministryId/invitations — concurrency', () => {
     expect(await outboxKinds()).toHaveLength(2);
   });
 });
+
+describe('Church/address uniqueness backstop', () => {
+  it('refuses a second stored-pending Church offer for the same address ignoring case', async () => {
+    const offer = (id: string, email: string) =>
+      db.insert(churchInvitation).values({
+        id,
+        organizationId: CHURCH_A,
+        email,
+        role: 'member',
+        status: 'pending',
+        expiresAt: new Date('2026-10-01T12:00:00.000Z'),
+        inviterId: fx.userIds.admin,
+      });
+    await offer('first', 'same@mint.test');
+
+    await expect(offer('second', 'SAME@mint.test')).rejects.toThrow();
+    await db
+      .update(churchInvitation)
+      .set({ status: 'canceled' })
+      .where(eq(churchInvitation.id, 'first'));
+    await expect(offer('third', 'SAME@mint.test')).resolves.toBeDefined();
+  });
+});

@@ -55,6 +55,7 @@ export const usualSetupBlockResponseSchema = z.object({
   endTime: z.string(),
   order: z.number().int(),
   entry: usualSetupEntryBodySchema.optional(),
+  needsReview: z.boolean(),
 });
 type UsualSetupBlockResponse = z.infer<typeof usualSetupBlockResponseSchema>;
 
@@ -133,6 +134,7 @@ export const usualSetupMapper = {
       endTime: view.endTime,
       order: view.order,
       entry: view.entry ? toEntryResponse(view.entry) : undefined,
+      needsReview: view.needsReview,
     };
   },
 

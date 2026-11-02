@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { ministry, role, sector, usualSetup } from '@church/db';
+import {
+  ministry,
+  role,
+  sector,
+  templateTimeBlock,
+  usualSetup,
+} from '@church/db';
 import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
 import { eq } from 'drizzle-orm';
@@ -361,6 +367,7 @@ describe('GET /ministries/:ministryId/usual-setup', () => {
       startTime: '09:00',
       endTime: '10:00',
       order: 0,
+      needsReview: false,
     });
   });
 
@@ -386,6 +393,149 @@ describe('GET /ministries/:ministryId/usual-setup', () => {
     const res = await list(fixture.worshipId);
 
     expect(res.json().blocks[1].entry).toEqual(twoShifts);
+  });
+});
+
+describe('Usual setup review after template changes', () => {
+  // Service is 10:00–12:00; this split fills it.
+  const manualSplit = {
+    kind: 'manual' as const,
+    spans: [
+      { startTime: '10:00', endTime: '11:00' },
+      { startTime: '11:00', endTime: '12:00' },
+    ],
+  };
+  const manualEntry = () => ({
+    serves: true,
+    shiftSplit: manualSplit,
+    headcounts: [
+      singerAt(fixture.stageId, 2, 0),
+      singerAt(fixture.stageId, 3, 1),
+    ],
+  });
+
+  async function seedManual() {
+    await buildUsualSetup({
+      db: schedulingTestDb,
+      id: randomUUID(),
+      churchId: CHURCH_A,
+      ministryId: fixture.worshipId,
+      sourceTemplateTimeBlockId: fixture.serviceId,
+      ...manualEntry(),
+    });
+  }
+
+  function retime(startTime: string, endTime: string, label?: string) {
+    return schedulingTestDb
+      .update(templateTimeBlock)
+      .set({
+        startTime: parseTimeOfDay({ value: startTime }),
+        endTime: parseTimeOfDay({ value: endTime }),
+        ...(label ? { label } : {}),
+      })
+      .where(eq(templateTimeBlock.id, fixture.serviceId));
+  }
+
+  async function serviceBlock() {
+    signIn('leader');
+    const res = await list(fixture.worshipId);
+    return res
+      .json()
+      .blocks.find(
+        (block: { sourceTemplateTimeBlockId: string }) =>
+          block.sourceTemplateTimeBlockId === fixture.serviceId,
+      );
+  }
+
+  it('keeps setup without a flag after a relabel or an in-bounds retime', async () => {
+    await seedManual();
+
+    await retime('10:00', '12:00', 'Main service');
+    expect(await serviceBlock()).toMatchObject({
+      label: 'Main service',
+      needsReview: false,
+      entry: manualEntry(),
+    });
+
+    await retime('09:30', '12:30');
+    expect((await serviceBlock()).needsReview).toBe(false);
+  });
+
+  it('flags a manual split outside the new bounds without touching its values', async () => {
+    await seedManual();
+
+    await retime('10:00', '11:30');
+
+    expect(await serviceBlock()).toMatchObject({
+      needsReview: true,
+      entry: manualEntry(),
+    });
+    const [row] = await stored();
+    expect(row?.shiftSplit).toMatchObject({ kind: 'manual' });
+  });
+
+  it('reads an invalid stored split instead of failing, then refuses a bad save and clears the flag on a valid repair', async () => {
+    await seedManual();
+    await schedulingTestDb.update(usualSetup).set({
+      shiftSplit: {
+        kind: 'manual',
+        spans: [{ startTime: '10:00', endTime: '10:00' }],
+      } as never,
+    });
+    expect((await serviceBlock()).needsReview).toBe(true);
+
+    await retime('10:00', '11:30');
+    signIn('leader');
+    const refused = await save(
+      fixture.worshipId,
+      fixture.serviceId,
+      manualEntry(),
+    );
+    expect(refused.statusCode).toBe(400);
+    expect((await serviceBlock()).needsReview).toBe(true);
+
+    const repaired = await save(fixture.worshipId, fixture.serviceId, {
+      serves: true,
+      shiftSplit: {
+        kind: 'manual',
+        spans: [{ startTime: '10:00', endTime: '11:30' }],
+      },
+      headcounts: [singerAt(fixture.stageId, 5, 0)],
+    });
+    expect(repaired.statusCode).toBe(200);
+    expect(repaired.json().needsReview).toBe(false);
+    expect((await serviceBlock()).needsReview).toBe(false);
+  });
+
+  it('never flags equal splits or not-served entries', async () => {
+    await buildUsualSetup({
+      db: schedulingTestDb,
+      id: randomUUID(),
+      churchId: CHURCH_A,
+      ministryId: fixture.worshipId,
+      sourceTemplateTimeBlockId: fixture.serviceId,
+      ...wholeBlock([singerAt(fixture.stageId)]),
+    });
+
+    await retime('10:00', '10:30');
+
+    expect((await serviceBlock()).needsReview).toBe(false);
+  });
+
+  it('hides setup of a removed block, refuses its old URL, and gives a new block no entry', async () => {
+    await seedManual();
+    await schedulingTestDb
+      .delete(templateTimeBlock)
+      .where(eq(templateTimeBlock.id, fixture.serviceId));
+
+    signIn('leader');
+    const res = await list(fixture.worshipId);
+    expect(
+      res.json().blocks.map((block: { label: string }) => block.label),
+    ).toEqual(['Welcome', 'Night']);
+    expect(await stored()).toHaveLength(0);
+    const old = await save(fixture.worshipId, fixture.serviceId, manualEntry());
+    expect(old.statusCode).toBe(404);
   });
 });
 

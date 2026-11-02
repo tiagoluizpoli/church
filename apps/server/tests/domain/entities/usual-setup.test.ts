@@ -8,6 +8,7 @@ import type {
   TemplateTimeBlockId,
 } from '@/domain/branded-ids';
 import {
+  assertValidUsualSetupProps,
   toSaveableUsualSetupEntry,
   UsualSetup,
   type UsualSetupEntryInput,
@@ -30,7 +31,7 @@ interface BuildProfileInput {
   props?: Partial<UsualSetupProps>;
 }
 
-function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
+function buildLenientProfile({ props }: BuildProfileInput = {}): UsualSetup {
   return new UsualSetup({
     props: {
       churchId,
@@ -44,7 +45,32 @@ function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
   });
 }
 
+/** The strict valid-write path: a save asserts before it persists. */
+function buildProfile({ props }: BuildProfileInput = {}): UsualSetup {
+  const profile = buildLenientProfile({ props });
+  assertValidUsualSetupProps(profile);
+  return profile;
+}
+
 describe('UsualSetup entity', () => {
+  it('reads a stored row with an invalid split without throwing', () => {
+    const profile = buildLenientProfile({
+      props: {
+        shiftSplit: {
+          kind: 'manual',
+          spans: [
+            {
+              startTime: parseTimeOfDay({ value: '10:00' }),
+              endTime: parseTimeOfDay({ value: '10:00' }),
+            },
+          ],
+        },
+      },
+    });
+
+    expect(profile.shiftSplit.kind).toBe('manual');
+  });
+
   it('constructs with a valid equal split and exposes its properties', () => {
     const profile = buildProfile();
 

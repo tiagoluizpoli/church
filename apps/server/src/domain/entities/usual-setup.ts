@@ -1,5 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
-import { type TimeOfDay, timeOfDayOffset, timeOfDaySpan } from '@church/time';
+import { type TimeOfDay, timeOfDaySpan } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -13,6 +13,10 @@ import { InvalidRequiredCountError } from '../errors/invalid-required-count';
 import { InvalidShiftIndexError } from '../errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../errors/invalid-shift-split';
 import { UsualSetupEmptyError } from '../errors/usual-setup-empty';
+import {
+  splitFitsBlock,
+  templateBlockBounds,
+} from '../services/usual-setup-planner';
 
 export interface UsualSetupEqualSplit {
   kind: 'equal';
@@ -65,10 +69,8 @@ export interface UsualSetupInput {
 }
 
 export class UsualSetup extends Entity<UsualSetupProps, UsualSetupId> {
+  /** Lenient: a stored row with invalid spans must stay readable for repair. */
   constructor({ props, id, createdAt, updatedAt }: UsualSetupInput) {
-    assertValidShiftSplit({ shiftSplit: props.shiftSplit });
-    assertValidHeadcounts({ headcounts: props.headcounts });
-
     super({
       props: props as UsualSetupProps,
       id: id as UsualSetupId,
@@ -100,6 +102,15 @@ export class UsualSetup extends Entity<UsualSetupProps, UsualSetupId> {
   get headcounts(): UsualSetupHeadcount[] {
     return this._props.headcounts;
   }
+}
+
+/** The strict valid-write rules; a save runs them, a read does not. */
+export function assertValidUsualSetupProps({
+  shiftSplit,
+  headcounts,
+}: Pick<UsualSetupProps, 'shiftSplit' | 'headcounts'>): void {
+  assertValidShiftSplit({ shiftSplit });
+  assertValidHeadcounts({ headcounts });
 }
 
 interface AssertValidShiftSplitInput {
@@ -213,9 +224,9 @@ export interface AssertManualSplitFitsBlockInput {
 }
 
 /**
- * A manual split must be chronological, non-overlapping and inside the block,
- * judged by minutes after the block's start so overnight blocks and spans
- * need no dates. Touching endpoints and gaps are allowed.
+ * A manual split must be chronological, non-overlapping and inside the block;
+ * the same rule Send and the review flag apply (`splitFitsBlock`). Touching
+ * endpoints and gaps are allowed.
  */
 export function assertManualSplitFitsBlock({
   shiftSplit,
@@ -223,25 +234,13 @@ export function assertManualSplitFitsBlock({
   blockEndTime,
 }: AssertManualSplitFitsBlockInput): void {
   if (shiftSplit.kind !== 'manual') return;
-  const blockMinutes = timeOfDaySpan({
-    start: blockStartTime,
-    end: blockEndTime,
-  }).durationMinutes;
-  let previousEnd = 0;
-  for (const span of shiftSplit.spans) {
-    const start = timeOfDayOffset({ from: blockStartTime, to: span.startTime });
-    const end =
-      start +
-      timeOfDaySpan({ start: span.startTime, end: span.endTime })
-        .durationMinutes;
-    if (end > blockMinutes) {
-      throw new InvalidShiftSplitError('manual span must lie within the block');
-    }
-    if (start < previousEnd) {
-      throw new InvalidShiftSplitError(
-        'manual spans must be chronological and must not overlap',
-      );
-    }
-    previousEnd = end;
+  const bounds = templateBlockBounds({
+    startTime: blockStartTime,
+    endTime: blockEndTime,
+  });
+  if (!splitFitsBlock({ shiftSplit, ...bounds })) {
+    throw new InvalidShiftSplitError(
+      'manual spans must be chronological, must not overlap and must lie within the block',
+    );
   }
 }

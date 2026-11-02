@@ -68,14 +68,19 @@ import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
 import {
   assertManualSplitFitsBlock,
+  assertValidUsualSetupProps,
   toSaveableUsualSetupEntry,
-  UsualSetup,
+  type UsualSetup,
 } from '../domain/entities/usual-setup';
 import {
   IllegalStateTransitionError,
   InvalidRequiredCountError,
 } from '../domain/errors';
 import { ShiftSplitter } from '../domain/services/shift-splitter';
+import {
+  splitFitsBlock,
+  templateBlockBounds,
+} from '../domain/services/usual-setup-planner';
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
@@ -762,7 +767,7 @@ export class DbParticipationManager implements IParticipationManager {
   }: SaveUsualSetupBlockInput): Promise<UsualSetupBlockView> {
     const saveable = toSaveableUsualSetupEntry({ entry });
     // The entity's own rules (split shape, positive counts, unique places).
-    void new UsualSetup({ props: { churchId, ministryId, ...saveable } });
+    assertValidUsualSetupProps(saveable);
 
     return this.unitOfWork.run(async (tx) => {
       // Saving a setup is new use: refused for an archived Ministry.
@@ -1683,5 +1688,13 @@ function toUsualSetupBlockView({
     endTime: block.endTime,
     order: block.order,
     entry,
+    // Derived on every read from the serving manual split vs current bounds.
+    needsReview:
+      entry?.serves === true &&
+      entry.shiftSplit.kind === 'manual' &&
+      !splitFitsBlock({
+        shiftSplit: entry.shiftSplit,
+        ...templateBlockBounds(block),
+      }),
   };
 }

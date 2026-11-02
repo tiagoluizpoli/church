@@ -15,7 +15,7 @@ import { InvalidShiftSplitError } from '../errors/invalid-shift-split';
 import { UsualSetupEmptyError } from '../errors/usual-setup-empty';
 import {
   splitFitsBlock,
-  templateBlockBounds,
+  wallClockUtcBounds,
 } from '../services/usual-setup-planner';
 
 export interface UsualSetupEqualSplit {
@@ -234,7 +234,7 @@ export function assertManualSplitFitsBlock({
   blockEndTime,
 }: AssertManualSplitFitsBlockInput): void {
   if (shiftSplit.kind !== 'manual') return;
-  const bounds = templateBlockBounds({
+  const bounds = wallClockUtcBounds({
     startTime: blockStartTime,
     endTime: blockEndTime,
   });

@@ -101,21 +101,22 @@ export function splitFitsBlock({
   return true;
 }
 
-export interface TemplateBlockBoundsInput {
+export interface WallClockUtcBoundsInput {
   startTime: TimeOfDay;
   endTime: TimeOfDay;
 }
 
-export interface TemplateBlockBounds {
+export interface WallClockUtcBounds {
   block: UsualSetupBlockBounds;
   timeZone: string;
 }
 
-/** Wall-clock template bounds as Instants on a fixed UTC day (no DST, no dates). */
-export function templateBlockBounds({
+/** Template wall-clock bounds as Instants on a fixed UTC reference day. */
+// Recurring TimeOfDay validity is wall-clock only: no date, so no DST.
+export function wallClockUtcBounds({
   startTime,
   endTime,
-}: TemplateBlockBoundsInput): TemplateBlockBounds {
+}: WallClockUtcBoundsInput): WallClockUtcBounds {
   const timeZone = 'UTC';
   const day = parseCalendarDay({ value: '2000-01-03' });
   return {
@@ -132,17 +133,27 @@ export function templateBlockBounds({
   };
 }
 
+/** The single Shift of the whole-block fallback. */
+const WHOLE_BLOCK_SHIFT_INDEX = 0;
+
+interface SumHeadcountsInput {
+  headcounts: UsualSetupHeadcount[];
+  /** The index the summed rows are written onto. */
+  shiftIndex: number;
+}
+
 /** Sums counts per Sector × Role across Shift indices; positive pairs only. */
-function sumHeadcounts(
-  headcounts: UsualSetupHeadcount[],
-): UsualSetupHeadcount[] {
+function sumHeadcounts({
+  headcounts,
+  shiftIndex,
+}: SumHeadcountsInput): UsualSetupHeadcount[] {
   const sums = new Map<string, UsualSetupHeadcount>();
   for (const { sectorId, roleId, peopleNeeded } of headcounts) {
     if (!(peopleNeeded > 0)) continue;
     const key = `${sectorId}:${roleId}`;
     const sum = sums.get(key);
     if (sum) sum.peopleNeeded += peopleNeeded;
-    else sums.set(key, { shiftIndex: 0, sectorId, roleId, peopleNeeded });
+    else sums.set(key, { shiftIndex, sectorId, roleId, peopleNeeded });
   }
   return [...sums.values()].sort(
     (left, right) =>
@@ -164,7 +175,15 @@ export function planUsualSetupShifts({
   if (!splitFitsBlock({ shiftSplit, block, timeZone })) {
     return {
       fallback: true,
-      shifts: [{ ...block, headcounts: sumHeadcounts(headcounts) }],
+      shifts: [
+        {
+          ...block,
+          headcounts: sumHeadcounts({
+            headcounts,
+            shiftIndex: WHOLE_BLOCK_SHIFT_INDEX,
+          }),
+        },
+      ],
     };
   }
   const spans =

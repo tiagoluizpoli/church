@@ -11,19 +11,16 @@ import type {
 } from '../domain/contracts/application/cycle-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
-import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
-import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { Cycle } from '../domain/entities/cycle';
 import {
   DraftStaffingReconciliationRequiredError,
   IllegalStateTransitionError,
   OverlappingCycleError,
 } from '../domain/errors';
-import { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
+import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
 interface EnsureResolvedCycleInput {
   cycle: Cycle;
@@ -36,9 +33,7 @@ interface DbCycleManagerDependencies {
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
   participationRepository: MinistryParticipationRepository;
-  shiftRepository: ShiftRepository;
-  usualSetupRepository: UsualSetupRepository;
-  ministryRepository: MinistryRepository;
+  staffingSeeder: UsualSetupStaffingSeeder;
 }
 
 export class DbCycleManager implements ICycleManager {
@@ -55,21 +50,14 @@ export class DbCycleManager implements ICycleManager {
     churchRepository,
     unitOfWork,
     participationRepository,
-    shiftRepository,
-    usualSetupRepository,
-    ministryRepository,
+    staffingSeeder,
   }: DbCycleManagerDependencies) {
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.participationRepository = participationRepository;
-    this.staffingSeeder = new UsualSetupStaffingSeeder({
-      participationRepository,
-      shiftRepository,
-      usualSetupRepository,
-      ministryRepository,
-    });
+    this.staffingSeeder = staffingSeeder;
   }
 
   async createCycle(input: CreateCycleManagerInput): Promise<Cycle> {

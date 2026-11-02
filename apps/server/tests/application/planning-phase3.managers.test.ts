@@ -20,6 +20,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import {
   ChurchId,
   CycleId,
@@ -83,6 +84,13 @@ function createManagers() {
     db: schedulingTestDb,
   });
 
+  const staffingSeeder = new UsualSetupStaffingSeeder({
+    participationRepository,
+    shiftRepository,
+    usualSetupRepository,
+    ministryRepository,
+  });
+
   return {
     cycleManager: new DbCycleManager({
       cycleRepository,
@@ -90,9 +98,7 @@ function createManagers() {
       churchRepository,
       unitOfWork,
       participationRepository,
-      shiftRepository,
-      usualSetupRepository,
-      ministryRepository,
+      staffingSeeder,
     }),
     eventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -100,10 +106,7 @@ function createManagers() {
       templateRepository,
       churchRepository,
       unitOfWork,
-      participationRepository,
-      shiftRepository,
-      usualSetupRepository,
-      ministryRepository,
+      staffingSeeder,
       eventTimeBlockRepository,
     }),
     templateManager: new DbEventTemplateManager({

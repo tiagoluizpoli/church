@@ -23,13 +23,9 @@ import type { ChurchRepository } from '../domain/contracts/infrastructure/church
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
-import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
-import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
-import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { Church } from '../domain/entities/church';
 import type { Cycle } from '../domain/entities/cycle';
 import type { Event } from '../domain/entities/event';
@@ -43,8 +39,8 @@ import {
   CycleEventGenerator,
   type ExistingGeneratedEventTimeBlockFingerprint,
 } from '../domain/services/cycle-event-generator';
-import {
-  type StaffingSeedEventTimeBlock,
+import type {
+  StaffingSeedEventTimeBlock,
   UsualSetupStaffingSeeder,
 } from './usual-setup-staffing-seeder';
 
@@ -94,10 +90,7 @@ interface DbPlanningEventManagerDependencies {
   templateRepository: EventTemplateRepository;
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
-  participationRepository: MinistryParticipationRepository;
-  shiftRepository: ShiftRepository;
-  usualSetupRepository: UsualSetupRepository;
-  ministryRepository: MinistryRepository;
+  staffingSeeder: UsualSetupStaffingSeeder;
   eventTimeBlockRepository: EventTimeBlockRepository;
 }
 
@@ -118,10 +111,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     templateRepository,
     churchRepository,
     unitOfWork,
-    participationRepository,
-    shiftRepository,
-    usualSetupRepository,
-    ministryRepository,
+    staffingSeeder,
     eventTimeBlockRepository,
   }: DbPlanningEventManagerDependencies) {
     this.cycleRepository = cycleRepository;
@@ -130,12 +120,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
-    this.staffingSeeder = new UsualSetupStaffingSeeder({
-      participationRepository,
-      shiftRepository,
-      usualSetupRepository,
-      ministryRepository,
-    });
+    this.staffingSeeder = staffingSeeder;
   }
 
   async generateFromTemplates(

@@ -34,9 +34,13 @@ interface WeekdayInput {
   weekday: number;
 }
 
+const WEEKDAY_INDICES = [0, 1, 2, 3, 4, 5, 6] as const;
+
 export function formatWeekday({ weekday }: WeekdayInput): string {
+  const index = WEEKDAY_INDICES.find((candidate) => candidate === weekday);
+  if (index === undefined) throw new RangeError(`Invalid weekday: ${weekday}`);
   return formatWeekdayOfIndex({
-    index: weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    index,
     locale: getLocale(),
   });
 }

@@ -762,16 +762,17 @@ function gate(prototype: object, method: string): Gate {
   const released = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const original = Reflect.get(prototype, method) as (
+  type Method = (...args: unknown[]) => Promise<unknown>;
+  const methods = prototype as Record<string, Method>;
+  const original = methods[method] as Method;
+  vi.spyOn(methods, method).mockImplementationOnce(async function (
+    this: unknown,
     ...args: unknown[]
-  ) => Promise<unknown>;
-  vi.spyOn(prototype as never, method as never).mockImplementationOnce(
-    async function (this: unknown, ...args: unknown[]) {
-      enter();
-      await released;
-      return original.apply(this, args);
-    } as never,
-  );
+  ) {
+    enter();
+    await released;
+    return original.apply(this, args);
+  });
   return { entered, release };
 }
 

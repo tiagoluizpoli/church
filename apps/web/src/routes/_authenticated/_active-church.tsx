@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
+import { useUsualSetupBlockBreadcrumb } from '@/features/ministries/usual-setup-queries';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
@@ -146,10 +147,12 @@ function ActiveChurchLayout() {
   const cycleBreadcrumb = useCycleBreadcrumb();
   const ministryBreadcrumb = useMinistryBreadcrumb();
   const templateBreadcrumb = useTemplateBreadcrumb();
+  const usualSetupBlockBreadcrumb = useUsualSetupBlockBreadcrumb({ churchId });
   const overrides = [
     cycleBreadcrumb,
     ministryBreadcrumb,
     templateBreadcrumb,
+    usualSetupBlockBreadcrumb,
   ].filter((override) => override !== null);
   const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;
 

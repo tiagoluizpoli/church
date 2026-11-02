@@ -3,12 +3,14 @@ import type { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
 import type {
   GetRoleByIdInput,
   ListRolesByMinistryInput,
-  RoleRepository,
 } from '@/domain/contracts/infrastructure/role.repository';
 import { Role } from '@/domain/entities/role';
-import { runRoleRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/role.contract-spec';
+import {
+  type RoleReadRepository,
+  runRoleRepositoryContractTests,
+} from '@/tests/domain/contracts/contract-tests/role.contract-spec';
 
-class MockRoleRepository implements RoleRepository {
+class MockRoleRepository implements RoleReadRepository {
   private roles = new Map<string, Role>();
 
   constructor() {

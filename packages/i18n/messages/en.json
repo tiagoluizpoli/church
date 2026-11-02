@@ -41,6 +41,8 @@
   "error_not_found": "We could not find what you asked for.",
   "error_ministry_not_found": "Ministry not found.",
   "error_ministry_name_in_use": "Another active Ministry in this Church already has this name. Choose a different name.",
+  "error_role_name_in_use": "Another active Role in this Ministry already has this name. Choose a different name.",
+  "error_role_in_use": "This Role is still used by upcoming schedules or a usual setup. Change them before archiving it.",
   "error_check_access_denied": "This availability check belongs to another Volunteer.",
   "error_assignment_access_denied": "This Assignment belongs to another Volunteer.",
   "error_assign_action_not_available": "This Schedule action is not available right now.",

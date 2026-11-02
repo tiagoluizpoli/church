@@ -5,14 +5,20 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  ArchiveMinistryRole204,
   CreateMinistry201,
   CreateMinistryBody,
+  CreateMinistryRole201,
+  CreateMinistryRoleBody,
   GetMinistry200,
   ListMinistries200,
+  ListMinistryRoles200,
   MintMinistryInvitation201,
   MintMinistryInvitationBody,
   RenameMinistry200,
   RenameMinistryBody,
+  RenameMinistryRole200,
+  RenameMinistryRoleBody,
   ResendMinistryInvitation200
 } from './churchAPI.schemas';
 
@@ -103,10 +109,70 @@ const resendMinistryInvitation = (
     },
       );
     }
-  return {listMinistries,createMinistry,getMinistry,renameMinistry,mintMinistryInvitation,resendMinistryInvitation}};
+  /**
+ * Active Roles of a managed Ministry, alphabetical ignoring case. The active-choice read for new invitations, memberships and headcounts.
+ * @summary List a Ministry's active Roles
+ */
+const listMinistryRoles = (
+    ministryId: string,
+ ) => {
+      return apiClient<ListMinistryRoles200>(
+      {url: `/api/v1/ministries/${ministryId}/roles`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Add an active Role by name. Active Role names are unique per Ministry ignoring case.
+ * @summary Add a Role to a Ministry
+ */
+const createMinistryRole = (
+    ministryId: string,
+    createMinistryRoleBody: CreateMinistryRoleBody,
+ ) => {
+      return apiClient<CreateMinistryRole201>(
+      {url: `/api/v1/ministries/${ministryId}/roles`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createMinistryRoleBody
+    },
+      );
+    }
+  /**
+ * Rename an active Role, keeping its identity, qualifications and history.
+ * @summary Rename a Role
+ */
+const renameMinistryRole = (
+    ministryId: string,
+    roleId: string,
+    renameMinistryRoleBody: RenameMinistryRoleBody,
+ ) => {
+      return apiClient<RenameMinistryRole200>(
+      {url: `/api/v1/ministries/${ministryId}/roles/${roleId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: renameMinistryRoleBody
+    },
+      );
+    }
+  /**
+ * Hide a Role from new use, keeping qualifications, Memberships and Assignments. Refused with blockers while an upcoming ShiftRequirement or a UsualSetup headcount uses it.
+ * @summary Archive a Role
+ */
+const archiveMinistryRole = (
+    ministryId: string,
+    roleId: string,
+ ) => {
+      return apiClient<ArchiveMinistryRole204>(
+      {url: `/api/v1/ministries/${ministryId}/roles/${roleId}/archive`, method: 'POST'
+    },
+      );
+    }
+  return {listMinistries,createMinistry,getMinistry,renameMinistry,mintMinistryInvitation,resendMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
 export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
 export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
 export type RenameMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistry']>>>
 export type MintMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['mintMinistryInvitation']>>>
 export type ResendMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['resendMinistryInvitation']>>>
+export type ListMinistryRolesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistryRoles']>>>
+export type CreateMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistryRole']>>>
+export type RenameMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistryRole']>>>
+export type ArchiveMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveMinistryRole']>>>

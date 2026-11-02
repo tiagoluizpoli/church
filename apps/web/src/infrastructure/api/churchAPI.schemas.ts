@@ -1304,6 +1304,147 @@ export type ResendMinistryInvitation404 = {
   message: string;
 };
 
+export type ListMinistryRoles200RolesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListMinistryRoles200 = {
+  roles: ListMinistryRoles200RolesItem[];
+};
+
+export type ListMinistryRoles401 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistryRoles403 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistryRoles404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRoleBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type CreateMinistryRole201 = {
+  id: string;
+  name: string;
+};
+
+export type CreateMinistryRole401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRole403 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRole404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistryRole409 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRoleBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type RenameMinistryRole200 = {
+  id: string;
+  name: string;
+};
+
+export type RenameMinistryRole401 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRole403 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRole404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryRole409 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type ArchiveMinistryRole204 = typeof ArchiveMinistryRole204[keyof typeof ArchiveMinistryRole204] | null;
+
+
+export const ArchiveMinistryRole204 = {
+} as const;
+
+export type ArchiveMinistryRole401 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistryRole403 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistryRole404 = {
+  error: string;
+  message: string;
+};
+
+export type ArchiveMinistryRole409BlockersItem = {
+  ministryId: string;
+  ministryName: string;
+  kind: 'cycle';
+  cycleId: string;
+  cycleName: string;
+} | {
+  ministryId: string;
+  ministryName: string;
+  kind: 'requirement';
+  cycleId: string;
+  cycleName: string;
+  eventId: string;
+  eventTimeBlockId: string;
+} | {
+  ministryId: string;
+  ministryName: string;
+  kind: 'usual_setup';
+  templateTimeBlockId: string;
+};
+
+export type ArchiveMinistryRole409 = {
+  error: string;
+  message: string;
+  blockers: ArchiveMinistryRole409BlockersItem[];
+};
+
 export type GetCycleParticipationParams = {
 ministryId: string;
 };

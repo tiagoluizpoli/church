@@ -24,6 +24,7 @@ import {
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
 import { requestLocale } from '../../api/utils/request-locale';
+import { ArchiveBlockedError } from '../../domain/errors/archive-blocked';
 import { auth } from '../di/server-auth';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
@@ -166,6 +167,9 @@ export async function createFastify({
         error: error.code,
         message: message ?? genericError,
         ...(reason && { reason }),
+        ...(error instanceof ArchiveBlockedError && {
+          blockers: error.blockers,
+        }),
       });
     }
 

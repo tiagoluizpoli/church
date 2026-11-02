@@ -205,7 +205,7 @@ interface AssertMinistryHeadcountsInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   headcounts: HeadcountPlace[];
-  tx?: TransactionContext;
+  tx: TransactionContext;
 }
 
 export class DbParticipationManager implements IParticipationManager {
@@ -636,7 +636,11 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  /** A Sector or Role outside the Ministry (or Church) is not found (#385). */
+  /**
+   * A Sector or Role outside the Ministry (or Church) is not found (#385),
+   * and so is an archived Role. The active Roles stay share-locked until `tx`
+   * ends, so a concurrent Role archive sees this write or this write sees it.
+   */
   private async assertMinistryHeadcounts({
     churchId,
     ministryId,
@@ -646,7 +650,12 @@ export class DbParticipationManager implements IParticipationManager {
     if (headcounts.length === 0) return;
     const [sectors, roles] = await Promise.all([
       this.sectorRepository.listByMinistry({ churchId, ministryId, tx }),
-      this.roleRepository.listByMinistry({ churchId, ministryId, tx }),
+      this.roleRepository.lockActiveForUse({
+        churchId,
+        ministryId,
+        roleIds: headcounts.map(({ roleId }) => roleId),
+        tx,
+      }),
     ]);
     const sectorIds = new Set<string>(sectors.map((sector) => sector.id));
     const roleIds = new Set<string>(roles.map((role) => role.id));
@@ -748,15 +757,20 @@ export class DbParticipationManager implements IParticipationManager {
         );
       }
     }
-    await this.assertMinistryHeadcounts({
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      headcounts: input.entries.flatMap((entry) =>
-        entry.headcounts.map(({ sectorId, roleId }) => ({ sectorId, roleId })),
-      ),
+    return this.unitOfWork.run(async (tx) => {
+      await this.assertMinistryHeadcounts({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        headcounts: input.entries.flatMap((entry) =>
+          entry.headcounts.map(({ sectorId, roleId }) => ({
+            sectorId,
+            roleId,
+          })),
+        ),
+        tx,
+      });
+      return this.usualSetupRepository.replaceForMinistry({ ...input, tx });
     });
-
-    return this.usualSetupRepository.replaceForMinistry(input);
   }
 
   async listEligibleVolunteers(

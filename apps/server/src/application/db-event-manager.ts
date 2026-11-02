@@ -118,7 +118,8 @@ export class DbEventManager implements IEventManager {
       this.eventTimeBlockRepo.listByEvent({ churchId, eventId }),
       this.assignmentRepo.listByParticipation({ churchId, participationId }),
       this.volunteerRepo.listByMinistry({ churchId, ministryId }),
-      this.roleRepo.listByMinistry({ churchId, ministryId }),
+      // Active choices only: the builder's roles feed new headcounts.
+      this.roleRepo.listActiveByMinistry({ churchId, ministryId }),
       this.shiftRepo.listByParticipation({ churchId, participationId }),
       this.shiftRepo.listRequirementsByParticipation({
         churchId,

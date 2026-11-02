@@ -3,12 +3,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
 
+/** The historical reads every Role repository double must honor. */
+export type RoleReadRepository = Pick<
+  RoleRepository,
+  'getById' | 'listByMinistry'
+>;
+
 export function runRoleRepositoryContractTests(
-  factory: () => Promise<RoleRepository>,
+  factory: () => Promise<RoleReadRepository>,
   cleanup: () => Promise<void>,
 ) {
   describe('RoleRepository Contract', () => {
-    let repo: RoleRepository;
+    let repo: RoleReadRepository;
 
     beforeEach(async () => {
       repo = await factory();

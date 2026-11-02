@@ -1,10 +1,13 @@
 import { Entity, type LooseProps } from '@church/core';
+import type { Instant } from '@church/time';
 import type { ChurchId, MinistryId, RoleId } from '../branded-ids';
 
 export interface RoleProps {
   churchId: ChurchId;
   ministryId: MinistryId;
   name: string;
+  /** Set once archived: hidden from new use, still resolved by history. */
+  archivedAt?: Instant;
 }
 
 export interface RoleInput {
@@ -34,5 +37,9 @@ export class Role extends Entity<RoleProps, RoleId> {
 
   get name(): string {
     return this._props.name;
+  }
+
+  get archivedAt(): Instant | undefined {
+    return this._props.archivedAt;
   }
 }

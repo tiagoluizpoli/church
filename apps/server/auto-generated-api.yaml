@@ -3065,6 +3065,459 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/ministries/{ministryId}/roles:
+    get:
+      operationId: listMinistryRoles
+      summary: List a Ministry's active Roles
+      tags:
+        - ministries
+      description: Active Roles of a managed Ministry, alphabetical ignoring case. The
+        active-choice read for new invitations, memberships and headcounts.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - roles
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    post:
+      operationId: createMinistryRole
+      summary: Add a Role to a Ministry
+      tags:
+        - ministries
+      description: Add an active Role by name. Active Role names are unique per
+        Ministry ignoring case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - name
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/roles/{roleId}:
+    patch:
+      operationId: renameMinistryRole
+      summary: Rename a Role
+      tags:
+        - ministries
+      description: Rename an active Role, keeping its identity, qualifications and history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - name
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: roleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/roles/{roleId}/archive:
+    post:
+      operationId: archiveMinistryRole
+      summary: Archive a Role
+      tags:
+        - ministries
+      description: Hide a Role from new use, keeping qualifications, Memberships and
+        Assignments. Refused with blockers while an upcoming ShiftRequirement or
+        a UsualSetup headcount uses it.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: roleId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  blockers:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            ministryId:
+                              type: string
+                            ministryName:
+                              type: string
+                            kind:
+                              type: string
+                              enum:
+                                - cycle
+                            cycleId:
+                              type: string
+                            cycleName:
+                              type: string
+                          required:
+                            - ministryId
+                            - ministryName
+                            - kind
+                            - cycleId
+                            - cycleName
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            ministryId:
+                              type: string
+                            ministryName:
+                              type: string
+                            kind:
+                              type: string
+                              enum:
+                                - requirement
+                            cycleId:
+                              type: string
+                            cycleName:
+                              type: string
+                            eventId:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                          required:
+                            - ministryId
+                            - ministryName
+                            - kind
+                            - cycleId
+                            - cycleName
+                            - eventId
+                            - eventTimeBlockId
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            ministryId:
+                              type: string
+                            ministryName:
+                              type: string
+                            kind:
+                              type: string
+                              enum:
+                                - usual_setup
+                            templateTimeBlockId:
+                              type: string
+                          required:
+                            - ministryId
+                            - ministryName
+                            - kind
+                            - templateTimeBlockId
+                          additionalProperties: false
+                required:
+                  - error
+                  - message
+                  - blockers
+                additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/participation:
     get:
       operationId: getCycleParticipation

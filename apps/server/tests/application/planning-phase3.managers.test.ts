@@ -89,6 +89,10 @@ function createManagers() {
       eventRepository,
       churchRepository,
       unitOfWork,
+      participationRepository,
+      shiftRepository,
+      usualSetupRepository,
+      ministryRepository,
     }),
     eventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -846,7 +850,7 @@ describe('Phase 3 planning managers', () => {
     ).rejects.toThrow(EventOutsideCycleError);
   });
 
-  it('generateFromTemplates seeds via the three-tier default: explicit profile > ministry direction > (all_out default), including split shifts and headcounts', async () => {
+  it('generateFromTemplates on a Sent Cycle seeds the added blocks via the three-tier default: explicit profile > ministry direction > (all_out default), including split shifts and headcounts', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager, templateManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -944,6 +948,9 @@ describe('Phase 3 planning managers', () => {
       },
     ]);
 
+    // A Draft Apply creates calendar copies only (Send pre-fills); blocks
+    // added to an already-Sent Cycle are seeded at Apply.
+    await cycleManager.sendCycle({ churchId: churchAId, cycleId: cycle.id });
     const result = await eventManager.generateFromTemplates({
       churchId: churchAId,
       cycleId: cycle.id,

@@ -220,6 +220,7 @@ function createRepos(): Repos {
     findByMinistryEvent: vi.fn(async () => buildParticipation()),
     create: vi.fn(),
     listByEvent: vi.fn(async () => [buildParticipation()]),
+    hasCycleStaffing: vi.fn(),
     listByMinistry: vi.fn(),
     listByIds: vi.fn(),
     updateState: vi.fn(),

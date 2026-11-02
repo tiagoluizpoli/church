@@ -55,6 +55,7 @@
   "error_cross_ministry_scope": "This item belongs to another Ministry.",
   "error_overlapping_cycle": "This Cycle overlaps an existing Cycle.",
   "error_illegal_state_transition": "This change is not allowed in the current state.",
+  "error_draft_staffing_reconciliation_required": "This Cycle already has staffing from earlier preparation. It needs to be reconciled before the Cycle can be sent; nothing was changed.",
   "error_event_outside_cycle": "The Event date must fall within the Cycle.",
   "error_last_remaining_event_time_block": "You cannot delete the only time block of a day. Delete the day instead.",
   "error_shift_out_of_bounds": "The Shift must fall within its time block.",

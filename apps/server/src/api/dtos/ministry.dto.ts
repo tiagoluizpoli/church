@@ -2,6 +2,13 @@ import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { Ministry } from '../../domain/entities/ministry';
 
+/** The single trim point for Ministry names; uniqueness is the database's. */
+export const ministryNameBodySchema = z.object({
+  name: z.string().trim().min(1).max(255),
+});
+
+export type MinistryNameBody = z.infer<typeof ministryNameBodySchema>;
+
 export const ministryResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),

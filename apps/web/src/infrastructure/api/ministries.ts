@@ -5,9 +5,14 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  CreateMinistry201,
+  CreateMinistryBody,
+  GetMinistry200,
   ListMinistries200,
   MintMinistryInvitation201,
   MintMinistryInvitationBody,
+  RenameMinistry200,
+  RenameMinistryBody,
   ResendMinistryInvitation200
 } from './churchAPI.schemas';
 
@@ -26,6 +31,47 @@ const listMinistries = (
  ) => {
       return apiClient<ListMinistries200>(
       {url: `/api/v1/ministries/`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Create an active Ministry in the Active Church. ChurchAdmin only; active names are unique ignoring case.
+ * @summary Create a Ministry
+ */
+const createMinistry = (
+    createMinistryBody: CreateMinistryBody,
+ ) => {
+      return apiClient<CreateMinistry201>(
+      {url: `/api/v1/ministries/`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createMinistryBody
+    },
+      );
+    }
+  /**
+ * Get an active Ministry the caller manages: any for a ChurchAdmin, a led one for a Ministry leader.
+ * @summary Get a managed Ministry
+ */
+const getMinistry = (
+    ministryId: string,
+ ) => {
+      return apiClient<GetMinistry200>(
+      {url: `/api/v1/ministries/${ministryId}`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Rename an active Ministry, keeping its identity. ChurchAdmin only; active names are unique ignoring case.
+ * @summary Rename a Ministry
+ */
+const renameMinistry = (
+    ministryId: string,
+    renameMinistryBody: RenameMinistryBody,
+ ) => {
+      return apiClient<RenameMinistry200>(
+      {url: `/api/v1/ministries/${ministryId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: renameMinistryBody
     },
       );
     }
@@ -57,7 +103,10 @@ const resendMinistryInvitation = (
     },
       );
     }
-  return {listMinistries,mintMinistryInvitation,resendMinistryInvitation}};
+  return {listMinistries,createMinistry,getMinistry,renameMinistry,mintMinistryInvitation,resendMinistryInvitation}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
+export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
+export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
+export type RenameMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistry']>>>
 export type MintMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['mintMinistryInvitation']>>>
 export type ResendMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['resendMinistryInvitation']>>>

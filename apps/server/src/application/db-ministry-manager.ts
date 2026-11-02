@@ -1,7 +1,11 @@
+import { NotFoundError } from '@church/core';
 import type { ChurchId } from '../domain/branded-ids';
 import type {
+  CreateMinistryInput,
+  GetActiveMinistryInput,
   IMinistryManager,
   ListMinistriesByLeaderInput,
+  RenameMinistryInput,
   SetDefaultDirectionInput,
 } from '../domain/contracts/application/ministry-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
@@ -32,12 +36,30 @@ export class DbMinistryManager implements IMinistryManager {
       churchId,
       volunteerId: leaderId,
     });
-    const ministries = await Promise.all(
-      ledMinistries.map((lm) =>
-        this.ministryRepo.getById({ churchId, id: lm.ministryId }),
-      ),
-    );
-    return ministries;
+    const ids = ledMinistries.map((led) => led.ministryId);
+    return this.ministryRepo.listByChurch({ churchId, ids });
+  }
+
+  async getActive({
+    churchId,
+    ministryId,
+  }: GetActiveMinistryInput): Promise<Ministry> {
+    const ministry = await this.ministryRepo.getById({
+      churchId,
+      id: ministryId,
+    });
+    if (ministry.deletedAt) {
+      throw new NotFoundError(`Ministry not found: ${ministryId}`);
+    }
+    return ministry;
+  }
+
+  async create(input: CreateMinistryInput): Promise<Ministry> {
+    return this.ministryRepo.create(input);
+  }
+
+  async rename(input: RenameMinistryInput): Promise<Ministry> {
+    return this.ministryRepo.rename(input);
   }
 
   async setDefaultDirection(

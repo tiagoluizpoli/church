@@ -1,10 +1,12 @@
 import { NotFoundError } from '@church/core';
 import type { ChurchId, MinistryId } from '@/domain/branded-ids';
 import type {
+  CreateMinistryRecordInput,
   GetMinistryByIdInput,
   GetMinistrySettingsInput,
   ListMinistriesByChurchInput,
   MinistryRepository,
+  RenameMinistryRecordInput,
   UpdateMinistryDefaultDirectionInput,
 } from '@/domain/contracts/infrastructure/ministry.repository';
 import { Ministry, type MinistrySettings } from '@/domain/entities/ministry';
@@ -55,6 +57,29 @@ class MockMinistryRepository implements MinistryRepository {
       (m) => m.churchId === churchId,
     );
     return list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async create({
+    churchId,
+    name,
+  }: CreateMinistryRecordInput): Promise<Ministry> {
+    const created = new Ministry({ props: { churchId, name } });
+    this.ministries.set(created.id, created);
+    return created;
+  }
+
+  async rename({
+    churchId,
+    ministryId,
+    name,
+  }: RenameMinistryRecordInput): Promise<Ministry> {
+    const current = await this.getById({ churchId, id: ministryId });
+    const renamed = new Ministry({
+      props: { churchId: current.churchId, name },
+      id: current.id,
+    });
+    this.ministries.set(renamed.id, renamed);
+    return renamed;
   }
 
   async getSettings({

@@ -1069,6 +1069,132 @@ export type ListMinistries403 = {
   message: string;
 };
 
+export type CreateMinistryBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type CreateMinistry201DefaultDirection = typeof CreateMinistry201DefaultDirection[keyof typeof CreateMinistry201DefaultDirection];
+
+
+export const CreateMinistry201DefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type CreateMinistry201 = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  defaultDirection: CreateMinistry201DefaultDirection;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type CreateMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type CreateMinistry409 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistry200DefaultDirection = typeof GetMinistry200DefaultDirection[keyof typeof GetMinistry200DefaultDirection];
+
+
+export const GetMinistry200DefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type GetMinistry200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  defaultDirection: GetMinistry200DefaultDirection;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type GetMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistry404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistryBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+};
+
+export type RenameMinistry200DefaultDirection = typeof RenameMinistry200DefaultDirection[keyof typeof RenameMinistry200DefaultDirection];
+
+
+export const RenameMinistry200DefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type RenameMinistry200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  defaultDirection: RenameMinistry200DefaultDirection;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type RenameMinistry401 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistry403 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistry404 = {
+  error: string;
+  message: string;
+};
+
+export type RenameMinistry409 = {
+  error: string;
+  message: string;
+};
+
 export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
 
 

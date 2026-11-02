@@ -16,8 +16,11 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  type MinistryNameBody,
   ministryListResponseSchema,
   ministryMapper,
+  ministryNameBodySchema,
+  ministryResponseSchema,
 } from '../dtos/ministry.dto';
 import {
   ministryInvitationMapper,
@@ -31,9 +34,11 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
-interface MinistryInvitationRouteParams {
+interface MinistryRouteParams {
   ministryId: string;
 }
+
+type MinistryInvitationRouteParams = MinistryRouteParams;
 
 interface ResendMinistryInvitationRouteParams {
   ministryId: string;
@@ -43,6 +48,12 @@ interface ResendMinistryInvitationRouteParams {
 interface DenyMissingMinistryFunctionInput {
   request: FastifyRequest;
   reply: FastifyReply;
+}
+
+type DenyNonAdminInput = DenyMissingMinistryFunctionInput;
+
+interface DenyUnmanagedMinistryInput extends DenyMissingMinistryFunctionInput {
+  ministryId: MinistryId;
 }
 
 interface MinistryControllerDependencies {
@@ -121,6 +132,100 @@ export class MinistryController implements FastifyController {
               leaderId: VolunteerId.from(request.volunteerId as string),
             });
         return reply.send(ministryMapper.toResponseList(ministries));
+      },
+    );
+
+    app.post(
+      '/',
+      {
+        schema: {
+          tags: ['ministries'],
+          operationId: 'createMinistry',
+          summary: 'Create a Ministry',
+          description:
+            'Create an active Ministry in the Active Church. ChurchAdmin only; active names are unique ignoring case.',
+          body: ministryNameBodySchema,
+          response: {
+            201: ministryResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        if (await this.denyNonAdmin({ request, reply })) return;
+        const { name } = request.body as MinistryNameBody;
+        const ministry = await this.ministryManager.create({
+          churchId: ChurchId.from(request.churchId),
+          name,
+        });
+        return reply.status(201).send(ministryMapper.toResponse(ministry));
+      },
+    );
+
+    app.get(
+      '/:ministryId',
+      {
+        schema: {
+          tags: ['ministries'],
+          operationId: 'getMinistry',
+          summary: 'Get a managed Ministry',
+          description:
+            'Get an active Ministry the caller manages: any for a ChurchAdmin, a led one for a Ministry leader.',
+          response: {
+            200: ministryResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        if (await this.denyMissingMinistryFunction({ request, reply })) return;
+        const ministryId = MinistryId.from(
+          (request.params as MinistryRouteParams).ministryId,
+        );
+        if (await this.denyUnmanagedMinistry({ request, reply, ministryId })) {
+          return;
+        }
+        const ministry = await this.ministryManager.getActive({
+          churchId: ChurchId.from(request.churchId),
+          ministryId,
+        });
+        return reply.send(ministryMapper.toResponse(ministry));
+      },
+    );
+
+    app.patch(
+      '/:ministryId',
+      {
+        schema: {
+          tags: ['ministries'],
+          operationId: 'renameMinistry',
+          summary: 'Rename a Ministry',
+          description:
+            'Rename an active Ministry, keeping its identity. ChurchAdmin only; active names are unique ignoring case.',
+          body: ministryNameBodySchema,
+          response: {
+            200: ministryResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        if (await this.denyNonAdmin({ request, reply })) return;
+        const { ministryId } = request.params as MinistryRouteParams;
+        const { name } = request.body as MinistryNameBody;
+        const ministry = await this.ministryManager.rename({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          name,
+        });
+        return reply.send(ministryMapper.toResponse(ministry));
       },
     );
 
@@ -213,6 +318,36 @@ export class MinistryController implements FastifyController {
         );
       },
     );
+  }
+
+  /** Ministry lifecycle is ChurchAdmin-only, even for the target's leader. */
+  private async denyNonAdmin({
+    request,
+    reply,
+  }: DenyNonAdminInput): Promise<boolean> {
+    const allowed = await this.authorityGuard.canManageChurch({
+      churchId: ChurchId.from(request.churchId),
+      userId: UserId.from(request.userId),
+    });
+    if (allowed) return false;
+    refuse({ reply, request, code: 'FORBIDDEN' });
+    return true;
+  }
+
+  /** A Ministry the admitted caller may not manage is indistinguishable from a missing one. */
+  private async denyUnmanagedMinistry({
+    request,
+    reply,
+    ministryId,
+  }: DenyUnmanagedMinistryInput): Promise<boolean> {
+    const decision = await this.authorityGuard.decideManageMinistry({
+      churchId: ChurchId.from(request.churchId),
+      userId: UserId.from(request.userId),
+      ministryId,
+    });
+    if (decision.allowed) return false;
+    refuse({ reply, request, code: 'NOT_FOUND' });
+    return true;
   }
 
   /**

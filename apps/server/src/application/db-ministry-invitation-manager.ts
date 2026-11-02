@@ -79,6 +79,12 @@ interface EnsureResendAllowedInput {
   now: Instant;
 }
 
+interface LockActiveMinistryForMintInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx: TransactionContext;
+}
+
 interface DbMinistryInvitationManagerDependencies {
   repo: MinistryInvitationRepository;
   roleRepository: RoleRepository;
@@ -155,6 +161,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       // simultaneous re-invites can't both observe "no pending row" and
       // both attempt `create` — see acquireMintLock's own doc comment.
       await this.repo.acquireMintLock({ ministryId, email: input.email, tx });
+      await this.lockActiveMinistry({ churchId, ministryId, tx });
 
       const inviteeUserId = await this.repo.findChurchMemberByEmail({
         churchId,
@@ -437,6 +444,27 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
    * all three throw the same `MinistryInvitationNotFoundError` so nobody can
    * map another congregation's structure by probing.
    */
+  /** No new invitation into an archived Ministry, even one archived concurrently. */
+  private async lockActiveMinistry({
+    churchId,
+    ministryId,
+    tx,
+  }: LockActiveMinistryForMintInput): Promise<void> {
+    try {
+      await this.ministryRepository.lockActive({
+        churchId,
+        ministryId,
+        strength: 'share',
+        tx,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw new MinistryInvitationNotFoundError();
+      }
+      throw error;
+    }
+  }
+
   private async ensureMintableScope(
     input: EnsureMintableScopeInput,
   ): Promise<MintableScope> {

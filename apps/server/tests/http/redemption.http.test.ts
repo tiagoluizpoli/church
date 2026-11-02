@@ -3,6 +3,7 @@ import {
   account,
   invitation as churchInvitation,
   member,
+  ministry,
   ministryInvitation,
   ministryMembership,
   ministryMembershipRole,
@@ -646,6 +647,53 @@ describe('Church invitation redemption HTTP boundary', () => {
       church: 'pending',
       ministry: 'pending',
     });
+  });
+
+  it('refuses a paired new person into an archived Ministry, leaving no User, session or grant', async () => {
+    const invitation = await mintInvitation();
+    await testDb
+      .update(ministry)
+      .set({ deletedAt: new Date() })
+      .where(eq(ministry.id, fixture.ministryOneA));
+    const { app } = await createHarness();
+    await requestCode({ invitationId: invitation.churchInvitationId });
+
+    const response = await redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Late Joiner',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '77777777-7777-4777-8777-777777777777',
+      },
+    });
+
+    expect(response.json()).toEqual({
+      kind: 'retryable-failure',
+      reason: 'MINISTRY_ACCEPTANCE_FAILED',
+    });
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(
+      await testDb.select().from(user).where(eq(user.email, invitedEmail())),
+    ).toHaveLength(0);
+    expect(await testDb.select().from(session)).toHaveLength(0);
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'pending',
+      ministry: 'pending',
+    });
+  });
+
+  it('refuses to mint a new invitation into an archived Ministry', async () => {
+    await testDb
+      .update(ministry)
+      .set({ deletedAt: new Date() })
+      .where(eq(ministry.id, fixture.ministryOneA));
+
+    await expect(mintInvitation()).rejects.toMatchObject({
+      code: 'MINISTRY_NOT_FOUND',
+    });
+    expect(await testDb.select().from(ministryInvitation)).toHaveLength(0);
   });
 
   it('preserves a User that a concurrent signup commits mid-join', async () => {

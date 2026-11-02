@@ -19,6 +19,7 @@ export default defineConfig({
           'notifications',
           'active-church',
           'redemption',
+          'invitations',
         ],
       },
     },

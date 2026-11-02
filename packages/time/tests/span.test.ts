@@ -5,7 +5,9 @@ import {
   parseInstant,
   parseTimeOfDay,
   type TimeOfDay,
+  timeOfDayOffset,
   timeOfDaySpan,
+  toInstantAfter,
 } from '../src';
 
 function instant(value: string): Instant {
@@ -63,5 +65,36 @@ describe('instantSpan', () => {
       durationMinutes: 0,
       crossesToNextDay: false,
     });
+  });
+});
+
+describe('timeOfDayOffset', () => {
+  it('wraps past midnight', () => {
+    expect(
+      timeOfDayOffset({ from: timeOfDay('22:00'), to: timeOfDay('01:30') }),
+    ).toBe(210);
+    expect(
+      timeOfDayOffset({ from: timeOfDay('09:00'), to: timeOfDay('09:00') }),
+    ).toBe(0);
+  });
+});
+
+describe('toInstantAfter', () => {
+  const input = {
+    day: '2027-01-04' as never,
+    anchor: timeOfDay('22:00'),
+    timeZone: 'UTC',
+  };
+
+  it('keeps the anchor day until the clock wraps', () => {
+    expect(toInstantAfter({ ...input, time: timeOfDay('23:00') })).toBe(
+      instant('2027-01-04T23:00:00.000Z'),
+    );
+  });
+
+  it('moves onto the next CalendarDay after midnight', () => {
+    expect(toInstantAfter({ ...input, time: timeOfDay('01:00') })).toBe(
+      instant('2027-01-05T01:00:00.000Z'),
+    );
   });
 });

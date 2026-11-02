@@ -1,10 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
-import {
-  formatWeekdayOfIndex,
-  parseTimeOfDay,
-  timeOfDaySpan,
-} from '@church/time';
+import { formatWeekdayOfIndex } from '@church/time';
 import type {
   HeadcountGridEntry,
   HeadcountGridShift,
@@ -32,19 +28,7 @@ export function shiftCountOf({ shiftSplit }: ShiftSplitInput): number {
     : shiftSplit.spans.length;
 }
 
-interface TimeRangeInput {
-  startTime: string;
-  endTime: string;
-}
-
-/** `09:00–11:00`, marked when the end falls on the next day. */
-export function formatTimeRange({ startTime, endTime }: TimeRangeInput) {
-  const start = parseTimeOfDay({ value: startTime });
-  const end = parseTimeOfDay({ value: endTime });
-  const range = `${start}–${end}`;
-  const { crossesToNextDay } = timeOfDaySpan({ start, end });
-  return crossesToNextDay ? `${range} (${m.usual_setup_next_day()})` : range;
-}
+export { formatTimeRange } from '@/features/scheduling/components/shift-split-editor/shift-split.utils';
 
 interface WeekdayInput {
   weekday: number;
@@ -82,50 +66,43 @@ export function describeUsualSetupEntry({ entry }: DescribeEntryInput): string {
   return `${shiftText} · ${peopleText}`;
 }
 
-/** The grid's Shifts: the split's chronological Shifts, keyed by their index. */
-export function usualSetupShifts({
-  shiftSplit,
-}: ShiftSplitInput): HeadcountGridShift[] {
-  if (shiftSplit.kind === 'manual') {
-    return shiftSplit.spans.map((span, index) => ({
-      key: String(index),
-      label: `${span.label || m.usual_setup_shift_label({ number: index + 1 })} · ${formatTimeRange(span)}`,
-    }));
-  }
-  if (shiftSplit.count === 1) {
-    return [{ key: '0', label: m.usual_setup_whole_block_shift() }];
-  }
-  return Array.from({ length: shiftSplit.count }, (_, index) => ({
-    key: String(index),
-    label: m.usual_setup_shift_label({ number: index + 1 }),
-  }));
-}
-
 interface HeadcountsInput {
   headcounts: UsualSetupEntry['headcounts'];
+  /** The split's Shifts in chronological order; position is the saved index. */
+  shifts: HeadcountGridShift[];
 }
 
 export function toGridValues({
   headcounts,
+  shifts,
 }: HeadcountsInput): HeadcountGridValues {
   return Object.fromEntries(
-    headcounts.map(({ shiftIndex, sectorId, roleId, peopleNeeded }) => [
-      headcountGridKey({ shiftKey: String(shiftIndex), sectorId, roleId }),
-      String(peopleNeeded),
-    ]),
+    headcounts.flatMap(({ shiftIndex, sectorId, roleId, peopleNeeded }) => {
+      const shift = shifts[shiftIndex];
+      return shift
+        ? [
+            [
+              headcountGridKey({ shiftKey: shift.key, sectorId, roleId }),
+              String(peopleNeeded),
+            ],
+          ]
+        : [];
+    }),
   );
 }
 
 interface GridEntriesInput {
   entries: HeadcountGridEntry[];
+  shifts: HeadcountGridShift[];
 }
 
 /** Editor Shift keys back to the indexed persistence. */
 export function toIndexedHeadcounts({
   entries,
+  shifts,
 }: GridEntriesInput): SaveUsualSetupBlockBodyHeadcountsItem[] {
   return entries.map(({ shiftKey, sectorId, roleId, peopleNeeded }) => ({
-    shiftIndex: Number(shiftKey),
+    shiftIndex: shifts.findIndex((shift) => shift.key === shiftKey),
     sectorId,
     roleId,
     peopleNeeded,

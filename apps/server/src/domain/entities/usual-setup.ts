@@ -1,5 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
-import type { TimeOfDay } from '@church/time';
+import { type TimeOfDay, timeOfDayOffset, timeOfDaySpan } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -119,9 +119,13 @@ function assertValidShiftSplit({
   }
 
   for (const span of shiftSplit.spans) {
-    if (span.startTime >= span.endTime) {
+    // An end earlier than its start runs past midnight; only equal is empty.
+    if (
+      timeOfDaySpan({ start: span.startTime, end: span.endTime })
+        .durationMinutes === 0
+    ) {
       throw new InvalidShiftSplitError(
-        'profile manual span start must precede its end',
+        'profile manual span must have a positive duration',
       );
     }
   }
@@ -183,6 +187,12 @@ export function toSaveableUsualSetupEntry({
     throw new UsualSetupEmptyError();
   }
   assertValidShiftSplit({ shiftSplit: entry.shiftSplit });
+  if (
+    entry.shiftSplit.kind === 'manual' &&
+    entry.shiftSplit.spans.length === 0
+  ) {
+    throw new InvalidShiftSplitError('manual split requires at least one span');
+  }
   const shiftCount = shiftCountOf({ shiftSplit: entry.shiftSplit });
   for (const { shiftIndex } of entry.headcounts) {
     if (
@@ -194,4 +204,44 @@ export function toSaveableUsualSetupEntry({
     }
   }
   return entry;
+}
+
+export interface AssertManualSplitFitsBlockInput {
+  shiftSplit: UsualSetupShiftSplit;
+  blockStartTime: TimeOfDay;
+  blockEndTime: TimeOfDay;
+}
+
+/**
+ * A manual split must be chronological, non-overlapping and inside the block,
+ * judged by minutes after the block's start so overnight blocks and spans
+ * need no dates. Touching endpoints and gaps are allowed.
+ */
+export function assertManualSplitFitsBlock({
+  shiftSplit,
+  blockStartTime,
+  blockEndTime,
+}: AssertManualSplitFitsBlockInput): void {
+  if (shiftSplit.kind !== 'manual') return;
+  const blockMinutes = timeOfDaySpan({
+    start: blockStartTime,
+    end: blockEndTime,
+  }).durationMinutes;
+  let previousEnd = 0;
+  for (const span of shiftSplit.spans) {
+    const start = timeOfDayOffset({ from: blockStartTime, to: span.startTime });
+    const end =
+      start +
+      timeOfDaySpan({ start: span.startTime, end: span.endTime })
+        .durationMinutes;
+    if (end > blockMinutes) {
+      throw new InvalidShiftSplitError('manual span must lie within the block');
+    }
+    if (start < previousEnd) {
+      throw new InvalidShiftSplitError(
+        'manual spans must be chronological and must not overlap',
+      );
+    }
+    previousEnd = end;
+  }
 }

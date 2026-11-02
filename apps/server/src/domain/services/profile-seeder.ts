@@ -1,4 +1,4 @@
-import { type Instant, today, toInstant } from '@church/time';
+import { type Instant, today, toInstantAfter, toTimeOfDay } from '@church/time';
 import type { EventTimeBlockId, TemplateTimeBlockId } from '../branded-ids';
 import type { DefaultDirection } from '../entities/ministry';
 import type {
@@ -117,22 +117,13 @@ function buildProfileShifts({
     }));
   }
 
-  const eventTimeBlockDate = today({
-    instant: eventTimeBlock.startTime,
-    timeZone,
-  });
+  const day = today({ instant: eventTimeBlock.startTime, timeZone });
+  const anchor = toTimeOfDay({ instant: eventTimeBlock.startTime, timeZone });
 
   return entry.shiftSplit.spans.map((span, shiftIndex) => ({
-    startTime: toInstant({
-      day: eventTimeBlockDate,
-      time: span.startTime,
-      timeZone,
-    }),
-    endTime: toInstant({
-      day: eventTimeBlockDate,
-      time: span.endTime,
-      timeZone,
-    }),
+    // Resolved after the block's own start, so an overnight span ends next day.
+    startTime: toInstantAfter({ day, anchor, time: span.startTime, timeZone }),
+    endTime: toInstantAfter({ day, anchor, time: span.endTime, timeZone }),
     label: span.label,
     headcounts: headcountsOfShift({ entry, shiftIndex }),
   }));

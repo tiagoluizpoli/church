@@ -447,6 +447,105 @@ describe('PUT /ministries/:ministryId/usual-setup/:sourceTemplateTimeBlockId', (
     expect(res.json().entry).toEqual(entry);
   });
 
+  describe('manual splits', () => {
+    const span = (startTime: string, endTime: string) => ({
+      startTime,
+      endTime,
+    });
+    const manual = (spans: unknown[], headcounts?: unknown[]) => ({
+      serves: true,
+      shiftSplit: { kind: 'manual', spans },
+      headcounts: headcounts ?? [singerAt(fixture.stageId, 2)],
+    });
+
+    it('saves ordered spans inside the block, allowing gaps and touching ends', async () => {
+      signIn('leader');
+      const entry = manual(
+        [
+          span('10:00', '10:30'),
+          span('10:30', '11:00'),
+          span('11:30', '12:00'),
+        ],
+        [
+          singerAt(fixture.stageId, 2, 0),
+          singerAt(fixture.doorId, 1, 2),
+          singerAt(fixture.stageId, 4, 2),
+        ],
+      );
+
+      const res = await save(fixture.worshipId, fixture.serviceId, entry);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().entry).toEqual(entry);
+    });
+
+    it.each([
+      ['an empty split', () => []],
+      ['a zero-duration span', () => [span('10:30', '10:30')]],
+      ['a span ending past the block', () => [span('11:00', '12:30')]],
+      ['a span starting before the block', () => [span('09:30', '11:00')]],
+      [
+        'overlapping spans',
+        () => [span('10:00', '11:00'), span('10:30', '11:30')],
+      ],
+      [
+        'spans out of chronological order',
+        () => [span('11:00', '12:00'), span('10:00', '11:00')],
+      ],
+    ])('refuses %s with 400 INVALID_SHIFT_SPLIT and keeps the saved entry', async (_case, spans) => {
+      signIn('leader');
+      await save(
+        fixture.worshipId,
+        fixture.serviceId,
+        wholeBlock([singerAt(fixture.doorId)]),
+      );
+      const before = await stored();
+
+      const res = await save(
+        fixture.worshipId,
+        fixture.serviceId,
+        manual(spans()),
+      );
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ error: 'INVALID_SHIFT_SPLIT' });
+      expect(await stored()).toEqual(before);
+    });
+
+    it('resolves overnight blocks and spans after the block start, not lexically', async () => {
+      signIn('leader');
+      const night = await buildEventTemplate({
+        db: schedulingTestDb,
+        churchId: CHURCH_A,
+        name: 'Night',
+        weekday: 5,
+        blocks: [
+          {
+            label: 'Watch',
+            startTime: parseTimeOfDay({ value: '22:00' }),
+            endTime: parseTimeOfDay({ value: '02:00' }),
+          },
+        ],
+      });
+      const [watch] = night.blocks;
+      if (!watch) throw new Error('block seed failed');
+
+      const fits = manual([span('22:00', '00:00'), span('00:00', '01:30')]);
+      expect((await save(fixture.worshipId, watch.id, fits)).statusCode).toBe(
+        200,
+      );
+
+      for (const spans of [
+        [span('21:00', '23:00')],
+        [span('23:00', '03:00')],
+        [span('00:30', '01:00'), span('23:00', '23:30')],
+      ]) {
+        const res = await save(fixture.worshipId, watch.id, manual(spans));
+        expect(res.statusCode).toBe(400);
+      }
+    });
+  });
+
   it('saves an explicit opt-out in the canonical form, dropping any sent split or counts', async () => {
     signIn('leader');
 

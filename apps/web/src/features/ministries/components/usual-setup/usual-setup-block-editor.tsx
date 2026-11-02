@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { parseTimeOfDay } from '@church/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
@@ -7,12 +8,10 @@ import { toast } from 'sonner';
 import {
   formatTimeRange,
   formatWeekday,
-  shiftCountOf,
   toGridValues,
   toIndexedHeadcounts,
   type UsualSetupBlock,
   type UsualSetupEntry,
-  usualSetupShifts,
 } from './usual-setup.utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -31,6 +30,14 @@ import {
   headcountGridKey,
   normalizeHeadcountGrid,
 } from '@/features/scheduling/components/headcount-grid/headcount-grid';
+import {
+  isShiftSplitValid,
+  shiftSplitProblems,
+  splitShifts,
+  toShiftSplit,
+  toShiftSplitDraft,
+} from '@/features/scheduling/components/shift-split-editor/shift-split.utils';
+import { ShiftSplitEditor } from '@/features/scheduling/components/shift-split-editor/shift-split-editor';
 import type { SaveUsualSetupBlockBody } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { adminApi } from '@/utils/api-instances';
@@ -144,14 +151,25 @@ function UsualSetupBlockForm({
   const queryClient = useQueryClient();
   const churchId = useCallerCapabilitiesScope()?.churchId;
   const [serves, setServes] = useState(block.entry?.serves ?? false);
-  // shortcut: the saved split is kept as is; ticket 14.2 adds split editing.
-  const [shiftSplit] = useState(
-    block.entry?.serves ? block.entry.shiftSplit : WHOLE_BLOCK,
+  const [draft, setDraft] = useState(() =>
+    toShiftSplitDraft({
+      shiftSplit: block.entry?.serves ? block.entry.shiftSplit : WHOLE_BLOCK,
+    }),
   );
+  // Counts are keyed by Shift identity, so they outlive changes of split.
+  const bounds = {
+    startTime: parseTimeOfDay({ value: block.startTime }),
+    endTime: parseTimeOfDay({ value: block.endTime }),
+  };
   const [values, setValues] = useState<HeadcountGridValues>(() =>
-    toGridValues({ headcounts: block.entry?.headcounts ?? [] }),
+    toGridValues({
+      headcounts: block.entry?.headcounts ?? [],
+      shifts: splitShifts({ draft, block: bounds }),
+    }),
   );
-  const shifts = usualSetupShifts({ shiftSplit });
+  const problems = shiftSplitProblems({ draft, block: bounds });
+  const splitValid = isShiftSplitValid({ problems });
+  const shifts = splitValid ? splitShifts({ draft, block: bounds }) : [];
   const { entries, invalidKeys } = normalizeHeadcountGrid({
     sectors,
     roles,
@@ -184,15 +202,16 @@ function UsualSetupBlockForm({
   const isEmpty = serves && entries.length === 0;
   const hasInvalid = serves && invalidKeys.length > 0;
   const canSave =
-    !save.isPending && (!serves || (hasCatalogs && !isEmpty && !hasInvalid));
+    !save.isPending &&
+    (!serves || (splitValid && hasCatalogs && !isEmpty && !hasInvalid));
 
   const submit = () => {
     save.mutate(
       serves
         ? {
             serves,
-            shiftSplit,
-            headcounts: toIndexedHeadcounts({ entries }),
+            shiftSplit: toShiftSplit({ draft }),
+            headcounts: toIndexedHeadcounts({ entries, shifts }),
           }
         : { serves, shiftSplit: WHOLE_BLOCK, headcounts: [] },
     );
@@ -239,13 +258,13 @@ function UsualSetupBlockForm({
 
       {serves ? (
         <div className="space-y-3">
-          <p className="text-muted-foreground text-sm">
-            {shifts.length === 1
-              ? m.usual_setup_split_whole_block()
-              : m.usual_setup_split_kept({
-                  count: shiftCountOf({ shiftSplit }),
-                })}
-          </p>
+          <ShiftSplitEditor
+            draft={draft}
+            block={bounds}
+            problems={problems}
+            disabled={save.isPending}
+            onChange={setDraft}
+          />
           <h3 className="font-medium text-sm">
             {m.usual_setup_people_needed()}
           </h3>
@@ -254,7 +273,12 @@ function UsualSetupBlockForm({
             hasSectors={sectors.length > 0}
             hasRoles={roles.length > 0}
           />
-          {hasCatalogs ? (
+          {hasCatalogs && !splitValid ? (
+            <p className="text-muted-foreground text-sm" role="status">
+              {m.shift_split_fix_times()}
+            </p>
+          ) : null}
+          {hasCatalogs && splitValid ? (
             <HeadcountGrid
               sectors={sectors}
               roles={roles}
@@ -274,7 +298,7 @@ function UsualSetupBlockForm({
               {m.usual_setup_fix_invalid()}
             </p>
           ) : null}
-          {hasCatalogs && isEmpty ? (
+          {hasCatalogs && splitValid && isEmpty ? (
             <p className="text-muted-foreground text-sm">
               {m.error_validation_usual_setup_empty()}
             </p>

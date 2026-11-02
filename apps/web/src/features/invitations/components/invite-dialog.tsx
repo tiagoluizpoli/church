@@ -86,6 +86,11 @@ function NewTabLink({ href, label }: NewTabLinkProps) {
   );
 }
 
+interface ToggleRoleInput {
+  roleId: string;
+  checked: boolean;
+}
+
 interface RolePickerProps {
   ministryId: string;
   selected: string[];
@@ -140,7 +145,7 @@ function RolePicker({
     );
   }
 
-  const toggle = (roleId: string, checked: boolean) =>
+  const toggle = ({ roleId, checked }: ToggleRoleInput) =>
     onChange(
       checked ? [...selected, roleId] : selected.filter((id) => id !== roleId),
     );
@@ -170,7 +175,9 @@ function RolePicker({
             <Checkbox
               id={`invite-role-${role.id}`}
               checked={selected.includes(role.id)}
-              onCheckedChange={(checked) => toggle(role.id, checked === true)}
+              onCheckedChange={(checked) =>
+                toggle({ roleId: role.id, checked: checked === true })
+              }
             />
             <Label htmlFor={`invite-role-${role.id}`} className="break-words">
               {role.name}

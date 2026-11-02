@@ -52,7 +52,7 @@ describe('DrizzleUsualSetupRepository', () => {
     expect(result).toEqual([]);
   });
 
-  it('replaceForMinistry creates entries with equal split, mapped headcounts (with and without sectorId)', async () => {
+  it('upsertBlock creates an entry with an equal split and per-Shift headcounts', async () => {
     const seed = await seedSchedulingPhase3Base();
     const block = await seedTemplateTimeBlock({
       churchId: seed.churchAId,
@@ -64,101 +64,103 @@ describe('DrizzleUsualSetupRepository', () => {
     const churchId = ChurchId.from(seed.churchAId);
     const ministryId = MinistryId.from(seed.ministryAId);
 
-    const created = await repo.replaceForMinistry({
-      churchId,
-      ministryId,
-      entries: [
-        {
-          sourceTemplateTimeBlockId: block.id as never,
-          serves: true,
-          shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: [
-            {
-              roleId: '55555555-5555-5555-5555-555555555551' as never,
-              sectorId: '66666666-6666-6666-6666-666666666661' as never,
-              peopleNeeded: 1,
-            },
-            {
-              roleId: '55555555-5555-5555-5555-555555555552' as never,
-              sectorId: '66666666-6666-6666-6666-666666666661' as never,
-              peopleNeeded: 3,
-            },
-          ],
-        },
-      ],
-    });
-
-    expect(created).toHaveLength(1);
-    expect(created[0]?.serves).toBe(true);
-    expect(created[0]?.shiftSplit).toEqual({ kind: 'equal', count: 2 });
-    expect(created[0]?.headcounts).toEqual([
+    const headcounts = [
       {
-        roleId: '55555555-5555-5555-5555-555555555551',
-        sectorId: '66666666-6666-6666-6666-666666666661',
+        shiftIndex: 0,
+        roleId: '55555555-5555-5555-5555-555555555551' as never,
+        sectorId: '66666666-6666-6666-6666-666666666661' as never,
         peopleNeeded: 1,
       },
       {
-        roleId: '55555555-5555-5555-5555-555555555552',
-        sectorId: '66666666-6666-6666-6666-666666666661',
+        shiftIndex: 1,
+        roleId: '55555555-5555-5555-5555-555555555551' as never,
+        sectorId: '66666666-6666-6666-6666-666666666661' as never,
         peopleNeeded: 3,
       },
-    ]);
+    ];
+
+    const created = await repo.upsertBlock({
+      churchId,
+      ministryId,
+      entry: {
+        sourceTemplateTimeBlockId: block.id as never,
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 2 },
+        headcounts,
+      },
+    });
+
+    expect(created.serves).toBe(true);
+    expect(created.shiftSplit).toEqual({ kind: 'equal', count: 2 });
+    expect(created.headcounts).toEqual(headcounts);
 
     const listed = await repo.listByMinistry({ churchId, ministryId });
     expect(listed).toHaveLength(1);
-    expect(listed[0]?.id).toBe(created[0]?.id);
+    expect(listed[0]?.id).toBe(created.id);
   });
 
-  it('replaceForMinistry with manual split replaces prior entries and returns [] for empty entries', async () => {
+  it('upsertBlock replaces only its own block, keeping its identity and the other blocks', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const block = await seedTemplateTimeBlock({
+    const message = await seedTemplateTimeBlock({
       churchId: seed.churchAId,
       label: 'Message',
+    });
+    const welcome = await seedTemplateTimeBlock({
+      churchId: seed.churchAId,
+      label: 'Welcome',
     });
     const repo = new DrizzleUsualSetupRepository({
       db: schedulingTestDb,
     });
     const churchId = ChurchId.from(seed.churchAId);
     const ministryId = MinistryId.from(seed.ministryAId);
+    const notServed = {
+      serves: false,
+      shiftSplit: { kind: 'equal' as const, count: 1 },
+      headcounts: [],
+    };
 
-    await repo.replaceForMinistry({
+    const first = await repo.upsertBlock({
       churchId,
       ministryId,
-      entries: [
-        {
-          sourceTemplateTimeBlockId: block.id as never,
-          serves: false,
-          shiftSplit: {
-            kind: 'manual',
-            spans: [
-              {
-                label: 'First half',
-                startTime: parseTimeOfDay({ value: '09:00' }),
-                endTime: parseTimeOfDay({ value: '09:30' }),
-              },
-            ],
-          },
-          headcounts: [],
+      entry: {
+        sourceTemplateTimeBlockId: message.id as never,
+        serves: true,
+        shiftSplit: {
+          kind: 'manual',
+          spans: [
+            {
+              label: 'First half',
+              startTime: parseTimeOfDay({ value: '09:00' }),
+              endTime: parseTimeOfDay({ value: '09:30' }),
+            },
+          ],
         },
-      ],
+        headcounts: [],
+      },
     });
-
-    const afterFirst = await repo.listByMinistry({ churchId, ministryId });
-    expect(afterFirst).toHaveLength(1);
-    expect(afterFirst[0]?.shiftSplit).toEqual({
+    await repo.upsertBlock({
+      churchId,
+      ministryId,
+      entry: { sourceTemplateTimeBlockId: welcome.id as never, ...notServed },
+    });
+    expect(first.shiftSplit).toEqual({
       kind: 'manual',
       spans: [{ label: 'First half', startTime: '09:00', endTime: '09:30' }],
     });
 
-    const replaced = await repo.replaceForMinistry({
+    const replaced = await repo.upsertBlock({
       churchId,
       ministryId,
-      entries: [],
+      entry: { sourceTemplateTimeBlockId: message.id as never, ...notServed },
     });
 
-    expect(replaced).toEqual([]);
-    const afterReplace = await repo.listByMinistry({ churchId, ministryId });
-    expect(afterReplace).toEqual([]);
+    expect(replaced.id).toBe(first.id);
+    expect(replaced.shiftSplit).toEqual(notServed.shiftSplit);
+    const listed = await repo.listByMinistry({ churchId, ministryId });
+    expect(
+      listed.map((entry) => entry.sourceTemplateTimeBlockId).sort(),
+    ).toEqual([message.id, welcome.id].sort());
   });
 
   it('listByChurch aggregates profiles across ministries within the same church and respects church isolation', async () => {
@@ -175,29 +177,25 @@ describe('DrizzleUsualSetupRepository', () => {
       db: schedulingTestDb,
     });
 
-    await repo.replaceForMinistry({
+    await repo.upsertBlock({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
-      entries: [
-        {
-          sourceTemplateTimeBlockId: blockA.id as never,
-          serves: true,
-          shiftSplit: { kind: 'equal', count: 1 },
-          headcounts: [],
-        },
-      ],
+      entry: {
+        sourceTemplateTimeBlockId: blockA.id as never,
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 1 },
+        headcounts: [],
+      },
     });
-    await repo.replaceForMinistry({
+    await repo.upsertBlock({
       churchId: ChurchId.from(seed.churchBId),
       ministryId: MinistryId.from(seed.ministryBId),
-      entries: [
-        {
-          sourceTemplateTimeBlockId: blockB.id as never,
-          serves: true,
-          shiftSplit: { kind: 'equal', count: 1 },
-          headcounts: [],
-        },
-      ],
+      entry: {
+        sourceTemplateTimeBlockId: blockB.id as never,
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 1 },
+        headcounts: [],
+      },
     });
 
     const churchAProfiles = await repo.listByChurch({

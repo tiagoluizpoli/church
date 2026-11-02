@@ -18,6 +18,7 @@ import type {
   ListMinistries200,
   ListMinistryRoles200,
   ListSectors200,
+  ListUsualSetup200,
   MintMinistryInvitation201,
   MintMinistryInvitationBody,
   RenameMinistry200,
@@ -26,7 +27,9 @@ import type {
   RenameMinistryRoleBody,
   RenameSector200,
   RenameSectorBody,
-  ResendMinistryInvitation200
+  ResendMinistryInvitation200,
+  SaveUsualSetupBlock200,
+  SaveUsualSetupBlockBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -240,7 +243,35 @@ const archiveSector = (
     },
       );
     }
-  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector}};
+  /**
+ * Every current TemplateTimeBlock, by template name and block order, with the managed Ministry's saved UsualSetup entry when it has one.
+ * @summary List a Ministry's Usual setup
+ */
+const listUsualSetup = (
+    ministryId: string,
+ ) => {
+      return apiClient<ListUsualSetup200>(
+      {url: `/api/v1/ministries/${ministryId}/usual-setup/`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Insert or replace the managed Ministry's UsualSetup entry for one TemplateTimeBlock: whether it serves, its Shift split and per-Shift headcounts. Other blocks' entries are untouched.
+ * @summary Save one block's Usual setup
+ */
+const saveUsualSetupBlock = (
+    ministryId: string,
+    sourceTemplateTimeBlockId: string,
+    saveUsualSetupBlockBody: SaveUsualSetupBlockBody,
+ ) => {
+      return apiClient<SaveUsualSetupBlock200>(
+      {url: `/api/v1/ministries/${ministryId}/usual-setup/${sourceTemplateTimeBlockId}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: saveUsualSetupBlockBody
+    },
+      );
+    }
+  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
 export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
 export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
@@ -256,3 +287,5 @@ export type ListSectorsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof
 export type CreateSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createSector']>>>
 export type RenameSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameSector']>>>
 export type ArchiveSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveSector']>>>
+export type ListUsualSetupResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listUsualSetup']>>>
+export type SaveUsualSetupBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['saveUsualSetupBlock']>>>

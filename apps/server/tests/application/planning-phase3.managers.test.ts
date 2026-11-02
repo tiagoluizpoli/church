@@ -918,10 +918,21 @@ describe('Phase 3 planning managers', () => {
         sourceTemplateTimeBlockId: block.id,
         serves: true,
         shiftSplit: { kind: 'equal', count: 2 },
-        headcounts: [
-          { sectorId: babiesRoom.id, roleId: roleRow.id, peopleNeeded: 2 },
-          { sectorId: kidsRoom.id, roleId: roleRow.id, peopleNeeded: 1 },
-        ],
+        // The same counts in each of the two Shifts.
+        headcounts: [0, 1].flatMap((shiftIndex) => [
+          {
+            shiftIndex,
+            sectorId: babiesRoom.id,
+            roleId: roleRow.id,
+            peopleNeeded: 2,
+          },
+          {
+            shiftIndex,
+            sectorId: kidsRoom.id,
+            roleId: roleRow.id,
+            peopleNeeded: 1,
+          },
+        ]),
       },
       {
         churchId: seed.churchAId,

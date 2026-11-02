@@ -143,6 +143,7 @@ export async function loadGatherings({
         serves: needs !== null,
         shiftSplit: { kind: 'equal', count: 1 },
         headcounts: (needs ?? []).map((need) => ({
+          shiftIndex: 0,
           ...resolveStaffingNeed({
             ministry,
             ministryName: rule.ministry.name,

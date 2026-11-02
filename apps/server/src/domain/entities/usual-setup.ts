@@ -10,7 +10,9 @@ import type {
 } from '../branded-ids';
 import { DuplicateHeadcountError } from '../errors/duplicate-headcount';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
+import { InvalidShiftIndexError } from '../errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../errors/invalid-shift-split';
+import { UsualSetupEmptyError } from '../errors/usual-setup-empty';
 
 export interface UsualSetupEqualSplit {
   kind: 'equal';
@@ -30,7 +32,10 @@ export interface UsualSetupManualSplit {
 
 export type UsualSetupShiftSplit = UsualSetupEqualSplit | UsualSetupManualSplit;
 
+/** One positive count for a Sector × Role in one Shift of the split. */
 export interface UsualSetupHeadcount {
+  /** Zero-based chronological Shift the split generates. */
+  shiftIndex: number;
   sectorId: SectorId;
   roleId: RoleId;
   peopleNeeded: number;
@@ -131,7 +136,7 @@ function assertValidHeadcounts({
 }: AssertValidHeadcountsInput): void {
   const places = new Set<string>();
   for (const headcount of headcounts) {
-    const place = `${headcount.sectorId}:${headcount.roleId}`;
+    const place = `${headcount.shiftIndex}:${headcount.sectorId}:${headcount.roleId}`;
     if (places.has(place)) {
       throw new DuplicateHeadcountError();
     }
@@ -144,4 +149,49 @@ function assertValidHeadcounts({
       throw new InvalidRequiredCountError();
     }
   }
+}
+
+interface ShiftCountInput {
+  shiftSplit: UsualSetupShiftSplit;
+}
+
+/** How many Shifts the split generates; headcount indices range below it. */
+export function shiftCountOf({ shiftSplit }: ShiftCountInput): number {
+  return shiftSplit.kind === 'equal'
+    ? shiftSplit.count
+    : shiftSplit.spans.length;
+}
+
+const NOT_SERVED_SPLIT: UsualSetupEqualSplit = { kind: 'equal', count: 1 };
+
+export interface ToSaveableUsualSetupEntryInput {
+  entry: UsualSetupEntryInput;
+}
+
+/**
+ * The entry a save persists. Rules a stored legacy row may break, so they hold
+ * on write only: a serving entry needs a positive headcount in a Shift its
+ * split generates; a non-serving entry is the canonical explicit opt-out.
+ */
+export function toSaveableUsualSetupEntry({
+  entry,
+}: ToSaveableUsualSetupEntryInput): UsualSetupEntryInput {
+  if (!entry.serves) {
+    return { ...entry, shiftSplit: NOT_SERVED_SPLIT, headcounts: [] };
+  }
+  if (entry.headcounts.length === 0) {
+    throw new UsualSetupEmptyError();
+  }
+  assertValidShiftSplit({ shiftSplit: entry.shiftSplit });
+  const shiftCount = shiftCountOf({ shiftSplit: entry.shiftSplit });
+  for (const { shiftIndex } of entry.headcounts) {
+    if (
+      !Number.isInteger(shiftIndex) ||
+      shiftIndex < 0 ||
+      shiftIndex >= shiftCount
+    ) {
+      throw new InvalidShiftIndexError();
+    }
+  }
+  return entry;
 }

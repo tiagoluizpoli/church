@@ -11,6 +11,7 @@ import {
   PrepareController,
   RedemptionController,
   SectorController,
+  UsualSetupController,
   VolunteerController,
   VolunteerScheduleController,
 } from '../../api/controllers';
@@ -56,7 +57,6 @@ export function buildControllers({
       eventTemplateManager,
       planningEventManager,
       activeChurchResolver,
-      participationManager,
       ministryManager,
       authorityGuard,
     }),
@@ -75,6 +75,12 @@ export function buildControllers({
     new SectorController({
       ministryManager,
       sectorManager,
+      activeChurchResolver,
+      authorityGuard,
+    }),
+    new UsualSetupController({
+      ministryManager,
+      participationManager,
       activeChurchResolver,
       authorityGuard,
     }),

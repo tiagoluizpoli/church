@@ -19,7 +19,6 @@ import type {
   GetCycle200,
   GetEventTemplate200,
   GetEventTemplateUsage200,
-  GetUsualSetup200,
   ListCycles200,
   ListCyclesParams,
   ListEventTemplates200,
@@ -30,9 +29,7 @@ import type {
   UpdatePlanningEvent200,
   UpdatePlanningEventBody,
   UpdatePlanningEventTimeBlock200,
-  UpdatePlanningEventTimeBlockBody,
-  UpsertUsualSetup200,
-  UpsertUsualSetupBody
+  UpdatePlanningEventTimeBlockBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -289,33 +286,6 @@ const deletePlanningEventTimeBlock = (
       );
     }
   /**
- * Get a Ministry's UsualSetup, the standing rule declaring which EventTemplate TemplateTimeBlocks it always serves.
- * @summary Get a Ministry's usual setup
- */
-const getUsualSetup = (
-    ministryId: string,
- ) => {
-      return apiClient<GetUsualSetup200>(
-      {url: `/api/v1/admin/ministries/${ministryId}/usual-setup`, method: 'GET'
-    },
-      );
-    }
-  /**
- * Replace a Ministry's UsualSetup entries, including which TemplateTimeBlocks it serves, its Shift split, and headcounts.
- * @summary Set a Ministry's usual setup
- */
-const upsertUsualSetup = (
-    ministryId: string,
-    upsertUsualSetupBody: UpsertUsualSetupBody,
- ) => {
-      return apiClient<UpsertUsualSetup200>(
-      {url: `/api/v1/admin/ministries/${ministryId}/usual-setup`, method: 'PUT',
-      headers: {'Content-Type': 'application/json', },
-      data: upsertUsualSetupBody
-    },
-      );
-    }
-  /**
  * Set a Ministry's defaultDirection (all-in or all-out), deciding whether it starts opted into every EventTimeBlock of a cycle by default.
  * @summary Set a Ministry's default direction
  */
@@ -330,7 +300,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,getUsualSetup,upsertUsualSetup,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
@@ -349,6 +319,4 @@ export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnTyp
 export type CreatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEventTimeBlock']>>>
 export type UpdatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventTimeBlock']>>>
 export type DeletePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEventTimeBlock']>>>
-export type GetUsualSetupResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getUsualSetup']>>>
-export type UpsertUsualSetupResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['upsertUsualSetup']>>>
 export type SetMinistryDefaultDirectionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['setMinistryDefaultDirection']>>>

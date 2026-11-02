@@ -5,6 +5,8 @@ export const VALIDATION_REASONS = [
   'DUPLICATE_HEADCOUNT',
   'DUPLICATE_TEMPLATE_NAME',
   'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  'USUAL_SETUP_EMPTY',
+  'INVALID_SHIFT_INDEX',
 ] as const;
 export type ValidationReason = (typeof VALIDATION_REASONS)[number];
 

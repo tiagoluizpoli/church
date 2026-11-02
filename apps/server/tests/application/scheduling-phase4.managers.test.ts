@@ -882,7 +882,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('getUsualSetup/upsertUsualSetup persists validated entries and rejects invalid shift-split/headcount input', async () => {
+  it('listUsualSetupBlocks/saveUsualSetupBlock persists a validated block entry and rejects invalid shift-split/headcount input', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
@@ -913,72 +913,61 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
     const block = blocks[0];
     if (!block) throw new Error('template block seed failed');
 
-    const empty = await participationManager.getUsualSetup({
-      churchId,
-      ministryId,
-    });
-    expect(empty).toEqual([]);
+    const blockId = TemplateTimeBlockId.from(block.id);
+    const headcount = {
+      shiftIndex: 1,
+      sectorId: SectorId.from(sectorRow.id),
+      roleId: RoleId.from(roleRow.id),
+      peopleNeeded: 1,
+    };
 
-    const saved = await participationManager.upsertUsualSetup({
+    const [unsaved] = await participationManager.listUsualSetupBlocks({
       churchId,
       ministryId,
-      entries: [
-        {
-          sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
-          serves: true,
-          shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: [
-            {
-              sectorId: SectorId.from(sectorRow.id),
-              roleId: RoleId.from(roleRow.id),
-              peopleNeeded: 1,
-            },
-          ],
-        },
-      ],
     });
-    expect(saved).toHaveLength(1);
-    expect(saved[0]?.serves).toBe(true);
+    expect(unsaved?.entry).toBeUndefined();
 
-    const fetched = await participationManager.getUsualSetup({
+    const saved = await participationManager.saveUsualSetupBlock({
+      churchId,
+      ministryId,
+      entry: {
+        sourceTemplateTimeBlockId: blockId,
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 2 },
+        headcounts: [headcount],
+      },
+    });
+    expect(saved.entry?.headcounts).toEqual([headcount]);
+
+    const [fetched] = await participationManager.listUsualSetupBlocks({
       churchId,
       ministryId,
     });
-    expect(fetched).toHaveLength(1);
+    expect(fetched?.entry?.headcounts).toEqual([headcount]);
 
     await expect(
-      participationManager.upsertUsualSetup({
+      participationManager.saveUsualSetupBlock({
         churchId,
         ministryId,
-        entries: [
-          {
-            sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 0 },
-            headcounts: [],
-          },
-        ],
+        entry: {
+          sourceTemplateTimeBlockId: blockId,
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 0 },
+          headcounts: [headcount],
+        },
       }),
     ).rejects.toThrow(InvalidShiftSplitError);
 
     await expect(
-      participationManager.upsertUsualSetup({
+      participationManager.saveUsualSetupBlock({
         churchId,
         ministryId,
-        entries: [
-          {
-            sourceTemplateTimeBlockId: TemplateTimeBlockId.from(block.id),
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [
-              {
-                sectorId: SectorId.from(sectorRow.id),
-                roleId: RoleId.from(roleRow.id),
-                peopleNeeded: 0,
-              },
-            ],
-          },
-        ],
+        entry: {
+          sourceTemplateTimeBlockId: blockId,
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 2 },
+          headcounts: [{ ...headcount, peopleNeeded: 0 }],
+        },
       }),
     ).rejects.toThrow(InvalidRequiredCountError);
   });

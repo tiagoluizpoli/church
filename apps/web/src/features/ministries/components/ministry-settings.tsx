@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { MinistryArchive } from '@/features/ministries/components/ministry-archive';
 import { MinistryNameForm } from '@/features/ministries/components/ministry-name-form';
 import {
   invalidateMinistryReads,
@@ -36,23 +37,26 @@ export function MinistrySettings({ ministryId }: MinistrySettingsProps) {
   return (
     <CapabilityGate allow={isChurchAdmin} refusal="no-access">
       {ministry ? (
-        <section className="surface-panel max-w-xl space-y-4 p-4">
-          <h2 className="font-semibold text-lg">
-            {m.ministry_settings_name_title()}
-          </h2>
-          <MinistryNameForm
-            key={ministry.id}
-            initialName={ministry.name}
-            onSave={rename}
-            renderActions={(pending) => (
-              <Button type="submit" disabled={pending}>
-                {pending
-                  ? m.ministry_settings_saving()
-                  : m.ministry_settings_save()}
-              </Button>
-            )}
-          />
-        </section>
+        <div className="space-y-4">
+          <section className="surface-panel max-w-xl space-y-4 p-4">
+            <h2 className="font-semibold text-lg">
+              {m.ministry_settings_name_title()}
+            </h2>
+            <MinistryNameForm
+              key={ministry.id}
+              initialName={ministry.name}
+              onSave={rename}
+              renderActions={(pending) => (
+                <Button type="submit" disabled={pending}>
+                  {pending
+                    ? m.ministry_settings_saving()
+                    : m.ministry_settings_save()}
+                </Button>
+              )}
+            />
+          </section>
+          <MinistryArchive ministryId={ministry.id} name={ministry.name} />
+        </div>
       ) : null}
     </CapabilityGate>
   );

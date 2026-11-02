@@ -1,4 +1,4 @@
-import { nowAsDate } from '@church/time';
+import { now } from '@church/time';
 import type { ChurchId, MinistryId } from '../domain/branded-ids';
 import type {
   ArchiveSectorInput,
@@ -57,11 +57,11 @@ export class DbSectorManager implements ISectorManager {
     await this.unitOfWork.run(async (tx) => {
       await this.lockActiveMinistry({ ...input, tx });
       // The lock is taken first so the guard reads every committed new use.
-      await this.sectorRepository.lockForArchive({ ...input, tx });
+      await this.sectorRepository.lockActiveForArchive({ ...input, tx });
       const blockers = await this.sectorRepository.listArchiveBlockers({
         churchId: input.churchId,
         sectorId: input.sectorId,
-        now: nowAsDate(),
+        now: now(),
         tx,
       });
       if (blockers.length > 0) throw new SectorInUseError({ blockers });

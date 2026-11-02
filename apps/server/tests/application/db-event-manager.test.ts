@@ -210,7 +210,7 @@ function createRepos(): Repos {
     lockActive: vi.fn(),
     create: vi.fn(),
     rename: vi.fn(),
-    lockForArchive: vi.fn(),
+    lockActiveForArchive: vi.fn(),
     listArchiveBlockers: vi.fn(),
     markArchived: vi.fn(),
   };

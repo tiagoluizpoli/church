@@ -224,7 +224,7 @@ export class DrizzleRoleRepository implements RoleRepository {
       .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
       .where(
         and(
-          eq(shiftRequirement.churchId, churchId),
+          withChurchIsolation({ table: shiftRequirement, churchId }),
           eq(shiftRequirement.roleId, roleId),
           gt(event.end, toDate({ instant: now })),
         ),
@@ -240,7 +240,7 @@ export class DrizzleRoleRepository implements RoleRepository {
       .innerJoin(ministry, eq(ministry.id, usualSetup.ministryId))
       .where(
         and(
-          eq(usualSetup.churchId, churchId),
+          withChurchIsolation({ table: usualSetup, churchId }),
           sql`${usualSetup.headcounts} @> ${JSON.stringify([{ roleId }])}::jsonb`,
         ),
       )

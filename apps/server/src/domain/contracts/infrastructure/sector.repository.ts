@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type { ArchiveBlocker } from '../../archive-blockers';
 import type { ChurchId, MinistryId, SectorId } from '../../branded-ids';
 import type { Sector } from '../../entities/sector';
@@ -48,7 +49,7 @@ export interface ListSectorArchiveBlockersInput {
   churchId: ChurchId;
   sectorId: SectorId;
   /** Requirements of Events ending after this moment block. */
-  now: Date;
+  now: Instant;
   tx: TransactionContext;
 }
 
@@ -68,7 +69,7 @@ export interface SectorRepository {
   /** An active Sector of the Ministry only; else `NotFoundError`. Same name errors as `create`. */
   rename(input: RenameSectorRecordInput): Promise<Sector>;
   /** Locks an active Sector of the Ministry for archive until `tx` ends; else `NotFoundError`. */
-  lockForArchive(input: SectorArchiveInput): Promise<Sector>;
+  lockActiveForArchive(input: SectorArchiveInput): Promise<Sector>;
   /** Upcoming requirement and UsualSetup locations, one per block. */
   listArchiveBlockers(
     input: ListSectorArchiveBlockersInput,

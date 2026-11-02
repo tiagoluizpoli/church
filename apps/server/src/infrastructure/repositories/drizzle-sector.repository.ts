@@ -10,7 +10,7 @@ import {
   shiftRequirement,
   usualSetup,
 } from '@church/db';
-import { nowAsDate } from '@church/time';
+import { nowAsDate, toDate } from '@church/time';
 import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import type { ArchiveBlocker } from '../../domain/archive-blockers';
 import type { SectorId } from '../../domain/branded-ids';
@@ -167,7 +167,7 @@ export class DrizzleSectorRepository implements SectorRepository {
     return mapSector(row);
   }
 
-  async lockForArchive({
+  async lockActiveForArchive({
     churchId,
     ministryId,
     sectorId,
@@ -220,7 +220,7 @@ export class DrizzleSectorRepository implements SectorRepository {
           eq(shiftRequirement.sectorId, sectorId),
           withChurchIsolation({ table: shiftRequirement, churchId }),
           // An ongoing Event still blocks: only its end makes it past.
-          gt(event.end, now),
+          gt(event.end, toDate({ instant: now })),
         ),
       )
       .orderBy(

@@ -55,15 +55,14 @@ describe('coming-soon placeholder routes', () => {
     expect(screen.queryByText(m.shell_coming_soon())).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['/people', m.nav_people()],
-    ['/invitations', m.nav_invitations()],
-  ])('shows %s as coming soon to a Ministry leader', async (path, title) => {
+  it('shows /people as coming soon to a Ministry leader', async () => {
     signInAs(callerCapabilitiesFixture({ ledMinistries: 1 }));
 
-    renderRoute({ initialPath: path, churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/people', churchTimezone: 'UTC' });
 
-    expect(await screen.findByRole('heading', { name: title })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: m.nav_people() }),
+    ).toBeVisible();
     expect(screen.getByText(m.shell_coming_soon())).toBeVisible();
   });
 

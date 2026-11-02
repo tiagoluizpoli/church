@@ -6,6 +6,7 @@ export { DrizzleCycleRepository } from './drizzle-cycle.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
 export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';
 export { DrizzleEventTimeBlockRepository } from './drizzle-event-time-block.repository';
+export { DrizzleInvitationListRepository } from './drizzle-invitation-list.repository';
 export { DrizzleInvitationVerificationCodeRepository } from './drizzle-invitation-verification-code.repository';
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
 export { DrizzleMinistryInvitationRepository } from './drizzle-ministry-invitation.repository';

@@ -64,11 +64,30 @@ interface DeliveryLookupInput {
 const inviter = alias(user, 'inviter');
 const invitee = alias(user, 'invitee');
 
+interface RowOrderKey {
+  createdAt: Date;
+  kind: InvitationListKind;
+  id: string;
+}
+
+interface IsBeforeInput {
+  a: RowOrderKey;
+  b: RowOrderKey;
+}
+
+interface AfterCursorInput {
+  kind: InvitationListKind;
+  position?: InvitationListCursorPosition;
+  createdAt: Parameters<typeof lt>[0];
+  id: Parameters<typeof lt>[0];
+}
+
+interface RolesByInvitationInput {
+  ids: string[];
+}
+
 /** Newest first; equal Instants fall back to kind then id, compared byte-wise like the SQL `COLLATE "C"`. */
-function isBefore(
-  a: { createdAt: Date; kind: InvitationListKind; id: string },
-  b: { createdAt: Date; kind: InvitationListKind; id: string },
-): boolean {
+function isBefore({ a, b }: IsBeforeInput): boolean {
   const time = b.createdAt.getTime() - a.createdAt.getTime();
   if (time !== 0) return time < 0;
   if (a.kind !== b.kind) return a.kind > b.kind;
@@ -81,12 +100,7 @@ function afterCursor({
   position,
   createdAt,
   id,
-}: {
-  kind: InvitationListKind;
-  position?: InvitationListCursorPosition;
-  createdAt: Parameters<typeof lt>[0];
-  id: Parameters<typeof lt>[0];
-}): SQL | undefined {
+}: AfterCursorInput): SQL | undefined {
   if (!position) return undefined;
   // Same-Instant rows of a later-sorting kind were already served.
   if (kind > position.kind) return lt(createdAt, position.createdAt);
@@ -136,7 +150,7 @@ export class DrizzleInvitationListRepository
     ]);
 
     const merged = [...ministryRows, ...churchRows]
-      .sort((a, b) => (isBefore(a, b) ? -1 : 1))
+      .sort((a, b) => (isBefore({ a, b }) ? -1 : 1))
       .slice(0, limit + 1);
     const page = merged.slice(0, limit);
 
@@ -300,9 +314,7 @@ export class DrizzleInvitationListRepository
   /** Roles are read apart from the page rows so they can never multiply them. */
   private async rolesByInvitation({
     ids,
-  }: {
-    ids: string[];
-  }): Promise<Map<string, InvitationListRole[]>> {
+  }: RolesByInvitationInput): Promise<Map<string, InvitationListRole[]>> {
     const byInvitation = new Map<string, InvitationListRole[]>();
     if (ids.length === 0) return byInvitation;
     const rows = await getClient({ db: this.db })

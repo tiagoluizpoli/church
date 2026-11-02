@@ -203,7 +203,8 @@ describe('E2E journey recipe loader command', () => {
         use: (pool) => migrateDevelopmentSchema({ pool }),
       });
     }
-  });
+    // Four full migrations in sequence outgrow the 30s default under suite load.
+  }, 120_000);
 
   afterAll(async () => {
     for (const database of scratchDatabases) {

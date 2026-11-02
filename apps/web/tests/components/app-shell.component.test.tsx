@@ -390,6 +390,38 @@ describe('AppShell flat nav per persona (F7)', () => {
     ).toEqual([HOME, m.nav_ministries(), 'Worship', label()]);
   });
 
+  it('reads Home › Ministries › name › Usual setup › block on a nested Usual setup page', () => {
+    asPersona({ leadsMinistries: true });
+    const ministryId = '33333333-3333-4333-8333-333333333331';
+    const blockId = '55555555-5555-4555-8555-555555555551';
+    mockPathname = `/ministries/${ministryId}/usual-setup/${blockId}`;
+
+    renderWithProviders(
+      <AppShell
+        notificationBell={null}
+        breadcrumbOverrides={[
+          { segment: ministryId, label: 'Worship' },
+          { segment: blockId, label: 'Sunday · Welcome' },
+        ]}
+      >
+        content
+      </AppShell>,
+    );
+
+    const breadcrumbs = screen.getByTestId('breadcrumbs');
+    expect(
+      within(breadcrumbs)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      HOME,
+      m.nav_ministries(),
+      'Worship',
+      m.ministry_tab_usual_setup(),
+      'Sunday · Welcome',
+    ]);
+  });
+
   it('hides an opaque id segment from breadcrumbs when no override is supplied', () => {
     asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles/cycle-1';

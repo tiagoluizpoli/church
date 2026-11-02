@@ -143,21 +143,17 @@ async function setUpTwoMinistryOverlapCycle({
   }
 
   const worshipUsualSetupResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/usual-setup`,
+    `${SERVER_URL}/api/v1/ministries/${worshipMinistryId}/usual-setup/${block.id}`,
     {
       data: {
-        entries: [
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 1 },
+        headcounts: [
           {
-            sourceTemplateTimeBlockId: block.id,
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [
-              {
-                sectorId: journey.ministries.worship.sectors.stage.id,
-                roleId: journey.ministries.worship.roles.usher.id,
-                peopleNeeded: 1,
-              },
-            ],
+            shiftIndex: 0,
+            sectorId: journey.ministries.worship.sectors.stage.id,
+            roleId: journey.ministries.worship.roles.usher.id,
+            peopleNeeded: 1,
           },
         ],
       },
@@ -166,21 +162,17 @@ async function setUpTwoMinistryOverlapCycle({
   expect(worshipUsualSetupResponse.ok()).toBeTruthy();
 
   const careUsualSetupResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${careMinistryId}/usual-setup`,
+    `${SERVER_URL}/api/v1/ministries/${careMinistryId}/usual-setup/${block.id}`,
     {
       data: {
-        entries: [
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 1 },
+        headcounts: [
           {
-            sourceTemplateTimeBlockId: block.id,
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [
-              {
-                sectorId: journey.ministries.care.sectors.lobby.id,
-                roleId: journey.ministries.care.roles.careHost.id,
-                peopleNeeded: 1,
-              },
-            ],
+            shiftIndex: 0,
+            sectorId: journey.ministries.care.sectors.lobby.id,
+            roleId: journey.ministries.care.roles.careHost.id,
+            peopleNeeded: 1,
           },
         ],
       },

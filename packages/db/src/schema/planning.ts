@@ -35,7 +35,10 @@ export interface ManualShiftSplitSpec {
 
 export type ShiftSplitSpec = EqualShiftSplitSpec | ManualShiftSplitSpec;
 
+/** One positive count for a Sector × Role in one Shift of the split. */
 export interface UsualSetupHeadcount {
+  /** Zero-based chronological Shift the split generates. */
+  shiftIndex: number;
   sectorId: string;
   roleId: string;
   peopleNeeded: number;

@@ -46,12 +46,15 @@ function plan(input: Partial<SeedParticipationPlanInput>) {
 }
 
 describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
-  it('DL1-PS-01 profile entry with serves=true seeds inclusion, split shifts, and requirements', () => {
+  it('DL1-PS-01 profile entry with serves=true seeds inclusion, split shifts, and each Shift its own requirements', () => {
     const entry: ProfileSeederEntry = {
       sourceTemplateTimeBlockId: blockId,
       serves: true,
       shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [{ sectorId, roleId, peopleNeeded: 3 }],
+      headcounts: [
+        { shiftIndex: 0, sectorId, roleId, peopleNeeded: 3 },
+        { shiftIndex: 1, sectorId, roleId, peopleNeeded: 1 },
+      ],
     };
 
     const result = plan({ profileEntries: [entry] });
@@ -63,10 +66,10 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     );
     expect(result.shifts[1]?.endTime).toEqual(templatedEventTimeBlock.endTime);
     expect(result.shifts[0]?.headcounts).toEqual([
-      { sectorId, roleId, peopleNeeded: 3 },
+      { shiftIndex: 0, sectorId, roleId, peopleNeeded: 3 },
     ]);
     expect(result.shifts[1]?.headcounts).toEqual([
-      { sectorId, roleId, peopleNeeded: 3 },
+      { shiftIndex: 1, sectorId, roleId, peopleNeeded: 1 },
     ]);
   });
 
@@ -89,12 +92,16 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
           },
         ],
       },
-      headcounts: [],
+      headcounts: [{ shiftIndex: 1, sectorId, roleId, peopleNeeded: 2 }],
     };
 
     const result = plan({ profileEntries: [entry] });
 
     expect(result.shifts).toHaveLength(2);
+    expect(result.shifts[0]?.headcounts).toEqual([]);
+    expect(result.shifts[1]?.headcounts).toEqual([
+      { shiftIndex: 1, sectorId, roleId, peopleNeeded: 2 },
+    ]);
     expect(result.shifts[0]?.startTime).toEqual(
       parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
     );

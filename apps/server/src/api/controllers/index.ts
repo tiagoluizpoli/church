@@ -9,5 +9,6 @@ export { NotificationController } from './notification-controller';
 export { PrepareController } from './prepare-controller';
 export { RedemptionController } from './redemption-controller';
 export { SectorController } from './sector-controller';
+export { UsualSetupController } from './usual-setup-controller';
 export { VolunteerController } from './volunteer-controller';
 export { VolunteerScheduleController } from './volunteer-schedule-controller';

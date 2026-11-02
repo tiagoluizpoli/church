@@ -10,10 +10,8 @@ import {
   vi,
 } from 'vitest';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
-import { RoleId, SectorId } from '@/domain/branded-ids';
 import { Event } from '@/domain/entities/event';
 import { Ministry } from '@/domain/entities/ministry';
-import { UsualSetup } from '@/domain/entities/usual-setup';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 import { LastRemainingEventTimeBlockError } from '@/domain/errors/last-remaining-event-time-block-error';
 import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
@@ -58,11 +56,6 @@ const planningEventManager = {
   deleteEventTimeBlock: vi.fn(),
 };
 
-const participationManager = {
-  getUsualSetup: vi.fn(),
-  upsertUsualSetup: vi.fn(),
-};
-
 const ministryManager = {
   setDefaultDirection: vi.fn(),
 };
@@ -86,26 +79,6 @@ function createActiveChurchResolution() {
   };
 }
 
-function createUsualSetup(): UsualSetup {
-  return new UsualSetup({
-    id: '55555555-5555-5555-8555-555555555555',
-    props: {
-      churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '33333333-3333-3333-3333-333333333333',
-      sourceTemplateTimeBlockId: '77777777-7777-7777-8777-777777777777',
-      serves: true,
-      shiftSplit: { kind: 'equal', count: 2 },
-      headcounts: [
-        {
-          sectorId: SectorId.from('99999999-9999-4999-8999-999999999999'),
-          roleId: RoleId.from('88888888-8888-8888-8888-888888888888'),
-          peopleNeeded: 3,
-        },
-      ],
-    },
-  });
-}
-
 function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
   return new Ministry({
     props: {
@@ -126,7 +99,6 @@ beforeAll(async () => {
     eventTemplateManager: templateManager as never,
     planningEventManager: planningEventManager as never,
     activeChurchResolver: activeChurchResolver as never,
-    participationManager: participationManager as never,
     ministryManager: ministryManager as never,
     authorityGuard: authorityGuard as never,
   });
@@ -314,61 +286,10 @@ describe('Church admin planning routes', () => {
     );
   });
 
-  it('serves ministry profile routes and returns updated default direction', async () => {
-    const usualSetup = createUsualSetup();
-    participationManager.getUsualSetup.mockResolvedValue([usualSetup]);
-    participationManager.upsertUsualSetup.mockResolvedValue([usualSetup]);
+  it('returns the updated default direction', async () => {
     ministryManager.setDefaultDirection.mockResolvedValue(
       createMinistry('all_in'),
     );
-
-    const getResponse = await app.inject({
-      method: 'GET',
-      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/usual-setup',
-    });
-
-    expect(getResponse.statusCode).toBe(200);
-    expect(getResponse.json()).toEqual({
-      entries: [
-        {
-          id: '55555555-5555-5555-8555-555555555555',
-          ministryId: '33333333-3333-3333-3333-333333333333',
-          sourceTemplateTimeBlockId: '77777777-7777-7777-8777-777777777777',
-          serves: true,
-          shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: [
-            {
-              sectorId: '99999999-9999-4999-8999-999999999999',
-              roleId: '88888888-8888-8888-8888-888888888888',
-              peopleNeeded: 3,
-            },
-          ],
-        },
-      ],
-    });
-
-    const putResponse = await app.inject({
-      method: 'PUT',
-      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/usual-setup',
-      payload: {
-        entries: [
-          {
-            sourceTemplateTimeBlockId: '77777777-7777-7777-8777-777777777777',
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 2 },
-            headcounts: [
-              {
-                sectorId: '99999999-9999-4999-8999-999999999999',
-                roleId: '88888888-8888-8888-8888-888888888888',
-                peopleNeeded: 3,
-              },
-            ],
-          },
-        ],
-      },
-    });
-
-    expect(putResponse.statusCode).toBe(200);
 
     const patchResponse = await app.inject({
       method: 'PATCH',

@@ -58,6 +58,7 @@ function mapHeadcount(
   stored: UsualSetupRow['headcounts'][number],
 ): UsualSetupHeadcount {
   return {
+    shiftIndex: stored.shiftIndex,
     sectorId: stored.sectorId as SectorId,
     roleId: stored.roleId as RoleId,
     peopleNeeded: stored.peopleNeeded,

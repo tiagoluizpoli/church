@@ -110,10 +110,10 @@ function buildProfileShifts({
       startTime: eventTimeBlock.startTime,
       endTime: eventTimeBlock.endTime,
       n: entry.shiftSplit.count,
-    }).map((span) => ({
+    }).map((span, shiftIndex) => ({
       startTime: span.startTime,
       endTime: span.endTime,
-      headcounts: entry.headcounts,
+      headcounts: headcountsOfShift({ entry, shiftIndex }),
     }));
   }
 
@@ -122,7 +122,7 @@ function buildProfileShifts({
     timeZone,
   });
 
-  return entry.shiftSplit.spans.map((span) => ({
+  return entry.shiftSplit.spans.map((span, shiftIndex) => ({
     startTime: toInstant({
       day: eventTimeBlockDate,
       time: span.startTime,
@@ -134,6 +134,20 @@ function buildProfileShifts({
       timeZone,
     }),
     label: span.label,
-    headcounts: entry.headcounts,
+    headcounts: headcountsOfShift({ entry, shiftIndex }),
   }));
+}
+
+interface HeadcountsOfShiftInput {
+  entry: ProfileSeederEntry;
+  shiftIndex: number;
+}
+
+function headcountsOfShift({
+  entry,
+  shiftIndex,
+}: HeadcountsOfShiftInput): UsualSetupHeadcount[] {
+  return entry.headcounts.filter(
+    (headcount) => headcount.shiftIndex === shiftIndex,
+  );
 }

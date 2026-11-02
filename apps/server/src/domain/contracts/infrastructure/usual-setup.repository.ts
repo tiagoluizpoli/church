@@ -11,10 +11,10 @@ export interface ListUsualSetupByMinistryInput {
   tx?: TransactionContext;
 }
 
-export interface ReplaceUsualSetupInput {
+export interface UpsertUsualSetupBlockInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  entries: UsualSetupEntryInput[];
+  entry: UsualSetupEntryInput;
   tx?: TransactionContext;
 }
 
@@ -26,5 +26,6 @@ export interface ListUsualSetupsByChurchInput {
 export interface UsualSetupRepository {
   listByMinistry(input: ListUsualSetupByMinistryInput): Promise<UsualSetup[]>;
   listByChurch(input: ListUsualSetupsByChurchInput): Promise<UsualSetup[]>;
-  replaceForMinistry(input: ReplaceUsualSetupInput): Promise<UsualSetup[]>;
+  /** Inserts or replaces this one block's entry; other blocks stay untouched. */
+  upsertBlock(input: UpsertUsualSetupBlockInput): Promise<UsualSetup>;
 }

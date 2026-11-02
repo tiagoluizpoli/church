@@ -19,6 +19,8 @@ export const VALIDATION_REASON_MESSAGES: Record<
   DUPLICATE_TEMPLATE_NAME: m.error_validation_duplicate_template_name,
   DUPLICATE_TEMPLATE_BLOCK_LABEL:
     m.error_validation_duplicate_template_block_label,
+  USUAL_SETUP_EMPTY: m.error_validation_usual_setup_empty,
+  INVALID_SHIFT_INDEX: m.error_validation_invalid_shift_index,
 };
 
 interface DomainErrorMessageInput {

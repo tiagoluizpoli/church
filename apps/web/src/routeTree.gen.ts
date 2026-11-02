@@ -37,7 +37,6 @@ import { Route as AuthenticatedActiveChurchSchedulesMinistryIdIndexRouteImport }
 import { Route as AuthenticatedActiveChurchMinistriesMinistryIdIndexRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/index'
 import { Route as AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRouteImport } from './routes/_authenticated/_active-church/_planning-admin/event-templates/index'
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesIndexRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/index'
-import { Route as AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/usual-setup'
 import { Route as AuthenticatedActiveChurchMinistriesMinistryIdSettingsRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/settings'
 import { Route as AuthenticatedActiveChurchMinistriesMinistryIdSectorsRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/sectors'
 import { Route as AuthenticatedActiveChurchMinistriesMinistryIdRolesRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/roles'
@@ -46,7 +45,9 @@ import { Route as AuthenticatedActiveChurchPlanningAdminEventTemplatesTemplateId
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesNewRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/new'
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesCycleIdRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/$cycleId'
 import { Route as AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRouteImport } from './routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index'
+import { Route as AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/usual-setup/index'
 import { Route as AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRouteImport } from './routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign'
+import { Route as AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/usual-setup/$blockId'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -208,12 +209,6 @@ const AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute =
     path: '/cycles/',
     getParentRoute: () => AuthenticatedActiveChurchPlanningAdminRoute,
   } as any)
-const AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute =
-  AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRouteImport.update({
-    id: '/usual-setup',
-    path: '/usual-setup',
-    getParentRoute: () => AuthenticatedActiveChurchMinistriesMinistryIdRoute,
-  } as any)
 const AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute =
   AuthenticatedActiveChurchMinistriesMinistryIdSettingsRouteImport.update({
     id: '/settings',
@@ -264,12 +259,28 @@ const AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute =
     path: '/$cycleId/',
     getParentRoute: () => AuthenticatedActiveChurchSchedulesMinistryIdRoute,
   } as any)
+const AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute =
+  AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRouteImport.update(
+    {
+      id: '/usual-setup/',
+      path: '/usual-setup/',
+      getParentRoute: () => AuthenticatedActiveChurchMinistriesMinistryIdRoute,
+    } as any,
+  )
 const AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute =
   AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRouteImport.update({
     id: '/$cycleId/assign',
     path: '/$cycleId/assign',
     getParentRoute: () => AuthenticatedActiveChurchSchedulesMinistryIdRoute,
   } as any)
+const AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute =
+  AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRouteImport.update(
+    {
+      id: '/usual-setup/$blockId',
+      path: '/usual-setup/$blockId',
+      getParentRoute: () => AuthenticatedActiveChurchMinistriesMinistryIdRoute,
+    } as any,
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedActiveChurchIndexRoute
@@ -300,12 +311,13 @@ export interface FileRoutesByFullPath {
   '/ministries/$ministryId/roles': typeof AuthenticatedActiveChurchMinistriesMinistryIdRolesRoute
   '/ministries/$ministryId/sectors': typeof AuthenticatedActiveChurchMinistriesMinistryIdSectorsRoute
   '/ministries/$ministryId/settings': typeof AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute
-  '/ministries/$ministryId/usual-setup': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute
   '/cycles/': typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute
   '/event-templates/': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute
   '/ministries/$ministryId/': typeof AuthenticatedActiveChurchMinistriesMinistryIdIndexRoute
   '/schedules/$ministryId/': typeof AuthenticatedActiveChurchSchedulesMinistryIdIndexRoute
+  '/ministries/$ministryId/usual-setup/$blockId': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute
   '/schedules/$ministryId/$cycleId/assign': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute
+  '/ministries/$ministryId/usual-setup/': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute
   '/schedules/$ministryId/$cycleId/': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -334,12 +346,13 @@ export interface FileRoutesByTo {
   '/ministries/$ministryId/roles': typeof AuthenticatedActiveChurchMinistriesMinistryIdRolesRoute
   '/ministries/$ministryId/sectors': typeof AuthenticatedActiveChurchMinistriesMinistryIdSectorsRoute
   '/ministries/$ministryId/settings': typeof AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute
-  '/ministries/$ministryId/usual-setup': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute
   '/cycles': typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute
   '/event-templates': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute
   '/ministries/$ministryId': typeof AuthenticatedActiveChurchMinistriesMinistryIdIndexRoute
   '/schedules/$ministryId': typeof AuthenticatedActiveChurchSchedulesMinistryIdIndexRoute
+  '/ministries/$ministryId/usual-setup/$blockId': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute
   '/schedules/$ministryId/$cycleId/assign': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute
+  '/ministries/$ministryId/usual-setup': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute
   '/schedules/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute
 }
 export interface FileRoutesById {
@@ -375,12 +388,13 @@ export interface FileRoutesById {
   '/_authenticated/_active-church/ministries/$ministryId/roles': typeof AuthenticatedActiveChurchMinistriesMinistryIdRolesRoute
   '/_authenticated/_active-church/ministries/$ministryId/sectors': typeof AuthenticatedActiveChurchMinistriesMinistryIdSectorsRoute
   '/_authenticated/_active-church/ministries/$ministryId/settings': typeof AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute
-  '/_authenticated/_active-church/ministries/$ministryId/usual-setup': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute
   '/_authenticated/_active-church/_planning-admin/cycles/': typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRoute
   '/_authenticated/_active-church/_planning-admin/event-templates/': typeof AuthenticatedActiveChurchPlanningAdminEventTemplatesIndexRoute
   '/_authenticated/_active-church/ministries/$ministryId/': typeof AuthenticatedActiveChurchMinistriesMinistryIdIndexRoute
   '/_authenticated/_active-church/schedules/$ministryId/': typeof AuthenticatedActiveChurchSchedulesMinistryIdIndexRoute
+  '/_authenticated/_active-church/ministries/$ministryId/usual-setup/$blockId': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute
   '/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute
+  '/_authenticated/_active-church/ministries/$ministryId/usual-setup/': typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute
   '/_authenticated/_active-church/schedules/$ministryId/$cycleId/': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -414,12 +428,13 @@ export interface FileRouteTypes {
     | '/ministries/$ministryId/roles'
     | '/ministries/$ministryId/sectors'
     | '/ministries/$ministryId/settings'
-    | '/ministries/$ministryId/usual-setup'
     | '/cycles/'
     | '/event-templates/'
     | '/ministries/$ministryId/'
     | '/schedules/$ministryId/'
+    | '/ministries/$ministryId/usual-setup/$blockId'
     | '/schedules/$ministryId/$cycleId/assign'
+    | '/ministries/$ministryId/usual-setup/'
     | '/schedules/$ministryId/$cycleId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -448,12 +463,13 @@ export interface FileRouteTypes {
     | '/ministries/$ministryId/roles'
     | '/ministries/$ministryId/sectors'
     | '/ministries/$ministryId/settings'
-    | '/ministries/$ministryId/usual-setup'
     | '/cycles'
     | '/event-templates'
     | '/ministries/$ministryId'
     | '/schedules/$ministryId'
+    | '/ministries/$ministryId/usual-setup/$blockId'
     | '/schedules/$ministryId/$cycleId/assign'
+    | '/ministries/$ministryId/usual-setup'
     | '/schedules/$ministryId/$cycleId'
   id:
     | '__root__'
@@ -488,12 +504,13 @@ export interface FileRouteTypes {
     | '/_authenticated/_active-church/ministries/$ministryId/roles'
     | '/_authenticated/_active-church/ministries/$ministryId/sectors'
     | '/_authenticated/_active-church/ministries/$ministryId/settings'
-    | '/_authenticated/_active-church/ministries/$ministryId/usual-setup'
     | '/_authenticated/_active-church/_planning-admin/cycles/'
     | '/_authenticated/_active-church/_planning-admin/event-templates/'
     | '/_authenticated/_active-church/ministries/$ministryId/'
     | '/_authenticated/_active-church/schedules/$ministryId/'
+    | '/_authenticated/_active-church/ministries/$ministryId/usual-setup/$blockId'
     | '/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign'
+    | '/_authenticated/_active-church/ministries/$ministryId/usual-setup/'
     | '/_authenticated/_active-church/schedules/$ministryId/$cycleId/'
   fileRoutesById: FileRoutesById
 }
@@ -703,13 +720,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActiveChurchPlanningAdminCyclesIndexRouteImport
       parentRoute: typeof AuthenticatedActiveChurchPlanningAdminRoute
     }
-    '/_authenticated/_active-church/ministries/$ministryId/usual-setup': {
-      id: '/_authenticated/_active-church/ministries/$ministryId/usual-setup'
-      path: '/usual-setup'
-      fullPath: '/ministries/$ministryId/usual-setup'
-      preLoaderRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRouteImport
-      parentRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdRoute
-    }
     '/_authenticated/_active-church/ministries/$ministryId/settings': {
       id: '/_authenticated/_active-church/ministries/$ministryId/settings'
       path: '/settings'
@@ -766,12 +776,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRouteImport
       parentRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdRoute
     }
+    '/_authenticated/_active-church/ministries/$ministryId/usual-setup/': {
+      id: '/_authenticated/_active-church/ministries/$ministryId/usual-setup/'
+      path: '/usual-setup'
+      fullPath: '/ministries/$ministryId/usual-setup/'
+      preLoaderRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRouteImport
+      parentRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdRoute
+    }
     '/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign': {
       id: '/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign'
       path: '/$cycleId/assign'
       fullPath: '/schedules/$ministryId/$cycleId/assign'
       preLoaderRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRouteImport
       parentRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdRoute
+    }
+    '/_authenticated/_active-church/ministries/$ministryId/usual-setup/$blockId': {
+      id: '/_authenticated/_active-church/ministries/$ministryId/usual-setup/$blockId'
+      path: '/usual-setup/$blockId'
+      fullPath: '/ministries/$ministryId/usual-setup/$blockId'
+      preLoaderRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRouteImport
+      parentRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdRoute
     }
   }
 }
@@ -849,8 +873,9 @@ interface AuthenticatedActiveChurchMinistriesMinistryIdRouteChildren {
   AuthenticatedActiveChurchMinistriesMinistryIdRolesRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdRolesRoute
   AuthenticatedActiveChurchMinistriesMinistryIdSectorsRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdSectorsRoute
   AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute
-  AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute
   AuthenticatedActiveChurchMinistriesMinistryIdIndexRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdIndexRoute
+  AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute
+  AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute
 }
 
 const AuthenticatedActiveChurchMinistriesMinistryIdRouteChildren: AuthenticatedActiveChurchMinistriesMinistryIdRouteChildren =
@@ -861,10 +886,12 @@ const AuthenticatedActiveChurchMinistriesMinistryIdRouteChildren: AuthenticatedA
       AuthenticatedActiveChurchMinistriesMinistryIdSectorsRoute,
     AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute:
       AuthenticatedActiveChurchMinistriesMinistryIdSettingsRoute,
-    AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute:
-      AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupRoute,
     AuthenticatedActiveChurchMinistriesMinistryIdIndexRoute:
       AuthenticatedActiveChurchMinistriesMinistryIdIndexRoute,
+    AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute:
+      AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute,
+    AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute:
+      AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRoute,
   }
 
 const AuthenticatedActiveChurchMinistriesMinistryIdRouteWithChildren =

@@ -141,19 +141,18 @@ async function setUpLiveChanges({
   }
 
   const usualSetupResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/usual-setup`,
+    `${SERVER_URL}/api/v1/ministries/${worshipMinistryId}/usual-setup/${block.id}`,
     {
       data: {
-        entries: [
-          {
-            sourceTemplateTimeBlockId: block.id,
-            serves: true,
-            shiftSplit: { kind: 'equal', count: 2 },
-            headcounts: [
-              { sectorId: stageSectorId, roleId: usherRoleId, peopleNeeded: 1 },
-            ],
-          },
-        ],
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 2 },
+        // One usher in each of the two Shifts.
+        headcounts: [0, 1].map((shiftIndex) => ({
+          shiftIndex,
+          sectorId: stageSectorId,
+          roleId: usherRoleId,
+          peopleNeeded: 1,
+        })),
       },
     },
   );

@@ -165,7 +165,7 @@ describe('Invitations page', () => {
     const [only] = await rows();
     expect(only).toHaveTextContent(m.ministry_invitation_access_leader());
     expect(only).toHaveTextContent(m.ministry_invitation_roles_none());
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(within(only).queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('refuses a plain member with the no-access state and never asks for the list', async () => {

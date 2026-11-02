@@ -7,6 +7,7 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
+import { InviteDialog } from '@/features/invitations/components/invite-dialog';
 import { useInvitationList } from '@/features/invitations/invitation-queries';
 import type { ListInvitations200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -102,6 +103,7 @@ export function InvitationListPage() {
         title={m.nav_invitations()}
         description={m.invitations_description()}
         autoFocusTitle
+        aside={<InviteDialog />}
       />
       {query.isError && items.length === 0 ? (
         <Alert variant="destructive">

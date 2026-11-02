@@ -32,6 +32,7 @@ import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -95,12 +96,12 @@ function createManagers() {
   const usualSetupRepository = new DrizzleUsualSetupRepository({ db });
   const ministryRepository = new DrizzleMinistryRepository({ db });
   const templateRepository = new DrizzleEventTemplateRepository({ db });
-  const staffing = {
+  const staffingSeeder = new UsualSetupStaffingSeeder({
     participationRepository,
     shiftRepository,
     usualSetupRepository,
     ministryRepository,
-  };
+  });
   return {
     ministryRepository,
     cycleManager: new DbCycleManager({
@@ -108,7 +109,8 @@ function createManagers() {
       eventRepository,
       churchRepository,
       unitOfWork,
-      ...staffing,
+      participationRepository,
+      staffingSeeder,
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -117,7 +119,7 @@ function createManagers() {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-      ...staffing,
+      staffingSeeder,
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,

@@ -1,7 +1,6 @@
-import { m } from '@church/i18n/messages';
 import { createFileRoute } from '@tanstack/react-router';
+import { MinistryListPage } from '@/features/ministries/components/ministry-list-page';
 import { CapabilityGate } from '@/shared/components/capability-gate';
-import { ComingSoonPage } from '@/shared/components/coming-soon-page';
 import { isAdminOrLeader } from '@/shared/hooks/use-caller-capabilities';
 
 export const Route = createFileRoute(
@@ -13,7 +12,7 @@ export const Route = createFileRoute(
 function MinistriesPage() {
   return (
     <CapabilityGate allow={isAdminOrLeader} refusal="no-access">
-      <ComingSoonPage title={m.nav_ministries()} />
+      <MinistryListPage />
     </CapabilityGate>
   );
 }

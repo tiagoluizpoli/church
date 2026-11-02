@@ -56,7 +56,6 @@ describe('coming-soon placeholder routes', () => {
   });
 
   it.each([
-    ['/ministries', m.nav_ministries()],
     ['/people', m.nav_people()],
     ['/invitations', m.nav_invitations()],
   ])('shows %s as coming soon to a Ministry leader', async (path, title) => {

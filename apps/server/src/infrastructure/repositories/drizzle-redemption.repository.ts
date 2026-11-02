@@ -20,6 +20,7 @@ import type {
   DeclineChurchInvitationInput,
   DeclineChurchInvitationResult,
   DeclineMinistryInvitationInput,
+  RecordChurchInvitationAcceptanceInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
 } from '../../domain/contracts/infrastructure/redemption.repository';
@@ -218,7 +219,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     const db = getClient({ db: this.db, tx });
     const [declined] = await db
       .update(ministryInvitation)
-      .set({ status: 'rejected' })
+      .set({ status: 'rejected', declinedAt })
       .where(
         and(
           withChurchIsolation({ table: ministryInvitation, churchId }),
@@ -228,6 +229,23 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       )
       .returning({ id: ministryInvitation.id });
     if (!declined) throw new PendingMinistryInvitationNotFoundError();
+    // The session-rejected Church half of a chained offer carries the same facts.
+    await db
+      .update(churchInvitation)
+      .set({ declinedAt, declinedById: userId })
+      .where(
+        and(
+          eq(
+            churchInvitation.id,
+            db
+              .select({ id: ministryInvitation.churchInvitationId })
+              .from(ministryInvitation)
+              .where(eq(ministryInvitation.id, ministryInvitationId)),
+          ),
+          eq(churchInvitation.status, 'rejected'),
+          isNull(churchInvitation.declinedAt),
+        ),
+      );
     await db.insert(identityAudit).values({
       churchId,
       ministryInvitationId,
@@ -248,7 +266,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     // the final status and only one of the two ever wins.
     const [declined] = await db
       .update(churchInvitation)
-      .set({ status: 'rejected' })
+      .set({ status: 'rejected', declinedAt })
       .where(
         and(
           eq(churchInvitation.id, churchInvitationId),
@@ -268,7 +286,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     }
     await db
       .update(ministryInvitation)
-      .set({ status: 'rejected' })
+      .set({ status: 'rejected', declinedAt })
       .where(
         and(
           eq(ministryInvitation.churchInvitationId, churchInvitationId),
@@ -281,6 +299,24 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
         eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
       );
     return 'declined';
+  }
+
+  async recordChurchInvitationAcceptance({
+    churchInvitationId,
+    userId,
+    acceptedAt,
+    tx,
+  }: RecordChurchInvitationAcceptanceInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .update(churchInvitation)
+      .set({ acceptedAt, acceptedById: userId })
+      .where(
+        and(
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'accepted'),
+          isNull(churchInvitation.acceptedAt),
+        ),
+      );
   }
 
   async recordChurchOnlyPartialAcceptance({

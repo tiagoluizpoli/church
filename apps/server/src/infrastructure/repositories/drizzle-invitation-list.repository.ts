@@ -1,5 +1,6 @@
 import {
   invitation as churchInvitation,
+  identityAudit,
   ministry,
   ministryInvitation,
   ministryInvitationRole,
@@ -12,6 +13,7 @@ import {
   asc,
   desc,
   eq,
+  ilike,
   inArray,
   isNull,
   lt,
@@ -23,15 +25,20 @@ import {
 import { alias } from 'drizzle-orm/pg-core';
 import type {
   InvitationListRepository,
-  ListPendingInvitationsInput,
+  ListInvitationsInput,
 } from '../../domain/contracts/infrastructure/invitation-list.repository';
 import type {
+  InvitationClosure,
   InvitationEmailDelivery,
+  InvitationListFilters,
   InvitationListItem,
   InvitationListKind,
+  InvitationListOptions,
   InvitationListPage,
   InvitationListRole,
+  InvitationListScope,
 } from '../../domain/entities/invitation-list-item';
+import { MinistryInvitationNotFoundError } from '../../domain/errors/ministry-invitation-not-found';
 import {
   decodeInvitationListCursor,
   encodeInvitationListCursor,
@@ -49,6 +56,8 @@ interface KindQueryInput {
   churchId: string;
   limit: number;
   position?: InvitationListCursorPosition;
+  filters: InvitationListFilters;
+  now: Date;
 }
 
 interface MinistryQueryInput extends KindQueryInput {
@@ -61,8 +70,47 @@ interface DeliveryLookupInput {
   churchInvitationIds: string[];
 }
 
+/** Filter words onto the storage words of both tables; `expired` is stored pending, narrowed by the clock. */
+const STORED_STATUS = {
+  pending: 'pending',
+  expired: 'pending',
+  accepted: 'accepted',
+  declined: 'rejected',
+  revoked: 'canceled',
+} as const;
+
+const DISPLAY_STATUS = {
+  accepted: 'accepted',
+  rejected: 'declined',
+  canceled: 'revoked',
+} as const;
+
+/** Escape LIKE wildcards so the address is matched literally. */
+function containsPattern(value: string): string {
+  return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
+}
+
 const inviter = alias(user, 'inviter');
 const invitee = alias(user, 'invitee');
+
+interface FilterOptionsInput {
+  churchId: string;
+  scope: InvitationListScope;
+}
+
+interface ClosuresInput {
+  churchId: string;
+  rows: { kind: InvitationListKind; id: string; closureFacts: ClosureFacts }[];
+}
+
+type ChurchStatus = 'pending' | 'accepted' | 'rejected' | 'canceled';
+
+/** What the row itself recorded about its closure; the audit trail adds the Ministry-side actor. */
+interface ClosureFacts {
+  status: ChurchStatus;
+  at?: Date;
+  actorId?: string;
+}
 
 interface RowOrderKey {
   createdAt: Date;
@@ -126,27 +174,41 @@ export class DrizzleInvitationListRepository
     this.db = db;
   }
 
-  async listPending({
+  async list({
     churchId,
     scope,
+    filters,
     cursor,
     limit,
     now,
-  }: ListPendingInvitationsInput): Promise<InvitationListPage> {
+  }: ListInvitationsInput): Promise<InvitationListPage> {
     const position = cursor
       ? decodeInvitationListCursor({ cursor })
       : undefined;
     if (cursor && !position) throw new Error('Invalid invitation cursor');
 
     const isAdmin = scope.kind === 'church';
+    const options = await this.filterOptions({ churchId, scope });
+    // One answer for missing, archived, foreign and unmanaged Ministries.
+    if (
+      filters.ministryId &&
+      !options.ministries.some(({ id }) => id === filters.ministryId)
+    ) {
+      throw new MinistryInvitationNotFoundError();
+    }
     const ministryIds = isAdmin ? undefined : scope.ministryIds;
-    if (ministryIds?.length === 0) return { items: [] };
+    if (ministryIds?.length === 0) return { items: [], options };
 
-    const query = { churchId, limit: limit + 1, position };
+    const query = { churchId, limit: limit + 1, position, filters, now };
+    const wantsMinistryRows = filters.invitedAs !== 'admin';
+    // Standalone admin grants are never visible to a Ministry leader, and carry no Ministry.
+    const wantsChurchRows =
+      isAdmin &&
+      !filters.ministryId &&
+      (!filters.invitedAs || filters.invitedAs === 'admin');
     const [ministryRows, churchRows] = await Promise.all([
-      this.ministryOffers({ ...query, ministryIds }),
-      // Standalone admin grants are never visible to a Ministry leader.
-      isAdmin ? this.adminChurchGrants(query) : [],
+      wantsMinistryRows ? this.ministryOffers({ ...query, ministryIds }) : [],
+      wantsChurchRows ? this.adminChurchGrants(query) : [],
     ]);
 
     const merged = [...ministryRows, ...churchRows]
@@ -154,36 +216,42 @@ export class DrizzleInvitationListRepository
       .slice(0, limit + 1);
     const page = merged.slice(0, limit);
 
-    const [roles, deliveries] = await Promise.all([
-      this.rolesByInvitation({
-        ids: page.filter((row) => row.kind === 'ministry').map((r) => r.id),
-      }),
+    const ministryPage = page.filter((row) => row.kind === 'ministry');
+    const [roles, deliveries, closures] = await Promise.all([
+      this.rolesByInvitation({ ids: ministryPage.map((r) => r.id) }),
       this.latestDeliveries({
         churchId,
-        ministryInvitationIds: page
-          .filter((row) => row.kind === 'ministry')
-          .map((row) => row.id),
+        ministryInvitationIds: ministryPage.map((row) => row.id),
         churchInvitationIds: page
           .filter((row) => row.kind === 'church')
           .map((row) => row.id),
       }),
+      this.closures({ churchId, rows: page }),
     ]);
 
-    const items: InvitationListItem[] = page.map(({ ...row }) => ({
-      ...row,
-      // A leader must not learn the Church-wide grant behind a paired offer.
-      churchInvitationId: isAdmin ? row.churchInvitationId : undefined,
-      churchAccessLevel: isAdmin ? row.churchAccessLevel : undefined,
-      roles: roles.get(row.id) ?? [],
-      displayStatus:
-        row.expiresAt.getTime() <= now.getTime() ? 'expired' : 'pending',
-      emailDelivery: deliveries.get(`${row.kind}:${row.id}`) ?? {
-        state: 'unavailable',
-      },
-    }));
+    const items: InvitationListItem[] = page.map(
+      ({ closureFacts: _facts, ...row }) => ({
+        ...row,
+        // A leader must not learn the Church-wide grant behind a paired offer.
+        churchInvitationId: isAdmin ? row.churchInvitationId : undefined,
+        churchAccessLevel: isAdmin ? row.churchAccessLevel : undefined,
+        roles: roles.get(row.id) ?? [],
+        displayStatus:
+          row.status === 'pending'
+            ? row.expiresAt.getTime() <= now.getTime()
+              ? 'expired'
+              : 'pending'
+            : DISPLAY_STATUS[row.status],
+        closure: closures.get(`${row.kind}:${row.id}`),
+        emailDelivery: deliveries.get(`${row.kind}:${row.id}`) ?? {
+          state: 'unavailable',
+        },
+      }),
+    );
     const last = items.at(-1);
     return {
       items,
+      options,
       nextCursor:
         merged.length > limit && last
           ? encodeInvitationListCursor({
@@ -195,11 +263,119 @@ export class DrizzleInvitationListRepository
     };
   }
 
+  /** The Ministries the caller may filter by (active only) and the grant types they may see. */
+  private async filterOptions({
+    churchId,
+    scope,
+  }: FilterOptionsInput): Promise<InvitationListOptions> {
+    const isAdmin = scope.kind === 'church';
+    const ministries = await getClient({ db: this.db })
+      .select({ id: ministry.id, name: ministry.name })
+      .from(ministry)
+      .where(
+        and(
+          eq(ministry.churchId, churchId),
+          isNull(ministry.deletedAt),
+          isAdmin ? undefined : inArray(ministry.id, scope.ministryIds),
+        ),
+      )
+      .orderBy(asc(ministry.name), asc(ministry.id));
+    return {
+      ministries,
+      invitedAs: isAdmin
+        ? ['admin', 'leader', 'volunteer']
+        : ['leader', 'volunteer'],
+    };
+  }
+
+  /** Who closed each page row and when, from the audit trail where it exists and the recorded stamps otherwise. */
+  private async closures({
+    churchId,
+    rows,
+  }: ClosuresInput): Promise<Map<string, InvitationClosure>> {
+    const closed = rows.filter((row) => row.closureFacts.status !== 'pending');
+    const ministryClosed = closed.filter((row) => row.kind === 'ministry');
+    const audits = new Map<
+      string,
+      { actorId: string; at: Date; reason: string | null }
+    >();
+    if (ministryClosed.length > 0) {
+      const auditRows = await getClient({ db: this.db })
+        .select({
+          invitationId: identityAudit.ministryInvitationId,
+          action: identityAudit.action,
+          actorId: identityAudit.actorId,
+          at: identityAudit.timestamp,
+          reason: identityAudit.reason,
+        })
+        .from(identityAudit)
+        .where(
+          and(
+            eq(identityAudit.churchId, churchId),
+            inArray(
+              identityAudit.ministryInvitationId,
+              ministryClosed.map((row) => row.id),
+            ),
+            inArray(identityAudit.action, [
+              'acceptance',
+              'ministry_acceptance',
+              'decline',
+            ]),
+          ),
+        )
+        .orderBy(desc(identityAudit.timestamp), desc(identityAudit.id));
+      for (const audit of auditRows) {
+        const row = ministryClosed.find((r) => r.id === audit.invitationId);
+        const wanted =
+          row?.closureFacts.status === 'rejected' ? 'decline' : null;
+        const isDecline = audit.action === 'decline';
+        if (!row || (wanted ? !isDecline : isDecline)) continue;
+        if (!audits.has(audit.invitationId as string)) {
+          audits.set(audit.invitationId as string, audit);
+        }
+      }
+    }
+
+    const actorIds = new Set<string>();
+    for (const row of closed) {
+      const audit = audits.get(row.id);
+      const id =
+        row.kind === 'ministry' ? audit?.actorId : row.closureFacts.actorId;
+      if (id) actorIds.add(id);
+    }
+    const names = new Map<string, string>();
+    if (actorIds.size > 0) {
+      const users = await getClient({ db: this.db })
+        .select({ id: user.id, name: user.name })
+        .from(user)
+        .where(inArray(user.id, [...actorIds]));
+      for (const found of users) names.set(found.id, found.name);
+    }
+
+    const result = new Map<string, InvitationClosure>();
+    for (const row of closed) {
+      const audit = row.kind === 'ministry' ? audits.get(row.id) : undefined;
+      const actorId =
+        row.kind === 'ministry' ? audit?.actorId : row.closureFacts.actorId;
+      const at = audit?.at ?? row.closureFacts.at;
+      const actorName = actorId ? names.get(actorId) : undefined;
+      result.set(`${row.kind}:${row.id}`, {
+        actor:
+          actorId && actorName ? { id: actorId, name: actorName } : undefined,
+        at: at ?? undefined,
+        reason: audit?.reason ?? undefined,
+      });
+    }
+    return result;
+  }
+
   private async ministryOffers({
     churchId,
     limit,
     position,
     ministryIds,
+    filters,
+    now,
   }: MinistryQueryInput) {
     const rows = await getClient({ db: this.db })
       .select({
@@ -215,6 +391,10 @@ export class DrizzleInvitationListRepository
         inviterName: inviter.name,
         createdAt: ministryInvitation.createdAt,
         expiresAt: ministryInvitation.expiresAt,
+        status: ministryInvitation.status,
+        acceptedAt: ministryInvitation.acceptedAt,
+        declinedAt: ministryInvitation.declinedAt,
+        canceledAt: ministryInvitation.canceledAt,
       })
       .from(ministryInvitation)
       .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
@@ -227,10 +407,25 @@ export class DrizzleInvitationListRepository
       .where(
         and(
           eq(ministryInvitation.churchId, churchId),
-          eq(ministryInvitation.status, 'pending'),
+          eq(ministryInvitation.status, STORED_STATUS[filters.status]),
+          filters.status === 'expired'
+            ? lte(ministryInvitation.expiresAt, now)
+            : undefined,
           isNull(ministry.deletedAt),
           ministryIds
             ? inArray(ministryInvitation.ministryId, ministryIds)
+            : undefined,
+          filters.ministryId
+            ? eq(ministryInvitation.ministryId, filters.ministryId)
+            : undefined,
+          filters.invitedAs && filters.invitedAs !== 'admin'
+            ? eq(ministryInvitation.ministryAccessLevel, filters.invitedAs)
+            : undefined,
+          filters.email
+            ? ilike(
+                sql`COALESCE(${invitee.email}, ${churchInvitation.email})`,
+                containsPattern(filters.email),
+              )
             : undefined,
           afterCursor({
             kind: 'ministry',
@@ -256,7 +451,15 @@ export class DrizzleInvitationListRepository
       invitedBy: { id: row.inviterId, name: row.inviterName },
       createdAt: row.createdAt,
       expiresAt: row.expiresAt,
-      status: 'pending' as const,
+      status: row.status,
+      closureFacts: {
+        status: row.status,
+        at:
+          (row.status === 'accepted' && row.acceptedAt) ||
+          (row.status === 'rejected' && row.declinedAt) ||
+          (row.status === 'canceled' && row.canceledAt) ||
+          undefined,
+      } satisfies ClosureFacts,
     }));
   }
 
@@ -264,6 +467,8 @@ export class DrizzleInvitationListRepository
     churchId,
     limit,
     position,
+    filters,
+    now,
   }: KindQueryInput) {
     const rows = await getClient({ db: this.db })
       .select({
@@ -273,14 +478,25 @@ export class DrizzleInvitationListRepository
         inviterName: inviter.name,
         createdAt: churchInvitation.createdAt,
         expiresAt: churchInvitation.expiresAt,
+        status: churchInvitation.status,
+        acceptedAt: churchInvitation.acceptedAt,
+        acceptedById: churchInvitation.acceptedById,
+        declinedAt: churchInvitation.declinedAt,
+        declinedById: churchInvitation.declinedById,
       })
       .from(churchInvitation)
       .innerJoin(inviter, eq(inviter.id, churchInvitation.inviterId))
       .where(
         and(
           eq(churchInvitation.organizationId, churchId),
-          eq(churchInvitation.status, 'pending'),
+          eq(churchInvitation.status, STORED_STATUS[filters.status]),
+          filters.status === 'expired'
+            ? lte(churchInvitation.expiresAt, now)
+            : undefined,
           eq(churchInvitation.role, 'admin'),
+          filters.email
+            ? ilike(churchInvitation.email, containsPattern(filters.email))
+            : undefined,
           afterCursor({
             kind: 'church',
             position,
@@ -307,7 +523,21 @@ export class DrizzleInvitationListRepository
       invitedBy: { id: row.inviterId, name: row.inviterName },
       createdAt: row.createdAt,
       expiresAt: row.expiresAt,
-      status: 'pending' as const,
+      status: row.status as ChurchStatus,
+      closureFacts: {
+        status: row.status as ChurchStatus,
+        ...(row.status === 'accepted'
+          ? {
+              at: row.acceptedAt ?? undefined,
+              actorId: row.acceptedById ?? undefined,
+            }
+          : row.status === 'rejected'
+            ? {
+                at: row.declinedAt ?? undefined,
+                actorId: row.declinedById ?? undefined,
+              }
+            : {}),
+      } satisfies ClosureFacts,
     }));
   }
 

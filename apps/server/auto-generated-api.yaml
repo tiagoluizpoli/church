@@ -7800,6 +7800,96 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/invitations/church/{invitationId}/revoke:
+    post:
+      operationId: revokeChurchInvitation
+      summary: Revoke a Church Invitation
+      tags:
+        - invitations
+      description: Revoke a pending or expired Church offer together with every
+        still-pending Ministry Invitation sharing it (expired included),
+        recording the caller, one time and the reason `manual` on each; the body
+        takes no actor or reason. Accepted, declined and revoked Ministry
+        Invitations, Roles and Memberships are untouched and no notice is sent.
+        ChurchAdmins only; a missing or other-Church target is 404; 409
+        INVITATION_NOT_PENDING when already accepted, declined or revoked.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/church/{invitationId}:
     get:
       operationId: previewChurchInvitation

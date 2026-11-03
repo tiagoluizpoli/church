@@ -76,6 +76,13 @@ export interface ResendChurchInvitationInput {
   churchInvitationId: string;
 }
 
+export interface RevokeChurchInvitationInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  /** The caller, recorded as the revoking actor; the reason is always `manual`. */
+  callerId: UserId;
+}
+
 export interface ChurchInvitationResend {
   churchInvitationId: string;
   expiresAt: Instant;
@@ -86,6 +93,8 @@ export interface IMinistryInvitationManager {
   resendChurch(
     input: ResendChurchInvitationInput,
   ): Promise<ChurchInvitationResend | null>;
+  /** Revokes a pending (or expired) Church offer and every still-pending Ministry half; `false` when it is missing or in another Church. */
+  revokeChurch(input: RevokeChurchInvitationInput): Promise<boolean>;
   /** Invites a ChurchAdmin, upgrading a pending member offer while keeping its Ministry halves. */
   mintAdmin(input: MintAdminInvitationInput): Promise<AdminInvitation>;
   mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation>;

@@ -3218,6 +3218,35 @@ export type ResendChurchInvitation429 = {
   message: string;
 };
 
+/**
+ * @nullable
+ */
+export type RevokeChurchInvitation204 = typeof RevokeChurchInvitation204[keyof typeof RevokeChurchInvitation204] | null;
+
+
+export const RevokeChurchInvitation204 = {
+} as const;
+
+export type RevokeChurchInvitation401 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeChurchInvitation403 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeChurchInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeChurchInvitation409 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewChurchInvitation200ChurchAccessLevel = typeof PreviewChurchInvitation200ChurchAccessLevel[keyof typeof PreviewChurchInvitation200ChurchAccessLevel];
 
 

@@ -647,6 +647,46 @@ describe('Church invitation redemption HTTP boundary', () => {
     });
   });
 
+  it('grants nothing for an old verification code once a ChurchAdmin revoked the whole Church offer', async () => {
+    const invitation = await mintInvitation();
+    const { app } = await createHarness();
+    await requestCode({ invitationId: invitation.churchInvitationId });
+    expect(
+      await invitationManager.revokeChurch({
+        churchId: ChurchId.from(fixture.churchA.id),
+        churchInvitationId: invitation.churchInvitationId as string,
+        callerId: UserId.from(fixture.adminA),
+      }),
+    ).toBe(true);
+
+    const preview = await app.inject({
+      method: 'GET',
+      url: redemptionUrl({ invitationId: invitation.churchInvitationId }),
+    });
+    const response = await redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Revoked Invitee',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '88888888-8888-4888-8888-888888888888',
+      },
+    });
+
+    expect(preview.statusCode).toBe(404);
+    expect(preview.json().error).toBe('INVITATION_UNAVAILABLE');
+    expect(response.json()).toEqual({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+    expect(await testDb.select().from(user)).toHaveLength(FIXTURE_USER_COUNT);
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'canceled',
+      ministry: 'canceled',
+    });
+  });
+
   it('never revives a Church Invitation revoked while a new person is joining', async () => {
     const invitation = await mintInvitation();
     const { app } = await createHarness();

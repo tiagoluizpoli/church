@@ -22,6 +22,7 @@ import type {
   MintMinistryInvitationInput,
   ResendChurchInvitationInput,
   ResendMinistryInvitationInput,
+  RevokeChurchInvitationInput,
   RevokeMinistryInvitationInput,
 } from '../domain/contracts/application/ministry-invitation-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
@@ -53,7 +54,7 @@ import {
   nextResendThrottleState,
   type ResendThrottleState,
 } from '../domain/services/resend-throttle';
-import { revokeMinistryHalf } from './invitation-revocation';
+import { revokeChurchOffer, revokeMinistryHalf } from './invitation-revocation';
 
 interface ExpiryFromInput {
   milliseconds: number;
@@ -374,6 +375,28 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         tx,
       });
       return { churchInvitationId, expiresAt };
+    });
+  }
+
+  async revokeChurch(input: RevokeChurchInvitationInput): Promise<boolean> {
+    const { churchId, churchInvitationId, callerId } = input;
+    return this.unitOfWork.run(async (tx) => {
+      // Lock order: Church Invitation row, then its Ministry Invitation rows.
+      const parent = await this.repo.lockChurchInvitation({
+        churchId,
+        churchInvitationId,
+        tx,
+      });
+      if (!parent) return false;
+      const revoked = await revokeChurchOffer({
+        repo: this.repo,
+        churchId,
+        churchInvitationId,
+        revocation: { actorId: callerId, at: nowAsDate(), reason: 'manual' },
+        tx,
+      });
+      if (!revoked) throw new InvitationNotPendingError();
+      return true;
     });
   }
 

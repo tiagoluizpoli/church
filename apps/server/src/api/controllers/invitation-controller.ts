@@ -222,5 +222,45 @@ export class InvitationController implements FastifyController {
         return reply.send(churchInvitationResendMapper.toResponse(resent));
       },
     );
+
+    app.post(
+      '/church/:invitationId/revoke',
+      {
+        schema: {
+          tags: ['invitations'],
+          operationId: 'revokeChurchInvitation',
+          summary: 'Revoke a Church Invitation',
+          description:
+            'Revoke a pending or expired Church offer together with every still-pending Ministry Invitation sharing it (expired included), recording the caller, one time and the reason `manual` on each; the body takes no actor or reason. Accepted, declined and revoked Ministry Invitations, Roles and Memberships are untouched and no notice is sent. ChurchAdmins only; a missing or other-Church target is 404; 409 INVITATION_NOT_PENDING when already accepted, declined or revoked.',
+          params: z.object({ invitationId: z.string().min(1) }),
+          response: {
+            204: z.null(),
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const callerId = UserId.from(request.userId);
+        const canManageChurch = await this.authorityGuard.canManageChurch({
+          churchId,
+          userId: callerId,
+        });
+        if (!canManageChurch) {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        const { invitationId } = request.params as ChurchInvitationParams;
+        const revoked = await this.ministryInvitationManager.revokeChurch({
+          churchId,
+          churchInvitationId: invitationId,
+          callerId,
+        });
+        if (!revoked) return refuse({ reply, request, code: 'NOT_FOUND' });
+        return reply.status(204).send(null);
+      },
+    );
   }
 }

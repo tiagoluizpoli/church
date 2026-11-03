@@ -262,9 +262,10 @@ export class DrizzleInvitationListRepository
             (row.kind === 'ministry' &&
               row.ministryAccessLevel === 'volunteer')),
         canRevoke:
-          row.kind === 'ministry' &&
           row.status === 'pending' &&
-          (isAdmin || row.ministryAccessLevel === 'volunteer'),
+          (isAdmin ||
+            (row.kind === 'ministry' &&
+              row.ministryAccessLevel === 'volunteer')),
       }),
     );
     const last = items.at(-1);

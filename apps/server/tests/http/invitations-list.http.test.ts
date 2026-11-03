@@ -589,7 +589,7 @@ describe('GET /api/v1/invitations — row actions', () => {
     });
   });
 
-  it('lets an admin revoke every stored-pending Ministry row, closed parent included, but no Church row yet', async () => {
+  it('lets an admin revoke every stored-pending row, Church rows and closed-parent halves included', async () => {
     signIn('admin');
     const { items } = await list();
 
@@ -597,7 +597,7 @@ describe('GET /api/v1/invitations — row actions', () => {
       items.map((i) => [`${i.kind}:${i.email}`, i.canRevoke]),
     );
     expect(actions).toEqual({
-      'church:solo@inv.test': false,
+      'church:solo@inv.test': true,
       'ministry:member@inv.test': true,
       'ministry:volunteer@inv.test': true,
       'ministry:closed@inv.test': true,

@@ -14,6 +14,10 @@ interface ResetAfterSelfDemotionInput {
   memberId: string;
 }
 
+interface SelfDemotionReset {
+  detailReadable: boolean;
+}
+
 /**
  * The caller's own reach shrank: drop every authority-dependent projection
  * before refetching, and report whether the member detail is still readable.
@@ -23,7 +27,7 @@ export async function resetAfterSelfDemotion({
   queryClient,
   churchId,
   memberId,
-}: ResetAfterSelfDemotionInput): Promise<{ detailReadable: boolean }> {
+}: ResetAfterSelfDemotionInput): Promise<SelfDemotionReset> {
   await queryClient.resetQueries({ queryKey: CALLER_CAPABILITIES_KEY });
   await Promise.all([
     queryClient.resetQueries({ queryKey: MINISTRIES_QUERY_KEY }),

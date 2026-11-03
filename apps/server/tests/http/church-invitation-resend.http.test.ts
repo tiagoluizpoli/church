@@ -390,6 +390,23 @@ describe('POST /invitations/church/:invitationId/resend', () => {
     expect(await outboxRows()).toEqual([]);
   });
 
+  it('answers a member-level paired parent like a missing target: it is no Church row, and its T1 would promise admin access', async () => {
+    const id = await churchOffer({ role: 'member', expiresAt: PAST });
+    await half({ churchInvitationId: id, expiresAt: PAST });
+    signIn('admin');
+    const missing = await resend(randomUUID());
+
+    const res = await resend(id);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual(missing.json());
+    expect(await churchRow(id)).toMatchObject({
+      expiresAt: PAST,
+      resendCount: 0,
+    });
+    expect(await outboxRows()).toEqual([]);
+  });
+
   it('rolls back expiry and counters when the delivery cannot be queued', async () => {
     const id = await churchOffer({ expiresAt: PAST });
     const pairedHalf = await half({ churchInvitationId: id, expiresAt: PAST });

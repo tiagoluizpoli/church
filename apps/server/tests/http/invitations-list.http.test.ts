@@ -764,7 +764,7 @@ describe('GET /api/v1/invitations — email delivery', () => {
     });
   });
 
-  it('reports lastSentAt per row of an upgraded pair from the latest email actually sent', async () => {
+  it("reports an upgraded pair's halves from the offer's one T1 once it is their latest email", async () => {
     await churchOffer({ id: 'ci-pair', email: 'pair@inv.test', role: 'admin' });
     const resent = await ministryOffer({
       ministryId: fx.worshipId,
@@ -807,15 +807,14 @@ describe('GET /api/v1/invitations — email delivery', () => {
     const byId = (id: string) => items.find((i) => i.id === id);
 
     expect(byId('ci-pair')?.lastSentAt).toBe(t1.toISOString());
-    expect(byId(resent)).toMatchObject({
-      churchInvitationId: 'ci-pair',
-      emailDelivery: { state: 'failed' },
-      lastSentAt: earlier.toISOString(),
-    });
-    expect(byId(superseded)).toMatchObject({
-      churchInvitationId: 'ci-pair',
-      lastSentAt: null,
-    });
+    // The T1 names every pending half, so it is each half's latest delivery.
+    for (const half of [resent, superseded]) {
+      expect(byId(half)).toMatchObject({
+        churchInvitationId: 'ci-pair',
+        emailDelivery: { state: 'sent' },
+        lastSentAt: t1.toISOString(),
+      });
+    }
   });
 
   it('shows no delivery for a standalone admin grant that was never emailed', async () => {

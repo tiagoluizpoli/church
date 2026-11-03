@@ -28,6 +28,8 @@ import type {
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type {
   ChurchInvitationSummary,
+  LockChurchInvitationInput,
+  LockedChurchInvitation,
   MinistryInvitationRepository,
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
@@ -321,7 +323,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     const { churchId, churchInvitationId } = input;
     return this.unitOfWork.run(async (tx) => {
       // Lock order: Church Invitation row, then its Ministry Invitation rows.
-      const parent = await this.repo.lockChurchInvitation({
+      const parent = await this.lockChurchRow({
         churchId,
         churchInvitationId,
         tx,
@@ -382,7 +384,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     const { churchId, churchInvitationId, callerId } = input;
     return this.unitOfWork.run(async (tx) => {
       // Lock order: Church Invitation row, then its Ministry Invitation rows.
-      const parent = await this.repo.lockChurchInvitation({
+      const parent = await this.lockChurchRow({
         churchId,
         churchInvitationId,
         tx,
@@ -429,13 +431,15 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         throw new InsufficientInvitationAuthorityError();
       }
       const { churchInvitationId } = target;
-      if (churchInvitationId) {
-        const parent = await this.repo.lockChurchInvitation({
-          churchId,
-          churchInvitationId,
-          tx,
-        });
-        if (parent?.status !== 'pending') throw new InvitationNotPendingError();
+      const parent = churchInvitationId
+        ? await this.repo.lockChurchInvitation({
+            churchId,
+            churchInvitationId,
+            tx,
+          })
+        : null;
+      if (churchInvitationId && parent?.status !== 'pending') {
+        throw new InvitationNotPendingError();
       }
       const existing = await this.repo.lockMinistryInvitation({
         churchId,
@@ -489,7 +493,17 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       });
 
       // A resend is a new intended delivery: a new row, never a retry.
-      if (invitation.inviteeUserId) {
+      if (churchInvitationId && parent?.churchAccessLevel === 'admin') {
+        // An upgraded offer's one T1 names the admin grant and every half.
+        await this.repo.enqueueOutboxMessage({
+          churchId,
+          kind: 'invitation.church-bootstrap',
+          payload: { churchInvitationId },
+          correlationId: crypto.randomUUID(),
+          scheduledFor: nowAsDate(),
+          tx,
+        });
+      } else if (invitation.inviteeUserId) {
         await this.enqueueMemberNotification({
           churchId,
           userId: invitation.inviteeUserId,
@@ -544,6 +558,17 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       });
       if (!revoked) throw new InvitationNotPendingError();
     });
+  }
+
+  /**
+   * A Church target is an admin offer, the only Church row the list shows;
+   * a member-level parent is reached through its Ministry halves instead.
+   */
+  private async lockChurchRow(
+    input: LockChurchInvitationInput,
+  ): Promise<LockedChurchInvitation | null> {
+    const row = await this.repo.lockChurchInvitation(input);
+    return row?.churchAccessLevel === 'admin' ? row : null;
   }
 
   /**

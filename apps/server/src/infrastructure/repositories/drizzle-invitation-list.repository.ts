@@ -73,6 +73,8 @@ interface DeliveryLookupInput {
   churchId: string;
   ministryInvitationIds: string[];
   churchInvitationIds: string[];
+  /** Ministry row id → its paired Church Invitation, whose T1 may deliver it. */
+  pairedParents: Map<string, string>;
 }
 
 /** Filter words onto the storage words of both tables; `expired` is stored pending, narrowed by the clock. */
@@ -232,6 +234,11 @@ export class DrizzleInvitationListRepository
           churchInvitationIds: page
             .filter((row) => row.kind === 'church')
             .map((row) => row.id),
+          pairedParents: new Map(
+            ministryPage.flatMap((row) =>
+              row.churchInvitationId ? [[row.id, row.churchInvitationId]] : [],
+            ),
+          ),
         }),
         this.closures({ churchId, rows: page }),
       ]);
@@ -617,6 +624,7 @@ export class DrizzleInvitationListRepository
     churchId,
     ministryInvitationIds,
     churchInvitationIds,
+    pairedParents,
   }: DeliveryLookupInput): Promise<DeliveryFacts> {
     const latest = new Map<string, InvitationEmailDelivery>();
     const lastSent = new Map<string, Date>();
@@ -627,9 +635,12 @@ export class DrizzleInvitationListRepository
         sql`(${outboxMessage.kind} = 'notification' AND ${outboxMessage.payload} ->> 'kind' = 'ministry_invitation' AND ${outboxMessage.payload} -> 'data' ->> 'ministryInvitationId' IN ${ministryInvitationIds})`,
       );
     }
-    if (churchInvitationIds.length > 0) {
+    const offerIds = [
+      ...new Set([...churchInvitationIds, ...pairedParents.values()]),
+    ];
+    if (offerIds.length > 0) {
       subjects.push(
-        sql`(${outboxMessage.kind} = 'invitation.church-bootstrap' AND ${outboxMessage.payload} ->> 'churchInvitationId' IN ${churchInvitationIds})`,
+        sql`(${outboxMessage.kind} = 'invitation.church-bootstrap' AND ${outboxMessage.payload} ->> 'churchInvitationId' IN ${offerIds})`,
       );
     }
     if (subjects.length === 0) return { latest, lastSent };
@@ -642,15 +653,23 @@ export class DrizzleInvitationListRepository
 
     for (const row of rows) {
       const payload = (row.payload ?? {}) as Record<string, unknown>;
-      const subject =
+      // An admin-upgraded pair's halves are delivered by the offer's one T1.
+      const subjects =
         row.kind === 'invitation.church-bootstrap'
-          ? `church:${payload.churchInvitationId}`
-          : `ministry:${
-              row.kind === 'notification'
-                ? (payload.data as Record<string, unknown> | undefined)
-                    ?.ministryInvitationId
-                : payload.ministryInvitationId
-            }`;
+          ? [
+              `church:${payload.churchInvitationId}`,
+              ...[...pairedParents]
+                .filter(([, parent]) => parent === payload.churchInvitationId)
+                .map(([halfId]) => `ministry:${halfId}`),
+            ]
+          : [
+              `ministry:${
+                row.kind === 'notification'
+                  ? (payload.data as Record<string, unknown> | undefined)
+                      ?.ministryInvitationId
+                  : payload.ministryInvitationId
+              }`,
+            ];
       const delivery = projectInvitationEmailDelivery({
         kind: row.kind,
         status: row.status,
@@ -658,13 +677,15 @@ export class DrizzleInvitationListRepository
         sentAt: row.sentAt,
         emailDeliveredAt: row.emailDeliveredAt,
       });
-      if (!latest.has(subject)) latest.set(subject, delivery);
-      if (
-        delivery.state === 'sent' &&
-        delivery.sentAt &&
-        !lastSent.has(subject)
-      )
-        lastSent.set(subject, delivery.sentAt);
+      for (const subject of subjects) {
+        if (!latest.has(subject)) latest.set(subject, delivery);
+        if (
+          delivery.state === 'sent' &&
+          delivery.sentAt &&
+          !lastSent.has(subject)
+        )
+          lastSent.set(subject, delivery.sentAt);
+      }
     }
     return { latest, lastSent };
   }

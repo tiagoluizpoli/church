@@ -197,6 +197,7 @@ export class DrizzleMinistryInvitationRepository
     const [row] = await getClient({ db: this.db, tx })
       .select({
         status: churchInvitation.status,
+        role: churchInvitation.role,
         lastResendAt: churchInvitation.lastResendAt,
         resendCount: churchInvitation.resendCount,
         resendWindowStartedAt: churchInvitation.resendWindowStartedAt,
@@ -210,18 +211,19 @@ export class DrizzleMinistryInvitationRepository
       )
       .limit(1)
       .for('update');
-    return row
-      ? {
-          ...row,
-          status: row.status as ChurchInvitationStatus,
-          lastResendAt: row.lastResendAt
-            ? fromDate({ date: row.lastResendAt })
-            : undefined,
-          resendWindowStartedAt: row.resendWindowStartedAt
-            ? fromDate({ date: row.resendWindowStartedAt })
-            : undefined,
-        }
-      : null;
+    if (!row) return null;
+    const { role: churchRole, ...facts } = row;
+    return {
+      ...facts,
+      status: row.status as ChurchInvitationStatus,
+      churchAccessLevel: churchRole === 'admin' ? 'admin' : 'member',
+      lastResendAt: row.lastResendAt
+        ? fromDate({ date: row.lastResendAt })
+        : undefined,
+      resendWindowStartedAt: row.resendWindowStartedAt
+        ? fromDate({ date: row.resendWindowStartedAt })
+        : undefined,
+    };
   }
 
   async applyChurchResend({

@@ -114,6 +114,7 @@ export interface LockChurchInvitationInput {
 /** A row-locked Church Invitation with its resend throttle facts. */
 export interface LockedChurchInvitation extends ResendThrottleState {
   status: ChurchInvitationStatus;
+  churchAccessLevel: ChurchInvitationAccessLevel;
 }
 
 export interface ApplyChurchResendInput {

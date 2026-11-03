@@ -375,6 +375,20 @@ describe('POST /invitations/church/:invitationId/revoke — authority', () => {
     expect(await snapshot()).toEqual(before);
   });
 
+  it('answers a member-level paired parent like a missing target, cancelling nothing', async () => {
+    const id = await churchOffer({ role: 'member' });
+    await half({ churchInvitationId: id });
+    const before = await snapshot();
+    signIn('admin');
+    const missing = await revoke(randomUUID());
+
+    const res = await revoke(id);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual(missing.json());
+    expect(await snapshot()).toEqual(before);
+  });
+
   it('checks scope before lifecycle: a closed offer is 403 to a non-admin and 404 to another Church', async () => {
     const id = await churchOffer({ status: 'canceled' });
     signIn('worshipLeader');

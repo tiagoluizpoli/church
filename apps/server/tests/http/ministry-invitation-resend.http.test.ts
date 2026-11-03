@@ -621,7 +621,7 @@ describe('POST .../resend — lifecycle', () => {
 });
 
 describe('POST .../resend — shared Church offer', () => {
-  it('restarts the parent and every still-pending sibling on the Church lifetime, emails only the target, and spends only its counters', async () => {
+  it('restarts the parent and every still-pending sibling on the Church lifetime, sends one admin-offer T1, and spends only its counters', async () => {
     await churchOffer({
       id: 'ci-shared',
       email: 'shared@resend.test',
@@ -677,15 +677,31 @@ describe('POST .../resend — shared Church offer', () => {
       .from(ministryInvitationRole)
       .where(eq(ministryInvitationRole.ministryInvitationId, target));
     expect(roles).toEqual([{ roleId: fx.singerId }]);
+    // The upgraded offer's one T1 names the admin grant and every pending half.
+    expect(await outboxRows()).toEqual([
+      expect.objectContaining({
+        kind: 'invitation.church-bootstrap',
+        payload: { churchInvitationId: 'ci-shared' },
+      }),
+    ]);
+
+    // The aligned sibling keeps its own, unspent resend allowance.
+    expect((await resend(fx.kidsId, sibling)).statusCode).toBe(200);
+  });
+
+  it('emails a member-level paired half its own T1, as its mint did', async () => {
+    await churchOffer({ id: 'ci-member', email: 'member@resend.test' });
+    const target = await ministryOffer({ churchInvitationId: 'ci-member' });
+    signIn('admin');
+
+    expect((await resend(fx.worshipId, target)).statusCode).toBe(200);
+
     expect(await outboxRows()).toEqual([
       expect.objectContaining({
         kind: 'invitation.chained',
         payload: { ministryInvitationId: target },
       }),
     ]);
-
-    // The aligned sibling keeps its own, unspent resend allowance.
-    expect((await resend(fx.kidsId, sibling)).statusCode).toBe(200);
   });
 
   it('uses the injected lifetimes: Ministry for a standalone offer, Church for a paired one', async () => {

@@ -1,4 +1,5 @@
 import type { CalendarDay, Instant } from '@church/time';
+import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { TransferDigestDeliveryFacts } from '../../notification-kinds';
 
 /**
@@ -17,7 +18,7 @@ export interface ChainedInvitationEmail {
   to: string;
   churchName: string;
   ministryName: string;
-  ministryAccessLevel: string;
+  ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
   inviterName: string;
   expiresAt: Instant;
@@ -34,7 +35,7 @@ export interface MinistryInvitationEmail {
   recipientFirstName: string;
   inviterName: string;
   ministryName: string;
-  ministryAccessLevel: string;
+  ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
   expiresAt: Instant;
   /** The Church Timezone `expiresAt` is read in. */
@@ -77,7 +78,7 @@ export interface PasswordResetEmail {
 /** A pending Ministry half retained by an admin Church offer, as its T1 names it. */
 export interface ChurchOfferMinistryFacts {
   ministryName: string;
-  ministryAccessLevel: string;
+  ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
   inviterName: string;
 }

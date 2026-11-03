@@ -47,7 +47,10 @@ describe('prepareEmail — T1 paired Ministry invitations', () => {
     ministryAccessLevel: 'volunteer',
     inviterName: 'Ana <Pastor>',
   };
-  const leader = { ...chained, ministryAccessLevel: 'leader' };
+  const leader: ChainedInvitationEmail = {
+    ...chained,
+    ministryAccessLevel: 'leader',
+  };
 
   it('names inviter, Ministry and lead intent with Roles, expiry in the Church Timezone and one Accept button', () => {
     const email = prepare(leader);

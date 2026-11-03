@@ -418,9 +418,18 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       });
       if (!resolved) {
         if (kind === 'ministry_invitation') {
+          const stillPending = await this.invitationRepository.findById({
+            churchId: message.churchId,
+            ministryInvitationId: (
+              request.data as { ministryInvitationId: string }
+            ).ministryInvitationId,
+          });
           await this.failTerminally({
             message,
-            reason: 'Invitation is no longer pending or its inviter is unnamed',
+            reason:
+              stillPending?.status === 'pending'
+                ? 'Invitation inviter could not be resolved'
+                : 'Invitation is no longer pending',
           });
           return 'failed';
         }

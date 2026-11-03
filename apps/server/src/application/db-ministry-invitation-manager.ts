@@ -50,6 +50,11 @@ import {
   type ResendThrottleState,
 } from '../domain/services/resend-throttle';
 
+interface ExpiryFromInput {
+  milliseconds: number;
+  from?: Instant;
+}
+
 interface EnsureMintableScopeInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -218,6 +223,14 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     });
   }
 
+  /** Validity restarts from `from` (default now) for one lifetime. */
+  private expiryFrom({
+    milliseconds,
+    from = nowInstant(),
+  }: ExpiryFromInput): Instant {
+    return addMilliseconds({ instant: from, milliseconds });
+  }
+
   async mintAdmin(input: MintAdminInvitationInput): Promise<AdminInvitation> {
     const { churchId, inviterId } = input;
     const email = normalizeInvitationEmail({ email: input.email });
@@ -246,8 +259,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         // every pending half aligns to it; resend counters are untouched.
         churchInvitationId = existing.id;
         expiresAt = toDate({
-          instant: addMilliseconds({
-            instant: nowInstant(),
+          instant: this.expiryFrom({
             milliseconds: this.churchInvitationTtlMs,
           }),
         });
@@ -327,8 +339,8 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       this.ensureResendAllowed({ throttleState, now });
 
       const { churchInvitationId } = existing;
-      const expiresAt = addMilliseconds({
-        instant: now,
+      const expiresAt = this.expiryFrom({
+        from: now,
         milliseconds: churchInvitationId
           ? this.churchInvitationTtlMs
           : this.invitationTtlMs,
@@ -420,10 +432,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     } = input;
 
     const expiresAt = toDate({
-      instant: addMilliseconds({
-        instant: nowInstant(),
-        milliseconds: this.invitationTtlMs,
-      }),
+      instant: this.expiryFrom({ milliseconds: this.invitationTtlMs }),
     });
     const invitation = await this.repo.create({
       churchId,
@@ -535,8 +544,8 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     // An expired pending Church offer is reissued with the new half, the
     // same paired-expiry rule an admin upgrade applies (Spec 15).
     const expiresAt = toDate({
-      instant: addMilliseconds({
-        instant: now,
+      instant: this.expiryFrom({
+        from: now,
         milliseconds: this.churchInvitationTtlMs,
       }),
     });

@@ -20,6 +20,7 @@ import {
 import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
+import type { MintMinistryInvitation409ExistingInvitation } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
@@ -35,7 +36,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 interface RefusalBody {
   error?: string;
   reason?: string;
-  existingInvitation?: { createdAt: string };
+  existingInvitation?: MintMinistryInvitation409ExistingInvitation;
 }
 
 const REFUSAL_MESSAGES: Record<string, () => string> = {

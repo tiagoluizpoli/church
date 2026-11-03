@@ -319,7 +319,7 @@ export function InviteDialog({
       <Button
         type="button"
         onClick={() => {
-          setEmail(initialEmail ?? '');
+          if (initialEmail !== undefined) setEmail(initialEmail);
           setOpen(true);
         }}
       >

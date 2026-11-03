@@ -7,6 +7,7 @@ import type {
   IAssignmentManager,
   IAuthorityManager,
   IAvailabilityCheckManager,
+  IChurchAccessManager,
   ICycleManager,
   IEventManager,
   IEventTemplateManager,
@@ -30,6 +31,7 @@ import type {
   AssignmentRepository,
   AuthorityActorRepository,
   AvailabilityCheckRepository,
+  ChurchAccessRepository,
   ChurchMembershipRepository,
   ChurchRepository,
   CycleRepository,
@@ -91,6 +93,7 @@ export interface CompositionRootDependencies {
   notificationRepository: NotificationRepository;
   invitationListRepository: InvitationListRepository;
   peopleListRepository: PeopleListRepository;
+  churchAccessRepository: ChurchAccessRepository;
   unitOfWork: UnitOfWork;
   // Services
   emailSender: EmailSender;
@@ -125,4 +128,5 @@ export interface CompositionRootDependencies {
   notificationManager: INotificationManager;
   invitationListManager: IInvitationListManager;
   peopleListManager: IPeopleListManager;
+  churchAccessManager: IChurchAccessManager;
 }

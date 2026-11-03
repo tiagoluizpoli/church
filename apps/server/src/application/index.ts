@@ -3,6 +3,7 @@ export { DbActiveChurchSelectionManager } from './db-active-church-selection-man
 export { DbAssignmentManager } from './db-assignment-manager';
 export { DbAuthorityManager } from './db-authority-manager';
 export { DbAvailabilityCheckManager } from './db-availability-check-manager';
+export { DbChurchAccessManager } from './db-church-access-manager';
 export { DbCycleManager } from './db-cycle-manager';
 export { DbEventManager } from './db-event-manager';
 export { DbEventTemplateManager } from './db-event-template-manager';

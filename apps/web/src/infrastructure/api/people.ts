@@ -5,6 +5,8 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  ChangeChurchAccess200,
+  ChangeChurchAccessBody,
   GetPerson200,
   ListPeople200,
   ListPeopleParams
@@ -17,6 +19,21 @@ import { apiClient } from '../../utils/api-client';
 
   export const getPeople = () => {
 /**
+ * Make a Church Member an admin of the Active Church, or remove their admin access, keeping at least one admin. Only a ChurchAdmin may call it; requesting the current level changes nothing. Church Membership, Ministry Memberships and Roles stay as they are.
+ * @summary Change a member's Church access
+ */
+const changeChurchAccess = (
+    memberId: string,
+    changeChurchAccessBody: ChangeChurchAccessBody,
+ ) => {
+      return apiClient<ChangeChurchAccess200>(
+      {url: `/api/v1/people/${memberId}/church-access`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: changeChurchAccessBody
+    },
+      );
+    }
+  /**
  * One Church Member of the Active Church with their active Ministry cards. A ChurchAdmin sees every card and the Church access facts; a Ministry leader sees only cards of Ministries they lead and no Church access. A missing, other-Church or out-of-scope member id is one 404.
  * @summary Get a person
  */
@@ -41,6 +58,7 @@ const listPeople = (
     },
       );
     }
-  return {getPerson,listPeople}};
+  return {changeChurchAccess,getPerson,listPeople}};
+export type ChangeChurchAccessResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['changeChurchAccess']>>>
 export type GetPersonResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['getPerson']>>>
 export type ListPeopleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['listPeople']>>>

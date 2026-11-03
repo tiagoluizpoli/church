@@ -3,6 +3,7 @@ export * from './assignment-audit.repository';
 export * from './authority-actor.repository';
 export * from './availability-check.repository';
 export * from './church.repository';
+export * from './church-access.repository';
 export * from './church-membership.repository';
 export * from './cycle.repository';
 export * from './email-sender';

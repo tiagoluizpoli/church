@@ -58,6 +58,7 @@
   "error_draft_staffing_reconciliation_required": "This Cycle already has staffing from earlier preparation. It needs to be reconciled before the Cycle can be sent; nothing was changed.",
   "error_event_outside_cycle": "The Event date must fall within the Cycle.",
   "error_last_remaining_event_time_block": "You cannot delete the only time block of a day. Delete the day instead.",
+  "error_last_church_admin": "The Church needs at least one admin. Make someone else an admin first.",
   "error_shift_out_of_bounds": "The Shift must fall within its time block.",
   "error_hard_constraint_violation": "This would double-book a Volunteer or break a required rule.",
   "error_below_full_publish": "Publishing below full staffing needs your confirmation.",
@@ -658,5 +659,19 @@
   "people_church_access": "Church access",
   "people_church_access_admin": "Church Admin",
   "people_church_access_member": "Church Member",
-  "people_last_admin_note": "The only Admin of this Church."
+  "people_last_admin_note": "The only Admin of this Church.",
+  "people_make_admin": "Make admin",
+  "people_remove_admin": "Remove admin",
+  "people_make_admin_title": "Make {name} an admin?",
+  "people_make_admin_description": "{name} will be able to administer the whole Church, including People, Ministries and Invitations.",
+  "people_remove_admin_title": "Remove {name}'s admin access?",
+  "people_remove_admin_description": "{name} stays a Church Member and keeps their Ministries and Roles.",
+  "people_remove_own_admin_title": "Remove your own admin access?",
+  "people_remove_own_admin_description": "You will no longer administer this Church. You stay a Church Member and keep your Ministries and Roles; only another admin can give the access back.",
+  "people_access_cancel": "Cancel",
+  "people_access_saving": "Saving…",
+  "people_made_admin_toast": "{name} is now an admin.",
+  "people_removed_admin_toast": "{name} is no longer an admin.",
+  "people_removed_own_admin_toast": "You are no longer an admin of this Church.",
+  "people_access_failed": "Couldn't change Church access. Try again."
 }

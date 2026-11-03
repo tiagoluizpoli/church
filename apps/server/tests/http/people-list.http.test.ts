@@ -65,6 +65,7 @@ beforeAll(async () => {
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
       defaultPageSize: 20,
     }),
+    churchAccessManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
     maxPageSize: 50,
@@ -515,6 +516,7 @@ describe('GET /people/{memberId}', () => {
     expect(body.churchAccess).toEqual({
       accessLevel: 'admin',
       isLastAdmin: true,
+      isSelf: true,
     });
   });
 

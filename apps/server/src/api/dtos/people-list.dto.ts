@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { PEOPLE_ACCESS_OPTIONS } from '../../domain/entities/people-list-item';
 import { decodePeopleListCursor } from '../../domain/people-list-cursor';
@@ -65,6 +66,19 @@ export const personDetailResponseSchema = z.object({
     .object({
       accessLevel: z.enum(['member', 'admin']),
       isLastAdmin: z.boolean(),
+      /** The member is the caller; demoting them ends the caller's own administration. */
+      isSelf: z.boolean(),
     })
     .optional(),
+});
+
+export const churchAccessChangeBodySchema = z.object({
+  accessLevel: z.enum(CHURCH_ACCESS_LEVEL_OPTIONS),
+});
+
+export const churchAccessChangeResponseSchema = z.object({
+  memberId: z.string(),
+  accessLevel: z.enum(CHURCH_ACCESS_LEVEL_OPTIONS),
+  /** False when the member already had the requested access; nothing was written. */
+  changed: z.boolean(),
 });

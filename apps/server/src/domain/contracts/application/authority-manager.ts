@@ -14,6 +14,7 @@ import type {
   ShiftId,
   UserId,
 } from '../../branded-ids';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
 /** Target facts must come from a Church-scoped repository; null is a missing target. */
 export interface DecideAuthorityInput {
@@ -27,6 +28,8 @@ export interface DecideAuthorityInput {
 export interface CanManageChurchInput {
   churchId: ChurchId;
   userId: UserId;
+  /** Reads the actor's authority inside this transaction (e.g. after a lock); omitted, it reads committed state. */
+  tx?: TransactionContext;
 }
 
 export interface CanManageMinistryInput {

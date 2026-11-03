@@ -64,6 +64,7 @@ export interface InvitationListFilters {
 export interface InvitationClosure {
   actor?: InvitationListNamedRef;
   at?: Date;
+  /** A revocation's `manual` or `ministry-archived`, or a decline's audit reason. */
   reason?: string;
 }
 
@@ -97,6 +98,8 @@ export interface InvitationListItem {
   lastSentAt?: Date;
   /** The caller may resend this stored-pending offer (expired included) within their authority. */
   canResend: boolean;
+  /** The caller may revoke this stored-pending offer (expired included) within their authority. */
+  canRevoke: boolean;
 }
 
 export interface InvitationListPage {

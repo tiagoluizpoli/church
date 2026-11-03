@@ -265,6 +265,9 @@ interface ChurchOfferInput {
   acceptedAt?: Date;
   acceptedById?: string;
   declinedAt?: Date;
+  canceledAt?: Date;
+  canceledById?: string;
+  cancelReason?: 'manual' | 'ministry-archived';
 }
 async function churchOffer(input: ChurchOfferInput) {
   await db.insert(churchInvitation).values({
@@ -278,6 +281,9 @@ async function churchOffer(input: ChurchOfferInput) {
     acceptedAt: input.acceptedAt,
     acceptedById: input.acceptedById,
     declinedAt: input.declinedAt,
+    canceledAt: input.canceledAt,
+    canceledById: input.canceledById,
+    cancelReason: input.cancelReason,
     createdAt: input.createdAt ?? new Date('2026-11-01T10:00:00.000Z'),
   });
 }
@@ -294,6 +300,8 @@ interface MinistryOfferInput {
   acceptedAt?: Date;
   declinedAt?: Date;
   canceledAt?: Date;
+  canceledById?: string;
+  cancelReason?: 'manual' | 'ministry-archived';
   churchId?: string;
 }
 async function ministryOffer(input: MinistryOfferInput) {
@@ -311,6 +319,8 @@ async function ministryOffer(input: MinistryOfferInput) {
     acceptedAt: input.acceptedAt,
     declinedAt: input.declinedAt,
     canceledAt: input.canceledAt,
+    canceledById: input.canceledById,
+    cancelReason: input.cancelReason,
     createdAt: input.createdAt ?? new Date('2026-11-01T10:00:00.000Z'),
   });
   for (const roleId of input.roleIds ?? []) {
@@ -577,6 +587,35 @@ describe('GET /api/v1/invitations — row actions', () => {
     });
   });
 
+  it('lets an admin revoke every stored-pending Ministry row, closed parent included, but no Church row yet', async () => {
+    signIn('admin');
+    const { items } = await list();
+
+    const actions = Object.fromEntries(
+      items.map((i) => [`${i.kind}:${i.email}`, i.canRevoke]),
+    );
+    expect(actions).toEqual({
+      'church:solo@inv.test': false,
+      'ministry:member@inv.test': true,
+      'ministry:volunteer@inv.test': true,
+      'ministry:closed@inv.test': true,
+    });
+  });
+
+  it('lets a leader revoke only volunteer-level rows', async () => {
+    signIn('worshipLeader');
+    const { items } = await list();
+
+    const actions = Object.fromEntries(
+      items.map((i) => [i.email, i.canRevoke]),
+    );
+    expect(actions).toEqual({
+      'member@inv.test': true,
+      'volunteer@inv.test': false,
+      'closed@inv.test': true,
+    });
+  });
+
   it('never offers resend on history', async () => {
     await ministryOffer({
       ministryId: fx.worshipId,
@@ -586,6 +625,7 @@ describe('GET /api/v1/invitations — row actions', () => {
     signIn('admin');
     const { items } = await list('?status=accepted');
     expect(items.map((i) => i.canResend)).toEqual([false]);
+    expect(items.map((i) => i.canRevoke)).toEqual([false]);
   });
 });
 
@@ -1094,6 +1134,70 @@ describe('GET /api/v1/invitations — filters and history', () => {
     expect(
       revoked.find((r) => r.kind === 'church')?.closure?.at,
     ).toBeUndefined();
+  });
+
+  it('shows who revoked, when and why, for Ministry rows, canceled admin parents and archived Ministries', async () => {
+    const at = T('2026-10-20T00:00:00.000Z');
+    await churchOffer({
+      id: 'ci-upgraded',
+      email: 'upgraded@inv.test',
+      role: 'admin',
+      status: 'canceled',
+      canceledAt: at,
+      canceledById: fx.userIds.worshipLeader,
+      cancelReason: 'manual',
+      createdAt: T('2026-10-11T00:00:00.000Z'),
+    });
+    await ministryOffer({
+      ministryId: fx.worshipId,
+      churchInvitationId: 'ci-upgraded',
+      status: 'canceled',
+      canceledAt: at,
+      canceledById: fx.userIds.worshipLeader,
+      cancelReason: 'manual',
+      createdAt: T('2026-10-11T00:00:00.000Z'),
+    });
+    const archived = await buildMinistry({
+      db,
+      churchId: CHURCH_A,
+      name: 'Closed choir',
+    });
+    await ministryOffer({
+      ministryId: archived.id,
+      inviteeUserId: fx.userIds.member,
+      status: 'canceled',
+      canceledAt: at,
+      canceledById: fx.userIds.admin,
+      cancelReason: 'ministry-archived',
+      createdAt: T('2026-10-12T00:00:00.000Z'),
+    });
+    await db
+      .update(ministry)
+      .set({ deletedAt: NOW_DATE })
+      .where(eq(ministry.id, archived.id));
+    signIn('admin');
+
+    const revoked = (await list('?status=revoked')).items;
+    const closure = (kind: string, email: string) =>
+      revoked.find((r) => r.kind === kind && r.email === email);
+
+    const expected = {
+      actor: { id: fx.userIds.worshipLeader, name: 'worshipLeader' },
+      at: '2026-10-20T00:00:00.000Z',
+      reason: 'manual',
+    };
+    expect(closure('church', 'upgraded@inv.test')?.closure).toEqual(expected);
+    expect(closure('ministry', 'upgraded@inv.test')?.closure).toEqual(expected);
+    expect(closure('ministry', 'member@inv.test')).toBeDefined();
+    const archivedRow = revoked.find((r) => r.ministryName === 'Closed choir');
+    expect(archivedRow?.closure).toEqual({
+      actor: { id: fx.userIds.admin, name: 'admin' },
+      at: '2026-10-20T00:00:00.000Z',
+      reason: 'ministry-archived',
+    });
+    // Outstanding offers of an archived Ministry still never list as pending.
+    const pending = (await list()).items;
+    expect(pending.some((r) => r.ministryName === 'Closed choir')).toBe(false);
   });
 
   it('never duplicates a row through Roles or deliveries in any status', async () => {

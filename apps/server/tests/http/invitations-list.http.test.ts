@@ -238,6 +238,7 @@ interface Row {
   status: string;
   emailDelivery: { state: string; sentAt?: string };
   lastSentAt: string | null;
+  canResend: boolean;
   closure?: {
     actor?: { id: string; name: string };
     at?: string;
@@ -518,6 +519,73 @@ describe('GET /api/v1/invitations — scope and identity', () => {
     signIn('admin');
     const { items } = await list();
     expect(items.map((i) => i.email)).not.toContain('b@inv.test');
+  });
+});
+
+describe('GET /api/v1/invitations — row actions', () => {
+  beforeEach(async () => {
+    await ministryOffer({
+      ministryId: fx.worshipId,
+      level: 'volunteer',
+      inviteeUserId: fx.userIds.member,
+    });
+    await ministryOffer({
+      ministryId: fx.worshipId,
+      level: 'leader',
+      inviteeUserId: fx.userIds.volunteer,
+      expiresAt: NOW_DATE,
+    });
+    await churchOffer({
+      id: 'ci-closed',
+      email: 'closed@inv.test',
+      role: 'member',
+      status: 'canceled',
+    });
+    await ministryOffer({
+      ministryId: fx.worshipId,
+      churchInvitationId: 'ci-closed',
+    });
+    await churchOffer({ id: 'ci-solo', email: 'solo@inv.test', role: 'admin' });
+  });
+
+  it('lets an admin resend every pending or expired Ministry row but no Church row or closed parent', async () => {
+    signIn('admin');
+    const { items } = await list();
+
+    const actions = Object.fromEntries(
+      items.map((i) => [`${i.kind}:${i.email}`, i.canResend]),
+    );
+    expect(actions).toEqual({
+      'church:solo@inv.test': false,
+      'ministry:member@inv.test': true,
+      'ministry:volunteer@inv.test': true,
+      'ministry:closed@inv.test': false,
+    });
+  });
+
+  it('lets a leader resend only volunteer-level rows', async () => {
+    signIn('worshipLeader');
+    const { items } = await list();
+
+    const actions = Object.fromEntries(
+      items.map((i) => [i.email, i.canResend]),
+    );
+    expect(actions).toEqual({
+      'member@inv.test': true,
+      'volunteer@inv.test': false,
+      'closed@inv.test': false,
+    });
+  });
+
+  it('never offers resend on history', async () => {
+    await ministryOffer({
+      ministryId: fx.worshipId,
+      status: 'accepted',
+      inviteeUserId: fx.userIds.multiLeader,
+    });
+    signIn('admin');
+    const { items } = await list('?status=accepted');
+    expect(items.map((i) => i.canResend)).toEqual([false]);
   });
 });
 

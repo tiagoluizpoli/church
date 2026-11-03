@@ -46,6 +46,8 @@ export const invitationListItemResponseSchema = z.object({
   }),
   /** The latest email actually sent for this offer, even if a later attempt failed; null when unknown. */
   lastSentAt: instantSchema.nullable(),
+  /** Server-derived: the caller may resend this stored-pending offer, expired included. */
+  canResend: z.boolean(),
 });
 export type InvitationListItemResponse = z.infer<
   typeof invitationListItemResponseSchema

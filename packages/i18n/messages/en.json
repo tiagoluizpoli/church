@@ -687,5 +687,14 @@
   "people_roles_failed": "Couldn't save the Roles. Try again.",
   "people_roles_blocked_title": "Upcoming Assignments need a Role you removed",
   "people_roles_blocker": "{event} · {time} · {sector} · {role}",
-  "people_roles_blocker_link": "Open in the Assign board"
+  "people_roles_blocker_link": "Open in the Assign board",
+  "people_remove_from_ministry": "Remove from {ministry}",
+  "people_remove_from_ministry_label": "Remove {name} from {ministry}",
+  "people_remove_from_ministry_title": "Remove {name} from {ministry}?",
+  "people_remove_from_ministry_description": "{name} stops serving in {ministry}, and their open availability checks for it are withdrawn. Past service, Roles and other Ministries stay. To rejoin, send a new Ministry Invitation.",
+  "people_remove_from_ministry_confirm": "Remove",
+  "people_remove_from_ministry_pending": "Removing…",
+  "people_removed_from_ministry_toast": "{name} is no longer in {ministry}.",
+  "people_remove_from_ministry_failed": "Couldn't remove from the Ministry. Try again.",
+  "people_remove_blocked_title": "Upcoming Assignments still need {name} in this Ministry"
 }

@@ -75,6 +75,7 @@ function card(
       { id: 'r-keys', name: 'Keys', archived: true },
     ],
     canEditRoles: true,
+    canEndMembership: false,
     ...overrides,
   };
 }

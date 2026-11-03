@@ -687,5 +687,14 @@
   "people_roles_failed": "Não foi possível salvar as funções. Tente novamente.",
   "people_roles_blocked_title": "Escalas futuras precisam de uma função que você removeu",
   "people_roles_blocker": "{event} · {time} · {sector} · {role}",
-  "people_roles_blocker_link": "Abrir na montagem da escala"
+  "people_roles_blocker_link": "Abrir na montagem da escala",
+  "people_remove_from_ministry": "Remover de {ministry}",
+  "people_remove_from_ministry_label": "Remover {name} de {ministry}",
+  "people_remove_from_ministry_title": "Remover {name} de {ministry}?",
+  "people_remove_from_ministry_description": "{name} deixa de servir em {ministry}, e as consultas de disponibilidade em aberto deste ministério são retiradas. O serviço anterior, as funções e os outros ministérios continuam. Para voltar, envie um novo convite para o ministério.",
+  "people_remove_from_ministry_confirm": "Remover",
+  "people_remove_from_ministry_pending": "Removendo…",
+  "people_removed_from_ministry_toast": "{name} não faz mais parte de {ministry}.",
+  "people_remove_from_ministry_failed": "Não foi possível remover do ministério. Tente novamente.",
+  "people_remove_blocked_title": "Escalas futuras ainda precisam de {name} neste ministério"
 }

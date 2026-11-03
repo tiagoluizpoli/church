@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { type FormEvent, useId, useState } from 'react';
 import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,20 +14,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { RolePicker } from '@/features/invitations/components/invite-dialog';
+import {
+  type UpcomingAssignment,
+  UpcomingAssignmentsAlert,
+} from '@/features/people/components/upcoming-assignments-alert';
 import { peopleQueryKey } from '@/features/people/people-queries';
-import type {
-  GetPerson200MinistriesItem,
-  SetMinistryRoles409,
-} from '@/infrastructure/api/churchAPI.schemas';
+import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
-import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { peopleApi } from '@/utils/api-instances';
-
-type UpcomingAssignment = Extract<
-  SetMinistryRoles409,
-  { assignments: unknown }
->['assignments'][number];
 
 interface RefusalBody {
   error?: string;
@@ -42,6 +36,7 @@ const KEPT_OPEN: Record<string, () => string> = {
 
 /** Refusals meaning the shown card was stale; the dialog closes and the member refreshes. */
 const STALE: Record<string, () => string> = {
+  MINISTRY_MEMBERSHIP_INACTIVE: () => m.error_ministry_membership_inactive(),
   FORBIDDEN: () => m.error_forbidden(),
   NOT_FOUND: () => m.people_detail_not_found(),
 };
@@ -67,7 +62,6 @@ export function EditRolesDialog({
 }: EditRolesDialogProps) {
   const queryClient = useQueryClient();
   const churchId = useCallerCapabilitiesScope()?.churchId;
-  const { churchTimezone } = useTimezone();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
@@ -170,39 +164,10 @@ export function EditRolesDialog({
               </Alert>
             ) : null}
             {failure?.kind === 'blocked' ? (
-              <Alert variant="destructive" role="alert">
-                <AlertTitle>{m.people_roles_blocked_title()}</AlertTitle>
-                <AlertDescription className="space-y-2">
-                  <p>{m.error_upcoming_assignments()}</p>
-                  <ul className="space-y-1">
-                    {failure.assignments.map((blocker) => (
-                      <li key={blocker.assignmentId} className="break-words">
-                        {m.people_roles_blocker({
-                          event: blocker.eventTitle,
-                          time: formatInstantRangeOf({
-                            start: blocker.shiftStart,
-                            end: blocker.shiftEnd,
-                            timeZone: churchTimezone,
-                          }),
-                          sector: blocker.sectorName,
-                          role: blocker.roleName,
-                        })}{' '}
-                        <a
-                          href={`/schedules/${blocker.ministryId}/${blocker.cycleId}/assign`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium underline underline-offset-4"
-                        >
-                          {m.people_roles_blocker_link()}{' '}
-                          <span className="sr-only">
-                            {m.invitations_invite_new_tab()}
-                          </span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
+              <UpcomingAssignmentsAlert
+                title={m.people_roles_blocked_title()}
+                assignments={failure.assignments}
+              />
             ) : null}
             <DialogFooter>
               <Button

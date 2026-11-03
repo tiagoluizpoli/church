@@ -173,7 +173,7 @@ export interface CycleBuilderRoleOption {
   name: string;
 }
 
-const CYCLE_BUILDER_QUERY_KEY = ['cycle-builder'] as const;
+export const CYCLE_BUILDER_QUERY_KEY = ['cycle-builder'] as const;
 
 function sumPeopleNeeded(
   eventTimeBlocks: PeopleNeededEventTimeBlock[],

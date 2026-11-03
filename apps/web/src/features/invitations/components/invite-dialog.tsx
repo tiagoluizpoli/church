@@ -111,9 +111,11 @@ interface RolePickerProps {
   heldArchived?: RolePickerRole[];
   /** Keeps checkbox ids unique per surface. */
   idPrefix?: string;
+  /** Select all adds the active Roles to the current choice (keeping held archived ones) instead of replacing it. */
+  selectAllKeepsSelection?: boolean;
 }
 
-/** The Ministry's active Roles; Select all adds only active Roles and keeps every other choice. */
+/** The Ministry's active Roles; Select all picks every active Role. */
 export function RolePicker({
   ministryId,
   selected,
@@ -121,6 +123,7 @@ export function RolePicker({
   errorId,
   heldArchived = [],
   idPrefix = 'invite',
+  selectAllKeepsSelection = false,
 }: RolePickerProps) {
   const rolesQuery = useMinistryRoles({ ministryId });
   const roles = rolesQuery.data?.roles ?? [];
@@ -162,6 +165,14 @@ export function RolePicker({
     );
   }
 
+  const selectAll = () => {
+    const activeIds = roles.map(({ id }) => id);
+    const next = selectAllKeepsSelection
+      ? new Set([...selected, ...activeIds])
+      : activeIds;
+    onChange([...next]);
+  };
+
   const toggle = ({ roleId, checked }: ToggleRoleInput) =>
     onChange(
       checked ? [...selected, roleId] : selected.filter((id) => id !== roleId),
@@ -177,14 +188,7 @@ export function RolePicker({
         <span id={legendId} className="font-medium text-sm">
           {m.ministry_invitation_roles_label()}
         </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            onChange([...new Set([...selected, ...roles.map(({ id }) => id)])])
-          }
-        >
+        <Button type="button" size="sm" variant="outline" onClick={selectAll}>
           {m.invitations_invite_select_all()}
         </Button>
       </div>

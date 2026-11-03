@@ -2,6 +2,7 @@ import type { Instant } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
+  RoleId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -33,15 +34,19 @@ export interface MembershipTarget {
   /** `inactive` once ended; only an active membership changes. */
   status: MinistryMembershipStatus;
   /** Every Role held, archived ones included. */
-  roleIds: string[];
+  roleIds: RoleId[];
 }
+
+/** Which Assignments a change would strand: every one of the Membership, or only those for some Roles (none when empty). */
+export type UpcomingAssignmentScope =
+  | { kind: 'membership' }
+  | { kind: 'roles'; roleIds: RoleId[] };
 
 export interface ListUpcomingMembershipAssignmentsInput {
   churchId: ChurchId;
   volunteerId: VolunteerId;
   ministryId: MinistryId;
-  /** Only Assignments for these Roles; omitted means every Role of the Membership. */
-  roleIds?: string[];
+  scope: UpcomingAssignmentScope;
   at: Instant;
   tx: TransactionContext;
 }
@@ -50,8 +55,8 @@ export interface SaveMembershipRolesInput {
   churchId: ChurchId;
   actorId: UserId;
   target: MembershipTarget;
-  addedRoleIds: string[];
-  removedRoleIds: string[];
+  addedRoleIds: RoleId[];
+  removedRoleIds: RoleId[];
   correlationId: string;
   changedAt: Date;
   tx: TransactionContext;
@@ -105,9 +110,9 @@ export interface MinistryMembershipRepository {
   /**
    * Ends the membership at `changedAt`, keeping its Role rows, withdraws its
    * actionable Availability Checks in non-past Cycles and writes the one
-   * `ministry_membership_ended` audit. Returns the withdrawn check ids.
+   * `ministry_membership_ended` audit, which records the withdrawn check ids.
    */
-  endMembership(input: EndMembershipInput): Promise<string[]>;
+  endMembership(input: EndMembershipInput): Promise<void>;
   /**
    * Applies the level and any Role difference together, with their one
    * `ministry_access_changed` audit.

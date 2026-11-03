@@ -3341,13 +3341,15 @@ export type SetMinistryRoles404 = {
 export type SetMinistryRoles409 = {
   error: string;
   message: string;
-  assignments: {
+  assignments: ({
   assignmentId: string;
   eventId: string;
   eventTitle: string;
   eventTimeBlockId: string;
   shiftId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   shiftStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   shiftEnd: string;
   roleId: string;
   roleName: string;
@@ -3355,7 +3357,7 @@ export type SetMinistryRoles409 = {
   sectorName: string;
   ministryId: string;
   cycleId: string;
-}[];
+})[];
 } | {
   error: string;
   message: string;
@@ -3423,13 +3425,15 @@ export type ChangeMinistryAccess404 = {
 export type ChangeMinistryAccess409 = {
   error: string;
   message: string;
-  assignments: {
+  assignments: ({
   assignmentId: string;
   eventId: string;
   eventTitle: string;
   eventTimeBlockId: string;
   shiftId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   shiftStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   shiftEnd: string;
   roleId: string;
   roleName: string;
@@ -3437,7 +3441,7 @@ export type ChangeMinistryAccess409 = {
   sectorName: string;
   ministryId: string;
   cycleId: string;
-}[];
+})[];
 } | {
   error: string;
   message: string;
@@ -3482,13 +3486,15 @@ export type EndMinistryMembership404 = {
 export type EndMinistryMembership409 = {
   error: string;
   message: string;
-  assignments: {
+  assignments: ({
   assignmentId: string;
   eventId: string;
   eventTitle: string;
   eventTimeBlockId: string;
   shiftId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   shiftStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   shiftEnd: string;
   roleId: string;
   roleName: string;
@@ -3496,7 +3502,7 @@ export type EndMinistryMembership409 = {
   sectorName: string;
   ministryId: string;
   cycleId: string;
-}[];
+})[];
 } | {
   error: string;
   message: string;

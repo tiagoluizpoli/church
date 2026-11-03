@@ -17,7 +17,12 @@ import {
 } from '@church/db';
 import { fromDate, toDate } from '@church/time';
 import { and, asc, eq, gt, inArray, isNull, ne } from 'drizzle-orm';
-import { MinistryId, UserId, VolunteerId } from '../../domain/branded-ids';
+import {
+  MinistryId,
+  RoleId,
+  UserId,
+  VolunteerId,
+} from '../../domain/branded-ids';
 import type {
   EndMembershipInput,
   ListMembershipRolesInput,
@@ -38,6 +43,15 @@ interface DrizzleMinistryMembershipRepositoryInput {
 }
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
+
+/** The ids every Ministry Membership audit starts with. */
+function membershipFacts({ target }: Pick<SaveMembershipRolesInput, 'target'>) {
+  return {
+    churchMembershipId: target.memberId,
+    ministryMembershipId: target.membershipId,
+    ministryId: target.ministryId,
+  };
+}
 
 /** The complete Role set before and after, ids sorted. */
 function roleFacts({
@@ -117,7 +131,12 @@ export class DrizzleMinistryMembershipRepository
     const roleRows = await db
       .select({ roleId: ministryMembershipRole.roleId })
       .from(ministryMembershipRole)
-      .where(eq(ministryMembershipRole.ministryMembershipId, membershipId));
+      .where(
+        and(
+          eq(ministryMembershipRole.ministryMembershipId, membershipId),
+          withChurchIsolation({ table: ministryMembershipRole, churchId }),
+        ),
+      );
     return {
       memberId,
       membershipId,
@@ -126,7 +145,7 @@ export class DrizzleMinistryMembershipRepository
       ministryId: MinistryId.from(membership.ministryId),
       ministryAccessLevel: membership.ministryAccessLevel,
       status: membership.status,
-      roleIds: roleRows.map((row) => row.roleId),
+      roleIds: roleRows.map((row) => RoleId.from(row.roleId)),
     };
   }
 
@@ -134,13 +153,13 @@ export class DrizzleMinistryMembershipRepository
     churchId,
     volunteerId,
     ministryId,
-    roleIds,
+    scope,
     at,
     tx,
   }: ListUpcomingMembershipAssignmentsInput): Promise<
     UpcomingMembershipAssignment[]
   > {
-    if (roleIds?.length === 0) return [];
+    if (scope.kind === 'roles' && scope.roleIds.length === 0) return [];
     const rows = await getClient({ db: this.db, tx })
       .selectDistinctOn([shift.startTime, assignment.id], {
         assignmentId: assignment.id,
@@ -179,7 +198,9 @@ export class DrizzleMinistryMembershipRepository
           ne(event.status, 'cancelled'),
           // The Event end, not the Shift's: a running Event protects its ended Shifts.
           gt(event.end, toDate({ instant: at })),
-          roleIds ? inArray(shiftRequirement.roleId, roleIds) : undefined,
+          scope.kind === 'roles'
+            ? inArray(shiftRequirement.roleId, scope.roleIds)
+            : undefined,
         ),
       )
       .orderBy(asc(shift.startTime), asc(assignment.id));
@@ -200,12 +221,7 @@ export class DrizzleMinistryMembershipRepository
         actorId,
         subjectId: target.subjectUserId,
         action: 'ministry_roles_changed',
-        details: {
-          churchMembershipId: target.memberId,
-          ministryMembershipId: target.membershipId,
-          ministryId: target.ministryId,
-          ...roleFacts(input),
-        },
+        details: { ...membershipFacts(input), ...roleFacts(input) },
         correlationId,
         timestamp: changedAt,
       });
@@ -227,16 +243,19 @@ export class DrizzleMinistryMembershipRepository
     await db
       .update(ministryMembership)
       .set({ ministryAccessLevel: accessLevel })
-      .where(eq(ministryMembership.id, target.membershipId));
+      .where(
+        and(
+          eq(ministryMembership.id, target.membershipId),
+          withChurchIsolation({ table: ministryMembership, churchId }),
+        ),
+      );
     await db.insert(identityAudit).values({
       churchId,
       actorId,
       subjectId: target.subjectUserId,
       action: 'ministry_access_changed',
       details: {
-        churchMembershipId: target.memberId,
-        ministryMembershipId: target.membershipId,
-        ministryId: target.ministryId,
+        ...membershipFacts(input),
         beforeAccessLevel: target.ministryAccessLevel,
         afterAccessLevel: accessLevel,
         ...(rolesChanged ? roleFacts(input) : {}),
@@ -264,6 +283,7 @@ export class DrizzleMinistryMembershipRepository
               target.membershipId,
             ),
             inArray(ministryMembershipRole.roleId, removedRoleIds),
+            withChurchIsolation({ table: ministryMembershipRole, churchId }),
           ),
         );
     }
@@ -285,12 +305,17 @@ export class DrizzleMinistryMembershipRepository
     correlationId,
     changedAt,
     tx,
-  }: EndMembershipInput): Promise<string[]> {
+  }: EndMembershipInput): Promise<void> {
     const db = getClient({ db: this.db, tx });
     await db
       .update(ministryMembership)
       .set({ status: 'inactive', leftAt: changedAt })
-      .where(eq(ministryMembership.id, target.membershipId));
+      .where(
+        and(
+          eq(ministryMembership.id, target.membershipId),
+          withChurchIsolation({ table: ministryMembership, churchId }),
+        ),
+      );
     // A confirmed check is withdrawn too: its answers could still be edited.
     const withdrawn = await db
       .update(availabilityCheck)
@@ -322,9 +347,7 @@ export class DrizzleMinistryMembershipRepository
       subjectId: target.subjectUserId,
       action: 'ministry_membership_ended',
       details: {
-        churchMembershipId: target.memberId,
-        ministryMembershipId: target.membershipId,
-        ministryId: target.ministryId,
+        ...membershipFacts({ target }),
         retainedRoleIds: [...target.roleIds].sort(),
         withdrawnAvailabilityCheckIds: withdrawnCheckIds,
         beforeStatus: 'active',
@@ -333,7 +356,6 @@ export class DrizzleMinistryMembershipRepository
       correlationId,
       timestamp: changedAt,
     });
-    return withdrawnCheckIds;
   }
 
   async listRoles({

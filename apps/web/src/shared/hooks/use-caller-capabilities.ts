@@ -15,6 +15,9 @@ export interface CallerCapabilitiesState extends CallerCapabilities {
   isResolving: boolean;
 }
 
+/** Root of every caller-capabilities read; reset it when the caller's own authority changes. */
+export const CALLER_CAPABILITIES_QUERY_KEY = ['caller-capabilities'] as const;
+
 const NO_CAPABILITIES: CallerCapabilities = {
   isChurchAdmin: false,
   leadsMinistries: false,
@@ -29,7 +32,11 @@ const NO_CAPABILITIES: CallerCapabilities = {
 export function useCallerCapabilities(): CallerCapabilitiesState {
   const scope = useCallerCapabilitiesScope();
   const callerCapabilitiesQuery = useQuery({
-    queryKey: ['caller-capabilities', scope?.userId, scope?.churchId],
+    queryKey: [
+      ...CALLER_CAPABILITIES_QUERY_KEY,
+      scope?.userId,
+      scope?.churchId,
+    ],
     queryFn: () => callerCapabilitiesApi.getCallerCapabilities(),
     enabled: Boolean(scope?.userId && scope.churchId),
     retry: false,

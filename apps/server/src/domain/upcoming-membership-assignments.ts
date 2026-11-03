@@ -1,3 +1,5 @@
+import type { Instant } from '@church/time';
+
 /**
  * An active Assignment on a non-cancelled Event that has not ended, which a
  * Role removal or Membership end would leave without its qualification. The
@@ -10,9 +12,8 @@ export interface UpcomingMembershipAssignment {
   eventTitle: string;
   eventTimeBlockId: string;
   shiftId: string;
-  /** Instants, ISO-8601 UTC. */
-  shiftStart: string;
-  shiftEnd: string;
+  shiftStart: Instant;
+  shiftEnd: Instant;
   roleId: string;
   roleName: string;
   sectorId: string;

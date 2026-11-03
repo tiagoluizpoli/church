@@ -13,6 +13,7 @@ import {
 } from '@church/db';
 import { fromDate } from '@church/time';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
+import type { PgSelect } from 'drizzle-orm/pg-core';
 import type {
   EventId,
   MinistryId,
@@ -35,6 +36,7 @@ import type {
   ListMinistryLeaderVolunteerIdsInput,
   MinistryLeaderRow,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
 import { getClient, withChurchIsolation } from './helpers';
@@ -44,12 +46,25 @@ interface DrizzleAvailabilityCheckRepositoryInput {
   db: AnyDrizzleDb;
 }
 
-/** A check that can still be answered: not withdrawn, on an active Ministry Membership. */
-const actionable = () =>
+/** A check that can still be answered: not withdrawn, on an active Ministry Membership (joined by the caller). */
+export const actionable = () =>
   and(
     isNull(availabilityCheck.withdrawnAt),
     eq(ministryMembership.status, 'active'),
   );
+
+interface ShareLockMembershipsInput<Query extends PgSelect> {
+  query: Query;
+  tx?: TransactionContext;
+}
+
+/** In a transaction, waits out a concurrent removal and re-reads the membership after it. */
+function shareLockMembershipsInTx<Query extends PgSelect>({
+  query,
+  tx,
+}: ShareLockMembershipsInput<Query>) {
+  return tx ? query.for('share', { of: ministryMembership }) : query;
+}
 
 export class DrizzleAvailabilityCheckRepository
   implements AvailabilityCheckRepository
@@ -83,11 +98,10 @@ export class DrizzleAvailabilityCheckRepository
             churchId: input.churchId,
           }),
         ),
-      );
-    // In a transaction (Ask), wait out a concurrent removal and re-read the status after it.
-    const rows = input.tx
-      ? await query.for('share', { of: ministryMembership })
-      : await query;
+      )
+      .$dynamic();
+    // Ask waits out a concurrent removal.
+    const rows = await shareLockMembershipsInTx({ query, tx: input.tx });
 
     return rows.map((row) => ({
       ministryMembershipId: row.ministryMembershipId,
@@ -180,11 +194,10 @@ export class DrizzleAvailabilityCheckRepository
             churchId: input.churchId,
           }),
         ),
-      );
-    // In a transaction (an answer), wait out a concurrent removal and re-read the membership after it.
-    const rows = input.tx
-      ? await query.for('share', { of: ministryMembership })
-      : await query;
+      )
+      .$dynamic();
+    // An answer waits out a concurrent removal.
+    const rows = await shareLockMembershipsInTx({ query, tx: input.tx });
 
     const row = rows[0];
     if (!row) {

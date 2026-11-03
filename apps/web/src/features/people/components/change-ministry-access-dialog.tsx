@@ -1,7 +1,4 @@
 import { m } from '@church/i18n/messages';
-import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { isAxiosError } from 'axios';
 import { type FormEvent, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,37 +12,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { RolePicker } from '@/features/invitations/components/invite-dialog';
+import { UpcomingAssignmentsAlert } from '@/features/people/components/upcoming-assignments-alert';
 import {
-  CALLER_CAPABILITIES_KEY,
-  resetAfterSelfDemotion,
-} from '@/features/people/authority-refresh';
-import {
-  type UpcomingAssignment,
-  UpcomingAssignmentsAlert,
-} from '@/features/people/components/upcoming-assignments-alert';
-import { peopleQueryKey } from '@/features/people/people-queries';
+  type MembershipFailure,
+  readMembershipRefusal,
+  useMembershipChange,
+} from '@/features/people/use-membership-change';
 import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { peopleApi } from '@/utils/api-instances';
-
-interface RefusalBody {
-  error?: string;
-  assignments?: UpcomingAssignment[];
-}
-
-/** Scheduling reads whose candidate qualifications follow the level and Role changes. */
-const QUALIFICATION_READERS = [['cycle-builder']] as const;
-
-/** Refusals meaning the shown card was stale; the dialog closes and the member refreshes. */
-const STALE: Record<string, () => string> = {
-  MINISTRY_MEMBERSHIP_INACTIVE: () => m.error_ministry_membership_inactive(),
-  FORBIDDEN: () => m.error_forbidden(),
-  NOT_FOUND: () => m.people_detail_not_found(),
-};
-
-type Failure =
-  | { kind: 'blocked'; assignments: UpcomingAssignment[] }
-  | { kind: 'message'; message: string };
 
 interface ChangeMinistryAccessDialogProps {
   memberId: string;
@@ -62,13 +36,14 @@ export function ChangeMinistryAccessDialog({
   card,
   isSelf,
 }: ChangeMinistryAccessDialogProps) {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const { refresh, afterSelfReduction, closeIfStale } = useMembershipChange({
+    memberId,
+  });
   const [open, setOpen] = useState(false);
+  const closeDialog = () => setOpen(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [failure, setFailure] = useState<MembershipFailure | null>(null);
   const [required, setRequired] = useState(false);
   const [serverNeedsRole, setServerNeedsRole] = useState(false);
   const errorId = useId();
@@ -90,15 +65,6 @@ export function ChangeMinistryAccessDialog({
     setOpen(true);
   };
 
-  const refresh = () =>
-    Promise.all(
-      [
-        peopleQueryKey({ churchId }),
-        CALLER_CAPABILITIES_KEY,
-        ...QUALIFICATION_READERS,
-      ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-    );
-
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (pending) return;
@@ -109,19 +75,15 @@ export function ChangeMinistryAccessDialog({
     setPending(true);
     setFailure(null);
     try {
+      const roleIds = [...new Set(selected)];
       await peopleApi.changeMinistryAccess(memberId, card.membershipId, {
         accessLevel: promoting ? 'leader' : 'volunteer',
-        ...(needsRoles ? { roleIds: [...new Set(selected)] } : {}),
+        ...(needsRoles ? { roleIds } : {}),
       });
       setOpen(false);
       if (selfDemotion) {
         toast.success(m.people_made_own_volunteer_toast(names));
-        const { detailReadable } = await resetAfterSelfDemotion({
-          queryClient,
-          churchId,
-          memberId,
-        });
-        if (!detailReadable) await navigate({ to: '/' });
+        await afterSelfReduction();
         return;
       }
       toast.success(
@@ -131,12 +93,9 @@ export function ChangeMinistryAccessDialog({
       );
       await refresh();
     } catch (error) {
-      const body = isAxiosError<RefusalBody>(error)
-        ? error.response?.data
-        : undefined;
-      const code = body?.error ?? '';
-      if (code === 'UPCOMING_ASSIGNMENTS' && body?.assignments) {
-        setFailure({ kind: 'blocked', assignments: body.assignments });
+      const { code, assignments } = readMembershipRefusal(error);
+      if (code === 'UPCOMING_ASSIGNMENTS' && assignments) {
+        setFailure({ kind: 'blocked', assignments });
       } else if (code === 'MINISTRY_ROLE_REQUIRED') {
         // The card was stale: it held an active Role the server no longer sees.
         setServerNeedsRole(true);
@@ -146,11 +105,7 @@ export function ChangeMinistryAccessDialog({
           kind: 'message',
           message: m.error_invalid_ministry_role(),
         });
-      } else if (STALE[code]) {
-        toast.error(STALE[code]());
-        setOpen(false);
-        await refresh();
-      } else {
+      } else if (!(await closeIfStale({ code, close: closeDialog }))) {
         setFailure({
           kind: 'message',
           message: m.people_ministry_access_failed(),
@@ -205,6 +160,7 @@ export function ChangeMinistryAccessDialog({
                   selected={selected}
                   heldArchived={heldArchived}
                   idPrefix={`level-${card.membershipId}`}
+                  selectAllKeepsSelection
                   errorId={required ? errorId : undefined}
                   onChange={(next) => {
                     setRequired(false);

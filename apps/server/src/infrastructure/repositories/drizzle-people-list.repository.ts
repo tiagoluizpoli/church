@@ -19,6 +19,7 @@ import {
   type SQL,
   sql,
 } from 'drizzle-orm';
+import { UserId } from '../../domain/branded-ids';
 import type {
   GetPersonInput,
   ListPeopleInput,
@@ -233,7 +234,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
 
     const detail = {
       id: row.id,
-      userId: row.userId,
+      userId: UserId.from(row.userId),
       name: row.name,
       email: row.email,
       ministries,

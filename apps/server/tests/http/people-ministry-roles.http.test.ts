@@ -785,7 +785,7 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
       expect(await audits()).toEqual([]);
     });
 
-    it('refuses an ended membership as inactive to an actor who could manage it, and hides it from one who cannot', async () => {
+    it('refuses an ended membership as inactive to an admin only, and hides it from every leader', async () => {
       await db
         .update(ministryMembership)
         .set({ status: 'inactive', leftAt: new Date('2026-10-01T00:00:00Z') })
@@ -803,14 +803,16 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
         error: 'MINISTRY_MEMBERSHIP_INACTIVE',
         message: m.error_ministry_membership_inactive({}, { locale: 'en' }),
       });
-      // kim leads only Kids, so the ended Worship membership stays hidden.
-      const outsider = await editRoles({
-        as: 'kim',
-        member: 'val',
-        membership: ws('val'),
-        roleIds: [f.vocals],
-      });
-      expect(outsider.statusCode).toBe(404);
+      // lea leads Worship, kim only Kids: once ended, the membership is hidden from both.
+      for (const leader of ['lea', 'kim']) {
+        const hidden = await editRoles({
+          as: leader,
+          member: 'val',
+          membership: ws('val'),
+          roleIds: [f.vocals],
+        });
+        expect(hidden.statusCode, leader).toBe(404);
+      }
       expect(await heldRoles(ws('val'))).toEqual([f.vocals, f.keys].sort());
       expect(await audits()).toEqual([]);
     });
@@ -1642,6 +1644,25 @@ describe('PATCH /people/:memberId/ministry-memberships/:membershipId/access', ()
     expect(await audits()).toEqual([]);
   });
 
+  it('refuses an ended membership as inactive to an admin', async () => {
+    await db
+      .update(ministryMembership)
+      .set({ status: 'inactive', leftAt: new Date('2026-10-01T00:00:00Z') })
+      .where(eq(ministryMembership.id, ws('val')));
+
+    const res = await changeAccess({
+      as: 'ada',
+      member: 'val',
+      membership: ws('val'),
+      accessLevel: 'leader',
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toBe('MINISTRY_MEMBERSHIP_INACTIVE');
+    expect(await levelOf(ws('val'))).toBe('volunteer');
+    expect(await audits()).toEqual([]);
+  });
+
   it('lets the last leader of a Ministry be demoted, leaving other memberships and Church access alone', async () => {
     const res = await changeAccess({
       as: 'ada',
@@ -1957,7 +1978,7 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       expect(await audits()).toEqual([]);
     });
 
-    it('refuses repeating an ended removal as inactive, keeping the first leftAt and audit', async () => {
+    it('refuses repeating an ended removal as inactive to an admin and hides it from its leader, keeping the first leftAt and audit', async () => {
       const first = await removeFrom({
         as: 'ada',
         member: 'val',
@@ -1968,8 +1989,14 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
         instant: parseInstant({ value: '2026-11-04T12:00:00.000Z' }),
       });
 
-      const again = await removeFrom({
+      const asLeader = await removeFrom({
         as: 'lea',
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(asLeader.statusCode).toBe(404);
+      const again = await removeFrom({
+        as: 'ada',
         member: 'val',
         membership: ws('val'),
         locale: 'pt-BR',

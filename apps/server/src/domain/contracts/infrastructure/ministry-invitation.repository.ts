@@ -9,6 +9,7 @@ import type {
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { PublicRedemptionPreview } from '../../entities/public-redemption-preview';
+import type { ResendThrottleState } from '../../services/resend-throttle';
 import type { TransactionContext } from './transaction-context';
 
 export interface AcquireMintLockInput {
@@ -69,9 +70,8 @@ export interface LockChurchInvitationInput {
 }
 
 /** A row-locked Church Invitation with its resend throttle facts. */
-export interface LockedChurchInvitation extends Partial<ResendThrottleFields> {
+export interface LockedChurchInvitation extends ResendThrottleState {
   status: ChurchInvitationStatus;
-  resendCount: number;
 }
 
 export interface ApplyChurchResendInput {

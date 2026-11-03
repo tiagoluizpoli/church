@@ -209,8 +209,12 @@ export class DrizzleMinistryInvitationRepository
       ? {
           ...row,
           status: row.status as ChurchInvitationStatus,
-          lastResendAt: row.lastResendAt ?? undefined,
-          resendWindowStartedAt: row.resendWindowStartedAt ?? undefined,
+          lastResendAt: row.lastResendAt
+            ? fromDate({ date: row.lastResendAt })
+            : undefined,
+          resendWindowStartedAt: row.resendWindowStartedAt
+            ? fromDate({ date: row.resendWindowStartedAt })
+            : undefined,
         }
       : null;
   }

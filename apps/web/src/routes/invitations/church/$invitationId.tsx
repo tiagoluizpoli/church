@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import type {
   PreviewChurchInvitation200,
   PreviewChurchInvitation200ChurchAccessLevel,
-  PreviewChurchInvitation200MinistryMinistryAccessLevel,
+  PreviewChurchInvitation200MinistriesItemMinistryAccessLevel,
   RedeemChurchInvitation200,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
@@ -62,7 +62,7 @@ const CHURCH_ACCESS_LABELS: Record<
 };
 
 const MINISTRY_ACCESS_LABELS: Record<
-  PreviewChurchInvitation200MinistryMinistryAccessLevel,
+  PreviewChurchInvitation200MinistriesItemMinistryAccessLevel,
   () => string
 > = {
   volunteer: m.join_ministry_access_volunteer,
@@ -484,7 +484,6 @@ interface InvitationSummaryProps {
 }
 
 function InvitationSummary({ preview }: InvitationSummaryProps) {
-  const { ministry } = preview;
   return (
     <div className="space-y-1.5 border-border border-b pb-4">
       <h1 className="text-balance font-semibold text-2xl tracking-tight">
@@ -495,8 +494,8 @@ function InvitationSummary({ preview }: InvitationSummaryProps) {
           accessLevel: CHURCH_ACCESS_LABELS[preview.churchAccessLevel](),
         })}
       </p>
-      {ministry ? (
-        <div className="space-y-0.5 text-sm">
+      {preview.ministries.map((ministry) => (
+        <div key={ministry.invitationId} className="space-y-0.5 text-sm">
           <p className="text-pretty">
             {m.join_ministry_access({
               ministryName: ministry.name,
@@ -510,7 +509,7 @@ function InvitationSummary({ preview }: InvitationSummaryProps) {
             </p>
           ) : null}
         </div>
-      ) : null}
+      ))}
       <p className="text-muted-foreground text-xs">
         {m.join_expires({
           relative: formatRelative({

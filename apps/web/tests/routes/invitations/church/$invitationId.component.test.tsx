@@ -58,6 +58,7 @@ const PLAIN_PREVIEW = {
   churchName: 'St. Peter',
   churchAccessLevel: 'admin' as const,
   expiresAt: '2099-01-01T00:00:00.000Z',
+  ministries: [],
 };
 
 const PAIRED_PREVIEW = {
@@ -71,6 +72,14 @@ const PAIRED_PREVIEW = {
     ministryAccessLevel: 'leader' as const,
     roleNames: ['Singer', 'Guitar'],
   },
+  ministries: [
+    {
+      invitationId: 'ministry-invitation-1',
+      name: 'Worship',
+      ministryAccessLevel: 'leader' as const,
+      roleNames: ['Singer', 'Guitar'],
+    },
+  ],
 };
 
 const INITIAL_PATH = '/invitations/church/church-invitation-1';
@@ -268,6 +277,40 @@ describe('the public Church Invitation join route', () => {
     ).toBeVisible();
     expect(
       screen.getByText(m.join_ministry_roles({ roles: 'Singer, Guitar' })),
+    ).toBeVisible();
+  });
+
+  it('shows every pending Ministry half of the offer', async () => {
+    previewChurchInvitation.mockResolvedValue({
+      ...PAIRED_PREVIEW,
+      ministries: [
+        ...PAIRED_PREVIEW.ministries,
+        {
+          invitationId: 'ministry-invitation-2',
+          name: 'Kids',
+          ministryAccessLevel: 'volunteer' as const,
+          roleNames: [],
+        },
+      ],
+    });
+
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
+
+    expect(
+      await screen.findByText(
+        m.join_ministry_access({
+          ministryName: 'Worship',
+          accessLevel: m.join_ministry_access_leader(),
+        }),
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        m.join_ministry_access({
+          ministryName: 'Kids',
+          accessLevel: m.join_ministry_access_volunteer(),
+        }),
+      ),
     ).toBeVisible();
   });
 

@@ -317,7 +317,61 @@ describe('Church invitation redemption HTTP boundary', () => {
         ministryAccessLevel: 'leader',
         roleNames: [expect.stringMatching(/^Vocalist /)],
       },
+      ministries: [
+        {
+          invitationId: invitation.id,
+          name: expect.stringMatching(/^Worship /),
+          ministryAccessLevel: 'leader',
+          roleNames: [expect.stringMatching(/^Vocalist /)],
+        },
+      ],
     });
+  });
+
+  it('lists every pending Ministry half of the Church offer in the preview', async () => {
+    const email = `redemption-${fixture.churchA.slug}@fixture.test`;
+    const mintHalf = (
+      ministryId: string,
+      ministryAccessLevel: 'volunteer' | 'leader',
+      roleIds: string[],
+    ) =>
+      invitationManager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(ministryId),
+        inviterId: UserId.from(fixture.adminA),
+        email,
+        ministryAccessLevel,
+        roleIds: roleIds.map((id) => RoleId.from(id)),
+      });
+    const volunteerHalf = await mintHalf(fixture.ministryOneA, 'volunteer', [
+      fixture.roleInMinistryOneA,
+    ]);
+    const leaderHalf = await mintHalf(fixture.ministryTwoA, 'leader', []);
+    const { app } = await createHarness();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: redemptionUrl({ invitationId: leaderHalf.churchInvitationId ?? '' }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().ministries).toHaveLength(2);
+    expect(response.json().ministries).toEqual(
+      expect.arrayContaining([
+        {
+          invitationId: volunteerHalf.id,
+          name: expect.stringMatching(/^Worship /),
+          ministryAccessLevel: 'volunteer',
+          roleNames: [expect.stringMatching(/^Vocalist /)],
+        },
+        {
+          invitationId: leaderHalf.id,
+          name: expect.any(String),
+          ministryAccessLevel: 'leader',
+          roleNames: [],
+        },
+      ]),
+    );
   });
 
   it('uses the identical unavailable response for missing, expired, canceled, rejected, and accepted invitations', async () => {
@@ -1057,6 +1111,7 @@ describe('plain first-admin Church Invitation over HTTP', () => {
       churchName: plain.churchName,
       churchAccessLevel: 'admin',
       expiresAt: expect.any(String),
+      ministries: [],
     });
   });
 

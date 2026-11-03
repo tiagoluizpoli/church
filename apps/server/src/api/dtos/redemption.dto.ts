@@ -44,7 +44,10 @@ export const redemptionPreviewResponseSchema = z.object({
   churchName: z.string(),
   churchAccessLevel: z.enum(CHURCH_ACCESS_LEVEL_OPTIONS),
   expiresAt: instantSchema,
+  /** The newest pending half, kept for older clients; `ministries` is the full list. */
   ministry: redemptionPreviewMinistrySchema.optional(),
+  /** Every still-pending, unexpired Ministry half that accepting grants. */
+  ministries: z.array(redemptionPreviewMinistrySchema),
 });
 
 export const verificationCodeRequestedResponseSchema = z.object({

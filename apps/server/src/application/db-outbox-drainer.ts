@@ -166,15 +166,13 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         this.loadPendingInvitationFacts({ churchId, ministryInvitationId }),
       ),
     ]);
+    // A half that closed meanwhile, or lacks its frozen inviter name, is left
+    // out; the offer itself being pending is what makes this T1 worth sending.
     const ministryOffers = halves.filter((half) => half !== null);
     if (ministryOffers.length !== halves.length) {
-      // T1 names who invited to each Ministry; never send a partial offer.
-      await this.failTerminally({
-        message,
-        reason:
-          'A paired invitation closed or its inviter could not be resolved',
-      });
-      return 'failed';
+      console.warn(
+        `[Outbox] church offer ${churchInvitationId} T1 omits ${halves.length - ministryOffers.length} unavailable Ministry half(s)`,
+      );
     }
 
     const payload: ChurchBootstrapInvitationEmail = {

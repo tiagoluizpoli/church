@@ -32,6 +32,7 @@ const repo = {
   findChurchMemberByEmail: vi.fn(),
   findPendingForAddress: vi.fn(),
   alignPairedExpiry: vi.fn(),
+  supersedeUnsentChainedOutbox: vi.fn(),
   findPendingById: vi.fn(),
   hasActiveMinistryMembership: vi.fn(),
   findPendingChurchInvitationByEmail: vi.fn(),

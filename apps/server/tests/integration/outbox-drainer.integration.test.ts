@@ -1722,6 +1722,34 @@ describe('Admin Church Invitation T1 (Spec 15, integration)', () => {
     );
   });
 
+  it('supersedes the still-unsent member T1s on upgrade so the person gets one email', async () => {
+    const email = 'one.email@fixture.test';
+    for (const ministryId of [fixture.ministryOneA, fixture.ministryTwoA]) {
+      await manager.mint({
+        churchId: churchId(),
+        ministryId: MinistryId.from(ministryId),
+        inviterId: inviterId(),
+        email,
+        ministryAccessLevel: 'leader',
+        roleIds: [],
+      });
+    }
+    await inviteAdmin(email);
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.sent).toEqual([
+      expect.objectContaining({ kind: 'invitation.church-bootstrap' }),
+    ]);
+    const chained = await testDb
+      .select({ status: outboxMessage.status })
+      .from(outboxMessage)
+      .where(eq(outboxMessage.kind, 'invitation.chained'));
+    expect(chained).toEqual([{ status: 'failed' }, { status: 'failed' }]);
+  });
+
   it('fails terminally, sending nothing, once the offer is no longer pending', async () => {
     const { churchInvitationId } = await inviteAdmin('closed@fixture.test');
     await testDb

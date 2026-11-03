@@ -44,6 +44,12 @@ export interface AlignPairedExpiryInput {
   tx?: TransactionContext;
 }
 
+export interface SupersedeUnsentChainedOutboxInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx?: TransactionContext;
+}
+
 export interface AcquireResendLockInput {
   ministryInvitationId: string;
   tx: TransactionContext;
@@ -320,6 +326,15 @@ export interface MinistryInvitationRepository {
    * throttle state are untouched.
    */
   alignPairedExpiry(input: AlignPairedExpiryInput): Promise<void>;
+
+  /**
+   * Marks the still-unsent chained T1 outbox rows of a Church Invitation's
+   * halves as failed (the outbox's terminal state), so an upgrade's one
+   * current T1 is the only email. Rows are kept, never deleted.
+   */
+  supersedeUnsentChainedOutbox(
+    input: SupersedeUnsentChainedOutboxInput,
+  ): Promise<void>;
 
   /** Restarts a pending Church Invitation's expiry, as a paired resend does. */
   refreshChurchInvitationExpiry(

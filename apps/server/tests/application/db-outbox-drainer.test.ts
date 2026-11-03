@@ -265,6 +265,42 @@ describe('DbOutboxDrainer.drainOnce', () => {
     );
   });
 
+  it('sends the Church offer T1 for the halves still pending when a sibling closed meanwhile', async () => {
+    const message = buildMessage({
+      kind: 'invitation.church-bootstrap',
+      payload: { churchInvitationId: 'church-invitation-1' },
+    });
+    outboxRepository.claimPending.mockResolvedValue([message]);
+    invitationRepository.findPendingChurchOffer.mockResolvedValue({
+      email: 'invitee@example.com',
+      churchAccessLevel: 'admin',
+      expiresAt: new Date('2026-08-01T00:00:00Z'),
+      pendingMinistryInvitationIds: ['invitation_1', 'invitation_2'],
+    });
+    invitationRepository.findById.mockImplementation(
+      async ({ ministryInvitationId }: { ministryInvitationId: string }) =>
+        buildInvitation({
+          id: ministryInvitationId,
+          status:
+            ministryInvitationId === 'invitation_2' ? 'rejected' : 'pending',
+        }),
+    );
+    emailSender.deliver.mockResolvedValue({ providerMessageId: 'provider-1' });
+
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.prepare).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          ministryOffers: [
+            expect.objectContaining({ inviterName: 'Pastor Ana' }),
+          ],
+        }),
+      }),
+    );
+  });
+
   it('aggregates counts across multiple claimed messages', async () => {
     const sentMessage = buildMessage({ id: 'outbox_sent' });
     const failedMessage = buildMessage({

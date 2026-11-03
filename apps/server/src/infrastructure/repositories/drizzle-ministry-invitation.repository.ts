@@ -53,6 +53,7 @@ import type {
   PendingMinistryInvitationReference,
   RefreshChurchInvitationExpiryInput,
   ResolveRecipientEmailInput,
+  SupersedeUnsentChainedOutboxInput,
   UpgradeChurchInvitationToAdminInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
@@ -619,6 +620,27 @@ export class DrizzleMinistryInvitationRepository
           withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.churchInvitationId, churchInvitationId),
           eq(ministryInvitation.status, 'pending'),
+        ),
+      );
+  }
+
+  async supersedeUnsentChainedOutbox({
+    churchId,
+    churchInvitationId,
+    tx,
+  }: SupersedeUnsentChainedOutboxInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        status: 'failed',
+        lastError: 'Superseded by the Church offer T1 after an admin upgrade',
+      })
+      .where(
+        and(
+          eq(outboxMessage.churchId, churchId),
+          eq(outboxMessage.kind, 'invitation.chained'),
+          eq(outboxMessage.status, 'pending'),
+          sql`${outboxMessage.payload}->>'churchInvitationId' = ${churchInvitationId}`,
         ),
       );
   }

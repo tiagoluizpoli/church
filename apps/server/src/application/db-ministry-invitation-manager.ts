@@ -262,6 +262,11 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
           expiresAt,
           tx,
         });
+        await this.repo.supersedeUnsentChainedOutbox({
+          churchId,
+          churchInvitationId,
+          tx,
+        });
       } else {
         const created = await this.repo.createChurchInvitation({
           churchId,

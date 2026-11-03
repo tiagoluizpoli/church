@@ -14,6 +14,7 @@ export * from './invitation-list.repository';
 export * from './invitation-verification-code.repository';
 export * from './ministry.repository';
 export * from './ministry-invitation.repository';
+export * from './ministry-membership.repository';
 export * from './ministry-participation.repository';
 export * from './notification.repository';
 export * from './outbox.repository';

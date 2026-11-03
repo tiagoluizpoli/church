@@ -70,3 +70,17 @@ export interface PersonDetail {
   /** Admin scope only; omitted for leaders. */
   churchAccess?: PersonChurchAccess;
 }
+
+/** The stored detail with the member's User id, which the gatekeeper hints need and the response omits. */
+export interface PersonDetailRecord extends PersonDetail {
+  userId: string;
+}
+
+/** A card with its gatekeeper-derived action hints. */
+export interface PersonDetailCard extends PersonDetailMinistry {
+  canEditRoles: boolean;
+}
+
+export interface PersonDetailView extends Omit<PersonDetail, 'ministries'> {
+  ministries: PersonDetailCard[];
+}

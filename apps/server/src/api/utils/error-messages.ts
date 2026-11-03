@@ -10,10 +10,12 @@ import {
 } from '@/domain/errors/pending-ministry-invitation-exists';
 import { RoleInUseError } from '@/domain/errors/role-in-use';
 import { SectorInUseError } from '@/domain/errors/sector-in-use';
+import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import {
   type ValidationReason,
   ValidationRuleError,
 } from '@/domain/errors/validation-rule-error';
+import type { UpcomingMembershipAssignment } from '@/domain/upcoming-membership-assignments';
 
 export const VALIDATION_REASON_MESSAGES: Record<
   ValidationReason,
@@ -48,6 +50,15 @@ export function archiveBlockers(
     error instanceof RoleInUseError ||
     error instanceof MinistryInUseError
     ? error.blockers
+    : undefined;
+}
+
+/** The upcoming Assignments that block a Ministry Membership change, also sent to the client. */
+export function upcomingAssignments(
+  error: DomainError,
+): UpcomingMembershipAssignment[] | undefined {
+  return error instanceof UpcomingAssignmentsError
+    ? error.assignments
     : undefined;
 }
 

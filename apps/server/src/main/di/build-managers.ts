@@ -11,6 +11,7 @@ import {
   DbInvitationListManager,
   DbMinistryInvitationManager,
   DbMinistryManager,
+  DbMinistryMembershipManager,
   DbMinistryRoleManager,
   DbNotificationManager,
   DbOutboxDrainer,
@@ -56,6 +57,7 @@ export type Managers = Pick<
   | 'invitationListManager'
   | 'peopleListManager'
   | 'churchAccessManager'
+  | 'ministryMembershipManager'
 >;
 
 export interface BuildManagersInput {
@@ -97,6 +99,7 @@ export function buildManagers({
     invitationListRepository,
     peopleListRepository,
     churchAccessRepository,
+    ministryMembershipRepository,
     unitOfWork,
   },
   services: {
@@ -342,6 +345,7 @@ export function buildManagers({
     overrides.peopleListManager ??
     new DbPeopleListManager({
       peopleListRepository,
+      authorityManager,
       config,
     });
 
@@ -350,6 +354,16 @@ export function buildManagers({
     new DbChurchAccessManager({
       authorityManager,
       churchAccessRepository,
+      unitOfWork,
+    });
+
+  const ministryMembershipManager =
+    overrides.ministryMembershipManager ??
+    new DbMinistryMembershipManager({
+      authorityManager,
+      churchAccessRepository,
+      membershipRepository: ministryMembershipRepository,
+      roleRepository,
       unitOfWork,
     });
 
@@ -375,5 +389,6 @@ export function buildManagers({
     invitationListManager,
     peopleListManager,
     churchAccessManager,
+    ministryMembershipManager,
   };
 }

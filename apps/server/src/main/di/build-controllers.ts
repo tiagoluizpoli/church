@@ -49,6 +49,7 @@ export function buildControllers({
     invitationListManager,
     peopleListManager,
     churchAccessManager,
+    ministryMembershipManager,
   },
   auth: { authorityGuard, activeChurchResolver },
 }: BuildControllersInput): FastifyController[] {
@@ -122,6 +123,7 @@ export function buildControllers({
     new PeopleController({
       peopleListManager,
       churchAccessManager,
+      ministryMembershipManager,
       activeChurchResolver,
       authorityGuard,
       config,

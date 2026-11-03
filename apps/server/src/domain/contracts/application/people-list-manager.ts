@@ -3,7 +3,7 @@ import type {
   PeopleListFilters,
   PeopleListPage,
   PeopleListScope,
-  PersonDetail,
+  PersonDetailView,
 } from '../../entities/people-list-item';
 
 export interface ListPeopleRequest {
@@ -23,7 +23,7 @@ export interface GetPersonRequest {
 }
 
 export interface PersonDetailResult {
-  person: PersonDetail;
+  person: PersonDetailView;
   canChangeChurchAccess: boolean;
   canInviteToMinistry: boolean;
 }

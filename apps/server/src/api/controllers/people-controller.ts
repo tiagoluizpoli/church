@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
+import type { IMinistryMembershipManager } from '../../domain/contracts/application/ministry-membership-manager';
 import type { IPeopleListManager } from '../../domain/contracts/application/people-list-manager';
 import type { PeopleListScope } from '../../domain/entities/people-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -12,10 +13,14 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   churchAccessChangeBodySchema,
   churchAccessChangeResponseSchema,
+  ministryMembershipChangeResponseSchema,
+  ministryMembershipParamsSchema,
   peopleListQuerystringSchema,
   peopleListResponseSchema,
   personDetailResponseSchema,
   personParamsSchema,
+  setMinistryRolesBodySchema,
+  upcomingAssignmentsResponseSchema,
 } from '../dtos/people-list.dto';
 import { refuse } from '../utils/refuse';
 
@@ -37,6 +42,7 @@ interface ResolveScopeInput {
 interface PeopleControllerDependencies {
   peopleListManager: IPeopleListManager;
   churchAccessManager: IChurchAccessManager;
+  ministryMembershipManager: IMinistryMembershipManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
   config: Pick<AppConfig, 'people'>;
@@ -48,6 +54,7 @@ export class PeopleController implements FastifyController {
 
   private readonly peopleListManager: IPeopleListManager;
   private readonly churchAccessManager: IChurchAccessManager;
+  private readonly ministryMembershipManager: IMinistryMembershipManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
   private readonly maxPageSize: number;
@@ -55,12 +62,14 @@ export class PeopleController implements FastifyController {
   constructor({
     peopleListManager,
     churchAccessManager,
+    ministryMembershipManager,
     activeChurchResolver,
     authorityGuard,
     config,
   }: PeopleControllerDependencies) {
     this.peopleListManager = peopleListManager;
     this.churchAccessManager = churchAccessManager;
+    this.ministryMembershipManager = ministryMembershipManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
     this.maxPageSize = config.people.maxPageSize;
@@ -140,6 +149,60 @@ export class PeopleController implements FastifyController {
         }
         if (outcome.kind === 'last-admin') {
           return refuse({ reply, request, code: 'LAST_CHURCH_ADMIN' });
+        }
+        const { kind: _applied, ...result } = outcome;
+        return reply.send(result);
+      },
+    );
+
+    app.put(
+      '/:memberId/ministry-memberships/:membershipId/roles',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'setMinistryRoles',
+          summary: "Set a Ministry member's Roles",
+          description:
+            'Replace the complete Role set of one active Ministry Membership; omitted Roles are removed. A ChurchAdmin edits any membership; a Ministry leader edits volunteer-level members of a Ministry they lead and their own. Only active Roles of that Ministry may be added; held archived Roles may be kept or removed. A volunteer-level membership keeps at least one Role. Removing a Role an upcoming Assignment depends on is refused with every such Assignment. The same set changes nothing.',
+          params: ministryMembershipParamsSchema,
+          body: setMinistryRolesBodySchema,
+          response: {
+            200: ministryMembershipChangeResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([
+              upcomingAssignmentsResponseSchema,
+              errorResponseSchema,
+            ]),
+            422: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const actorId = UserId.from(request.userId);
+        // The area gate; the manager decides the target under the Church lock.
+        const scope = await this.resolveScope({ churchId, userId: actorId });
+        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const { memberId, membershipId } = request.params as z.infer<
+          typeof ministryMembershipParamsSchema
+        >;
+        const { roleIds } = request.body as z.infer<
+          typeof setMinistryRolesBodySchema
+        >;
+        const outcome = await this.ministryMembershipManager.setMinistryRoles({
+          churchId,
+          actorId,
+          memberId,
+          membershipId,
+          roleIds,
+        });
+        if (outcome.kind === 'forbidden') {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        if (outcome.kind === 'not-found') {
+          return refuse({ reply, request, code: 'NOT_FOUND' });
         }
         const { kind: _applied, ...result } = outcome;
         return reply.send(result);

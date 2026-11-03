@@ -15,6 +15,7 @@ import type {
   InvitationVerificationCodeManager as IInvitationVerificationCodeManager,
   IMinistryInvitationManager,
   IMinistryManager,
+  IMinistryMembershipManager,
   IMinistryRoleManager,
   INotificationManager,
   IOutboxDrainer,
@@ -42,6 +43,7 @@ import type {
   InvitationListRepository,
   InvitationVerificationCodeRepository,
   MinistryInvitationRepository,
+  MinistryMembershipRepository,
   MinistryParticipationRepository,
   MinistryRepository,
   NotificationRepository,
@@ -94,6 +96,7 @@ export interface CompositionRootDependencies {
   invitationListRepository: InvitationListRepository;
   peopleListRepository: PeopleListRepository;
   churchAccessRepository: ChurchAccessRepository;
+  ministryMembershipRepository: MinistryMembershipRepository;
   unitOfWork: UnitOfWork;
   // Services
   emailSender: EmailSender;
@@ -129,4 +132,5 @@ export interface CompositionRootDependencies {
   invitationListManager: IInvitationListManager;
   peopleListManager: IPeopleListManager;
   churchAccessManager: IChurchAccessManager;
+  ministryMembershipManager: IMinistryMembershipManager;
 }

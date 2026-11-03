@@ -617,5 +617,10 @@
   "invitations_declined_link_on": "Recusado pelo link do convite em {date}",
   "invitations_revoked_on": "Revogado em {date}",
   "invitations_closure_reason": "Motivo: {reason}",
-  "invitations_closure_unavailable": "Detalhes do encerramento indisponíveis"
+  "invitations_closure_unavailable": "Detalhes do encerramento indisponíveis",
+  "invitations_resend": "Reenviar",
+  "invitations_resending": "Reenviando…",
+  "invitations_resend_label": "Reenviar o convite para {email}",
+  "invitations_resend_queued_toast": "E-mail do convite para {email} na fila",
+  "invitations_resend_failed": "Não foi possível reenviar o convite. Tente novamente."
 }

@@ -617,5 +617,10 @@
   "invitations_declined_link_on": "Declined from the invitation link on {date}",
   "invitations_revoked_on": "Revoked on {date}",
   "invitations_closure_reason": "Reason: {reason}",
-  "invitations_closure_unavailable": "Closing details unavailable"
+  "invitations_closure_unavailable": "Closing details unavailable",
+  "invitations_resend": "Resend",
+  "invitations_resending": "Resending…",
+  "invitations_resend_label": "Resend the invitation to {email}",
+  "invitations_resend_queued_toast": "Invitation email to {email} queued",
+  "invitations_resend_failed": "We couldn't resend the invitation. Try again."
 }

@@ -1,5 +1,8 @@
 import { m } from '@church/i18n/messages';
+import { useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +22,7 @@ import {
 } from '@/components/workspace-page';
 import { InviteDialog } from '@/features/invitations/components/invite-dialog';
 import {
+  INVITATIONS_QUERY_KEY,
   type InvitationFilters,
   useInvitationList,
 } from '@/features/invitations/invitation-queries';
@@ -26,12 +30,74 @@ import type {
   ListInvitations200ItemsItem,
   ListInvitations200Options,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
+import { adminApi } from '@/utils/api-instances';
 
 interface InvitationRowProps {
   item: ListInvitations200ItemsItem;
   timeZone: string;
+}
+
+interface ResendButtonProps {
+  item: ListInvitations200ItemsItem;
+}
+
+interface RefusalBody {
+  error?: string;
+}
+
+const RESEND_REFUSALS: Record<string, () => string> = {
+  RESEND_COOLDOWN_ACTIVE: () => m.error_resend_cooldown_active(),
+  RESEND_DAILY_CAP_EXCEEDED: () => m.error_resend_daily_cap_exceeded(),
+  INVITATION_NOT_PENDING: () => m.error_invitation_not_pending(),
+};
+
+/** Resend for a Ministry row the server allows; Church-row resend is not offered yet. */
+function ResendButton({ item }: ResendButtonProps) {
+  const queryClient = useQueryClient();
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const [pending, setPending] = useState(false);
+  const { ministryId, id, email } = item;
+  if (!item.canResend || item.kind !== 'ministry' || !ministryId) return null;
+
+  // Every row of the Active Church may change (siblings, delivery); filters stay as they are.
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: [...INVITATIONS_QUERY_KEY, churchId],
+    });
+  const resend = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await adminApi.resendMinistryInvitation(ministryId, id);
+      toast.success(m.invitations_resend_queued_toast({ email }));
+      await refresh();
+    } catch (error) {
+      const code = isAxiosError<RefusalBody>(error)
+        ? error.response?.data?.error
+        : undefined;
+      const known = code ? RESEND_REFUSALS[code] : undefined;
+      toast.error(known ? known() : m.invitations_resend_failed());
+      if (code === 'INVITATION_NOT_PENDING') await refresh();
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={pending}
+      aria-label={m.invitations_resend_label({ email })}
+      onClick={resend}
+    >
+      {pending ? m.invitations_resending() : m.invitations_resend()}
+    </Button>
+  );
 }
 
 type StatusFilter = NonNullable<InvitationFilters['status']>;
@@ -124,6 +190,9 @@ function InvitationRow({ item, timeZone }: InvitationRowProps) {
         {expired ? (
           <Badge variant="destructive">{m.invitations_expired_badge()}</Badge>
         ) : null}
+        <div className="ms-auto">
+          <ResendButton item={item} />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {item.status !== 'pending' ? (
@@ -295,7 +364,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
   );
 }
 
-/** The Active Church's invitations and their history within the caller's authority; read-only. */
+/** The Active Church's invitations and their history within the caller's authority, with Resend where allowed. */
 export function InvitationListPage() {
   const { churchTimezone } = useTimezone();
   const [filters, setFilters] = useState<InvitationFilters>({});

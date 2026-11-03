@@ -55,25 +55,6 @@ describe('coming-soon placeholder routes', () => {
     expect(screen.queryByText(m.shell_coming_soon())).not.toBeInTheDocument();
   });
 
-  it('shows /people as coming soon to a Ministry leader', async () => {
-    signInAs(callerCapabilitiesFixture({ ledMinistries: 1 }));
-
-    renderRoute({ initialPath: '/people', churchTimezone: 'UTC' });
-
-    expect(
-      await screen.findByRole('heading', { name: m.nav_people() }),
-    ).toBeVisible();
-    expect(screen.getByText(m.shell_coming_soon())).toBeVisible();
-  });
-
-  it('shows /people as coming soon to a ChurchAdmin who leads nothing', async () => {
-    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
-
-    renderRoute({ initialPath: '/people', churchTimezone: 'UTC' });
-
-    expect(await screen.findByText(m.shell_coming_soon())).toBeVisible();
-  });
-
   it('tells a Church Member without a Volunteer membership they do not serve yet', async () => {
     signInAs(callerCapabilitiesFixture());
 

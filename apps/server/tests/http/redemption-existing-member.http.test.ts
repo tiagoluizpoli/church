@@ -1,6 +1,7 @@
 import { appConfig } from '@church/app-config';
 import {
   account,
+  availabilityCheck,
   identityAudit,
   member,
   ministry,
@@ -15,6 +16,7 @@ import {
   volunteer,
 } from '@church/db';
 import { env } from '@church/env/server';
+import { parseInstant } from '@church/time';
 import { hashPassword, makeSignature } from 'better-auth/crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -36,6 +38,12 @@ import { CaptureEmailSender } from '@/infrastructure/services/capture-email-send
 import { auth, createServerAuth } from '@/main/di/server-auth';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { buildCycle } from '@/seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '@/seeds/builders/volunteer';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -256,6 +264,94 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .innerJoin(member, eq(member.userId, fixture.existingChurchMemberA))
         .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
       expect(membership).toBeDefined();
+    });
+
+    it('rejoins a removed member into a fresh active membership, leaving the ended one and its checks as history', async () => {
+      const profile = await buildVolunteer({
+        db: testDb,
+        churchId: fixture.churchA.id,
+        userId: fixture.existingChurchMemberA,
+      });
+      const leftAt = parseInstant({ value: '2026-10-01T12:00:00Z' });
+      const ended = await buildMinistryMembership({
+        db: testDb,
+        churchId: fixture.churchA.id,
+        volunteerId: profile.id,
+        ministryId: fixture.ministryOneA,
+        ministryAccessLevel: 'volunteer',
+        status: 'inactive',
+        leftAt,
+        roleIds: [fixture.roleInMinistryOneA],
+      });
+      const cycle = await buildCycle({
+        db: testDb,
+        churchId: fixture.churchA.id,
+        name: 'Outubro',
+        startDate: '2026-10-01' as never,
+        endDate: '2026-10-31' as never,
+        state: 'sent',
+      });
+      const withdrawn = await buildAvailabilityCheck({
+        db: testDb,
+        churchId: fixture.churchA.id,
+        cycleId: cycle.id,
+        ministryMembershipId: ended.id,
+        withdrawnAt: leftAt,
+      });
+
+      // An ended member is not an active one, so the normal invitation mints.
+      const invitation = await mintExistingMemberInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.existingChurchMemberA,
+      });
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const rows = await testDb
+        .select({
+          id: ministryMembership.id,
+          volunteerId: ministryMembership.volunteerId,
+          status: ministryMembership.status,
+          leftAt: ministryMembership.leftAt,
+        })
+        .from(ministryMembership)
+        .where(
+          and(
+            eq(ministryMembership.ministryId, fixture.ministryOneA),
+            eq(ministryMembership.volunteerId, profile.id),
+          ),
+        );
+      expect(rows).toHaveLength(2);
+      const fresh = rows.find((row) => row.id !== ended.id);
+      expect(rows.find((row) => row.id === ended.id)).toMatchObject({
+        status: 'inactive',
+        leftAt: new Date('2026-10-01T12:00:00Z'),
+      });
+      expect(fresh).toMatchObject({
+        volunteerId: profile.id,
+        status: 'active',
+        leftAt: null,
+      });
+      const roleOwners = await testDb
+        .select({ membershipId: ministryMembershipRole.ministryMembershipId })
+        .from(ministryMembershipRole)
+        .where(eq(ministryMembershipRole.roleId, fixture.roleInMinistryOneA));
+      expect(roleOwners.map((row) => row.membershipId).sort()).toEqual(
+        [ended.id, fresh?.id].sort(),
+      );
+      const checks = await testDb.select().from(availabilityCheck);
+      expect(checks).toEqual([
+        expect.objectContaining({
+          id: withdrawn.id,
+          ministryMembershipId: ended.id,
+          withdrawnAt: new Date('2026-10-01T12:00:00Z'),
+        }),
+      ]);
     });
 
     it('lets a signed-in User from another Church accept a Church offer with two Ministry halves through one Volunteer profile', async () => {

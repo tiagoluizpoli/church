@@ -22,6 +22,7 @@ import {
   archiveBlockers,
   domainErrorMessage,
   existingInvitation,
+  upcomingAssignments,
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
@@ -166,12 +167,14 @@ export async function createFastify({
       const reason = validationReason(error);
       const blockers = archiveBlockers(error);
       const existing = existingInvitation(error);
+      const assignments = upcomingAssignments(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
         ...(reason && { reason }),
         ...(blockers && { blockers }),
         ...(existing && { existingInvitation: existing }),
+        ...(assignments && { assignments }),
       });
     }
 

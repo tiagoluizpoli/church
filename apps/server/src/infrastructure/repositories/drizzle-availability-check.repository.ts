@@ -12,7 +12,8 @@ import {
   volunteer,
 } from '@church/db';
 import { fromDate } from '@church/time';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import type { PgSelect } from 'drizzle-orm/pg-core';
 import type {
   EventId,
   MinistryId,
@@ -35,6 +36,7 @@ import type {
   ListMinistryLeaderVolunteerIdsInput,
   MinistryLeaderRow,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
 import { getClient, withChurchIsolation } from './helpers';
@@ -42,6 +44,26 @@ import type { AnyDrizzleDb } from './types';
 
 interface DrizzleAvailabilityCheckRepositoryInput {
   db: AnyDrizzleDb;
+}
+
+/** A check that can still be answered: not withdrawn, on an active Ministry Membership (joined by the caller). */
+export const actionable = () =>
+  and(
+    isNull(availabilityCheck.withdrawnAt),
+    eq(ministryMembership.status, 'active'),
+  );
+
+interface ShareLockMembershipsInput<Query extends PgSelect> {
+  query: Query;
+  tx?: TransactionContext;
+}
+
+/** In a transaction, waits out a concurrent removal and re-reads the membership after it. */
+function shareLockMembershipsInTx<Query extends PgSelect>({
+  query,
+  tx,
+}: ShareLockMembershipsInput<Query>) {
+  return tx ? query.for('share', { of: ministryMembership }) : query;
 }
 
 export class DrizzleAvailabilityCheckRepository
@@ -57,7 +79,7 @@ export class DrizzleAvailabilityCheckRepository
     input: ListActiveMembershipsInput,
   ): Promise<ActiveMinistryMembership[]> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const rows = await db
+    const query = db
       .select({
         ministryMembershipId: ministryMembership.id,
         volunteerId: ministryMembership.volunteerId,
@@ -76,7 +98,10 @@ export class DrizzleAvailabilityCheckRepository
             churchId: input.churchId,
           }),
         ),
-      );
+      )
+      .$dynamic();
+    // Ask waits out a concurrent removal.
+    const rows = await shareLockMembershipsInTx({ query, tx: input.tx });
 
     return rows.map((row) => ({
       ministryMembershipId: row.ministryMembershipId,
@@ -92,6 +117,7 @@ export class DrizzleAvailabilityCheckRepository
     const db = getClient({ db: this.db, tx: input.tx });
     const conditions = [
       eq(availabilityCheck.cycleId, input.cycleId),
+      isNull(availabilityCheck.withdrawnAt),
       withChurchIsolation({
         table: availabilityCheck,
         churchId: input.churchId,
@@ -149,7 +175,7 @@ export class DrizzleAvailabilityCheckRepository
 
   async getCheckContext(input: GetCheckContextInput): Promise<CheckContext> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const rows = await db
+    const query = db
       .select(this.contextSelection())
       .from(availabilityCheck)
       .innerJoin(
@@ -162,12 +188,16 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
+          actionable(),
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,
           }),
         ),
-      );
+      )
+      .$dynamic();
+    // An answer waits out a concurrent removal.
+    const rows = await shareLockMembershipsInTx({ query, tx: input.tx });
 
     const row = rows[0];
     if (!row) {
@@ -201,6 +231,7 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(ministryMembership.volunteerId, input.volunteerId),
+          actionable(),
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,
@@ -305,6 +336,7 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
+          isNull(availabilityCheck.withdrawnAt),
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,

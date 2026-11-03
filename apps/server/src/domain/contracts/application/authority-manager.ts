@@ -4,6 +4,8 @@ import type {
   AuthorityResource,
   AuthorityScope,
   InvitationResource,
+  MinistryMembershipOperation,
+  MinistryMembershipResource,
 } from '../../authority/types';
 import type {
   ChurchId,
@@ -48,6 +50,38 @@ export interface CanManageInvitationsInput {
   churchId: ChurchId;
   userId: UserId;
   invitations: InvitationAuthorityTarget[];
+}
+
+/** One stored Ministry Membership and the operation asked of it. */
+export type MinistryMembershipAuthorityTarget = Omit<
+  MinistryMembershipResource,
+  'type' | 'churchId'
+>;
+
+export interface DecideManageMinistryMembershipInput {
+  churchId: ChurchId;
+  userId: UserId;
+  target: MinistryMembershipAuthorityTarget;
+  /** Reads the actor's authority inside this transaction, after its locks. */
+  tx?: TransactionContext;
+}
+
+/** One stored Ministry Membership, asked about every operation at once. */
+export type MinistryMembershipHintTarget = Omit<
+  MinistryMembershipAuthorityTarget,
+  'operation'
+>;
+
+/** Whether the caller may perform each operation on one membership. */
+export type MinistryMembershipHints = Record<
+  MinistryMembershipOperation,
+  boolean
+>;
+
+export interface CanManageMinistryMembershipsInput {
+  churchId: ChurchId;
+  userId: UserId;
+  targets: MinistryMembershipHintTarget[];
 }
 
 export interface CanManageParticipationInput {
@@ -119,6 +153,14 @@ export interface IAuthorityManager {
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
   /** Whether the caller may resend or revoke each offer, in input order; one actor read. */
   canManageInvitations(input: CanManageInvitationsInput): Promise<boolean[]>;
+  /** The gatekeeper's target-aware Ministry Membership decision for one stored target. */
+  decideManageMinistryMembership(
+    input: DecideManageMinistryMembershipInput,
+  ): Promise<AuthorityDecision>;
+  /** Presentation hints from the same rules, one per target in input order; one actor read. */
+  canManageMinistryMemberships(
+    input: CanManageMinistryMembershipsInput,
+  ): Promise<MinistryMembershipHints[]>;
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
   canManageEvent(input: CanManageEventInput): Promise<boolean>;

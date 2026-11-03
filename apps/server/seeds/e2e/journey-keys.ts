@@ -30,6 +30,7 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   cycleTenants: 'cycle-tenants',
   ministryWorkspaceIndex: 'ministry-workspace-index',
   invitationJourney: 'invitation-journey',
+  peopleJourney: 'people-journey',
   /** Not a journey: the suite's shared read-only personas, which global
    * setup loads once (`recipes/shared-personas.ts`). */
   sharedPersonas: 'shared-personas',

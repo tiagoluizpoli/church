@@ -63,9 +63,11 @@ beforeAll(async () => {
   const controller = new PeopleController({
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
+      authorityManager,
       config: { people: { pageSize: 20, maxPageSize: 50 } },
     }),
     churchAccessManager: {} as never,
+    ministryMembershipManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
     config: { people: { pageSize: 20, maxPageSize: 50 } },

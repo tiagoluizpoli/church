@@ -21,6 +21,7 @@ export const ISOLATED_SPECS = [
   'identity/redemption-new-user.spec.ts',
   'identity/route-protection.spec.ts',
   'identity/volunteer-transfer-journey.spec.ts',
+  'people/people-journey.spec.ts',
   'scheduling/a11y-planning-nav.spec.ts',
   'scheduling/capability-index.spec.ts',
   'scheduling/cross-cutting.spec.ts',

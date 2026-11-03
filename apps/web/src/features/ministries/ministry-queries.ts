@@ -1,5 +1,6 @@
 import { type QueryClient, useQuery } from '@tanstack/react-query';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
+import { CALLER_CAPABILITIES_QUERY_KEY } from '@/shared/hooks/use-caller-capabilities';
 import { adminApi } from '@/utils/api-instances';
 
 /** Root of every Ministry management read, scoped to the Active Church below it. */
@@ -13,7 +14,7 @@ const MINISTRY_NAME_READERS = [
   MINISTRIES_QUERY_KEY,
   ['breadcrumb-ministries'],
   ['prepare-ministries'],
-  ['caller-capabilities'],
+  CALLER_CAPABILITIES_QUERY_KEY,
 ] as const;
 
 interface ChurchScopeInput {

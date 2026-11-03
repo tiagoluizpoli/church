@@ -1,4 +1,4 @@
-import type { MinistryId } from '../branded-ids';
+import type { MinistryId, UserId } from '../branded-ids';
 import type { MinistryAccessLevel } from './ministry-membership';
 
 /** The one optional capacity filter; capacities overlap, Admin is Church-wide. */
@@ -69,4 +69,20 @@ export interface PersonDetail {
   ministries: PersonDetailMinistry[];
   /** Admin scope only; omitted for leaders. */
   churchAccess?: PersonChurchAccess;
+}
+
+/** The stored detail with the member's User id, which the gatekeeper hints need and the response omits. */
+export interface PersonDetailRecord extends PersonDetail {
+  userId: UserId;
+}
+
+/** A card with its gatekeeper-derived action hints. */
+export interface PersonDetailCard extends PersonDetailMinistry {
+  canEditRoles: boolean;
+  canEndMembership: boolean;
+  canChangeMinistryAccess: boolean;
+}
+
+export interface PersonDetailView extends Omit<PersonDetail, 'ministries'> {
+  ministries: PersonDetailCard[];
 }

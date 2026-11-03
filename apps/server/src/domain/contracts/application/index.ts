@@ -12,6 +12,7 @@ export * from './invitation-list-manager';
 export * from './invitation-verification-code-manager';
 export * from './ministry-invitation-manager';
 export * from './ministry-manager';
+export * from './ministry-membership-manager';
 export * from './ministry-role-manager';
 export * from './notification-manager';
 export * from './outbox-drainer';

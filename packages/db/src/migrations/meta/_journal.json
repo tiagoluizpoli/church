@@ -281,6 +281,20 @@
       "when": 1793714088571,
       "tag": "0039_church-access-audit",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793727842735,
+      "tag": "0040_ministry-membership-audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793730944419,
+      "tag": "0041_availability-check-withdrawn-at",
+      "breakpoints": true
     }
   ]
 }

@@ -42,6 +42,10 @@ const INVITATION_JOURNEY_SPEC_PATHS = [
   'tests/identity/invitation-journey.spec.ts',
 ];
 
+// J2 (#682): People directory and member detail, the Ministry Role edit and
+// the Church access change it consumes from People A.
+const PEOPLE_JOURNEY_SPEC_PATHS = ['tests/people/people-journey.spec.ts'];
+
 const CHURCH_INVITATION_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
   ...INVITATION_JOURNEY_SPEC_PATHS,
@@ -83,6 +87,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   // Signs in as the shared personas global setup loads from a recipe.
   'tests/identity/route-protection.spec.ts',
   'tests/identity/volunteer-transfer-journey.spec.ts',
+  ...PEOPLE_JOURNEY_SPEC_PATHS,
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/a11y-planning-nav.spec.ts',
   'tests/scheduling/builder-event-time-block-focus.spec.ts',
@@ -169,6 +174,22 @@ const PREPARE_ROUTE_FILES = [
 ].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
 
 export const JOURNEY_MAP: JourneyMapping[] = [
+  ...[
+    'apps/web/src/features/people/',
+    'apps/web/src/routes/_authenticated/_active-church/people',
+    'apps/server/src/api/controllers/people-controller.ts',
+    'apps/server/src/api/dtos/people-list.dto.ts',
+    'apps/server/src/application/db-people-list-manager.ts',
+    'apps/server/src/application/db-church-access-manager.ts',
+    'apps/server/src/application/db-ministry-membership-manager.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-people-list.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-church-access.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-ministry-membership.repository.ts',
+    'apps/server/src/domain/authority/',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: PEOPLE_JOURNEY_SPEC_PATHS,
+  })),
   // J4 (#667): the Invitations page (list and Invite dialog) and the list
   // controller the invited leader and Volunteer journey drives.
   {

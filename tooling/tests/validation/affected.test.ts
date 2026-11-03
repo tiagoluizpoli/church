@@ -710,6 +710,7 @@ describe('classifyChanges', () => {
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/route-protection.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
+      'tests/people/people-journey.spec.ts',
       'tests/scheduling/a11y-builder.spec.ts',
       'tests/scheduling/a11y-planning-nav.spec.ts',
       'tests/scheduling/builder-event-time-block-focus.spec.ts',

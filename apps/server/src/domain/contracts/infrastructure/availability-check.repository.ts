@@ -100,12 +100,20 @@ export interface ConfirmCheckInput {
   tx?: TransactionContext;
 }
 
+/**
+ * The actionable reads (`getCheckContext`, `listByVolunteer`, `listByCycle`,
+ * `confirm`) see only checks that are not withdrawn, and the first two only
+ * on an active Ministry Membership. Inside a transaction,
+ * `listActiveMemberships` and `getCheckContext` share-lock the memberships
+ * they return, serializing with Remove from Ministry.
+ */
 export interface AvailabilityCheckRepository {
   listActiveMemberships(
     input: ListActiveMembershipsInput,
   ): Promise<ActiveMinistryMembership[]>;
   listByCycle(input: ListChecksByCycleInput): Promise<AvailabilityCheck[]>;
   createMany(input: CreateChecksInput): Promise<AvailabilityCheck[]>;
+  /** Throws `NotFoundError` unless the check is actionable. */
   getCheckContext(input: GetCheckContextInput): Promise<CheckContext>;
   listByVolunteer(input: ListChecksByVolunteerInput): Promise<CheckContext[]>;
   listCheckShifts(input: ListCheckShiftsInput): Promise<CheckShiftRow[]>;

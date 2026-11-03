@@ -101,6 +101,9 @@ export const identityAuditActionEnum = pgEnum('identity_audit_action', [
   'ministry_acceptance',
   'volunteer_transfer',
   'church_access_changed',
+  'ministry_access_changed',
+  'ministry_roles_changed',
+  'ministry_membership_ended',
 ]);
 
 /**

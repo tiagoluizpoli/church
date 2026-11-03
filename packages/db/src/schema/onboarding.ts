@@ -243,8 +243,43 @@ export interface ChurchAccessChangedDetails {
   after: 'member' | 'admin';
 }
 
+/** `ministry_roles_changed` details: one Ministry Membership's complete Role set before and after, ids sorted. */
+export interface MinistryRolesChangedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  beforeRoleIds: string[];
+  afterRoleIds: string[];
+}
+
+export interface MinistryMembershipEndedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  /** Kept as history on the ended membership. */
+  retainedRoleIds: string[];
+  withdrawnAvailabilityCheckIds: string[];
+  beforeStatus: 'active';
+  afterStatus: 'inactive';
+}
+
+/** `ministry_access_changed` details: the level, plus the complete Role set when the same operation changed it. */
+export interface MinistryAccessChangedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  beforeAccessLevel: 'leader' | 'volunteer';
+  afterAccessLevel: 'leader' | 'volunteer';
+  beforeRoleIds?: string[];
+  afterRoleIds?: string[];
+}
+
 /** Structured per-action facts; null on rows whose action records none. */
-export type IdentityAuditDetails = ChurchAccessChangedDetails;
+export type IdentityAuditDetails =
+  | ChurchAccessChangedDetails
+  | MinistryRolesChangedDetails
+  | MinistryMembershipEndedDetails
+  | MinistryAccessChangedDetails;
 
 export const identityAudit = pgTable('identity_audit', {
   id: uuid('id').primaryKey().defaultRandom(),

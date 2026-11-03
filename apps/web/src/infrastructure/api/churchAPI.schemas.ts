@@ -3293,6 +3293,221 @@ export type ChangeChurchAccess409 = {
   message: string;
 };
 
+export type SetMinistryRolesBody = {
+  /**
+     * @maxItems 200
+     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  roleIds: string[];
+};
+
+export type SetMinistryRoles200MinistryAccessLevel = typeof SetMinistryRoles200MinistryAccessLevel[keyof typeof SetMinistryRoles200MinistryAccessLevel];
+
+
+export const SetMinistryRoles200MinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type SetMinistryRoles200RolesItem = {
+  id: string;
+  name: string;
+  archived: boolean;
+};
+
+export type SetMinistryRoles200 = {
+  memberId: string;
+  membershipId: string;
+  ministryAccessLevel: SetMinistryRoles200MinistryAccessLevel;
+  roles: SetMinistryRoles200RolesItem[];
+  changed: boolean;
+};
+
+export type SetMinistryRoles401 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles403 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles404 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles409 = {
+  error: string;
+  message: string;
+  assignments: ({
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  shiftStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  shiftEnd: string;
+  roleId: string;
+  roleName: string;
+  sectorId: string;
+  sectorName: string;
+  ministryId: string;
+  cycleId: string;
+})[];
+} | {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles422 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccessBodyAccessLevel = typeof ChangeMinistryAccessBodyAccessLevel[keyof typeof ChangeMinistryAccessBodyAccessLevel];
+
+
+export const ChangeMinistryAccessBodyAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ChangeMinistryAccessBody = {
+  accessLevel: ChangeMinistryAccessBodyAccessLevel;
+  /**
+     * @maxItems 200
+     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  roleIds?: string[];
+};
+
+export type ChangeMinistryAccess200MinistryAccessLevel = typeof ChangeMinistryAccess200MinistryAccessLevel[keyof typeof ChangeMinistryAccess200MinistryAccessLevel];
+
+
+export const ChangeMinistryAccess200MinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ChangeMinistryAccess200RolesItem = {
+  id: string;
+  name: string;
+  archived: boolean;
+};
+
+export type ChangeMinistryAccess200 = {
+  memberId: string;
+  membershipId: string;
+  ministryAccessLevel: ChangeMinistryAccess200MinistryAccessLevel;
+  roles: ChangeMinistryAccess200RolesItem[];
+  changed: boolean;
+};
+
+export type ChangeMinistryAccess401 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess403 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess404 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess409 = {
+  error: string;
+  message: string;
+  assignments: ({
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  shiftStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  shiftEnd: string;
+  roleId: string;
+  roleName: string;
+  sectorId: string;
+  sectorName: string;
+  ministryId: string;
+  cycleId: string;
+})[];
+} | {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess422 = {
+  error: string;
+  message: string;
+};
+
+export type EndMinistryMembership200Status = typeof EndMinistryMembership200Status[keyof typeof EndMinistryMembership200Status];
+
+
+export const EndMinistryMembership200Status = {
+  inactive: 'inactive',
+} as const;
+
+export type EndMinistryMembership200 = {
+  memberId: string;
+  membershipId: string;
+  status: EndMinistryMembership200Status;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  leftAt: string;
+  changed: true;
+};
+
+export type EndMinistryMembership401 = {
+  error: string;
+  message: string;
+};
+
+export type EndMinistryMembership403 = {
+  error: string;
+  message: string;
+};
+
+export type EndMinistryMembership404 = {
+  error: string;
+  message: string;
+};
+
+export type EndMinistryMembership409 = {
+  error: string;
+  message: string;
+  assignments: ({
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  shiftStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  shiftEnd: string;
+  roleId: string;
+  roleName: string;
+  sectorId: string;
+  sectorName: string;
+  ministryId: string;
+  cycleId: string;
+})[];
+} | {
+  error: string;
+  message: string;
+};
+
 export type GetPerson200MinistriesItemMinistryAccessLevel = typeof GetPerson200MinistriesItemMinistryAccessLevel[keyof typeof GetPerson200MinistriesItemMinistryAccessLevel];
 
 
@@ -3313,6 +3528,9 @@ export type GetPerson200MinistriesItem = {
   ministryName: string;
   ministryAccessLevel: GetPerson200MinistriesItemMinistryAccessLevel;
   roles: GetPerson200MinistriesItemRolesItem[];
+  canEditRoles: boolean;
+  canEndMembership: boolean;
+  canChangeMinistryAccess: boolean;
 };
 
 export type GetPerson200ChurchAccessAccessLevel = typeof GetPerson200ChurchAccessAccessLevel[keyof typeof GetPerson200ChurchAccessAccessLevel];

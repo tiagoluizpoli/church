@@ -79,10 +79,30 @@ export interface InvitationResource {
   ministryAccessLevel?: MinistryAccessLevel;
 }
 
+/** What a `manage` request does to one Ministry Membership. */
+export type MinistryMembershipOperation =
+  | 'changeLevel'
+  | 'editRoles'
+  | 'endMembership';
+
+/**
+ * One Ministry Membership being managed, with the stored facts the rules are
+ * target-aware about: whose it is and its current Ministry Access Level.
+ */
+export interface MinistryMembershipResource {
+  type: 'ministryMembership';
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  subjectUserId: UserId;
+  ministryAccessLevel: MinistryAccessLevel;
+  operation: MinistryMembershipOperation;
+}
+
 export type AuthorityResource =
   | ChurchResource
   | MinistryResource
-  | InvitationResource;
+  | InvitationResource
+  | MinistryMembershipResource;
 
 export type AuthorityScope = 'function' | 'object';
 

@@ -1,8 +1,10 @@
 import type { AppConfig } from '@church/app-config';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
+import { ChurchId, MinistryId, RoleId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
+import type { IMinistryMembershipManager } from '../../domain/contracts/application/ministry-membership-manager';
 import type { IPeopleListManager } from '../../domain/contracts/application/people-list-manager';
 import type { PeopleListScope } from '../../domain/entities/people-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -10,12 +12,18 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  changeMinistryAccessBodySchema,
   churchAccessChangeBodySchema,
   churchAccessChangeResponseSchema,
+  endMinistryMembershipResponseSchema,
+  ministryMembershipChangeResponseSchema,
+  ministryMembershipParamsSchema,
   peopleListQuerystringSchema,
   peopleListResponseSchema,
   personDetailResponseSchema,
   personParamsSchema,
+  setMinistryRolesBodySchema,
+  upcomingAssignmentsResponseSchema,
 } from '../dtos/people-list.dto';
 import { refuse } from '../utils/refuse';
 
@@ -34,9 +42,38 @@ interface ResolveScopeInput {
   userId: UserId;
 }
 
+/** Any Ministry Membership manager outcome: a hidden or refused target, or the applied change. */
+type MembershipOutcome =
+  | { kind: 'forbidden' }
+  | { kind: 'not-found' }
+  | { kind: 'applied' };
+
+interface SendMembershipOutcomeInput {
+  reply: FastifyReply;
+  request: FastifyRequest;
+  outcome: MembershipOutcome;
+}
+
+/** Maps the shared refusals and sends the applied change without its `kind`. */
+function sendMembershipOutcome({
+  reply,
+  request,
+  outcome,
+}: SendMembershipOutcomeInput): FastifyReply {
+  if (outcome.kind === 'forbidden') {
+    return refuse({ reply, request, code: 'FORBIDDEN' });
+  }
+  if (outcome.kind === 'not-found') {
+    return refuse({ reply, request, code: 'NOT_FOUND' });
+  }
+  const { kind: _applied, ...result } = outcome;
+  return reply.send(result);
+}
+
 interface PeopleControllerDependencies {
   peopleListManager: IPeopleListManager;
   churchAccessManager: IChurchAccessManager;
+  ministryMembershipManager: IMinistryMembershipManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
   config: Pick<AppConfig, 'people'>;
@@ -48,6 +85,7 @@ export class PeopleController implements FastifyController {
 
   private readonly peopleListManager: IPeopleListManager;
   private readonly churchAccessManager: IChurchAccessManager;
+  private readonly ministryMembershipManager: IMinistryMembershipManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
   private readonly maxPageSize: number;
@@ -55,12 +93,14 @@ export class PeopleController implements FastifyController {
   constructor({
     peopleListManager,
     churchAccessManager,
+    ministryMembershipManager,
     activeChurchResolver,
     authorityGuard,
     config,
   }: PeopleControllerDependencies) {
     this.peopleListManager = peopleListManager;
     this.churchAccessManager = churchAccessManager;
+    this.ministryMembershipManager = ministryMembershipManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
     this.maxPageSize = config.people.maxPageSize;
@@ -143,6 +183,147 @@ export class PeopleController implements FastifyController {
         }
         const { kind: _applied, ...result } = outcome;
         return reply.send(result);
+      },
+    );
+
+    app.put(
+      '/:memberId/ministry-memberships/:membershipId/roles',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'setMinistryRoles',
+          summary: "Set a Ministry member's Roles",
+          description:
+            'Replace the complete Role set of one active Ministry Membership; omitted Roles are removed. A ChurchAdmin edits any membership; a Ministry leader edits volunteer-level members of a Ministry they lead and their own. Only active Roles of that Ministry may be added; held archived Roles may be kept or removed. A volunteer-level membership keeps at least one Role. Removing a Role an upcoming Assignment depends on is refused with every such Assignment. The same set changes nothing.',
+          params: ministryMembershipParamsSchema,
+          body: setMinistryRolesBodySchema,
+          response: {
+            200: ministryMembershipChangeResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([
+              upcomingAssignmentsResponseSchema,
+              errorResponseSchema,
+            ]),
+            422: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const actorId = UserId.from(request.userId);
+        // The area gate; the manager decides the target under the Church lock.
+        const scope = await this.resolveScope({ churchId, userId: actorId });
+        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const { memberId, membershipId } = request.params as z.infer<
+          typeof ministryMembershipParamsSchema
+        >;
+        const { roleIds } = request.body as z.infer<
+          typeof setMinistryRolesBodySchema
+        >;
+        const outcome = await this.ministryMembershipManager.setMinistryRoles({
+          churchId,
+          actorId,
+          memberId,
+          membershipId,
+          roleIds: roleIds.map(RoleId.from),
+        });
+        return sendMembershipOutcome({ reply, request, outcome });
+      },
+    );
+
+    app.patch(
+      '/:memberId/ministry-memberships/:membershipId/access',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'changeMinistryAccess',
+          summary: "Change a member's Ministry Access Level",
+          description:
+            'Make a member a leader or a volunteer of one Ministry. Only a ChurchAdmin may call it. Promotion keeps Roles; a demotion needs at least one active Role, supplied as the complete roleIds set when the member holds none. Removing a Role an upcoming Assignment depends on refuses the whole operation with every such Assignment. The level and Roles save together under one audit; the current state changes nothing. Church access and other memberships stay as they are.',
+          params: ministryMembershipParamsSchema,
+          body: changeMinistryAccessBodySchema,
+          response: {
+            200: ministryMembershipChangeResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([
+              upcomingAssignmentsResponseSchema,
+              errorResponseSchema,
+            ]),
+            422: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const actorId = UserId.from(request.userId);
+        // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
+        const isAdmin = await this.authorityGuard.canManageChurch({
+          churchId,
+          userId: actorId,
+        });
+        if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const { memberId, membershipId } = request.params as z.infer<
+          typeof ministryMembershipParamsSchema
+        >;
+        const { accessLevel, roleIds } = request.body as z.infer<
+          typeof changeMinistryAccessBodySchema
+        >;
+        const outcome =
+          await this.ministryMembershipManager.changeMinistryAccess({
+            churchId,
+            actorId,
+            memberId,
+            membershipId,
+            accessLevel,
+            roleIds: roleIds?.map(RoleId.from),
+          });
+        return sendMembershipOutcome({ reply, request, outcome });
+      },
+    );
+
+    app.delete(
+      '/:memberId/ministry-memberships/:membershipId',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'endMinistryMembership',
+          summary: 'Remove a member from a Ministry',
+          description:
+            'End one active Ministry Membership: it becomes inactive with leftAt, keeping its Roles, past Assignments and answers as history, and its actionable AvailabilityChecks are withdrawn. A ChurchAdmin removes anyone; a Ministry leader removes volunteer-level members of a Ministry they lead, never a leader or themselves. Refused while an upcoming Assignment depends on the membership, with every such Assignment. Church Membership, the Volunteer profile and other Ministries are unchanged; rejoining is a new Ministry Invitation.',
+          params: ministryMembershipParamsSchema,
+          response: {
+            200: endMinistryMembershipResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([
+              upcomingAssignmentsResponseSchema,
+              errorResponseSchema,
+            ]),
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const actorId = UserId.from(request.userId);
+        // The area gate; the manager decides the target under the Church lock.
+        const scope = await this.resolveScope({ churchId, userId: actorId });
+        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const { memberId, membershipId } = request.params as z.infer<
+          typeof ministryMembershipParamsSchema
+        >;
+        const outcome =
+          await this.ministryMembershipManager.endMinistryMembership({
+            churchId,
+            actorId,
+            memberId,
+            membershipId,
+          });
+        return sendMembershipOutcome({ reply, request, outcome });
       },
     );
 

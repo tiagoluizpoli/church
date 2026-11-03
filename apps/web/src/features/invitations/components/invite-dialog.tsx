@@ -97,19 +97,33 @@ interface ToggleRoleInput {
   checked: boolean;
 }
 
+interface RolePickerRole {
+  id: string;
+  name: string;
+}
+
 interface RolePickerProps {
   ministryId: string;
   selected: string[];
   onChange: (roleIds: string[]) => void;
   errorId?: string;
+  /** Archived Roles the member already holds: labelled and removable, never offered anew. */
+  heldArchived?: RolePickerRole[];
+  /** Keeps checkbox ids unique per surface. */
+  idPrefix?: string;
+  /** Select all adds the active Roles to the current choice (keeping held archived ones) instead of replacing it. */
+  selectAllKeepsSelection?: boolean;
 }
 
-/** The Ministry's active Roles; Select all picks only what is offered here. */
-function RolePicker({
+/** The Ministry's active Roles; Select all picks every active Role. */
+export function RolePicker({
   ministryId,
   selected,
   onChange,
   errorId,
+  heldArchived = [],
+  idPrefix = 'invite',
+  selectAllKeepsSelection = false,
 }: RolePickerProps) {
   const rolesQuery = useMinistryRoles({ ministryId });
   const roles = rolesQuery.data?.roles ?? [];
@@ -139,7 +153,7 @@ function RolePicker({
       </Alert>
     );
   }
-  if (roles.length === 0) {
+  if (roles.length === 0 && heldArchived.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
         {m.invitations_invite_no_roles()}{' '}
@@ -150,6 +164,14 @@ function RolePicker({
       </p>
     );
   }
+
+  const selectAll = () => {
+    const activeIds = roles.map(({ id }) => id);
+    const next = selectAllKeepsSelection
+      ? new Set([...selected, ...activeIds])
+      : activeIds;
+    onChange([...next]);
+  };
 
   const toggle = ({ roleId, checked }: ToggleRoleInput) =>
     onChange(
@@ -166,27 +188,27 @@ function RolePicker({
         <span id={legendId} className="font-medium text-sm">
           {m.ministry_invitation_roles_label()}
         </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => onChange(roles.map((role) => role.id))}
-        >
+        <Button type="button" size="sm" variant="outline" onClick={selectAll}>
           {m.invitations_invite_select_all()}
         </Button>
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">
-        {roles.map((role) => (
+        {[...roles, ...heldArchived].map((role) => (
           <li key={role.id} className="flex items-center gap-2">
             <Checkbox
-              id={`invite-role-${role.id}`}
+              id={`${idPrefix}-role-${role.id}`}
               checked={selected.includes(role.id)}
               onCheckedChange={(checked) =>
                 toggle({ roleId: role.id, checked: checked === true })
               }
             />
-            <Label htmlFor={`invite-role-${role.id}`} className="break-words">
-              {role.name}
+            <Label
+              htmlFor={`${idPrefix}-role-${role.id}`}
+              className="break-words"
+            >
+              {heldArchived.includes(role)
+                ? `${role.name} · ${m.people_role_archived()}`
+                : role.name}
             </Label>
           </li>
         ))}

@@ -8008,6 +8008,633 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/people/{memberId}/ministry-memberships/{membershipId}/roles:
+    put:
+      operationId: setMinistryRoles
+      summary: Set a Ministry member's Roles
+      tags:
+        - people
+      description: Replace the complete Role set of one active Ministry Membership;
+        omitted Roles are removed. A ChurchAdmin edits any membership; a
+        Ministry leader edits volunteer-level members of a Ministry they lead
+        and their own. Only active Roles of that Ministry may be added; held
+        archived Roles may be kept or removed. A volunteer-level membership
+        keeps at least one Role. Removing a Role an upcoming Assignment depends
+        on is refused with every such Assignment. The same set changes nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleIds:
+                  maxItems: 200
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              required:
+                - roleIds
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: memberId
+          required: true
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: membershipId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberId:
+                    type: string
+                  membershipId:
+                    type: string
+                  ministryAccessLevel:
+                    type: string
+                    enum:
+                      - leader
+                      - volunteer
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        archived:
+                          type: boolean
+                      required:
+                        - id
+                        - name
+                        - archived
+                      additionalProperties: false
+                  changed:
+                    type: boolean
+                required:
+                  - memberId
+                  - membershipId
+                  - ministryAccessLevel
+                  - roles
+                  - changed
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      assignments:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            assignmentId:
+                              type: string
+                            eventId:
+                              type: string
+                            eventTitle:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                            shiftId:
+                              type: string
+                            shiftStart:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            shiftEnd:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            roleId:
+                              type: string
+                            roleName:
+                              type: string
+                            sectorId:
+                              type: string
+                            sectorName:
+                              type: string
+                            ministryId:
+                              type: string
+                            cycleId:
+                              type: string
+                          required:
+                            - assignmentId
+                            - eventId
+                            - eventTitle
+                            - eventTimeBlockId
+                            - shiftId
+                            - shiftStart
+                            - shiftEnd
+                            - roleId
+                            - roleName
+                            - sectorId
+                            - sectorName
+                            - ministryId
+                            - cycleId
+                          additionalProperties: false
+                    required:
+                      - error
+                      - message
+                      - assignments
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                    required:
+                      - error
+                      - message
+                    additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/people/{memberId}/ministry-memberships/{membershipId}/access:
+    patch:
+      operationId: changeMinistryAccess
+      summary: Change a member's Ministry Access Level
+      tags:
+        - people
+      description: Make a member a leader or a volunteer of one Ministry. Only a
+        ChurchAdmin may call it. Promotion keeps Roles; a demotion needs at
+        least one active Role, supplied as the complete roleIds set when the
+        member holds none. Removing a Role an upcoming Assignment depends on
+        refuses the whole operation with every such Assignment. The level and
+        Roles save together under one audit; the current state changes nothing.
+        Church access and other memberships stay as they are.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accessLevel:
+                  type: string
+                  enum:
+                    - leader
+                    - volunteer
+                roleIds:
+                  maxItems: 200
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              required:
+                - accessLevel
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: memberId
+          required: true
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: membershipId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberId:
+                    type: string
+                  membershipId:
+                    type: string
+                  ministryAccessLevel:
+                    type: string
+                    enum:
+                      - leader
+                      - volunteer
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        archived:
+                          type: boolean
+                      required:
+                        - id
+                        - name
+                        - archived
+                      additionalProperties: false
+                  changed:
+                    type: boolean
+                required:
+                  - memberId
+                  - membershipId
+                  - ministryAccessLevel
+                  - roles
+                  - changed
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      assignments:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            assignmentId:
+                              type: string
+                            eventId:
+                              type: string
+                            eventTitle:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                            shiftId:
+                              type: string
+                            shiftStart:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            shiftEnd:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            roleId:
+                              type: string
+                            roleName:
+                              type: string
+                            sectorId:
+                              type: string
+                            sectorName:
+                              type: string
+                            ministryId:
+                              type: string
+                            cycleId:
+                              type: string
+                          required:
+                            - assignmentId
+                            - eventId
+                            - eventTitle
+                            - eventTimeBlockId
+                            - shiftId
+                            - shiftStart
+                            - shiftEnd
+                            - roleId
+                            - roleName
+                            - sectorId
+                            - sectorName
+                            - ministryId
+                            - cycleId
+                          additionalProperties: false
+                    required:
+                      - error
+                      - message
+                      - assignments
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                    required:
+                      - error
+                      - message
+                    additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/people/{memberId}/ministry-memberships/{membershipId}:
+    delete:
+      operationId: endMinistryMembership
+      summary: Remove a member from a Ministry
+      tags:
+        - people
+      description: "End one active Ministry Membership: it becomes inactive with
+        leftAt, keeping its Roles, past Assignments and answers as history, and
+        its actionable AvailabilityChecks are withdrawn. A ChurchAdmin removes
+        anyone; a Ministry leader removes volunteer-level members of a Ministry
+        they lead, never a leader or themselves. Refused while an upcoming
+        Assignment depends on the membership, with every such Assignment. Church
+        Membership, the Volunteer profile and other Ministries are unchanged;
+        rejoining is a new Ministry Invitation."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: memberId
+          required: true
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: membershipId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberId:
+                    type: string
+                  membershipId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - inactive
+                  leftAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  changed:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - memberId
+                  - membershipId
+                  - status
+                  - leftAt
+                  - changed
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      assignments:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            assignmentId:
+                              type: string
+                            eventId:
+                              type: string
+                            eventTitle:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                            shiftId:
+                              type: string
+                            shiftStart:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            shiftEnd:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            roleId:
+                              type: string
+                            roleName:
+                              type: string
+                            sectorId:
+                              type: string
+                            sectorName:
+                              type: string
+                            ministryId:
+                              type: string
+                            cycleId:
+                              type: string
+                          required:
+                            - assignmentId
+                            - eventId
+                            - eventTitle
+                            - eventTimeBlockId
+                            - shiftId
+                            - shiftStart
+                            - shiftEnd
+                            - roleId
+                            - roleName
+                            - sectorId
+                            - sectorName
+                            - ministryId
+                            - cycleId
+                          additionalProperties: false
+                    required:
+                      - error
+                      - message
+                      - assignments
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                    required:
+                      - error
+                      - message
+                    additionalProperties: false
   /api/v1/people/{memberId}:
     get:
       operationId: getPerson
@@ -8071,12 +8698,21 @@ paths:
                               - name
                               - archived
                             additionalProperties: false
+                        canEditRoles:
+                          type: boolean
+                        canEndMembership:
+                          type: boolean
+                        canChangeMinistryAccess:
+                          type: boolean
                       required:
                         - membershipId
                         - ministryId
                         - ministryName
                         - ministryAccessLevel
                         - roles
+                        - canEditRoles
+                        - canEndMembership
+                        - canChangeMinistryAccess
                       additionalProperties: false
                   canChangeChurchAccess:
                     type: boolean

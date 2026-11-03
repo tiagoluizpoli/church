@@ -10,6 +10,7 @@ export { DbEventTemplateManager } from './db-event-template-manager';
 export { DbInvitationListManager } from './db-invitation-list-manager';
 export { DbMinistryInvitationManager } from './db-ministry-invitation-manager';
 export { DbMinistryManager } from './db-ministry-manager';
+export { DbMinistryMembershipManager } from './db-ministry-membership-manager';
 export { DbMinistryRoleManager } from './db-ministry-role-manager';
 export { DbNotificationManager } from './db-notification-manager';
 export { DbOutboxDrainer } from './db-outbox-drainer';

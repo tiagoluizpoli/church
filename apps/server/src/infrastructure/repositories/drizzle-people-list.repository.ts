@@ -19,6 +19,7 @@ import {
   type SQL,
   sql,
 } from 'drizzle-orm';
+import { UserId } from '../../domain/branded-ids';
 import type {
   GetPersonInput,
   ListPeopleInput,
@@ -29,8 +30,8 @@ import type {
   PeopleListMinistry,
   PeopleListPage,
   PeopleListScope,
-  PersonDetail,
   PersonDetailMinistry,
+  PersonDetailRecord,
 } from '../../domain/entities/people-list-item';
 import { PeopleMinistryNotFoundError } from '../../domain/errors/people-ministry-not-found';
 import {
@@ -164,7 +165,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
     scope,
     memberId,
     callerId,
-  }: GetPersonInput): Promise<PersonDetail | undefined> {
+  }: GetPersonInput): Promise<PersonDetailRecord | undefined> {
     const client = getClient({ db: this.db });
     const [row] = await client
       .select({
@@ -233,6 +234,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
 
     const detail = {
       id: row.id,
+      userId: UserId.from(row.userId),
       name: row.name,
       email: row.email,
       ministries,

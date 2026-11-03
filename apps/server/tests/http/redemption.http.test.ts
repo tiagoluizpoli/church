@@ -34,6 +34,7 @@ import type {
   DeclineChurchInvitationInput,
   DeclineChurchInvitationResult,
   DeclineMinistryInvitationInput,
+  LockInvitedMinistriesInput,
   RecordChurchInvitationAcceptanceInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
@@ -126,6 +127,12 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
   }
 
   private readonly delegate: RedemptionRepository;
+
+  async lockInvitedMinistries(
+    input: LockInvitedMinistriesInput,
+  ): Promise<void> {
+    return this.delegate.lockInvitedMinistries(input);
+  }
 
   async acceptPendingMinistryInvitation(
     input: AcceptMinistryInvitationInput,

@@ -3247,6 +3247,52 @@ export type RevokeChurchInvitation409 = {
   message: string;
 };
 
+export type ChangeChurchAccessBodyAccessLevel = typeof ChangeChurchAccessBodyAccessLevel[keyof typeof ChangeChurchAccessBodyAccessLevel];
+
+
+export const ChangeChurchAccessBodyAccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type ChangeChurchAccessBody = {
+  accessLevel: ChangeChurchAccessBodyAccessLevel;
+};
+
+export type ChangeChurchAccess200AccessLevel = typeof ChangeChurchAccess200AccessLevel[keyof typeof ChangeChurchAccess200AccessLevel];
+
+
+export const ChangeChurchAccess200AccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type ChangeChurchAccess200 = {
+  memberId: string;
+  accessLevel: ChangeChurchAccess200AccessLevel;
+  changed: boolean;
+};
+
+export type ChangeChurchAccess401 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeChurchAccess403 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeChurchAccess404 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeChurchAccess409 = {
+  error: string;
+  message: string;
+};
+
 export type GetPerson200MinistriesItemMinistryAccessLevel = typeof GetPerson200MinistriesItemMinistryAccessLevel[keyof typeof GetPerson200MinistriesItemMinistryAccessLevel];
 
 
@@ -3280,6 +3326,7 @@ export const GetPerson200ChurchAccessAccessLevel = {
 export type GetPerson200ChurchAccess = {
   accessLevel: GetPerson200ChurchAccessAccessLevel;
   isLastAdmin: boolean;
+  isSelf: boolean;
 };
 
 export type GetPerson200 = {

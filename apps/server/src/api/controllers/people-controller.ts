@@ -166,14 +166,13 @@ export class PeopleController implements FastifyController {
       },
       async (request, reply) => {
         const churchId = ChurchId.from(request.churchId);
-        const scope = await this.resolveScope({
-          churchId,
-          userId: UserId.from(request.userId),
-        });
+        const callerId = UserId.from(request.userId);
+        const scope = await this.resolveScope({ churchId, userId: callerId });
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const result = await this.peopleListManager.get({
           churchId,
           scope,
+          callerId,
           memberId: (request.params as z.infer<typeof personParamsSchema>)
             .memberId,
         });

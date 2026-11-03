@@ -1,4 +1,4 @@
-import type { ChurchId } from '../../branded-ids';
+import type { ChurchId, UserId } from '../../branded-ids';
 import type {
   PeopleListFilters,
   PeopleListPage,
@@ -18,6 +18,7 @@ export interface GetPersonInput {
   churchId: ChurchId;
   scope: PeopleListScope;
   memberId: string;
+  callerId: UserId;
 }
 
 export interface PeopleListRepository {

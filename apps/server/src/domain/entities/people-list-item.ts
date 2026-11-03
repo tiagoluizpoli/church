@@ -54,11 +54,19 @@ export interface PersonDetailMinistry {
   roles: PersonDetailRole[];
 }
 
+/** The member's Church access as a ChurchAdmin sees it. */
+export interface PersonChurchAccess {
+  accessLevel: 'member' | 'admin';
+  isLastAdmin: boolean;
+  /** The member is the caller: a demotion here removes the caller's own administration. */
+  isSelf: boolean;
+}
+
 export interface PersonDetail {
   id: string;
   name: string;
   email: string;
   ministries: PersonDetailMinistry[];
   /** Admin scope only; omitted for leaders. */
-  churchAccess?: { accessLevel: 'member' | 'admin'; isLastAdmin: boolean };
+  churchAccess?: PersonChurchAccess;
 }

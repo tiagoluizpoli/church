@@ -516,6 +516,7 @@ describe('GET /people/{memberId}', () => {
     expect(body.churchAccess).toEqual({
       accessLevel: 'admin',
       isLastAdmin: true,
+      isSelf: true,
     });
   });
 

@@ -66,6 +66,8 @@ export const personDetailResponseSchema = z.object({
     .object({
       accessLevel: z.enum(['member', 'admin']),
       isLastAdmin: z.boolean(),
+      /** The member is the caller; demoting them ends the caller's own administration. */
+      isSelf: z.boolean(),
     })
     .optional(),
 });

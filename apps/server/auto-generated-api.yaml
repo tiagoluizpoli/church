@@ -7895,6 +7895,119 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/people/{memberId}/church-access:
+    patch:
+      operationId: changeChurchAccess
+      summary: Change a member's Church access
+      tags:
+        - people
+      description: Make a Church Member an admin of the Active Church, or remove their
+        admin access, keeping at least one admin. Only a ChurchAdmin may call
+        it; requesting the current level changes nothing. Church Membership,
+        Ministry Memberships and Roles stay as they are.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accessLevel:
+                  type: string
+                  enum:
+                    - member
+                    - admin
+              required:
+                - accessLevel
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: memberId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberId:
+                    type: string
+                  accessLevel:
+                    type: string
+                    enum:
+                      - member
+                      - admin
+                  changed:
+                    type: boolean
+                required:
+                  - memberId
+                  - accessLevel
+                  - changed
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/people/{memberId}:
     get:
       operationId: getPerson
@@ -7979,9 +8092,12 @@ paths:
                           - admin
                       isLastAdmin:
                         type: boolean
+                      isSelf:
+                        type: boolean
                     required:
                       - accessLevel
                       - isLastAdmin
+                      - isSelf
                     additionalProperties: false
                 required:
                   - id

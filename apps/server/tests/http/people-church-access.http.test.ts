@@ -428,6 +428,24 @@ describe('PATCH /people/:memberId/church-access', () => {
     expect(await audits()).toEqual([]);
   });
 
+  it("marks the caller's own Church access so the UI can warn before self-demotion", async () => {
+    const detail = (target: string) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/v1/people/${target}`,
+        headers: { [USER_HEADER]: 'ada' },
+      });
+
+    expect((await detail(memberId('ada'))).json().churchAccess).toEqual({
+      accessLevel: 'admin',
+      isLastAdmin: false,
+      isSelf: true,
+    });
+    expect((await detail(memberId('ben'))).json().churchAccess.isSelf).toBe(
+      false,
+    );
+  });
+
   describe('when requests race', () => {
     /**
      * Holds the Church row lock from outside the app until both requests wait

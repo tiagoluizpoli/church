@@ -160,6 +160,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
     churchId,
     scope,
     memberId,
+    callerId,
   }: GetPersonInput): Promise<PersonDetail | undefined> {
     const client = getClient({ db: this.db });
     const [row] = await client
@@ -261,6 +262,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
       churchAccess: {
         accessLevel: isAdmin ? 'admin' : 'member',
         isLastAdmin: admins.length === 1,
+        isSelf: row.userId === callerId,
       },
     };
   }

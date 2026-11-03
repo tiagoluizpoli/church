@@ -236,6 +236,16 @@ export const outboxMessage = pgTable('outbox_message', {
  * failed identity checks / throttling, are deliberately never written here —
  * those belong to the security log instead.
  */
+/** `church_access_changed` details: which Church Membership moved between which levels. */
+export interface ChurchAccessChangedDetails {
+  churchMembershipId: string;
+  before: 'member' | 'admin';
+  after: 'member' | 'admin';
+}
+
+/** Structured per-action facts; null on rows whose action records none. */
+export type IdentityAuditDetails = ChurchAccessChangedDetails;
+
 export const identityAudit = pgTable('identity_audit', {
   id: uuid('id').primaryKey().defaultRandom(),
   churchId: uuid('church_id')
@@ -249,6 +259,11 @@ export const identityAudit = pgTable('identity_audit', {
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
   action: identityAuditActionEnum('action').notNull(),
+  /** The User the act was done to, when not the actor; null on older actions. */
+  subjectId: text('subject_id').references(() => user.id, {
+    onDelete: 'cascade',
+  }),
+  details: jsonb('details').$type<IdentityAuditDetails>(),
   reason: text('reason'),
   correlationId: text('correlation_id').notNull(),
   timestamp: timestamp('timestamp', { withTimezone: true, mode: 'date' })

@@ -84,6 +84,7 @@ function detail(overrides: Partial<GetPerson200> = {}): GetPerson200 {
           { id: 'r1', name: 'Singer', archived: false },
           { id: 'r2', name: 'Drummer', archived: true },
         ],
+        canEditRoles: false,
       },
     ],
     ...overrides,

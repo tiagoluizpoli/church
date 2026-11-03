@@ -66,7 +66,12 @@ export function MemberDetail({ person }: MemberDetailProps) {
         ) : (
           <ul className="grid gap-3">
             {person.ministries.map((card) => (
-              <MinistryCard key={card.membershipId} card={card} />
+              <MinistryCard
+                key={card.membershipId}
+                card={card}
+                memberId={person.id}
+                personName={person.name}
+              />
             ))}
           </ul>
         )}

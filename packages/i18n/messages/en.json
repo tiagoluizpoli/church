@@ -676,5 +676,15 @@
   "people_made_admin_toast": "{name} is now an admin.",
   "people_removed_admin_toast": "{name} is no longer an admin.",
   "people_removed_own_admin_toast": "You are no longer an admin of this Church.",
-  "people_access_failed": "Couldn't change Church access. Try again."
+  "people_access_failed": "Couldn't change Church access. Try again.",
+  "people_edit_roles": "Edit Roles",
+  "people_edit_roles_label": "Edit {name}'s Roles in {ministry}",
+  "people_edit_roles_title": "{name}'s Roles in {ministry}",
+  "people_edit_roles_description": "Choose the Roles {name} can serve in this Ministry. Changes apply as soon as you save.",
+  "people_roles_save": "Save Roles",
+  "people_roles_saved_toast": "{name}'s Roles were saved.",
+  "people_roles_failed": "Couldn't save the Roles. Try again.",
+  "people_roles_blocked_title": "Upcoming Assignments need a Role you removed",
+  "people_roles_blocker": "{event} · {time} · {sector} · {role}",
+  "people_roles_blocker_link": "Open in the Assign board"
 }

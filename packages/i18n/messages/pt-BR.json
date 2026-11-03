@@ -676,5 +676,15 @@
   "people_made_admin_toast": "{name} agora é Administrador.",
   "people_removed_admin_toast": "{name} não é mais Administrador.",
   "people_removed_own_admin_toast": "Você não é mais Administrador desta Igreja.",
-  "people_access_failed": "Não foi possível alterar o acesso à Igreja. Tente novamente."
+  "people_access_failed": "Não foi possível alterar o acesso à Igreja. Tente novamente.",
+  "people_edit_roles": "Editar funções",
+  "people_edit_roles_label": "Editar as funções de {name} em {ministry}",
+  "people_edit_roles_title": "Funções de {name} em {ministry}",
+  "people_edit_roles_description": "Escolha as funções em que {name} pode servir neste ministério. As alterações valem assim que você salvar.",
+  "people_roles_save": "Salvar funções",
+  "people_roles_saved_toast": "As funções de {name} foram salvas.",
+  "people_roles_failed": "Não foi possível salvar as funções. Tente novamente.",
+  "people_roles_blocked_title": "Escalas futuras precisam de uma função que você removeu",
+  "people_roles_blocker": "{event} · {time} · {sector} · {role}",
+  "people_roles_blocker_link": "Abrir na montagem da escala"
 }

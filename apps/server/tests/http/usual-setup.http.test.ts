@@ -78,6 +78,7 @@ beforeAll(async () => {
     ministryManager: new DbMinistryManager({
       ministryRepo,
       volunteerRepo: new DrizzleVolunteerRepository({ db }),
+      invitationRepo: {} as never,
       unitOfWork: new DrizzleUnitOfWork({ db }),
     }),
     participationManager: createSchedulingManagers().participationManager,

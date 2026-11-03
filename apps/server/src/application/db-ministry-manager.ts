@@ -1,5 +1,5 @@
 import { NotFoundError } from '@church/core';
-import { now } from '@church/time';
+import { now, toDate } from '@church/time';
 import type { ChurchId } from '../domain/branded-ids';
 import type {
   ArchiveMinistryInput,
@@ -11,29 +11,35 @@ import type {
   SetDefaultDirectionInput,
 } from '../domain/contracts/application/ministry-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
+import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Ministry } from '../domain/entities/ministry';
 import { MinistryInUseError } from '../domain/errors/ministry-in-use';
+import { revokeMinistryHalf } from './invitation-revocation';
 
 interface DbMinistryManagerDependencies {
   ministryRepo: MinistryRepository;
   volunteerRepo: VolunteerRepository;
+  invitationRepo: MinistryInvitationRepository;
   unitOfWork: UnitOfWork;
 }
 
 export class DbMinistryManager implements IMinistryManager {
   private readonly ministryRepo: MinistryRepository;
   private readonly volunteerRepo: VolunteerRepository;
+  private readonly invitationRepo: MinistryInvitationRepository;
   private readonly unitOfWork: UnitOfWork;
 
   constructor({
     ministryRepo,
     volunteerRepo,
+    invitationRepo,
     unitOfWork,
   }: DbMinistryManagerDependencies) {
     this.ministryRepo = ministryRepo;
     this.volunteerRepo = volunteerRepo;
+    this.invitationRepo = invitationRepo;
     this.unitOfWork = unitOfWork;
   }
 
@@ -73,7 +79,11 @@ export class DbMinistryManager implements IMinistryManager {
     return this.ministryRepo.rename(input);
   }
 
-  async archive({ churchId, ministryId }: ArchiveMinistryInput): Promise<void> {
+  async archive({
+    churchId,
+    ministryId,
+    callerId,
+  }: ArchiveMinistryInput): Promise<void> {
     await this.unitOfWork.run(async (tx) => {
       // The update lock waits for in-flight new-use writes (share locks) and
       // makes later ones see the archive, so the check below cannot go stale.
@@ -101,8 +111,28 @@ export class DbMinistryManager implements IMinistryManager {
         });
       }
       await this.ministryRepo.archive({ churchId, ministryId, archivedAt, tx });
-      // Extension point: Spec 16 revokes pending Ministry Invitations (and
-      // paired Church Invitations) here, inside this same transaction.
+      // Ministry row first, then each Church Invitation in id order, then
+      // halves — the lock order every invitation lifecycle transition shares.
+      const revocation = {
+        actorId: callerId,
+        at: toDate({ instant: archivedAt }),
+        reason: 'ministry-archived' as const,
+      };
+      const pending = await this.invitationRepo.listPendingInMinistry({
+        churchId,
+        ministryId,
+        tx,
+      });
+      for (const half of pending) {
+        await revokeMinistryHalf({
+          repo: this.invitationRepo,
+          churchId,
+          ministryInvitationId: half.id,
+          churchInvitationId: half.churchInvitationId,
+          revocation,
+          tx,
+        });
+      }
     });
   }
 

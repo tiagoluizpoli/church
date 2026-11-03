@@ -50,6 +50,7 @@ import type {
   FindPublicRedemptionPreviewInput,
   HasActiveMinistryMembershipInput,
   IsInvitationAddressedToUserInput,
+  ListPendingInMinistryInput,
   LockChurchInvitationInput,
   LockedChurchInvitation,
   LockMinistryInvitationInput,
@@ -57,6 +58,7 @@ import type {
   MinistryInvitationContext,
   MinistryInvitationRepository,
   PendingChurchOffer,
+  PendingMinistryInvitationHalf,
   PendingMinistryInvitationReference,
   ResolveRecipientEmailInput,
   SupersedeUnsentChainedOutboxInput,
@@ -310,6 +312,30 @@ export class DrizzleMinistryInvitationRepository
       .orderBy(ministryInvitation.id)
       .for('update');
     return rows.map(({ id }) => id);
+  }
+
+  async listPendingInMinistry({
+    churchId,
+    ministryId,
+    tx,
+  }: ListPendingInMinistryInput): Promise<PendingMinistryInvitationHalf[]> {
+    return getClient({ db: this.db, tx })
+      .select({
+        id: ministryInvitation.id,
+        churchInvitationId: ministryInvitation.churchInvitationId,
+      })
+      .from(ministryInvitation)
+      .where(
+        and(
+          withChurchIsolation({ table: ministryInvitation, churchId }),
+          eq(ministryInvitation.ministryId, ministryId),
+          eq(ministryInvitation.status, 'pending'),
+        ),
+      )
+      .orderBy(
+        sql`${ministryInvitation.churchInvitationId} NULLS LAST`,
+        ministryInvitation.id,
+      );
   }
 
   async findById(input: FindByIdInput) {

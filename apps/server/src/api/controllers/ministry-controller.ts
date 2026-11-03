@@ -256,6 +256,7 @@ export class MinistryController implements FastifyController {
         await this.ministryManager.archive({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
+          callerId: UserId.from(request.userId),
         });
         return reply.status(204).send();
       },

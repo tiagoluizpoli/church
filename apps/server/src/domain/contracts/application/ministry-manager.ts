@@ -1,4 +1,9 @@
-import type { ChurchId, MinistryId, VolunteerId } from '../../branded-ids';
+import type {
+  ChurchId,
+  MinistryId,
+  UserId,
+  VolunteerId,
+} from '../../branded-ids';
 import type { DefaultDirection, Ministry } from '../../entities/ministry';
 
 export interface ListMinistriesByLeaderInput {
@@ -31,6 +36,8 @@ export interface RenameMinistryInput {
 export interface ArchiveMinistryInput {
   churchId: ChurchId;
   ministryId: MinistryId;
+  /** The archiving ChurchAdmin, recorded on every invitation the archive revokes. */
+  callerId: UserId;
 }
 
 export interface IMinistryManager {
@@ -47,6 +54,7 @@ export interface IMinistryManager {
   /**
    * Archives an active Ministry: `MinistryInUseError` while it participates
    * in an Event that has not ended; refusals otherwise as `getActive`.
+   * Revokes the Ministry's pending invitations in the same transaction.
    */
   archive(input: ArchiveMinistryInput): Promise<void>;
   setDefaultDirection(input: SetDefaultDirectionInput): Promise<Ministry>;

@@ -93,6 +93,18 @@ export interface LockPendingHalvesInput {
   tx: TransactionContext;
 }
 
+export interface ListPendingInMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx: TransactionContext;
+}
+
+/** A stored-pending Ministry Invitation and the Church Invitation it is paired with, if any. */
+export interface PendingMinistryInvitationHalf {
+  id: string;
+  churchInvitationId: string | null;
+}
+
 export interface LockChurchInvitationInput {
   churchId: ChurchId;
   churchInvitationId: string;
@@ -331,6 +343,14 @@ export interface MinistryInvitationRepository {
    * decline or acceptance settles before a last-half decision reads them.
    */
   lockPendingHalves(input: LockPendingHalvesInput): Promise<string[]>;
+
+  /**
+   * The Ministry's stored-pending invitations (expired included), ordered by
+   * Church Invitation then id so concurrent callers lock parents in one order.
+   */
+  listPendingInMinistry(
+    input: ListPendingInMinistryInput,
+  ): Promise<PendingMinistryInvitationHalf[]>;
 
   /**
    * Any status, scoped only to Church — the outbox worker re-reads by id

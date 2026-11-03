@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   cycle,
   ministry,
@@ -24,6 +25,7 @@ import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryInvitationRepository } from '@/infrastructure/repositories/drizzle-ministry-invitation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -69,6 +71,10 @@ beforeAll(async () => {
     ministryManager: new DbMinistryManager({
       ministryRepo,
       volunteerRepo: new DrizzleVolunteerRepository({ db }),
+      invitationRepo: new DrizzleMinistryInvitationRepository({
+        db,
+        config: appConfig,
+      }),
       unitOfWork: new DrizzleUnitOfWork({ db }),
     }),
     ministryInvitationManager: {} as never,

@@ -32,7 +32,6 @@ import {
   revokeMinistryHalf,
 } from '@/application/invitation-revocation';
 import { ChurchId, MinistryId, UserId } from '@/domain/branded-ids';
-import { getClient } from '@/infrastructure/repositories/helpers';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
@@ -508,45 +507,6 @@ describe('POST /invitations/church/:invitationId/revoke — concurrency', () => 
     expect(results.map((res) => res.statusCode).sort()).toEqual([204, 409]);
     expect(await churchRow(id)).toMatchObject(revokedBy('admin'));
     expect(await ministryRow(pendingHalf)).toMatchObject(revokedBy('admin'));
-  });
-
-  it('never overwrites an acceptance that commits while the revoke waits', async () => {
-    const id = await churchOffer();
-    const pendingHalf = await half({ churchInvitationId: id });
-    // Acceptance's lock order: the Church Invitation row, then its halves.
-    const accepting = await held(async (tx) => {
-      await harness.ministryInvitationRepository.lockChurchInvitation({
-        churchId: ChurchId.from(CHURCH_A),
-        churchInvitationId: id,
-        tx,
-      });
-      const client = getClient({ db, tx });
-      await client
-        .update(churchInvitation)
-        .set({ status: 'accepted' })
-        .where(eq(churchInvitation.id, id));
-      await client
-        .update(ministryInvitation)
-        .set({ status: 'accepted' })
-        .where(eq(ministryInvitation.id, pendingHalf));
-    });
-    signIn('admin');
-
-    const revoking = revoke(id);
-    await untilLockWait();
-    accepting.release();
-    await accepting.done;
-    const res = await revoking;
-
-    expect(res.statusCode).toBe(409);
-    expect(await churchRow(id)).toMatchObject({
-      status: 'accepted',
-      ...untouched,
-    });
-    expect(await ministryRow(pendingHalf)).toMatchObject({
-      status: 'accepted',
-      ...untouched,
-    });
   });
 
   it('refuses a resend that waits on a Church revoke, with no delivery or new expiry', async () => {

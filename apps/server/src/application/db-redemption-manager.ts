@@ -34,7 +34,10 @@ import type {
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionRepository } from '../domain/contracts/infrastructure/redemption.repository';
 import type { RedemptionFailureLog } from '../domain/contracts/infrastructure/redemption-failure-log';
-import type { RedemptionIdentityGateway } from '../domain/contracts/infrastructure/redemption-identity-gateway';
+import type {
+  RedemptionIdentityGateway,
+  RejectChurchInvitationInput,
+} from '../domain/contracts/infrastructure/redemption-identity-gateway';
 import type { SecurityLogRepository } from '../domain/contracts/infrastructure/security-log.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -42,6 +45,7 @@ import type { VerificationCodeInspector } from '../domain/contracts/infrastructu
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
+import { PendingMinistryInvitationNotFoundError } from '../domain/errors/pending-ministry-invitation-not-found';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { maskEmail } from '../domain/services/mask-email';
 
@@ -109,6 +113,13 @@ interface MinistryGrantFailureInput {
 class MinistryGrantFailure extends Error {
   constructor({ cause }: MinistryGrantFailureInput) {
     super('Ministry grant failed during new-person admission.', { cause });
+  }
+}
+
+/** Marks a throw from Better Auth's Church-half rejection, so the decline reports it as such. */
+class IdentityRejectFailure extends Error {
+  constructor({ cause }: MinistryGrantFailureInput) {
+    super('Church Invitation rejection failed during decline.', { cause });
   }
 }
 
@@ -400,6 +411,17 @@ export class DbRedemptionManager implements RedemptionManager {
     if (locked?.status !== 'pending') throw new InvitationNotPendingError();
   }
 
+  /** Tags a Better Auth rejection failure so the decline reports it as identity. */
+  private async rejectChurchHalf(
+    input: RejectChurchInvitationInput,
+  ): Promise<void> {
+    try {
+      await this.identityGateway.rejectChurchInvitation(input);
+    } catch (cause) {
+      throw new IdentityRejectFailure({ cause });
+    }
+  }
+
   private async classifyIdentityFailure({
     email,
   }: ClassifyIdentityFailureInput): Promise<
@@ -499,31 +521,54 @@ export class DbRedemptionManager implements RedemptionManager {
     correlationId,
   }: AcceptWithSiblingsInput): Promise<VolunteerId> {
     return this.unitOfWork.run(async (tx) => {
-      const siblingIds = ministryInvitation.churchInvitationId
+      const { churchId, churchInvitationId } = ministryInvitation;
+      const siblingQuery = churchInvitationId
+        ? {
+            churchInvitationId,
+            exceptMinistryInvitationId: ministryInvitation.id,
+            now: acceptedAt,
+            tx,
+          }
+        : null;
+      const candidateIds = siblingQuery
         ? await this.invitationRepository.findPendingSiblingMinistryInvitationIds(
-            {
-              churchInvitationId: ministryInvitation.churchInvitationId,
-              exceptMinistryInvitationId: ministryInvitation.id,
-              now: acceptedAt,
-              tx,
-            },
+            siblingQuery,
           )
         : [];
+      // Lock order shared with revoke and archive: every half's Ministry,
+      // then the Church Invitation row, then the halves themselves.
+      await this.redemptionRepository.lockInvitedMinistries({
+        churchId,
+        ministryInvitationIds: [
+          ministryInvitation.id,
+          ...candidateIds,
+        ] as MinistryInvitationId[],
+        tx,
+      });
+      let siblingIds = candidateIds;
+      if (siblingQuery && churchInvitationId) {
+        await this.invitationRepository.lockChurchInvitation({
+          churchId,
+          churchInvitationId,
+          tx,
+        });
+        // A sibling revoked while this waited is no longer granted.
+        const stillPending = new Set(
+          await this.invitationRepository.findPendingSiblingMinistryInvitationIds(
+            siblingQuery,
+          ),
+        );
+        siblingIds = candidateIds.filter((id) => stillPending.has(id));
+      }
       const ids = [
         ministryInvitation.id,
         ...siblingIds,
       ] as MinistryInvitationId[];
-      // Every half's Ministry before any invitation row, as a racing archive locks.
-      await this.redemptionRepository.lockInvitedMinistries({
-        churchId: ministryInvitation.churchId,
-        ministryInvitationIds: ids,
-        tx,
-      });
       let volunteerId: VolunteerId | null = null;
       for (const id of ids) {
         volunteerId =
           await this.redemptionRepository.acceptPendingMinistryInvitation({
-            churchId: ministryInvitation.churchId,
+            churchId,
             ministryInvitationId: id,
             userId,
             acceptedAt,
@@ -725,29 +770,45 @@ export class DbRedemptionManager implements RedemptionManager {
     if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
-    if (
+    const { churchId, churchInvitationId } = ministryInvitation;
+    const rejectsChurchHalf =
       ministryInvitation.kind === 'chained' &&
-      resolved.context.churchInvitationStatus === 'pending'
-    ) {
-      try {
-        await this.identityGateway.rejectChurchInvitation({
-          churchInvitationId: ministryInvitation.churchInvitationId as string,
-          sessionCookie,
+      resolved.context.churchInvitationStatus === 'pending';
+    try {
+      await this.unitOfWork.run(async (tx) => {
+        if (rejectsChurchHalf) {
+          // Better Auth's reject write is unconditional: lock and recheck
+          // the Church row first, so a committed revoke is never overwritten.
+          await this.ensureChurchInvitationPending({
+            churchId,
+            churchInvitationId: churchInvitationId as string,
+            tx,
+          });
+          await this.rejectChurchHalf({
+            churchInvitationId: churchInvitationId as string,
+            sessionCookie,
+            tx,
+          });
+        }
+        await this.redemptionRepository.declineMinistryInvitation({
+          churchId,
+          ministryInvitationId,
+          userId,
+          declinedAt: now,
+          correlationId: crypto.randomUUID(),
+          tx,
         });
-      } catch {
+      });
+    } catch (error) {
+      if (error instanceof IdentityRejectFailure)
         return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
-      }
+      if (
+        error instanceof InvitationNotPendingError ||
+        error instanceof PendingMinistryInvitationNotFoundError
+      )
+        return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
+      throw error;
     }
-    await this.unitOfWork.run((tx) =>
-      this.redemptionRepository.declineMinistryInvitation({
-        churchId: ministryInvitation.churchId,
-        ministryInvitationId,
-        userId,
-        declinedAt: now,
-        correlationId: crypto.randomUUID(),
-        tx,
-      }),
-    );
     return { kind: 'declined' };
   }
 

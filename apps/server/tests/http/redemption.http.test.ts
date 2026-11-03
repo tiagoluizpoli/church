@@ -182,6 +182,16 @@ interface RedemptionUrlInput {
   invitationId: string;
 }
 
+/**
+ * The per-IP public limit lives in module state for the whole file; this suite
+ * tests redemption, not throttling (redemption-public-decline covers 429), so
+ * it must not trip the limit as tests accumulate.
+ */
+const suiteConfig = {
+  ...appConfig,
+  redemptionRateLimit: { ...appConfig.redemptionRateLimit, maxRequests: 1_000 },
+};
+
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({
     db: testDb,
@@ -259,7 +269,7 @@ async function createHarness({
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,
-    config: appConfig,
+    config: suiteConfig,
   });
   await app.register(
     async (instance) => {

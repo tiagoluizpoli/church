@@ -41,7 +41,7 @@ interface RedemptionManagerHarness {
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: Pick<
     MinistryInvitationRepository,
-    'findPublicRedemptionPreview'
+    'findPublicRedemptionPreview' | 'lockChurchInvitation'
   >;
   manager: DbRedemptionManager;
   recordChurchOnlyPartialAcceptance: ReturnType<typeof vi.fn>;
@@ -85,7 +85,11 @@ function createHarness({
       previewIndex += 1;
       return Promise.resolve(result ?? null);
     }),
-  } as Pick<MinistryInvitationRepository, 'findPublicRedemptionPreview'>;
+    lockChurchInvitation: vi.fn().mockResolvedValue('pending'),
+  } as Pick<
+    MinistryInvitationRepository,
+    'findPublicRedemptionPreview' | 'lockChurchInvitation'
+  >;
   const verificationCodeManager: InvitationVerificationCodeManager = {
     issue: vi.fn(),
     verify: vi.fn().mockImplementation(verify),

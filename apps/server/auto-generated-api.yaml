@@ -2926,7 +2926,16 @@ paths:
       summary: Resend a Ministry Invitation
       tags:
         - ministries
-      description: Resend the delivery email for a Ministry Invitation.
+      description: "Queue one fresh delivery of a pending or expired Ministry
+        Invitation and restart its validity: the Ministry lifetime when
+        standalone, or the Church lifetime for the Church Invitation and every
+        still-pending Ministry Invitation sharing it. IDs, inviter, Access
+        Levels and Roles are kept. A ChurchAdmin may resend any; a Ministry
+        leader only volunteer-level invitations in Ministries they lead (403
+        INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and
+        other-Church targets are one 404. 409 INVITATION_NOT_PENDING when the
+        invitation or its Church Invitation was already accepted, declined or
+        revoked. 429 when the per-invitation cooldown or daily cap applies."
       parameters:
         - schema:
             type: string
@@ -2980,6 +2989,21 @@ paths:
                   - redemptionPath
                   - deliveryStatus
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -2996,6 +3020,36 @@ paths:
                   - message
                 additionalProperties: false
         "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
           description: Default Response
           content:
             application/json:
@@ -7274,6 +7328,8 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        canResend:
+                          type: boolean
                       required:
                         - kind
                         - id
@@ -7286,6 +7342,7 @@ paths:
                         - displayStatus
                         - emailDelivery
                         - lastSentAt
+                        - canResend
                       additionalProperties: false
                   nextCursor:
                     type: string

@@ -15,6 +15,7 @@ export * from './invalid-required-count';
 export * from './invalid-shift-split';
 export * from './invalid-time-range';
 export * from './invalid-weekday';
+export * from './invitation-not-pending';
 export * from './invitation-role-required';
 export * from './invitee-already-church-member';
 export * from './invitee-already-ministry-member';

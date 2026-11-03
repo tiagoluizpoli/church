@@ -30,9 +30,9 @@ import type {
 import type {
   AcquireChurchOfferLockInput,
   AcquireMintLockInput,
-  AcquireResendLockInput,
   AlignPairedExpiryInput,
   ApplyResendInput,
+  ChurchInvitationStatus,
   ChurchInvitationSummary,
   CreateChurchInvitationInput,
   CreateMinistryInvitationInput,
@@ -40,7 +40,6 @@ import type {
   FindByIdInput,
   FindChurchMemberByEmailInput,
   FindMinistryInvitationContextInput,
-  FindPendingByIdInput,
   FindPendingChurchInvitationByEmailInput,
   FindPendingChurchOfferInput,
   FindPendingForAddressInput,
@@ -48,11 +47,12 @@ import type {
   FindPublicRedemptionPreviewInput,
   HasActiveMinistryMembershipInput,
   IsInvitationAddressedToUserInput,
+  LockChurchInvitationInput,
+  LockMinistryInvitationInput,
   MinistryInvitationContext,
   MinistryInvitationRepository,
   PendingChurchOffer,
   PendingMinistryInvitationReference,
-  RefreshChurchInvitationExpiryInput,
   ResolveRecipientEmailInput,
   SupersedeUnsentChainedOutboxInput,
   UpgradeChurchInvitationToAdminInput,
@@ -113,13 +113,6 @@ export class DrizzleMinistryInvitationRepository
     );
   }
 
-  async acquireResendLock(input: AcquireResendLockInput): Promise<void> {
-    const { ministryInvitationId, tx } = input;
-    await getClient({ db: this.db, tx }).execute(
-      sql`select pg_advisory_xact_lock(hashtext(${ministryInvitationId}))`,
-    );
-  }
-
   async findChurchMemberByEmail(
     input: FindChurchMemberByEmailInput,
   ): Promise<UserId | null> {
@@ -171,8 +164,8 @@ export class DrizzleMinistryInvitationRepository
       : null;
   }
 
-  async findPendingById(input: FindPendingByIdInput) {
-    const { churchId, ministryId, ministryInvitationId, tx } = input;
+  async lockMinistryInvitation(input: LockMinistryInvitationInput) {
+    const { churchId, ministryInvitationId, tx } = input;
     if (!isValidUuid(ministryInvitationId)) return null;
     const [row] = await getClient({ db: this.db, tx })
       .select()
@@ -180,14 +173,32 @@ export class DrizzleMinistryInvitationRepository
       .where(
         and(
           withChurchIsolation({ table: ministryInvitation, churchId }),
-          eq(ministryInvitation.ministryId, ministryId),
           eq(ministryInvitation.id, ministryInvitationId),
-          eq(ministryInvitation.status, 'pending'),
         ),
       )
-      .limit(1);
+      .limit(1)
+      .for('update');
     if (!row) return null;
-    return this.hydrate({ row });
+    return this.hydrate({ row, tx });
+  }
+
+  async lockChurchInvitation({
+    churchId,
+    churchInvitationId,
+    tx,
+  }: LockChurchInvitationInput): Promise<ChurchInvitationStatus | null> {
+    const [row] = await getClient({ db: this.db, tx })
+      .select({ status: churchInvitation.status })
+      .from(churchInvitation)
+      .where(
+        and(
+          eq(churchInvitation.organizationId, churchId),
+          eq(churchInvitation.id, churchInvitationId),
+        ),
+      )
+      .limit(1)
+      .for('update');
+    return row ? (row.status as ChurchInvitationStatus) : null;
   }
 
   async findById(input: FindByIdInput) {
@@ -621,9 +632,9 @@ export class DrizzleMinistryInvitationRepository
     churchInvitationId,
     expiresAt,
     tx,
-  }: AlignPairedExpiryInput): Promise<void> {
+  }: AlignPairedExpiryInput): Promise<boolean> {
     const db = getClient({ db: this.db, tx });
-    await db
+    const parent = await db
       .update(churchInvitation)
       .set({ expiresAt })
       .where(
@@ -632,7 +643,9 @@ export class DrizzleMinistryInvitationRepository
           eq(churchInvitation.id, churchInvitationId),
           eq(churchInvitation.status, 'pending'),
         ),
-      );
+      )
+      .returning({ id: churchInvitation.id });
+    if (parent.length === 0) return false;
     await db
       .update(ministryInvitation)
       .set({ expiresAt })
@@ -643,6 +656,7 @@ export class DrizzleMinistryInvitationRepository
           eq(ministryInvitation.status, 'pending'),
         ),
       );
+    return true;
   }
 
   async supersedeUnsentChainedOutbox({
@@ -662,24 +676,6 @@ export class DrizzleMinistryInvitationRepository
           eq(outboxMessage.kind, 'invitation.chained'),
           eq(outboxMessage.status, 'pending'),
           sql`${outboxMessage.payload}->>'churchInvitationId' = ${churchInvitationId}`,
-        ),
-      );
-  }
-
-  async refreshChurchInvitationExpiry({
-    churchId,
-    churchInvitationId,
-    expiresAt,
-    tx,
-  }: RefreshChurchInvitationExpiryInput): Promise<void> {
-    await getClient({ db: this.db, tx })
-      .update(churchInvitation)
-      .set({ expiresAt })
-      .where(
-        and(
-          eq(churchInvitation.organizationId, churchId),
-          eq(churchInvitation.id, churchInvitationId),
-          eq(churchInvitation.status, 'pending'),
         ),
       );
   }
@@ -705,11 +701,14 @@ export class DrizzleMinistryInvitationRepository
         and(
           withChurchIsolation({ table: ministryInvitation, churchId }),
           eq(ministryInvitation.id, invitation.id),
+          eq(ministryInvitation.status, 'pending'),
         ),
       )
       .returning();
-    if (!row) throw new Error('Ministry invitation not found for resend');
-    return this.hydrate({ row });
+    // The caller holds the row lock, so this only fires on a broken invariant.
+    if (!row)
+      throw new Error('Ministry invitation is no longer pending for resend');
+    return this.hydrate({ row, tx });
   }
 
   async enqueueOutboxMessage(input: EnqueueOutboxMessageInput): Promise<void> {

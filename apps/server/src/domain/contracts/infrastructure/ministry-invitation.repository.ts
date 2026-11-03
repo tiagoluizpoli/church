@@ -50,23 +50,29 @@ export interface SupersedeUnsentChainedOutboxInput {
   tx?: TransactionContext;
 }
 
-export interface AcquireResendLockInput {
-  ministryInvitationId: string;
-  tx: TransactionContext;
-}
-
 export interface FindChurchMemberByEmailInput {
   churchId: ChurchId;
   email: string;
   tx?: TransactionContext;
 }
 
-export interface FindPendingByIdInput {
+export interface LockMinistryInvitationInput {
   churchId: ChurchId;
-  ministryId: MinistryId;
   ministryInvitationId: string;
-  tx?: TransactionContext;
+  tx: TransactionContext;
 }
+
+export interface LockChurchInvitationInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx: TransactionContext;
+}
+
+export type ChurchInvitationStatus =
+  | 'pending'
+  | 'accepted'
+  | 'rejected'
+  | 'canceled';
 
 export interface HasActiveMinistryMembershipInput {
   churchId: ChurchId;
@@ -125,13 +131,6 @@ export interface CreateMinistryInvitationInput {
   inviteeUserId?: UserId;
   churchInvitationId?: string;
   roleIds: RoleId[];
-  expiresAt: Date;
-  tx?: TransactionContext;
-}
-
-export interface RefreshChurchInvitationExpiryInput {
-  churchId: ChurchId;
-  churchInvitationId: string;
   expiresAt: Date;
   tx?: TransactionContext;
 }
@@ -223,18 +222,21 @@ export interface MinistryInvitationRepository {
   acquireMintLock(input: AcquireMintLockInput): Promise<void>;
 
   /**
-   * Serializes concurrent resends of the same invitation behind a
-   * transaction-scoped advisory lock, so two simultaneous resend calls can't
-   * both read the same cooldown/cap state and both pass the check — the
-   * same failure mode `acquireMintLock` prevents for concurrent mints.
-   */
-  acquireResendLock(input: AcquireResendLockInput): Promise<void>;
-
-  /**
    * Serializes every Church-offer resolution for one (Active Church, address)
    * behind a transaction-scoped advisory lock: paired Ministry mint and the
-   * admin invite share it. Lock order: this lock, then `acquireMintLock`, then
-   * row locks.
+   * admin invite share it.
+   *
+   * Lock order for every invitation lifecycle transition (mint, admin
+   * upgrade, resend, and later revoke/archive), each step optional:
+   * 1. this lock, then `acquireMintLock` (address serialization);
+   * 2. the Ministry row (`MinistryRepository.lockActive`: share for use,
+   *    update for archive);
+   * 3. the Church Invitation row (`lockChurchInvitation` or the row-locking
+   *    `findPendingChurchInvitationByEmail`);
+   * 4. Ministry Invitation rows (`lockMinistryInvitation`, or conditional
+   *    `status = 'pending'` writes such as `alignPairedExpiry`).
+   * All take the caller's transaction and hold until it ends; lifecycle and
+   * throttle facts are re-read after the locks, never before.
    */
   acquireChurchOfferLock(input: AcquireChurchOfferLockInput): Promise<void>;
 
@@ -252,10 +254,19 @@ export interface MinistryInvitationRepository {
     input: FindPendingForAddressInput,
   ): Promise<PendingMinistryInvitationReference | null>;
 
-  /** Scoped to Church and Ministry, and to `pending` — resend's target must already be redeemable. */
-  findPendingById(
-    input: FindPendingByIdInput,
+  /**
+   * Any status, scoped to Church, row-locked (`FOR UPDATE`) so a racing
+   * acceptance, decline or resend sees one committed outcome. `null` when
+   * missing or malformed.
+   */
+  lockMinistryInvitation(
+    input: LockMinistryInvitationInput,
   ): Promise<MinistryInvitation | null>;
+
+  /** The Church Invitation's stored status, row-locked; `null` when missing. */
+  lockChurchInvitation(
+    input: LockChurchInvitationInput,
+  ): Promise<ChurchInvitationStatus | null>;
 
   /**
    * Any status, scoped only to Church — the outbox worker re-reads by id
@@ -336,9 +347,11 @@ export interface MinistryInvitationRepository {
   /**
    * Reissues a pending Church Invitation's validity and aligns every
    * still-pending Ministry half on it. Access Levels, Roles and resend
-   * throttle state are untouched.
+   * throttle state are untouched. `false` when the Church Invitation is no
+   * longer pending: nothing changed, and the caller must not commit a child
+   * refresh on its own.
    */
-  alignPairedExpiry(input: AlignPairedExpiryInput): Promise<void>;
+  alignPairedExpiry(input: AlignPairedExpiryInput): Promise<boolean>;
 
   /**
    * Marks the still-unsent chained T1 outbox rows of a Church Invitation's
@@ -349,12 +362,7 @@ export interface MinistryInvitationRepository {
     input: SupersedeUnsentChainedOutboxInput,
   ): Promise<void>;
 
-  /** Restarts a pending Church Invitation's expiry, as a paired resend does. */
-  refreshChurchInvitationExpiry(
-    input: RefreshChurchInvitationExpiryInput,
-  ): Promise<void>;
-
-  /** Refreshes `expiresAt` and persists resend-throttle bookkeeping in one write. */
+  /** Refreshes a still-pending invitation's `expiresAt` and resend-throttle bookkeeping in one write. */
   applyResend(input: ApplyResendInput): Promise<MinistryInvitation>;
 
   enqueueOutboxMessage(input: EnqueueOutboxMessageInput): Promise<void>;

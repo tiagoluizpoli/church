@@ -331,6 +331,27 @@ describe('Invite dialog', () => {
     expect(mintMinistryInvitation).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps a typed email when the no-props dialog is closed and reopened', async () => {
+    const { user, dialog } = await openInvite();
+    await user.type(
+      within(dialog).getByLabelText(m.invitations_invite_email_label()),
+      'ana@example.com',
+    );
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_invite_open() }),
+    );
+
+    const reopened = await screen.findByRole('dialog', {
+      name: m.invitations_invite_title(),
+    });
+    expect(
+      within(reopened).getByLabelText(m.invitations_invite_email_label()),
+    ).toHaveValue('ana@example.com');
+  });
+
   it('translates an already-member refusal', async () => {
     mintMinistryInvitation.mockRejectedValue(
       refusal(409, { error: 'INVITEE_ALREADY_MINISTRY_MEMBER', message: 'x' }),

@@ -23,7 +23,8 @@ export type RefusalCode =
   | 'NOT_FOUND'
   | 'ACTIVE_CHURCH_SELECTION_REQUIRED'
   | 'RATE_LIMITED'
-  | 'INVITATION_UNAVAILABLE';
+  | 'INVITATION_UNAVAILABLE'
+  | 'LAST_CHURCH_ADMIN';
 
 /** Domain codes that become an HTTP response. */
 export type MappedDomainCode =
@@ -128,6 +129,7 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 409,
     message: m.error_last_remaining_event_time_block,
   },
+  LAST_CHURCH_ADMIN: { status: 409, message: m.error_last_church_admin },
   SHIFT_OUT_OF_BOUNDS: { status: 409, message: m.error_shift_out_of_bounds },
   HARD_CONSTRAINT_VIOLATION: {
     status: 409,

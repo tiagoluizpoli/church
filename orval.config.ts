@@ -20,6 +20,7 @@ export default defineConfig({
           'active-church',
           'redemption',
           'invitations',
+          'people',
         ],
       },
     },

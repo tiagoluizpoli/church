@@ -7,6 +7,7 @@ import type {
   IAssignmentManager,
   IAuthorityManager,
   IAvailabilityCheckManager,
+  IChurchAccessManager,
   ICycleManager,
   IEventManager,
   IEventTemplateManager,
@@ -18,6 +19,7 @@ import type {
   INotificationManager,
   IOutboxDrainer,
   IParticipationManager,
+  IPeopleListManager,
   IPlanningEventManager,
   ISectorManager,
   IVolunteerManager,
@@ -29,6 +31,7 @@ import type {
   AssignmentRepository,
   AuthorityActorRepository,
   AvailabilityCheckRepository,
+  ChurchAccessRepository,
   ChurchMembershipRepository,
   ChurchRepository,
   CycleRepository,
@@ -43,6 +46,7 @@ import type {
   MinistryRepository,
   NotificationRepository,
   OutboxRepository,
+  PeopleListRepository,
   PlanningEventRepository,
   RedemptionIdentityGateway,
   RedemptionRepository,
@@ -88,6 +92,8 @@ export interface CompositionRootDependencies {
   eventTimeBlockRepository: EventTimeBlockRepository;
   notificationRepository: NotificationRepository;
   invitationListRepository: InvitationListRepository;
+  peopleListRepository: PeopleListRepository;
+  churchAccessRepository: ChurchAccessRepository;
   unitOfWork: UnitOfWork;
   // Services
   emailSender: EmailSender;
@@ -121,4 +127,6 @@ export interface CompositionRootDependencies {
   activeChurchSelectionManager: IActiveChurchSelectionManager;
   notificationManager: INotificationManager;
   invitationListManager: IInvitationListManager;
+  peopleListManager: IPeopleListManager;
+  churchAccessManager: IChurchAccessManager;
 }

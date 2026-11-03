@@ -3247,6 +3247,193 @@ export type RevokeChurchInvitation409 = {
   message: string;
 };
 
+export type ChangeChurchAccessBodyAccessLevel = typeof ChangeChurchAccessBodyAccessLevel[keyof typeof ChangeChurchAccessBodyAccessLevel];
+
+
+export const ChangeChurchAccessBodyAccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type ChangeChurchAccessBody = {
+  accessLevel: ChangeChurchAccessBodyAccessLevel;
+};
+
+export type ChangeChurchAccess200AccessLevel = typeof ChangeChurchAccess200AccessLevel[keyof typeof ChangeChurchAccess200AccessLevel];
+
+
+export const ChangeChurchAccess200AccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type ChangeChurchAccess200 = {
+  memberId: string;
+  accessLevel: ChangeChurchAccess200AccessLevel;
+  changed: boolean;
+};
+
+export type ChangeChurchAccess401 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeChurchAccess403 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeChurchAccess404 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeChurchAccess409 = {
+  error: string;
+  message: string;
+};
+
+export type GetPerson200MinistriesItemMinistryAccessLevel = typeof GetPerson200MinistriesItemMinistryAccessLevel[keyof typeof GetPerson200MinistriesItemMinistryAccessLevel];
+
+
+export const GetPerson200MinistriesItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type GetPerson200MinistriesItemRolesItem = {
+  id: string;
+  name: string;
+  archived: boolean;
+};
+
+export type GetPerson200MinistriesItem = {
+  membershipId: string;
+  ministryId: string;
+  ministryName: string;
+  ministryAccessLevel: GetPerson200MinistriesItemMinistryAccessLevel;
+  roles: GetPerson200MinistriesItemRolesItem[];
+};
+
+export type GetPerson200ChurchAccessAccessLevel = typeof GetPerson200ChurchAccessAccessLevel[keyof typeof GetPerson200ChurchAccessAccessLevel];
+
+
+export const GetPerson200ChurchAccessAccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type GetPerson200ChurchAccess = {
+  accessLevel: GetPerson200ChurchAccessAccessLevel;
+  isLastAdmin: boolean;
+  isSelf: boolean;
+};
+
+export type GetPerson200 = {
+  id: string;
+  name: string;
+  email: string;
+  ministries: GetPerson200MinistriesItem[];
+  canChangeChurchAccess: boolean;
+  canInviteToMinistry: boolean;
+  churchAccess?: GetPerson200ChurchAccess;
+};
+
+export type GetPerson401 = {
+  error: string;
+  message: string;
+};
+
+export type GetPerson403 = {
+  error: string;
+  message: string;
+};
+
+export type GetPerson404 = {
+  error: string;
+  message: string;
+};
+
+export type ListPeopleParams = {
+/**
+ * @minLength 1
+ * @maxLength 254
+ */
+search?: string;
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+ministryId?: string;
+access?: ListPeopleAccess;
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListPeopleAccess = typeof ListPeopleAccess[keyof typeof ListPeopleAccess];
+
+
+export const ListPeopleAccess = {
+  admin: 'admin',
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListPeople200ItemsItemMinistriesItemMinistryAccessLevel = typeof ListPeople200ItemsItemMinistriesItemMinistryAccessLevel[keyof typeof ListPeople200ItemsItemMinistriesItemMinistryAccessLevel];
+
+
+export const ListPeople200ItemsItemMinistriesItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListPeople200ItemsItemMinistriesItem = {
+  id: string;
+  name: string;
+  ministryAccessLevel: ListPeople200ItemsItemMinistriesItemMinistryAccessLevel;
+};
+
+export type ListPeople200ItemsItem = {
+  id: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+  ministries: ListPeople200ItemsItemMinistriesItem[];
+};
+
+export type ListPeople200OptionsMinistriesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListPeople200Options = {
+  ministries: ListPeople200OptionsMinistriesItem[];
+};
+
+export type ListPeople200 = {
+  items: ListPeople200ItemsItem[];
+  nextCursor?: string;
+  options: ListPeople200Options;
+};
+
+export type ListPeople401 = {
+  error: string;
+  message: string;
+};
+
+export type ListPeople403 = {
+  error: string;
+  message: string;
+};
+
+export type ListPeople404 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewChurchInvitation200ChurchAccessLevel = typeof PreviewChurchInvitation200ChurchAccessLevel[keyof typeof PreviewChurchInvitation200ChurchAccessLevel];
 
 

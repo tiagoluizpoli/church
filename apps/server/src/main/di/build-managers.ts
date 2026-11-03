@@ -4,6 +4,7 @@ import {
   DbActiveChurchSelectionManager,
   DbAssignmentManager,
   DbAvailabilityCheckManager,
+  DbChurchAccessManager,
   DbCycleManager,
   DbEventManager,
   DbEventTemplateManager,
@@ -14,6 +15,7 @@ import {
   DbNotificationManager,
   DbOutboxDrainer,
   DbParticipationManager,
+  DbPeopleListManager,
   DbPlanningEventManager,
   DbRedemptionManager,
   DbSectorManager,
@@ -52,6 +54,8 @@ export type Managers = Pick<
   | 'activeChurchSelectionManager'
   | 'notificationManager'
   | 'invitationListManager'
+  | 'peopleListManager'
+  | 'churchAccessManager'
 >;
 
 export interface BuildManagersInput {
@@ -91,6 +95,8 @@ export function buildManagers({
     eventTimeBlockRepository,
     notificationRepository,
     invitationListRepository,
+    peopleListRepository,
+    churchAccessRepository,
     unitOfWork,
   },
   services: {
@@ -332,6 +338,21 @@ export function buildManagers({
       defaultPageSize: config.invitations.pageSize,
     });
 
+  const peopleListManager =
+    overrides.peopleListManager ??
+    new DbPeopleListManager({
+      peopleListRepository,
+      config,
+    });
+
+  const churchAccessManager =
+    overrides.churchAccessManager ??
+    new DbChurchAccessManager({
+      authorityManager,
+      churchAccessRepository,
+      unitOfWork,
+    });
+
   return {
     assignmentManager,
     eventManager,
@@ -352,5 +373,7 @@ export function buildManagers({
     activeChurchSelectionManager,
     notificationManager,
     invitationListManager,
+    peopleListManager,
+    churchAccessManager,
   };
 }

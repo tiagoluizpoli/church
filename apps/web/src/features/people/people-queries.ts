@@ -88,5 +88,8 @@ export function usePersonBreadcrumb({
     retry: false,
   });
   if (memberId === undefined) return null;
-  return { segment: memberId, label: person.data?.name ?? null };
+  return {
+    segment: memberId,
+    label: person.isError ? null : (person.data?.name ?? null),
+  };
 }

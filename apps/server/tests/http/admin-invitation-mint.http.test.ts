@@ -125,7 +125,13 @@ async function seed() {
     slug: 'admin-a',
     timezone: 'America/Sao_Paulo',
   });
-  await buildChurch({ db, id: CHURCH_B, name: 'B', slug: 'admin-b' });
+  await buildChurch({
+    db,
+    id: CHURCH_B,
+    name: 'B',
+    slug: 'admin-b',
+    timezone: 'UTC',
+  });
   const worship = await buildMinistry({
     db,
     churchId: CHURCH_A,

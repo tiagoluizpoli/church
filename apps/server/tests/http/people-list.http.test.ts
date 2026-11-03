@@ -63,12 +63,12 @@ beforeAll(async () => {
   const controller = new PeopleController({
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
-      defaultPageSize: 20,
+      config: { people: { pageSize: 20, maxPageSize: 50 } },
     }),
     churchAccessManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
-    maxPageSize: 50,
+    config: { people: { pageSize: 20, maxPageSize: 50 } },
   });
   await app.register(
     async (instance) => {
@@ -94,6 +94,8 @@ interface PersonInput {
   serves?: Record<string, 'leader' | 'volunteer'>;
   endedIn?: string[];
   retiredProfile?: boolean;
+  /** False when the User already exists (a member of a second Church). */
+  createUser?: boolean;
 }
 
 async function person({
@@ -104,8 +106,11 @@ async function person({
   serves,
   endedIn = [],
   retiredProfile,
+  createUser = true,
 }: PersonInput) {
-  await buildUser({ db, id: key, name, email: `${key}@people.test` });
+  if (createUser) {
+    await buildUser({ db, id: key, name, email: `${key}@people.test` });
+  }
   await buildChurchMembership({
     db,
     id: `m-${key}-${church.slice(0, 2)}`,
@@ -220,7 +225,14 @@ beforeEach(async () => {
     name: 'Bo Both',
     church: CHURCH_B,
     serves: { [bMinistry.id]: 'volunteer' },
-  }).catch(() => undefined);
+    createUser: false,
+  });
+  // The foreign-Church data the isolation assertions rely on really exists.
+  const foreign = await db
+    .select({ id: ministryMembership.id })
+    .from(ministryMembership)
+    .where(eq(ministryMembership.ministryId, bMinistry.id));
+  expect(foreign).toHaveLength(1);
 });
 
 function signIn(key: string) {

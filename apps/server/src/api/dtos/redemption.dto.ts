@@ -59,6 +59,15 @@ export const debugVerificationCodeResponseSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 });
 
+/** Non-production-only: the joining link the capture-mode sender recorded for an address. */
+export const debugInvitationLinkQuerystringSchema = z.object({
+  email: z.string().email(),
+});
+
+export const debugInvitationLinkResponseSchema = z.object({
+  redemptionUrl: z.string().url(),
+});
+
 /**
  * Spec §7.5's cross-Church split: Church Membership succeeded, the Ministry
  * half was refused by name, and both Churches are named so the result screen

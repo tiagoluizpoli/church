@@ -185,6 +185,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'apps/server/src/api/controllers/invitation-controller.ts',
     specPaths: INVITATION_JOURNEY_SPEC_PATHS,
   },
+  // J4 opens both joining links from the invitation emails this sender captured.
+  {
+    sourcePathPrefix:
+      'apps/server/src/infrastructure/services/capture-email-sender.ts',
+    specPaths: INVITATION_JOURNEY_SPEC_PATHS,
+  },
   {
     sourcePathPrefix: 'apps/web/src/routes/invitations/',
     specPaths: CHURCH_INVITATION_SPEC_PATHS,

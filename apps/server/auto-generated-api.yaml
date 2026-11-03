@@ -8894,6 +8894,53 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/redemption/debug-invitation-link:
+    get:
+      operationId: debugGetInvitationLink
+      summary: Get the joining link last emailed to an address (debug)
+      tags:
+        - redemption-debug
+      description: "Non-production only: read back the joining link of the latest
+        invitation email captured for an address, bypassing email delivery."
+      parameters:
+        - schema:
+            type: string
+            format: email
+            pattern: ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+          in: query
+          name: email
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redemptionUrl:
+                    type: string
+                    format: uri
+                required:
+                  - redemptionUrl
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - INVITATION_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard

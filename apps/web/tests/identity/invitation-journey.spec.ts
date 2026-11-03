@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import {
+  fetchEmailedJoiningPath,
   fetchJson,
   fetchVolunteerMinistryOptions,
   findListedInvitation,
@@ -94,12 +95,19 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       page.getByText(journey.leaderEmail, { exact: true }),
     ).toBeVisible();
 
-    // The joining link is the pending offer's Church Invitation.
+    // The joining link is the one the leader's captured T1 carries, and it
+    // names the offer the admin's list shows.
+    const leaderPath = await fetchEmailedJoiningPath({
+      request: page.request,
+      email: journey.leaderEmail,
+    });
     const leaderOffer = await findListedInvitation({
       request: page.request,
       email: journey.leaderEmail,
     });
-    expect(leaderOffer.churchInvitationId).toEqual(expect.any(String));
+    expect(leaderPath).toBe(
+      `/invitations/church/${leaderOffer.churchInvitationId}`,
+    );
 
     // The leader joins from that link and the emailed code.
     const leaderContext = await browser.newContext({ baseURL });
@@ -108,7 +116,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       const leaderPage = await leaderContext.newPage();
       const leaderJoin = await joinViaLink({
         page: leaderPage,
-        redemptionPath: `/invitations/church/${leaderOffer.churchInvitationId}`,
+        redemptionPath: leaderPath,
         email: journey.leaderEmail,
         name: 'E2E Leader',
         password: PASSWORD,
@@ -137,9 +145,8 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
         roles: [worship.roles.usher.name],
         pickMinistry: false,
       });
-      // Leaders never see a Church Invitation id (admin-only on the list), so
-      // the emailed link is read through the admin's list of the same offer.
-      const volunteerOffer = await findListedInvitation({
+      // The Volunteer joins from the link their own captured T1 carries.
+      const volunteerPath = await fetchEmailedJoiningPath({
         request: page.request,
         email: journey.volunteerEmail,
       });
@@ -147,7 +154,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       const volunteerPage = await volunteerContext.newPage();
       const volunteerJoin = await joinViaLink({
         page: volunteerPage,
-        redemptionPath: `/invitations/church/${volunteerOffer.churchInvitationId}`,
+        redemptionPath: volunteerPath,
         email: journey.volunteerEmail,
         name: 'E2E Volunteer',
         password: PASSWORD,

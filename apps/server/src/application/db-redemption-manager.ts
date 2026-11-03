@@ -18,6 +18,7 @@ import type {
   DeclineInvitationOutcome,
   FullRedemptionSuccess,
   GetAuthenticatedInvitationStatusInput,
+  GetDebugInvitationLinkInput,
   GetDebugVerificationCodeInput,
   GetPublicRedemptionPreviewInput,
   PublicRedemptionMinistry,
@@ -839,6 +840,15 @@ export class DbRedemptionManager implements RedemptionManager {
       this.verificationCodeInspector.lastVerificationCodeFor({
         to: preview.email,
       }) ?? null
+    );
+  }
+
+  async getDebugInvitationLink({
+    email,
+  }: GetDebugInvitationLinkInput): Promise<string | null> {
+    return (
+      this.verificationCodeInspector?.lastInvitationLinkFor({ to: email }) ??
+      null
     );
   }
 }

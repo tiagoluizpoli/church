@@ -45,6 +45,7 @@ const redemptionManager: RedemptionManager = {
   declineInvitation: vi.fn(),
   declineChurchInvitation: vi.fn(),
   getDebugVerificationCode: vi.fn(),
+  getDebugInvitationLink: vi.fn(),
 };
 
 const volunteerTransferManager: VolunteerTransferManager = {
@@ -277,6 +278,34 @@ describe('RedemptionController', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ code: '654321' });
+  });
+
+  it('hands back the captured joining link for an address', async () => {
+    const link = 'https://app.church.test/invitations/church/abc';
+    vi.mocked(redemptionManager.getDebugInvitationLink).mockResolvedValue(link);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/redemption/debug-invitation-link?email=invitee%40example.com',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ redemptionUrl: link });
+    expect(redemptionManager.getDebugInvitationLink).toHaveBeenCalledWith({
+      email: 'invitee@example.com',
+    });
+  });
+
+  it('404s the debug link route when no invitation email was captured for the address', async () => {
+    vi.mocked(redemptionManager.getDebugInvitationLink).mockResolvedValue(null);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/redemption/debug-invitation-link?email=invitee%40example.com',
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().error).toBe('INVITATION_UNAVAILABLE');
   });
 
   it('404s the debug-code route when no code was captured for the invitation', async () => {

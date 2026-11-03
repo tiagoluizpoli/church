@@ -1,5 +1,10 @@
 import { m } from '@church/i18n/messages';
-import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
+import {
+  type APIRequestContext,
+  type APIResponse,
+  expect,
+  type Page,
+} from '@playwright/test';
 import { type AssignPersona, newPersonaRequest } from './assign-church';
 import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
@@ -204,6 +209,41 @@ export async function fetchDebugVerificationCode({
     path: `/api/v1/redemption/church/${churchInvitationId}/debug-code`,
   });
   return code;
+}
+
+export interface FetchEmailedJoiningPathInput {
+  request: APIRequestContext;
+  email: string;
+}
+
+interface DebugInvitationLinkResponse {
+  redemptionUrl: string;
+}
+
+/**
+ * The joining link the latest invitation email to `email` actually carried,
+ * read from the capture sender through the non-production inspector, as a
+ * path on the web app. Polls while the outbox worker has not sent it yet.
+ */
+export async function fetchEmailedJoiningPath({
+  request,
+  email,
+}: FetchEmailedJoiningPathInput): Promise<string> {
+  const path = `/api/v1/redemption/debug-invitation-link?email=${encodeURIComponent(email)}`;
+  let redemptionUrl: string | undefined;
+  await expect
+    .poll(
+      async () => {
+        const res = await request.get(serverUrl({ path }));
+        if (res.ok())
+          ({ redemptionUrl } =
+            (await res.json()) as DebugInvitationLinkResponse);
+        return redemptionUrl;
+      },
+      { timeout: 20_000, message: `No invitation email captured for ${email}` },
+    )
+    .toBeDefined();
+  return new URL(redemptionUrl as string).pathname;
 }
 
 export interface ChurchInvitationIdOfInput {

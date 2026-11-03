@@ -9,6 +9,7 @@ import type {
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
 import type {
+  LastInvitationLinkForInput,
   LastVerificationCodeForInput,
   VerificationCodeInspector,
 } from '../../domain/contracts/infrastructure/verification-code-inspector';
@@ -70,6 +71,23 @@ export class CaptureEmailSender
     const lastMatch = matches.at(-1);
     return lastMatch?.kind === 'invitation.verification-code'
       ? lastMatch.code
+      : undefined;
+  }
+
+  /** The joining link of the latest invitation email (T1 or N1) sent to `to`, if any. */
+  lastInvitationLinkFor({
+    to,
+  }: LastInvitationLinkForInput): string | undefined {
+    const invitations = this.sent.filter(
+      (payload) =>
+        (payload.kind === 'invitation.chained' ||
+          payload.kind === 'invitation.church-bootstrap' ||
+          payload.kind === 'invitation.ministry') &&
+        payload.to === to,
+    );
+    const latest = invitations.at(-1);
+    return latest && 'redemptionUrl' in latest
+      ? latest.redemptionUrl
       : undefined;
   }
 }

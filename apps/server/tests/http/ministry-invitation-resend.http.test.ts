@@ -35,18 +35,18 @@ import type { IChurchNotifications } from '@/domain/contracts/application/church
 import { DrizzleRedemptionRepository } from '@/infrastructure/repositories';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
-import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
-import { buildUser } from '@/seeds/builders/identity';
-import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
-import {
-  buildMinistryMembership,
-  buildVolunteer,
-} from '@/seeds/builders/volunteer';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import {
+  type InvitationManagementGraph,
+  MANAGEMENT_CHURCH_A,
+  MANAGEMENT_CHURCH_B,
+  type ManagementPersona,
+  seedInvitationManagementGraph,
+} from '@/tests/test-support/invitation-management-graph';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -59,8 +59,8 @@ const mockGetSession = vi.mocked(
 const activeChurchResolver = { resolve: vi.fn() };
 
 const db = schedulingTestDb;
-const CHURCH_A = 'a1111111-1111-4111-8111-111111111111';
-const CHURCH_B = 'a2222222-2222-4222-8222-222222222222';
+const CHURCH_A = MANAGEMENT_CHURCH_A;
+const CHURCH_B = MANAGEMENT_CHURCH_B;
 const NOW = parseInstant({ value: '2026-11-02T12:00:00.000Z' });
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
@@ -68,15 +68,7 @@ const CREATED_AT = new Date('2026-11-01T10:00:00.000Z');
 const FUTURE = new Date('2026-11-05T12:00:00.000Z');
 const PAST = new Date('2026-10-30T12:00:00.000Z');
 
-type Persona =
-  | 'admin'
-  | 'adminLeader'
-  | 'worshipLeader'
-  | 'kidsLeader'
-  | 'worshipVolunteer'
-  | 'memberNoVolunteer'
-  | 'invitee'
-  | 'foreignUser';
+type Persona = ManagementPersona;
 
 interface BuildAppInput {
   config?: AppConfig;
@@ -132,155 +124,12 @@ beforeEach(async () => {
   vi.resetAllMocks();
   setTestClock({ instant: NOW });
   await resetSchedulingPhase3Db();
-  await seed();
+  fx = await seedInvitationManagementGraph({ db, prefix: 'resend' });
 });
 
 afterEach(() => resetClock());
 
-interface Fixture {
-  userIds: Record<Persona, string>;
-  volunteerIds: Partial<Record<Persona, string>>;
-  worshipId: string;
-  kidsId: string;
-  foreignMinistryId: string;
-  singerId: string;
-  helperId: string;
-}
-let fx: Fixture;
-
-interface PersonaInput {
-  key: Persona;
-  churchAccess: 'admin' | 'member';
-  leads?: string[];
-  serves?: string[];
-  churchId?: string;
-}
-
-async function persona({
-  key,
-  churchAccess,
-  leads = [],
-  serves = [],
-  churchId = CHURCH_A,
-}: PersonaInput) {
-  const userId = `resend-${key}`;
-  await buildUser({ db, id: userId, name: key, email: `${key}@resend.test` });
-  await buildChurchMembership({
-    db,
-    churchId,
-    userId,
-    accessLevel: churchAccess,
-  });
-  if (leads.length + serves.length === 0) return { userId };
-  const volunteer = await buildVolunteer({ db, churchId, userId });
-  const memberships = [
-    ...leads.map((ministryId) => ({ ministryId, level: 'leader' as const })),
-    ...serves.map((ministryId) => ({
-      ministryId,
-      level: 'volunteer' as const,
-    })),
-  ];
-  for (const { ministryId, level } of memberships) {
-    await buildMinistryMembership({
-      db,
-      churchId,
-      volunteerId: volunteer.id,
-      ministryId,
-      ministryAccessLevel: level,
-      roleIds: [],
-    });
-  }
-  return { userId, volunteerId: volunteer.id };
-}
-
-async function seed() {
-  await buildChurch({
-    db,
-    id: CHURCH_A,
-    name: 'A',
-    slug: 'resend-a',
-    timezone: 'America/Sao_Paulo',
-  });
-  await buildChurch({
-    db,
-    id: CHURCH_B,
-    name: 'B',
-    slug: 'resend-b',
-    timezone: 'UTC',
-  });
-  const worship = await buildMinistry({
-    db,
-    churchId: CHURCH_A,
-    name: 'Worship',
-  });
-  const kids = await buildMinistry({ db, churchId: CHURCH_A, name: 'Kids' });
-  const foreign = await buildMinistry({
-    db,
-    churchId: CHURCH_B,
-    name: 'Foreign',
-  });
-  const singer = await buildRole({
-    db,
-    churchId: CHURCH_A,
-    ministryId: worship.id,
-    name: 'Singer',
-  });
-  const helper = await buildRole({
-    db,
-    churchId: CHURCH_A,
-    ministryId: kids.id,
-    name: 'Helper',
-  });
-  const people = {
-    admin: await persona({ key: 'admin', churchAccess: 'admin' }),
-    adminLeader: await persona({
-      key: 'adminLeader',
-      churchAccess: 'admin',
-      leads: [worship.id],
-    }),
-    worshipLeader: await persona({
-      key: 'worshipLeader',
-      churchAccess: 'member',
-      leads: [worship.id],
-    }),
-    kidsLeader: await persona({
-      key: 'kidsLeader',
-      churchAccess: 'member',
-      leads: [kids.id],
-    }),
-    worshipVolunteer: await persona({
-      key: 'worshipVolunteer',
-      churchAccess: 'member',
-      serves: [worship.id],
-    }),
-    memberNoVolunteer: await persona({
-      key: 'memberNoVolunteer',
-      churchAccess: 'member',
-    }),
-    invitee: await persona({ key: 'invitee', churchAccess: 'member' }),
-    foreignUser: await persona({
-      key: 'foreignUser',
-      churchAccess: 'admin',
-      churchId: CHURCH_B,
-    }),
-  };
-  fx = {
-    userIds: Object.fromEntries(
-      Object.entries(people).map(([key, value]) => [key, value.userId]),
-    ) as Record<Persona, string>,
-    volunteerIds: Object.fromEntries(
-      Object.entries(people).map(([key, value]) => [
-        key,
-        'volunteerId' in value ? value.volunteerId : undefined,
-      ]),
-    ),
-    worshipId: worship.id,
-    kidsId: kids.id,
-    foreignMinistryId: foreign.id,
-    singerId: singer.id,
-    helperId: helper.id,
-  };
-}
+let fx: InvitationManagementGraph;
 
 function signIn(key: Persona) {
   mockGetSession.mockResolvedValue({

@@ -730,7 +730,7 @@ describe('Invitations revoke', () => {
           ministryId: undefined,
           ministryName: undefined,
           ministryAccessLevel: undefined,
-          churchAccessLevel: 'member',
+          churchAccessLevel: 'admin',
           roles: [],
           status: 'canceled',
           displayStatus: 'revoked',

@@ -1,6 +1,5 @@
 import type { AppConfig } from '@church/app-config';
-import type { MinistryMembershipOperation } from '../domain/authority/types';
-import { MinistryId, UserId } from '../domain/branded-ids';
+import { MinistryId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
   GetPersonRequest,
@@ -39,32 +38,27 @@ export class DbPeopleListManager implements IPeopleListManager {
     if (!record) return undefined;
     const { userId, ...person } = record;
     // Presentation hints only, from the same gatekeeper rules the mutations use.
-    const hints = (operation: MinistryMembershipOperation) =>
-      this.authorityManager.canManageMinistryMemberships({
-        churchId: request.churchId,
-        userId: request.callerId,
-        targets: person.ministries.map((card) => ({
-          ministryId: MinistryId.from(card.ministryId),
-          subjectUserId: UserId.from(userId),
-          ministryAccessLevel: card.ministryAccessLevel,
-          operation,
-        })),
-      });
-    const [canEditRoles, canChangeMinistryAccess, canEndMembership] =
-      await Promise.all([
-        hints('editRoles'),
-        hints('changeLevel'),
-        hints('endMembership'),
-      ]);
+    const hints = await this.authorityManager.canManageMinistryMemberships({
+      churchId: request.churchId,
+      userId: request.callerId,
+      targets: person.ministries.map((card) => ({
+        ministryId: MinistryId.from(card.ministryId),
+        subjectUserId: userId,
+        ministryAccessLevel: card.ministryAccessLevel,
+      })),
+    });
     return {
       person: {
         ...person,
-        ministries: person.ministries.map((card, index) => ({
-          ...card,
-          canEditRoles: canEditRoles[index] ?? false,
-          canChangeMinistryAccess: canChangeMinistryAccess[index] ?? false,
-          canEndMembership: canEndMembership[index] ?? false,
-        })),
+        ministries: person.ministries.map((card, index) => {
+          const hint = hints[index];
+          return {
+            ...card,
+            canEditRoles: hint?.editRoles ?? false,
+            canChangeMinistryAccess: hint?.changeLevel ?? false,
+            canEndMembership: hint?.endMembership ?? false,
+          };
+        }),
       },
       canChangeChurchAccess: request.scope.kind === 'church',
       canInviteToMinistry: true,

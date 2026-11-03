@@ -1,6 +1,9 @@
 import { NotFoundError } from '@church/core';
 import { AuthorityService } from '../domain/authority/authority-service';
-import type { AuthorityDecision } from '../domain/authority/types';
+import type {
+  AuthorityDecision,
+  MinistryMembershipOperation,
+} from '../domain/authority/types';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type {
   CallerCapabilitiesProjection,
@@ -16,6 +19,8 @@ import type {
   DecideManageMinistryMembershipInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
+  MinistryMembershipHints,
+  MinistryMembershipHintTarget,
   ResolveCallerCapabilitiesInput,
 } from '../domain/contracts/application/authority-manager';
 import type { AuthorityActorRepository } from '../domain/contracts/infrastructure/authority-actor.repository';
@@ -24,6 +29,11 @@ import type { EventTimeBlockRepository } from '../domain/contracts/infrastructur
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SchedulingScopeRepository } from '../domain/contracts/infrastructure/scheduling-scope.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
+
+interface MinistryMembershipHintInput {
+  target: MinistryMembershipHintTarget;
+  operation: MinistryMembershipOperation;
+}
 
 interface ResolveActorInput {
   churchId: ChurchId;
@@ -156,17 +166,25 @@ export class DbAuthorityManager implements IAuthorityManager {
 
   async canManageMinistryMemberships(
     input: CanManageMinistryMembershipsInput,
-  ): Promise<boolean[]> {
+  ): Promise<MinistryMembershipHints[]> {
     const { churchId, targets } = input;
     const actor = await this.resolveActor(input);
-    return targets.map(
-      (target) =>
-        AuthorityService.authorize({
-          actor,
-          action: 'manage',
-          resource: { type: 'ministryMembership', churchId, ...target },
-        }).allowed,
-    );
+    const allows = ({ target, operation }: MinistryMembershipHintInput) =>
+      AuthorityService.authorize({
+        actor,
+        action: 'manage',
+        resource: {
+          type: 'ministryMembership',
+          churchId,
+          ...target,
+          operation,
+        },
+      }).allowed;
+    return targets.map((target) => ({
+      editRoles: allows({ target, operation: 'editRoles' }),
+      changeLevel: allows({ target, operation: 'changeLevel' }),
+      endMembership: allows({ target, operation: 'endMembership' }),
+    }));
   }
 
   async decideManageMinistry(

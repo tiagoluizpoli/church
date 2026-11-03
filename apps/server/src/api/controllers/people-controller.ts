@@ -1,6 +1,7 @@
 import type { AppConfig } from '@church/app-config';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
+import { ChurchId, MinistryId, RoleId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
 import type { IMinistryMembershipManager } from '../../domain/contracts/application/ministry-membership-manager';
@@ -39,6 +40,34 @@ interface ListLimitQuery {
 interface ResolveScopeInput {
   churchId: ChurchId;
   userId: UserId;
+}
+
+/** Any Ministry Membership manager outcome: a hidden or refused target, or the applied change. */
+type MembershipOutcome =
+  | { kind: 'forbidden' }
+  | { kind: 'not-found' }
+  | { kind: 'applied' };
+
+interface SendMembershipOutcomeInput {
+  reply: FastifyReply;
+  request: FastifyRequest;
+  outcome: MembershipOutcome;
+}
+
+/** Maps the shared refusals and sends the applied change without its `kind`. */
+function sendMembershipOutcome({
+  reply,
+  request,
+  outcome,
+}: SendMembershipOutcomeInput): FastifyReply {
+  if (outcome.kind === 'forbidden') {
+    return refuse({ reply, request, code: 'FORBIDDEN' });
+  }
+  if (outcome.kind === 'not-found') {
+    return refuse({ reply, request, code: 'NOT_FOUND' });
+  }
+  const { kind: _applied, ...result } = outcome;
+  return reply.send(result);
 }
 
 interface PeopleControllerDependencies {
@@ -198,16 +227,9 @@ export class PeopleController implements FastifyController {
           actorId,
           memberId,
           membershipId,
-          roleIds,
+          roleIds: roleIds.map(RoleId.from),
         });
-        if (outcome.kind === 'forbidden') {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
-        if (outcome.kind === 'not-found') {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
-        }
-        const { kind: _applied, ...result } = outcome;
-        return reply.send(result);
+        return sendMembershipOutcome({ reply, request, outcome });
       },
     );
 
@@ -257,16 +279,9 @@ export class PeopleController implements FastifyController {
             memberId,
             membershipId,
             accessLevel,
-            roleIds,
+            roleIds: roleIds?.map(RoleId.from),
           });
-        if (outcome.kind === 'forbidden') {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
-        if (outcome.kind === 'not-found') {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
-        }
-        const { kind: _applied, ...result } = outcome;
-        return reply.send(result);
+        return sendMembershipOutcome({ reply, request, outcome });
       },
     );
 
@@ -308,14 +323,7 @@ export class PeopleController implements FastifyController {
             memberId,
             membershipId,
           });
-        if (outcome.kind === 'forbidden') {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
-        if (outcome.kind === 'not-found') {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
-        }
-        const { kind: _applied, ...result } = outcome;
-        return reply.send(result);
+        return sendMembershipOutcome({ reply, request, outcome });
       },
     );
 

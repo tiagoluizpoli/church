@@ -1,5 +1,5 @@
 import type { Instant } from '@church/time';
-import type { ChurchId, UserId } from '../../branded-ids';
+import type { ChurchId, RoleId, UserId } from '../../branded-ids';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { PersonDetailRole } from '../../entities/people-list-item';
 
@@ -12,7 +12,7 @@ export interface SetMinistryRolesRequest {
   /** Ministry Membership id. */
   membershipId: string;
   /** The complete set; omitted Roles are removals. */
-  roleIds: string[];
+  roleIds: RoleId[];
 }
 
 export interface EndMinistryMembershipRequest {
@@ -42,7 +42,7 @@ export interface ChangeMinistryAccessRequest
   extends Omit<SetMinistryRolesRequest, 'roleIds'> {
   accessLevel: MinistryAccessLevel;
   /** The complete replacement set; omitted keeps the held Roles. */
-  roleIds?: string[];
+  roleIds?: RoleId[];
 }
 
 export interface MinistryMembershipChange {

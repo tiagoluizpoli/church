@@ -99,15 +99,18 @@ export const ministryMembershipParamsSchema = z.object({
   membershipId: z.string().min(1),
 });
 
+/** Far above any Ministry's Role catalog; only bounds the request. */
+const MAX_ROLE_IDS_PER_REQUEST = 200;
+
 export const setMinistryRolesBodySchema = z.object({
   /** The complete set; omitted Roles are removed. */
-  roleIds: z.array(z.string().uuid()).max(200),
+  roleIds: z.array(z.string().uuid()).max(MAX_ROLE_IDS_PER_REQUEST),
 });
 
 export const changeMinistryAccessBodySchema = z.object({
   accessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
   /** The complete replacement set; omitted keeps the held Roles. */
-  roleIds: z.array(z.string().uuid()).max(200).optional(),
+  roleIds: z.array(z.string().uuid()).max(MAX_ROLE_IDS_PER_REQUEST).optional(),
 });
 
 export const ministryMembershipChangeResponseSchema = z.object({
@@ -133,8 +136,8 @@ export const upcomingAssignmentSchema = z.object({
   eventTitle: z.string(),
   eventTimeBlockId: z.string(),
   shiftId: z.string(),
-  shiftStart: z.string(),
-  shiftEnd: z.string(),
+  shiftStart: instantSchema,
+  shiftEnd: instantSchema,
   roleId: z.string(),
   roleName: z.string(),
   sectorId: z.string(),

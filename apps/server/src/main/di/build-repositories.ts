@@ -2,6 +2,7 @@ import {
   DrizzleAssignmentAuditRepository,
   DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
+  DrizzleChurchAccessRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
   DrizzleEventRepository,
@@ -57,6 +58,7 @@ export type Repositories = Pick<
   | 'notificationRepository'
   | 'invitationListRepository'
   | 'peopleListRepository'
+  | 'churchAccessRepository'
   | 'unitOfWork'
 >;
 
@@ -139,6 +141,10 @@ export function buildRepositories({
   const invitationListRepository =
     overrides.invitationListRepository ??
     new DrizzleInvitationListRepository({ db: database });
+  const churchAccessRepository =
+    overrides.churchAccessRepository ??
+    new DrizzleChurchAccessRepository({ db: database });
+
   const peopleListRepository =
     overrides.peopleListRepository ??
     new DrizzlePeopleListRepository({ db: database });
@@ -172,6 +178,7 @@ export function buildRepositories({
     notificationRepository,
     invitationListRepository,
     peopleListRepository,
+    churchAccessRepository,
     unitOfWork,
   };
 }

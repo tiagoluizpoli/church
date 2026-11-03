@@ -65,6 +65,7 @@ beforeAll(async () => {
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
       defaultPageSize: 20,
     }),
+    churchAccessManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
     maxPageSize: 50,

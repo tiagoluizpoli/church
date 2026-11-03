@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
 import type { IPeopleListManager } from '../../domain/contracts/application/people-list-manager';
 import type { PeopleListScope } from '../../domain/entities/people-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -8,6 +9,8 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  churchAccessChangeBodySchema,
+  churchAccessChangeResponseSchema,
   peopleListQuerystringSchema,
   peopleListResponseSchema,
   personDetailResponseSchema,
@@ -32,6 +35,7 @@ interface ResolveScopeInput {
 
 interface PeopleControllerDependencies {
   peopleListManager: IPeopleListManager;
+  churchAccessManager: IChurchAccessManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
   /** Most people one page may ask for (validated central config). */
@@ -43,17 +47,20 @@ export class PeopleController implements FastifyController {
   readonly prefix = '/people';
 
   private readonly peopleListManager: IPeopleListManager;
+  private readonly churchAccessManager: IChurchAccessManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({
     peopleListManager,
+    churchAccessManager,
     activeChurchResolver,
     authorityGuard,
     maxPageSize,
   }: PeopleControllerDependencies) {
     this.peopleListManager = peopleListManager;
+    this.churchAccessManager = churchAccessManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
     this.maxPageSize = maxPageSize;
@@ -82,6 +89,61 @@ export class PeopleController implements FastifyController {
     app.addHook(
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+    );
+
+    app.patch(
+      '/:memberId/church-access',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'changeChurchAccess',
+          summary: "Change a member's Church access",
+          description:
+            'Make a Church Member an admin of the Active Church, or remove their admin access, keeping at least one admin. Only a ChurchAdmin may call it; requesting the current level changes nothing. Church Membership, Ministry Memberships and Roles stay as they are.',
+          params: personParamsSchema,
+          body: churchAccessChangeBodySchema,
+          response: {
+            200: churchAccessChangeResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const actorId = UserId.from(request.userId);
+        // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
+        const isAdmin = await this.authorityGuard.canManageChurch({
+          churchId,
+          userId: actorId,
+        });
+        if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const { memberId } = request.params as z.infer<
+          typeof personParamsSchema
+        >;
+        const { accessLevel } = request.body as z.infer<
+          typeof churchAccessChangeBodySchema
+        >;
+        const outcome = await this.churchAccessManager.changeChurchAccess({
+          churchId,
+          actorId,
+          memberId,
+          accessLevel,
+        });
+        if (outcome.kind === 'forbidden') {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        if (outcome.kind === 'not-found') {
+          return refuse({ reply, request, code: 'NOT_FOUND' });
+        }
+        if (outcome.kind === 'last-admin') {
+          return refuse({ reply, request, code: 'LAST_CHURCH_ADMIN' });
+        }
+        const { kind: _applied, ...result } = outcome;
+        return reply.send(result);
+      },
     );
 
     app.get(

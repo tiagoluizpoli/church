@@ -58,6 +58,7 @@
   "error_draft_staffing_reconciliation_required": "Este ciclo já tem turnos e pessoas necessárias de uma preparação anterior. Eles precisam ser conciliados antes de enviar o ciclo; nada foi alterado.",
   "error_event_outside_cycle": "A data do evento deve estar dentro do ciclo.",
   "error_last_remaining_event_time_block": "Não é possível excluir o único bloco de horário do dia. Exclua o dia.",
+  "error_last_church_admin": "A igreja precisa de pelo menos um administrador. Torne outra pessoa administradora primeiro.",
   "error_shift_out_of_bounds": "O turno deve estar dentro do seu bloco de horário.",
   "error_hard_constraint_violation": "Isso deixaria um voluntário em dois turnos ao mesmo tempo ou quebraria uma regra obrigatória.",
   "error_below_full_publish": "Publicar sem todas as vagas preenchidas precisa da sua confirmação.",

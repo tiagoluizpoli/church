@@ -48,6 +48,7 @@ export function buildControllers({
     notificationManager,
     invitationListManager,
     peopleListManager,
+    churchAccessManager,
   },
   auth: { authorityGuard, activeChurchResolver },
 }: BuildControllersInput): FastifyController[] {
@@ -120,6 +121,7 @@ export function buildControllers({
     }),
     new PeopleController({
       peopleListManager,
+      churchAccessManager,
       activeChurchResolver,
       authorityGuard,
       maxPageSize: config.people.maxPageSize,

@@ -21,10 +21,12 @@ import type { EventRepository } from '../domain/contracts/infrastructure/event.r
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SchedulingScopeRepository } from '../domain/contracts/infrastructure/scheduling-scope.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 
 interface ResolveActorInput {
   churchId: ChurchId;
   userId: UserId;
+  tx?: TransactionContext;
 }
 
 interface DbAuthorityManagerDependencies {
@@ -296,6 +298,7 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.actorRepository.resolveActor({
       userId: input.userId,
       activeChurchId: input.churchId,
+      tx: input.tx,
     });
   }
 }

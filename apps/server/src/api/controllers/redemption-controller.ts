@@ -505,7 +505,8 @@ function isRateLimited({
 
 /** The public Church Invitation preview: the Ministry block only for a paired invitation. */
 function toPublicPreview(preview: PublicRedemptionPreview) {
-  const { ministry } = preview;
+  // The public preview names the newest pending half; redemption grants them all.
+  const [ministry] = preview.ministries;
   return {
     email: preview.email,
     churchName: preview.churchName,

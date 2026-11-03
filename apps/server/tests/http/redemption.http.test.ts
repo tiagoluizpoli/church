@@ -1214,10 +1214,13 @@ describe('admin Church Invitations from the Invite dialog over HTTP (Spec 15)', 
   async function redeem(churchInvitationId: string) {
     const { app } = await createHarness();
     const url = redemptionUrl({ invitationId: churchInvitationId });
-    await app.inject({ method: 'POST', url: `${url}/code` });
+    // Own client address: the file's earlier tests spend the shared per-IP rate limit.
+    const remoteAddress = '203.0.113.7';
+    await app.inject({ method: 'POST', url: `${url}/code`, remoteAddress });
     const response = await app.inject({
       method: 'POST',
       url: `${url}/redeem`,
+      remoteAddress,
       payload: {
         name: 'Invited Admin',
         password: 'correct horse battery staple',
@@ -1288,5 +1291,44 @@ describe('admin Church Invitations from the Invite dialog over HTTP (Spec 15)', 
     expect(ministryGrants).toEqual([
       { ministryId: fixture.ministryOneA, ministryAccessLevel: 'leader' },
     ]);
+  });
+  it('grants every pending sibling half of the Church offer through the one Volunteer profile', async () => {
+    await invitationManager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: inviterId(),
+      email,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+    await invitationManager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryTwoA),
+      inviterId: inviterId(),
+      email,
+      ministryAccessLevel: 'leader',
+      roleIds: [],
+    });
+    const { churchInvitationId } = await inviteAdmin();
+
+    const { memberships, profiles, ministryGrants } =
+      await redeem(churchInvitationId);
+
+    expect(memberships).toEqual([
+      { organizationId: fixture.churchA.id, role: 'admin' },
+    ]);
+    expect(profiles).toHaveLength(1);
+    expect(ministryGrants).toHaveLength(2);
+    expect(ministryGrants).toEqual(
+      expect.arrayContaining([
+        { ministryId: fixture.ministryOneA, ministryAccessLevel: 'volunteer' },
+        { ministryId: fixture.ministryTwoA, ministryAccessLevel: 'leader' },
+      ]),
+    );
+    const accepted = await testDb
+      .select({ status: ministryInvitation.status })
+      .from(ministryInvitation)
+      .where(eq(ministryInvitation.churchInvitationId, churchInvitationId));
+    expect(accepted).toEqual([{ status: 'accepted' }, { status: 'accepted' }]);
   });
 });

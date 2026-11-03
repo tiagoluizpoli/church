@@ -6,7 +6,7 @@ import type {
 } from '../branded-ids';
 import type { MinistryAccessLevel } from './ministry-membership';
 
-/** The optional Ministry half of a paired Church Invitation. */
+/** One Ministry half of a paired Church Invitation. */
 export interface PublicRedemptionMinistry {
   ministryInvitationId: MinistryInvitationId;
   ministryName: string;
@@ -21,6 +21,6 @@ export interface PublicRedemptionPreview {
   churchName: string;
   churchAccessLevel: ChurchAccessLevel;
   expiresAt: Date;
-  /** Null for a plain Church Invitation, such as the first-admin one. */
-  ministry: PublicRedemptionMinistry | null;
+  /** Every still-pending Ministry half, newest first; empty for a plain Church Invitation. */
+  ministries: PublicRedemptionMinistry[];
 }

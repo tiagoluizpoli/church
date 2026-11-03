@@ -20,7 +20,7 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import { and, asc, desc, eq, gt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, ne, or, sql } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryInvitationId,
@@ -44,6 +44,7 @@ import type {
   FindPendingChurchInvitationByEmailInput,
   FindPendingChurchOfferInput,
   FindPendingForAddressInput,
+  FindPendingSiblingMinistryInvitationsInput,
   FindPublicRedemptionPreviewInput,
   HasActiveMinistryMembershipInput,
   IsInvitationAddressedToUserInput,
@@ -269,18 +270,18 @@ export class DrizzleMinistryInvitationRepository
       churchName: found.churchName,
       churchAccessLevel: found.role === 'admin' ? 'admin' : 'member',
       expiresAt: found.expiresAt,
-      ministry: await this.findPendingPairedMinistry({
+      ministries: await this.findPendingPairedMinistries({
         churchInvitationId,
         now,
       }),
     };
   }
 
-  /** The newest pending, unexpired Ministry half paired with the Church Invitation. */
-  private async findPendingPairedMinistry({
+  /** Every pending, unexpired Ministry half paired with the Church Invitation, newest first. */
+  private async findPendingPairedMinistries({
     churchInvitationId,
     now,
-  }: FindPublicRedemptionPreviewInput): Promise<PublicRedemptionMinistry | null> {
+  }: FindPublicRedemptionPreviewInput): Promise<PublicRedemptionMinistry[]> {
     const rows = await this.db
       .select({
         ministryInvitationId: ministryInvitation.id,
@@ -303,19 +304,39 @@ export class DrizzleMinistryInvitationRepository
         ),
       )
       .orderBy(desc(ministryInvitation.createdAt), asc(role.name));
-    const first = rows[0];
-    if (!first) return null;
-    const halfRows = rows.filter(
-      (row) => row.ministryInvitationId === first.ministryInvitationId,
-    );
-    return {
-      ministryInvitationId: first.ministryInvitationId as MinistryInvitationId,
-      ministryName: first.ministryName,
-      ministryAccessLevel: first.ministryAccessLevel,
-      roleNames: halfRows.flatMap((row) =>
-        row.roleName ? [row.roleName] : [],
-      ),
-    };
+    const halves = new Map<string, PublicRedemptionMinistry>();
+    for (const row of rows) {
+      const half = halves.get(row.ministryInvitationId) ?? {
+        ministryInvitationId: row.ministryInvitationId as MinistryInvitationId,
+        ministryName: row.ministryName,
+        ministryAccessLevel: row.ministryAccessLevel,
+        roleNames: [],
+      };
+      if (row.roleName) half.roleNames.push(row.roleName);
+      halves.set(row.ministryInvitationId, half);
+    }
+    return [...halves.values()];
+  }
+
+  async findPendingSiblingMinistryInvitationIds({
+    churchInvitationId,
+    exceptMinistryInvitationId,
+    now,
+    tx,
+  }: FindPendingSiblingMinistryInvitationsInput): Promise<string[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({ id: ministryInvitation.id })
+      .from(ministryInvitation)
+      .where(
+        and(
+          eq(ministryInvitation.churchInvitationId, churchInvitationId),
+          ne(ministryInvitation.id, exceptMinistryInvitationId),
+          eq(ministryInvitation.status, 'pending'),
+          gt(ministryInvitation.expiresAt, now),
+        ),
+      )
+      .orderBy(asc(ministryInvitation.createdAt), asc(ministryInvitation.id));
+    return rows.map((row) => row.id);
   }
 
   async findMinistryInvitationContext({

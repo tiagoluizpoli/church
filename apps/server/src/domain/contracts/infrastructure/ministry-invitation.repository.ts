@@ -166,6 +166,14 @@ export interface FindPublicRedemptionPreviewInput {
   now: Date;
 }
 
+export interface FindPendingSiblingMinistryInvitationsInput {
+  churchInvitationId: string;
+  /** The half already being redeemed; excluded from the result. */
+  exceptMinistryInvitationId: string;
+  now: Date;
+  tx?: TransactionContext;
+}
+
 export interface FindMinistryInvitationContextInput {
   ministryInvitationId: string;
   tx?: TransactionContext;
@@ -271,6 +279,11 @@ export interface MinistryInvitationRepository {
   findPublicRedemptionPreview(
     input: FindPublicRedemptionPreviewInput,
   ): Promise<PublicRedemptionPreview | null>;
+
+  /** Ids of the other still-pending, unexpired Ministry halves of one Church Invitation. */
+  findPendingSiblingMinistryInvitationIds(
+    input: FindPendingSiblingMinistryInvitationsInput,
+  ): Promise<string[]>;
 
   /** Kind-agnostic, any-status lookup backing the existing-member and decline flows (§7.3). */
   findMinistryInvitationContext(

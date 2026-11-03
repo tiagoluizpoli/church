@@ -64,6 +64,11 @@ interface MinistryQueryInput extends KindQueryInput {
   ministryIds?: string[];
 }
 
+interface DeliveryFacts {
+  latest: Map<string, InvitationEmailDelivery>;
+  lastSent: Map<string, Date>;
+}
+
 interface DeliveryLookupInput {
   churchId: string;
   ministryInvitationIds: string[];
@@ -217,17 +222,18 @@ export class DrizzleInvitationListRepository
     const page = merged.slice(0, limit);
 
     const ministryPage = page.filter((row) => row.kind === 'ministry');
-    const [roles, deliveries, closures] = await Promise.all([
-      this.rolesByInvitation({ ids: ministryPage.map((r) => r.id) }),
-      this.latestDeliveries({
-        churchId,
-        ministryInvitationIds: ministryPage.map((row) => row.id),
-        churchInvitationIds: page
-          .filter((row) => row.kind === 'church')
-          .map((row) => row.id),
-      }),
-      this.closures({ churchId, rows: page }),
-    ]);
+    const [roles, { latest: deliveries, lastSent }, closures] =
+      await Promise.all([
+        this.rolesByInvitation({ ids: ministryPage.map((r) => r.id) }),
+        this.latestDeliveries({
+          churchId,
+          ministryInvitationIds: ministryPage.map((row) => row.id),
+          churchInvitationIds: page
+            .filter((row) => row.kind === 'church')
+            .map((row) => row.id),
+        }),
+        this.closures({ churchId, rows: page }),
+      ]);
 
     const items: InvitationListItem[] = page.map(
       ({ closureFacts: _facts, ...row }) => ({
@@ -246,6 +252,7 @@ export class DrizzleInvitationListRepository
         emailDelivery: deliveries.get(`${row.kind}:${row.id}`) ?? {
           state: 'unavailable',
         },
+        lastSentAt: lastSent.get(`${row.kind}:${row.id}`),
       }),
     );
     const last = items.at(-1);
@@ -565,13 +572,18 @@ export class DrizzleInvitationListRepository
     return byInvitation;
   }
 
-  /** The latest outbox row per offer, keyed `<kind>:<id>`; an offer with none is absent. */
+  /**
+   * The latest outbox row per offer and, apart from it, the latest send the
+   * sender actually confirmed (a later failed attempt does not erase it),
+   * keyed `<kind>:<id>`; an offer with none is absent.
+   */
   private async latestDeliveries({
     churchId,
     ministryInvitationIds,
     churchInvitationIds,
-  }: DeliveryLookupInput): Promise<Map<string, InvitationEmailDelivery>> {
+  }: DeliveryLookupInput): Promise<DeliveryFacts> {
     const latest = new Map<string, InvitationEmailDelivery>();
+    const lastSent = new Map<string, Date>();
     const subjects: SQL[] = [];
     if (ministryInvitationIds.length > 0) {
       subjects.push(
@@ -584,7 +596,7 @@ export class DrizzleInvitationListRepository
         sql`(${outboxMessage.kind} = 'invitation.church-bootstrap' AND ${outboxMessage.payload} ->> 'churchInvitationId' IN ${churchInvitationIds})`,
       );
     }
-    if (subjects.length === 0) return latest;
+    if (subjects.length === 0) return { latest, lastSent };
 
     const rows = await getClient({ db: this.db })
       .select()
@@ -603,18 +615,21 @@ export class DrizzleInvitationListRepository
                     ?.ministryInvitationId
                 : payload.ministryInvitationId
             }`;
-      if (latest.has(subject)) continue;
-      latest.set(
-        subject,
-        projectInvitationEmailDelivery({
-          kind: row.kind,
-          status: row.status,
-          channelOutcomes: row.channelOutcomes as Record<string, string> | null,
-          sentAt: row.sentAt,
-          emailDeliveredAt: row.emailDeliveredAt,
-        }),
-      );
+      const delivery = projectInvitationEmailDelivery({
+        kind: row.kind,
+        status: row.status,
+        channelOutcomes: row.channelOutcomes as Record<string, string> | null,
+        sentAt: row.sentAt,
+        emailDeliveredAt: row.emailDeliveredAt,
+      });
+      if (!latest.has(subject)) latest.set(subject, delivery);
+      if (
+        delivery.state === 'sent' &&
+        delivery.sentAt &&
+        !lastSent.has(subject)
+      )
+        lastSent.set(subject, delivery.sentAt);
     }
-    return latest;
+    return { latest, lastSent };
   }
 }

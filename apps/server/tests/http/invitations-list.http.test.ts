@@ -237,6 +237,7 @@ interface Row {
   displayStatus: string;
   status: string;
   emailDelivery: { state: string; sentAt?: string };
+  lastSentAt: string | null;
   closure?: {
     actor?: { id: string; name: string };
     at?: string;
@@ -650,6 +651,60 @@ describe('GET /api/v1/invitations — email delivery', () => {
     expect(await stateOf(id)).toEqual({
       state: 'sent',
       sentAt: delivered.toISOString(),
+    });
+  });
+
+  it('reports lastSentAt per row of an upgraded pair from the latest email actually sent', async () => {
+    await churchOffer({ id: 'ci-pair', email: 'pair@inv.test', role: 'admin' });
+    const resent = await ministryOffer({
+      ministryId: fx.worshipId,
+      churchInvitationId: 'ci-pair',
+    });
+    const superseded = await ministryOffer({
+      ministryId: fx.kidsId,
+      churchInvitationId: 'ci-pair',
+    });
+    const t1 = new Date('2026-11-02T11:00:00.000Z');
+    const earlier = new Date('2026-11-01T10:00:05.000Z');
+    await outbox({
+      kind: 'invitation.church-bootstrap',
+      payload: { churchInvitationId: 'ci-pair' },
+      status: 'sent',
+      sentAt: t1,
+      createdAt: new Date('2026-11-02T10:59:00.000Z'),
+    });
+    // Sent before the upgrade; a later attempt failed, so only lastSentAt remembers the send.
+    await outbox({
+      kind: 'invitation.chained',
+      payload: { ministryInvitationId: resent },
+      status: 'sent',
+      sentAt: earlier,
+    });
+    await outbox({
+      kind: 'invitation.chained',
+      payload: { ministryInvitationId: resent },
+      status: 'failed',
+      createdAt: new Date('2026-11-01T10:00:09.000Z'),
+    });
+    await outbox({
+      kind: 'invitation.chained',
+      payload: { ministryInvitationId: superseded },
+      status: 'failed',
+    });
+
+    signIn('admin');
+    const { items } = await list();
+    const byId = (id: string) => items.find((i) => i.id === id);
+
+    expect(byId('ci-pair')?.lastSentAt).toBe(t1.toISOString());
+    expect(byId(resent)).toMatchObject({
+      churchInvitationId: 'ci-pair',
+      emailDelivery: { state: 'failed' },
+      lastSentAt: earlier.toISOString(),
+    });
+    expect(byId(superseded)).toMatchObject({
+      churchInvitationId: 'ci-pair',
+      lastSentAt: null,
     });
   });
 

@@ -21,6 +21,12 @@ export interface InvitationEmailDelivery {
   sentAt?: Date;
 }
 
+/** A person or Ministry named on a list row. */
+export interface InvitationListNamedRef {
+  id: string;
+  name: string;
+}
+
 export interface InvitationListRole {
   id: string;
   name: string;
@@ -56,14 +62,14 @@ export interface InvitationListFilters {
 
 /** Facts about how a closed offer ended; every field is present only when actually recorded. */
 export interface InvitationClosure {
-  actor?: { id: string; name: string };
+  actor?: InvitationListNamedRef;
   at?: Date;
   reason?: string;
 }
 
 /** The pickers the caller may use: only what their authority reaches. */
 export interface InvitationListOptions {
-  ministries: { id: string; name: string }[];
+  ministries: InvitationListNamedRef[];
   invitedAs: InvitationInvitedAs[];
 }
 
@@ -80,13 +86,15 @@ export interface InvitationListItem {
   churchAccessLevel?: 'admin';
   ministryAccessLevel?: MinistryAccessLevel;
   roles: InvitationListRole[];
-  invitedBy: { id: string; name: string };
+  invitedBy: InvitationListNamedRef;
   createdAt: Date;
   expiresAt: Date;
   status: 'pending' | 'accepted' | 'rejected' | 'canceled';
   displayStatus: InvitationListStatus;
   closure?: InvitationClosure;
   emailDelivery: InvitationEmailDelivery;
+  /** The latest email attempt actually sent for this offer, even if a later one failed; absent when unknown. */
+  lastSentAt?: Date;
 }
 
 export interface InvitationListPage {

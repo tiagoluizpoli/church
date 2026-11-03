@@ -115,7 +115,7 @@ export class InvitationController implements FastifyController {
             };
         const { cursor, limit, ...filters } = request.query as z.infer<
           typeof invitationListQuerystringSchema
-        >;
+        > & { limit?: number };
         const page = await this.invitationListManager.list({
           churchId,
           scope,

@@ -44,6 +44,8 @@ export const invitationListItemResponseSchema = z.object({
     /** Set only when the sender confirmed the email. */
     sentAt: instantSchema.optional(),
   }),
+  /** The latest email actually sent for this offer, even if a later attempt failed; null when unknown. */
+  lastSentAt: instantSchema.nullable(),
 });
 export type InvitationListItemResponse = z.infer<
   typeof invitationListItemResponseSchema
@@ -70,17 +72,18 @@ export const invitationListQuerystringSchema = z.object({
       message: 'Invalid cursor',
     })
     .optional(),
-  limit: z.coerce.number().int().positive().optional(),
 });
 
 function toItemResponse(item: InvitationListItem): InvitationListItemResponse {
-  const { createdAt, expiresAt, emailDelivery, closure, ...rest } = item;
+  const { createdAt, expiresAt, emailDelivery, closure, lastSentAt, ...rest } =
+    item;
   return {
     ...rest,
     closure: closure && {
       ...closure,
       at: closure.at ? fromDate({ date: closure.at }) : undefined,
     },
+    lastSentAt: lastSentAt ? fromDate({ date: lastSentAt }) : null,
     createdAt: fromDate({ date: createdAt }),
     expiresAt: fromDate({ date: expiresAt }),
     emailDelivery: {

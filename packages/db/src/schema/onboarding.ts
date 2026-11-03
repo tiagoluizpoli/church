@@ -243,8 +243,19 @@ export interface ChurchAccessChangedDetails {
   after: 'member' | 'admin';
 }
 
+/** `ministry_roles_changed` details: one Ministry Membership's complete Role set before and after, ids sorted. */
+export interface MinistryRolesChangedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  beforeRoleIds: string[];
+  afterRoleIds: string[];
+}
+
 /** Structured per-action facts; null on rows whose action records none. */
-export type IdentityAuditDetails = ChurchAccessChangedDetails;
+export type IdentityAuditDetails =
+  | ChurchAccessChangedDetails
+  | MinistryRolesChangedDetails;
 
 export const identityAudit = pgTable('identity_audit', {
   id: uuid('id').primaryKey().defaultRandom(),

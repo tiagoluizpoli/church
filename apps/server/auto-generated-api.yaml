@@ -8008,6 +8008,223 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/people/{memberId}/ministry-memberships/{membershipId}/roles:
+    put:
+      operationId: setMinistryRoles
+      summary: Set a Ministry member's Roles
+      tags:
+        - people
+      description: Replace the complete Role set of one active Ministry Membership;
+        omitted Roles are removed. A ChurchAdmin edits any membership; a
+        Ministry leader edits volunteer-level members of a Ministry they lead
+        and their own. Only active Roles of that Ministry may be added; held
+        archived Roles may be kept or removed. A volunteer-level membership
+        keeps at least one Role. Removing a Role an upcoming Assignment depends
+        on is refused with every such Assignment. The same set changes nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleIds:
+                  maxItems: 200
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              required:
+                - roleIds
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: memberId
+          required: true
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: membershipId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberId:
+                    type: string
+                  membershipId:
+                    type: string
+                  ministryAccessLevel:
+                    type: string
+                    enum:
+                      - leader
+                      - volunteer
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        archived:
+                          type: boolean
+                      required:
+                        - id
+                        - name
+                        - archived
+                      additionalProperties: false
+                  changed:
+                    type: boolean
+                required:
+                  - memberId
+                  - membershipId
+                  - ministryAccessLevel
+                  - roles
+                  - changed
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      assignments:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            assignmentId:
+                              type: string
+                            eventId:
+                              type: string
+                            eventTitle:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                            shiftId:
+                              type: string
+                            shiftStart:
+                              type: string
+                            shiftEnd:
+                              type: string
+                            roleId:
+                              type: string
+                            roleName:
+                              type: string
+                            sectorId:
+                              type: string
+                            sectorName:
+                              type: string
+                            ministryId:
+                              type: string
+                            cycleId:
+                              type: string
+                          required:
+                            - assignmentId
+                            - eventId
+                            - eventTitle
+                            - eventTimeBlockId
+                            - shiftId
+                            - shiftStart
+                            - shiftEnd
+                            - roleId
+                            - roleName
+                            - sectorId
+                            - sectorName
+                            - ministryId
+                            - cycleId
+                          additionalProperties: false
+                    required:
+                      - error
+                      - message
+                      - assignments
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                    required:
+                      - error
+                      - message
+                    additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/people/{memberId}:
     get:
       operationId: getPerson
@@ -8071,12 +8288,15 @@ paths:
                               - name
                               - archived
                             additionalProperties: false
+                        canEditRoles:
+                          type: boolean
                       required:
                         - membershipId
                         - ministryId
                         - ministryName
                         - ministryAccessLevel
                         - roles
+                        - canEditRoles
                       additionalProperties: false
                   canChangeChurchAccess:
                     type: boolean

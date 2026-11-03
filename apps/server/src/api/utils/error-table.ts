@@ -63,6 +63,9 @@ export type MappedDomainCode =
   | 'RESEND_DAILY_CAP_EXCEEDED'
   | 'INVITATION_NOT_PENDING'
   | 'INVALID_INVITATION_ROLE'
+  | 'INVALID_MINISTRY_ROLE'
+  | 'MINISTRY_ROLE_REQUIRED'
+  | 'UPCOMING_ASSIGNMENTS'
   | 'VALIDATION_ERROR';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
@@ -167,6 +170,18 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   INVALID_INVITATION_ROLE: {
     status: 422,
     message: m.error_invalid_invitation_role,
+  },
+  INVALID_MINISTRY_ROLE: {
+    status: 422,
+    message: m.error_invalid_ministry_role,
+  },
+  MINISTRY_ROLE_REQUIRED: {
+    status: 409,
+    message: m.error_ministry_role_required,
+  },
+  UPCOMING_ASSIGNMENTS: {
+    status: 409,
+    message: m.error_upcoming_assignments,
   },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
 };

@@ -11,6 +11,7 @@ export { DrizzleInvitationListRepository } from './drizzle-invitation-list.repos
 export { DrizzleInvitationVerificationCodeRepository } from './drizzle-invitation-verification-code.repository';
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
 export { DrizzleMinistryInvitationRepository } from './drizzle-ministry-invitation.repository';
+export { DrizzleMinistryMembershipRepository } from './drizzle-ministry-membership.repository';
 export { DrizzleMinistryParticipationRepository } from './drizzle-ministry-participation.repository';
 export { DrizzleNotificationRepository } from './drizzle-notification.repository';
 export { DrizzleOutboxRepository } from './drizzle-outbox.repository';

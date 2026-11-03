@@ -7,6 +7,7 @@ import type {
   AuthorityResource,
   ChurchMembershipFact,
   MinistryMembershipFact,
+  MinistryMembershipOperation,
 } from '@/domain/authority/types';
 import type {
   ChurchId,
@@ -550,5 +551,138 @@ describe('AuthorityService — invitation resource', () => {
     );
 
     expect(denyReason(decision)).toBe('INSUFFICIENT_ACCESS_LEVEL');
+  });
+});
+
+describe('AuthorityService — ministry membership resource', () => {
+  const otherUserId = 'usr_2' as UserId;
+  const admin = churchMembership({ accessLevel: 'admin' });
+  const member = churchMembership({ accessLevel: 'member' });
+  const leads = [ministryMembership({ accessLevel: 'leader' })];
+
+  interface TargetInput {
+    operation: MinistryMembershipOperation;
+    level: 'leader' | 'volunteer';
+    subject?: UserId;
+  }
+
+  const target = ({
+    operation,
+    level,
+    subject = otherUserId,
+  }: TargetInput): AuthorityResource => ({
+    type: 'ministryMembership',
+    churchId,
+    ministryId,
+    subjectUserId: subject,
+    ministryAccessLevel: level,
+    operation,
+  });
+
+  it.each([
+    {
+      name: 'admin without a Volunteer profile edits a leader’s Roles',
+      churchMembership: admin,
+      ministryMemberships: [],
+      resource: target({ operation: 'editRoles', level: 'leader' }),
+      expectReason: undefined,
+    },
+    {
+      name: 'admin changes a Ministry Access Level',
+      churchMembership: admin,
+      ministryMemberships: [],
+      resource: target({ operation: 'changeLevel', level: 'leader' }),
+      expectReason: undefined,
+    },
+    {
+      name: 'admin ends a leader membership',
+      churchMembership: admin,
+      ministryMemberships: [],
+      resource: target({ operation: 'endMembership', level: 'leader' }),
+      expectReason: undefined,
+    },
+    {
+      name: 'leader edits a volunteer-level member’s Roles',
+      churchMembership: member,
+      ministryMemberships: leads,
+      resource: target({ operation: 'editRoles', level: 'volunteer' }),
+      expectReason: undefined,
+    },
+    {
+      name: 'leader edits their own Roles',
+      churchMembership: member,
+      ministryMemberships: leads,
+      resource: target({
+        operation: 'editRoles',
+        level: 'leader',
+        subject: userId,
+      }),
+      expectReason: undefined,
+    },
+    {
+      name: 'leader may not edit a peer leader’s Roles',
+      churchMembership: member,
+      ministryMemberships: leads,
+      resource: target({ operation: 'editRoles', level: 'leader' }),
+      expectReason: 'INSUFFICIENT_ACCESS_LEVEL',
+    },
+    {
+      name: 'leader ends a volunteer-level membership',
+      churchMembership: member,
+      ministryMemberships: leads,
+      resource: target({ operation: 'endMembership', level: 'volunteer' }),
+      expectReason: undefined,
+    },
+    {
+      name: 'leader may not end their own leader membership',
+      churchMembership: member,
+      ministryMemberships: leads,
+      resource: target({
+        operation: 'endMembership',
+        level: 'leader',
+        subject: userId,
+      }),
+      expectReason: 'INSUFFICIENT_ACCESS_LEVEL',
+    },
+    {
+      name: 'leader may not change even a volunteer’s level',
+      churchMembership: member,
+      ministryMemberships: leads,
+      resource: target({ operation: 'changeLevel', level: 'volunteer' }),
+      expectReason: 'INSUFFICIENT_ACCESS_LEVEL',
+    },
+    {
+      name: 'a volunteer of the Ministry is outside its management scope',
+      churchMembership: member,
+      ministryMemberships: [ministryMembership({ accessLevel: 'volunteer' })],
+      resource: target({ operation: 'editRoles', level: 'volunteer' }),
+      expectReason: 'OUTSIDE_SCOPE',
+    },
+    {
+      name: 'leading another Ministry gives no scope over this one',
+      churchMembership: member,
+      ministryMemberships: [
+        ministryMembership({
+          ministryId: otherMinistryId,
+          accessLevel: 'leader',
+        }),
+      ],
+      resource: target({ operation: 'editRoles', level: 'volunteer' }),
+      expectReason: 'OUTSIDE_SCOPE',
+    },
+  ])('$name', ({
+    churchMembership,
+    ministryMemberships,
+    resource,
+    expectReason,
+  }) => {
+    const decision = AuthorityService.authorize(
+      request({
+        actor: actor({ churchMembership, ministryMemberships }),
+        resource,
+      }),
+    );
+
+    expect(denyReason(decision)).toBe(expectReason);
   });
 });

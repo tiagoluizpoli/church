@@ -8,6 +8,7 @@ import type {
   ChurchResource,
   InvitationResource,
   MinistryMembershipFact,
+  MinistryMembershipResource,
   MinistryResource,
 } from './types';
 
@@ -29,6 +30,13 @@ interface AuthorizeInvitationResourceInput {
   actor: AuthorityActor;
   action: AuthorityAction;
   resource: InvitationResource;
+  isAdmin: boolean;
+}
+
+interface AuthorizeMinistryMembershipResourceInput {
+  actor: AuthorityActor;
+  action: AuthorityAction;
+  resource: MinistryMembershipResource;
   isAdmin: boolean;
 }
 
@@ -157,6 +165,37 @@ function authorizeInvitationResource(
     : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
 }
 
+/**
+ * Managing one Ministry Membership: an admin may do anything. A leader of
+ * that Ministry edits their own Roles and volunteer-level members' Roles, and
+ * ends only volunteer-level memberships; a leader never changes a Ministry
+ * Access Level. A Ministry the actor does not lead is outside their scope,
+ * while a refused target inside it is an insufficient access level.
+ */
+function authorizeMinistryMembershipResource(
+  input: AuthorizeMinistryMembershipResourceInput,
+): AuthorityDecision {
+  const { actor, action, resource, isAdmin } = input;
+  if (action !== 'manage') return deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+  if (isAdmin) return allow();
+  const membership = findMinistryMembership({
+    actor,
+    ministryId: resource.ministryId,
+  });
+  if (membership && membership.churchId !== actor.activeChurchId) {
+    return deny({ reason: 'CONFLICTING_SCOPE' });
+  }
+  if (membership?.accessLevel !== 'leader') {
+    return deny({ reason: 'OUTSIDE_SCOPE' });
+  }
+  const volunteerTarget = resource.ministryAccessLevel === 'volunteer';
+  const permitted =
+    resource.operation === 'editRoles'
+      ? volunteerTarget || resource.subjectUserId === actor.userId
+      : resource.operation === 'endMembership' && volunteerTarget;
+  return permitted ? allow() : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+}
+
 export const AuthorityService = {
   /**
    * Answers one application authorization question, dispatching internally
@@ -198,6 +237,14 @@ export const AuthorityService = {
         break;
       case 'invitation':
         decision = authorizeInvitationResource({
+          actor,
+          action,
+          resource,
+          isAdmin,
+        });
+        break;
+      case 'ministryMembership':
+        decision = authorizeMinistryMembershipResource({
           actor,
           action,
           resource,

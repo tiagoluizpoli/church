@@ -4,6 +4,7 @@ import type {
   AuthorityResource,
   AuthorityScope,
   InvitationResource,
+  MinistryMembershipResource,
 } from '../../authority/types';
 import type {
   ChurchId,
@@ -48,6 +49,26 @@ export interface CanManageInvitationsInput {
   churchId: ChurchId;
   userId: UserId;
   invitations: InvitationAuthorityTarget[];
+}
+
+/** One stored Ministry Membership and the operation asked of it. */
+export type MinistryMembershipAuthorityTarget = Omit<
+  MinistryMembershipResource,
+  'type' | 'churchId'
+>;
+
+export interface DecideManageMinistryMembershipInput {
+  churchId: ChurchId;
+  userId: UserId;
+  target: MinistryMembershipAuthorityTarget;
+  /** Reads the actor's authority inside this transaction, after its locks. */
+  tx?: TransactionContext;
+}
+
+export interface CanManageMinistryMembershipsInput {
+  churchId: ChurchId;
+  userId: UserId;
+  targets: MinistryMembershipAuthorityTarget[];
 }
 
 export interface CanManageParticipationInput {
@@ -119,6 +140,14 @@ export interface IAuthorityManager {
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
   /** Whether the caller may resend or revoke each offer, in input order; one actor read. */
   canManageInvitations(input: CanManageInvitationsInput): Promise<boolean[]>;
+  /** The gatekeeper's target-aware Ministry Membership decision for one stored target. */
+  decideManageMinistryMembership(
+    input: DecideManageMinistryMembershipInput,
+  ): Promise<AuthorityDecision>;
+  /** Presentation hints from the same rules, in input order; one actor read. */
+  canManageMinistryMemberships(
+    input: CanManageMinistryMembershipsInput,
+  ): Promise<boolean[]>;
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
   canManageEvent(input: CanManageEventInput): Promise<boolean>;

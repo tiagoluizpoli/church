@@ -68,6 +68,8 @@ export const E2E_JOURNEY_RECIPES: Record<
   [E2E_JOURNEY_RECIPE_NAMES.invitationJourney]: async () =>
     (await import('./recipes/invitation-journey'))
       .createInvitationJourneyRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.peopleJourney]: async () =>
+    (await import('./recipes/people-journey')).createPeopleJourneyRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.sharedPersonas]: async () =>
     (await import('./recipes/shared-personas')).createSharedPersonasRecipe,
 };

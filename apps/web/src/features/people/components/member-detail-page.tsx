@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
 import { InviteDialog } from '@/features/invitations/components/invite-dialog';
+import { ChurchAccessControl } from '@/features/people/components/church-access-control';
 import { MinistryCard } from '@/features/people/components/ministry-card';
 import { usePerson } from '@/features/people/people-queries';
 import type { GetPerson200 } from '@/infrastructure/api/churchAPI.schemas';
@@ -44,6 +45,12 @@ export function MemberDetail({ person }: MemberDetailProps) {
               <span className="text-muted-foreground text-sm">
                 {m.people_last_admin_note()}
               </span>
+            ) : null}
+            {person.canChangeChurchAccess ? (
+              <ChurchAccessControl
+                person={person}
+                churchAccess={churchAccess}
+              />
             ) : null}
           </div>
         </section>

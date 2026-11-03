@@ -73,7 +73,7 @@ function detail(overrides: Partial<GetPerson200> = {}): GetPerson200 {
     email: 'ana@example.com',
     canChangeChurchAccess: true,
     canInviteToMinistry: true,
-    churchAccess: { accessLevel: 'member', isLastAdmin: false },
+    churchAccess: { accessLevel: 'member', isLastAdmin: false, isSelf: false },
     ministries: [
       {
         membershipId: 'mm-1',
@@ -142,7 +142,11 @@ describe('Member detail', () => {
     getPerson.mockResolvedValue(
       detail({
         ministries: [],
-        churchAccess: { accessLevel: 'admin', isLastAdmin: true },
+        churchAccess: {
+          accessLevel: 'admin',
+          isLastAdmin: true,
+          isSelf: false,
+        },
       }),
     );
 

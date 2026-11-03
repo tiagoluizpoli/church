@@ -6,7 +6,6 @@ import {
 } from '@church/db';
 import {
   addMilliseconds,
-  compareInstants,
   fromDate,
   parseInstant,
   resetClock,
@@ -236,7 +235,7 @@ describe('DbMinistryInvitationManager.mint', () => {
       inviterId: UserId.from(fixture.adminA),
       email: `${fixture.existingChurchMemberA}@fixture.test`,
       ministryAccessLevel: 'volunteer',
-      roleIds: [],
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
 
     expect(invitation.kind).toBe('ministry-only');
@@ -251,76 +250,36 @@ describe('DbMinistryInvitationManager.mint', () => {
         inviterId: UserId.from(fixture.adminA),
         email: `${fixture.leaderOfMinistryOneA}@fixture.test`,
         ministryAccessLevel: 'volunteer',
-        roleIds: [],
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
       }),
     ).rejects.toBeInstanceOf(InviteeAlreadyMinistryMemberError);
   });
 
-  it('refreshes the existing pending invitation on re-invite rather than duplicating it', async () => {
-    const first = await manager.mint({
-      churchId: ChurchId.from(fixture.churchA.id),
-      ministryId: MinistryId.from(fixture.ministryOneA),
-      inviterId: UserId.from(fixture.adminA),
-      email: `${fixture.existingChurchMemberA}@fixture.test`,
-      ministryAccessLevel: 'volunteer',
-      roleIds: [],
+  it('rolls back the offer and any Church offer when the delivery intent cannot be written', async () => {
+    const failingManager = new DbMinistryInvitationManager({
+      repo: ministryInvitationRepository,
+      roleRepository,
+      ministryRepository,
+      authorityManager,
+      unitOfWork,
+      outboxRepository,
+      notifications: {
+        enqueue: () => Promise.reject(new Error('outbox unavailable')),
+      },
+      config: appConfig,
     });
 
-    const second = await manager.mint({
-      churchId: ChurchId.from(fixture.churchA.id),
-      ministryId: MinistryId.from(fixture.ministryOneA),
-      inviterId: UserId.from(fixture.adminA),
-      email: `${fixture.existingChurchMemberA}@fixture.test`,
-      ministryAccessLevel: 'volunteer',
-      roleIds: [],
-    });
-
-    expect(second.id).toBe(first.id);
-    expect(
-      compareInstants({ left: second.expiresAt, right: first.expiresAt }),
-    ).toBeGreaterThanOrEqual(0);
-  });
-
-  it('reuses a still-pending chained Church Invitation on re-invite rather than minting a second one', async () => {
-    const first = await manager.mint({
-      churchId: ChurchId.from(fixture.churchA.id),
-      ministryId: MinistryId.from(fixture.ministryOneA),
-      inviterId: UserId.from(fixture.adminA),
-      email: 'repeat-outsider@fixture.test',
-      ministryAccessLevel: 'volunteer',
-      roleIds: [],
-    });
-
-    const second = await manager.mint({
-      churchId: ChurchId.from(fixture.churchA.id),
-      ministryId: MinistryId.from(fixture.ministryOneA),
-      inviterId: UserId.from(fixture.adminA),
-      email: 'repeat-outsider@fixture.test',
-      ministryAccessLevel: 'volunteer',
-      roleIds: [],
-    });
-
-    expect(second.id).toBe(first.id);
-    expect(second.churchInvitationId).toBe(first.churchInvitationId);
-  });
-
-  it('serializes two concurrent re-invites of the same person into one row rather than a constraint violation', async () => {
-    const mintSameRecipient = () =>
-      manager.mint({
+    await expect(
+      failingManager.mint({
         churchId: ChurchId.from(fixture.churchA.id),
         ministryId: MinistryId.from(fixture.ministryOneA),
         inviterId: UserId.from(fixture.adminA),
         email: `${fixture.existingChurchMemberA}@fixture.test`,
         ministryAccessLevel: 'volunteer',
-        roleIds: [],
-      });
-
-    const [first, second] = await Promise.all([
-      mintSameRecipient(),
-      mintSameRecipient(),
-    ]);
-
-    expect(first.id).toBe(second.id);
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+      }),
+    ).rejects.toThrow('outbox unavailable');
+    expect(await testDb.select().from(ministryInvitation)).toEqual([]);
   });
 });
 
@@ -332,7 +291,7 @@ describe('DbMinistryInvitationManager.resend', () => {
       inviterId: UserId.from(fixture.adminA),
       email: `${fixture.existingChurchMemberA}@fixture.test`,
       ministryAccessLevel: 'volunteer',
-      roleIds: [],
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
 
     const resent = await manager.resend({
@@ -352,7 +311,7 @@ describe('DbMinistryInvitationManager.resend', () => {
       inviterId: UserId.from(fixture.adminA),
       email: `${fixture.existingChurchMemberA}@fixture.test`,
       ministryAccessLevel: 'volunteer',
-      roleIds: [],
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
 
     await expect(

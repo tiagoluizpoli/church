@@ -16,7 +16,7 @@ import {
 } from '@church/db';
 import { env } from '@church/env/server';
 import { hashPassword, makeSignature } from 'better-auth/crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RedemptionController } from '@/api/controllers/redemption-controller';
 import { DbRedemptionManager } from '@/application/db-redemption-manager';
@@ -242,16 +242,100 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({ kind: 'full-success' });
       const [acceptedInvitation] = await testDb
-        .select({ status: ministryInvitation.status })
+        .select({
+          status: ministryInvitation.status,
+          acceptedAt: ministryInvitation.acceptedAt,
+        })
         .from(ministryInvitation)
         .where(eq(ministryInvitation.id, invitation.id));
       expect(acceptedInvitation?.status).toBe('accepted');
+      expect(acceptedInvitation?.acceptedAt).toBeInstanceOf(Date);
       const [membership] = await testDb
         .select()
         .from(ministryMembership)
         .innerJoin(member, eq(member.userId, fixture.existingChurchMemberA))
         .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
       expect(membership).toBeDefined();
+    });
+
+    it('lets a signed-in User from another Church accept a Church offer with two Ministry halves through one Volunteer profile', async () => {
+      // adminB has an account and a Church B membership, but no membership in A.
+      const email = `${fixture.adminB}@fixture.test`;
+      const mintHalf = (input: {
+        ministryId: string;
+        ministryAccessLevel: 'volunteer' | 'leader';
+        roleIds: string[];
+      }) =>
+        invitationManager.mint({
+          churchId: ChurchId.from(fixture.churchA.id),
+          ministryId: MinistryId.from(input.ministryId),
+          inviterId: UserId.from(fixture.adminA),
+          email,
+          ministryAccessLevel: input.ministryAccessLevel,
+          roleIds: input.roleIds.map((id) => RoleId.from(id)),
+        });
+      const first = await mintHalf({
+        ministryId: fixture.ministryOneA,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [fixture.roleInMinistryOneA],
+      });
+      await mintHalf({
+        ministryId: fixture.ministryTwoA,
+        ministryAccessLevel: 'leader',
+        roleIds: [],
+      });
+      const cookie = await createSessionCookie({ userId: fixture.adminB });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${first.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json()).toMatchObject({ kind: 'full-success' });
+      expect(
+        await testDb
+          .select({ role: member.role })
+          .from(member)
+          .where(
+            and(
+              eq(member.userId, fixture.adminB),
+              eq(member.organizationId, fixture.churchA.id),
+            ),
+          ),
+      ).toEqual([{ role: 'member' }]);
+      const profiles = await testDb
+        .select({ id: volunteer.id })
+        .from(volunteer)
+        .where(
+          and(
+            eq(volunteer.userId, fixture.adminB),
+            eq(volunteer.churchId, fixture.churchA.id),
+          ),
+        );
+      expect(profiles).toHaveLength(1);
+      const grants = await testDb
+        .select({
+          volunteerId: ministryMembership.volunteerId,
+          ministryId: ministryMembership.ministryId,
+          ministryAccessLevel: ministryMembership.ministryAccessLevel,
+        })
+        .from(ministryMembership)
+        .where(eq(ministryMembership.volunteerId, profiles[0]?.id ?? ''));
+      expect(grants).toHaveLength(2);
+      expect(grants).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            ministryId: fixture.ministryOneA,
+            ministryAccessLevel: 'volunteer',
+          }),
+          expect.objectContaining({
+            ministryId: fixture.ministryTwoA,
+            ministryAccessLevel: 'leader',
+          }),
+        ]),
+      );
     });
 
     it('refuses acceptance into an archived Ministry, granting nothing and keeping the invitation pending', async () => {
@@ -543,10 +627,22 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({ kind: 'declined' });
       const [declinedInvitation] = await testDb
-        .select({ status: ministryInvitation.status })
+        .select({
+          status: ministryInvitation.status,
+          declinedAt: ministryInvitation.declinedAt,
+        })
         .from(ministryInvitation)
         .where(eq(ministryInvitation.id, invitation.id));
       expect(declinedInvitation?.status).toBe('rejected');
+      expect(declinedInvitation?.declinedAt).toBeInstanceOf(Date);
+      const [audit] = await testDb
+        .select()
+        .from(identityAudit)
+        .where(eq(identityAudit.ministryInvitationId, invitation.id));
+      expect(audit).toMatchObject({
+        action: 'decline',
+        actorId: fixture.existingChurchMemberA,
+      });
     });
   });
 
@@ -679,6 +775,51 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .select({ level: ministryMembership.ministryAccessLevel })
         .from(ministryMembership)
         .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
+      expect(grant?.level).toBe('leader');
+    });
+
+    it('reuses the one active Volunteer for a zero-Role leader invitation', async () => {
+      const [existingProfile] = await testDb
+        .select()
+        .from(volunteer)
+        .where(eq(volunteer.userId, fixture.leaderOfMinistryTwoA));
+      if (!existingProfile) throw new Error('Expected a Volunteer profile.');
+      const invitation = await invitationManager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email: `${fixture.leaderOfMinistryTwoA}@fixture.test`,
+        ministryAccessLevel: 'leader',
+        roleIds: [],
+      });
+      const cookie = await createSessionCookie({
+        userId: fixture.leaderOfMinistryTwoA,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json()).toMatchObject({ kind: 'full-success' });
+      const profiles = await testDb
+        .select()
+        .from(volunteer)
+        .where(eq(volunteer.userId, fixture.leaderOfMinistryTwoA));
+      expect(profiles.map((profile) => profile.id)).toEqual([
+        existingProfile.id,
+      ]);
+      const [grant] = await testDb
+        .select({ level: ministryMembership.ministryAccessLevel })
+        .from(ministryMembership)
+        .where(
+          and(
+            eq(ministryMembership.ministryId, fixture.ministryOneA),
+            eq(ministryMembership.volunteerId, existingProfile.id),
+          ),
+        );
       expect(grant?.level).toBe('leader');
     });
 

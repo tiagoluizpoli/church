@@ -74,7 +74,7 @@ export interface ChurchBootstrapOutboxPayload {
   churchInvitationId: string;
 }
 
-/** Not enqueued anywhere yet (issue #62) — shape follows spec §6.2's bootstrap bullet. */
+/** T1 for an admin Church offer, enqueued by the admin invite (Spec 15); never by provisioning. */
 export interface ChurchBootstrapOutboxMessage extends OutboxMessageBase {
   kind: 'invitation.church-bootstrap';
   payload: ChurchBootstrapOutboxPayload;

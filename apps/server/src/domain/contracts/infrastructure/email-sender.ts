@@ -1,4 +1,5 @@
 import type { CalendarDay, Instant } from '@church/time';
+import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { TransferDigestDeliveryFacts } from '../../notification-kinds';
 
 /**
@@ -17,7 +18,7 @@ export interface ChainedInvitationEmail {
   to: string;
   churchName: string;
   ministryName: string;
-  ministryAccessLevel: string;
+  ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
   inviterName: string;
   expiresAt: Instant;
@@ -26,14 +27,15 @@ export interface ChainedInvitationEmail {
   redemptionUrl: string;
 }
 
-/** N1: a Ministry invitation to an existing Church Member; Spec 15 owns its wording. */
+/** N1: a Ministry invitation to an existing Church Member, in T1's inviter-led wording. */
 export interface MinistryInvitationEmail {
   kind: 'invitation.ministry';
   to: string;
   churchName: string;
   recipientFirstName: string;
+  inviterName: string;
   ministryName: string;
-  ministryAccessLevel: string;
+  ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
   expiresAt: Instant;
   /** The Church Timezone `expiresAt` is read in. */
@@ -73,6 +75,15 @@ export interface PasswordResetEmail {
   linkLifetime: EmailDuration;
 }
 
+/** A pending Ministry half retained by an admin Church offer, as its T1 names it. */
+export interface ChurchOfferMinistryFacts {
+  ministryName: string;
+  ministryAccessLevel: MinistryAccessLevel;
+  roleNames: string[];
+  inviterName: string;
+}
+
+/** T1 for an admin Church offer; an upgraded pair also lists its pending Ministry halves. */
 export interface ChurchBootstrapInvitationEmail {
   kind: 'invitation.church-bootstrap';
   to: string;
@@ -81,6 +92,7 @@ export interface ChurchBootstrapInvitationEmail {
   /** The Church Timezone `expiresAt` is read in. */
   churchTimezone: string;
   redemptionUrl: string;
+  ministryOffers?: ChurchOfferMinistryFacts[];
 }
 
 /**

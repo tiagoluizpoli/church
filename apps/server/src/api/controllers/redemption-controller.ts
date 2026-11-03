@@ -505,22 +505,20 @@ function isRateLimited({
 
 /** The public Church Invitation preview: the Ministry block only for a paired invitation. */
 function toPublicPreview(preview: PublicRedemptionPreview) {
-  const { ministry } = preview;
+  // The public preview names the newest pending half; redemption grants them all.
+  const ministries = preview.ministries.map((half) => ({
+    invitationId: half.ministryInvitationId,
+    name: half.ministryName,
+    ministryAccessLevel: half.ministryAccessLevel,
+    roleNames: half.roleNames,
+  }));
   return {
     email: preview.email,
     churchName: preview.churchName,
     churchAccessLevel: preview.churchAccessLevel,
     expiresAt: fromDate({ date: preview.expiresAt }),
-    ...(ministry
-      ? {
-          ministry: {
-            invitationId: ministry.ministryInvitationId,
-            name: ministry.ministryName,
-            ministryAccessLevel: ministry.ministryAccessLevel,
-            roleNames: ministry.roleNames,
-          },
-        }
-      : {}),
+    ...(ministries[0] ? { ministry: ministries[0] } : {}),
+    ministries,
   };
 }
 

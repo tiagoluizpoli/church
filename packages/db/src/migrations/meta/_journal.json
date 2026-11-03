@@ -246,6 +246,20 @@
       "when": 1793595237806,
       "tag": "0034_usual-setup-indexed-headcounts",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793637907344,
+      "tag": "0035_invitation-closure-facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793640258463,
+      "tag": "0036_invitation-church-email-pending",
+      "breakpoints": true
     }
   ]
 }

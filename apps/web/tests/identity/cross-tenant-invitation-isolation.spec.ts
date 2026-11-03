@@ -84,6 +84,8 @@ test.describe('#68 — cross-tenant isolation of the identity surface', () => {
       persona: journey.churchB.personas.admin,
       ministryId: churchBMinistryId,
       email: journey.emails.target,
+      // This Ministry has no Roles; only a leader offer may have none.
+      ministryAccessLevel: 'leader',
       roleIds: [],
     });
 

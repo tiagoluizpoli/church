@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './setup';
-import { ChurchId, MinistryId, UserId } from '@/domain/branded-ids';
+import { ChurchId, MinistryId, RoleId, UserId } from '@/domain/branded-ids';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -26,7 +26,7 @@ describe('DrizzleMinistryInvitationRepository — worker reads', () => {
         inviterId: UserId.from(fixture.adminA),
         email: `${fixture.memberNoVolunteerA}@fixture.test`,
         ministryAccessLevel: 'volunteer',
-        roleIds: [],
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
       });
 
       const found = await ministryInvitationRepository.findById({
@@ -54,7 +54,7 @@ describe('DrizzleMinistryInvitationRepository — worker reads', () => {
         inviterId: UserId.from(fixture.adminA),
         email: `${fixture.memberNoVolunteerA}@fixture.test`,
         ministryAccessLevel: 'volunteer',
-        roleIds: [],
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
       });
 
       const found = await ministryInvitationRepository.findById({
@@ -73,7 +73,7 @@ describe('DrizzleMinistryInvitationRepository — worker reads', () => {
         inviterId: UserId.from(fixture.adminA),
         email: `${fixture.memberNoVolunteerA}@fixture.test`,
         ministryAccessLevel: 'volunteer',
-        roleIds: [],
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
       });
       const found = await ministryInvitationRepository.findById({
         churchId: ChurchId.from(fixture.churchA.id),
@@ -95,7 +95,7 @@ describe('DrizzleMinistryInvitationRepository — worker reads', () => {
         inviterId: UserId.from(fixture.adminA),
         email: 'outsider-worker-read@fixture.test',
         ministryAccessLevel: 'volunteer',
-        roleIds: [],
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
       });
       const found = await ministryInvitationRepository.findById({
         churchId: ChurchId.from(fixture.churchA.id),

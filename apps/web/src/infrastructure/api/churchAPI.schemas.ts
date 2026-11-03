@@ -320,6 +320,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -450,6 +451,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -1181,6 +1183,11 @@ export type MintMinistryInvitation201 = {
   deliveryStatus: MintMinistryInvitation201DeliveryStatus;
 };
 
+export type MintMinistryInvitation401 = {
+  error: string;
+  message: string;
+};
+
 export type MintMinistryInvitation403 = {
   error: string;
   message: string;
@@ -1189,6 +1196,53 @@ export type MintMinistryInvitation403 = {
 export type MintMinistryInvitation404 = {
   error: string;
   message: string;
+};
+
+export type MintMinistryInvitation409Error = typeof MintMinistryInvitation409Error[keyof typeof MintMinistryInvitation409Error];
+
+
+export const MintMinistryInvitation409Error = {
+  PENDING_MINISTRY_INVITATION_EXISTS: 'PENDING_MINISTRY_INVITATION_EXISTS',
+  INVITEE_ALREADY_MINISTRY_MEMBER: 'INVITEE_ALREADY_MINISTRY_MEMBER',
+} as const;
+
+export type MintMinistryInvitation409ExistingInvitation = {
+  id: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+};
+
+export type MintMinistryInvitation409 = {
+  error: MintMinistryInvitation409Error;
+  message: string;
+  existingInvitation?: MintMinistryInvitation409ExistingInvitation;
+};
+
+export type MintMinistryInvitation422Error = typeof MintMinistryInvitation422Error[keyof typeof MintMinistryInvitation422Error];
+
+
+export const MintMinistryInvitation422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  INVALID_INVITATION_ROLE: 'INVALID_INVITATION_ROLE',
+} as const;
+
+export type MintMinistryInvitation422Reason = typeof MintMinistryInvitation422Reason[keyof typeof MintMinistryInvitation422Reason];
+
+
+export const MintMinistryInvitation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+} as const;
+
+export type MintMinistryInvitation422 = {
+  error: MintMinistryInvitation422Error;
+  message: string;
+  reason?: MintMinistryInvitation422Reason;
+  issues?: unknown[];
 };
 
 export type ResendMinistryInvitation200Kind = typeof ResendMinistryInvitation200Kind[keyof typeof ResendMinistryInvitation200Kind];
@@ -2610,6 +2664,13 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
   ministryName: string;
+  churchName?: string;
+  churchTimezone?: string;
+  inviterName?: string;
+  ministryAccessLevel?: 'leader' | 'volunteer';
+  roleNames?: string[];
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -2768,6 +2829,302 @@ export type MarkAllNotificationsRead422 = {
   message: string;
 };
 
+export type ListInvitationsParams = {
+status?: ListInvitationsStatus;
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+ministryId?: string;
+invitedAs?: ListInvitationsInvitedAs;
+/**
+ * @minLength 1
+ * @maxLength 254
+ */
+email?: string;
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListInvitationsStatus = typeof ListInvitationsStatus[keyof typeof ListInvitationsStatus];
+
+
+export const ListInvitationsStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  declined: 'declined',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export type ListInvitationsInvitedAs = typeof ListInvitationsInvitedAs[keyof typeof ListInvitationsInvitedAs];
+
+
+export const ListInvitationsInvitedAs = {
+  admin: 'admin',
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListInvitations200ItemsItemKind = typeof ListInvitations200ItemsItemKind[keyof typeof ListInvitations200ItemsItemKind];
+
+
+export const ListInvitations200ItemsItemKind = {
+  church: 'church',
+  ministry: 'ministry',
+} as const;
+
+export type ListInvitations200ItemsItemChurchAccessLevel = typeof ListInvitations200ItemsItemChurchAccessLevel[keyof typeof ListInvitations200ItemsItemChurchAccessLevel];
+
+
+export const ListInvitations200ItemsItemChurchAccessLevel = {
+  admin: 'admin',
+} as const;
+
+export type ListInvitations200ItemsItemMinistryAccessLevel = typeof ListInvitations200ItemsItemMinistryAccessLevel[keyof typeof ListInvitations200ItemsItemMinistryAccessLevel];
+
+
+export const ListInvitations200ItemsItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListInvitations200ItemsItemRolesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListInvitations200ItemsItemInvitedBy = {
+  id: string;
+  name: string;
+};
+
+export type ListInvitations200ItemsItemStatus = typeof ListInvitations200ItemsItemStatus[keyof typeof ListInvitations200ItemsItemStatus];
+
+
+export const ListInvitations200ItemsItemStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+  canceled: 'canceled',
+} as const;
+
+export type ListInvitations200ItemsItemDisplayStatus = typeof ListInvitations200ItemsItemDisplayStatus[keyof typeof ListInvitations200ItemsItemDisplayStatus];
+
+
+export const ListInvitations200ItemsItemDisplayStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  declined: 'declined',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export type ListInvitations200ItemsItemClosureActor = {
+  id: string;
+  name: string;
+};
+
+export type ListInvitations200ItemsItemClosure = {
+  actor?: ListInvitations200ItemsItemClosureActor;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  at?: string;
+  reason?: string;
+};
+
+export type ListInvitations200ItemsItemEmailDeliveryState = typeof ListInvitations200ItemsItemEmailDeliveryState[keyof typeof ListInvitations200ItemsItemEmailDeliveryState];
+
+
+export const ListInvitations200ItemsItemEmailDeliveryState = {
+  pending: 'pending',
+  sent: 'sent',
+  failed: 'failed',
+  unavailable: 'unavailable',
+} as const;
+
+export type ListInvitations200ItemsItemEmailDelivery = {
+  state: ListInvitations200ItemsItemEmailDeliveryState;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  sentAt?: string;
+};
+
+export type ListInvitations200ItemsItem = {
+  kind: ListInvitations200ItemsItemKind;
+  id: string;
+  churchInvitationId?: string;
+  ministryId?: string;
+  ministryName?: string;
+  email: string;
+  churchAccessLevel?: ListInvitations200ItemsItemChurchAccessLevel;
+  ministryAccessLevel?: ListInvitations200ItemsItemMinistryAccessLevel;
+  roles: ListInvitations200ItemsItemRolesItem[];
+  invitedBy: ListInvitations200ItemsItemInvitedBy;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+  status: ListInvitations200ItemsItemStatus;
+  displayStatus: ListInvitations200ItemsItemDisplayStatus;
+  closure?: ListInvitations200ItemsItemClosure;
+  emailDelivery: ListInvitations200ItemsItemEmailDelivery;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+     */
+  lastSentAt: string | null;
+};
+
+export type ListInvitations200OptionsMinistriesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListInvitations200OptionsInvitedAsItem = typeof ListInvitations200OptionsInvitedAsItem[keyof typeof ListInvitations200OptionsInvitedAsItem];
+
+
+export const ListInvitations200OptionsInvitedAsItem = {
+  admin: 'admin',
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListInvitations200Options = {
+  ministries: ListInvitations200OptionsMinistriesItem[];
+  invitedAs: ListInvitations200OptionsInvitedAsItem[];
+};
+
+export type ListInvitations200 = {
+  items: ListInvitations200ItemsItem[];
+  nextCursor?: string;
+  options: ListInvitations200Options;
+};
+
+export type ListInvitations401 = {
+  error: string;
+  message: string;
+};
+
+export type ListInvitations403 = {
+  error: string;
+  message: string;
+};
+
+export type ListInvitations404 = {
+  error: string;
+  message: string;
+};
+
+export type MintAdminInvitationBody = {
+  /** @pattern ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
+  email: string;
+};
+
+export type MintAdminInvitation200Kind = typeof MintAdminInvitation200Kind[keyof typeof MintAdminInvitation200Kind];
+
+
+export const MintAdminInvitation200Kind = {
+  church: 'church',
+} as const;
+
+export type MintAdminInvitation200ChurchAccessLevel = typeof MintAdminInvitation200ChurchAccessLevel[keyof typeof MintAdminInvitation200ChurchAccessLevel];
+
+
+export const MintAdminInvitation200ChurchAccessLevel = {
+  admin: 'admin',
+} as const;
+
+export type MintAdminInvitation200DeliveryStatus = typeof MintAdminInvitation200DeliveryStatus[keyof typeof MintAdminInvitation200DeliveryStatus];
+
+
+export const MintAdminInvitation200DeliveryStatus = {
+  pending: 'pending',
+} as const;
+
+export type MintAdminInvitation200Outcome = typeof MintAdminInvitation200Outcome[keyof typeof MintAdminInvitation200Outcome];
+
+
+export const MintAdminInvitation200Outcome = {
+  created: 'created',
+  upgraded: 'upgraded',
+} as const;
+
+export type MintAdminInvitation200 = {
+  kind: MintAdminInvitation200Kind;
+  id: string;
+  churchAccessLevel: MintAdminInvitation200ChurchAccessLevel;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+  redemptionPath: string;
+  deliveryStatus: MintAdminInvitation200DeliveryStatus;
+  outcome: MintAdminInvitation200Outcome;
+};
+
+export type MintAdminInvitation201Kind = typeof MintAdminInvitation201Kind[keyof typeof MintAdminInvitation201Kind];
+
+
+export const MintAdminInvitation201Kind = {
+  church: 'church',
+} as const;
+
+export type MintAdminInvitation201ChurchAccessLevel = typeof MintAdminInvitation201ChurchAccessLevel[keyof typeof MintAdminInvitation201ChurchAccessLevel];
+
+
+export const MintAdminInvitation201ChurchAccessLevel = {
+  admin: 'admin',
+} as const;
+
+export type MintAdminInvitation201DeliveryStatus = typeof MintAdminInvitation201DeliveryStatus[keyof typeof MintAdminInvitation201DeliveryStatus];
+
+
+export const MintAdminInvitation201DeliveryStatus = {
+  pending: 'pending',
+} as const;
+
+export type MintAdminInvitation201Outcome = typeof MintAdminInvitation201Outcome[keyof typeof MintAdminInvitation201Outcome];
+
+
+export const MintAdminInvitation201Outcome = {
+  created: 'created',
+  upgraded: 'upgraded',
+} as const;
+
+export type MintAdminInvitation201 = {
+  kind: MintAdminInvitation201Kind;
+  id: string;
+  churchAccessLevel: MintAdminInvitation201ChurchAccessLevel;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+  redemptionPath: string;
+  deliveryStatus: MintAdminInvitation201DeliveryStatus;
+  outcome: MintAdminInvitation201Outcome;
+};
+
+export type MintAdminInvitation401 = {
+  error: string;
+  message: string;
+};
+
+export type MintAdminInvitation403 = {
+  error: string;
+  message: string;
+};
+
+export type MintAdminInvitation409Error = typeof MintAdminInvitation409Error[keyof typeof MintAdminInvitation409Error];
+
+
+export const MintAdminInvitation409Error = {
+  INVITEE_ALREADY_CHURCH_MEMBER: 'INVITEE_ALREADY_CHURCH_MEMBER',
+  PENDING_CHURCH_INVITATION_EXISTS: 'PENDING_CHURCH_INVITATION_EXISTS',
+} as const;
+
+export type MintAdminInvitation409 = {
+  error: MintAdminInvitation409Error;
+  message: string;
+};
+
 export type PreviewChurchInvitation200ChurchAccessLevel = typeof PreviewChurchInvitation200ChurchAccessLevel[keyof typeof PreviewChurchInvitation200ChurchAccessLevel];
 
 
@@ -2792,6 +3149,22 @@ export type PreviewChurchInvitation200Ministry = {
   roleNames: string[];
 };
 
+export type PreviewChurchInvitation200MinistriesItemMinistryAccessLevel = typeof PreviewChurchInvitation200MinistriesItemMinistryAccessLevel[keyof typeof PreviewChurchInvitation200MinistriesItemMinistryAccessLevel];
+
+
+export const PreviewChurchInvitation200MinistriesItemMinistryAccessLevel = {
+  volunteer: 'volunteer',
+  leader: 'leader',
+} as const;
+
+export type PreviewChurchInvitation200MinistriesItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  invitationId: string;
+  name: string;
+  ministryAccessLevel: PreviewChurchInvitation200MinistriesItemMinistryAccessLevel;
+  roleNames: string[];
+};
+
 export type PreviewChurchInvitation200 = {
   /** @pattern ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
   email: string;
@@ -2800,6 +3173,7 @@ export type PreviewChurchInvitation200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt: string;
   ministry?: PreviewChurchInvitation200Ministry;
+  ministries: PreviewChurchInvitation200MinistriesItem[];
 };
 
 export type PreviewChurchInvitation404Error = typeof PreviewChurchInvitation404Error[keyof typeof PreviewChurchInvitation404Error];
@@ -3182,6 +3556,13 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
   ministryName: string;
+  churchName?: string;
+  churchTimezone?: string;
+  inviterName?: string;
+  ministryAccessLevel?: 'leader' | 'volunteer';
+  roleNames?: string[];
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

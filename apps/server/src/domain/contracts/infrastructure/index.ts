@@ -9,6 +9,7 @@ export * from './email-sender';
 export * from './event.repository';
 export * from './event-template.repository';
 export * from './event-time-block.repository';
+export * from './invitation-list.repository';
 export * from './invitation-verification-code.repository';
 export * from './ministry.repository';
 export * from './ministry-invitation.repository';

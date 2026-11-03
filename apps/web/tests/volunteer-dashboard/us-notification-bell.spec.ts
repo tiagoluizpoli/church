@@ -41,7 +41,7 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
   await expect(bellTrigger.locator('[data-slot="badge"]')).toHaveCount(0);
   await sheet
     .getByRole('button', {
-      name: m.notification_open_context({}, { locale: 'pt-BR' }),
+      name: m.notification_ministry_invitation_action({}, { locale: 'pt-BR' }),
     })
     .click();
   await expect(page).toHaveURL(/\/invitations\/ministry\//);

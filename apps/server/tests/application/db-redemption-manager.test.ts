@@ -68,12 +68,14 @@ function createHarness({
     churchName: 'St. Peter',
     churchAccessLevel: 'member',
     expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-    ministry: {
-      ministryInvitationId: MINISTRY_INVITATION_ID,
-      ministryName: 'Worship',
-      ministryAccessLevel: 'volunteer',
-      roleNames: ['Singer'],
-    },
+    ministries: [
+      {
+        ministryInvitationId: MINISTRY_INVITATION_ID,
+        ministryName: 'Worship',
+        ministryAccessLevel: 'volunteer',
+        roleNames: ['Singer'],
+      },
+    ],
   };
   let previewIndex = 0;
   const invitationRepository = {
@@ -114,6 +116,7 @@ function createHarness({
     async declineChurchInvitation() {
       return 'declined' as const;
     },
+    recordChurchInvitationAcceptance: async () => {},
     recordChurchOnlyPartialAcceptance,
   };
   const unitOfWork: UnitOfWork = {

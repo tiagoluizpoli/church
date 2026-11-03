@@ -168,7 +168,7 @@ interface MintMinistryOnlyInvitationInput {
 async function mintMinistryOnlyInvitation({
   inviteeUserId,
   ministryAccessLevel = 'volunteer',
-  roleIds = [],
+  roleIds = [RoleId.from(fixture.roleInMinistryOneA)],
 }: MintMinistryOnlyInvitationInput) {
   return invitationManager.mint({
     churchId: ChurchId.from(fixture.churchA.id),

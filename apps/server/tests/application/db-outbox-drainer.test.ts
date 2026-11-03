@@ -25,6 +25,7 @@ const outboxRepository = {
 const invitationRepository = {
   findById: vi.fn(),
   resolveRecipientEmail: vi.fn(),
+  findPendingChurchOffer: vi.fn(),
 };
 const churchRepository = { getById: vi.fn(), findUserName: vi.fn() };
 const ministryRepository = { getById: vi.fn() };
@@ -244,22 +245,58 @@ describe('DbOutboxDrainer.drainOnce', () => {
     );
   });
 
-  it('fails terminally for a kind with no delivery implementation yet', async () => {
+  it('fails a Church offer T1 terminally once the offer is no longer pending', async () => {
     const message = buildMessage({
       kind: 'invitation.church-bootstrap',
       payload: { churchInvitationId: 'church-invitation-1' },
     });
     outboxRepository.claimPending.mockResolvedValue([message]);
+    invitationRepository.findPendingChurchOffer.mockResolvedValue(null);
 
     const result = await createDrainer().drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
-    expect(invitationRepository.findById).not.toHaveBeenCalled();
     expect(emailSender.deliver).not.toHaveBeenCalled();
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'failed',
-        lastError: expect.stringContaining('invitation.church-bootstrap'),
+        lastError: 'Invitation is no longer pending',
+      }),
+    );
+  });
+
+  it('sends the Church offer T1 for the halves still pending when a sibling closed meanwhile', async () => {
+    const message = buildMessage({
+      kind: 'invitation.church-bootstrap',
+      payload: { churchInvitationId: 'church-invitation-1' },
+    });
+    outboxRepository.claimPending.mockResolvedValue([message]);
+    invitationRepository.findPendingChurchOffer.mockResolvedValue({
+      email: 'invitee@example.com',
+      churchAccessLevel: 'admin',
+      expiresAt: new Date('2026-08-01T00:00:00Z'),
+      pendingMinistryInvitationIds: ['invitation_1', 'invitation_2'],
+    });
+    invitationRepository.findById.mockImplementation(
+      async ({ ministryInvitationId }: { ministryInvitationId: string }) =>
+        buildInvitation({
+          id: ministryInvitationId,
+          status:
+            ministryInvitationId === 'invitation_2' ? 'rejected' : 'pending',
+        }),
+    );
+    emailSender.deliver.mockResolvedValue({ providerMessageId: 'provider-1' });
+
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.prepare).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          ministryOffers: [
+            expect.objectContaining({ inviterName: 'Pastor Ana' }),
+          ],
+        }),
       }),
     );
   });
@@ -276,6 +313,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
       failedMessage,
     ]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
+    invitationRepository.findPendingChurchOffer.mockResolvedValue(null);
     emailSender.deliver.mockResolvedValue({ providerMessageId: 'provider-1' });
 
     const result = await createDrainer().drainOnce({ limit: 10 });

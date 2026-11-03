@@ -9,6 +9,8 @@ export interface RenderedNotification {
   title: string;
   body: string;
   kindLabel: string;
+  /** The detail action's words when the kind names its own. */
+  actionLabel?: string;
 }
 
 /**
@@ -22,13 +24,9 @@ export function renderNotification(
   switch (item.kind) {
     case 'ministry_invitation':
       return {
-        title: m.notification_ministry_invitation_title({
-          ministryName: item.data.ministryName,
-        }),
-        body: m.notification_ministry_invitation_body({
-          ministryName: item.data.ministryName,
-        }),
+        ...ministryInvitationWords(item.data),
         kindLabel: m.notification_kind_ministry_invitation(),
+        actionLabel: m.notification_ministry_invitation_action(),
       };
     case 'availability_opened': {
       const facts = availabilityFacts(item.data);
@@ -77,6 +75,52 @@ export function renderNotification(
         kindLabel: m.notification_unknown_kind(),
       };
   }
+}
+
+type MinistryInvitationData = Extract<
+  GetNotifications200ItemsItem,
+  { kind: 'ministry_invitation' }
+>['data'];
+
+/**
+ * T1's inviter-led offer from the frozen facts. A row stored before those
+ * facts existed keeps its original words rather than guessing them.
+ */
+function ministryInvitationWords(data: MinistryInvitationData) {
+  const { ministryName, churchName, churchTimezone, inviterName } = data;
+  const { ministryAccessLevel, roleNames, expiresAt } = data;
+  if (
+    churchName === undefined ||
+    churchTimezone === undefined ||
+    inviterName === undefined ||
+    ministryAccessLevel === undefined ||
+    roleNames === undefined ||
+    expiresAt === undefined
+  ) {
+    return {
+      title: m.notification_ministry_invitation_title({ ministryName }),
+      body: m.notification_ministry_invitation_body({ ministryName }),
+    };
+  }
+  const names = { inviterName, ministryName, churchName };
+  const isLeader = ministryAccessLevel === 'leader';
+  const expires = m.email_invitation_expires({
+    expiresAt: formatInstantOf({ value: expiresAt, timeZone: churchTimezone }),
+  });
+  return {
+    title: isLeader
+      ? m.email_invitation_lead_title(names)
+      : m.email_invitation_serve_title(names),
+    body: [
+      isLeader
+        ? m.email_invitation_lead_body_inviter(names)
+        : m.email_invitation_serve_body_inviter(names),
+      ...(roleNames.length > 0
+        ? [m.email_invitation_roles({ roles: roleNames.join(', ') })]
+        : []),
+      expires,
+    ].join('\n'),
+  };
 }
 
 interface AvailabilityData {

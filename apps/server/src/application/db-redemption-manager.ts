@@ -1,5 +1,10 @@
 import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
-import type { ChurchId, VolunteerId } from '../domain/branded-ids';
+import type {
+  ChurchId,
+  ChurchInvitationId,
+  MinistryInvitationId,
+  VolunteerId,
+} from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
   AcceptExistingMemberInput,
@@ -76,6 +81,7 @@ interface AdmitNewPersonInput {
 interface AdmittedChurchOnly {
   kind: 'church-only';
   sourceChurchId: ChurchId;
+  /** The headline half named to the caller; every half stays pending. */
   ministry: PublicRedemptionMinistry;
   sessionCookie: string;
 }
@@ -118,6 +124,13 @@ type ResolvedInvitationContext =
   | { status: 'identity-mismatch'; addressedEmail: string }
   | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
   | { status: 'redeemable'; context: MinistryInvitationContext };
+
+interface AcceptWithSiblingsInput {
+  ministryInvitation: MinistryInvitation;
+  userId: AcceptExistingMemberInput['userId'];
+  acceptedAt: Date;
+  correlationId: string;
+}
 
 interface IsInvitationRedeemableInput {
   ministryInvitation: MinistryInvitation;
@@ -256,7 +269,8 @@ export class DbRedemptionManager implements RedemptionManager {
       this.failureLog.record({
         reason,
         churchInvitationId,
-        ministryInvitationId: preview.ministry?.ministryInvitationId ?? null,
+        ministryInvitationId:
+          preview.ministries[0]?.ministryInvitationId ?? null,
         correlationId: idempotencyKey,
         errorName: cause instanceof Error ? cause.name : typeof cause,
       });
@@ -292,41 +306,54 @@ export class DbRedemptionManager implements RedemptionManager {
       sessionCookie,
       tx,
     });
+    await this.redemptionRepository.recordChurchInvitationAcceptance({
+      churchInvitationId: preview.churchInvitationId,
+      userId,
+      acceptedAt: now,
+      tx,
+    });
     await this.identityGateway.setActiveChurch({
       churchId: preview.churchId,
       sessionCookie,
       tx,
     });
-    const { ministry } = preview;
-    if (!ministry)
+    const [headline] = preview.ministries;
+    if (!headline)
       return { kind: 'full-success', volunteerId: null, sessionCookie };
     const grant = {
       churchId: preview.churchId,
-      ministryInvitationId: ministry.ministryInvitationId,
       userId,
       correlationId,
       tx,
     };
     try {
-      const volunteerId =
-        await this.redemptionRepository.acceptPendingMinistryInvitation({
-          ...grant,
-          acceptedAt: now,
-          auditAction: 'acceptance',
-        });
+      // Every pending half joins the one Volunteer profile in this transaction.
+      let volunteerId: VolunteerId | null = null;
+      for (const half of preview.ministries) {
+        volunteerId =
+          await this.redemptionRepository.acceptPendingMinistryInvitation({
+            ...grant,
+            ministryInvitationId: half.ministryInvitationId,
+            acceptedAt: now,
+            auditAction: 'acceptance',
+          });
+      }
       return { kind: 'full-success', volunteerId, sessionCookie };
     } catch (error) {
       if (!(error instanceof CrossChurchVolunteerConflictError))
         throw new MinistryGrantFailure({ cause: error });
       // Refused before any grant write: the Church admission still commits.
-      await this.redemptionRepository.recordChurchOnlyPartialAcceptance({
-        ...grant,
-        recordedAt: now,
-      });
+      for (const half of preview.ministries) {
+        await this.redemptionRepository.recordChurchOnlyPartialAcceptance({
+          ...grant,
+          ministryInvitationId: half.ministryInvitationId,
+          recordedAt: now,
+        });
+      }
       return {
         kind: 'church-only',
         sourceChurchId: error.sourceChurchId,
-        ministry,
+        ministry: headline,
         sessionCookie,
       };
     }
@@ -419,6 +446,44 @@ export class DbRedemptionManager implements RedemptionManager {
         tx,
       }),
     );
+  }
+
+  /**
+   * A chained Church offer may carry several Ministry halves; accepting one
+   * grants every still-pending sibling in the same transaction, so none is lost.
+   */
+  private async acceptWithSiblings({
+    ministryInvitation,
+    userId,
+    acceptedAt,
+    correlationId,
+  }: AcceptWithSiblingsInput): Promise<VolunteerId> {
+    return this.unitOfWork.run(async (tx) => {
+      const siblingIds = ministryInvitation.churchInvitationId
+        ? await this.invitationRepository.findPendingSiblingMinistryInvitationIds(
+            {
+              churchInvitationId: ministryInvitation.churchInvitationId,
+              exceptMinistryInvitationId: ministryInvitation.id,
+              now: acceptedAt,
+              tx,
+            },
+          )
+        : [];
+      let volunteerId: VolunteerId | null = null;
+      for (const id of [ministryInvitation.id, ...siblingIds]) {
+        volunteerId =
+          await this.redemptionRepository.acceptPendingMinistryInvitation({
+            churchId: ministryInvitation.churchId,
+            ministryInvitationId: id as MinistryInvitationId,
+            userId,
+            acceptedAt,
+            correlationId,
+            auditAction: 'ministry_acceptance',
+            tx,
+          });
+      }
+      return volunteerId as VolunteerId;
+    });
   }
 
   /**
@@ -533,22 +598,31 @@ export class DbRedemptionManager implements RedemptionManager {
       resolved.context.churchInvitationStatus === 'pending'
     ) {
       try {
-        await this.identityGateway.acceptChurchInvitation({
-          churchInvitationId: ministryInvitation.churchInvitationId as string,
-          sessionCookie,
+        await this.unitOfWork.run(async (tx) => {
+          const churchInvitationId =
+            ministryInvitation.churchInvitationId as ChurchInvitationId;
+          await this.identityGateway.acceptChurchInvitation({
+            churchInvitationId,
+            sessionCookie,
+            tx,
+          });
+          await this.redemptionRepository.recordChurchInvitationAcceptance({
+            churchInvitationId,
+            userId,
+            acceptedAt: now,
+            tx,
+          });
         });
       } catch {
         return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
       }
     }
     try {
-      const volunteerId = await this.acceptPendingMinistryInvitation({
-        churchId: ministryInvitation.churchId,
-        ministryInvitationId,
+      const volunteerId = await this.acceptWithSiblings({
+        ministryInvitation,
         userId,
         acceptedAt: now,
         correlationId: idempotencyKey,
-        auditAction: 'ministry_acceptance',
       });
       return { kind: 'full-success', volunteerId };
     } catch (error) {

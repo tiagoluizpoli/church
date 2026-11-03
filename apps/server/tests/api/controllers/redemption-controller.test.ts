@@ -89,7 +89,7 @@ describe('RedemptionController', () => {
       churchName: 'St. Peter',
       churchAccessLevel: 'admin',
       expiresAt: new Date('2026-08-03T12:00:00.000Z'),
-      ministry: null,
+      ministries: [],
     });
 
     const response = await app.inject({
@@ -103,6 +103,7 @@ describe('RedemptionController', () => {
       churchName: 'St. Peter',
       churchAccessLevel: 'admin',
       expiresAt: '2026-08-03T12:00:00.000Z',
+      ministries: [],
     });
   });
 

@@ -7,6 +7,7 @@ export const VALIDATION_REASONS = [
   'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   'USUAL_SETUP_EMPTY',
   'INVALID_SHIFT_INDEX',
+  'INVITATION_ROLE_REQUIRED',
 ] as const;
 export type ValidationReason = (typeof VALIDATION_REASONS)[number];
 

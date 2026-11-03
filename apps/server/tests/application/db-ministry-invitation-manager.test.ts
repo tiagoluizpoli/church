@@ -27,16 +27,17 @@ const fakeTx = { id: 'fake-tx' } as never;
 
 const repo = {
   acquireMintLock: vi.fn(),
+  acquireChurchOfferLock: vi.fn(),
   acquireResendLock: vi.fn(),
   findChurchMemberByEmail: vi.fn(),
-  findPendingByInvitee: vi.fn(),
-  findPendingByChurchInvitation: vi.fn(),
+  findPendingForAddress: vi.fn(),
+  alignPairedExpiry: vi.fn(),
+  supersedeUnsentChainedOutbox: vi.fn(),
   findPendingById: vi.fn(),
   hasActiveMinistryMembership: vi.fn(),
   findPendingChurchInvitationByEmail: vi.fn(),
-  createChainedChurchInvitation: vi.fn(),
+  createChurchInvitation: vi.fn(),
   create: vi.fn(),
-  refreshExpiry: vi.fn(),
   applyResend: vi.fn(),
   enqueueOutboxMessage: vi.fn(),
 };
@@ -73,7 +74,7 @@ function baseMintInput() {
     inviterId: adminId,
     email: 'outsider@example.com',
     ministryAccessLevel: 'volunteer' as const,
-    roleIds: [] as RoleId[],
+    roleIds: [roleId],
   };
 }
 
@@ -85,7 +86,7 @@ beforeEach(() => {
   roleRepository.lockActiveForUse.mockResolvedValue([{ id: roleId }]);
   repo.findChurchMemberByEmail.mockResolvedValue(null);
   repo.findPendingChurchInvitationByEmail.mockResolvedValue(null);
-  repo.createChainedChurchInvitation.mockResolvedValue({
+  repo.createChurchInvitation.mockResolvedValue({
     id: 'church-invitation-1',
     expiresAt: new Date('2030-01-01T00:00:00Z'),
   });
@@ -146,7 +147,6 @@ describe('DbMinistryInvitationManager.mint — scope resolution', () => {
     await expect(
       createManager().mint({ ...baseMintInput(), roleIds: [roleId] }),
     ).rejects.toBeInstanceOf(InvalidInvitationRoleError);
-    expect(repo.acquireMintLock).not.toHaveBeenCalled();
     expect(repo.create).not.toHaveBeenCalled();
   });
 });
@@ -175,7 +175,6 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
   it('creates a Ministry-only invitation for an existing Church Member with no pending row', async () => {
     repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
     repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
-    repo.findPendingByInvitee.mockResolvedValueOnce(null);
     repo.create.mockResolvedValueOnce({
       id: 'invitation-1',
       kind: 'ministry-only',
@@ -187,7 +186,6 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ churchId, ministryId, inviteeUserId }),
     );
-    expect(repo.refreshExpiry).not.toHaveBeenCalled();
     expect(notifications.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'ministry_invitation',
@@ -198,26 +196,10 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
     expect(repo.enqueueOutboxMessage).not.toHaveBeenCalled();
   });
 
-  it('refreshes rather than duplicates when a pending invitee row already exists', async () => {
-    const existing = { id: 'invitation-1', kind: 'ministry-only' };
-    repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
-    repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
-    repo.findPendingByInvitee.mockResolvedValueOnce(existing);
-    repo.refreshExpiry.mockResolvedValueOnce(existing);
-
-    const invitation = await createManager().mint(baseMintInput());
-
-    expect(invitation).toBe(existing);
-    expect(repo.create).not.toHaveBeenCalled();
-    expect(repo.refreshExpiry).toHaveBeenCalledWith(
-      expect.objectContaining({ churchId, ministryInvitation: existing }),
-    );
-  });
-
   it('mints a chained pair for a recipient outside the Church with no pending Church Invitation', async () => {
     const invitation = await createManager().mint(baseMintInput());
 
-    expect(repo.createChainedChurchInvitation).toHaveBeenCalledWith(
+    expect(repo.createChurchInvitation).toHaveBeenCalledWith(
       expect.objectContaining({ churchId, email: 'outsider@example.com' }),
     );
     expect(repo.create).toHaveBeenCalledWith(
@@ -237,7 +219,7 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
 
     await createManager().mint(baseMintInput());
 
-    expect(repo.createChainedChurchInvitation).not.toHaveBeenCalled();
+    expect(repo.createChurchInvitation).not.toHaveBeenCalled();
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         churchInvitationId: 'existing-church-invitation',
@@ -465,7 +447,6 @@ describe('DbMinistryInvitation lifetime', () => {
   it('mints a Ministry-only invitation expiring after the injected lifetime', async () => {
     repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
     repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
-    repo.findPendingByInvitee.mockResolvedValueOnce(null);
     repo.create.mockResolvedValueOnce({
       id: 'invitation-1',
       kind: 'ministry-only',
@@ -502,7 +483,6 @@ describe('DbMinistryInvitation lifetime', () => {
   it('defaults to seven days', async () => {
     repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
     repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
-    repo.findPendingByInvitee.mockResolvedValueOnce(null);
     repo.create.mockResolvedValueOnce({
       id: 'invitation-1',
       kind: 'ministry-only',

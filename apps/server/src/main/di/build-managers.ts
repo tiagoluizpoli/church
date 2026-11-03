@@ -7,6 +7,7 @@ import {
   DbCycleManager,
   DbEventManager,
   DbEventTemplateManager,
+  DbInvitationListManager,
   DbMinistryInvitationManager,
   DbMinistryManager,
   DbMinistryRoleManager,
@@ -50,6 +51,7 @@ export type Managers = Pick<
   | 'availabilityCheckManager'
   | 'activeChurchSelectionManager'
   | 'notificationManager'
+  | 'invitationListManager'
 >;
 
 export interface BuildManagersInput {
@@ -88,6 +90,7 @@ export function buildManagers({
     sectorRepository,
     eventTimeBlockRepository,
     notificationRepository,
+    invitationListRepository,
     unitOfWork,
   },
   services: {
@@ -320,6 +323,13 @@ export function buildManagers({
       defaultPageSize: config.notifications.pageSize,
     });
 
+  const invitationListManager =
+    overrides.invitationListManager ??
+    new DbInvitationListManager({
+      invitationListRepository,
+      defaultPageSize: config.invitations.pageSize,
+    });
+
   return {
     assignmentManager,
     eventManager,
@@ -339,5 +349,6 @@ export function buildManagers({
     availabilityCheckManager,
     activeChurchSelectionManager,
     notificationManager,
+    invitationListManager,
   };
 }

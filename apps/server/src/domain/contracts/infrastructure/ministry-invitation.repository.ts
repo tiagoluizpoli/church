@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   ChurchId,
   ChurchInvitationId,
@@ -16,6 +17,39 @@ export interface AcquireMintLockInput {
   tx: TransactionContext;
 }
 
+export interface AcquireChurchOfferLockInput {
+  churchId: ChurchId;
+  /** Already normalized (`normalizeInvitationEmail`). */
+  email: string;
+  tx: TransactionContext;
+}
+
+export interface FindPendingForAddressInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  /** Already normalized (`normalizeInvitationEmail`). */
+  email: string;
+  tx?: TransactionContext;
+}
+
+export interface PendingMinistryInvitationReference {
+  id: string;
+  createdAt: Instant;
+}
+
+export interface AlignPairedExpiryInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  expiresAt: Date;
+  tx?: TransactionContext;
+}
+
+export interface SupersedeUnsentChainedOutboxInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx?: TransactionContext;
+}
+
 export interface AcquireResendLockInput {
   ministryInvitationId: string;
   tx: TransactionContext;
@@ -24,20 +58,6 @@ export interface AcquireResendLockInput {
 export interface FindChurchMemberByEmailInput {
   churchId: ChurchId;
   email: string;
-  tx?: TransactionContext;
-}
-
-export interface FindPendingByInviteeInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  inviteeUserId: UserId;
-  tx?: TransactionContext;
-}
-
-export interface FindPendingByChurchInvitationInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  churchInvitationId: string;
   tx?: TransactionContext;
 }
 
@@ -61,16 +81,40 @@ export interface FindPendingChurchInvitationByEmailInput {
   tx?: TransactionContext;
 }
 
+export type ChurchInvitationAccessLevel = 'member' | 'admin';
+
 export interface ChurchInvitationSummary {
   id: string;
   expiresAt: Date;
+  churchAccessLevel: ChurchInvitationAccessLevel;
 }
 
-export interface CreateChainedChurchInvitationInput {
+export interface CreateChurchInvitationInput {
   churchId: ChurchId;
   email: string;
   inviterId: UserId;
+  churchAccessLevel: ChurchInvitationAccessLevel;
   tx?: TransactionContext;
+}
+
+export interface UpgradeChurchInvitationToAdminInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx: TransactionContext;
+}
+
+export interface FindPendingChurchOfferInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+}
+
+/** A pending Church offer as its T1 describes it: the grant and every pending half. */
+export interface PendingChurchOffer {
+  email: string;
+  churchAccessLevel: ChurchInvitationAccessLevel;
+  expiresAt: Date;
+  /** Oldest first. */
+  pendingMinistryInvitationIds: string[];
 }
 
 export interface CreateMinistryInvitationInput {
@@ -81,13 +125,6 @@ export interface CreateMinistryInvitationInput {
   inviteeUserId?: UserId;
   churchInvitationId?: string;
   roleIds: RoleId[];
-  expiresAt: Date;
-  tx?: TransactionContext;
-}
-
-export interface RefreshMinistryInvitationExpiryInput {
-  churchId: ChurchId;
-  ministryInvitation: MinistryInvitation;
   expiresAt: Date;
   tx?: TransactionContext;
 }
@@ -127,6 +164,14 @@ export interface ResolveRecipientEmailInput {
 export interface FindPublicRedemptionPreviewInput {
   churchInvitationId: ChurchInvitationId;
   now: Date;
+}
+
+export interface FindPendingSiblingMinistryInvitationsInput {
+  churchInvitationId: string;
+  /** The half already being redeemed; excluded from the result. */
+  exceptMinistryInvitationId: string;
+  now: Date;
+  tx?: TransactionContext;
 }
 
 export interface FindMinistryInvitationContextInput {
@@ -170,11 +215,10 @@ export interface EnqueueOutboxMessageInput {
 
 export interface MinistryInvitationRepository {
   /**
-   * Serializes concurrent mints for the same (Ministry, email) pair behind a
-   * transaction-scoped advisory lock, so two simultaneous re-invites can't
-   * both observe "no pending row" and both attempt `create` — the second
-   * would otherwise hit the partial unique index as a raw constraint
-   * violation instead of the idempotent refresh the caller expects.
+   * Serializes concurrent mints for the same (Ministry, normalized email)
+   * pair behind a transaction-scoped advisory lock, so two simultaneous
+   * invites can't both observe "no pending row" and both attempt `create`.
+   * The partial unique indexes stay as the backstop.
    */
   acquireMintLock(input: AcquireMintLockInput): Promise<void>;
 
@@ -186,18 +230,27 @@ export interface MinistryInvitationRepository {
    */
   acquireResendLock(input: AcquireResendLockInput): Promise<void>;
 
+  /**
+   * Serializes every Church-offer resolution for one (Active Church, address)
+   * behind a transaction-scoped advisory lock: paired Ministry mint and the
+   * admin invite share it. Lock order: this lock, then `acquireMintLock`, then
+   * row locks.
+   */
+  acquireChurchOfferLock(input: AcquireChurchOfferLockInput): Promise<void>;
+
   /** The userId of an existing Church Member whose email matches — `null` for anyone else. */
   findChurchMemberByEmail(
     input: FindChurchMemberByEmailInput,
   ): Promise<UserId | null>;
 
-  findPendingByInvitee(
-    input: FindPendingByInviteeInput,
-  ): Promise<MinistryInvitation | null>;
-
-  findPendingByChurchInvitation(
-    input: FindPendingByChurchInvitationInput,
-  ): Promise<MinistryInvitation | null>;
+  /**
+   * The stored-pending Ministry offer, expired included, addressed to this
+   * address in this Ministry — directly to the Member holding it or through
+   * a Church Invitation sent to it.
+   */
+  findPendingForAddress(
+    input: FindPendingForAddressInput,
+  ): Promise<PendingMinistryInvitationReference | null>;
 
   /** Scoped to Church and Ministry, and to `pending` — resend's target must already be redeemable. */
   findPendingById(
@@ -227,6 +280,11 @@ export interface MinistryInvitationRepository {
     input: FindPublicRedemptionPreviewInput,
   ): Promise<PublicRedemptionPreview | null>;
 
+  /** Ids of the other still-pending, unexpired Ministry halves of one Church Invitation. */
+  findPendingSiblingMinistryInvitationIds(
+    input: FindPendingSiblingMinistryInvitationsInput,
+  ): Promise<string[]>;
+
   /** Kind-agnostic, any-status lookup backing the existing-member and decline flows (§7.3). */
   findMinistryInvitationContext(
     input: FindMinistryInvitationContextInput,
@@ -245,28 +303,58 @@ export interface MinistryInvitationRepository {
     input: HasActiveMinistryMembershipInput,
   ): Promise<boolean>;
 
-  /** A still-pending chained Church Invitation previously minted for this email, if any — re-inviting must reuse it rather than mint a second one. */
+  /**
+   * The stored-pending Church Invitation (member or admin, expired included)
+   * for this address, row-locked so acceptance or an upgrade cannot race the
+   * caller. Re-inviting must reuse it rather than mint a second one.
+   */
   findPendingChurchInvitationByEmail(
     input: FindPendingChurchInvitationByEmailInput,
   ): Promise<ChurchInvitationSummary | null>;
 
-  /** Writes a chained Better Auth `invitation` row directly, the same way Church Provisioning does. */
-  createChainedChurchInvitation(
-    input: CreateChainedChurchInvitationInput,
+  /**
+   * Writes a Better Auth `invitation` row directly, the same way Church
+   * Provisioning does. The pending Church/address index backstop surfaces as
+   * `PendingChurchInvitationExistsError`.
+   */
+  createChurchInvitation(
+    input: CreateChurchInvitationInput,
   ): Promise<ChurchInvitationSummary>;
+
+  /** Raises a still-pending Church offer to admin in place; throws if it is no longer pending. */
+  upgradeChurchInvitationToAdmin(
+    input: UpgradeChurchInvitationToAdminInput,
+  ): Promise<void>;
+
+  /** The T1 producer's read: `null` once the offer is no longer pending. */
+  findPendingChurchOffer(
+    input: FindPendingChurchOfferInput,
+  ): Promise<PendingChurchOffer | null>;
 
   create(input: CreateMinistryInvitationInput): Promise<MinistryInvitation>;
 
-  refreshExpiry(
-    input: RefreshMinistryInvitationExpiryInput,
-  ): Promise<MinistryInvitation>;
+  /**
+   * Reissues a pending Church Invitation's validity and aligns every
+   * still-pending Ministry half on it. Access Levels, Roles and resend
+   * throttle state are untouched.
+   */
+  alignPairedExpiry(input: AlignPairedExpiryInput): Promise<void>;
+
+  /**
+   * Marks the still-unsent chained T1 outbox rows of a Church Invitation's
+   * halves as failed (the outbox's terminal state), so an upgrade's one
+   * current T1 is the only email. Rows are kept, never deleted.
+   */
+  supersedeUnsentChainedOutbox(
+    input: SupersedeUnsentChainedOutboxInput,
+  ): Promise<void>;
 
   /** Restarts a pending Church Invitation's expiry, as a paired resend does. */
   refreshChurchInvitationExpiry(
     input: RefreshChurchInvitationExpiryInput,
   ): Promise<void>;
 
-  /** Refreshes `expiresAt` and persists resend-throttle bookkeeping in one write — resend's variant of `refreshExpiry`. */
+  /** Refreshes `expiresAt` and persists resend-throttle bookkeeping in one write. */
   applyResend(input: ApplyResendInput): Promise<MinistryInvitation>;
 
   enqueueOutboxMessage(input: EnqueueOutboxMessageInput): Promise<void>;

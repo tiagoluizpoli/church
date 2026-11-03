@@ -16,6 +16,7 @@ import type {
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
   ChainedInvitationEmail,
+  ChurchBootstrapInvitationEmail,
   EmailLocale,
   EmailPayload,
   EmailSender,
@@ -25,6 +26,7 @@ import type { MinistryInvitationRepository } from '../domain/contracts/infrastru
 import type {
   ChainedInvitationOutboxMessage,
   ChannelOutcomes,
+  ChurchBootstrapOutboxMessage,
   NotificationOutboxMessage,
   OutboxEmailDelivery,
   OutboxMessage,
@@ -129,12 +131,74 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       case 'notification':
         return this.processNotificationMessage({ message });
       case 'invitation.church-bootstrap':
-        await this.failTerminally({
-          message,
-          reason: `Delivery not yet implemented for kind "${message.kind}"`,
-        });
-        return 'failed';
+        return this.processChurchOfferMessage({ message });
     }
+  }
+
+  /**
+   * T1 for an admin Church offer. Only the admin invite enqueues this kind;
+   * first-admin provisioning never does, so it stays print-only. An upgraded
+   * pair names its pending Ministry halves in the same email.
+   */
+  private async processChurchOfferMessage({
+    message,
+  }: ProcessChurchOfferMessageInput): Promise<'sent' | 'failed'> {
+    const { churchId } = message;
+    const { churchInvitationId } = message.payload;
+    const offer = await this.invitationRepository.findPendingChurchOffer({
+      churchId,
+      churchInvitationId,
+    });
+    if (!offer) {
+      await this.failTerminally({
+        message,
+        reason: 'Invitation is no longer pending',
+      });
+      return 'failed';
+    }
+    if (message.emailDelivery) {
+      return this.deliverEmail({ message, delivery: message.emailDelivery });
+    }
+
+    const [church, ...halves] = await Promise.all([
+      this.churchRepository.getById({ id: churchId }),
+      ...offer.pendingMinistryInvitationIds.map((ministryInvitationId) =>
+        this.loadPendingInvitationFacts({ churchId, ministryInvitationId }),
+      ),
+    ]);
+    // A half that closed meanwhile, or lacks its frozen inviter name, is left
+    // out; the offer itself being pending is what makes this T1 worth sending.
+    const ministryOffers = halves.filter((half) => half !== null);
+    if (ministryOffers.length !== halves.length) {
+      console.warn(
+        `[Outbox] church offer ${churchInvitationId} T1 omits ${halves.length - ministryOffers.length} unavailable Ministry half(s)`,
+      );
+    }
+
+    const payload: ChurchBootstrapInvitationEmail = {
+      kind: message.kind,
+      to: offer.email,
+      churchName: church.name,
+      expiresAt: fromDate({ date: offer.expiresAt }),
+      churchTimezone: church.timezone,
+      redemptionUrl: webLink({
+        baseUrl: this.webBaseUrl,
+        path: `/invitations/church/${churchInvitationId}`,
+      }),
+      ministryOffers: ministryOffers.map(
+        ({ ministryName, ministryAccessLevel, roleNames, inviterName }) => ({
+          ministryName,
+          ministryAccessLevel,
+          roleNames,
+          inviterName,
+        }),
+      ),
+    };
+    return this.prepareAndDeliver({
+      message,
+      payload,
+      locale: this.localeFor({ email: offer.email }),
+    });
   }
 
   private async processInvitationMessage({
@@ -212,7 +276,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     });
   }
 
-  /** The invitation's display facts, read now; `null` once it is no longer pending. */
+  /** The invitation's display facts, read now; `null` once it is no longer
+   * pending or its inviter has no name. */
   private async loadPendingInvitationFacts({
     churchId,
     ministryInvitationId,
@@ -222,7 +287,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryInvitationId,
     });
     if (!invitation || invitation.status !== 'pending') return null;
-    const [church, ministry, roles] = await Promise.all([
+    const [church, ministry, roles, inviterName] = await Promise.all([
       this.churchRepository.getById({ id: churchId }),
       this.ministryRepository.getById({ churchId, id: invitation.ministryId }),
       Promise.all(
@@ -230,13 +295,17 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           this.roleRepository.getById({ churchId, id: roleId }),
         ),
       ),
+      this.churchRepository.findUserName({ userId: invitation.inviterId }),
     ]);
+    // N1 names who invited, as T1 does; without a name there is nothing correct to send.
+    if (inviterName === null) return null;
     return {
       ministryInvitationId: invitation.id,
       ministryId: invitation.ministryId,
       ministryName: ministry.name,
       churchName: church.name,
       churchTimezone: church.timezone,
+      inviterName,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
       expiresAt: invitation.expiresAt,
@@ -349,9 +418,17 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       });
       if (!resolved) {
         if (kind === 'ministry_invitation') {
+          const stillPending = await this.invitationRepository.findById({
+            churchId: message.churchId,
+            ministryInvitationId: (request.data as MinistryInvitationSubject)
+              .ministryInvitationId,
+          });
           await this.failTerminally({
             message,
-            reason: 'Invitation is no longer pending',
+            reason:
+              stillPending?.status === 'pending'
+                ? 'Invitation inviter could not be resolved'
+                : 'Invitation is no longer pending',
           });
           return 'failed';
         }
@@ -596,6 +673,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }
 }
 
+interface MinistryInvitationSubject {
+  ministryInvitationId: string;
+}
+
 interface DbOutboxDrainerDependencies {
   config: AppConfig;
   outboxRepository: OutboxRepository;
@@ -622,6 +703,10 @@ interface ProcessOneInput {
 
 interface ProcessInvitationMessageInput {
   message: ChainedInvitationOutboxMessage;
+}
+
+interface ProcessChurchOfferMessageInput {
+  message: ChurchBootstrapOutboxMessage;
 }
 
 interface LoadPendingInvitationFactsInput {

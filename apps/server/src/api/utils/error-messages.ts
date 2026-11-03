@@ -4,6 +4,10 @@ import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
 import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
+import {
+  type ExistingInvitationReference,
+  PendingMinistryInvitationExistsError,
+} from '@/domain/errors/pending-ministry-invitation-exists';
 import { RoleInUseError } from '@/domain/errors/role-in-use';
 import { SectorInUseError } from '@/domain/errors/sector-in-use';
 import {
@@ -21,6 +25,7 @@ export const VALIDATION_REASON_MESSAGES: Record<
     m.error_validation_duplicate_template_block_label,
   USUAL_SETUP_EMPTY: m.error_validation_usual_setup_empty,
   INVALID_SHIFT_INDEX: m.error_validation_invalid_shift_index,
+  INVITATION_ROLE_REQUIRED: m.error_validation_invitation_role_required,
 };
 
 interface DomainErrorMessageInput {
@@ -43,6 +48,15 @@ export function archiveBlockers(
     error instanceof RoleInUseError ||
     error instanceof MinistryInUseError
     ? error.blockers
+    : undefined;
+}
+
+/** The scope-checked original offer a duplicate refusal points at, also sent to the client. */
+export function existingInvitation(
+  error: DomainError,
+): ExistingInvitationReference | undefined {
+  return error instanceof PendingMinistryInvitationExistsError
+    ? error.existingInvitation
     : undefined;
 }
 

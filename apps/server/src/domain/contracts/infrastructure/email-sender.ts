@@ -74,6 +74,15 @@ export interface PasswordResetEmail {
   linkLifetime: EmailDuration;
 }
 
+/** A pending Ministry half retained by an admin Church offer, as its T1 names it. */
+export interface ChurchOfferMinistryFacts {
+  ministryName: string;
+  ministryAccessLevel: string;
+  roleNames: string[];
+  inviterName: string;
+}
+
+/** T1 for an admin Church offer; an upgraded pair also lists its pending Ministry halves. */
 export interface ChurchBootstrapInvitationEmail {
   kind: 'invitation.church-bootstrap';
   to: string;
@@ -82,6 +91,7 @@ export interface ChurchBootstrapInvitationEmail {
   /** The Church Timezone `expiresAt` is read in. */
   churchTimezone: string;
   redemptionUrl: string;
+  ministryOffers?: ChurchOfferMinistryFacts[];
 }
 
 /**

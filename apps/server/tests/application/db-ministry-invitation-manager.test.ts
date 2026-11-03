@@ -35,7 +35,7 @@ const repo = {
   findPendingById: vi.fn(),
   hasActiveMinistryMembership: vi.fn(),
   findPendingChurchInvitationByEmail: vi.fn(),
-  createChainedChurchInvitation: vi.fn(),
+  createChurchInvitation: vi.fn(),
   create: vi.fn(),
   applyResend: vi.fn(),
   enqueueOutboxMessage: vi.fn(),
@@ -85,7 +85,7 @@ beforeEach(() => {
   roleRepository.lockActiveForUse.mockResolvedValue([{ id: roleId }]);
   repo.findChurchMemberByEmail.mockResolvedValue(null);
   repo.findPendingChurchInvitationByEmail.mockResolvedValue(null);
-  repo.createChainedChurchInvitation.mockResolvedValue({
+  repo.createChurchInvitation.mockResolvedValue({
     id: 'church-invitation-1',
     expiresAt: new Date('2030-01-01T00:00:00Z'),
   });
@@ -198,7 +198,7 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
   it('mints a chained pair for a recipient outside the Church with no pending Church Invitation', async () => {
     const invitation = await createManager().mint(baseMintInput());
 
-    expect(repo.createChainedChurchInvitation).toHaveBeenCalledWith(
+    expect(repo.createChurchInvitation).toHaveBeenCalledWith(
       expect.objectContaining({ churchId, email: 'outsider@example.com' }),
     );
     expect(repo.create).toHaveBeenCalledWith(
@@ -218,7 +218,7 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
 
     await createManager().mint(baseMintInput());
 
-    expect(repo.createChainedChurchInvitation).not.toHaveBeenCalled();
+    expect(repo.createChurchInvitation).not.toHaveBeenCalled();
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         churchInvitationId: 'existing-church-invitation',

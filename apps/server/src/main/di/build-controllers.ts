@@ -111,6 +111,7 @@ export function buildControllers({
     }),
     new InvitationController({
       invitationListManager,
+      ministryInvitationManager,
       activeChurchResolver,
       authorityGuard,
       maxPageSize: config.invitations.maxPageSize,

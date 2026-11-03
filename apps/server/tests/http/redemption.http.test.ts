@@ -1189,3 +1189,104 @@ describe('plain first-admin Church Invitation over HTTP', () => {
     ).toHaveLength(memberCount + 1);
   });
 });
+
+describe('admin Church Invitations from the Invite dialog over HTTP (Spec 15)', () => {
+  const email = 'invited-admin@fixture.test';
+  const churchId = () => ChurchId.from(fixture.churchA.id);
+  const inviterId = () => UserId.from(fixture.adminA);
+
+  const inviteAdmin = () =>
+    invitationManager.mintAdmin({
+      churchId: churchId(),
+      inviterId: inviterId(),
+      email,
+    });
+  const inviteLeader = () =>
+    invitationManager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: inviterId(),
+      email,
+      ministryAccessLevel: 'leader',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+
+  async function redeem(churchInvitationId: string) {
+    const { app } = await createHarness();
+    const url = redemptionUrl({ invitationId: churchInvitationId });
+    await app.inject({ method: 'POST', url: `${url}/code` });
+    const response = await app.inject({
+      method: 'POST',
+      url: `${url}/redeem`,
+      payload: {
+        name: 'Invited Admin',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '44444444-4444-4444-8444-444444444444',
+      },
+    });
+    expect(response.json()).toMatchObject({ kind: 'full-success' });
+    const [redeemed] = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.email, email));
+    if (!redeemed) throw new Error('Expected the redeemed User.');
+    const memberships = await testDb
+      .select({ organizationId: member.organizationId, role: member.role })
+      .from(member)
+      .where(eq(member.userId, redeemed.id));
+    const profiles = await testDb
+      .select()
+      .from(volunteer)
+      .where(eq(volunteer.userId, redeemed.id));
+    const [profile] = profiles;
+    const ministryGrants = !profile
+      ? []
+      : await testDb
+          .select({
+            ministryId: ministryMembership.ministryId,
+            ministryAccessLevel: ministryMembership.ministryAccessLevel,
+          })
+          .from(ministryMembership)
+          .where(eq(ministryMembership.volunteerId, profile.id));
+    return { memberships, profiles, ministryGrants };
+  }
+
+  it('joins a plain admin invitee as ChurchAdmin with no Volunteer profile', async () => {
+    const { churchInvitationId } = await inviteAdmin();
+
+    const { memberships, profiles } = await redeem(churchInvitationId);
+
+    expect(memberships).toEqual([
+      { organizationId: fixture.churchA.id, role: 'admin' },
+    ]);
+    expect(profiles).toEqual([]);
+  });
+
+  it.each([
+    ['Ministry first, then admin (upgrade)', 'upgrade'],
+    ['admin first, then Ministry (reuse)', 'reuse'],
+  ])('grants admin plus the intended Ministry leadership for %s', async (_label, order) => {
+    let churchInvitationId: string;
+    if (order === 'upgrade') {
+      await inviteLeader();
+      const upgraded = await inviteAdmin();
+      expect(upgraded.outcome).toBe('upgraded');
+      churchInvitationId = upgraded.churchInvitationId;
+    } else {
+      ({ churchInvitationId } = await inviteAdmin());
+      await inviteLeader();
+    }
+
+    const { memberships, profiles, ministryGrants } =
+      await redeem(churchInvitationId);
+
+    expect(memberships).toEqual([
+      { organizationId: fixture.churchA.id, role: 'admin' },
+    ]);
+    expect(profiles).toHaveLength(1);
+    expect(ministryGrants).toEqual([
+      { ministryId: fixture.ministryOneA, ministryAccessLevel: 'leader' },
+    ]);
+  });
+});

@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -46,7 +47,25 @@ export interface GetMinistryInvitationDeliveryStatusInput {
   ministryInvitationId: MinistryInvitationId;
 }
 
+export interface MintAdminInvitationInput {
+  churchId: ChurchId;
+  /** The caller, already admitted as a ChurchAdmin by the authority gatekeeper. */
+  inviterId: UserId;
+  email: string;
+}
+
+/** `upgraded`: an existing pending member offer was raised to admin in place. */
+export type AdminInvitationOutcome = 'created' | 'upgraded';
+
+export interface AdminInvitation {
+  churchInvitationId: string;
+  expiresAt: Instant;
+  outcome: AdminInvitationOutcome;
+}
+
 export interface IMinistryInvitationManager {
+  /** Invites a ChurchAdmin, upgrading a pending member offer while keeping its Ministry halves. */
+  mintAdmin(input: MintAdminInvitationInput): Promise<AdminInvitation>;
   mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation>;
   resend(input: ResendMinistryInvitationInput): Promise<MinistryInvitation>;
   /**

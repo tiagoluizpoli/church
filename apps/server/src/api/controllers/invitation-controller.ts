@@ -2,11 +2,18 @@ import { z } from 'zod';
 import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IInvitationListManager } from '../../domain/contracts/application/invitation-list-manager';
+import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { InvitationListScope } from '../../domain/entities/invitation-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  adminInvitationMapper,
+  adminInvitationResponseSchema,
+  mintAdminInvitationBodySchema,
+  mintAdminInvitationConflictSchema,
+} from '../dtos/admin-invitation.dto';
 import {
   invitationListMapper,
   invitationListQuerystringSchema,
@@ -21,6 +28,7 @@ const errorResponseSchema = z.object({
 
 interface InvitationControllerDependencies {
   invitationListManager: IInvitationListManager;
+  ministryInvitationManager: IMinistryInvitationManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
   /** Most invitations one page may ask for (validated central config). */
@@ -32,17 +40,20 @@ export class InvitationController implements FastifyController {
   readonly prefix = '/invitations';
 
   private readonly invitationListManager: IInvitationListManager;
+  private readonly ministryInvitationManager: IMinistryInvitationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({
     invitationListManager,
+    ministryInvitationManager,
     activeChurchResolver,
     authorityGuard,
     maxPageSize,
   }: InvitationControllerDependencies) {
     this.invitationListManager = invitationListManager;
+    this.ministryInvitationManager = ministryInvitationManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
     this.maxPageSize = maxPageSize;
@@ -113,6 +124,49 @@ export class InvitationController implements FastifyController {
           limit,
         });
         return reply.send(invitationListMapper.toResponse(page));
+      },
+    );
+
+    app.post(
+      '/admin',
+      {
+        schema: {
+          tags: ['invitations'],
+          operationId: 'mintAdminInvitation',
+          summary: 'Invite a ChurchAdmin',
+          description:
+            'Invite an address to the Active Church as an Admin. With no pending Church Invitation for the address, creates one (201). A pending member-level Church Invitation is raised to Admin in place, keeping its Ministry Invitations and restarting its validity (200). Either way one invitation email is queued. ChurchAdmins only.',
+          body: mintAdminInvitationBodySchema,
+          response: {
+            200: adminInvitationResponseSchema,
+            201: adminInvitationResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            409: mintAdminInvitationConflictSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const inviterId = UserId.from(request.userId);
+        const canManageChurch = await this.authorityGuard.canManageChurch({
+          churchId,
+          userId: inviterId,
+        });
+        if (!canManageChurch) {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        const { email } = request.body as z.infer<
+          typeof mintAdminInvitationBodySchema
+        >;
+        const invitation = await this.ministryInvitationManager.mintAdmin({
+          churchId,
+          inviterId,
+          email,
+        });
+        return reply
+          .status(invitation.outcome === 'created' ? 201 : 200)
+          .send(adminInvitationMapper.toResponse(invitation));
       },
     );
   }

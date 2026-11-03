@@ -4,6 +4,7 @@ import type {
   AvailabilityEmail,
   ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
+  ChurchOfferMinistryFacts,
   EmailLocale,
   EmailPayload,
   MinistryInvitationEmail,
@@ -303,6 +304,12 @@ function invitationContent({
       subject: title,
       heading: title,
       facts: [m.email_invitation_admin_body({ churchName }, options), expires],
+      // An upgraded pair: each retained Ministry offer, on one line.
+      list: (payload.ministryOffers ?? []).map((offer) =>
+        ministryOfferLines({ offer: { ...offer, churchName }, locale }).join(
+          ' ',
+        ),
+      ),
     };
   }
   return { ...common, ...ministryOfferContent({ offer: payload, locale }) };
@@ -322,19 +329,12 @@ function ministryOfferContent({
   'subject' | 'heading' | 'facts'
 > {
   const options = { locale };
-  const { churchName, ministryName, inviterName, roleNames } = offer;
-  const isLeader = offer.ministryAccessLevel === 'leader';
+  const { churchName, ministryName, inviterName } = offer;
   const input = { churchName, ministryName, inviterName };
-  const title = isLeader
-    ? m.email_invitation_lead_title(input, options)
-    : m.email_invitation_serve_title(input, options);
-  const body = isLeader
-    ? m.email_invitation_lead_body_inviter(input, options)
-    : m.email_invitation_serve_body_inviter(input, options);
-  const roles = m.email_invitation_roles(
-    { roles: roleNames.join(', ') },
-    options,
-  );
+  const title =
+    offer.ministryAccessLevel === 'leader'
+      ? m.email_invitation_lead_title(input, options)
+      : m.email_invitation_serve_title(input, options);
   const expires = m.email_invitation_expires(
     {
       expiresAt: formatInstant({
@@ -347,8 +347,32 @@ function ministryOfferContent({
   return {
     subject: title,
     heading: title,
-    facts: roleNames.length > 0 ? [body, roles, expires] : [body, expires],
+    facts: [...ministryOfferLines({ offer, locale }), expires],
   };
+}
+
+interface MinistryOfferLinesInput {
+  offer: ChurchOfferMinistryFacts & { churchName: string };
+  locale: EmailLocale;
+}
+
+/** The inviter-led lead/serve line, then its Roles when there are any. */
+function ministryOfferLines({
+  offer,
+  locale,
+}: MinistryOfferLinesInput): [string] | [string, string] {
+  const options = { locale };
+  const { churchName, ministryName, inviterName, roleNames } = offer;
+  const input = { churchName, ministryName, inviterName };
+  const body =
+    offer.ministryAccessLevel === 'leader'
+      ? m.email_invitation_lead_body_inviter(input, options)
+      : m.email_invitation_serve_body_inviter(input, options);
+  if (roleNames.length === 0) return [body];
+  return [
+    body,
+    m.email_invitation_roles({ roles: roleNames.join(', ') }, options),
+  ];
 }
 
 interface TransferDigestContentInput {

@@ -75,6 +75,7 @@ beforeAll(async () => {
       invitationListRepository: new DrizzleInvitationListRepository({ db }),
       defaultPageSize: 20,
     }),
+    ministryInvitationManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({

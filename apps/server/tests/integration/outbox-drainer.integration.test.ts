@@ -7,6 +7,7 @@ import {
   ministryInvitation,
   ministryMembership,
   notification,
+  organization,
   outboxMessage,
   role,
   shift,
@@ -48,6 +49,7 @@ import {
   DrizzleSecurityLogRepository,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { provisionChurch } from '@/scripts/provision-church';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildSector } from '@/seeds/builders/ministry';
@@ -1586,5 +1588,190 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
     expect(result).toEqual({ claimed: 2, sent: 1, failed: 1 });
     expect(emailSender.delivered).toHaveLength(1);
     expect(await inboxRows()).toHaveLength(2);
+  });
+});
+
+describe('Admin Church Invitation T1 (Spec 15, integration)', () => {
+  const churchId = () => ChurchId.from(fixture.churchA.id);
+  const inviterId = () => UserId.from(fixture.adminA);
+
+  async function inviteAdmin(email: string) {
+    return manager.mintAdmin({
+      churchId: churchId(),
+      inviterId: inviterId(),
+      email,
+    });
+  }
+
+  async function ministryName(id: string) {
+    const [row] = await testDb
+      .select({ name: ministry.name })
+      .from(ministry)
+      .where(eq(ministry.id, id));
+    return row?.name;
+  }
+
+  it('sends a standalone admin T1 with no Ministry, escaped, through the Church layout', async () => {
+    const { churchInvitationId } = await inviteAdmin('new.admin@fixture.test');
+    await testDb
+      .update(organization)
+      .set({ name: 'A & <B> Church' })
+      .where(eq(organization.id, fixture.churchA.id));
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.sent).toEqual([
+      expect.objectContaining({
+        kind: 'invitation.church-bootstrap',
+        to: 'new.admin@fixture.test',
+        churchName: 'A & <B> Church',
+        ministryOffers: [],
+        redemptionUrl: `https://app.test/invitations/church/${churchInvitationId}`,
+      }),
+    ]);
+    const request = emailSender.delivered[0]?.request;
+    const locale = appConfig.defaultLocale;
+    const adminBody = m.email_invitation_admin_body(
+      { churchName: 'A & <B> Church' },
+      { locale },
+    );
+    expect(request?.text).toContain(adminBody);
+    expect(request?.html).toContain('A &amp; &lt;B&gt; Church');
+    expect(request?.html).not.toContain('<B>');
+  });
+
+  it('sends one T1 for an upgraded pair naming admin access and every retained Ministry offer', async () => {
+    const email = 'pair@fixture.test';
+    await manager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: inviterId(),
+      email,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+    await manager.mint({
+      churchId: churchId(),
+      ministryId: MinistryId.from(fixture.ministryTwoA),
+      inviterId: inviterId(),
+      email,
+      ministryAccessLevel: 'leader',
+      roleIds: [],
+    });
+    // The pair's member-level T1s went out before the upgrade.
+    await buildDrainer({
+      emailSender: new CaptureEmailSender('Church'),
+    }).drainOnce({ limit: 10 });
+    const { churchInvitationId, outcome } = await inviteAdmin(email);
+    expect(outcome).toBe('upgraded');
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    const [one, two] = [
+      await ministryName(fixture.ministryOneA),
+      await ministryName(fixture.ministryTwoA),
+    ];
+    expect(emailSender.sent).toEqual([
+      expect.objectContaining({
+        kind: 'invitation.church-bootstrap',
+        to: email,
+        redemptionUrl: `https://app.test/invitations/church/${churchInvitationId}`,
+        ministryOffers: [
+          expect.objectContaining({
+            ministryName: one,
+            ministryAccessLevel: 'volunteer',
+            roleNames: [expect.any(String)],
+            inviterName: 'Fixture Admin A',
+          }),
+          {
+            ministryName: two,
+            ministryAccessLevel: 'leader',
+            roleNames: [],
+            inviterName: 'Fixture Admin A',
+          },
+        ],
+      }),
+    ]);
+    const text = emailSender.delivered[0]?.request.text ?? '';
+    const locale = appConfig.defaultLocale;
+    const input = {
+      churchName: fixture.churchA.name,
+      inviterName: 'Fixture Admin A',
+    };
+    expect(text).toContain(
+      m.email_invitation_admin_body(
+        { churchName: input.churchName },
+        { locale },
+      ),
+    );
+    expect(text).toContain(
+      m.email_invitation_serve_body_inviter(
+        { ...input, ministryName: one ?? '' },
+        { locale },
+      ),
+    );
+    expect(text).toContain(
+      m.email_invitation_lead_body_inviter(
+        { ...input, ministryName: two ?? '' },
+        { locale },
+      ),
+    );
+  });
+
+  it('fails terminally, sending nothing, once the offer is no longer pending', async () => {
+    const { churchInvitationId } = await inviteAdmin('closed@fixture.test');
+    await testDb
+      .update(churchInvitation)
+      .set({ status: 'canceled' })
+      .where(eq(churchInvitation.id, churchInvitationId));
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.sent).toHaveLength(0);
+  });
+
+  it('never emails first-admin provisioning, which stays print-only', async () => {
+    await provisionChurch({
+      db: testDb,
+      churchName: 'Provisioned Church',
+      churchSlug: `provisioned-${crypto.randomUUID().slice(0, 8)}`,
+      adminEmail: 'first.admin@provisioned.test',
+      operatorUserId: fixture.adminA,
+      reportRedemptionPath: false,
+    });
+
+    const emailSender = new CaptureEmailSender('Church');
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 0, sent: 0, failed: 0 });
+    expect(await testDb.select().from(outboxMessage)).toEqual([]);
+  });
+
+  it('replays the saved admin T1 unchanged after the Church is renamed', async () => {
+    await inviteAdmin('retry.admin@fixture.test');
+    const emailSender = new FlakyEmailSender('Church');
+    emailSender.queueFailure({ mode: 'before-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    await testDb
+      .update(organization)
+      .set({ name: 'Renamed Church' })
+      .where(eq(organization.id, fixture.churchA.id));
+    await testDb.update(outboxMessage).set({ scheduledFor: new Date(0) });
+
+    const result = await drainer.drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.delivered[0]?.request.html).not.toContain(
+      'Renamed Church',
+    );
+    const [firstKey, secondKey] = emailSender.attemptedKeys;
+    expect(secondKey).toBe(firstKey);
   });
 });

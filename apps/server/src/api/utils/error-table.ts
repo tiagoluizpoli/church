@@ -54,7 +54,9 @@ export type MappedDomainCode =
   | 'SHIFT_OUT_OF_BOUNDS'
   | 'HARD_CONSTRAINT_VIOLATION'
   | 'BELOW_FULL_PUBLISH'
+  | 'INVITEE_ALREADY_CHURCH_MEMBER'
   | 'INVITEE_ALREADY_MINISTRY_MEMBER'
+  | 'PENDING_CHURCH_INVITATION_EXISTS'
   | 'PENDING_MINISTRY_INVITATION_EXISTS'
   | 'RESEND_COOLDOWN_ACTIVE'
   | 'RESEND_DAILY_CAP_EXCEEDED'
@@ -131,6 +133,14 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     message: m.error_hard_constraint_violation,
   },
   BELOW_FULL_PUBLISH: { status: 409, message: m.error_below_full_publish },
+  INVITEE_ALREADY_CHURCH_MEMBER: {
+    status: 409,
+    message: m.error_invitee_already_church_member,
+  },
+  PENDING_CHURCH_INVITATION_EXISTS: {
+    status: 409,
+    message: m.error_pending_church_invitation_exists,
+  },
   INVITEE_ALREADY_MINISTRY_MEMBER: {
     status: 409,
     message: m.error_invitee_already_ministry_member,

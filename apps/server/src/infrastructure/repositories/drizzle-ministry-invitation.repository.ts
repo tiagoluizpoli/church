@@ -34,7 +34,7 @@ import type {
   AlignPairedExpiryInput,
   ApplyResendInput,
   ChurchInvitationSummary,
-  CreateChainedChurchInvitationInput,
+  CreateChurchInvitationInput,
   CreateMinistryInvitationInput,
   EnqueueOutboxMessageInput,
   FindByIdInput,
@@ -42,21 +42,25 @@ import type {
   FindMinistryInvitationContextInput,
   FindPendingByIdInput,
   FindPendingChurchInvitationByEmailInput,
+  FindPendingChurchOfferInput,
   FindPendingForAddressInput,
   FindPublicRedemptionPreviewInput,
   HasActiveMinistryMembershipInput,
   IsInvitationAddressedToUserInput,
   MinistryInvitationContext,
   MinistryInvitationRepository,
+  PendingChurchOffer,
   PendingMinistryInvitationReference,
   RefreshChurchInvitationExpiryInput,
   ResolveRecipientEmailInput,
+  UpgradeChurchInvitationToAdminInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   PublicRedemptionMinistry,
   PublicRedemptionPreview,
 } from '../../domain/entities/public-redemption-preview';
+import { PendingChurchInvitationExistsError } from '../../domain/errors/pending-church-invitation-exists';
 import { PendingMinistryInvitationExistsError } from '../../domain/errors/pending-ministry-invitation-exists';
 import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
@@ -422,6 +426,7 @@ export class DrizzleMinistryInvitationRepository
       .select({
         id: churchInvitation.id,
         expiresAt: churchInvitation.expiresAt,
+        role: churchInvitation.role,
       })
       .from(churchInvitation)
       .where(
@@ -433,29 +438,108 @@ export class DrizzleMinistryInvitationRepository
       )
       .limit(1)
       .for('update');
-    return row ?? null;
+    if (!row) return null;
+    return {
+      id: row.id,
+      expiresAt: row.expiresAt,
+      churchAccessLevel: row.role === 'admin' ? 'admin' : 'member',
+    };
   }
 
-  async createChainedChurchInvitation(
-    input: CreateChainedChurchInvitationInput,
+  async createChurchInvitation(
+    input: CreateChurchInvitationInput,
   ): Promise<ChurchInvitationSummary> {
-    const { churchId, email, inviterId, tx } = input;
+    const { churchId, email, inviterId, churchAccessLevel, tx } = input;
     const id = crypto.randomUUID();
     const expiresAtInstant = addMilliseconds({
       instant: now(),
       milliseconds: this.churchInvitationTtlMs,
     });
     const expiresAt = toDate({ instant: expiresAtInstant });
-    await getClient({ db: this.db, tx }).insert(churchInvitation).values({
-      id,
-      organizationId: churchId,
-      email,
-      role: 'member',
-      status: 'pending',
-      expiresAt,
-      inviterId,
-    });
-    return { id, expiresAt };
+    await getClient({ db: this.db, tx })
+      .insert(churchInvitation)
+      .values({
+        id,
+        organizationId: churchId,
+        email,
+        role: churchAccessLevel,
+        status: 'pending',
+        expiresAt,
+        inviterId,
+      })
+      .catch((error: unknown) => {
+        if (
+          isUniqueViolation({
+            error,
+            constraint: 'invitation_organization_email_pending_idx',
+          })
+        ) {
+          throw new PendingChurchInvitationExistsError();
+        }
+        throw error;
+      });
+    return { id, expiresAt, churchAccessLevel };
+  }
+
+  async upgradeChurchInvitationToAdmin({
+    churchId,
+    churchInvitationId,
+    tx,
+  }: UpgradeChurchInvitationToAdminInput): Promise<void> {
+    const upgraded = await getClient({ db: this.db, tx })
+      .update(churchInvitation)
+      .set({ role: 'admin' })
+      .where(
+        and(
+          eq(churchInvitation.organizationId, churchId),
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+        ),
+      )
+      .returning({ id: churchInvitation.id });
+    // The caller holds the row lock, so this only fires on a broken invariant.
+    if (upgraded.length === 0) {
+      throw new Error('Church invitation is no longer pending for upgrade');
+    }
+  }
+
+  async findPendingChurchOffer({
+    churchId,
+    churchInvitationId,
+  }: FindPendingChurchOfferInput): Promise<PendingChurchOffer | null> {
+    const [offer] = await this.db
+      .select({
+        email: churchInvitation.email,
+        role: churchInvitation.role,
+        expiresAt: churchInvitation.expiresAt,
+      })
+      .from(churchInvitation)
+      .where(
+        and(
+          eq(churchInvitation.organizationId, churchId),
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+        ),
+      )
+      .limit(1);
+    if (!offer) return null;
+    const halves = await this.db
+      .select({ id: ministryInvitation.id })
+      .from(ministryInvitation)
+      .where(
+        and(
+          withChurchIsolation({ table: ministryInvitation, churchId }),
+          eq(ministryInvitation.churchInvitationId, churchInvitationId),
+          eq(ministryInvitation.status, 'pending'),
+        ),
+      )
+      .orderBy(asc(ministryInvitation.createdAt), asc(ministryInvitation.id));
+    return {
+      email: offer.email,
+      churchAccessLevel: offer.role === 'admin' ? 'admin' : 'member',
+      expiresAt: offer.expiresAt,
+      pendingMinistryInvitationIds: halves.map((half) => half.id),
+    };
   }
 
   async create(input: CreateMinistryInvitationInput) {

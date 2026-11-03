@@ -6,7 +6,10 @@
  */
 import type {
   ListInvitations200,
-  ListInvitationsParams
+  ListInvitationsParams,
+  MintAdminInvitation200,
+  MintAdminInvitation201,
+  MintAdminInvitationBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -28,5 +31,20 @@ const listInvitations = (
     },
       );
     }
-  return {listInvitations}};
+  /**
+ * Invite an address to the Active Church as an Admin. With no pending Church Invitation for the address, creates one (201). A pending member-level Church Invitation is raised to Admin in place, keeping its Ministry Invitations and restarting its validity (200). Either way one invitation email is queued. ChurchAdmins only.
+ * @summary Invite a ChurchAdmin
+ */
+const mintAdminInvitation = (
+    mintAdminInvitationBody: MintAdminInvitationBody,
+ ) => {
+      return apiClient<MintAdminInvitation200 | MintAdminInvitation201>(
+      {url: `/api/v1/invitations/admin`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: mintAdminInvitationBody
+    },
+      );
+    }
+  return {listInvitations,mintAdminInvitation}};
 export type ListInvitationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['listInvitations']>>>
+export type MintAdminInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['mintAdminInvitation']>>>

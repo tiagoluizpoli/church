@@ -3012,6 +3012,114 @@ export type ListInvitations404 = {
   message: string;
 };
 
+export type MintAdminInvitationBody = {
+  /** @pattern ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
+  email: string;
+};
+
+export type MintAdminInvitation200Kind = typeof MintAdminInvitation200Kind[keyof typeof MintAdminInvitation200Kind];
+
+
+export const MintAdminInvitation200Kind = {
+  church: 'church',
+} as const;
+
+export type MintAdminInvitation200ChurchAccessLevel = typeof MintAdminInvitation200ChurchAccessLevel[keyof typeof MintAdminInvitation200ChurchAccessLevel];
+
+
+export const MintAdminInvitation200ChurchAccessLevel = {
+  admin: 'admin',
+} as const;
+
+export type MintAdminInvitation200DeliveryStatus = typeof MintAdminInvitation200DeliveryStatus[keyof typeof MintAdminInvitation200DeliveryStatus];
+
+
+export const MintAdminInvitation200DeliveryStatus = {
+  pending: 'pending',
+} as const;
+
+export type MintAdminInvitation200Outcome = typeof MintAdminInvitation200Outcome[keyof typeof MintAdminInvitation200Outcome];
+
+
+export const MintAdminInvitation200Outcome = {
+  created: 'created',
+  upgraded: 'upgraded',
+} as const;
+
+export type MintAdminInvitation200 = {
+  kind: MintAdminInvitation200Kind;
+  id: string;
+  churchAccessLevel: MintAdminInvitation200ChurchAccessLevel;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+  redemptionPath: string;
+  deliveryStatus: MintAdminInvitation200DeliveryStatus;
+  outcome: MintAdminInvitation200Outcome;
+};
+
+export type MintAdminInvitation201Kind = typeof MintAdminInvitation201Kind[keyof typeof MintAdminInvitation201Kind];
+
+
+export const MintAdminInvitation201Kind = {
+  church: 'church',
+} as const;
+
+export type MintAdminInvitation201ChurchAccessLevel = typeof MintAdminInvitation201ChurchAccessLevel[keyof typeof MintAdminInvitation201ChurchAccessLevel];
+
+
+export const MintAdminInvitation201ChurchAccessLevel = {
+  admin: 'admin',
+} as const;
+
+export type MintAdminInvitation201DeliveryStatus = typeof MintAdminInvitation201DeliveryStatus[keyof typeof MintAdminInvitation201DeliveryStatus];
+
+
+export const MintAdminInvitation201DeliveryStatus = {
+  pending: 'pending',
+} as const;
+
+export type MintAdminInvitation201Outcome = typeof MintAdminInvitation201Outcome[keyof typeof MintAdminInvitation201Outcome];
+
+
+export const MintAdminInvitation201Outcome = {
+  created: 'created',
+  upgraded: 'upgraded',
+} as const;
+
+export type MintAdminInvitation201 = {
+  kind: MintAdminInvitation201Kind;
+  id: string;
+  churchAccessLevel: MintAdminInvitation201ChurchAccessLevel;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+  redemptionPath: string;
+  deliveryStatus: MintAdminInvitation201DeliveryStatus;
+  outcome: MintAdminInvitation201Outcome;
+};
+
+export type MintAdminInvitation401 = {
+  error: string;
+  message: string;
+};
+
+export type MintAdminInvitation403 = {
+  error: string;
+  message: string;
+};
+
+export type MintAdminInvitation409Error = typeof MintAdminInvitation409Error[keyof typeof MintAdminInvitation409Error];
+
+
+export const MintAdminInvitation409Error = {
+  INVITEE_ALREADY_CHURCH_MEMBER: 'INVITEE_ALREADY_CHURCH_MEMBER',
+  PENDING_CHURCH_INVITATION_EXISTS: 'PENDING_CHURCH_INVITATION_EXISTS',
+} as const;
+
+export type MintAdminInvitation409 = {
+  error: MintAdminInvitation409Error;
+  message: string;
+};
+
 export type PreviewChurchInvitation200ChurchAccessLevel = typeof PreviewChurchInvitation200ChurchAccessLevel[keyof typeof PreviewChurchInvitation200ChurchAccessLevel];
 
 

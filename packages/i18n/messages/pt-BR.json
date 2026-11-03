@@ -61,6 +61,8 @@
   "error_shift_out_of_bounds": "O turno deve estar dentro do seu bloco de horário.",
   "error_hard_constraint_violation": "Isso deixaria um voluntário em dois turnos ao mesmo tempo ou quebraria uma regra obrigatória.",
   "error_below_full_publish": "Publicar sem todas as vagas preenchidas precisa da sua confirmação.",
+  "error_invitee_already_church_member": "Esta pessoa já é membro desta igreja. Torne-a Administrador em Pessoas.",
+  "error_pending_church_invitation_exists": "Esta pessoa já tem um convite pendente de Administrador para esta igreja.",
   "error_invitee_already_ministry_member": "Esta pessoa já faz parte deste ministério. Altere as funções dela em Pessoas.",
   "error_pending_ministry_invitation_exists": "Esta pessoa já tem um convite pendente para este ministério.",
   "error_resend_cooldown_active": "Aguarde um momento antes de reenviar.",

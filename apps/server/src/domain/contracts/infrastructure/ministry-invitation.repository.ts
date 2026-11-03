@@ -75,16 +75,40 @@ export interface FindPendingChurchInvitationByEmailInput {
   tx?: TransactionContext;
 }
 
+export type ChurchInvitationAccessLevel = 'member' | 'admin';
+
 export interface ChurchInvitationSummary {
   id: string;
   expiresAt: Date;
+  churchAccessLevel: ChurchInvitationAccessLevel;
 }
 
-export interface CreateChainedChurchInvitationInput {
+export interface CreateChurchInvitationInput {
   churchId: ChurchId;
   email: string;
   inviterId: UserId;
+  churchAccessLevel: ChurchInvitationAccessLevel;
   tx?: TransactionContext;
+}
+
+export interface UpgradeChurchInvitationToAdminInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx: TransactionContext;
+}
+
+export interface FindPendingChurchOfferInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+}
+
+/** A pending Church offer as its T1 describes it: the grant and every pending half. */
+export interface PendingChurchOffer {
+  email: string;
+  churchAccessLevel: ChurchInvitationAccessLevel;
+  expiresAt: Date;
+  /** Oldest first. */
+  pendingMinistryInvitationIds: string[];
 }
 
 export interface CreateMinistryInvitationInput {
@@ -269,10 +293,24 @@ export interface MinistryInvitationRepository {
     input: FindPendingChurchInvitationByEmailInput,
   ): Promise<ChurchInvitationSummary | null>;
 
-  /** Writes a chained Better Auth `invitation` row directly, the same way Church Provisioning does. */
-  createChainedChurchInvitation(
-    input: CreateChainedChurchInvitationInput,
+  /**
+   * Writes a Better Auth `invitation` row directly, the same way Church
+   * Provisioning does. The pending Church/address index backstop surfaces as
+   * `PendingChurchInvitationExistsError`.
+   */
+  createChurchInvitation(
+    input: CreateChurchInvitationInput,
   ): Promise<ChurchInvitationSummary>;
+
+  /** Raises a still-pending Church offer to admin in place; throws if it is no longer pending. */
+  upgradeChurchInvitationToAdmin(
+    input: UpgradeChurchInvitationToAdminInput,
+  ): Promise<void>;
+
+  /** The T1 producer's read: `null` once the offer is no longer pending. */
+  findPendingChurchOffer(
+    input: FindPendingChurchOfferInput,
+  ): Promise<PendingChurchOffer | null>;
 
   create(input: CreateMinistryInvitationInput): Promise<MinistryInvitation>;
 

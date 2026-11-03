@@ -147,6 +147,44 @@ describe('prepareEmail — T1 ChurchAdmin invitation', () => {
     expect(text).toContain(bootstrap.redemptionUrl);
     expect(html.match(/<a /g)).toHaveLength(1);
   });
+
+  it('lists every retained Ministry offer of an upgraded pair in the same email, escaped', () => {
+    const { text, html } = prepare({
+      ...bootstrap,
+      ministryOffers: [
+        {
+          ministryName: 'Louvor & <Artes>',
+          ministryAccessLevel: 'volunteer',
+          roleNames: ['Vocal', 'Bateria'],
+          inviterName: 'Ana',
+        },
+        {
+          ministryName: 'Kids',
+          ministryAccessLevel: 'leader',
+          roleNames: [],
+          inviterName: 'Bruno',
+        },
+      ],
+    }).request;
+    const input = { churchName: 'Grace Church' };
+
+    expect(text).toContain(m.email_invitation_admin_body(input, ptBR));
+    expect(text).toContain(
+      `${m.email_invitation_serve_body_inviter(
+        { ...input, ministryName: 'Louvor & <Artes>', inviterName: 'Ana' },
+        ptBR,
+      )} ${m.email_invitation_roles({ roles: 'Vocal, Bateria' }, ptBR)}`,
+    );
+    expect(text).toContain(
+      m.email_invitation_lead_body_inviter(
+        { ...input, ministryName: 'Kids', inviterName: 'Bruno' },
+        ptBR,
+      ),
+    );
+    expect(html).toContain('Louvor &amp; &lt;Artes&gt;');
+    expect(html).not.toContain('<Artes>');
+    expect(html.match(/<a /g)).toHaveLength(1);
+  });
 });
 
 describe('prepareEmail — member Ministry Invitation (N1)', () => {

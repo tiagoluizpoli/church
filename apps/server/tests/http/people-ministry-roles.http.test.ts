@@ -5,9 +5,11 @@ import {
   ministryMembershipRole,
   role,
 } from '@church/db';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { m } from '@church/i18n/messages';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+import pg from 'pg';
 import {
   afterAll,
   afterEach,
@@ -19,11 +21,14 @@ import {
   vi,
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
+import { AssignController } from '@/api/controllers/assign-controller';
 import { PeopleController } from '@/api/controllers/people-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbChurchAccessManager } from '@/application/db-church-access-manager';
 import { DbMinistryMembershipManager } from '@/application/db-ministry-membership-manager';
+import { DbMinistryRoleManager } from '@/application/db-ministry-role-manager';
 import { DbPeopleListManager } from '@/application/db-people-list-manager';
+import { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchAccessRepository } from '@/infrastructure/repositories/drizzle-church-access.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
@@ -55,6 +60,7 @@ import {
   buildMinistryMembership,
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
+import { createSchedulingManagers } from '@/tests/application/scheduling-schedule.helpers';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -77,6 +83,7 @@ const NOW = '2026-11-03T12:00:00.000Z';
 const USER_HEADER = 'x-test-user';
 
 let app: FastifyTypedInstance;
+let roleManager: DbMinistryRoleManager;
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -112,10 +119,31 @@ beforeAll(async () => {
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
     config: appConfig,
   });
+  roleManager = new DbMinistryRoleManager({
+    ministryRepository: new DrizzleMinistryRepository({ db }),
+    roleRepository: new DrizzleRoleRepository({ db }),
+    unitOfWork,
+  });
+  const scheduling = createSchedulingManagers();
+  // The Assign board's own authority is not under test here; its qualification locking is.
+  const assign = new AssignController({
+    participationManager: scheduling.participationManager,
+    assignmentManager: scheduling.assignmentManager,
+    activeChurchResolver: activeChurchResolver as never,
+    authorityGuard: {
+      decideManageAnyMinistry: async () => ({ allowed: true }),
+      decideManageParticipation: async () => ({ allowed: true }),
+      decideManageShift: async () => ({ allowed: true }),
+    } as never,
+    config: appConfig,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
         prefix: controller.prefix,
+      });
+      instance.register(assign.registerRoutes.bind(assign), {
+        prefix: assign.prefix,
       });
     },
     { prefix: '/api/v1' },
@@ -354,16 +382,14 @@ interface ServiceInput {
 
 let cycleId: string | undefined;
 
-/** One Worship Assignment on its own Event: Event → block → participation → Shift → requirement. */
-async function service({
-  key = 'val',
+/** A Worship Shift needing one Role on its own Event: Event → block → participation → Shift → requirement. */
+async function openShift({
   roleId,
   title,
   eventStart,
   eventEnd,
   shiftStart = eventStart,
   shiftEnd = eventEnd,
-  status = 'pending',
   eventStatus = 'scheduled',
   sectorName = 'Stage',
 }: ServiceInput) {
@@ -425,6 +451,23 @@ async function service({
     sectorId: sector.id,
     peopleNeeded: 2,
   });
+  return { event, block, participation, shift, sector, requirement };
+}
+
+/** One Worship Assignment on its own Event, returned in the blocker shape (less the Role name). */
+async function service(input: ServiceInput) {
+  const {
+    key = 'val',
+    roleId,
+    title,
+    eventStart,
+    eventEnd,
+    shiftStart = eventStart,
+    shiftEnd = eventEnd,
+    status = 'pending',
+  } = input;
+  const { event, block, participation, shift, sector, requirement } =
+    await openShift(input);
   const assignment = await buildAssignment({
     db,
     churchId: CHURCH_A,
@@ -870,5 +913,411 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
         [f.vocals, f.guitar].sort(),
       );
     });
+  });
+
+  it('rolls the Role change back when its audit cannot be written', async () => {
+    await db.execute(sql`
+      CREATE OR REPLACE FUNCTION test_fail_roles_audit() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit unavailable'; END $$
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER test_fail_roles_audit BEFORE INSERT ON identity_audit
+      FOR EACH ROW WHEN (NEW.action = 'ministry_roles_changed')
+      EXECUTE FUNCTION test_fail_roles_audit()
+    `);
+    try {
+      const res = await editRoles({
+        as: 'ada',
+        member: 'val',
+        membership: valWorship(),
+        roleIds: [f.guitar],
+      });
+      expect(res.statusCode).toBe(500);
+      expect(res.json().error).toBe('INTERNAL_SERVER_ERROR');
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER test_fail_roles_audit ON identity_audit`,
+      );
+      await db.execute(sql`DROP FUNCTION test_fail_roles_audit()`);
+    }
+    expect(await heldRoles(valWorship())).toEqual([f.vocals, f.keys].sort());
+    expect(await audits()).toEqual([]);
+  });
+
+  describe('when writes overlap', () => {
+    interface HolderInput {
+      /** Run while the holder keeps its locks; each started request must reach a lock before the next. */
+      steps: (() => Promise<unknown>)[];
+      lock: string;
+    }
+
+    /**
+     * Holds a row lock from outside the app and starts each step only after
+     * the previous one waits on a lock, so the queue order is the step order.
+     */
+    async function holding({ steps, lock }: HolderInput) {
+      const holder = new pg.Client({
+        connectionString: getIntegrationDatabaseUrl(),
+      });
+      await holder.connect();
+      try {
+        await holder.query('BEGIN');
+        await holder.query(lock);
+        const pending: Promise<unknown>[] = [];
+        for (const step of steps) {
+          pending.push(step());
+          await waitForLockWaiters({ holder, count: pending.length });
+        }
+        await holder.query('COMMIT');
+        return await Promise.all(pending);
+      } finally {
+        await holder.end();
+      }
+    }
+
+    interface WaitForLockWaitersInput {
+      holder: pg.Client;
+      count: number;
+    }
+
+    async function waitForLockWaiters({
+      holder,
+      count,
+    }: WaitForLockWaitersInput) {
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        await holder.query('SELECT pg_stat_clear_snapshot()');
+        const { rows } = await holder.query(
+          `SELECT count(*)::int AS waiting FROM pg_stat_activity
+           WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+        );
+        if (rows[0].waiting >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      throw new Error(`fewer than ${count} requests reached a lock`);
+    }
+
+    const lockMembership = () =>
+      `SELECT id FROM ministry_membership WHERE id = '${valWorship()}' FOR NO KEY UPDATE`;
+    const lockChurch = `SELECT id FROM church WHERE id = '${CHURCH_A}' FOR NO KEY UPDATE`;
+
+    interface AssignInput {
+      shiftId: string;
+      shiftRequirementId: string;
+    }
+
+    const assignVal = ({ shiftId, shiftRequirementId }: AssignInput) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/assign/shifts/${shiftId}/assignments`,
+        headers: { [USER_HEADER]: 'lea' },
+        payload: {
+          volunteerId: volunteers.get(`val:${CHURCH_A}`),
+          shiftRequirementId,
+        },
+      });
+
+    const culto = () =>
+      openShift({
+        roleId: f.vocals,
+        title: 'Culto',
+        eventStart: '2026-11-15T10:00:00.000Z',
+        eventEnd: '2026-11-15T12:00:00.000Z',
+      });
+
+    const dropVocals = () =>
+      editRoles({
+        as: 'ada',
+        member: 'val',
+        membership: valWorship(),
+        roleIds: [f.keys],
+      });
+
+    it('serializes concurrent Role edits so each audit starts from the previous result', async () => {
+      const [first, second] = (await holding({
+        lock: lockChurch,
+        steps: [
+          () =>
+            editRoles({
+              as: 'ada',
+              member: 'val',
+              membership: valWorship(),
+              roleIds: [f.vocals, f.keys, f.guitar],
+            }),
+          () =>
+            editRoles({
+              as: 'lea',
+              member: 'val',
+              membership: valWorship(),
+              roleIds: [f.vocals],
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+
+      expect([first?.statusCode, second?.statusCode]).toEqual([200, 200]);
+      // lea's complete set wins as the later write: guitar and keys removed.
+      expect(await heldRoles(valWorship())).toEqual([f.vocals]);
+      const rows = await audits();
+      const [ada, lea] = [
+        rows.find((row) => row.actorId === 'ada'),
+        rows.find((row) => row.actorId === 'lea'),
+      ];
+      expect(lea?.details).toMatchObject({
+        beforeRoleIds: (ada?.details as { afterRoleIds: string[] })
+          .afterRoleIds,
+        afterRoleIds: [f.vocals],
+      });
+    });
+
+    it('refuses the removal when an Assignment needing the Role commits first', async () => {
+      const { shift, requirement } = await culto();
+
+      const [created, edited] = (await holding({
+        lock: lockMembership(),
+        steps: [
+          () =>
+            assignVal({
+              shiftId: shift.id,
+              shiftRequirementId: requirement.id,
+            }),
+          dropVocals,
+        ],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+
+      expect(created?.statusCode).toBe(201);
+      expect(created?.json().warnings).toEqual([]);
+      expect(edited?.statusCode).toBe(409);
+      expect(edited?.json().assignments).toEqual([
+        expect.objectContaining({
+          assignmentId: created?.json().assignment.id,
+          roleId: f.vocals,
+        }),
+      ]);
+      expect(await heldRoles(valWorship())).toEqual([f.vocals, f.keys].sort());
+    });
+
+    it('rechecks qualification after the removal commits first, so the Assignment is no longer qualified', async () => {
+      const { shift, requirement } = await culto();
+
+      const [edited, created] = (await holding({
+        lock: lockMembership(),
+        steps: [
+          dropVocals,
+          () =>
+            assignVal({
+              shiftId: shift.id,
+              shiftRequirementId: requirement.id,
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+
+      expect(edited?.statusCode).toBe(200);
+      expect(await heldRoles(valWorship())).toEqual([f.keys]);
+      // An unqualified placement is the Assign board's warned override, never a silent qualified one.
+      expect(created?.statusCode).toBe(201);
+      expect(created?.json().warnings).toEqual([
+        expect.objectContaining({ type: 'NOT_QUALIFIED' }),
+      ]);
+    });
+
+    it('refuses the removal when a reassignment to the Volunteer commits first', async () => {
+      const kimsTurn = await service({
+        key: 'kim',
+        roleId: f.vocals,
+        title: 'Culto',
+        eventStart: '2026-11-15T10:00:00.000Z',
+        eventEnd: '2026-11-15T12:00:00.000Z',
+      });
+
+      const [reassigned, edited] = (await holding({
+        lock: lockMembership(),
+        steps: [
+          () =>
+            app.inject({
+              method: 'PATCH',
+              url: `/api/v1/assign/assignments/${kimsTurn.assignmentId}/reassign`,
+              headers: { [USER_HEADER]: 'lea' },
+              payload: { volunteerId: volunteers.get(`val:${CHURCH_A}`) },
+            }),
+          dropVocals,
+        ],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+
+      expect(reassigned?.statusCode).toBe(200);
+      expect(edited?.statusCode).toBe(409);
+      expect(edited?.json().assignments).toHaveLength(1);
+      expect(await heldRoles(valWorship())).toEqual([f.vocals, f.keys].sort());
+    });
+
+    it('never grants a Role a concurrent archive retired first, and keeps one granted first as a held archived Role', async () => {
+      const archiveGuitar = () =>
+        roleManager.archive({
+          churchId: ChurchId.from(CHURCH_A),
+          ministryId: MinistryId.from(f.worship),
+          roleId: RoleId.from(f.guitar),
+        });
+      const grantGuitar = () =>
+        editRoles({
+          as: 'ada',
+          member: 'val',
+          membership: valWorship(),
+          roleIds: [f.vocals, f.keys, f.guitar],
+        });
+      const lockGuitar = `SELECT id FROM role WHERE id = '${f.guitar}' FOR UPDATE`;
+
+      const [, refused] = (await holding({
+        lock: lockGuitar,
+        steps: [archiveGuitar, grantGuitar],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+      expect(refused?.statusCode).toBe(422);
+      expect(refused?.json().error).toBe('INVALID_MINISTRY_ROLE');
+      expect(await heldRoles(valWorship())).toEqual([f.vocals, f.keys].sort());
+
+      // kim's guitar Role is a fresh active one granted before its archive.
+      const piano = (
+        await buildRole({
+          db,
+          churchId: CHURCH_A,
+          ministryId: f.worship,
+          name: 'Piano',
+        })
+      ).id;
+      const [granted] = (await holding({
+        lock: `SELECT id FROM role WHERE id = '${piano}' FOR UPDATE`,
+        steps: [
+          () =>
+            editRoles({
+              as: 'ada',
+              member: 'val',
+              membership: valWorship(),
+              roleIds: [f.vocals, f.keys, piano],
+            }),
+          () =>
+            roleManager.archive({
+              churchId: ChurchId.from(CHURCH_A),
+              ministryId: MinistryId.from(f.worship),
+              roleId: RoleId.from(piano),
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+      expect(granted?.statusCode).toBe(200);
+      const [archived] = await db
+        .select({ archivedAt: role.archivedAt })
+        .from(role)
+        .where(and(eq(role.id, piano)));
+      expect(archived?.archivedAt).not.toBeNull();
+      expect(await heldRoles(valWorship())).toContain(piano);
+    });
+
+    it('stops a leader whose leadership ended while their edit waited', async () => {
+      const [, edited] = (await holding({
+        lock: lockChurch,
+        steps: [
+          // Stands in for a level change: the same Church lock, then the demotion.
+          async () => {
+            const client = new pg.Client({
+              connectionString: getIntegrationDatabaseUrl(),
+            });
+            await client.connect();
+            try {
+              await client.query('BEGIN');
+              await client.query(lockChurch);
+              await client.query(
+                `UPDATE ministry_membership SET ministry_access_level = 'volunteer' WHERE id = $1`,
+                [memberships.get(`lea:${f.worship}`)],
+              );
+              await client.query('COMMIT');
+            } finally {
+              await client.end();
+            }
+          },
+          () =>
+            editRoles({
+              as: 'lea',
+              member: 'val',
+              membership: valWorship(),
+              roleIds: [f.vocals, f.keys, f.guitar],
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+
+      expect(edited?.statusCode).toBe(404);
+      expect(await heldRoles(valWorship())).toEqual([f.vocals, f.keys].sort());
+      expect(await audits()).toEqual([]);
+    });
+
+    it('stops an admin whose Church access was removed while their edit waited', async () => {
+      await person({ key: 'ben', access: 'admin' });
+      const [demoted, edited] = (await holding({
+        lock: lockChurch,
+        steps: [
+          () =>
+            app.inject({
+              method: 'PATCH',
+              url: `/api/v1/people/${memberId('ben')}/church-access`,
+              headers: { [USER_HEADER]: 'ada' },
+              payload: { accessLevel: 'member' },
+            }),
+          () =>
+            editRoles({
+              as: 'ben',
+              member: 'val',
+              membership: valWorship(),
+              roleIds: [f.vocals, f.keys, f.guitar],
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof editRoles>>[];
+
+      expect(demoted?.statusCode).toBe(200);
+      expect(edited?.statusCode).toBe(404);
+      expect(await heldRoles(valWorship())).toEqual([f.vocals, f.keys].sort());
+    });
+  });
+});
+
+describe('GET /people/:memberId Edit Roles hints', () => {
+  interface HintsInput {
+    as: string;
+    target: string;
+  }
+
+  async function hints({ as, target }: HintsInput) {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/people/${memberId(target)}`,
+      headers: { [USER_HEADER]: as },
+    });
+    expect(res.statusCode).toBe(200);
+    return Object.fromEntries(
+      res
+        .json()
+        .ministries.map(
+          (card: { ministryName: string; canEditRoles: boolean }) => [
+            card.ministryName,
+            card.canEditRoles,
+          ],
+        ),
+    );
+  }
+
+  it('derives each card’s hint from the same target-aware rules as the mutation', async () => {
+    expect(await hints({ as: 'ada', target: 'kim' })).toEqual({
+      Kids: true,
+      Worship: true,
+    });
+    expect(await hints({ as: 'ada', target: 'pia' })).toEqual({
+      Worship: true,
+    });
+    expect(await hints({ as: 'lea', target: 'val' })).toEqual({
+      Worship: true,
+    });
+    expect(await hints({ as: 'lea', target: 'lea' })).toEqual({
+      Worship: true,
+    });
+    expect(await hints({ as: 'lea', target: 'pia' })).toEqual({
+      Worship: false,
+    });
+    // kim leads only Kids, so only that card is visible, and it is their own.
+    expect(await hints({ as: 'kim', target: 'kim' })).toEqual({ Kids: true });
   });
 });

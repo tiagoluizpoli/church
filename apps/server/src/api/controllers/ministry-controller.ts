@@ -43,7 +43,7 @@ interface MinistryRouteParams {
 
 type MinistryInvitationRouteParams = MinistryRouteParams;
 
-interface ResendMinistryInvitationRouteParams {
+interface MinistryInvitationActionRouteParams {
   ministryId: string;
   invitationId: string;
 }
@@ -338,7 +338,7 @@ export class MinistryController implements FastifyController {
       async (request, reply) => {
         if (await this.denyMissingMinistryFunction({ request, reply })) return;
         const { ministryId, invitationId } =
-          request.params as ResendMinistryInvitationRouteParams;
+          request.params as MinistryInvitationActionRouteParams;
 
         const churchId = ChurchId.from(request.churchId);
         const invitation = await this.ministryInvitationManager.resend({
@@ -355,6 +355,38 @@ export class MinistryController implements FastifyController {
         return reply.send(
           ministryInvitationMapper.toResponse({ invitation, deliveryStatus }),
         );
+      },
+    );
+    app.post(
+      '/:ministryId/invitations/:invitationId/revoke',
+      {
+        schema: {
+          tags: ['ministries'],
+          operationId: 'revokeMinistryInvitation',
+          summary: 'Revoke a Ministry Invitation',
+          description:
+            'Revoke a pending or expired Ministry Invitation, recording the caller, the time and the reason `manual`; the body takes no actor or reason. Its Church Invitation is revoked too when no other pending Ministry Invitation still uses it. Accepted Memberships are untouched and no notice is sent. A ChurchAdmin may revoke any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when it was already accepted, declined or revoked.',
+          response: {
+            204: z.null(),
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        if (await this.denyMissingMinistryFunction({ request, reply })) return;
+        const { ministryId, invitationId } =
+          request.params as MinistryInvitationActionRouteParams;
+
+        await this.ministryInvitationManager.revoke({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          ministryInvitationId: MinistryInvitationId.from(invitationId),
+          callerId: UserId.from(request.userId),
+        });
+        return reply.status(204).send(null);
       },
     );
   }

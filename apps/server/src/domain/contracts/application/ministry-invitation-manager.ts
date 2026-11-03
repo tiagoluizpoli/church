@@ -63,11 +63,21 @@ export interface AdminInvitation {
   outcome: AdminInvitationOutcome;
 }
 
+export interface RevokeMinistryInvitationInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  ministryInvitationId: MinistryInvitationId;
+  /** The caller, recorded as the revoking actor; the reason is always `manual`. */
+  callerId: UserId;
+}
+
 export interface IMinistryInvitationManager {
   /** Invites a ChurchAdmin, upgrading a pending member offer while keeping its Ministry halves. */
   mintAdmin(input: MintAdminInvitationInput): Promise<AdminInvitation>;
   mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation>;
   resend(input: ResendMinistryInvitationInput): Promise<MinistryInvitation>;
+  /** Revokes a pending (or expired) Ministry Invitation, and its Church Invitation when it was the last pending half. */
+  revoke(input: RevokeMinistryInvitationInput): Promise<void>;
   /**
    * The live delivery status of an invitation's most recent outbox message
    * (spec #56 §6.4) — read separately from `mint`/`resend` so both keep

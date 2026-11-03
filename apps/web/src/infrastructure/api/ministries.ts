@@ -28,6 +28,7 @@ import type {
   RenameSector200,
   RenameSectorBody,
   ResendMinistryInvitation200,
+  RevokeMinistryInvitation204,
   SaveUsualSetupBlock200,
   SaveUsualSetupBlockBody
 } from './churchAPI.schemas';
@@ -128,6 +129,19 @@ const resendMinistryInvitation = (
  ) => {
       return apiClient<ResendMinistryInvitation200>(
       {url: `/api/v1/ministries/${ministryId}/invitations/${invitationId}/resend`, method: 'POST'
+    },
+      );
+    }
+  /**
+ * Revoke a pending or expired Ministry Invitation, recording the caller, the time and the reason `manual`; the body takes no actor or reason. Its Church Invitation is revoked too when no other pending Ministry Invitation still uses it. Accepted Memberships are untouched and no notice is sent. A ChurchAdmin may revoke any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when it was already accepted, declined or revoked.
+ * @summary Revoke a Ministry Invitation
+ */
+const revokeMinistryInvitation = (
+    ministryId: string,
+    invitationId: string,
+ ) => {
+      return apiClient<RevokeMinistryInvitation204>(
+      {url: `/api/v1/ministries/${ministryId}/invitations/${invitationId}/revoke`, method: 'POST'
     },
       );
     }
@@ -271,7 +285,7 @@ const saveUsualSetupBlock = (
     },
       );
     }
-  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
+  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,revokeMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
 export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
 export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
@@ -279,6 +293,7 @@ export type RenameMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typ
 export type ArchiveMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveMinistry']>>>
 export type MintMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['mintMinistryInvitation']>>>
 export type ResendMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['resendMinistryInvitation']>>>
+export type RevokeMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['revokeMinistryInvitation']>>>
 export type ListMinistryRolesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistryRoles']>>>
 export type CreateMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistryRole']>>>
 export type RenameMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistryRole']>>>

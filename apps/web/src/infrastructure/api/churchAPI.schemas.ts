@@ -1307,6 +1307,35 @@ export type ResendMinistryInvitation429 = {
   message: string;
 };
 
+/**
+ * @nullable
+ */
+export type RevokeMinistryInvitation204 = typeof RevokeMinistryInvitation204[keyof typeof RevokeMinistryInvitation204] | null;
+
+
+export const RevokeMinistryInvitation204 = {
+} as const;
+
+export type RevokeMinistryInvitation401 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeMinistryInvitation403 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeMinistryInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeMinistryInvitation409 = {
+  error: string;
+  message: string;
+};
+
 export type ListMinistryRoles200RolesItem = {
   id: string;
   name: string;
@@ -2991,6 +3020,7 @@ export type ListInvitations200ItemsItem = {
      */
   lastSentAt: string | null;
   canResend: boolean;
+  canRevoke: boolean;
 };
 
 export type ListInvitations200OptionsMinistriesItem = {

@@ -3064,6 +3064,102 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/ministries/{ministryId}/invitations/{invitationId}/revoke:
+    post:
+      operationId: revokeMinistryInvitation
+      summary: Revoke a Ministry Invitation
+      tags:
+        - ministries
+      description: Revoke a pending or expired Ministry Invitation, recording the
+        caller, the time and the reason `manual`; the body takes no actor or
+        reason. Its Church Invitation is revoked too when no other pending
+        Ministry Invitation still uses it. Accepted Memberships are untouched
+        and no notice is sent. A ChurchAdmin may revoke any; a Ministry leader
+        only volunteer-level invitations in Ministries they lead (403
+        INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and
+        other-Church targets are one 404. 409 INVITATION_NOT_PENDING when it was
+        already accepted, declined or revoked.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}/roles:
     get:
       operationId: listMinistryRoles
@@ -7330,6 +7426,8 @@ paths:
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                         canResend:
                           type: boolean
+                        canRevoke:
+                          type: boolean
                       required:
                         - kind
                         - id
@@ -7343,6 +7441,7 @@ paths:
                         - emailDelivery
                         - lastSentAt
                         - canResend
+                        - canRevoke
                       additionalProperties: false
                   nextCursor:
                     type: string

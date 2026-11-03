@@ -20,6 +20,7 @@ import type {
   MintAdminInvitationInput,
   MintMinistryInvitationInput,
   ResendMinistryInvitationInput,
+  RevokeMinistryInvitationInput,
 } from '../domain/contracts/application/ministry-invitation-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type {
@@ -50,6 +51,7 @@ import {
   nextResendThrottleState,
   type ResendThrottleState,
 } from '../domain/services/resend-throttle';
+import { revokeMinistryHalf } from './invitation-revocation';
 
 interface ExpiryFromInput {
   milliseconds: number;
@@ -418,6 +420,41 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       }
 
       return invitation;
+    });
+  }
+
+  async revoke(input: RevokeMinistryInvitationInput): Promise<void> {
+    const { churchId, ministryId, ministryInvitationId, callerId } = input;
+
+    const { callerIsAdmin } = await this.ensureMintableScope({
+      churchId,
+      ministryId,
+      callerId,
+    });
+
+    await this.unitOfWork.run(async (tx) => {
+      // Same lock order as resend: Ministry, Church Invitation, then halves.
+      await this.lockActiveMinistry({ churchId, ministryId, tx });
+      const target = await this.repo.findById({
+        churchId,
+        ministryInvitationId,
+        tx,
+      });
+      if (!target || target.ministryId !== ministryId) {
+        throw new MinistryInvitationNotFoundError();
+      }
+      if (!callerIsAdmin && target.ministryAccessLevel === 'leader') {
+        throw new InsufficientInvitationAuthorityError();
+      }
+      const revoked = await revokeMinistryHalf({
+        repo: this.repo,
+        churchId,
+        ministryInvitationId,
+        churchInvitationId: target.churchInvitationId,
+        revocation: { actorId: callerId, at: nowAsDate(), reason: 'manual' },
+        tx,
+      });
+      if (!revoked) throw new InvitationNotPendingError();
     });
   }
 

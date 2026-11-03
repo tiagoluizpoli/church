@@ -32,6 +32,8 @@ import type {
   AcquireMintLockInput,
   AlignPairedExpiryInput,
   ApplyResendInput,
+  CancelChurchInvitationInput,
+  CancelMinistryInvitationInput,
   ChurchInvitationStatus,
   ChurchInvitationSummary,
   CreateChurchInvitationInput,
@@ -49,6 +51,7 @@ import type {
   IsInvitationAddressedToUserInput,
   LockChurchInvitationInput,
   LockMinistryInvitationInput,
+  LockPendingHalvesInput,
   MinistryInvitationContext,
   MinistryInvitationRepository,
   PendingChurchOffer,
@@ -199,6 +202,78 @@ export class DrizzleMinistryInvitationRepository
       .limit(1)
       .for('update');
     return row ? (row.status as ChurchInvitationStatus) : null;
+  }
+
+  async cancelMinistryInvitation({
+    churchId,
+    ministryInvitationId,
+    revocation,
+    tx,
+  }: CancelMinistryInvitationInput): Promise<boolean> {
+    const { actorId, at, reason } = revocation;
+    const canceled = await getClient({ db: this.db, tx })
+      .update(ministryInvitation)
+      .set({
+        status: 'canceled',
+        canceledAt: at,
+        canceledById: actorId,
+        cancelReason: reason,
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: ministryInvitation, churchId }),
+          eq(ministryInvitation.id, ministryInvitationId),
+          eq(ministryInvitation.status, 'pending'),
+        ),
+      )
+      .returning({ id: ministryInvitation.id });
+    return canceled.length > 0;
+  }
+
+  async cancelChurchInvitation({
+    churchId,
+    churchInvitationId,
+    revocation,
+    tx,
+  }: CancelChurchInvitationInput): Promise<boolean> {
+    const { actorId, at, reason } = revocation;
+    const canceled = await getClient({ db: this.db, tx })
+      .update(churchInvitation)
+      .set({
+        status: 'canceled',
+        canceledAt: at,
+        canceledById: actorId,
+        cancelReason: reason,
+      })
+      .where(
+        and(
+          eq(churchInvitation.organizationId, churchId),
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+        ),
+      )
+      .returning({ id: churchInvitation.id });
+    return canceled.length > 0;
+  }
+
+  async lockPendingHalves({
+    churchId,
+    churchInvitationId,
+    tx,
+  }: LockPendingHalvesInput): Promise<string[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({ id: ministryInvitation.id })
+      .from(ministryInvitation)
+      .where(
+        and(
+          withChurchIsolation({ table: ministryInvitation, churchId }),
+          eq(ministryInvitation.churchInvitationId, churchInvitationId),
+          eq(ministryInvitation.status, 'pending'),
+        ),
+      )
+      .orderBy(ministryInvitation.id)
+      .for('update');
+    return rows.map(({ id }) => id);
   }
 
   async findById(input: FindByIdInput) {

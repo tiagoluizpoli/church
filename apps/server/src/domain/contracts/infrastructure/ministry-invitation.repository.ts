@@ -62,6 +62,36 @@ export interface LockMinistryInvitationInput {
   tx: TransactionContext;
 }
 
+/** Why an invitation was revoked: server-owned, never client-supplied. */
+export type InvitationRevocationReason = 'manual' | 'ministry-archived';
+
+/** Who revoked, at one operation Instant, and why; copied onto every row the operation cancels. */
+export interface InvitationRevocation {
+  actorId: UserId;
+  at: Date;
+  reason: InvitationRevocationReason;
+}
+
+export interface CancelMinistryInvitationInput {
+  churchId: ChurchId;
+  ministryInvitationId: string;
+  revocation: InvitationRevocation;
+  tx: TransactionContext;
+}
+
+export interface CancelChurchInvitationInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  revocation: InvitationRevocation;
+  tx: TransactionContext;
+}
+
+export interface LockPendingHalvesInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx: TransactionContext;
+}
+
 export interface LockChurchInvitationInput {
   churchId: ChurchId;
   churchInvitationId: string;
@@ -267,6 +297,24 @@ export interface MinistryInvitationRepository {
   lockChurchInvitation(
     input: LockChurchInvitationInput,
   ): Promise<ChurchInvitationStatus | null>;
+
+  /**
+   * Cancels a stored-pending Ministry Invitation (expired included) with its
+   * revocation facts. `false` when it was no longer pending: nothing changed.
+   */
+  cancelMinistryInvitation(
+    input: CancelMinistryInvitationInput,
+  ): Promise<boolean>;
+
+  /** Cancels a stored-pending Church Invitation alone; `false` when it was no longer pending. */
+  cancelChurchInvitation(input: CancelChurchInvitationInput): Promise<boolean>;
+
+  /**
+   * Row-locks (`FOR UPDATE`) the stored-pending Ministry halves (expired
+   * included) of one Church Invitation and returns their ids, so a racing
+   * decline or acceptance settles before a last-half decision reads them.
+   */
+  lockPendingHalves(input: LockPendingHalvesInput): Promise<string[]>;
 
   /**
    * Any status, scoped only to Church — the outbox worker re-reads by id

@@ -14,11 +14,13 @@ const listInvitations = vi.fn();
 const listMinistries = vi.fn();
 const listMinistryRoles = vi.fn();
 const mintMinistryInvitation = vi.fn();
+const mintAdminInvitation = vi.fn();
 const toastSuccess = vi.fn();
 
 vi.mock('@/utils/api-instances', async () => ({
   invitationsApi: {
     listInvitations: (...args: unknown[]) => listInvitations(...args),
+    mintAdminInvitation: (...args: unknown[]) => mintAdminInvitation(...args),
   },
   adminApi: {
     listMinistries: (...args: unknown[]) => listMinistries(...args),
@@ -127,6 +129,10 @@ beforeEach(() => {
     roles: ROLES[ministryId] ?? [],
   }));
   mintMinistryInvitation.mockResolvedValue({ id: 'new-offer' });
+  mintAdminInvitation.mockResolvedValue({
+    id: 'admin-offer',
+    outcome: 'created',
+  });
 });
 
 describe('Invite dialog', () => {
@@ -349,5 +355,120 @@ describe('Invite dialog', () => {
         m.error_invitee_already_ministry_member(),
       ),
     ).toBeVisible();
+  });
+
+  it('invites an Admin by email alone, dropping Ministry and Roles chosen before switching', async () => {
+    const { user, dialog } = await openInvite();
+    await user.type(
+      within(dialog).getByLabelText(m.invitations_invite_email_label()),
+      'ana@example.com',
+    );
+    await chooseMinistry({ user, dialog, name: 'Worship' });
+    await user.click(
+      await within(dialog).findByRole('checkbox', { name: 'Singer' }),
+    );
+
+    await user.click(
+      within(dialog).getByRole('radio', {
+        name: m.invitations_invite_as_admin(),
+      }),
+    );
+
+    expect(
+      screen.getByRole('dialog', { name: m.invitations_invite_admin_title() }),
+    ).toBeVisible();
+    expect(
+      within(dialog).queryByRole('combobox', {
+        name: m.invitations_invite_ministry_label(),
+      }),
+    ).toBeNull();
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.invitations_invite_submit(),
+      }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(mintAdminInvitation).toHaveBeenCalledWith({
+      email: 'ana@example.com',
+    });
+    expect(mintMinistryInvitation).not.toHaveBeenCalled();
+    expect(toastSuccess).toHaveBeenCalledWith(
+      m.invitations_invite_sent_toast({ email: 'ana@example.com' }),
+    );
+    await waitFor(() => expect(listInvitations).toHaveBeenCalledTimes(2));
+  });
+
+  it('says when an Admin invite upgraded an existing invitation', async () => {
+    mintAdminInvitation.mockResolvedValue({ outcome: 'upgraded' });
+    const { user, dialog } = await openInvite();
+    await user.type(
+      within(dialog).getByLabelText(m.invitations_invite_email_label()),
+      'pair@example.com',
+    );
+    await user.click(
+      within(dialog).getByRole('radio', {
+        name: m.invitations_invite_as_admin(),
+      }),
+    );
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.invitations_invite_submit(),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.invitations_invite_upgraded_toast({ email: 'pair@example.com' }),
+      ),
+    );
+  });
+
+  it.each([
+    ['INVITEE_ALREADY_CHURCH_MEMBER', m.error_invitee_already_church_member],
+    [
+      'PENDING_CHURCH_INVITATION_EXISTS',
+      m.error_pending_church_invitation_exists,
+    ],
+  ])('keeps the Admin form and explains %s', async (code, message) => {
+    mintAdminInvitation.mockRejectedValue(
+      refusal(409, { error: code, message: 'server text' }),
+    );
+    const { user, dialog } = await openInvite();
+    const email = within(dialog).getByLabelText(
+      m.invitations_invite_email_label(),
+    );
+    await user.type(email, 'member@example.com');
+    await user.click(
+      within(dialog).getByRole('radio', {
+        name: m.invitations_invite_as_admin(),
+      }),
+    );
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.invitations_invite_submit(),
+      }),
+    );
+
+    expect(await within(dialog).findByText(message())).toBeVisible();
+    expect(email).toHaveValue('member@example.com');
+    expect(
+      within(dialog).getByRole('radio', {
+        name: m.invitations_invite_as_admin(),
+      }),
+    ).toBeChecked();
+  });
+
+  it('offers a Ministry leader no Admin option', async () => {
+    signInAs(callerCapabilitiesFixture({ ledMinistries: 1 }));
+    offerMinistries([WORSHIP]);
+    const { dialog } = await openInvite();
+
+    expect(
+      within(dialog).queryByRole('radio', {
+        name: m.invitations_invite_as_admin(),
+      }),
+    ).toBeNull();
   });
 });

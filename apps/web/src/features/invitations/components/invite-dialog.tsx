@@ -23,9 +23,11 @@ import { useMinistryRoles } from '@/features/ministries/role-queries';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
-import { adminApi } from '@/utils/api-instances';
+import { adminApi, invitationsApi } from '@/utils/api-instances';
 
 type AccessLevel = 'leader' | 'volunteer';
+/** What an admin invites as: a Ministry Access Level, or ChurchAdmin. */
+type InviteAs = AccessLevel | 'admin';
 
 // Same shape check as the server's; the server stays authoritative.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,6 +40,8 @@ interface RefusalBody {
 
 const REFUSAL_MESSAGES: Record<string, () => string> = {
   INVITEE_ALREADY_MINISTRY_MEMBER: m.error_invitee_already_ministry_member,
+  INVITEE_ALREADY_CHURCH_MEMBER: m.error_invitee_already_church_member,
+  PENDING_CHURCH_INVITATION_EXISTS: m.error_pending_church_invitation_exists,
   INVALID_INVITATION_ROLE: m.error_invalid_invitation_role,
   INSUFFICIENT_INVITATION_AUTHORITY: m.error_insufficient_invitation_authority,
   MINISTRY_NOT_FOUND: m.error_ministry_not_found,
@@ -196,8 +200,9 @@ interface FieldErrors {
 }
 
 /**
- * Invite into a Ministry. Admins choose leader or Volunteer; leaders invite
- * Volunteers only. A failed send keeps every input for a retry.
+ * Invite into a Ministry, or (admins only) invite an Admin by email alone.
+ * Admins choose Volunteer, leader or Admin; leaders invite Volunteers only.
+ * A failed send keeps every input for a retry.
  */
 export function InviteDialog() {
   const { isChurchAdmin } = useCallerCapabilities();
@@ -209,7 +214,7 @@ export function InviteDialog() {
 
   const [email, setEmail] = useState('');
   const [ministryId, setMinistryId] = useState('');
-  const [accessLevel, setAccessLevel] = useState<AccessLevel>('volunteer');
+  const [inviteAs, setInviteAs] = useState<InviteAs>('volunteer');
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
@@ -228,12 +233,14 @@ export function InviteDialog() {
     if (onlyMinistry && !ministryId) setMinistryId(onlyMinistry.id);
   }, [onlyMinistry, ministryId]);
 
-  const level: AccessLevel = isChurchAdmin ? accessLevel : 'volunteer';
+  const asAdmin = isChurchAdmin && inviteAs === 'admin';
+  const level: AccessLevel =
+    isChurchAdmin && inviteAs === 'leader' ? 'leader' : 'volunteer';
 
   const reset = () => {
     setEmail('');
     setMinistryId('');
-    setAccessLevel('volunteer');
+    setInviteAs('volunteer');
     setRoleIds([]);
     setErrors({});
     setFormError(undefined);
@@ -246,8 +253,10 @@ export function InviteDialog() {
     if (!EMAIL_PATTERN.test(email.trim())) {
       next.email = m.invitations_invite_email_invalid();
     }
-    if (!ministryId) next.ministry = m.invitations_invite_ministry_required();
-    if (ministryId && level === 'volunteer' && roleIds.length === 0) {
+    if (!asAdmin && !ministryId) {
+      next.ministry = m.invitations_invite_ministry_required();
+    }
+    if (!asAdmin && ministryId && level === 'volunteer' && !roleIds.length) {
       next.roles = m.error_validation_invitation_role_required();
     }
     setErrors(next);
@@ -257,12 +266,23 @@ export function InviteDialog() {
     setPending(true);
     try {
       const trimmed = email.trim();
-      await adminApi.mintMinistryInvitation(ministryId, {
-        email: trimmed,
-        ministryAccessLevel: level,
-        roleIds: [...new Set(roleIds)],
-      });
-      toast.success(m.invitations_invite_sent_toast({ email: trimmed }));
+      if (asAdmin) {
+        const { outcome } = await invitationsApi.mintAdminInvitation({
+          email: trimmed,
+        });
+        toast.success(
+          outcome === 'upgraded'
+            ? m.invitations_invite_upgraded_toast({ email: trimmed })
+            : m.invitations_invite_sent_toast({ email: trimmed }),
+        );
+      } else {
+        await adminApi.mintMinistryInvitation(ministryId, {
+          email: trimmed,
+          ministryAccessLevel: level,
+          roleIds: [...new Set(roleIds)],
+        });
+        toast.success(m.invitations_invite_sent_toast({ email: trimmed }));
+      }
       setOpen(false);
       reset();
       await queryClient.invalidateQueries({ queryKey: INVITATIONS_QUERY_KEY });
@@ -273,7 +293,8 @@ export function InviteDialog() {
     }
   };
 
-  const noMinistry = ministriesQuery.isSuccess && ministries.length === 0;
+  const noMinistry =
+    !asAdmin && ministriesQuery.isSuccess && ministries.length === 0;
 
   return (
     <>
@@ -286,8 +307,16 @@ export function InviteDialog() {
           if (pending) return;
           setOpen(next);
         }}
-        title={m.invitations_invite_title()}
-        description={m.invitations_invite_description()}
+        title={
+          asAdmin
+            ? m.invitations_invite_admin_title()
+            : m.invitations_invite_title()
+        }
+        description={
+          asAdmin
+            ? m.invitations_invite_admin_description()
+            : m.invitations_invite_description()
+        }
         footer={
           <>
             <Button
@@ -332,7 +361,42 @@ export function InviteDialog() {
             ) : null}
           </div>
 
-          {ministriesQuery.isError ? (
+          {isChurchAdmin ? (
+            <fieldset className="space-y-2">
+              <legend className="font-medium text-sm">
+                {m.invitations_invite_as_label()}
+              </legend>
+              <RadioGroup
+                value={inviteAs}
+                onValueChange={(value) => {
+                  const next = value as InviteAs;
+                  setInviteAs(next);
+                  // An Admin offer carries no Ministry or Roles; never send stale ones.
+                  if (next === 'admin') {
+                    setMinistryId('');
+                    setRoleIds([]);
+                    setErrors((current) => ({ email: current.email }));
+                  }
+                }}
+                className="flex flex-wrap gap-4"
+              >
+                {(['volunteer', 'leader', 'admin'] as const).map((value) => (
+                  <div key={value} className="flex items-center gap-2">
+                    <RadioGroupItem value={value} id={`${formId}-${value}`} />
+                    <Label htmlFor={`${formId}-${value}`}>
+                      {value === 'admin'
+                        ? m.invitations_invite_as_admin()
+                        : value === 'leader'
+                          ? m.ministry_invitation_access_leader()
+                          : m.ministry_invitation_access_volunteer()}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </fieldset>
+          ) : null}
+
+          {asAdmin ? null : ministriesQuery.isError ? (
             <Alert variant="destructive">
               <AlertDescription className="flex items-center gap-3">
                 <span>{m.invitations_invite_options_failed()}</span>
@@ -403,31 +467,7 @@ export function InviteDialog() {
             </div>
           )}
 
-          {isChurchAdmin ? (
-            <fieldset className="space-y-2">
-              <legend className="font-medium text-sm">
-                {m.ministry_invitation_access_level_label()}
-              </legend>
-              <RadioGroup
-                value={accessLevel}
-                onValueChange={(value) => setAccessLevel(value as AccessLevel)}
-                className="flex flex-wrap gap-4"
-              >
-                {(['volunteer', 'leader'] as const).map((value) => (
-                  <div key={value} className="flex items-center gap-2">
-                    <RadioGroupItem value={value} id={`${formId}-${value}`} />
-                    <Label htmlFor={`${formId}-${value}`}>
-                      {value === 'leader'
-                        ? m.ministry_invitation_access_leader()
-                        : m.ministry_invitation_access_volunteer()}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </fieldset>
-          ) : null}
-
-          {ministryId ? (
+          {!asAdmin && ministryId ? (
             <RolePicker
               ministryId={ministryId}
               selected={roleIds}

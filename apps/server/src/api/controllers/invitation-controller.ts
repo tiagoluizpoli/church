@@ -30,6 +30,10 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
+interface ChurchInvitationParams {
+  invitationId: string;
+}
+
 /** The page size the route's own schema bounds by the configured maximum. */
 interface ListLimitQuery {
   limit?: number;
@@ -209,7 +213,7 @@ export class InvitationController implements FastifyController {
         if (!canManageChurch) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
-        const { invitationId } = request.params as { invitationId: string };
+        const { invitationId } = request.params as ChurchInvitationParams;
         const resent = await this.ministryInvitationManager.resendChurch({
           churchId,
           churchInvitationId: invitationId,

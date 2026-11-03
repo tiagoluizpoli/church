@@ -71,6 +71,7 @@ export function MemberDetail({ person }: MemberDetailProps) {
                 card={card}
                 memberId={person.id}
                 personName={person.name}
+                isSelf={churchAccess?.isSelf ?? false}
               />
             ))}
           </ul>

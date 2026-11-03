@@ -7,6 +7,8 @@
 import type {
   ChangeChurchAccess200,
   ChangeChurchAccessBody,
+  ChangeMinistryAccess200,
+  ChangeMinistryAccessBody,
   GetPerson200,
   ListPeople200,
   ListPeopleParams,
@@ -52,6 +54,22 @@ const setMinistryRoles = (
       );
     }
   /**
+ * Make a member a leader or a volunteer of one Ministry. Only a ChurchAdmin may call it. Promotion keeps Roles; a demotion needs at least one active Role, supplied as the complete roleIds set when the member holds none. Removing a Role an upcoming Assignment depends on refuses the whole operation with every such Assignment. The level and Roles save together under one audit; the current state changes nothing. Church access and other memberships stay as they are.
+ * @summary Change a member's Ministry Access Level
+ */
+const changeMinistryAccess = (
+    memberId: string,
+    membershipId: string,
+    changeMinistryAccessBody: ChangeMinistryAccessBody,
+ ) => {
+      return apiClient<ChangeMinistryAccess200>(
+      {url: `/api/v1/people/${memberId}/ministry-memberships/${membershipId}/access`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: changeMinistryAccessBody
+    },
+      );
+    }
+  /**
  * One Church Member of the Active Church with their active Ministry cards. A ChurchAdmin sees every card and the Church access facts; a Ministry leader sees only cards of Ministries they lead and no Church access. A missing, other-Church or out-of-scope member id is one 404.
  * @summary Get a person
  */
@@ -76,8 +94,9 @@ const listPeople = (
     },
       );
     }
-  return {changeChurchAccess,setMinistryRoles,getPerson,listPeople}};
+  return {changeChurchAccess,setMinistryRoles,changeMinistryAccess,getPerson,listPeople}};
 export type ChangeChurchAccessResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['changeChurchAccess']>>>
 export type SetMinistryRolesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['setMinistryRoles']>>>
+export type ChangeMinistryAccessResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['changeMinistryAccess']>>>
 export type GetPersonResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['getPerson']>>>
 export type ListPeopleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['listPeople']>>>

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
+import { InviteDialog } from '@/features/invitations/components/invite-dialog';
 import { MinistryCard } from '@/features/people/components/ministry-card';
 import { usePerson } from '@/features/people/people-queries';
 import type { GetPerson200 } from '@/infrastructure/api/churchAPI.schemas';
@@ -24,6 +25,9 @@ export function MemberDetail({ person }: MemberDetailProps) {
           {person.name}
         </h1>
         <p className="break-all text-muted-foreground">{person.email}</p>
+        {person.canInviteToMinistry ? (
+          <InviteDialog initialEmail={person.email} ministryOnly />
+        ) : null}
       </header>
       {churchAccess ? (
         <section aria-labelledby="people-church-access" className="space-y-2">

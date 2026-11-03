@@ -20,6 +20,7 @@ import {
 import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
+import { PEOPLE_QUERY_KEY } from '@/features/people/people-queries';
 import type { MintMinistryInvitation409ExistingInvitation } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -200,12 +201,24 @@ interface FieldErrors {
   roles?: string;
 }
 
+interface InviteDialogProps {
+  /** Prefills the email on every opening. */
+  initialEmail?: string;
+  /** Ministry offers only: no Admin invitation option (People entry point). */
+  ministryOnly?: boolean;
+  onSuccess?: () => void;
+}
+
 /**
  * Invite into a Ministry, or (admins only) invite an Admin by email alone.
  * Admins choose Volunteer, leader or Admin; leaders invite Volunteers only.
  * A failed send keeps every input for a retry.
  */
-export function InviteDialog() {
+export function InviteDialog({
+  initialEmail,
+  ministryOnly = false,
+  onSuccess,
+}: InviteDialogProps = {}) {
   const { isChurchAdmin } = useCallerCapabilities();
   const { churchTimezone } = useTimezone();
   const queryClient = useQueryClient();
@@ -234,7 +247,7 @@ export function InviteDialog() {
     if (onlyMinistry && !ministryId) setMinistryId(onlyMinistry.id);
   }, [onlyMinistry, ministryId]);
 
-  const asAdmin = isChurchAdmin && inviteAs === 'admin';
+  const asAdmin = !ministryOnly && isChurchAdmin && inviteAs === 'admin';
   const level: AccessLevel =
     isChurchAdmin && inviteAs === 'leader' ? 'leader' : 'volunteer';
 
@@ -286,7 +299,11 @@ export function InviteDialog() {
       }
       setOpen(false);
       reset();
-      await queryClient.invalidateQueries({ queryKey: INVITATIONS_QUERY_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: INVITATIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: PEOPLE_QUERY_KEY }),
+      ]);
+      onSuccess?.();
     } catch (error) {
       setFormError(refusalMessage({ error, timeZone: churchTimezone }));
     } finally {
@@ -299,8 +316,14 @@ export function InviteDialog() {
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
-        {m.invitations_invite_open()}
+      <Button
+        type="button"
+        onClick={() => {
+          setEmail(initialEmail ?? '');
+          setOpen(true);
+        }}
+      >
+        {ministryOnly ? m.people_invite_open() : m.invitations_invite_open()}
       </Button>
       <ResponsiveFormSurface
         open={open}
@@ -381,7 +404,10 @@ export function InviteDialog() {
                 }}
                 className="flex flex-wrap gap-4"
               >
-                {(['volunteer', 'leader', 'admin'] as const).map((value) => (
+                {(ministryOnly
+                  ? (['volunteer', 'leader'] as const)
+                  : (['volunteer', 'leader', 'admin'] as const)
+                ).map((value) => (
                   <div key={value} className="flex items-center gap-2">
                     <RadioGroupItem value={value} id={`${formId}-${value}`} />
                     <Label htmlFor={`${formId}-${value}`}>

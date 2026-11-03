@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  GetPerson200,
   ListPeople200,
   ListPeopleParams
 } from './churchAPI.schemas';
@@ -16,6 +17,18 @@ import { apiClient } from '../../utils/api-client';
 
   export const getPeople = () => {
 /**
+ * One Church Member of the Active Church with their active Ministry cards. A ChurchAdmin sees every card and the Church access facts; a Ministry leader sees only cards of Ministries they lead and no Church access. A missing, other-Church or out-of-scope member id is one 404.
+ * @summary Get a person
+ */
+const getPerson = (
+    memberId: string,
+ ) => {
+      return apiClient<GetPerson200>(
+      {url: `/api/v1/people/${memberId}`, method: 'GET'
+    },
+      );
+    }
+  /**
  * List the Active Church's members ordered by name. A ChurchAdmin sees every member, including those in no Ministry; a Ministry leader sees only members of Ministries they lead, with only those Ministries shown. Search (trimmed, case-insensitive literal name/email substring), Ministry and Access filters combine before pagination.
  * @summary List people
  */
@@ -28,5 +41,6 @@ const listPeople = (
     },
       );
     }
-  return {listPeople}};
+  return {getPerson,listPeople}};
+export type GetPersonResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['getPerson']>>>
 export type ListPeopleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['listPeople']>>>

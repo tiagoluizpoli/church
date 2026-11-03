@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +45,13 @@ function PersonRow({ person }: PersonRowProps) {
   return (
     <li className="space-y-2 px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="min-w-0 break-words font-medium">{person.name}</span>
+        <Link
+          to="/people/$memberId"
+          params={{ memberId: person.id }}
+          className="min-w-0 break-words font-medium underline-offset-2 hover:underline"
+        >
+          {person.name}
+        </Link>
         {person.isAdmin ? (
           <Badge variant="secondary">{m.join_church_access_admin()}</Badge>
         ) : null}

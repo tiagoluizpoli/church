@@ -3247,6 +3247,66 @@ export type RevokeChurchInvitation409 = {
   message: string;
 };
 
+export type GetPerson200MinistriesItemMinistryAccessLevel = typeof GetPerson200MinistriesItemMinistryAccessLevel[keyof typeof GetPerson200MinistriesItemMinistryAccessLevel];
+
+
+export const GetPerson200MinistriesItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type GetPerson200MinistriesItemRolesItem = {
+  id: string;
+  name: string;
+  archived: boolean;
+};
+
+export type GetPerson200MinistriesItem = {
+  membershipId: string;
+  ministryId: string;
+  ministryName: string;
+  ministryAccessLevel: GetPerson200MinistriesItemMinistryAccessLevel;
+  roles: GetPerson200MinistriesItemRolesItem[];
+};
+
+export type GetPerson200ChurchAccessAccessLevel = typeof GetPerson200ChurchAccessAccessLevel[keyof typeof GetPerson200ChurchAccessAccessLevel];
+
+
+export const GetPerson200ChurchAccessAccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type GetPerson200ChurchAccess = {
+  accessLevel: GetPerson200ChurchAccessAccessLevel;
+  isLastAdmin: boolean;
+};
+
+export type GetPerson200 = {
+  id: string;
+  name: string;
+  email: string;
+  ministries: GetPerson200MinistriesItem[];
+  canChangeChurchAccess: boolean;
+  canInviteToMinistry: boolean;
+  churchAccess?: GetPerson200ChurchAccess;
+};
+
+export type GetPerson401 = {
+  error: string;
+  message: string;
+};
+
+export type GetPerson403 = {
+  error: string;
+  message: string;
+};
+
+export type GetPerson404 = {
+  error: string;
+  message: string;
+};
+
 export type ListPeopleParams = {
 /**
  * @minLength 1

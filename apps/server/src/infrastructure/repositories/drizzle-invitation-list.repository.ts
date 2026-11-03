@@ -236,7 +236,7 @@ export class DrizzleInvitationListRepository
       ]);
 
     const items: InvitationListItem[] = page.map(
-      ({ closureFacts: _facts, ...row }) => ({
+      ({ closureFacts: _facts, parentPending, ...row }) => ({
         ...row,
         // A leader must not learn the Church-wide grant behind a paired offer.
         churchInvitationId: isAdmin ? row.churchInvitationId : undefined,
@@ -253,6 +253,12 @@ export class DrizzleInvitationListRepository
           state: 'unavailable',
         },
         lastSentAt: lastSent.get(`${row.kind}:${row.id}`),
+        // Church-row resend is not offered yet; leaders resend volunteer-level offers only.
+        canResend:
+          row.kind === 'ministry' &&
+          row.status === 'pending' &&
+          parentPending &&
+          (isAdmin || row.ministryAccessLevel === 'volunteer'),
       }),
     );
     const last = items.at(-1);
@@ -394,6 +400,7 @@ export class DrizzleInvitationListRepository
         inviteeEmail: invitee.email,
         churchEmail: churchInvitation.email,
         churchRole: churchInvitation.role,
+        churchStatus: churchInvitation.status,
         inviterId: inviter.id,
         inviterName: inviter.name,
         createdAt: ministryInvitation.createdAt,
@@ -454,6 +461,9 @@ export class DrizzleInvitationListRepository
       email: row.inviteeEmail ?? row.churchEmail ?? '',
       churchAccessLevel:
         row.churchRole === 'admin' ? ('admin' as const) : undefined,
+      /** A paired offer is resendable only while its Church parent is still pending. */
+      parentPending:
+        row.churchStatus === null || row.churchStatus === 'pending',
       ministryAccessLevel: row.ministryAccessLevel,
       invitedBy: { id: row.inviterId, name: row.inviterName },
       createdAt: row.createdAt,
@@ -526,6 +536,7 @@ export class DrizzleInvitationListRepository
       ministryName: undefined,
       email: row.email,
       churchAccessLevel: 'admin' as const,
+      parentPending: true,
       ministryAccessLevel: undefined,
       invitedBy: { id: row.inviterId, name: row.inviterName },
       createdAt: row.createdAt,

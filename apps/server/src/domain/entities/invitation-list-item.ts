@@ -95,6 +95,8 @@ export interface InvitationListItem {
   emailDelivery: InvitationEmailDelivery;
   /** The latest email attempt actually sent for this offer, even if a later one failed; absent when unknown. */
   lastSentAt?: Date;
+  /** The caller may resend this stored-pending offer (expired included) within their authority. */
+  canResend: boolean;
 }
 
 export interface InvitationListPage {

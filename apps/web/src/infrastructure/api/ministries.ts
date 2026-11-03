@@ -119,7 +119,7 @@ const mintMinistryInvitation = (
       );
     }
   /**
- * Resend the delivery email for a Ministry Invitation.
+ * Queue one fresh delivery of a pending or expired Ministry Invitation and restart its validity: the Ministry lifetime when standalone, or the Church lifetime for the Church Invitation and every still-pending Ministry Invitation sharing it. IDs, inviter, Access Levels and Roles are kept. A ChurchAdmin may resend any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when the invitation or its Church Invitation was already accepted, declined or revoked. 429 when the per-invitation cooldown or daily cap applies.
  * @summary Resend a Ministry Invitation
  */
 const resendMinistryInvitation = (

@@ -33,6 +33,7 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 import { InsufficientInvitationAuthorityError } from '../domain/errors/insufficient-invitation-authority';
 import { InvalidInvitationRoleError } from '../domain/errors/invalid-invitation-role';
+import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
 import { InvitationRoleRequiredError } from '../domain/errors/invitation-role-required';
 import { InviteeAlreadyChurchMemberError } from '../domain/errors/invitee-already-church-member';
 import { InviteeAlreadyMinistryMemberError } from '../domain/errors/invitee-already-ministry-member';
@@ -314,21 +315,44 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   ): Promise<MinistryInvitation> {
     const { churchId, ministryId, ministryInvitationId, callerId } = input;
 
-    await this.ensureMintableScope({ churchId, ministryId, callerId });
+    const { callerIsAdmin } = await this.ensureMintableScope({
+      churchId,
+      ministryId,
+      callerId,
+    });
 
     return this.unitOfWork.run(async (tx) => {
-      // Serializes concurrent resends of the same invitation so two
-      // simultaneous calls can't both read the same cooldown/cap state and
-      // both pass the check — see acquireResendLock's own doc comment.
-      await this.repo.acquireResendLock({ ministryInvitationId, tx });
-
-      const existing = await this.repo.findPendingById({
+      // Lock order (see `acquireChurchOfferLock`): Ministry, Church Invitation
+      // row, then Ministry Invitation rows. Facts are re-read under the locks.
+      await this.lockActiveMinistry({ churchId, ministryId, tx });
+      // Scope first: Access Level, Ministry and pairing never change, so an
+      // unlocked read decides authority without revealing lifecycle facts.
+      const target = await this.repo.findById({
         churchId,
-        ministryId,
         ministryInvitationId,
         tx,
       });
-      if (!existing) throw new MinistryInvitationNotFoundError();
+      if (!target || target.ministryId !== ministryId) {
+        throw new MinistryInvitationNotFoundError();
+      }
+      if (!callerIsAdmin && target.ministryAccessLevel === 'leader') {
+        throw new InsufficientInvitationAuthorityError();
+      }
+      const { churchInvitationId } = target;
+      if (churchInvitationId) {
+        const parentStatus = await this.repo.lockChurchInvitation({
+          churchId,
+          churchInvitationId,
+          tx,
+        });
+        if (parentStatus !== 'pending') throw new InvitationNotPendingError();
+      }
+      const existing = await this.repo.lockMinistryInvitation({
+        churchId,
+        ministryInvitationId,
+        tx,
+      });
+      if (existing?.status !== 'pending') throw new InvitationNotPendingError();
 
       const now = nowInstant();
       const throttleState: ResendThrottleState = {
@@ -338,21 +362,22 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       };
       this.ensureResendAllowed({ throttleState, now });
 
-      const { churchInvitationId } = existing;
       const expiresAt = this.expiryFrom({
         from: now,
         milliseconds: churchInvitationId
           ? this.churchInvitationTtlMs
           : this.invitationTtlMs,
       });
-      // Both halves of a pair restart together, so neither outlives the other.
+      // The parent and every still-pending half restart together, so none
+      // outlives another; their own resend counters stay untouched.
       if (churchInvitationId) {
-        await this.repo.refreshChurchInvitationExpiry({
+        const aligned = await this.repo.alignPairedExpiry({
           churchId,
           churchInvitationId,
           expiresAt: toDate({ instant: expiresAt }),
           tx,
         });
+        if (!aligned) throw new InvitationNotPendingError();
       }
       const nextThrottle = nextResendThrottleState({
         state: throttleState,

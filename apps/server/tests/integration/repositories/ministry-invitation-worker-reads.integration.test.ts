@@ -19,7 +19,7 @@ beforeEach(async () => {
 
 describe('DrizzleMinistryInvitationRepository — worker reads', () => {
   describe('findById', () => {
-    it('finds a pending invitation regardless of Ministry, unlike findPendingById', async () => {
+    it('finds a pending invitation regardless of Ministry, unlike the Ministry-scoped resend lookup', async () => {
       const invitation = await manager.mint({
         churchId: ChurchId.from(fixture.churchA.id),
         ministryId: MinistryId.from(fixture.ministryOneA),

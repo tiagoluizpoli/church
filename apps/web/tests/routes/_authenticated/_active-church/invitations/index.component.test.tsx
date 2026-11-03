@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   GetCallerCapabilities200,
@@ -14,10 +15,17 @@ import { renderRoute } from '@/tests/setup/render-route';
 
 const getCallerCapabilities = vi.fn();
 const listInvitations = vi.fn();
+const resendMinistryInvitation = vi.fn();
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
 
 vi.mock('@/utils/api-instances', async () => ({
   invitationsApi: {
     listInvitations: (...args: unknown[]) => listInvitations(...args),
+  },
+  adminApi: {
+    resendMinistryInvitation: (...args: unknown[]) =>
+      resendMinistryInvitation(...args),
   },
   callerCapabilitiesApi: {
     getCallerCapabilities: (...args: unknown[]) =>
@@ -25,6 +33,13 @@ vi.mock('@/utils/api-instances', async () => ({
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: (...args: unknown[]) => toastSuccess(...args),
+    error: (...args: unknown[]) => toastError(...args),
+  },
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -65,6 +80,7 @@ function row(
     displayStatus: 'pending',
     emailDelivery: { state: 'unavailable' },
     lastSentAt: null,
+    canResend: false,
     ...overrides,
   };
 }
@@ -405,5 +421,116 @@ describe('Invitations filters and history', () => {
     );
     expect(revoked).toHaveTextContent(m.invitations_closure_unavailable());
     expect(revoked).toHaveTextContent(m.invitations_status_revoked());
+  });
+});
+
+describe('Invitations resend', () => {
+  function refusal(status: number, error: string) {
+    return new AxiosError('refused', String(status), undefined, undefined, {
+      status,
+      data: { error, message: error },
+    } as AxiosResponse);
+  }
+
+  const resendButton = (email: string) =>
+    screen.findByRole('button', {
+      name: m.invitations_resend_label({ email }),
+    });
+
+  it('offers Resend only on rows the server allows, including an expired offer whose email failed', async () => {
+    listInvitations.mockResolvedValue(
+      page([
+        row({
+          id: 'mi-failed',
+          email: 'failed@example.com',
+          displayStatus: 'expired',
+          emailDelivery: { state: 'failed' },
+          canResend: true,
+        }),
+        row({ id: 'mi-leader', email: 'leader@example.com', canResend: false }),
+        row({
+          kind: 'church',
+          id: 'ci-admin',
+          email: 'admin@example.com',
+          ministryId: undefined,
+          ministryName: undefined,
+          ministryAccessLevel: undefined,
+          churchAccessLevel: 'admin',
+          canResend: false,
+        }),
+      ]),
+    );
+
+    renderInvitations();
+
+    const [failed, leader, church] = await rows();
+    expect(
+      within(failed).getByRole('button', {
+        name: m.invitations_resend_label({ email: 'failed@example.com' }),
+      }),
+    ).toHaveTextContent(m.invitations_resend());
+    expect(within(leader).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(church).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByText('Revogar')).not.toBeInTheDocument();
+  });
+
+  it('resends through the Ministry client once, reports a queued email and refetches the current filters', async () => {
+    const user = userEvent.setup();
+    listInvitations.mockResolvedValue(page([row({ canResend: true })]));
+    let finish: (value: unknown) => void = () => {};
+    resendMinistryInvitation.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+
+    renderInvitations();
+    const button = await resendButton('ana@example.com');
+    await user.click(button);
+    await user.click(button);
+
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent(m.invitations_resending());
+    expect(resendMinistryInvitation).toHaveBeenCalledTimes(1);
+    expect(resendMinistryInvitation).toHaveBeenCalledWith('m-worship', 'mi-1');
+    const listCalls = listInvitations.mock.calls.length;
+    finish({ id: 'mi-1', deliveryStatus: 'pending' });
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.invitations_resend_queued_toast({ email: 'ana@example.com' }),
+      ),
+    );
+    await waitFor(() =>
+      expect(listInvitations.mock.calls.length).toBeGreaterThan(listCalls),
+    );
+    expect(listInvitations.mock.calls.at(-1)).toEqual(
+      listInvitations.mock.calls[0],
+    );
+    expect(m.invitations_resend_queued_toast({ email: 'a' })).toContain(
+      'na fila',
+    );
+  });
+
+  it.each([
+    [429, 'RESEND_COOLDOWN_ACTIVE', 'Aguarde um minuto antes de reenviar.'],
+    [429, 'RESEND_DAILY_CAP_EXCEEDED', 'Limite de reenvios atingido por hoje.'],
+    [
+      409,
+      'INVITATION_NOT_PENDING',
+      'Este convite não está mais pendente. Atualize a lista.',
+    ],
+  ] as const)('explains a %i %s refusal in Portuguese and allows retry', async (status, code, text) => {
+    const user = userEvent.setup();
+    listInvitations.mockResolvedValue(page([row({ canResend: true })]));
+    resendMinistryInvitation.mockRejectedValue(refusal(status, code));
+
+    renderInvitations();
+    const button = await resendButton('ana@example.com');
+    await user.click(button);
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(text));
+    expect(toastSuccess).not.toHaveBeenCalled();
+    await waitFor(() => expect(button).toBeEnabled());
   });
 });

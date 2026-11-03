@@ -65,8 +65,9 @@
   "error_pending_church_invitation_exists": "This person already has a pending Admin invitation to this Church.",
   "error_invitee_already_ministry_member": "This person is already in this Ministry. Change their Roles in People.",
   "error_pending_ministry_invitation_exists": "This person already has a pending invitation to this Ministry.",
-  "error_resend_cooldown_active": "Wait a moment before resending.",
-  "error_resend_daily_cap_exceeded": "The daily resend limit for this invitation was reached.",
+  "error_resend_cooldown_active": "Wait a minute before resending.",
+  "error_resend_daily_cap_exceeded": "Resend limit reached for today.",
+  "error_invitation_not_pending": "This invitation is no longer pending. Refresh the list.",
   "error_invalid_invitation_role": "One or more Roles do not belong to this Ministry.",
   "error_validation_error": "Some of the information is invalid.",
   "error_validation_duplicate_headcount": "Each Sector and Role can appear only once per Shift in the Usual setup. Remove the repeated entry.",
@@ -616,5 +617,10 @@
   "invitations_declined_link_on": "Declined from the invitation link on {date}",
   "invitations_revoked_on": "Revoked on {date}",
   "invitations_closure_reason": "Reason: {reason}",
-  "invitations_closure_unavailable": "Closing details unavailable"
+  "invitations_closure_unavailable": "Closing details unavailable",
+  "invitations_resend": "Resend",
+  "invitations_resending": "Resending…",
+  "invitations_resend_label": "Resend the invitation to {email}",
+  "invitations_resend_queued_toast": "Invitation email to {email} queued",
+  "invitations_resend_failed": "We couldn't resend the invitation. Try again."
 }

@@ -32,6 +32,8 @@ import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
 
 export interface MinistryInvitationTestHarnessOptions {
   db: AnyDrizzleDb;
+  /** Overrides central policy (lifetimes, resend limits) for the managers. */
+  config?: AppConfig;
 }
 
 interface BuildNotifierInput {
@@ -48,10 +50,11 @@ interface BuildNotifierInput {
  */
 export function createMinistryInvitationTestHarness({
   db,
+  config: harnessConfig = appConfig,
 }: MinistryInvitationTestHarnessOptions) {
   const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({
     db,
-    config: appConfig,
+    config: harnessConfig,
   });
   const roleRepository = new DrizzleRoleRepository({ db });
   const ministryRepository = new DrizzleMinistryRepository({ db });
@@ -91,13 +94,13 @@ export function createMinistryInvitationTestHarness({
     unitOfWork,
     outboxRepository,
     notifications,
-    config: appConfig,
+    config: harnessConfig,
   });
 
   /** The registered email + inbox sinks over these repositories. */
   function buildNotifier({
     emailSender,
-    config = appConfig,
+    config = harnessConfig,
     inboxRepository = notificationRepository,
   }: BuildNotifierInput): ChurchNotifier {
     return buildChurchNotifier({

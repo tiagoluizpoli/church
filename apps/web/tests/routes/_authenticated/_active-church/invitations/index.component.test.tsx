@@ -64,6 +64,7 @@ function row(
     status: 'pending',
     displayStatus: 'pending',
     emailDelivery: { state: 'unavailable' },
+    lastSentAt: null,
     ...overrides,
   };
 }

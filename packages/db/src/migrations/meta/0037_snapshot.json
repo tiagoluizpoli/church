@@ -1,5 +1,5 @@
 {
-  "id": "18f7539d-16e5-4897-aaaf-6b442814119a",
+  "id": "40b87f68-3040-49fa-b245-610563334bfe",
   "prevId": "c7b703d6-f507-493c-b7da-3757d39dc3f7",
   "version": "7",
   "dialect": "postgresql",
@@ -2226,19 +2226,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "canceled_by_id": {
-          "name": "canceled_by_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "invitation_revocation_reason",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
         "declined_at": {
           "name": "declined_at",
           "type": "timestamp with time zone",
@@ -2389,19 +2376,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "ministry_invitation_canceled_by_id_user_id_fk": {
-          "name": "ministry_invitation_canceled_by_id_user_id_fk",
-          "tableFrom": "ministry_invitation",
-          "tableTo": "user",
-          "columnsFrom": [
-            "canceled_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -3022,22 +2996,22 @@
           "primaryKey": false,
           "notNull": false
         },
-        "canceled_at": {
-          "name": "canceled_at",
+        "last_resend_at": {
+          "name": "last_resend_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "canceled_by_id": {
-          "name": "canceled_by_id",
-          "type": "text",
+        "resend_count": {
+          "name": "resend_count",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": 0
         },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "invitation_revocation_reason",
-          "typeSchema": "public",
+        "resend_window_started_at": {
+          "name": "resend_window_started_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -3149,19 +3123,6 @@
           "tableTo": "user",
           "columnsFrom": [
             "declined_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "invitation_canceled_by_id_user_id_fk": {
-          "name": "invitation_canceled_by_id_user_id_fk",
-          "tableFrom": "invitation",
-          "tableTo": "user",
-          "columnsFrom": [
-            "canceled_by_id"
           ],
           "columnsTo": [
             "id"
@@ -4649,14 +4610,6 @@
         "church_only_partial_acceptance",
         "ministry_acceptance",
         "volunteer_transfer"
-      ]
-    },
-    "public.invitation_revocation_reason": {
-      "name": "invitation_revocation_reason",
-      "schema": "public",
-      "values": [
-        "manual",
-        "ministry-archived"
       ]
     },
     "public.membership_status": {

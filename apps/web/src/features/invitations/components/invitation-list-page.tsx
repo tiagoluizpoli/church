@@ -43,7 +43,7 @@ import type {
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
-import { adminApi } from '@/utils/api-instances';
+import { adminApi, invitationsApi } from '@/utils/api-instances';
 
 interface InvitationRowProps {
   item: ListInvitations200ItemsItem;
@@ -64,13 +64,13 @@ const RESEND_REFUSALS: Record<string, () => string> = {
   INVITATION_NOT_PENDING: () => m.error_invitation_not_pending(),
 };
 
-/** Resend for a Ministry row the server allows; Church-row resend is not offered yet. */
+/** Resend for a row the server allows, dispatched by its tagged kind. */
 function ResendButton({ item }: RowActionProps) {
   const queryClient = useQueryClient();
   const churchId = useCallerCapabilitiesScope()?.churchId;
   const [pending, setPending] = useState(false);
   const { ministryId, id, email } = item;
-  if (!item.canResend || item.kind !== 'ministry' || !ministryId) return null;
+  if (!item.canResend || (item.kind === 'ministry' && !ministryId)) return null;
 
   // Every row of the Active Church may change (siblings, delivery); filters stay as they are.
   const refresh = () =>
@@ -81,7 +81,9 @@ function ResendButton({ item }: RowActionProps) {
     if (pending) return;
     setPending(true);
     try {
-      await adminApi.resendMinistryInvitation(ministryId, id);
+      await (item.kind === 'church'
+        ? invitationsApi.resendChurchInvitation(id)
+        : adminApi.resendMinistryInvitation(ministryId as string, id));
       toast.success(m.invitations_resend_queued_toast({ email }));
       await refresh();
     } catch (error) {

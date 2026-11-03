@@ -254,12 +254,13 @@ export class DrizzleInvitationListRepository
           state: 'unavailable',
         },
         lastSentAt: lastSent.get(`${row.kind}:${row.id}`),
-        // Church-row actions are not offered yet; leaders manage volunteer-level offers only.
+        // Church rows are admin-only; leaders manage volunteer-level Ministry offers only.
         canResend:
-          row.kind === 'ministry' &&
           row.status === 'pending' &&
           parentPending &&
-          (isAdmin || row.ministryAccessLevel === 'volunteer'),
+          (isAdmin ||
+            (row.kind === 'ministry' &&
+              row.ministryAccessLevel === 'volunteer')),
         canRevoke:
           row.kind === 'ministry' &&
           row.status === 'pending' &&

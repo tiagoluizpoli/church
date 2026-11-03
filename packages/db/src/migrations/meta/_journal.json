@@ -264,8 +264,15 @@
     {
       "idx": 37,
       "version": "7",
-      "when": 1793692315357,
-      "tag": "0037_invitation-revocation-facts",
+      "when": 1793692276899,
+      "tag": "0037_church-invitation-resend-throttle",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793695386009,
+      "tag": "0038_invitation-revocation-facts",
       "breakpoints": true
     }
   ]

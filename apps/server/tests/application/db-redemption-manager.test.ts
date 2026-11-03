@@ -85,7 +85,9 @@ function createHarness({
       previewIndex += 1;
       return Promise.resolve(result ?? null);
     }),
-    lockChurchInvitation: vi.fn().mockResolvedValue('pending'),
+    lockChurchInvitation: vi
+      .fn()
+      .mockResolvedValue({ status: 'pending', resendCount: 0 }),
   } as Pick<
     MinistryInvitationRepository,
     'findPublicRedemptionPreview' | 'lockChurchInvitation'

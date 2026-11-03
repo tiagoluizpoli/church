@@ -384,12 +384,12 @@ export class DbRedemptionManager implements RedemptionManager {
     churchInvitationId,
     tx,
   }: EnsureChurchInvitationPendingInput): Promise<void> {
-    const status = await this.invitationRepository.lockChurchInvitation({
+    const locked = await this.invitationRepository.lockChurchInvitation({
       churchId,
       churchInvitationId,
       tx,
     });
-    if (status !== 'pending') throw new InvitationNotPendingError();
+    if (locked?.status !== 'pending') throw new InvitationNotPendingError();
   }
 
   private async classifyIdentityFailure({

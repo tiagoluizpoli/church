@@ -14,11 +14,13 @@ import type { IAuthorityManager } from '../domain/contracts/application/authorit
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   AdminInvitation,
+  ChurchInvitationResend,
   GetMinistryInvitationDeliveryStatusInput,
   IMinistryInvitationManager,
   MinistryInvitationDeliveryStatus,
   MintAdminInvitationInput,
   MintMinistryInvitationInput,
+  ResendChurchInvitationInput,
   ResendMinistryInvitationInput,
   RevokeMinistryInvitationInput,
 } from '../domain/contracts/application/ministry-invitation-manager';
@@ -312,6 +314,69 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     });
   }
 
+  async resendChurch(
+    input: ResendChurchInvitationInput,
+  ): Promise<ChurchInvitationResend | null> {
+    const { churchId, churchInvitationId } = input;
+    return this.unitOfWork.run(async (tx) => {
+      // Lock order: Church Invitation row, then its Ministry Invitation rows.
+      const parent = await this.repo.lockChurchInvitation({
+        churchId,
+        churchInvitationId,
+        tx,
+      });
+      if (!parent) return null;
+      if (parent.status !== 'pending') throw new InvitationNotPendingError();
+
+      const now = nowInstant();
+      const throttleState: ResendThrottleState = {
+        lastResendAt: parent.lastResendAt,
+        resendCount: parent.resendCount,
+        resendWindowStartedAt: parent.resendWindowStartedAt,
+      };
+      this.ensureResendAllowed({ throttleState, now });
+
+      const expiresAt = this.expiryFrom({
+        from: now,
+        milliseconds: this.churchInvitationTtlMs,
+      });
+      const aligned = await this.repo.alignPairedExpiry({
+        churchId,
+        churchInvitationId,
+        expiresAt: toDate({ instant: expiresAt }),
+        tx,
+      });
+      if (!aligned) throw new InvitationNotPendingError();
+      const next = nextResendThrottleState({
+        state: throttleState,
+        policy: this.resendPolicy,
+        now,
+      });
+      await this.repo.applyChurchResend({
+        churchId,
+        churchInvitationId,
+        throttle: {
+          lastResendAt: toDate({ instant: next.lastResendAt }),
+          resendCount: next.resendCount,
+          resendWindowStartedAt: toDate({
+            instant: next.resendWindowStartedAt,
+          }),
+        },
+        tx,
+      });
+      // One T1 for the whole offer, however many halves it retains.
+      await this.repo.enqueueOutboxMessage({
+        churchId,
+        kind: 'invitation.church-bootstrap',
+        payload: { churchInvitationId },
+        correlationId: crypto.randomUUID(),
+        scheduledFor: nowAsDate(),
+        tx,
+      });
+      return { churchInvitationId, expiresAt };
+    });
+  }
+
   async resend(
     input: ResendMinistryInvitationInput,
   ): Promise<MinistryInvitation> {
@@ -342,12 +407,12 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       }
       const { churchInvitationId } = target;
       if (churchInvitationId) {
-        const parentStatus = await this.repo.lockChurchInvitation({
+        const parent = await this.repo.lockChurchInvitation({
           churchId,
           churchInvitationId,
           tx,
         });
-        if (parentStatus !== 'pending') throw new InvitationNotPendingError();
+        if (parent?.status !== 'pending') throw new InvitationNotPendingError();
       }
       const existing = await this.repo.lockMinistryInvitation({
         churchId,

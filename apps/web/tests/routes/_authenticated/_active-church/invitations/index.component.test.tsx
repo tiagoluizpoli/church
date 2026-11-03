@@ -723,12 +723,29 @@ describe('Invitations revoke', () => {
             reason: 'ministry-archived',
           },
         }),
+        row({
+          kind: 'church',
+          id: 'parent',
+          email: 'parent@example.com',
+          ministryId: undefined,
+          ministryName: undefined,
+          ministryAccessLevel: undefined,
+          churchAccessLevel: 'member',
+          roles: [],
+          status: 'canceled',
+          displayStatus: 'revoked',
+          closure: {
+            actor: { id: 'u3', name: 'Caio' },
+            at: '2026-11-03T10:00:00Z',
+            reason: 'ministry-archived',
+          },
+        }),
       ]),
     );
 
     renderInvitations();
 
-    const [manual, archived] = await rows();
+    const [manual, archived, parent] = await rows();
     expect(manual).toHaveTextContent(
       'Revogado por Bia em 02/11/2026 10:00 · Revogado manualmente',
     );
@@ -737,5 +754,8 @@ describe('Invitations revoke', () => {
       'Revogado por Caio em 03/11/2026 10:00 · Revogado: Ministério arquivado',
     );
     expect(archived).not.toHaveTextContent('ministry-archived');
+    expect(parent).toHaveTextContent(
+      'Revogado por Caio em 03/11/2026 10:00 · Revogado: Ministério arquivado',
+    );
   });
 });

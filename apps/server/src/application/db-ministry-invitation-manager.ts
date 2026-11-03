@@ -37,6 +37,7 @@ import type { RoleRepository } from '../domain/contracts/infrastructure/role.rep
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
+import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import { InsufficientInvitationAuthorityError } from '../domain/errors/insufficient-invitation-authority';
 import { InvalidInvitationRoleError } from '../domain/errors/invalid-invitation-role';
 import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
@@ -69,8 +70,12 @@ interface EnsureMintableScopeInput {
   callerId: UserId;
 }
 
-interface MintableScope {
-  callerIsAdmin: boolean;
+interface EnsureOfferAuthorityInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  callerId: UserId;
+  /** The offer's stored (or, on mint, requested) Ministry Access Level. */
+  ministryAccessLevel: MinistryAccessLevel;
 }
 
 interface MintForExistingMemberInput extends MintMinistryInvitationInput {
@@ -160,15 +165,17 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     const email = normalizeInvitationEmail({ email: input.email });
     const roleIds = [...new Set(input.roleIds)];
 
-    const { callerIsAdmin } = await this.ensureMintableScope({
+    await this.ensureMintableScope({
       churchId,
       ministryId,
       callerId: inviterId,
     });
-
-    if (!callerIsAdmin && ministryAccessLevel === 'leader') {
-      throw new InsufficientInvitationAuthorityError();
-    }
+    await this.ensureOfferAuthority({
+      churchId,
+      ministryId,
+      callerId: inviterId,
+      ministryAccessLevel,
+    });
 
     return this.unitOfWork.run(async (tx) => {
       // Lock order shared with the admin invite: Church/address, then
@@ -407,7 +414,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   ): Promise<MinistryInvitation> {
     const { churchId, ministryId, ministryInvitationId, callerId } = input;
 
-    const { callerIsAdmin } = await this.ensureMintableScope({
+    await this.ensureMintableScope({
       churchId,
       ministryId,
       callerId,
@@ -427,9 +434,12 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       if (!target || target.ministryId !== ministryId) {
         throw new MinistryInvitationNotFoundError();
       }
-      if (!callerIsAdmin && target.ministryAccessLevel === 'leader') {
-        throw new InsufficientInvitationAuthorityError();
-      }
+      await this.ensureOfferAuthority({
+        churchId,
+        ministryId,
+        callerId,
+        ministryAccessLevel: target.ministryAccessLevel,
+      });
       const { churchInvitationId } = target;
       const parent = churchInvitationId
         ? await this.repo.lockChurchInvitation({
@@ -528,7 +538,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   async revoke(input: RevokeMinistryInvitationInput): Promise<void> {
     const { churchId, ministryId, ministryInvitationId, callerId } = input;
 
-    const { callerIsAdmin } = await this.ensureMintableScope({
+    await this.ensureMintableScope({
       churchId,
       ministryId,
       callerId,
@@ -545,9 +555,12 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       if (!target || target.ministryId !== ministryId) {
         throw new MinistryInvitationNotFoundError();
       }
-      if (!callerIsAdmin && target.ministryAccessLevel === 'leader') {
-        throw new InsufficientInvitationAuthorityError();
-      }
+      await this.ensureOfferAuthority({
+        churchId,
+        ministryId,
+        callerId,
+        ministryAccessLevel: target.ministryAccessLevel,
+      });
       const revoked = await revokeMinistryHalf({
         repo: this.repo,
         churchId,
@@ -762,7 +775,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
   private async ensureMintableScope(
     input: EnsureMintableScopeInput,
-  ): Promise<MintableScope> {
+  ): Promise<void> {
     const { churchId, ministryId, callerId } = input;
 
     try {
@@ -780,13 +793,19 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       userId: callerId,
     });
     if (!canManage) throw new MinistryInvitationNotFoundError();
+  }
 
-    const callerIsAdmin = await this.authorityManager.canManageChurch({
+  /** Within a manageable Ministry, a leader handles volunteer-level offers only. */
+  private async ensureOfferAuthority(
+    input: EnsureOfferAuthorityInput,
+  ): Promise<void> {
+    const { churchId, callerId, ministryId, ministryAccessLevel } = input;
+    const [allowed] = await this.authorityManager.canManageInvitations({
       churchId,
       userId: callerId,
+      invitations: [{ ministryId, ministryAccessLevel }],
     });
-
-    return { callerIsAdmin };
+    if (!allowed) throw new InsufficientInvitationAuthorityError();
   }
 
   private ensureResendAllowed(input: EnsureResendAllowedInput): void {

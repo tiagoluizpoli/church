@@ -328,6 +328,7 @@ export function buildManagers({
     overrides.invitationListManager ??
     new DbInvitationListManager({
       invitationListRepository,
+      authorityManager,
       defaultPageSize: config.invitations.pageSize,
     });
 

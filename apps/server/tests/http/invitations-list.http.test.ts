@@ -69,23 +69,23 @@ let app: FastifyTypedInstance;
 beforeAll(async () => {
   const ministryRepository = new DrizzleMinistryRepository({ db });
   app = await createFastify({ locale: testLocale });
+  const authorityManager = new DbAuthorityManager({
+    actorRepository: new DrizzleAuthorityActorResolver({ db }),
+    scopeRepository: {} as never,
+    eventRepository: {} as never,
+    eventTimeBlockRepository: {} as never,
+    ministryRepository,
+  });
   // Real manager, repository and AuthorityService; only session and Active Church are seams.
   const controller = new InvitationController({
     invitationListManager: new DbInvitationListManager({
       invitationListRepository: new DrizzleInvitationListRepository({ db }),
+      authorityManager,
       defaultPageSize: 20,
     }),
     ministryInvitationManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
-    authorityGuard: new AuthorityGuard({
-      manager: new DbAuthorityManager({
-        actorRepository: new DrizzleAuthorityActorResolver({ db }),
-        scopeRepository: {} as never,
-        eventRepository: {} as never,
-        eventTimeBlockRepository: {} as never,
-        ministryRepository,
-      }),
-    }),
+    authorityGuard: new AuthorityGuard({ manager: authorityManager }),
     maxPageSize: 50,
   });
   await app.register(

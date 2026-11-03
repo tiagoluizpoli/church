@@ -102,6 +102,19 @@ export interface InvitationListItem {
   canRevoke: boolean;
 }
 
+/** A row as read, before the caller's authority adds its action facts. */
+export interface InvitationListRow
+  extends Omit<InvitationListItem, 'canResend' | 'canRevoke'> {
+  /** A paired offer is resendable only while its Church parent is still pending. */
+  parentPending: boolean;
+}
+
+export interface InvitationListRowsPage {
+  items: InvitationListRow[];
+  nextCursor?: string;
+  options: InvitationListOptions;
+}
+
 export interface InvitationListPage {
   items: InvitationListItem[];
   nextCursor?: string;

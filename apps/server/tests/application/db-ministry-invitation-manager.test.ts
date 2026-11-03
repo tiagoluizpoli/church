@@ -41,7 +41,7 @@ const roleRepository = { lockActiveForUse: vi.fn() };
 const ministryRepository = { getById: vi.fn(), lockActive: vi.fn() };
 const authorityManager = {
   canManageMinistry: vi.fn(),
-  canManageChurch: vi.fn(),
+  canManageInvitations: vi.fn(),
 };
 const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
 const outboxRepository = { findLatestStatusForMinistryInvitation: vi.fn() };
@@ -77,7 +77,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   ministryRepository.getById.mockResolvedValue({ id: ministryId, churchId });
   authorityManager.canManageMinistry.mockResolvedValue(true);
-  authorityManager.canManageChurch.mockResolvedValue(true);
+  authorityManager.canManageInvitations.mockResolvedValue([true]);
   roleRepository.lockActiveForUse.mockResolvedValue([{ id: roleId }]);
   repo.findChurchMemberByEmail.mockResolvedValue(null);
   repo.findPendingChurchInvitationByEmail.mockResolvedValue(null);
@@ -109,8 +109,8 @@ describe('DbMinistryInvitationManager.mint — scope resolution', () => {
     expect(repo.acquireMintLock).not.toHaveBeenCalled();
   });
 
-  it('throws InsufficientInvitationAuthorityError when a non-admin requests leader access', async () => {
-    authorityManager.canManageChurch.mockResolvedValueOnce(false);
+  it('throws InsufficientInvitationAuthorityError when the requested level is outside the caller authority', async () => {
+    authorityManager.canManageInvitations.mockResolvedValueOnce([false]);
 
     await expect(
       createManager().mint({
@@ -122,16 +122,23 @@ describe('DbMinistryInvitationManager.mint — scope resolution', () => {
     expect(repo.acquireMintLock).not.toHaveBeenCalled();
   });
 
-  it('allows a non-admin requesting volunteer access', async () => {
-    authorityManager.canManageChurch.mockResolvedValueOnce(false);
+  it('asks AuthorityService about the requested level in the target Ministry', async () => {
+    await createManager().mint({
+      ...baseMintInput(),
+      inviterId: leaderId,
+      ministryAccessLevel: 'volunteer',
+    });
 
-    await expect(
-      createManager().mint({
-        ...baseMintInput(),
-        inviterId: leaderId,
-        ministryAccessLevel: 'volunteer',
-      }),
-    ).resolves.toBeDefined();
+    expect(authorityManager.canManageInvitations).toHaveBeenCalledWith({
+      churchId: baseMintInput().churchId,
+      userId: leaderId,
+      invitations: [
+        {
+          ministryId: baseMintInput().ministryId,
+          ministryAccessLevel: 'volunteer',
+        },
+      ],
+    });
   });
 
   it('rejects an invalid Role id with neither half created', async () => {

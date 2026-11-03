@@ -1,4 +1,4 @@
-import type { ChurchId } from '../../branded-ids';
+import type { ChurchId, UserId } from '../../branded-ids';
 import type {
   InvitationListFilters,
   InvitationListPage,
@@ -7,6 +7,8 @@ import type {
 
 export interface ListInvitationsRequest {
   churchId: ChurchId;
+  /** The caller, whose authority decides each row's action facts. */
+  userId: UserId;
   /** Resolved by the controller from the caller's capabilities; never from the request. */
   scope: InvitationListScope;
   filters: InvitationListFilters;

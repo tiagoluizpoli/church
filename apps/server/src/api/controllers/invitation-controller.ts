@@ -132,6 +132,7 @@ export class InvitationController implements FastifyController {
           ListLimitQuery;
         const page = await this.invitationListManager.list({
           churchId,
+          userId: UserId.from(request.userId),
           scope,
           filters,
           cursor,

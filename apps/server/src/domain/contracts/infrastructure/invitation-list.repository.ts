@@ -1,7 +1,7 @@
 import type { ChurchId } from '../../branded-ids';
 import type {
   InvitationListFilters,
-  InvitationListPage,
+  InvitationListRowsPage,
   InvitationListScope,
 } from '../../entities/invitation-list-item';
 
@@ -16,5 +16,5 @@ export interface ListInvitationsInput {
 
 export interface InvitationListRepository {
   /** Offers matching the filters within the scope, newest-created first with a kind/id tie-break. Throws MinistryInvitationNotFoundError for a Ministry filter outside the scope. */
-  list(input: ListInvitationsInput): Promise<InvitationListPage>;
+  list(input: ListInvitationsInput): Promise<InvitationListRowsPage>;
 }

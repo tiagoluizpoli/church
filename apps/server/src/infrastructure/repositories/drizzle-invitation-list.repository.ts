@@ -31,11 +31,11 @@ import type {
   InvitationClosure,
   InvitationEmailDelivery,
   InvitationListFilters,
-  InvitationListItem,
   InvitationListKind,
   InvitationListOptions,
-  InvitationListPage,
   InvitationListRole,
+  InvitationListRow,
+  InvitationListRowsPage,
   InvitationListScope,
 } from '../../domain/entities/invitation-list-item';
 import { MinistryInvitationNotFoundError } from '../../domain/errors/ministry-invitation-not-found';
@@ -189,7 +189,7 @@ export class DrizzleInvitationListRepository
     cursor,
     limit,
     now,
-  }: ListInvitationsInput): Promise<InvitationListPage> {
+  }: ListInvitationsInput): Promise<InvitationListRowsPage> {
     const position = cursor
       ? decodeInvitationListCursor({ cursor })
       : undefined;
@@ -243,8 +243,8 @@ export class DrizzleInvitationListRepository
         this.closures({ churchId, rows: page }),
       ]);
 
-    const items: InvitationListItem[] = page.map(
-      ({ closureFacts: _facts, parentPending, ...row }) => ({
+    const items: InvitationListRow[] = page.map(
+      ({ closureFacts: _facts, ...row }) => ({
         ...row,
         // A leader must not learn the Church-wide grant behind a paired offer.
         churchInvitationId: isAdmin ? row.churchInvitationId : undefined,
@@ -261,18 +261,6 @@ export class DrizzleInvitationListRepository
           state: 'unavailable',
         },
         lastSentAt: lastSent.get(`${row.kind}:${row.id}`),
-        // Church rows are admin-only; leaders manage volunteer-level Ministry offers only.
-        canResend:
-          row.status === 'pending' &&
-          parentPending &&
-          (isAdmin ||
-            (row.kind === 'ministry' &&
-              row.ministryAccessLevel === 'volunteer')),
-        canRevoke:
-          row.status === 'pending' &&
-          (isAdmin ||
-            (row.kind === 'ministry' &&
-              row.ministryAccessLevel === 'volunteer')),
       }),
     );
     const last = items.at(-1);
@@ -478,7 +466,6 @@ export class DrizzleInvitationListRepository
       email: row.inviteeEmail ?? row.churchEmail ?? '',
       churchAccessLevel:
         row.churchRole === 'admin' ? ('admin' as const) : undefined,
-      /** A paired offer is resendable only while its Church parent is still pending. */
       parentPending:
         row.churchStatus === null || row.churchStatus === 'pending',
       ministryAccessLevel: row.ministryAccessLevel,

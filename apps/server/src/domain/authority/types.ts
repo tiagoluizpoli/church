@@ -67,7 +67,22 @@ export interface MinistryResource {
   ownerVolunteerId?: VolunteerId;
 }
 
-export type AuthorityResource = ChurchResource | MinistryResource;
+/**
+ * One stored invitation being managed (resent, revoked): a Ministry
+ * Invitation carries its Ministry and the stored Access Level it grants; a
+ * Church/admin offer carries neither.
+ */
+export interface InvitationResource {
+  type: 'invitation';
+  churchId: ChurchId;
+  ministryId?: MinistryId;
+  ministryAccessLevel?: MinistryAccessLevel;
+}
+
+export type AuthorityResource =
+  | ChurchResource
+  | MinistryResource
+  | InvitationResource;
 
 export type AuthorityScope = 'function' | 'object';
 

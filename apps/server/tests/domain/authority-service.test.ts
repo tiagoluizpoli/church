@@ -440,3 +440,115 @@ describe('AuthorityService — scope-aware decisions', () => {
     ).toEqual({ allowed: false, reason: 'INSUFFICIENT_ACCESS_LEVEL' });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Invitation resource — managing one stored offer at its own Access Level
+// ---------------------------------------------------------------------------
+
+describe('AuthorityService — invitation resource', () => {
+  const volunteerOffer: AuthorityResource = {
+    type: 'invitation',
+    churchId,
+    ministryId,
+    ministryAccessLevel: 'volunteer',
+  };
+  const leaderOffer: AuthorityResource = {
+    ...volunteerOffer,
+    ministryAccessLevel: 'leader',
+  };
+  const churchOffer: AuthorityResource = { type: 'invitation', churchId };
+  const admin = churchMembership({ accessLevel: 'admin' });
+  const leads = [ministryMembership({ accessLevel: 'leader' })];
+
+  it.each([
+    {
+      name: 'admin manages a leader-level offer without any Ministry Membership',
+      churchMembership: admin,
+      ministryMemberships: [],
+      resource: leaderOffer,
+      expectReason: undefined,
+    },
+    {
+      name: 'admin manages a Church offer',
+      churchMembership: admin,
+      ministryMemberships: [],
+      resource: churchOffer,
+      expectReason: undefined,
+    },
+    {
+      name: 'leader manages a volunteer-level offer in their own Ministry',
+      churchMembership: churchMembership({ accessLevel: 'member' }),
+      ministryMemberships: leads,
+      resource: volunteerOffer,
+      expectReason: undefined,
+    },
+    {
+      name: 'leader may not manage a leader-level offer in their own Ministry',
+      churchMembership: churchMembership({ accessLevel: 'member' }),
+      ministryMemberships: leads,
+      resource: leaderOffer,
+      expectReason: 'INSUFFICIENT_ACCESS_LEVEL',
+    },
+    {
+      name: 'leader of another Ministry may not manage a volunteer-level offer',
+      churchMembership: churchMembership({ accessLevel: 'member' }),
+      ministryMemberships: [
+        ministryMembership({
+          ministryId: otherMinistryId,
+          accessLevel: 'leader',
+        }),
+      ],
+      resource: volunteerOffer,
+      expectReason: 'INSUFFICIENT_ACCESS_LEVEL',
+    },
+    {
+      name: 'volunteer of the Ministry may not manage its offers',
+      churchMembership: churchMembership({ accessLevel: 'member' }),
+      ministryMemberships: [ministryMembership({ accessLevel: 'volunteer' })],
+      resource: volunteerOffer,
+      expectReason: 'INSUFFICIENT_ACCESS_LEVEL',
+    },
+    {
+      name: 'leader may not manage a Church offer',
+      churchMembership: churchMembership({ accessLevel: 'member' }),
+      ministryMemberships: leads,
+      resource: churchOffer,
+      expectReason: 'INSUFFICIENT_ACCESS_LEVEL',
+    },
+    {
+      name: 'a leadership recorded in another Church is conflicting scope',
+      churchMembership: churchMembership({ accessLevel: 'member' }),
+      ministryMemberships: [
+        ministryMembership({ accessLevel: 'leader', churchId: otherChurchId }),
+      ],
+      resource: volunteerOffer,
+      expectReason: 'CONFLICTING_SCOPE',
+    },
+  ])('$name', ({
+    churchMembership,
+    ministryMemberships,
+    resource,
+    expectReason,
+  }) => {
+    const decision = AuthorityService.authorize(
+      request({
+        actor: actor({ churchMembership, ministryMemberships }),
+        resource,
+      }),
+    );
+
+    expect(denyReason(decision)).toBe(expectReason);
+  });
+
+  it('grants no participation in an offer, even to an admin', () => {
+    const decision = AuthorityService.authorize(
+      request({
+        actor: actor({ churchMembership: admin, ministryMemberships: leads }),
+        action: 'participate',
+        resource: volunteerOffer,
+      }),
+    );
+
+    expect(denyReason(decision)).toBe('INSUFFICIENT_ACCESS_LEVEL');
+  });
+});

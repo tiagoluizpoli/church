@@ -16,6 +16,7 @@ export const ISOLATED_SPECS = [
   'identity/active-church-switching.spec.ts',
   'identity/cross-tenant-invitation-isolation.spec.ts',
   'identity/first-admin-onboarding.spec.ts',
+  'identity/invitation-journey.spec.ts',
   'identity/redemption-existing-member.spec.ts',
   'identity/redemption-new-user.spec.ts',
   'identity/route-protection.spec.ts',

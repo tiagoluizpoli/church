@@ -38,8 +38,13 @@ const REDEMPTION_SPEC_PATHS = [
 
 // The public Church Invitation join also serves the plain first-admin
 // invitation (J0→J1); the authenticated Ministry route does not.
+const INVITATION_JOURNEY_SPEC_PATHS = [
+  'tests/identity/invitation-journey.spec.ts',
+];
+
 const CHURCH_INVITATION_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
+  ...INVITATION_JOURNEY_SPEC_PATHS,
   ...REDEMPTION_SPEC_PATHS,
 ];
 
@@ -72,6 +77,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/identity/cross-tenant-invitation-isolation.spec.ts',
   'tests/identity/first-admin-onboarding.spec.ts',
+  'tests/identity/invitation-journey.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
   // Signs in as the shared personas global setup loads from a recipe.
@@ -163,6 +169,22 @@ const PREPARE_ROUTE_FILES = [
 ].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
 
 export const JOURNEY_MAP: JourneyMapping[] = [
+  // J4 (#667): the Invitations page (list and Invite dialog) and the list
+  // controller the invited leader and Volunteer journey drives.
+  {
+    sourcePathPrefix: 'apps/web/src/features/invitations/',
+    specPaths: INVITATION_JOURNEY_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/invitations/',
+    specPaths: INVITATION_JOURNEY_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/server/src/api/controllers/invitation-controller.ts',
+    specPaths: INVITATION_JOURNEY_SPEC_PATHS,
+  },
   {
     sourcePathPrefix: 'apps/web/src/routes/invitations/',
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
@@ -370,12 +392,18 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // returns the indistinguishable not-found (#68).
   {
     sourcePathPrefix: 'apps/server/src/api/controllers/ministry-controller.ts',
-    specPaths: ['tests/identity/cross-tenant-invitation-isolation.spec.ts'],
+    specPaths: [
+      'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+      ...INVITATION_JOURNEY_SPEC_PATHS,
+    ],
   },
   {
     sourcePathPrefix:
       'apps/server/src/application/db-ministry-invitation-manager.ts',
-    specPaths: ['tests/identity/cross-tenant-invitation-isolation.spec.ts'],
+    specPaths: [
+      'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+      ...INVITATION_JOURNEY_SPEC_PATHS,
+    ],
   },
   // #214 — route protection and deep-link return (#66), coupled to the
   // authenticated guard, the sign-in route's redirect-away and landing

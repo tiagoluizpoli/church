@@ -12,7 +12,7 @@ import {
   volunteer,
 } from '@church/db';
 import { fromDate } from '@church/time';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type {
   EventId,
   MinistryId,
@@ -44,6 +44,13 @@ interface DrizzleAvailabilityCheckRepositoryInput {
   db: AnyDrizzleDb;
 }
 
+/** A check that can still be answered: not withdrawn, on an active Ministry Membership. */
+const actionable = () =>
+  and(
+    isNull(availabilityCheck.withdrawnAt),
+    eq(ministryMembership.status, 'active'),
+  );
+
 export class DrizzleAvailabilityCheckRepository
   implements AvailabilityCheckRepository
 {
@@ -57,7 +64,7 @@ export class DrizzleAvailabilityCheckRepository
     input: ListActiveMembershipsInput,
   ): Promise<ActiveMinistryMembership[]> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const rows = await db
+    const query = db
       .select({
         ministryMembershipId: ministryMembership.id,
         volunteerId: ministryMembership.volunteerId,
@@ -77,6 +84,10 @@ export class DrizzleAvailabilityCheckRepository
           }),
         ),
       );
+    // In a transaction (Ask), wait out a concurrent removal and re-read the status after it.
+    const rows = input.tx
+      ? await query.for('share', { of: ministryMembership })
+      : await query;
 
     return rows.map((row) => ({
       ministryMembershipId: row.ministryMembershipId,
@@ -92,6 +103,7 @@ export class DrizzleAvailabilityCheckRepository
     const db = getClient({ db: this.db, tx: input.tx });
     const conditions = [
       eq(availabilityCheck.cycleId, input.cycleId),
+      isNull(availabilityCheck.withdrawnAt),
       withChurchIsolation({
         table: availabilityCheck,
         churchId: input.churchId,
@@ -149,7 +161,7 @@ export class DrizzleAvailabilityCheckRepository
 
   async getCheckContext(input: GetCheckContextInput): Promise<CheckContext> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const rows = await db
+    const query = db
       .select(this.contextSelection())
       .from(availabilityCheck)
       .innerJoin(
@@ -162,12 +174,17 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
+          actionable(),
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,
           }),
         ),
       );
+    // In a transaction (an answer), wait out a concurrent removal and re-read the membership after it.
+    const rows = input.tx
+      ? await query.for('share', { of: ministryMembership })
+      : await query;
 
     const row = rows[0];
     if (!row) {
@@ -201,6 +218,7 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(ministryMembership.volunteerId, input.volunteerId),
+          actionable(),
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,
@@ -305,6 +323,7 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
+          isNull(availabilityCheck.withdrawnAt),
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,

@@ -5,7 +5,10 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
-import type { MinistryAccessLevel } from '../../entities/ministry-membership';
+import type {
+  MinistryAccessLevel,
+  MinistryMembershipStatus,
+} from '../../entities/ministry-membership';
 import type { PersonDetailRole } from '../../entities/people-list-item';
 import type { UpcomingMembershipAssignment } from '../../upcoming-membership-assignments';
 import type { TransactionContext } from './transaction-context';
@@ -19,7 +22,7 @@ export interface LockMembershipTargetInput {
   tx: TransactionContext;
 }
 
-/** The locked chain Church Member → active Volunteer profile → active Ministry Membership. */
+/** The locked chain Church Member → active Volunteer profile → Ministry Membership, ended or not. */
 export interface MembershipTarget {
   memberId: string;
   membershipId: string;
@@ -27,6 +30,8 @@ export interface MembershipTarget {
   volunteerId: VolunteerId;
   ministryId: MinistryId;
   ministryAccessLevel: MinistryAccessLevel;
+  /** `inactive` once ended; only an active membership changes. */
+  status: MinistryMembershipStatus;
   /** Every Role held, archived ones included. */
   roleIds: string[];
 }
@@ -52,6 +57,15 @@ export interface SaveMembershipRolesInput {
   tx: TransactionContext;
 }
 
+export interface EndMembershipInput {
+  churchId: ChurchId;
+  actorId: UserId;
+  target: MembershipTarget;
+  correlationId: string;
+  changedAt: Date;
+  tx: TransactionContext;
+}
+
 export interface SaveMembershipAccessInput extends SaveMembershipRolesInput {
   accessLevel: MinistryAccessLevel;
   /** Whether the Role set differs, so the audit carries both facts. */
@@ -72,7 +86,8 @@ export interface MinistryMembershipRepository {
   /**
    * Resolves and locks the target chain, profile then membership (the
    * Volunteer Transfer order), or undefined when any link is missing,
-   * mismatched, retired, ended, in an archived Ministry or another Church.
+   * mismatched, retired, in an archived Ministry or another Church. An
+   * ended membership is returned with its status so the caller can refuse it.
    */
   lockTarget(
     input: LockMembershipTargetInput,
@@ -87,6 +102,12 @@ export interface MinistryMembershipRepository {
   ): Promise<UpcomingMembershipAssignment[]>;
   /** Applies the Role difference and writes its one `ministry_roles_changed` audit. */
   saveRoles(input: SaveMembershipRolesInput): Promise<void>;
+  /**
+   * Ends the membership at `changedAt`, keeping its Role rows, withdraws its
+   * actionable Availability Checks in non-past Cycles and writes the one
+   * `ministry_membership_ended` audit. Returns the withdrawn check ids.
+   */
+  endMembership(input: EndMembershipInput): Promise<string[]>;
   /**
    * Applies the level and any Role difference together, with their one
    * `ministry_access_changed` audit.

@@ -3448,6 +3448,60 @@ export type ChangeMinistryAccess422 = {
   message: string;
 };
 
+export type EndMinistryMembership200Status = typeof EndMinistryMembership200Status[keyof typeof EndMinistryMembership200Status];
+
+
+export const EndMinistryMembership200Status = {
+  inactive: 'inactive',
+} as const;
+
+export type EndMinistryMembership200 = {
+  memberId: string;
+  membershipId: string;
+  status: EndMinistryMembership200Status;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  leftAt: string;
+  changed: true;
+};
+
+export type EndMinistryMembership401 = {
+  error: string;
+  message: string;
+};
+
+export type EndMinistryMembership403 = {
+  error: string;
+  message: string;
+};
+
+export type EndMinistryMembership404 = {
+  error: string;
+  message: string;
+};
+
+export type EndMinistryMembership409 = {
+  error: string;
+  message: string;
+  assignments: {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  shiftStart: string;
+  shiftEnd: string;
+  roleId: string;
+  roleName: string;
+  sectorId: string;
+  sectorName: string;
+  ministryId: string;
+  cycleId: string;
+}[];
+} | {
+  error: string;
+  message: string;
+};
+
 export type GetPerson200MinistriesItemMinistryAccessLevel = typeof GetPerson200MinistriesItemMinistryAccessLevel[keyof typeof GetPerson200MinistriesItemMinistryAccessLevel];
 
 
@@ -3469,6 +3523,7 @@ export type GetPerson200MinistriesItem = {
   ministryAccessLevel: GetPerson200MinistriesItemMinistryAccessLevel;
   roles: GetPerson200MinistriesItemRolesItem[];
   canEditRoles: boolean;
+  canEndMembership: boolean;
   canChangeMinistryAccess: boolean;
 };
 

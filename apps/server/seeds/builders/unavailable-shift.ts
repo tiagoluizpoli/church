@@ -82,6 +82,8 @@ export interface BuildAvailabilityCheckInput {
   id?: string;
   /** Left to the column default (pending) when a fixture does not care. */
   state?: AvailabilityCheckState;
+  /** Withdrawn by the end of its Ministry Membership; never actionable again. */
+  withdrawnAt?: Instant;
 }
 
 /** A Ministry Membership's Availability Check, not yet answered unless `state` says so. */
@@ -92,11 +94,19 @@ export async function buildAvailabilityCheck({
   ministryMembershipId,
   id,
   state,
+  withdrawnAt,
 }: BuildAvailabilityCheckInput): Promise<SeededAvailabilityCheck> {
   return requireInsertedRow({
     rows: await db
       .insert(availabilityCheck)
-      .values({ id, churchId, cycleId, ministryMembershipId, state })
+      .values({
+        id,
+        churchId,
+        cycleId,
+        ministryMembershipId,
+        state,
+        withdrawnAt: withdrawnAt && toDate({ instant: withdrawnAt }),
+      })
       .returning(),
     description: `Availability Check for ${ministryMembershipId}`,
   });

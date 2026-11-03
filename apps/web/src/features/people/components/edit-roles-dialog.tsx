@@ -36,6 +36,7 @@ const KEPT_OPEN: Record<string, () => string> = {
 
 /** Refusals meaning the shown card was stale; the dialog closes and the member refreshes. */
 const STALE: Record<string, () => string> = {
+  MINISTRY_MEMBERSHIP_INACTIVE: () => m.error_ministry_membership_inactive(),
   FORBIDDEN: () => m.error_forbidden(),
   NOT_FOUND: () => m.people_detail_not_found(),
 };

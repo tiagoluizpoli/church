@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { Badge } from '@/components/ui/badge';
 import { ChangeMinistryAccessDialog } from '@/features/people/components/change-ministry-access-dialog';
 import { EditRolesDialog } from '@/features/people/components/edit-roles-dialog';
+import { RemoveFromMinistryDialog } from '@/features/people/components/remove-from-ministry-dialog';
 import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
 
 interface MinistryCardProps {
@@ -55,6 +56,14 @@ export function MinistryCard({
         ) : null}
         {card.canChangeMinistryAccess ? (
           <ChangeMinistryAccessDialog
+            memberId={memberId}
+            personName={personName}
+            card={card}
+            isSelf={isSelf}
+          />
+        ) : null}
+        {card.canEndMembership ? (
+          <RemoveFromMinistryDialog
             memberId={memberId}
             personName={personName}
             card={card}

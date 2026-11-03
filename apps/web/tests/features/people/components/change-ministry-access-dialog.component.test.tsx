@@ -72,6 +72,7 @@ function card(
     roles: [{ id: 'r-singer', name: 'Singer', archived: false }],
     canEditRoles: false,
     canChangeMinistryAccess: true,
+    canEndMembership: false,
     ...overrides,
   };
 }

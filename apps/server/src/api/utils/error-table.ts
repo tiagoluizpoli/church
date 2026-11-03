@@ -65,6 +65,7 @@ export type MappedDomainCode =
   | 'INVALID_INVITATION_ROLE'
   | 'INVALID_MINISTRY_ROLE'
   | 'MINISTRY_ROLE_REQUIRED'
+  | 'MINISTRY_MEMBERSHIP_INACTIVE'
   | 'UPCOMING_ASSIGNMENTS'
   | 'VALIDATION_ERROR';
 
@@ -178,6 +179,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   MINISTRY_ROLE_REQUIRED: {
     status: 409,
     message: m.error_ministry_role_required,
+  },
+  MINISTRY_MEMBERSHIP_INACTIVE: {
+    status: 409,
+    message: m.error_ministry_membership_inactive,
   },
   UPCOMING_ASSIGNMENTS: {
     status: 409,

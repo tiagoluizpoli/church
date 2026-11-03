@@ -11,16 +11,19 @@ export type UpcomingAssignment = Extract<
 
 interface UpcomingAssignmentsAlertProps {
   assignments: UpcomingAssignment[];
+  /** Defaults to the removed-Role wording. */
+  title?: string;
 }
 
 /** The 409 blocker list: each upcoming Assignment, in Church time, with a new-tab link to its Assign board. */
 export function UpcomingAssignmentsAlert({
   assignments,
+  title = m.people_roles_blocked_title(),
 }: UpcomingAssignmentsAlertProps) {
   const { churchTimezone } = useTimezone();
   return (
     <Alert variant="destructive" role="alert">
-      <AlertTitle>{m.people_roles_blocked_title()}</AlertTitle>
+      <AlertTitle>{title}</AlertTitle>
       <AlertDescription className="space-y-2">
         <p>{m.error_upcoming_assignments()}</p>
         <ul className="space-y-1">

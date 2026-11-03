@@ -22,6 +22,15 @@ export const availabilityCheck = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+    /**
+     * Set when the Ministry Membership ended while the check was still
+     * actionable: lifecycle metadata, not an answer state, so `state` and
+     * answers stay as history and the check never accepts a write again.
+     */
+    withdrawnAt: timestamp('withdrawn_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

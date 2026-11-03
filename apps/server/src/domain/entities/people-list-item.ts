@@ -79,6 +79,7 @@ export interface PersonDetailRecord extends PersonDetail {
 /** A card with its gatekeeper-derived action hints. */
 export interface PersonDetailCard extends PersonDetailMinistry {
   canEditRoles: boolean;
+  canEndMembership: boolean;
   canChangeMinistryAccess: boolean;
 }
 

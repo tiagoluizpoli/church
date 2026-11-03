@@ -1,6 +1,8 @@
 import {
   assignment,
+  availabilityCheck,
   member as churchMember,
+  cycle,
   event,
   identityAudit,
   ministry,
@@ -17,6 +19,7 @@ import { fromDate, toDate } from '@church/time';
 import { and, asc, eq, gt, inArray, isNull, ne } from 'drizzle-orm';
 import { MinistryId, UserId, VolunteerId } from '../../domain/branded-ids';
 import type {
+  EndMembershipInput,
   ListMembershipRolesInput,
   ListUpcomingMembershipAssignmentsInput,
   LockMembershipTargetInput,
@@ -97,6 +100,7 @@ export class DrizzleMinistryMembershipRepository
       .select({
         ministryId: ministryMembership.ministryId,
         ministryAccessLevel: ministryMembership.ministryAccessLevel,
+        status: ministryMembership.status,
       })
       .from(ministryMembership)
       .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
@@ -105,8 +109,6 @@ export class DrizzleMinistryMembershipRepository
           eq(ministryMembership.id, membershipId),
           eq(ministryMembership.volunteerId, profile.id),
           withChurchIsolation({ table: ministryMembership, churchId }),
-          eq(ministryMembership.status, 'active'),
-          isNull(ministryMembership.leftAt),
           isNull(ministry.deletedAt),
         ),
       )
@@ -123,6 +125,7 @@ export class DrizzleMinistryMembershipRepository
       volunteerId: VolunteerId.from(profile.id),
       ministryId: MinistryId.from(membership.ministryId),
       ministryAccessLevel: membership.ministryAccessLevel,
+      status: membership.status,
       roleIds: roleRows.map((row) => row.roleId),
     };
   }
@@ -273,6 +276,64 @@ export class DrizzleMinistryMembershipRepository
         })),
       );
     }
+  }
+
+  async endMembership({
+    churchId,
+    actorId,
+    target,
+    correlationId,
+    changedAt,
+    tx,
+  }: EndMembershipInput): Promise<string[]> {
+    const db = getClient({ db: this.db, tx });
+    await db
+      .update(ministryMembership)
+      .set({ status: 'inactive', leftAt: changedAt })
+      .where(eq(ministryMembership.id, target.membershipId));
+    // A confirmed check is withdrawn too: its answers could still be edited.
+    const withdrawn = await db
+      .update(availabilityCheck)
+      .set({ withdrawnAt: changedAt })
+      .where(
+        and(
+          eq(availabilityCheck.ministryMembershipId, target.membershipId),
+          withChurchIsolation({ table: availabilityCheck, churchId }),
+          isNull(availabilityCheck.withdrawnAt),
+          inArray(
+            availabilityCheck.cycleId,
+            db
+              .select({ id: cycle.id })
+              .from(cycle)
+              .where(
+                and(
+                  withChurchIsolation({ table: cycle, churchId }),
+                  ne(cycle.state, 'past'),
+                ),
+              ),
+          ),
+        ),
+      )
+      .returning({ id: availabilityCheck.id });
+    const withdrawnCheckIds = withdrawn.map((row) => row.id).sort();
+    await db.insert(identityAudit).values({
+      churchId,
+      actorId,
+      subjectId: target.subjectUserId,
+      action: 'ministry_membership_ended',
+      details: {
+        churchMembershipId: target.memberId,
+        ministryMembershipId: target.membershipId,
+        ministryId: target.ministryId,
+        retainedRoleIds: [...target.roleIds].sort(),
+        withdrawnAvailabilityCheckIds: withdrawnCheckIds,
+        beforeStatus: 'active',
+        afterStatus: 'inactive',
+      },
+      correlationId,
+      timestamp: changedAt,
+    });
+    return withdrawnCheckIds;
   }
 
   async listRoles({

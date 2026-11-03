@@ -1,9 +1,14 @@
 import { appConfig } from '@church/app-config';
 import {
+  assignment,
+  availabilityCheck,
   identityAudit,
+  member,
   ministryMembership,
   ministryMembershipRole,
   role,
+  unavailableShift,
+  volunteer as volunteerTable,
 } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { m } from '@church/i18n/messages';
@@ -23,17 +28,24 @@ import {
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { AssignController } from '@/api/controllers/assign-controller';
 import { PeopleController } from '@/api/controllers/people-controller';
+import { PrepareController } from '@/api/controllers/prepare-controller';
+import { VolunteerController } from '@/api/controllers/volunteer-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbChurchAccessManager } from '@/application/db-church-access-manager';
 import { DbMinistryMembershipManager } from '@/application/db-ministry-membership-manager';
 import { DbMinistryRoleManager } from '@/application/db-ministry-role-manager';
 import { DbPeopleListManager } from '@/application/db-people-list-manager';
 import { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleChurchAccessRepository } from '@/infrastructure/repositories/drizzle-church-access.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryMembershipRepository } from '@/infrastructure/repositories/drizzle-ministry-membership.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePeopleListRepository } from '@/infrastructure/repositories/drizzle-people-list.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -54,8 +66,14 @@ import {
   buildMinistryParticipation,
   buildShift,
   buildShiftRequirement,
+  type CycleState,
   type EventStatus,
 } from '@/seeds/builders/scheduling';
+import {
+  buildAvailabilityCheck,
+  buildConfirmedAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
   buildVolunteer,
@@ -65,6 +83,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -84,6 +103,7 @@ const USER_HEADER = 'x-test-user';
 
 let app: FastifyTypedInstance;
 let roleManager: DbMinistryRoleManager;
+const notifications = createChurchNotificationsSpy();
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -137,14 +157,39 @@ beforeAll(async () => {
     } as never,
     config: appConfig,
   });
+  // The Volunteer's own check links and the leader's Ask/Remind, behind the same stubbed area gate.
+  const volunteer = new VolunteerController({
+    volunteerManager: scheduling.volunteerManager,
+    activeChurchResolver: activeChurchResolver as never,
+    config: appConfig,
+  });
+  const prepare = new PrepareController({
+    participationManager: scheduling.participationManager,
+    availabilityCheckManager: new DbAvailabilityCheckManager({
+      participationRepository: new DrizzleMinistryParticipationRepository({
+        db,
+      }),
+      eventRepository: new DrizzlePlanningEventRepository({ db }),
+      availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({
+        db,
+      }),
+      cycleRepository: new DrizzleCycleRepository({ db }),
+      notifications,
+      unitOfWork,
+    }),
+    activeChurchResolver: activeChurchResolver as never,
+    authorityGuard: {
+      decideManageParticipation: async () => ({ allowed: true }),
+      decideManageShift: async () => ({ allowed: true }),
+    } as never,
+  });
   await app.register(
     async (instance) => {
-      instance.register(controller.registerRoutes.bind(controller), {
-        prefix: controller.prefix,
-      });
-      instance.register(assign.registerRoutes.bind(assign), {
-        prefix: assign.prefix,
-      });
+      for (const routes of [controller, assign, volunteer, prepare]) {
+        instance.register(routes.registerRoutes.bind(routes), {
+          prefix: routes.prefix,
+        });
+      }
     },
     { prefix: '/api/v1' },
   );
@@ -252,12 +297,18 @@ beforeEach(async () => {
       ? { user: { id }, session: { activeOrganizationId: null } }
       : null;
   }) as never);
-  activeChurchResolver.resolve.mockResolvedValue({
-    status: 'resolved',
-    churchId: CHURCH_A,
-    volunteerId: null,
-    autoSelected: false,
-  });
+  activeChurchResolver.resolve.mockImplementation(
+    async ({ userId }: { userId: string }) => {
+      const volunteerId = volunteers.get(`${userId}:${CHURCH_A}`) ?? null;
+      return {
+        status: 'resolved',
+        churchId: CHURCH_A,
+        volunteerId,
+        hasVolunteerMembership: volunteerId !== null,
+        autoSelected: false,
+      };
+    },
+  );
   await resetSchedulingPhase3Db();
   await buildChurch({
     db,
@@ -495,6 +546,55 @@ async function service(input: ServiceInput) {
 }
 const valWorship = () => memberships.get(`val:${f.worship}`) ?? '';
 
+interface HolderInput {
+  /** Run while the holder keeps its locks; each started request must reach a lock before the next. */
+  steps: (() => Promise<unknown>)[];
+  lock: string;
+}
+
+/**
+ * Holds a row lock from outside the app and starts each step only after
+ * the previous one waits on a lock, so the queue order is the step order.
+ */
+async function holding({ steps, lock }: HolderInput) {
+  const holder = new pg.Client({
+    connectionString: getIntegrationDatabaseUrl(),
+  });
+  await holder.connect();
+  try {
+    await holder.query('BEGIN');
+    await holder.query(lock);
+    const pending: Promise<unknown>[] = [];
+    for (const step of steps) {
+      pending.push(step());
+      await waitForLockWaiters({ holder, count: pending.length });
+    }
+    await holder.query('COMMIT');
+    return await Promise.all(pending);
+  } finally {
+    await holder.end();
+  }
+}
+
+interface WaitForLockWaitersInput {
+  holder: pg.Client;
+  count: number;
+}
+
+async function waitForLockWaiters({ holder, count }: WaitForLockWaitersInput) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    await holder.query('SELECT pg_stat_clear_snapshot()');
+    const { rows } = await holder.query(
+      `SELECT count(*)::int AS waiting FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
+    if (rows[0].waiting >= count) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`fewer than ${count} requests reached a lock`);
+}
+
 describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () => {
   it('lets an admin without a Volunteer profile add a Role, recording one subject-attributed audit', async () => {
     const res = await editRoles({
@@ -633,7 +733,7 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
       expect(anonymous.statusCode).toBe(401);
     });
 
-    it('answers one 404 for a missing, mismatched, other-Church, ended or retired target', async () => {
+    it('answers one 404 for a missing, mismatched, other-Church or retired target', async () => {
       // One active Volunteer profile per User, so Church B has its own member.
       await person({ key: 'bea', church: CHURCH_B });
       const bMinistry = (
@@ -663,17 +763,6 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
           roleIds: [f.vocals],
         })
       ).id;
-      await person({ key: 'eli' });
-      const ended = await serves({
-        key: 'eli',
-        ministryId: f.worship,
-        level: 'volunteer',
-        roleIds: [f.vocals],
-      });
-      await db
-        .update(ministryMembership)
-        .set({ status: 'inactive', leftAt: new Date('2026-10-01T00:00:00Z') })
-        .where(eq(ministryMembership.id, ended));
 
       const targets = [
         { member: 'val', membership: '00000000-0000-4000-8000-000000000000' },
@@ -682,7 +771,6 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
         { member: 'val', membership: valB },
         { member: 'nobody', membership: ws('val') },
         { member: 'rex', membership: retired },
-        { member: 'eli', membership: ended },
       ];
       for (const target of targets) {
         const res = await editRoles({
@@ -694,6 +782,36 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
         expect(res.json().error).toBe('NOT_FOUND');
       }
       expect(await heldRoles(valB)).toEqual([f.foreignRole]);
+      expect(await audits()).toEqual([]);
+    });
+
+    it('refuses an ended membership as inactive to an actor who could manage it, and hides it from one who cannot', async () => {
+      await db
+        .update(ministryMembership)
+        .set({ status: 'inactive', leftAt: new Date('2026-10-01T00:00:00Z') })
+        .where(eq(ministryMembership.id, ws('val')));
+
+      const admin = await editRoles({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+        roleIds: [f.vocals],
+        locale: 'en',
+      });
+      expect(admin.statusCode).toBe(409);
+      expect(admin.json()).toEqual({
+        error: 'MINISTRY_MEMBERSHIP_INACTIVE',
+        message: m.error_ministry_membership_inactive({}, { locale: 'en' }),
+      });
+      // kim leads only Kids, so the ended Worship membership stays hidden.
+      const outsider = await editRoles({
+        as: 'kim',
+        member: 'val',
+        membership: ws('val'),
+        roleIds: [f.vocals],
+      });
+      expect(outsider.statusCode).toBe(404);
+      expect(await heldRoles(ws('val'))).toEqual([f.vocals, f.keys].sort());
       expect(await audits()).toEqual([]);
     });
   });
@@ -945,58 +1063,6 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
   });
 
   describe('when writes overlap', () => {
-    interface HolderInput {
-      /** Run while the holder keeps its locks; each started request must reach a lock before the next. */
-      steps: (() => Promise<unknown>)[];
-      lock: string;
-    }
-
-    /**
-     * Holds a row lock from outside the app and starts each step only after
-     * the previous one waits on a lock, so the queue order is the step order.
-     */
-    async function holding({ steps, lock }: HolderInput) {
-      const holder = new pg.Client({
-        connectionString: getIntegrationDatabaseUrl(),
-      });
-      await holder.connect();
-      try {
-        await holder.query('BEGIN');
-        await holder.query(lock);
-        const pending: Promise<unknown>[] = [];
-        for (const step of steps) {
-          pending.push(step());
-          await waitForLockWaiters({ holder, count: pending.length });
-        }
-        await holder.query('COMMIT');
-        return await Promise.all(pending);
-      } finally {
-        await holder.end();
-      }
-    }
-
-    interface WaitForLockWaitersInput {
-      holder: pg.Client;
-      count: number;
-    }
-
-    async function waitForLockWaiters({
-      holder,
-      count,
-    }: WaitForLockWaitersInput) {
-      const deadline = Date.now() + 5000;
-      while (Date.now() < deadline) {
-        await holder.query('SELECT pg_stat_clear_snapshot()');
-        const { rows } = await holder.query(
-          `SELECT count(*)::int AS waiting FROM pg_stat_activity
-           WHERE datname = current_database() AND wait_event_type = 'Lock'`,
-        );
-        if (rows[0].waiting >= count) return;
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      throw new Error(`fewer than ${count} requests reached a lock`);
-    }
-
     const lockMembership = () =>
       `SELECT id FROM ministry_membership WHERE id = '${valWorship()}' FOR NO KEY UPDATE`;
     const lockChurch = `SELECT id FROM church WHERE id = '${CHURCH_A}' FOR NO KEY UPDATE`;
@@ -1366,6 +1432,40 @@ describe('GET /people/:memberId Edit Roles hints', () => {
     // kim leads only Kids, so only that card is visible, and it is their own.
     expect(await hints({ as: 'kim', target: 'kim' })).toEqual({ Kids: true });
   });
+
+  it('offers Remove from Ministry only where the removal rules allow it', async () => {
+    const removable = async ({ as, target }: HintsInput) => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/people/${memberId(target)}`,
+        headers: { [USER_HEADER]: as },
+      });
+      return Object.fromEntries(
+        res
+          .json()
+          .ministries.map(
+            (card: { ministryName: string; canEndMembership: boolean }) => [
+              card.ministryName,
+              card.canEndMembership,
+            ],
+          ),
+      );
+    };
+    expect(await removable({ as: 'ada', target: 'kim' })).toEqual({
+      Kids: true,
+      Worship: true,
+    });
+    expect(await removable({ as: 'lea', target: 'val' })).toEqual({
+      Worship: true,
+    });
+    // Leaders never remove a leader, themselves included.
+    expect(await removable({ as: 'lea', target: 'lea' })).toEqual({
+      Worship: false,
+    });
+    expect(await removable({ as: 'lea', target: 'pia' })).toEqual({
+      Worship: false,
+    });
+  });
 });
 
 interface ChangeAccessInput {
@@ -1703,3 +1803,762 @@ describe('PATCH /people/:memberId/ministry-memberships/:membershipId/access', ()
     expect((await edit('pia')).statusCode).toBe(403);
   });
 });
+
+interface RemoveInput {
+  as?: string;
+  member: string;
+  membership: string;
+  locale?: string;
+}
+
+function removeFrom({ as, member, membership, locale }: RemoveInput) {
+  return app.inject({
+    method: 'DELETE',
+    url: `/api/v1/people/${memberId(member)}/ministry-memberships/${membership}`,
+    headers: as ? { [USER_HEADER]: as } : {},
+    cookies: locale ? { [testLocale.localeCookieName]: locale } : {},
+  });
+}
+
+async function membershipRow(id: string) {
+  const [row] = await db
+    .select({
+      status: ministryMembership.status,
+      leftAt: ministryMembership.leftAt,
+      ministryAccessLevel: ministryMembership.ministryAccessLevel,
+    })
+    .from(ministryMembership)
+    .where(eq(ministryMembership.id, id));
+  return row;
+}
+
+describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
+  const ws = (key: string) => memberships.get(`${key}:${f.worship}`) ?? '';
+
+  it('ends only the target membership at one Instant, keeping its Roles and recording one audit', async () => {
+    const res = await removeFrom({
+      as: 'ada',
+      member: 'kim',
+      membership: ws('kim'),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      memberId: memberId('kim'),
+      membershipId: ws('kim'),
+      status: 'inactive',
+      leftAt: NOW,
+      changed: true,
+    });
+    expect(await membershipRow(ws('kim'))).toEqual({
+      status: 'inactive',
+      leftAt: new Date(NOW),
+      ministryAccessLevel: 'volunteer',
+    });
+    expect(await heldRoles(ws('kim'))).toEqual([f.guitar]);
+    // The unrelated Kids leadership and the Church Membership stay.
+    expect(
+      await membershipRow(memberships.get(`kim:${f.kids}`) ?? ''),
+    ).toMatchObject({ status: 'active', leftAt: null });
+    const rows = await audits();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      churchId: CHURCH_A,
+      actorId: 'ada',
+      subjectId: 'kim',
+      action: 'ministry_membership_ended',
+      details: {
+        churchMembershipId: memberId('kim'),
+        ministryMembershipId: ws('kim'),
+        ministryId: f.worship,
+        retainedRoleIds: [f.guitar],
+        withdrawnAvailabilityCheckIds: [],
+        beforeStatus: 'active',
+        afterStatus: 'inactive',
+      },
+      timestamp: new Date(NOW),
+    });
+    expect(rows[0]?.correlationId.length).toBeGreaterThan(0);
+  });
+
+  describe('authority and scope', () => {
+    it('lets a leader remove a volunteer-level member of their Ministry, but never themselves or a peer leader', async () => {
+      const own = await removeFrom({
+        as: 'lea',
+        member: 'lea',
+        membership: ws('lea'),
+      });
+      const peer = await removeFrom({
+        as: 'lea',
+        member: 'pia',
+        membership: ws('pia'),
+      });
+      expect([own.statusCode, peer.statusCode]).toEqual([403, 403]);
+      expect(own.json().error).toBe('FORBIDDEN');
+
+      const volunteer = await removeFrom({
+        as: 'lea',
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(volunteer.statusCode).toBe(200);
+      expect(await membershipRow(ws('pia'))).toMatchObject({
+        status: 'active',
+      });
+      expect(await membershipRow(ws('lea'))).toMatchObject({
+        status: 'active',
+      });
+      expect(await audits()).toHaveLength(1);
+    });
+
+    it('lets an admin remove a leader', async () => {
+      const res = await removeFrom({
+        as: 'ada',
+        member: 'pia',
+        membership: ws('pia'),
+      });
+      expect(res.statusCode).toBe(200);
+      expect(await membershipRow(ws('pia'))).toMatchObject({
+        status: 'inactive',
+        ministryAccessLevel: 'leader',
+      });
+    });
+
+    it('hides a Ministry the caller does not lead, and refuses callers without People capability', async () => {
+      // kim leads Kids only; their own Worship membership is volunteer-level.
+      const outside = await removeFrom({
+        as: 'kim',
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(outside.statusCode).toBe(404);
+      const noPeople = await removeFrom({
+        as: 'ord',
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(noPeople.statusCode).toBe(403);
+      const anonymous = await removeFrom({
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(anonymous.statusCode).toBe(401);
+      for (const membership of [
+        '00000000-0000-4000-8000-000000000000',
+        'not-a-uuid',
+        ws('pia'),
+      ]) {
+        const res = await removeFrom({ as: 'ada', member: 'val', membership });
+        expect(res.statusCode, membership).toBe(404);
+      }
+      expect(await membershipRow(ws('val'))).toMatchObject({
+        status: 'active',
+      });
+      expect(await audits()).toEqual([]);
+    });
+
+    it('refuses repeating an ended removal as inactive, keeping the first leftAt and audit', async () => {
+      const first = await removeFrom({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(first.statusCode).toBe(200);
+      setTestClock({
+        instant: parseInstant({ value: '2026-11-04T12:00:00.000Z' }),
+      });
+
+      const again = await removeFrom({
+        as: 'lea',
+        member: 'val',
+        membership: ws('val'),
+        locale: 'pt-BR',
+      });
+      expect(again.statusCode).toBe(409);
+      expect(again.json()).toEqual({
+        error: 'MINISTRY_MEMBERSHIP_INACTIVE',
+        message: m.error_ministry_membership_inactive({}, { locale: 'pt-BR' }),
+      });
+      expect(await membershipRow(ws('val'))).toMatchObject({
+        leftAt: new Date(NOW),
+      });
+      expect(await audits()).toHaveLength(1);
+    });
+  });
+
+  it('may end the last Ministry, keeping Church Membership and the active Volunteer profile', async () => {
+    const res = await removeFrom({
+      as: 'ada',
+      member: 'val',
+      membership: ws('val'),
+    });
+    expect(res.statusCode).toBe(200);
+    const [profile] = await db
+      .select({ leftAt: volunteerTable.leftAt })
+      .from(volunteerTable)
+      .where(eq(volunteerTable.userId, 'val'));
+    expect(profile).toEqual({ leftAt: null });
+    const [churchMembership] = await db
+      .select({ role: member.role })
+      .from(member)
+      .where(eq(member.id, memberId('val')));
+    expect(churchMembership).toEqual({ role: 'member' });
+    // The detail now has no Ministry cards for the admin.
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/api/v1/people/${memberId('val')}`,
+      headers: { [USER_HEADER]: 'ada' },
+    });
+    expect(detail.json().ministries).toEqual([]);
+  });
+
+  describe('the upcoming-Assignment guard', () => {
+    it('refuses with every upcoming Assignment on any Role and changes nothing', async () => {
+      const vocals = await service({
+        roleId: f.vocals,
+        title: 'Culto',
+        eventStart: '2026-11-15T10:00:00.000Z',
+        eventEnd: '2026-11-15T12:00:00.000Z',
+        status: 'draft',
+      });
+      // A running multi-day Event protects its already-ended Shift.
+      const keys = await service({
+        roleId: f.keys,
+        title: 'Retiro',
+        eventStart: '2026-11-02T10:00:00.000Z',
+        eventEnd: '2026-11-04T10:00:00.000Z',
+        shiftStart: '2026-11-02T10:00:00.000Z',
+        shiftEnd: '2026-11-02T12:00:00.000Z',
+        status: 'confirmed',
+      });
+
+      const res = await removeFrom({
+        as: 'lea',
+        member: 'val',
+        membership: ws('val'),
+        locale: 'en',
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toEqual({
+        error: 'UPCOMING_ASSIGNMENTS',
+        message: m.error_upcoming_assignments({}, { locale: 'en' }),
+        assignments: [
+          { ...keys, roleName: 'Keys' },
+          { ...vocals, roleName: 'Vocals' },
+        ],
+      });
+      expect(await membershipRow(ws('val'))).toMatchObject({
+        status: 'active',
+        leftAt: null,
+      });
+      expect(await audits()).toEqual([]);
+    });
+
+    it('ignores past, cancelled and declined Assignments, which stay as history', async () => {
+      const past = await service({
+        roleId: f.vocals,
+        title: 'Ontem',
+        eventStart: '2026-11-02T10:00:00.000Z',
+        eventEnd: '2026-11-03T12:00:00.000Z',
+        status: 'confirmed',
+      });
+      await service({
+        roleId: f.vocals,
+        title: 'Cancelado',
+        eventStart: '2026-11-15T10:00:00.000Z',
+        eventEnd: '2026-11-15T12:00:00.000Z',
+        eventStatus: 'cancelled',
+      });
+      await service({
+        roleId: f.keys,
+        title: 'Recusado',
+        eventStart: '2026-11-16T10:00:00.000Z',
+        eventEnd: '2026-11-16T12:00:00.000Z',
+        status: 'declined',
+      });
+
+      const res = await removeFrom({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(res.statusCode).toBe(200);
+      const [kept] = await db
+        .select({ status: assignment.status })
+        .from(assignment)
+        .where(eq(assignment.id, past.assignmentId));
+      expect(kept).toEqual({ status: 'confirmed' });
+    });
+  });
+
+  it('rolls the removal and the withdrawal back when its audit cannot be written', async () => {
+    const { pending } = await answeredChecks();
+    await db.execute(sql`
+      CREATE OR REPLACE FUNCTION test_fail_end_audit() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit unavailable'; END $$
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER test_fail_end_audit BEFORE INSERT ON identity_audit
+      FOR EACH ROW WHEN (NEW.action = 'ministry_membership_ended')
+      EXECUTE FUNCTION test_fail_end_audit()
+    `);
+    try {
+      const res = await removeFrom({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+      });
+      expect(res.statusCode).toBe(500);
+      expect(res.json().error).toBe('INTERNAL_SERVER_ERROR');
+    } finally {
+      await db.execute(sql`DROP TRIGGER test_fail_end_audit ON identity_audit`);
+      await db.execute(sql`DROP FUNCTION test_fail_end_audit()`);
+    }
+    expect(await membershipRow(ws('val'))).toMatchObject({
+      status: 'active',
+      leftAt: null,
+    });
+    expect(await checkRow(pending)).toMatchObject({ withdrawnAt: null });
+    expect(await audits()).toEqual([]);
+  });
+
+  describe('availability checks', () => {
+    it('withdraws pending and confirmed checks in non-past Cycles, keeping every answer and past history', async () => {
+      const { pending, confirmed, past, unavailableShiftId } =
+        await answeredChecks();
+
+      const res = await removeFrom({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(await checkRow(pending)).toMatchObject({
+        state: 'pending',
+        withdrawnAt: new Date(NOW),
+      });
+      expect(await checkRow(confirmed)).toMatchObject({
+        state: 'confirmed',
+        confirmedAt: new Date('2026-11-01T09:00:00.000Z'),
+        withdrawnAt: new Date(NOW),
+      });
+      expect(await checkRow(past)).toMatchObject({
+        state: 'confirmed',
+        withdrawnAt: null,
+      });
+      const answers = await db
+        .select({ shiftId: unavailableShift.shiftId })
+        .from(unavailableShift)
+        .where(eq(unavailableShift.availabilityCheckId, pending));
+      expect(answers).toEqual([{ shiftId: unavailableShiftId }]);
+      const [audit] = await audits();
+      expect(audit?.details).toMatchObject({
+        withdrawnAvailabilityCheckIds: [pending, confirmed].sort(),
+      });
+    });
+
+    it('turns old actionable links into not-found, refusing every answer and confirmation', async () => {
+      const { pending, confirmed, culto } = await answeredChecks();
+      const asVal = (method: 'GET' | 'PUT' | 'POST', path: string) =>
+        app.inject({
+          method,
+          url: `/api/v1/volunteer/availability-checks${path}`,
+          headers: { [USER_HEADER]: 'val' },
+          ...(method === 'PUT'
+            ? { payload: { shiftIds: [culto.shift.id] } }
+            : {}),
+        });
+      const before = await asVal('GET', '');
+      expect(
+        before.json().checks.map((check: { id: string }) => check.id),
+      ).toEqual(expect.arrayContaining([pending, confirmed]));
+
+      await removeFrom({ as: 'ada', member: 'val', membership: ws('val') });
+
+      expect((await asVal('GET', '')).json()).toEqual({ checks: [] });
+      for (const id of [pending, confirmed]) {
+        for (const [method, path] of [
+          ['GET', `/${id}`],
+          ['PUT', `/${id}/unavailable-shifts`],
+          ['POST', `/${id}/confirm`],
+        ] as const) {
+          const res = await asVal(method, path);
+          expect(res.statusCode, `${method} ${path}`).toBe(404);
+          expect(res.json().error).toBe('NOT_FOUND');
+        }
+      }
+      expect(await checkRow(pending)).toMatchObject({
+        state: 'pending',
+        confirmedAt: null,
+      });
+      const answers = await db
+        .select({ shiftId: unavailableShift.shiftId })
+        .from(unavailableShift)
+        .where(eq(unavailableShift.availabilityCheckId, confirmed));
+      expect(answers).toEqual([]);
+    });
+
+    it('leaves an ended member out of reminders, new asks and availability status', async () => {
+      const { culto } = await answeredChecks();
+      // kim still answers for Worship, so the reminder has someone to reach.
+      await buildAvailabilityCheck({
+        db,
+        churchId: CHURCH_A,
+        cycleId: culto.event.cycleId,
+        ministryMembershipId: ws('kim'),
+      });
+      await removeFrom({ as: 'ada', member: 'val', membership: ws('val') });
+
+      const reminded = await app.inject({
+        method: 'POST',
+        url: `/api/v1/prepare/participations/${culto.participation.id}/resend-availability`,
+        headers: { [USER_HEADER]: 'lea' },
+      });
+      expect(reminded.statusCode).toBe(202);
+      expect(notifications.enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'availability_reminder',
+          to: [{ userId: 'kim', churchId: CHURCH_A }],
+        }),
+      );
+
+      const status = await app.inject({
+        method: 'GET',
+        url: `/api/v1/prepare/participations/${culto.participation.id}/availability-status`,
+        headers: { [USER_HEADER]: 'lea' },
+      });
+      expect(status.statusCode).toBe(200);
+      expect(JSON.stringify(status.json())).not.toContain(
+        volunteers.get(`val:${CHURCH_A}`),
+      );
+
+      const { participation } = await preparing();
+      const asked = await askAvailability(participation);
+      expect(asked.statusCode).toBe(202);
+      expect(await checksOf(ws('val'))).toHaveLength(3);
+    });
+  });
+
+  describe('when writes overlap', () => {
+    const lockValWorship = () =>
+      `SELECT id FROM ministry_membership WHERE id = '${ws('val')}' FOR NO KEY UPDATE`;
+    const removeVal = () =>
+      removeFrom({ as: 'ada', member: 'val', membership: ws('val') });
+
+    interface AssignInput {
+      shiftId: string;
+      shiftRequirementId: string;
+    }
+
+    const assignVal = ({ shiftId, shiftRequirementId }: AssignInput) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/assign/shifts/${shiftId}/assignments`,
+        headers: { [USER_HEADER]: 'lea' },
+        payload: {
+          volunteerId: volunteers.get(`val:${CHURCH_A}`),
+          shiftRequirementId,
+        },
+      });
+
+    const culto = () =>
+      openShift({
+        roleId: f.vocals,
+        title: 'Culto',
+        eventStart: '2026-11-15T10:00:00.000Z',
+        eventEnd: '2026-11-15T12:00:00.000Z',
+      });
+
+    it('refuses the removal when an Assignment commits first', async () => {
+      const { shift, requirement } = await culto();
+      const [created, removed] = (await holding({
+        lock: lockValWorship(),
+        steps: [
+          () =>
+            assignVal({
+              shiftId: shift.id,
+              shiftRequirementId: requirement.id,
+            }),
+          removeVal,
+        ],
+      })) as Awaited<ReturnType<typeof removeFrom>>[];
+
+      expect(created?.statusCode).toBe(201);
+      expect(removed?.statusCode).toBe(409);
+      expect(removed?.json().assignments).toEqual([
+        expect.objectContaining({
+          assignmentId: created?.json().assignment.id,
+        }),
+      ]);
+      expect(await membershipRow(ws('val'))).toMatchObject({
+        status: 'active',
+      });
+    });
+
+    it('refuses the Assignment after the removal commits first', async () => {
+      const { shift, requirement } = await culto();
+      const [removed, created] = (await holding({
+        lock: lockValWorship(),
+        steps: [
+          removeVal,
+          () =>
+            assignVal({
+              shiftId: shift.id,
+              shiftRequirementId: requirement.id,
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof removeFrom>>[];
+
+      expect(removed?.statusCode).toBe(200);
+      // Not being in the Ministry is the hard refusal, unlike a missing Role.
+      expect(created?.statusCode).toBe(409);
+      expect(created?.json().error).toBe('HARD_CONSTRAINT_VIOLATION');
+      expect(
+        await db
+          .select()
+          .from(assignment)
+          .where(eq(assignment.shiftId, shift.id)),
+      ).toEqual([]);
+    });
+
+    it('refuses the removal when a reassignment to the Volunteer commits first, and the reassignment after it', async () => {
+      const kimsTurn = await service({
+        key: 'kim',
+        roleId: f.vocals,
+        title: 'Culto',
+        eventStart: '2026-11-15T10:00:00.000Z',
+        eventEnd: '2026-11-15T12:00:00.000Z',
+      });
+      const reassign = () =>
+        app.inject({
+          method: 'PATCH',
+          url: `/api/v1/assign/assignments/${kimsTurn.assignmentId}/reassign`,
+          headers: { [USER_HEADER]: 'lea' },
+          payload: { volunteerId: volunteers.get(`val:${CHURCH_A}`) },
+        });
+
+      const [removed, reassigned] = (await holding({
+        lock: lockValWorship(),
+        steps: [removeVal, reassign],
+      })) as Awaited<ReturnType<typeof removeFrom>>[];
+      expect(removed?.statusCode).toBe(200);
+      expect(reassigned?.statusCode).toBe(409);
+      expect(reassigned?.json().error).toBe('HARD_CONSTRAINT_VIOLATION');
+      const [kept] = await db
+        .select({ volunteerId: assignment.volunteerId })
+        .from(assignment)
+        .where(eq(assignment.id, kimsTurn.assignmentId));
+      expect(kept?.volunteerId).toBe(volunteers.get(`kim:${CHURCH_A}`));
+    });
+
+    it('withdraws a check whose confirmation committed first, and refuses one that waited on the removal', async () => {
+      const { pending, confirmed } = await answeredChecks();
+      const confirm = (id: string) => () =>
+        app.inject({
+          method: 'POST',
+          url: `/api/v1/volunteer/availability-checks/${id}/confirm`,
+          headers: { [USER_HEADER]: 'val' },
+        });
+
+      const [answered, removed] = (await holding({
+        lock: lockValWorship(),
+        steps: [confirm(pending), removeVal],
+      })) as Awaited<ReturnType<typeof removeFrom>>[];
+      expect(answered?.statusCode).toBe(204);
+      expect(removed?.statusCode).toBe(200);
+      expect(await checkRow(pending)).toMatchObject({
+        state: 'confirmed',
+        withdrawnAt: new Date(NOW),
+      });
+
+      // kim's Worship check: the removal holds the lock first this time.
+      const kimCheck = (
+        await buildAvailabilityCheck({
+          db,
+          churchId: CHURCH_A,
+          cycleId: (await checkRow(confirmed))?.cycleId ?? '',
+          ministryMembershipId: ws('kim'),
+        })
+      ).id;
+      const [removedKim, late] = (await holding({
+        lock: `SELECT id FROM ministry_membership WHERE id = '${ws('kim')}' FOR NO KEY UPDATE`,
+        steps: [
+          () => removeFrom({ as: 'ada', member: 'kim', membership: ws('kim') }),
+          () =>
+            app.inject({
+              method: 'POST',
+              url: `/api/v1/volunteer/availability-checks/${kimCheck}/confirm`,
+              headers: { [USER_HEADER]: 'kim' },
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof removeFrom>>[];
+      expect(removedKim?.statusCode).toBe(200);
+      expect(late?.statusCode).toBe(404);
+      expect(await checkRow(kimCheck)).toMatchObject({
+        state: 'pending',
+        withdrawnAt: new Date(NOW),
+      });
+    });
+
+    it('never leaves a check created around the removal actionable, in either order', async () => {
+      const first = await preparing();
+      const [asked, removed] = (await holding({
+        lock: lockValWorship(),
+        steps: [() => askAvailability(first.participation), removeVal],
+      })) as Awaited<ReturnType<typeof removeFrom>>[];
+      expect([asked?.statusCode, removed?.statusCode]).toEqual([202, 200]);
+      const [created] = await checksOf(ws('val'));
+      expect(created?.withdrawnAt).toEqual(new Date(NOW));
+
+      const kimWorship = ws('kim');
+      const second = await preparing({ name: 'Janeiro', month: '2027-01' });
+      const [removedKim, askedAfter] = (await holding({
+        lock: `SELECT id FROM ministry_membership WHERE id = '${kimWorship}' FOR NO KEY UPDATE`,
+        steps: [
+          () =>
+            removeFrom({ as: 'ada', member: 'kim', membership: kimWorship }),
+          () => askAvailability(second.participation),
+        ],
+      })) as Awaited<ReturnType<typeof removeFrom>>[];
+      expect([removedKim?.statusCode, askedAfter?.statusCode]).toEqual([
+        200, 202,
+      ]);
+      // kim's earlier check from the first ask is withdrawn; the later ask created none.
+      const kimChecks = await checksOf(kimWorship);
+      expect(
+        kimChecks.filter((check) => check.cycleId === second.cycle.id),
+      ).toEqual([]);
+      expect(kimChecks.every((check) => check.withdrawnAt !== null)).toBe(true);
+    });
+  });
+});
+
+const checkRow = async (id: string) =>
+  (
+    await db
+      .select()
+      .from(availabilityCheck)
+      .where(eq(availabilityCheck.id, id))
+  )[0];
+
+const checksOf = (membershipId: string) =>
+  db
+    .select()
+    .from(availabilityCheck)
+    .where(eq(availabilityCheck.ministryMembershipId, membershipId));
+
+/**
+ * val's Worship checks: a pending one with a saved answer in November (sent),
+ * a confirmed one in December (draft) and a confirmed one in a past October.
+ */
+async function answeredChecks() {
+  const culto = await openShift({
+    roleId: f.vocals,
+    title: 'Culto',
+    eventStart: '2026-11-15T10:00:00.000Z',
+    eventEnd: '2026-11-15T12:00:00.000Z',
+  });
+  const cycleOf = async (name: string, month: string, state: CycleState) =>
+    (
+      await buildCycle({
+        db,
+        churchId: CHURCH_A,
+        name,
+        startDate: `${month}-01` as never,
+        endDate: `${month}-28` as never,
+        state,
+      })
+    ).id;
+  const valWs = memberships.get(`val:${f.worship}`) ?? '';
+  const pending = (
+    await buildAvailabilityCheck({
+      db,
+      churchId: CHURCH_A,
+      cycleId: culto.event.cycleId,
+      ministryMembershipId: valWs,
+    })
+  ).id;
+  const unavailableShiftId = culto.shift.id;
+  await buildUnavailableShift({
+    db,
+    churchId: CHURCH_A,
+    availabilityCheckId: pending,
+    shiftId: unavailableShiftId,
+  });
+  const confirmed = (
+    await buildConfirmedAvailabilityCheck({
+      db,
+      churchId: CHURCH_A,
+      cycleId: await cycleOf('Dezembro', '2026-12', 'draft'),
+      ministryMembershipId: valWs,
+      id: crypto.randomUUID(),
+      confirmedAt: parseInstant({ value: '2026-11-01T09:00:00.000Z' }),
+    })
+  ).id;
+  const past = (
+    await buildConfirmedAvailabilityCheck({
+      db,
+      churchId: CHURCH_A,
+      cycleId: await cycleOf('Outubro', '2026-10', 'past'),
+      ministryMembershipId: valWs,
+      id: crypto.randomUUID(),
+      confirmedAt: parseInstant({ value: '2026-09-20T09:00:00.000Z' }),
+    })
+  ).id;
+  return { culto, pending, confirmed, past, unavailableShiftId };
+}
+
+interface PreparingInput {
+  name?: string;
+  month?: string;
+}
+
+/** A Worship participation still preparing, on its own Event in its own Cycle. */
+async function preparing({
+  name = 'Fevereiro',
+  month = '2027-02',
+}: PreparingInput = {}) {
+  const at = (value: string) => parseInstant({ value });
+  const cycle = await buildCycle({
+    db,
+    churchId: CHURCH_A,
+    name,
+    startDate: `${month}-01` as never,
+    endDate: `${month}-28` as never,
+    state: 'draft',
+  });
+  const event = await buildEvent({
+    db,
+    churchId: CHURCH_A,
+    cycleId: cycle.id,
+    title: `Culto ${name}`,
+    start: at(`${month}-10T10:00:00.000Z`),
+    end: at(`${month}-10T12:00:00.000Z`),
+    status: 'scheduled',
+  });
+  const block = await buildEventTimeBlock({
+    db,
+    churchId: CHURCH_A,
+    eventId: event.id,
+    start: at(`${month}-10T10:00:00.000Z`),
+    end: at(`${month}-10T12:00:00.000Z`),
+  });
+  const participation = await buildMinistryParticipation({
+    db,
+    churchId: CHURCH_A,
+    ministryId: f.worship,
+    eventId: event.id,
+    state: 'preparing',
+    eventTimeBlockIds: [block.id],
+  });
+  return { cycle, participation };
+}
+
+const askAvailability = (participation: { id: string }) =>
+  app.inject({
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${participation.id}/ask-availability`,
+    headers: { [USER_HEADER]: 'lea' },
+  });

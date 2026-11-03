@@ -50,10 +50,12 @@ export class DbPeopleListManager implements IPeopleListManager {
           operation,
         })),
       });
-    const [canEditRoles, canChangeMinistryAccess] = await Promise.all([
-      hints('editRoles'),
-      hints('changeLevel'),
-    ]);
+    const [canEditRoles, canChangeMinistryAccess, canEndMembership] =
+      await Promise.all([
+        hints('editRoles'),
+        hints('changeLevel'),
+        hints('endMembership'),
+      ]);
     return {
       person: {
         ...person,
@@ -61,6 +63,7 @@ export class DbPeopleListManager implements IPeopleListManager {
           ...card,
           canEditRoles: canEditRoles[index] ?? false,
           canChangeMinistryAccess: canChangeMinistryAccess[index] ?? false,
+          canEndMembership: canEndMembership[index] ?? false,
         })),
       },
       canChangeChurchAccess: request.scope.kind === 'church',

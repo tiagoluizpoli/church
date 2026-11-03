@@ -1,3 +1,4 @@
+import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
@@ -62,6 +63,8 @@ export const personDetailResponseSchema = z.object({
       roles: z.array(personDetailRoleSchema),
       /** Gatekeeper-derived hint for the Edit Roles action; the mutation authorizes on its own. */
       canEditRoles: z.boolean(),
+      /** Gatekeeper-derived hint for Remove from Ministry; the mutation authorizes on its own. */
+      canEndMembership: z.boolean(),
       /** Same, for Make leader / Make volunteer. */
       canChangeMinistryAccess: z.boolean(),
     }),
@@ -114,6 +117,14 @@ export const ministryMembershipChangeResponseSchema = z.object({
   roles: z.array(personDetailRoleSchema),
   /** False when the membership already matched; nothing was written. */
   changed: z.boolean(),
+});
+
+export const endMinistryMembershipResponseSchema = z.object({
+  memberId: z.string(),
+  membershipId: z.string(),
+  status: z.literal('inactive'),
+  leftAt: instantSchema,
+  changed: z.literal(true),
 });
 
 export const upcomingAssignmentSchema = z.object({

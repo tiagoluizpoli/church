@@ -38,3 +38,27 @@ export interface PeopleListPage {
   nextCursor?: string;
   options: { ministries: { id: string; name: string }[] };
 }
+
+export interface PersonDetailRole {
+  id: string;
+  name: string;
+  archived: boolean;
+}
+
+/** One active Ministry Membership inside the caller's scope. */
+export interface PersonDetailMinistry {
+  membershipId: string;
+  ministryId: string;
+  ministryName: string;
+  ministryAccessLevel: MinistryAccessLevel;
+  roles: PersonDetailRole[];
+}
+
+export interface PersonDetail {
+  id: string;
+  name: string;
+  email: string;
+  ministries: PersonDetailMinistry[];
+  /** Admin scope only; omitted for leaders. */
+  churchAccess?: { accessLevel: 'member' | 'admin'; isLastAdmin: boolean };
+}

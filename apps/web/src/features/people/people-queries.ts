@@ -1,4 +1,10 @@
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
+import { useParams } from '@tanstack/react-router';
+import type { BreadcrumbSegmentOverride } from '@/components/app-shell';
 import type { ListPeopleParams } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { peopleApi } from '@/utils/api-instances';
@@ -45,4 +51,42 @@ export function usePeopleList({ filters }: UsePeopleListInput) {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     retry: false,
   });
+}
+
+interface DetailKeyInput extends ChurchKeyInput {
+  memberId: string;
+}
+
+/** One member's detail beneath the Church root, so an authority change that drops the root drops it too. */
+export function peopleDetailQueryKey({ churchId, memberId }: DetailKeyInput) {
+  return [...peopleQueryKey({ churchId }), 'detail', memberId] as const;
+}
+
+interface UsePersonInput {
+  memberId: string;
+}
+
+/** The member's scoped detail; a refusal is a result, not a retry. */
+export function usePerson({ memberId }: UsePersonInput) {
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  return useQuery({
+    queryKey: peopleDetailQueryKey({ churchId, memberId }),
+    queryFn: () => peopleApi.getPerson(memberId),
+    retry: false,
+  });
+}
+
+/** Names the member-id breadcrumb segment; stays hidden until a detail has resolved so a refused page leaks no name. */
+export function usePersonBreadcrumb({
+  churchId,
+}: ChurchKeyInput): BreadcrumbSegmentOverride | null {
+  const { memberId } = useParams({ strict: false });
+  const person = useQuery({
+    queryKey: peopleDetailQueryKey({ churchId, memberId: memberId ?? '' }),
+    queryFn: () => peopleApi.getPerson(memberId ?? ''),
+    enabled: memberId !== undefined,
+    retry: false,
+  });
+  if (memberId === undefined) return null;
+  return { segment: memberId, label: person.data?.name ?? null };
 }

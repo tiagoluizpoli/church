@@ -3,6 +3,7 @@ import type {
   PeopleListFilters,
   PeopleListPage,
   PeopleListScope,
+  PersonDetail,
 } from '../../entities/people-list-item';
 
 export interface ListPeopleInput {
@@ -13,7 +14,15 @@ export interface ListPeopleInput {
   limit: number;
 }
 
+export interface GetPersonInput {
+  churchId: ChurchId;
+  scope: PeopleListScope;
+  memberId: string;
+}
+
 export interface PeopleListRepository {
+  /** One member within the scope, or undefined when missing, foreign or (for a leader) out of scope. */
+  get(input: GetPersonInput): Promise<PersonDetail | undefined>;
   /** Church Members within the scope ordered by name then member id. Throws MinistryInvitationNotFoundError for a Ministry filter outside the scope. */
   list(input: ListPeopleInput): Promise<PeopleListPage>;
 }

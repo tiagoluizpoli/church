@@ -7895,6 +7895,147 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/people/{memberId}:
+    get:
+      operationId: getPerson
+      summary: Get a person
+      tags:
+        - people
+      description: One Church Member of the Active Church with their active Ministry
+        cards. A ChurchAdmin sees every card and the Church access facts; a
+        Ministry leader sees only cards of Ministries they lead and no Church
+        access. A missing, other-Church or out-of-scope member id is one 404.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: memberId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  email:
+                    type: string
+                  ministries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        membershipId:
+                          type: string
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        ministryAccessLevel:
+                          type: string
+                          enum:
+                            - leader
+                            - volunteer
+                        roles:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              archived:
+                                type: boolean
+                            required:
+                              - id
+                              - name
+                              - archived
+                            additionalProperties: false
+                      required:
+                        - membershipId
+                        - ministryId
+                        - ministryName
+                        - ministryAccessLevel
+                        - roles
+                      additionalProperties: false
+                  canChangeChurchAccess:
+                    type: boolean
+                  canInviteToMinistry:
+                    type: boolean
+                  churchAccess:
+                    type: object
+                    properties:
+                      accessLevel:
+                        type: string
+                        enum:
+                          - member
+                          - admin
+                      isLastAdmin:
+                        type: boolean
+                    required:
+                      - accessLevel
+                      - isLastAdmin
+                    additionalProperties: false
+                required:
+                  - id
+                  - name
+                  - email
+                  - ministries
+                  - canChangeChurchAccess
+                  - canInviteToMinistry
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/people/:
     get:
       operationId: listPeople

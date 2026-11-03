@@ -645,5 +645,17 @@
   "people_empty": "No members yet.",
   "people_empty_filtered": "No members match these filters.",
   "people_load_failed": "Couldn't load people.",
-  "people_no_ministries": "No Ministry"
+  "people_no_ministries": "No Ministry",
+  "people_detail_back": "Back to People",
+  "people_detail_not_found": "This member wasn't found.",
+  "people_detail_load_failed": "Couldn't load this member.",
+  "people_detail_ministries": "Ministries",
+  "people_detail_no_ministries": "Not serving in any Ministry you can see.",
+  "people_detail_roles": "Roles",
+  "people_detail_no_roles": "No Roles",
+  "people_role_archived": "Archived",
+  "people_church_access": "Church access",
+  "people_church_access_admin": "Church Admin",
+  "people_church_access_member": "Church Member",
+  "people_last_admin_note": "The only Admin of this Church."
 }

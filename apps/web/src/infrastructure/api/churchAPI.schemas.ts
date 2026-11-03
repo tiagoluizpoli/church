@@ -3293,6 +3293,79 @@ export type ChangeChurchAccess409 = {
   message: string;
 };
 
+export type SetMinistryRolesBody = {
+  /**
+     * @maxItems 200
+     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  roleIds: string[];
+};
+
+export type SetMinistryRoles200MinistryAccessLevel = typeof SetMinistryRoles200MinistryAccessLevel[keyof typeof SetMinistryRoles200MinistryAccessLevel];
+
+
+export const SetMinistryRoles200MinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type SetMinistryRoles200RolesItem = {
+  id: string;
+  name: string;
+  archived: boolean;
+};
+
+export type SetMinistryRoles200 = {
+  memberId: string;
+  membershipId: string;
+  ministryAccessLevel: SetMinistryRoles200MinistryAccessLevel;
+  roles: SetMinistryRoles200RolesItem[];
+  changed: boolean;
+};
+
+export type SetMinistryRoles401 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles403 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles404 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles409 = {
+  error: string;
+  message: string;
+  assignments: {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  shiftStart: string;
+  shiftEnd: string;
+  roleId: string;
+  roleName: string;
+  sectorId: string;
+  sectorName: string;
+  ministryId: string;
+  cycleId: string;
+}[];
+} | {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryRoles422 = {
+  error: string;
+  message: string;
+};
+
 export type GetPerson200MinistriesItemMinistryAccessLevel = typeof GetPerson200MinistriesItemMinistryAccessLevel[keyof typeof GetPerson200MinistriesItemMinistryAccessLevel];
 
 
@@ -3313,6 +3386,7 @@ export type GetPerson200MinistriesItem = {
   ministryName: string;
   ministryAccessLevel: GetPerson200MinistriesItemMinistryAccessLevel;
   roles: GetPerson200MinistriesItemRolesItem[];
+  canEditRoles: boolean;
 };
 
 export type GetPerson200ChurchAccessAccessLevel = typeof GetPerson200ChurchAccessAccessLevel[keyof typeof GetPerson200ChurchAccessAccessLevel];

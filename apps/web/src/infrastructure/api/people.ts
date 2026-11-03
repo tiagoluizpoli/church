@@ -9,7 +9,9 @@ import type {
   ChangeChurchAccessBody,
   GetPerson200,
   ListPeople200,
-  ListPeopleParams
+  ListPeopleParams,
+  SetMinistryRoles200,
+  SetMinistryRolesBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -30,6 +32,22 @@ const changeChurchAccess = (
       {url: `/api/v1/people/${memberId}/church-access`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
       data: changeChurchAccessBody
+    },
+      );
+    }
+  /**
+ * Replace the complete Role set of one active Ministry Membership; omitted Roles are removed. A ChurchAdmin edits any membership; a Ministry leader edits volunteer-level members of a Ministry they lead and their own. Only active Roles of that Ministry may be added; held archived Roles may be kept or removed. A volunteer-level membership keeps at least one Role. Removing a Role an upcoming Assignment depends on is refused with every such Assignment. The same set changes nothing.
+ * @summary Set a Ministry member's Roles
+ */
+const setMinistryRoles = (
+    memberId: string,
+    membershipId: string,
+    setMinistryRolesBody: SetMinistryRolesBody,
+ ) => {
+      return apiClient<SetMinistryRoles200>(
+      {url: `/api/v1/people/${memberId}/ministry-memberships/${membershipId}/roles`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: setMinistryRolesBody
     },
       );
     }
@@ -58,7 +76,8 @@ const listPeople = (
     },
       );
     }
-  return {changeChurchAccess,getPerson,listPeople}};
+  return {changeChurchAccess,setMinistryRoles,getPerson,listPeople}};
 export type ChangeChurchAccessResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['changeChurchAccess']>>>
+export type SetMinistryRolesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['setMinistryRoles']>>>
 export type GetPersonResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['getPerson']>>>
 export type ListPeopleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['listPeople']>>>

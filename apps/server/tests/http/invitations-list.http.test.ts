@@ -230,6 +230,7 @@ interface Row {
   id: string;
   churchInvitationId?: string;
   ministryId?: string;
+  ministryName?: string;
   email: string;
   churchAccessLevel?: string;
   ministryAccessLevel?: string;
@@ -239,6 +240,7 @@ interface Row {
   emailDelivery: { state: string; sentAt?: string };
   lastSentAt: string | null;
   canResend: boolean;
+  canRevoke: boolean;
   closure?: {
     actor?: { id: string; name: string };
     at?: string;

@@ -13,6 +13,7 @@ export { DbMinistryRoleManager } from './db-ministry-role-manager';
 export { DbNotificationManager } from './db-notification-manager';
 export { DbOutboxDrainer } from './db-outbox-drainer';
 export { DbParticipationManager } from './db-participation-manager';
+export { DbPeopleListManager } from './db-people-list-manager';
 export { DbPlanningEventManager } from './db-planning-event-manager';
 export { DbRedemptionManager } from './db-redemption-manager';
 export { DbSectorManager } from './db-sector-manager';

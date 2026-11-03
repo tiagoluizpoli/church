@@ -57,6 +57,11 @@ export const appConfigSchema = z.object({
     pageSize: positiveInt,
     maxPageSize: positiveInt,
   }),
+  people: z.object({
+    /** People directory page size when the request names none, and the most it may ask for. */
+    pageSize: positiveInt,
+    maxPageSize: positiveInt,
+  }),
   invitations: z.object({
     /** Invitation list page size when the request names none, and the most it may ask for. */
     pageSize: positiveInt,
@@ -104,6 +109,7 @@ export const appConfig = appConfigSchema.parse({
     pageSize: 20,
     maxPageSize: 50,
   },
+  people: { pageSize: 20, maxPageSize: 50 },
   invitations: { pageSize: 20, maxPageSize: 50 },
   defaultLocale: 'pt-BR',
   localeCookieName: 'church_locale',

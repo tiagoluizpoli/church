@@ -15,6 +15,7 @@ export * from './ministry-role-manager';
 export * from './notification-manager';
 export * from './outbox-drainer';
 export * from './participation-manager';
+export * from './people-list-manager';
 export * from './planning-event-manager';
 export * from './redemption-manager';
 export * from './sector-manager';

@@ -635,5 +635,15 @@
   "invitations_revoke_failed": "We couldn't revoke the invitation. Try again.",
   "invitations_revoked_by_on": "Revoked by {name} on {date}",
   "invitations_revoke_reason_manual": "Revoked manually",
-  "invitations_revoke_reason_ministry_archived": "Revoked: Ministry archived"
+  "invitations_revoke_reason_ministry_archived": "Revoked: Ministry archived",
+  "people_description": "Find the members of this Church and see where they serve.",
+  "people_filters_label": "Filter people",
+  "people_filter_search": "Name or email",
+  "people_filter_ministry": "Ministry",
+  "people_filter_access": "Access",
+  "people_list_label": "People",
+  "people_empty": "No members yet.",
+  "people_empty_filtered": "No members match these filters.",
+  "people_load_failed": "Couldn't load people.",
+  "people_no_ministries": "No Ministry"
 }

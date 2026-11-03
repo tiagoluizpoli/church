@@ -548,7 +548,7 @@ describe('GET /api/v1/invitations — row actions', () => {
     await churchOffer({ id: 'ci-solo', email: 'solo@inv.test', role: 'admin' });
   });
 
-  it('lets an admin resend every pending or expired Ministry row but no Church row or closed parent', async () => {
+  it('lets an admin resend every pending or expired row but no closed one', async () => {
     signIn('admin');
     const { items } = await list();
 
@@ -556,7 +556,7 @@ describe('GET /api/v1/invitations — row actions', () => {
       items.map((i) => [`${i.kind}:${i.email}`, i.canResend]),
     );
     expect(actions).toEqual({
-      'church:solo@inv.test': false,
+      'church:solo@inv.test': true,
       'ministry:member@inv.test': true,
       'ministry:volunteer@inv.test': true,
       'ministry:closed@inv.test': false,

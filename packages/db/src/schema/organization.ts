@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   index,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -89,6 +90,16 @@ export const invitation = pgTable(
     declinedAt: timestamp('declined_at', { withTimezone: true, mode: 'date' }),
     declinedById: text('declined_by_id').references(() => user.id, {
       onDelete: 'set null',
+    }),
+    /** Management resend throttle, per Church Invitation; defaults leave existing rows unthrottled. */
+    lastResendAt: timestamp('last_resend_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    resendCount: integer('resend_count').default(0).notNull(),
+    resendWindowStartedAt: timestamp('resend_window_started_at', {
+      withTimezone: true,
+      mode: 'date',
     }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

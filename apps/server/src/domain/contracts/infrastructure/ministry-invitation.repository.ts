@@ -68,6 +68,19 @@ export interface LockChurchInvitationInput {
   tx: TransactionContext;
 }
 
+/** A row-locked Church Invitation with its resend throttle facts. */
+export interface LockedChurchInvitation extends Partial<ResendThrottleFields> {
+  status: ChurchInvitationStatus;
+  resendCount: number;
+}
+
+export interface ApplyChurchResendInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  throttle: ResendThrottleFields;
+  tx: TransactionContext;
+}
+
 export type ChurchInvitationStatus =
   | 'pending'
   | 'accepted'
@@ -263,10 +276,13 @@ export interface MinistryInvitationRepository {
     input: LockMinistryInvitationInput,
   ): Promise<MinistryInvitation | null>;
 
-  /** The Church Invitation's stored status, row-locked; `null` when missing. */
+  /** The Church Invitation's stored status and throttle facts, row-locked; `null` when missing. */
   lockChurchInvitation(
     input: LockChurchInvitationInput,
-  ): Promise<ChurchInvitationStatus | null>;
+  ): Promise<LockedChurchInvitation | null>;
+
+  /** Records a Church Invitation's accepted resend counters (expiry is aligned separately). */
+  applyChurchResend(input: ApplyChurchResendInput): Promise<void>;
 
   /**
    * Any status, scoped only to Church — the outbox worker re-reads by id

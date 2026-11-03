@@ -22,6 +22,12 @@ export interface AcceptMinistryInvitationInput {
   tx: TransactionContext;
 }
 
+export interface LockInvitedMinistriesInput {
+  churchId: ChurchId;
+  ministryInvitationIds: MinistryInvitationId[];
+  tx: TransactionContext;
+}
+
 export interface DeclineMinistryInvitationInput {
   churchId: ChurchId;
   ministryInvitationId: MinistryInvitationId;
@@ -61,6 +67,13 @@ export interface RecordChurchOnlyPartialAcceptanceInput {
 }
 
 export interface RedemptionRepository {
+  /**
+   * Share-locks the Ministry rows the invitations grant, in id order, before
+   * any invitation row: the lock order a Ministry archive shares
+   * (`MinistryInvitationRepository.acquireChurchOfferLock`). Archived rows
+   * are skipped, never refused here.
+   */
+  lockInvitedMinistries(input: LockInvitedMinistriesInput): Promise<void>;
   acceptPendingMinistryInvitation(
     input: AcceptMinistryInvitationInput,
   ): Promise<VolunteerId>;

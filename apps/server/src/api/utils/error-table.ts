@@ -60,6 +60,7 @@ export type MappedDomainCode =
   | 'PENDING_MINISTRY_INVITATION_EXISTS'
   | 'RESEND_COOLDOWN_ACTIVE'
   | 'RESEND_DAILY_CAP_EXCEEDED'
+  | 'INVITATION_NOT_PENDING'
   | 'INVALID_INVITATION_ROLE'
   | 'VALIDATION_ERROR';
 
@@ -156,6 +157,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   RESEND_DAILY_CAP_EXCEEDED: {
     status: 429,
     message: m.error_resend_daily_cap_exceeded,
+  },
+  INVITATION_NOT_PENDING: {
+    status: 409,
+    message: m.error_invitation_not_pending,
   },
   INVALID_INVITATION_ROLE: {
     status: 422,

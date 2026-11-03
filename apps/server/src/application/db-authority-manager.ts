@@ -7,6 +7,7 @@ import type {
   CanManageChurchInput,
   CanManageEventInput,
   CanManageEventTimeBlockInput,
+  CanManageInvitationsInput,
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
@@ -120,6 +121,21 @@ export class DbAuthorityManager implements IAuthorityManager {
         ministryId: input.ministryId,
       },
     }).allowed;
+  }
+
+  async canManageInvitations(
+    input: CanManageInvitationsInput,
+  ): Promise<boolean[]> {
+    const { churchId, invitations } = input;
+    const actor = await this.resolveActor(input);
+    return invitations.map(
+      (invitation) =>
+        AuthorityService.authorize({
+          actor,
+          action: 'manage',
+          resource: { type: 'invitation', churchId, ...invitation },
+        }).allowed,
+    );
   }
 
   async decideManageMinistry(

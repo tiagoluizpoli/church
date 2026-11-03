@@ -123,6 +123,7 @@ describe('DbMinistryManager.listByLeader (T032)', () => {
   const manager = new DbMinistryManager({
     ministryRepo,
     volunteerRepo,
+    invitationRepo: {} as never,
     unitOfWork: new DrizzleUnitOfWork({ db }),
   });
 
@@ -159,6 +160,7 @@ describe('DbMinistryManager.setDefaultDirection', () => {
   const manager = new DbMinistryManager({
     ministryRepo,
     volunteerRepo,
+    invitationRepo: {} as never,
     unitOfWork: new DrizzleUnitOfWork({ db }),
   });
 

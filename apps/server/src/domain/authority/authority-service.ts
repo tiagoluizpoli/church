@@ -6,6 +6,7 @@ import type {
   AuthorityDenyReason,
   AuthorityRequest,
   ChurchResource,
+  InvitationResource,
   MinistryMembershipFact,
   MinistryResource,
 } from './types';
@@ -21,6 +22,13 @@ interface AuthorizeMinistryResourceInput {
   actor: AuthorityActor;
   action: AuthorityAction;
   resource: MinistryResource;
+  isAdmin: boolean;
+}
+
+interface AuthorizeInvitationResourceInput {
+  actor: AuthorityActor;
+  action: AuthorityAction;
+  resource: InvitationResource;
   isAdmin: boolean;
 }
 
@@ -127,6 +135,28 @@ function authorizeMinistryResource(
   return membership ? allow() : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
 }
 
+/**
+ * Managing an offer: an admin manages any; a Ministry leader manages only
+ * volunteer-level offers of a Ministry they lead. Nobody participates in one.
+ */
+function authorizeInvitationResource(
+  input: AuthorizeInvitationResourceInput,
+): AuthorityDecision {
+  const { actor, action, resource, isAdmin } = input;
+  if (action !== 'manage') return deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+  if (isAdmin) return allow();
+  const { ministryId, ministryAccessLevel } = resource;
+  if (!ministryId) return deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+  const membership = findMinistryMembership({ actor, ministryId });
+  if (membership && membership.churchId !== actor.activeChurchId) {
+    return deny({ reason: 'CONFLICTING_SCOPE' });
+  }
+  return membership?.accessLevel === 'leader' &&
+    ministryAccessLevel === 'volunteer'
+    ? allow()
+    : deny({ reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+}
+
 export const AuthorityService = {
   /**
    * Answers one application authorization question, dispatching internally
@@ -160,6 +190,14 @@ export const AuthorityService = {
         break;
       case 'ministry':
         decision = authorizeMinistryResource({
+          actor,
+          action,
+          resource,
+          isAdmin,
+        });
+        break;
+      case 'invitation':
+        decision = authorizeInvitationResource({
           actor,
           action,
           resource,

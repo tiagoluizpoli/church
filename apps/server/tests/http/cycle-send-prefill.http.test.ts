@@ -146,6 +146,7 @@ beforeAll(async () => {
   const ministryManager = new DbMinistryManager({
     ministryRepo: managers.ministryRepository,
     volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    invitationRepo: {} as never,
     unitOfWork: new DrizzleUnitOfWork({ db }),
   });
   const admin = new ChurchAdminController({

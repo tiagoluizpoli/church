@@ -32,6 +32,10 @@ export interface GetDebugVerificationCodeInput {
   now?: Date;
 }
 
+export interface GetDebugInvitationLinkInput {
+  email: string;
+}
+
 export interface RequestRedemptionCodeInput {
   churchInvitationId: ChurchInvitationId;
   now?: Date;
@@ -236,5 +240,9 @@ export interface RedemptionManager {
    * is unavailable, or when no code has been captured yet. */
   getDebugVerificationCode(
     input: GetDebugVerificationCodeInput,
+  ): Promise<string | null>;
+  /** Non-production only: the joining link last emailed to `email`, as captured. */
+  getDebugInvitationLink(
+    input: GetDebugInvitationLinkInput,
   ): Promise<string | null>;
 }

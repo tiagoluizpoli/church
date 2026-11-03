@@ -31,11 +31,11 @@ import type {
   InvitationClosure,
   InvitationEmailDelivery,
   InvitationListFilters,
-  InvitationListItem,
   InvitationListKind,
   InvitationListOptions,
-  InvitationListPage,
   InvitationListRole,
+  InvitationListRow,
+  InvitationListRowsPage,
   InvitationListScope,
 } from '../../domain/entities/invitation-list-item';
 import { MinistryInvitationNotFoundError } from '../../domain/errors/ministry-invitation-not-found';
@@ -73,6 +73,8 @@ interface DeliveryLookupInput {
   churchId: string;
   ministryInvitationIds: string[];
   churchInvitationIds: string[];
+  /** Ministry row id → its paired Church Invitation, whose T1 may deliver it. */
+  pairedParents: Map<string, string>;
 }
 
 /** Filter words onto the storage words of both tables; `expired` is stored pending, narrowed by the clock. */
@@ -115,6 +117,7 @@ interface ClosureFacts {
   status: ChurchStatus;
   at?: Date;
   actorId?: string;
+  reason?: string;
 }
 
 interface RowOrderKey {
@@ -186,7 +189,7 @@ export class DrizzleInvitationListRepository
     cursor,
     limit,
     now,
-  }: ListInvitationsInput): Promise<InvitationListPage> {
+  }: ListInvitationsInput): Promise<InvitationListRowsPage> {
     const position = cursor
       ? decodeInvitationListCursor({ cursor })
       : undefined;
@@ -231,11 +234,16 @@ export class DrizzleInvitationListRepository
           churchInvitationIds: page
             .filter((row) => row.kind === 'church')
             .map((row) => row.id),
+          pairedParents: new Map(
+            ministryPage.flatMap((row) =>
+              row.churchInvitationId ? [[row.id, row.churchInvitationId]] : [],
+            ),
+          ),
         }),
         this.closures({ churchId, rows: page }),
       ]);
 
-    const items: InvitationListItem[] = page.map(
+    const items: InvitationListRow[] = page.map(
       ({ closureFacts: _facts, ...row }) => ({
         ...row,
         // A leader must not learn the Church-wide grant behind a paired offer.
@@ -345,9 +353,8 @@ export class DrizzleInvitationListRepository
 
     const actorIds = new Set<string>();
     for (const row of closed) {
-      const audit = audits.get(row.id);
-      const id =
-        row.kind === 'ministry' ? audit?.actorId : row.closureFacts.actorId;
+      const audit = row.kind === 'ministry' ? audits.get(row.id) : undefined;
+      const id = audit?.actorId ?? row.closureFacts.actorId;
       if (id) actorIds.add(id);
     }
     const names = new Map<string, string>();
@@ -362,15 +369,14 @@ export class DrizzleInvitationListRepository
     const result = new Map<string, InvitationClosure>();
     for (const row of closed) {
       const audit = row.kind === 'ministry' ? audits.get(row.id) : undefined;
-      const actorId =
-        row.kind === 'ministry' ? audit?.actorId : row.closureFacts.actorId;
+      const actorId = audit?.actorId ?? row.closureFacts.actorId;
       const at = audit?.at ?? row.closureFacts.at;
       const actorName = actorId ? names.get(actorId) : undefined;
       result.set(`${row.kind}:${row.id}`, {
         actor:
           actorId && actorName ? { id: actorId, name: actorName } : undefined,
         at: at ?? undefined,
-        reason: audit?.reason ?? undefined,
+        reason: audit?.reason ?? row.closureFacts.reason,
       });
     }
     return result;
@@ -394,6 +400,7 @@ export class DrizzleInvitationListRepository
         inviteeEmail: invitee.email,
         churchEmail: churchInvitation.email,
         churchRole: churchInvitation.role,
+        churchStatus: churchInvitation.status,
         inviterId: inviter.id,
         inviterName: inviter.name,
         createdAt: ministryInvitation.createdAt,
@@ -402,6 +409,8 @@ export class DrizzleInvitationListRepository
         acceptedAt: ministryInvitation.acceptedAt,
         declinedAt: ministryInvitation.declinedAt,
         canceledAt: ministryInvitation.canceledAt,
+        canceledById: ministryInvitation.canceledById,
+        cancelReason: ministryInvitation.cancelReason,
       })
       .from(ministryInvitation)
       .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
@@ -418,7 +427,10 @@ export class DrizzleInvitationListRepository
           filters.status === 'expired'
             ? lte(ministryInvitation.expiresAt, now)
             : undefined,
-          isNull(ministry.deletedAt),
+          // Outstanding offers die with their Ministry; its history stays readable.
+          filters.status === 'pending' || filters.status === 'expired'
+            ? isNull(ministry.deletedAt)
+            : undefined,
           ministryIds
             ? inArray(ministryInvitation.ministryId, ministryIds)
             : undefined,
@@ -454,6 +466,8 @@ export class DrizzleInvitationListRepository
       email: row.inviteeEmail ?? row.churchEmail ?? '',
       churchAccessLevel:
         row.churchRole === 'admin' ? ('admin' as const) : undefined,
+      parentPending:
+        row.churchStatus === null || row.churchStatus === 'pending',
       ministryAccessLevel: row.ministryAccessLevel,
       invitedBy: { id: row.inviterId, name: row.inviterName },
       createdAt: row.createdAt,
@@ -466,6 +480,12 @@ export class DrizzleInvitationListRepository
           (row.status === 'rejected' && row.declinedAt) ||
           (row.status === 'canceled' && row.canceledAt) ||
           undefined,
+        ...(row.status === 'canceled'
+          ? {
+              actorId: row.canceledById ?? undefined,
+              reason: row.cancelReason ?? undefined,
+            }
+          : {}),
       } satisfies ClosureFacts,
     }));
   }
@@ -490,6 +510,9 @@ export class DrizzleInvitationListRepository
         acceptedById: churchInvitation.acceptedById,
         declinedAt: churchInvitation.declinedAt,
         declinedById: churchInvitation.declinedById,
+        canceledAt: churchInvitation.canceledAt,
+        canceledById: churchInvitation.canceledById,
+        cancelReason: churchInvitation.cancelReason,
       })
       .from(churchInvitation)
       .innerJoin(inviter, eq(inviter.id, churchInvitation.inviterId))
@@ -526,6 +549,7 @@ export class DrizzleInvitationListRepository
       ministryName: undefined,
       email: row.email,
       churchAccessLevel: 'admin' as const,
+      parentPending: true,
       ministryAccessLevel: undefined,
       invitedBy: { id: row.inviterId, name: row.inviterName },
       createdAt: row.createdAt,
@@ -543,7 +567,13 @@ export class DrizzleInvitationListRepository
                 at: row.declinedAt ?? undefined,
                 actorId: row.declinedById ?? undefined,
               }
-            : {}),
+            : row.status === 'canceled'
+              ? {
+                  at: row.canceledAt ?? undefined,
+                  actorId: row.canceledById ?? undefined,
+                  reason: row.cancelReason ?? undefined,
+                }
+              : {}),
       } satisfies ClosureFacts,
     }));
   }
@@ -581,6 +611,7 @@ export class DrizzleInvitationListRepository
     churchId,
     ministryInvitationIds,
     churchInvitationIds,
+    pairedParents,
   }: DeliveryLookupInput): Promise<DeliveryFacts> {
     const latest = new Map<string, InvitationEmailDelivery>();
     const lastSent = new Map<string, Date>();
@@ -591,9 +622,12 @@ export class DrizzleInvitationListRepository
         sql`(${outboxMessage.kind} = 'notification' AND ${outboxMessage.payload} ->> 'kind' = 'ministry_invitation' AND ${outboxMessage.payload} -> 'data' ->> 'ministryInvitationId' IN ${ministryInvitationIds})`,
       );
     }
-    if (churchInvitationIds.length > 0) {
+    const offerIds = [
+      ...new Set([...churchInvitationIds, ...pairedParents.values()]),
+    ];
+    if (offerIds.length > 0) {
       subjects.push(
-        sql`(${outboxMessage.kind} = 'invitation.church-bootstrap' AND ${outboxMessage.payload} ->> 'churchInvitationId' IN ${churchInvitationIds})`,
+        sql`(${outboxMessage.kind} = 'invitation.church-bootstrap' AND ${outboxMessage.payload} ->> 'churchInvitationId' IN ${offerIds})`,
       );
     }
     if (subjects.length === 0) return { latest, lastSent };
@@ -606,15 +640,23 @@ export class DrizzleInvitationListRepository
 
     for (const row of rows) {
       const payload = (row.payload ?? {}) as Record<string, unknown>;
-      const subject =
+      // An admin-upgraded pair's halves are delivered by the offer's one T1.
+      const subjects =
         row.kind === 'invitation.church-bootstrap'
-          ? `church:${payload.churchInvitationId}`
-          : `ministry:${
-              row.kind === 'notification'
-                ? (payload.data as Record<string, unknown> | undefined)
-                    ?.ministryInvitationId
-                : payload.ministryInvitationId
-            }`;
+          ? [
+              `church:${payload.churchInvitationId}`,
+              ...[...pairedParents]
+                .filter(([, parent]) => parent === payload.churchInvitationId)
+                .map(([halfId]) => `ministry:${halfId}`),
+            ]
+          : [
+              `ministry:${
+                row.kind === 'notification'
+                  ? (payload.data as Record<string, unknown> | undefined)
+                      ?.ministryInvitationId
+                  : payload.ministryInvitationId
+              }`,
+            ];
       const delivery = projectInvitationEmailDelivery({
         kind: row.kind,
         status: row.status,
@@ -622,13 +664,15 @@ export class DrizzleInvitationListRepository
         sentAt: row.sentAt,
         emailDeliveredAt: row.emailDeliveredAt,
       });
-      if (!latest.has(subject)) latest.set(subject, delivery);
-      if (
-        delivery.state === 'sent' &&
-        delivery.sentAt &&
-        !lastSent.has(subject)
-      )
-        lastSent.set(subject, delivery.sentAt);
+      for (const subject of subjects) {
+        if (!latest.has(subject)) latest.set(subject, delivery);
+        if (
+          delivery.state === 'sent' &&
+          delivery.sentAt &&
+          !lastSent.has(subject)
+        )
+          lastSent.set(subject, delivery.sentAt);
+      }
     }
     return { latest, lastSent };
   }

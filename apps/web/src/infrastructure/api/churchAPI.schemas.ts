@@ -1282,12 +1282,56 @@ export type ResendMinistryInvitation200 = {
   deliveryStatus: ResendMinistryInvitation200DeliveryStatus;
 };
 
+export type ResendMinistryInvitation401 = {
+  error: string;
+  message: string;
+};
+
 export type ResendMinistryInvitation403 = {
   error: string;
   message: string;
 };
 
 export type ResendMinistryInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type ResendMinistryInvitation409 = {
+  error: string;
+  message: string;
+};
+
+export type ResendMinistryInvitation429 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type RevokeMinistryInvitation204 = typeof RevokeMinistryInvitation204[keyof typeof RevokeMinistryInvitation204] | null;
+
+
+export const RevokeMinistryInvitation204 = {
+} as const;
+
+export type RevokeMinistryInvitation401 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeMinistryInvitation403 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeMinistryInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeMinistryInvitation409 = {
   error: string;
   message: string;
 };
@@ -2975,6 +3019,8 @@ export type ListInvitations200ItemsItem = {
      * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
      */
   lastSentAt: string | null;
+  canResend: boolean;
+  canRevoke: boolean;
 };
 
 export type ListInvitations200OptionsMinistriesItem = {
@@ -3122,6 +3168,82 @@ export const MintAdminInvitation409Error = {
 
 export type MintAdminInvitation409 = {
   error: MintAdminInvitation409Error;
+  message: string;
+};
+
+export type ResendChurchInvitation200Kind = typeof ResendChurchInvitation200Kind[keyof typeof ResendChurchInvitation200Kind];
+
+
+export const ResendChurchInvitation200Kind = {
+  church: 'church',
+} as const;
+
+export type ResendChurchInvitation200DeliveryStatus = typeof ResendChurchInvitation200DeliveryStatus[keyof typeof ResendChurchInvitation200DeliveryStatus];
+
+
+export const ResendChurchInvitation200DeliveryStatus = {
+  pending: 'pending',
+} as const;
+
+export type ResendChurchInvitation200 = {
+  kind: ResendChurchInvitation200Kind;
+  id: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+  deliveryStatus: ResendChurchInvitation200DeliveryStatus;
+};
+
+export type ResendChurchInvitation401 = {
+  error: string;
+  message: string;
+};
+
+export type ResendChurchInvitation403 = {
+  error: string;
+  message: string;
+};
+
+export type ResendChurchInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type ResendChurchInvitation409 = {
+  error: string;
+  message: string;
+};
+
+export type ResendChurchInvitation429 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type RevokeChurchInvitation204 = typeof RevokeChurchInvitation204[keyof typeof RevokeChurchInvitation204] | null;
+
+
+export const RevokeChurchInvitation204 = {
+} as const;
+
+export type RevokeChurchInvitation401 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeChurchInvitation403 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeChurchInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type RevokeChurchInvitation409 = {
+  error: string;
   message: string;
 };
 

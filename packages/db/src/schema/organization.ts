@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   index,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -8,6 +9,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth';
+import { invitationRevocationReasonEnum } from './enums';
 
 // Better Auth's `organization` plugin owns these three tables. Their shape is
 // dictated by the plugin's own schema declaration (see
@@ -90,6 +92,22 @@ export const invitation = pgTable(
     declinedById: text('declined_by_id').references(() => user.id, {
       onDelete: 'set null',
     }),
+    /** Management resend throttle, per Church Invitation; defaults leave existing rows unthrottled. */
+    lastResendAt: timestamp('last_resend_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    resendCount: integer('resend_count').default(0).notNull(),
+    resendWindowStartedAt: timestamp('resend_window_started_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    /** Revocation facts; null on rows revoked before they were recorded. */
+    canceledAt: timestamp('canceled_at', { withTimezone: true, mode: 'date' }),
+    canceledById: text('canceled_by_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    cancelReason: invitationRevocationReasonEnum('cancel_reason'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

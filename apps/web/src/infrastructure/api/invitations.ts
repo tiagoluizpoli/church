@@ -9,7 +9,9 @@ import type {
   ListInvitationsParams,
   MintAdminInvitation200,
   MintAdminInvitation201,
-  MintAdminInvitationBody
+  MintAdminInvitationBody,
+  ResendChurchInvitation200,
+  RevokeChurchInvitation204
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -45,6 +47,32 @@ const mintAdminInvitation = (
     },
       );
     }
-  return {listInvitations,mintAdminInvitation}};
+  /**
+ * Queue one fresh invitation email for a pending or expired admin Church offer and restart its validity on the Church lifetime, aligning every still-pending Ministry Invitation sharing it. Recipient, inviter, IDs, grants and Roles are kept. The throttle counters belong to the Church Invitation only. ChurchAdmins only; a missing or other-Church target is 404; 409 INVITATION_NOT_PENDING when already accepted, declined or revoked; 429 when the cooldown or daily cap applies.
+ * @summary Resend a Church Invitation
+ */
+const resendChurchInvitation = (
+    invitationId: string,
+ ) => {
+      return apiClient<ResendChurchInvitation200>(
+      {url: `/api/v1/invitations/church/${invitationId}/resend`, method: 'POST'
+    },
+      );
+    }
+  /**
+ * Revoke a pending or expired Church offer together with every still-pending Ministry Invitation sharing it (expired included), recording the caller, one time and the reason `manual` on each; the body takes no actor or reason. Accepted, declined and revoked Ministry Invitations, Roles and Memberships are untouched and no notice is sent. ChurchAdmins only; a missing or other-Church target is 404; 409 INVITATION_NOT_PENDING when already accepted, declined or revoked.
+ * @summary Revoke a Church Invitation
+ */
+const revokeChurchInvitation = (
+    invitationId: string,
+ ) => {
+      return apiClient<RevokeChurchInvitation204>(
+      {url: `/api/v1/invitations/church/${invitationId}/revoke`, method: 'POST'
+    },
+      );
+    }
+  return {listInvitations,mintAdminInvitation,resendChurchInvitation,revokeChurchInvitation}};
 export type ListInvitationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['listInvitations']>>>
 export type MintAdminInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['mintAdminInvitation']>>>
+export type ResendChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['resendChurchInvitation']>>>
+export type RevokeChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['revokeChurchInvitation']>>>

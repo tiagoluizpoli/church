@@ -14,6 +14,7 @@ import { church } from './church';
 import { ministry, role, volunteer } from './core';
 import {
   identityAuditActionEnum,
+  invitationRevocationReasonEnum,
   ministryAccessLevelEnum,
   ministryInvitationStatusEnum,
   outboxMessageKindEnum,
@@ -63,10 +64,15 @@ export const ministryInvitation = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+    /** Revocation facts; null on rows revoked before they were recorded. */
     canceledAt: timestamp('canceled_at', {
       withTimezone: true,
       mode: 'date',
     }),
+    canceledById: text('canceled_by_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    cancelReason: invitationRevocationReasonEnum('cancel_reason'),
     /** Set by every decline path; the actor lives in `identity_audit` and is absent for a public decline. */
     declinedAt: timestamp('declined_at', {
       withTimezone: true,

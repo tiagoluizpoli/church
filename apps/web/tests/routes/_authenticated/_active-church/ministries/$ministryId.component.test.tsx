@@ -3,7 +3,9 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { invitationListQueryKey } from '@/features/invitations/invitation-queries';
 import type { GetCallerCapabilities200 } from '@/infrastructure/api/churchAPI.schemas';
+import { DEFAULT_CHURCH_ID } from '@/tests/setup/active-church';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
@@ -273,6 +275,31 @@ describe('Ministry archive', () => {
         capabilityReads,
       ),
     );
+  });
+
+  it('refetches the current Church Invitations after an archive revoked its pending offers', async () => {
+    asAdmin();
+    archiveMinistry.mockResolvedValue(undefined);
+    const { queryClient } = renderWorkspace('/settings');
+    const current = invitationListQueryKey({ churchId: DEFAULT_CHURCH_ID });
+    const other = invitationListQueryKey({ churchId: 'another-church' });
+    queryClient.setQueryData(current, { pages: [], pageParams: [] });
+    queryClient.setQueryData(other, { pages: [], pageParams: [] });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: m.ministry_archive_open() }),
+    );
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: m.ministry_archive_confirm(),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(current)?.isInvalidated).toBe(true),
+    );
+    expect(queryClient.getQueryState(other)?.isInvalidated).toBe(false);
   });
 
   it('archives nothing when the confirmation is cancelled', async () => {

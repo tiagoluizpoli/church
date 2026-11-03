@@ -144,4 +144,46 @@ describe('CaptureEmailSender', () => {
       sender.lastVerificationCodeFor({ to: 'invitee@example.com' }),
     ).toBeUndefined();
   });
+
+  it('returns the joining link of the latest invitation email captured for the recipient', async () => {
+    const sender = new CaptureEmailSender('Church');
+    const older = 'https://app.church.test/invitations/church/old';
+    const latest = 'https://app.church.test/invitations/church/new';
+    await sender.send({
+      payload: buildPayload({ redemptionUrl: older }),
+      locale: 'en',
+    });
+    await sender.send({
+      payload: buildPayload({ to: 'other@example.com' }),
+      locale: 'en',
+    });
+    await sender.send({
+      payload: {
+        kind: 'invitation.church-bootstrap',
+        to: 'invitee@example.com',
+        churchName: 'Grace Church',
+        expiresAt: fromDate({ date: new Date('2026-08-01T00:00:00Z') }),
+        churchTimezone: 'UTC',
+        redemptionUrl: latest,
+      },
+      locale: 'en',
+    });
+    await sender.send({
+      payload: {
+        kind: 'invitation.verification-code',
+        to: 'invitee@example.com',
+        churchName: 'Grace Church',
+        code: '444444',
+        codeLifetime: { minutes: 10 },
+      },
+      locale: 'en',
+    });
+
+    expect(sender.lastInvitationLinkFor({ to: 'invitee@example.com' })).toBe(
+      latest,
+    );
+    expect(
+      sender.lastInvitationLinkFor({ to: 'nobody@example.com' }),
+    ).toBeUndefined();
+  });
 });

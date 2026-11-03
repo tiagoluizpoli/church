@@ -13,11 +13,14 @@ import {
   user,
   volunteer,
 } from '@church/db';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { and, eq } from 'drizzle-orm';
+import pg from 'pg';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RedemptionController } from '@/api/controllers/redemption-controller';
 import { DbRedemptionManager } from '@/application/db-redemption-manager';
 import { DbVolunteerTransferManager } from '@/application/db-volunteer-transfer-manager';
+import { revokeMinistryHalf } from '@/application/invitation-revocation';
 import { InvitationVerificationCodeManager } from '@/application/invitation-verification-code-manager';
 import {
   ChurchId,
@@ -31,6 +34,7 @@ import type {
   DeclineChurchInvitationInput,
   DeclineChurchInvitationResult,
   DeclineMinistryInvitationInput,
+  LockInvitedMinistriesInput,
   RecordChurchInvitationAcceptanceInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
@@ -124,6 +128,12 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
 
   private readonly delegate: RedemptionRepository;
 
+  async lockInvitedMinistries(
+    input: LockInvitedMinistriesInput,
+  ): Promise<void> {
+    return this.delegate.lockInvitedMinistries(input);
+  }
+
   async acceptPendingMinistryInvitation(
     input: AcceptMinistryInvitationInput,
   ): Promise<VolunteerId> {
@@ -178,6 +188,16 @@ interface CreateHarnessInput {
 interface RedemptionUrlInput {
   invitationId: string;
 }
+
+/**
+ * The per-IP public limit lives in module state for the whole file; this suite
+ * tests redemption, not throttling (redemption-public-decline covers 429), so
+ * it must not trip the limit as tests accumulate.
+ */
+const suiteConfig = {
+  ...appConfig,
+  redemptionRateLimit: { ...appConfig.redemptionRateLimit, maxRequests: 1_000 },
+};
 
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({
@@ -256,7 +276,7 @@ async function createHarness({
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,
-    config: appConfig,
+    config: suiteConfig,
   });
   await app.register(
     async (instance) => {
@@ -593,6 +613,141 @@ describe('Church invitation redemption HTTP boundary', () => {
           ),
         ),
     ).toEqual([]);
+  });
+
+  it('grants nothing for an old verification code once the Church Invitation was revoked with its last half', async () => {
+    const invitation = await mintInvitation();
+    const { app } = await createHarness();
+    await requestCode({ invitationId: invitation.churchInvitationId });
+    await invitationManager.revoke({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      ministryInvitationId: invitation.id as never,
+      callerId: UserId.from(fixture.adminA),
+    });
+
+    const preview = await app.inject({
+      method: 'GET',
+      url: redemptionUrl({ invitationId: invitation.churchInvitationId }),
+    });
+    const response = await redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Revoked Invitee',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '66666666-6666-4666-8666-666666666666',
+      },
+    });
+
+    expect(preview.statusCode).toBe(404);
+    expect(preview.json().error).toBe('INVITATION_UNAVAILABLE');
+    expect(response.json()).toEqual({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+    expect(await testDb.select().from(user)).toHaveLength(FIXTURE_USER_COUNT);
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'canceled',
+      ministry: 'canceled',
+    });
+  });
+
+  it('grants nothing for an old verification code once a ChurchAdmin revoked the whole Church offer', async () => {
+    const invitation = await mintInvitation();
+    const { app } = await createHarness();
+    await requestCode({ invitationId: invitation.churchInvitationId });
+    // A direct Church revoke addresses an admin offer: upgrade the pair first.
+    await invitationManager.mintAdmin({
+      churchId: ChurchId.from(fixture.churchA.id),
+      inviterId: UserId.from(fixture.adminA),
+      email: `redemption-${fixture.churchA.slug}@fixture.test`,
+    });
+    expect(
+      await invitationManager.revokeChurch({
+        churchId: ChurchId.from(fixture.churchA.id),
+        churchInvitationId: invitation.churchInvitationId as string,
+        callerId: UserId.from(fixture.adminA),
+      }),
+    ).toBe(true);
+
+    const preview = await app.inject({
+      method: 'GET',
+      url: redemptionUrl({ invitationId: invitation.churchInvitationId }),
+    });
+    const response = await redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Revoked Invitee',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '88888888-8888-4888-8888-888888888888',
+      },
+    });
+
+    expect(preview.statusCode).toBe(404);
+    expect(preview.json().error).toBe('INVITATION_UNAVAILABLE');
+    expect(response.json()).toEqual({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+    expect(await testDb.select().from(user)).toHaveLength(FIXTURE_USER_COUNT);
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'canceled',
+      ministry: 'canceled',
+    });
+  });
+
+  it('never revives a Church Invitation revoked while a new person is joining', async () => {
+    const invitation = await mintInvitation();
+    const { app } = await createHarness();
+    await requestCode({ invitationId: invitation.churchInvitationId });
+    const locked = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const revoking = unitOfWork.run(async (tx) => {
+      await revokeMinistryHalf({
+        repo: ministryInvitationRepository,
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+        churchInvitationId: invitation.churchInvitationId,
+        revocation: {
+          actorId: UserId.from(fixture.adminA),
+          at: new Date(),
+          reason: 'manual',
+        },
+        tx,
+      });
+      locked.resolve();
+      await release.promise;
+    });
+    await locked.promise;
+
+    const joining = redeem({
+      app,
+      invitation,
+      payload: {
+        name: 'Racing Invitee',
+        password: 'correct horse battery staple',
+        code: '123456',
+        idempotencyKey: '77777777-7777-4777-8777-777777777777',
+      },
+    });
+    await untilLockWait();
+    release.resolve();
+    await revoking;
+    const response = await joining;
+
+    expect(response.json()).toEqual({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+    expect(await testDb.select().from(user)).toHaveLength(FIXTURE_USER_COUNT);
+    expect(await invitationStatuses({ invitation })).toEqual({
+      church: 'canceled',
+      ministry: 'canceled',
+    });
   });
 
   it('serializes duplicate submissions so only the request that consumes the code creates grants', async () => {
@@ -956,6 +1111,29 @@ interface InvitationStatuses {
 interface SeedChurchMembersInput {
   total: number;
   churchId?: string;
+}
+
+/**
+ * Resolves once another connection is queued behind a lock. Probes on its own
+ * connection: the two-connection test pool is busy with the racing transactions.
+ */
+async function untilLockWait(): Promise<void> {
+  const probe = new pg.Client({
+    connectionString: getIntegrationDatabaseUrl(),
+  });
+  await probe.connect();
+  try {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const { rows } = await probe.query<{ waiting: number }>(
+        `SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+      );
+      if ((rows[0]?.waiting ?? 0) > 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('No connection ever waited on a lock');
+  } finally {
+    await probe.end();
+  }
 }
 
 async function redeem({ app, invitation, payload }: RedeemInput) {

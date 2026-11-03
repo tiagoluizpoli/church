@@ -14,16 +14,22 @@ import type { IAuthorityManager } from '../domain/contracts/application/authorit
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   AdminInvitation,
+  ChurchInvitationResend,
   GetMinistryInvitationDeliveryStatusInput,
   IMinistryInvitationManager,
   MinistryInvitationDeliveryStatus,
   MintAdminInvitationInput,
   MintMinistryInvitationInput,
+  ResendChurchInvitationInput,
   ResendMinistryInvitationInput,
+  RevokeChurchInvitationInput,
+  RevokeMinistryInvitationInput,
 } from '../domain/contracts/application/ministry-invitation-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type {
   ChurchInvitationSummary,
+  LockChurchInvitationInput,
+  LockedChurchInvitation,
   MinistryInvitationRepository,
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
@@ -31,8 +37,10 @@ import type { RoleRepository } from '../domain/contracts/infrastructure/role.rep
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
+import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import { InsufficientInvitationAuthorityError } from '../domain/errors/insufficient-invitation-authority';
 import { InvalidInvitationRoleError } from '../domain/errors/invalid-invitation-role';
+import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
 import { InvitationRoleRequiredError } from '../domain/errors/invitation-role-required';
 import { InviteeAlreadyChurchMemberError } from '../domain/errors/invitee-already-church-member';
 import { InviteeAlreadyMinistryMemberError } from '../domain/errors/invitee-already-ministry-member';
@@ -49,6 +57,7 @@ import {
   nextResendThrottleState,
   type ResendThrottleState,
 } from '../domain/services/resend-throttle';
+import { revokeChurchOffer, revokeMinistryHalf } from './invitation-revocation';
 
 interface ExpiryFromInput {
   milliseconds: number;
@@ -61,8 +70,12 @@ interface EnsureMintableScopeInput {
   callerId: UserId;
 }
 
-interface MintableScope {
-  callerIsAdmin: boolean;
+interface EnsureOfferAuthorityInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  callerId: UserId;
+  /** The offer's stored (or, on mint, requested) Ministry Access Level. */
+  ministryAccessLevel: MinistryAccessLevel;
 }
 
 interface MintForExistingMemberInput extends MintMinistryInvitationInput {
@@ -152,15 +165,17 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     const email = normalizeInvitationEmail({ email: input.email });
     const roleIds = [...new Set(input.roleIds)];
 
-    const { callerIsAdmin } = await this.ensureMintableScope({
+    await this.ensureMintableScope({
       churchId,
       ministryId,
       callerId: inviterId,
     });
-
-    if (!callerIsAdmin && ministryAccessLevel === 'leader') {
-      throw new InsufficientInvitationAuthorityError();
-    }
+    await this.ensureOfferAuthority({
+      churchId,
+      ministryId,
+      callerId: inviterId,
+      ministryAccessLevel,
+    });
 
     return this.unitOfWork.run(async (tx) => {
       // Lock order shared with the admin invite: Church/address, then
@@ -309,26 +324,139 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     });
   }
 
+  async resendChurch(
+    input: ResendChurchInvitationInput,
+  ): Promise<ChurchInvitationResend | null> {
+    const { churchId, churchInvitationId } = input;
+    return this.unitOfWork.run(async (tx) => {
+      // Lock order: Church Invitation row, then its Ministry Invitation rows.
+      const parent = await this.lockChurchRow({
+        churchId,
+        churchInvitationId,
+        tx,
+      });
+      if (!parent) return null;
+      if (parent.status !== 'pending') throw new InvitationNotPendingError();
+
+      const now = nowInstant();
+      const throttleState: ResendThrottleState = {
+        lastResendAt: parent.lastResendAt,
+        resendCount: parent.resendCount,
+        resendWindowStartedAt: parent.resendWindowStartedAt,
+      };
+      this.ensureResendAllowed({ throttleState, now });
+
+      const expiresAt = this.expiryFrom({
+        from: now,
+        milliseconds: this.churchInvitationTtlMs,
+      });
+      const aligned = await this.repo.alignPairedExpiry({
+        churchId,
+        churchInvitationId,
+        expiresAt: toDate({ instant: expiresAt }),
+        tx,
+      });
+      if (!aligned) throw new InvitationNotPendingError();
+      const next = nextResendThrottleState({
+        state: throttleState,
+        policy: this.resendPolicy,
+        now,
+      });
+      await this.repo.applyChurchResend({
+        churchId,
+        churchInvitationId,
+        throttle: {
+          lastResendAt: toDate({ instant: next.lastResendAt }),
+          resendCount: next.resendCount,
+          resendWindowStartedAt: toDate({
+            instant: next.resendWindowStartedAt,
+          }),
+        },
+        tx,
+      });
+      // One T1 for the whole offer, however many halves it retains.
+      await this.repo.enqueueOutboxMessage({
+        churchId,
+        kind: 'invitation.church-bootstrap',
+        payload: { churchInvitationId },
+        correlationId: crypto.randomUUID(),
+        scheduledFor: nowAsDate(),
+        tx,
+      });
+      return { churchInvitationId, expiresAt };
+    });
+  }
+
+  async revokeChurch(input: RevokeChurchInvitationInput): Promise<boolean> {
+    const { churchId, churchInvitationId, callerId } = input;
+    return this.unitOfWork.run(async (tx) => {
+      // Lock order: Church Invitation row, then its Ministry Invitation rows.
+      const parent = await this.lockChurchRow({
+        churchId,
+        churchInvitationId,
+        tx,
+      });
+      if (!parent) return false;
+      const revoked = await revokeChurchOffer({
+        repo: this.repo,
+        churchId,
+        churchInvitationId,
+        revocation: { actorId: callerId, at: nowAsDate(), reason: 'manual' },
+        tx,
+      });
+      if (!revoked) throw new InvitationNotPendingError();
+      return true;
+    });
+  }
+
   async resend(
     input: ResendMinistryInvitationInput,
   ): Promise<MinistryInvitation> {
     const { churchId, ministryId, ministryInvitationId, callerId } = input;
 
-    await this.ensureMintableScope({ churchId, ministryId, callerId });
+    await this.ensureMintableScope({
+      churchId,
+      ministryId,
+      callerId,
+    });
 
     return this.unitOfWork.run(async (tx) => {
-      // Serializes concurrent resends of the same invitation so two
-      // simultaneous calls can't both read the same cooldown/cap state and
-      // both pass the check — see acquireResendLock's own doc comment.
-      await this.repo.acquireResendLock({ ministryInvitationId, tx });
-
-      const existing = await this.repo.findPendingById({
+      // Lock order (see `acquireChurchOfferLock`): Ministry, Church Invitation
+      // row, then Ministry Invitation rows. Facts are re-read under the locks.
+      await this.lockActiveMinistry({ churchId, ministryId, tx });
+      // Scope first: Access Level, Ministry and pairing never change, so an
+      // unlocked read decides authority without revealing lifecycle facts.
+      const target = await this.repo.findById({
         churchId,
-        ministryId,
         ministryInvitationId,
         tx,
       });
-      if (!existing) throw new MinistryInvitationNotFoundError();
+      if (!target || target.ministryId !== ministryId) {
+        throw new MinistryInvitationNotFoundError();
+      }
+      await this.ensureOfferAuthority({
+        churchId,
+        ministryId,
+        callerId,
+        ministryAccessLevel: target.ministryAccessLevel,
+      });
+      const { churchInvitationId } = target;
+      const parent = churchInvitationId
+        ? await this.repo.lockChurchInvitation({
+            churchId,
+            churchInvitationId,
+            tx,
+          })
+        : null;
+      if (churchInvitationId && parent?.status !== 'pending') {
+        throw new InvitationNotPendingError();
+      }
+      const existing = await this.repo.lockMinistryInvitation({
+        churchId,
+        ministryInvitationId,
+        tx,
+      });
+      if (existing?.status !== 'pending') throw new InvitationNotPendingError();
 
       const now = nowInstant();
       const throttleState: ResendThrottleState = {
@@ -338,21 +466,22 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       };
       this.ensureResendAllowed({ throttleState, now });
 
-      const { churchInvitationId } = existing;
       const expiresAt = this.expiryFrom({
         from: now,
         milliseconds: churchInvitationId
           ? this.churchInvitationTtlMs
           : this.invitationTtlMs,
       });
-      // Both halves of a pair restart together, so neither outlives the other.
+      // The parent and every still-pending half restart together, so none
+      // outlives another; their own resend counters stay untouched.
       if (churchInvitationId) {
-        await this.repo.refreshChurchInvitationExpiry({
+        const aligned = await this.repo.alignPairedExpiry({
           churchId,
           churchInvitationId,
           expiresAt: toDate({ instant: expiresAt }),
           tx,
         });
+        if (!aligned) throw new InvitationNotPendingError();
       }
       const nextThrottle = nextResendThrottleState({
         state: throttleState,
@@ -374,7 +503,17 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       });
 
       // A resend is a new intended delivery: a new row, never a retry.
-      if (invitation.inviteeUserId) {
+      if (churchInvitationId && parent?.churchAccessLevel === 'admin') {
+        // An upgraded offer's one T1 names the admin grant and every half.
+        await this.repo.enqueueOutboxMessage({
+          churchId,
+          kind: 'invitation.church-bootstrap',
+          payload: { churchInvitationId },
+          correlationId: crypto.randomUUID(),
+          scheduledFor: nowAsDate(),
+          tx,
+        });
+      } else if (invitation.inviteeUserId) {
         await this.enqueueMemberNotification({
           churchId,
           userId: invitation.inviteeUserId,
@@ -394,6 +533,55 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
       return invitation;
     });
+  }
+
+  async revoke(input: RevokeMinistryInvitationInput): Promise<void> {
+    const { churchId, ministryId, ministryInvitationId, callerId } = input;
+
+    await this.ensureMintableScope({
+      churchId,
+      ministryId,
+      callerId,
+    });
+
+    await this.unitOfWork.run(async (tx) => {
+      // Same lock order as resend: Ministry, Church Invitation, then halves.
+      await this.lockActiveMinistry({ churchId, ministryId, tx });
+      const target = await this.repo.findById({
+        churchId,
+        ministryInvitationId,
+        tx,
+      });
+      if (!target || target.ministryId !== ministryId) {
+        throw new MinistryInvitationNotFoundError();
+      }
+      await this.ensureOfferAuthority({
+        churchId,
+        ministryId,
+        callerId,
+        ministryAccessLevel: target.ministryAccessLevel,
+      });
+      const revoked = await revokeMinistryHalf({
+        repo: this.repo,
+        churchId,
+        ministryInvitationId,
+        churchInvitationId: target.churchInvitationId,
+        revocation: { actorId: callerId, at: nowAsDate(), reason: 'manual' },
+        tx,
+      });
+      if (!revoked) throw new InvitationNotPendingError();
+    });
+  }
+
+  /**
+   * A Church target is an admin offer, the only Church row the list shows;
+   * a member-level parent is reached through its Ministry halves instead.
+   */
+  private async lockChurchRow(
+    input: LockChurchInvitationInput,
+  ): Promise<LockedChurchInvitation | null> {
+    const row = await this.repo.lockChurchInvitation(input);
+    return row?.churchAccessLevel === 'admin' ? row : null;
   }
 
   /**
@@ -587,7 +775,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
   private async ensureMintableScope(
     input: EnsureMintableScopeInput,
-  ): Promise<MintableScope> {
+  ): Promise<void> {
     const { churchId, ministryId, callerId } = input;
 
     try {
@@ -605,13 +793,19 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       userId: callerId,
     });
     if (!canManage) throw new MinistryInvitationNotFoundError();
+  }
 
-    const callerIsAdmin = await this.authorityManager.canManageChurch({
+  /** Within a manageable Ministry, a leader handles volunteer-level offers only. */
+  private async ensureOfferAuthority(
+    input: EnsureOfferAuthorityInput,
+  ): Promise<void> {
+    const { churchId, callerId, ministryId, ministryAccessLevel } = input;
+    const [allowed] = await this.authorityManager.canManageInvitations({
       churchId,
       userId: callerId,
+      invitations: [{ ministryId, ministryAccessLevel }],
     });
-
-    return { callerIsAdmin };
+    if (!allowed) throw new InsufficientInvitationAuthorityError();
   }
 
   private ensureResendAllowed(input: EnsureResendAllowedInput): void {

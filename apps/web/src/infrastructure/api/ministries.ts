@@ -28,6 +28,7 @@ import type {
   RenameSector200,
   RenameSectorBody,
   ResendMinistryInvitation200,
+  RevokeMinistryInvitation204,
   SaveUsualSetupBlock200,
   SaveUsualSetupBlockBody
 } from './churchAPI.schemas';
@@ -92,7 +93,7 @@ const renameMinistry = (
       );
     }
   /**
- * Archive an active Ministry, keeping its history and freeing its name. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended.
+ * Archive an active Ministry, keeping its history and freeing its name. In the same transaction, every pending Ministry Invitation to it (expired included) is revoked as the caller with the reason `ministry-archived`, and so is its Church Invitation when no other pending Ministry Invitation still uses it; accepted Memberships are untouched and no notice is sent. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended, changing nothing.
  * @summary Archive a Ministry
  */
 const archiveMinistry = (
@@ -119,7 +120,7 @@ const mintMinistryInvitation = (
       );
     }
   /**
- * Resend the delivery email for a Ministry Invitation.
+ * Queue one fresh delivery of a pending or expired Ministry Invitation and restart its validity: the Ministry lifetime when standalone, or the Church lifetime for the Church Invitation and every still-pending Ministry Invitation sharing it. IDs, inviter, Access Levels and Roles are kept. A ChurchAdmin may resend any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when the invitation or its Church Invitation was already accepted, declined or revoked. 429 when the per-invitation cooldown or daily cap applies.
  * @summary Resend a Ministry Invitation
  */
 const resendMinistryInvitation = (
@@ -128,6 +129,19 @@ const resendMinistryInvitation = (
  ) => {
       return apiClient<ResendMinistryInvitation200>(
       {url: `/api/v1/ministries/${ministryId}/invitations/${invitationId}/resend`, method: 'POST'
+    },
+      );
+    }
+  /**
+ * Revoke a pending or expired Ministry Invitation, recording the caller, the time and the reason `manual`; the body takes no actor or reason. Its Church Invitation is revoked too when no other pending Ministry Invitation still uses it. Accepted Memberships are untouched and no notice is sent. A ChurchAdmin may revoke any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when it was already accepted, declined or revoked.
+ * @summary Revoke a Ministry Invitation
+ */
+const revokeMinistryInvitation = (
+    ministryId: string,
+    invitationId: string,
+ ) => {
+      return apiClient<RevokeMinistryInvitation204>(
+      {url: `/api/v1/ministries/${ministryId}/invitations/${invitationId}/revoke`, method: 'POST'
     },
       );
     }
@@ -271,7 +285,7 @@ const saveUsualSetupBlock = (
     },
       );
     }
-  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
+  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,revokeMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
 export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
 export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
@@ -279,6 +293,7 @@ export type RenameMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typ
 export type ArchiveMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveMinistry']>>>
 export type MintMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['mintMinistryInvitation']>>>
 export type ResendMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['resendMinistryInvitation']>>>
+export type RevokeMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['revokeMinistryInvitation']>>>
 export type ListMinistryRolesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistryRoles']>>>
 export type CreateMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistryRole']>>>
 export type RenameMinistryRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistryRole']>>>

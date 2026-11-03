@@ -1,4 +1,5 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
+import { parseInstant } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import type { MinistryInvitationRepository } from '@/domain/contracts/infrastructure/ministry-invitation.repository';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
@@ -98,6 +99,35 @@ describe('composition root', () => {
     });
     await app.close();
     expect(response.json()).toEqual({ code: '123456' });
+  });
+
+  it('reads the captured joining link back from an overridden capture email sender', async () => {
+    const emailSender = new CaptureEmailSender('Church');
+    const redemptionUrl = 'https://app.church.test/invitations/church/abc';
+    await emailSender.send({
+      payload: {
+        kind: 'invitation.church-bootstrap',
+        to: 'invitee@example.com',
+        churchName: 'Church',
+        expiresAt: parseInstant({ value: '2026-08-01T00:00:00.000Z' }),
+        churchTimezone: 'UTC',
+        redemptionUrl,
+      },
+      locale: 'en',
+    });
+    const { controllers } = createCompositionRoot({ emailSender });
+    const app = await createFastify({ locale: testLocale });
+    await app.register(
+      async (instance) => registerControllers({ app: instance, controllers }),
+      { prefix: '/api/v1' },
+    );
+    await app.ready();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/redemption/debug-invitation-link?email=invitee%40example.com',
+    });
+    await app.close();
+    expect(response.json()).toEqual({ redemptionUrl });
   });
 
   it('mails password resets through an overridden email sender', async () => {

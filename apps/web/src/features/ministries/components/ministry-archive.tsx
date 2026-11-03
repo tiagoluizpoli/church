@@ -15,11 +15,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
 import { invalidateMinistryReads } from '@/features/ministries/ministry-queries';
 import type {
   ArchiveMinistry409,
   ArchiveMinistry409BlockersItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { adminApi } from '@/utils/api-instances';
 
 interface MinistryArchiveProps {
@@ -40,6 +42,7 @@ const isCycleBlocker = (
 /** Archive + confirmation; a 409 lists the blocking Cycles to resolve first. */
 export function MinistryArchive({ ministryId, name }: MinistryArchiveProps) {
   const queryClient = useQueryClient();
+  const churchId = useCallerCapabilitiesScope()?.churchId;
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -53,6 +56,10 @@ export function MinistryArchive({ ministryId, name }: MinistryArchiveProps) {
       await adminApi.archiveMinistry(ministryId);
       await navigate({ to: '/ministries' });
       await invalidateMinistryReads({ queryClient });
+      // The archive revoked the Ministry's pending offers server-side.
+      await queryClient.invalidateQueries({
+        queryKey: [...INVITATIONS_QUERY_KEY, churchId],
+      });
       toast.success(m.ministry_archived_toast());
     } catch (error) {
       const body = isAxiosError<ArchiveMinistry409>(error)

@@ -43,7 +43,7 @@ interface MinistryRouteParams {
 
 type MinistryInvitationRouteParams = MinistryRouteParams;
 
-interface ResendMinistryInvitationRouteParams {
+interface MinistryInvitationActionRouteParams {
   ministryId: string;
   invitationId: string;
 }
@@ -240,7 +240,7 @@ export class MinistryController implements FastifyController {
           operationId: 'archiveMinistry',
           summary: 'Archive a Ministry',
           description:
-            'Archive an active Ministry, keeping its history and freeing its name. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended.',
+            'Archive an active Ministry, keeping its history and freeing its name. In the same transaction, every pending Ministry Invitation to it (expired included) is revoked as the caller with the reason `ministry-archived`, and so is its Church Invitation when no other pending Ministry Invitation still uses it; accepted Memberships are untouched and no notice is sent. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended, changing nothing.',
           response: {
             204: z.null(),
             401: errorResponseSchema,
@@ -256,6 +256,7 @@ export class MinistryController implements FastifyController {
         await this.ministryManager.archive({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
+          callerId: UserId.from(request.userId),
         });
         return reply.status(204).send();
       },
@@ -323,18 +324,22 @@ export class MinistryController implements FastifyController {
           tags: ['ministries'],
           operationId: 'resendMinistryInvitation',
           summary: 'Resend a Ministry Invitation',
-          description: 'Resend the delivery email for a Ministry Invitation.',
+          description:
+            'Queue one fresh delivery of a pending or expired Ministry Invitation and restart its validity: the Ministry lifetime when standalone, or the Church lifetime for the Church Invitation and every still-pending Ministry Invitation sharing it. IDs, inviter, Access Levels and Roles are kept. A ChurchAdmin may resend any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when the invitation or its Church Invitation was already accepted, declined or revoked. 429 when the per-invitation cooldown or daily cap applies.',
           response: {
             200: ministryInvitationResponseSchema,
+            401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
+            409: errorResponseSchema,
+            429: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
         if (await this.denyMissingMinistryFunction({ request, reply })) return;
         const { ministryId, invitationId } =
-          request.params as ResendMinistryInvitationRouteParams;
+          request.params as MinistryInvitationActionRouteParams;
 
         const churchId = ChurchId.from(request.churchId);
         const invitation = await this.ministryInvitationManager.resend({
@@ -351,6 +356,38 @@ export class MinistryController implements FastifyController {
         return reply.send(
           ministryInvitationMapper.toResponse({ invitation, deliveryStatus }),
         );
+      },
+    );
+    app.post(
+      '/:ministryId/invitations/:invitationId/revoke',
+      {
+        schema: {
+          tags: ['ministries'],
+          operationId: 'revokeMinistryInvitation',
+          summary: 'Revoke a Ministry Invitation',
+          description:
+            'Revoke a pending or expired Ministry Invitation, recording the caller, the time and the reason `manual`; the body takes no actor or reason. Its Church Invitation is revoked too when no other pending Ministry Invitation still uses it. Accepted Memberships are untouched and no notice is sent. A ChurchAdmin may revoke any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when it was already accepted, declined or revoked.',
+          response: {
+            204: z.null(),
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        if (await this.denyMissingMinistryFunction({ request, reply })) return;
+        const { ministryId, invitationId } =
+          request.params as MinistryInvitationActionRouteParams;
+
+        await this.ministryInvitationManager.revoke({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          ministryInvitationId: MinistryInvitationId.from(invitationId),
+          callerId: UserId.from(request.userId),
+        });
+        return reply.status(204).send(null);
       },
     );
   }

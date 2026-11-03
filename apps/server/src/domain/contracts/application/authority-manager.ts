@@ -3,6 +3,7 @@ import type {
   AuthorityDecision,
   AuthorityResource,
   AuthorityScope,
+  InvitationResource,
 } from '../../authority/types';
 import type {
   ChurchId,
@@ -32,6 +33,18 @@ export interface CanManageMinistryInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   userId: UserId;
+}
+
+/** One stored offer: a Ministry Invitation's Ministry and stored level, or neither for a Church offer. */
+export type InvitationAuthorityTarget = Omit<
+  InvitationResource,
+  'type' | 'churchId'
+>;
+
+export interface CanManageInvitationsInput {
+  churchId: ChurchId;
+  userId: UserId;
+  invitations: InvitationAuthorityTarget[];
 }
 
 export interface CanManageParticipationInput {
@@ -101,6 +114,8 @@ export interface IAuthorityManager {
   decideManageShift(input: CanManageShiftInput): Promise<AuthorityDecision>;
   canManageChurch(input: CanManageChurchInput): Promise<boolean>;
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
+  /** Whether the caller may resend or revoke each offer, in input order; one actor read. */
+  canManageInvitations(input: CanManageInvitationsInput): Promise<boolean[]>;
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
   canManageEvent(input: CanManageEventInput): Promise<boolean>;

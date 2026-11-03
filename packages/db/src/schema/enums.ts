@@ -67,6 +67,12 @@ export const ministryInvitationStatusEnum = pgEnum(
   ['pending', 'accepted', 'rejected', 'canceled'],
 );
 
+/** Why a pending invitation was revoked: server-owned, never free text. */
+export const invitationRevocationReasonEnum = pgEnum(
+  'invitation_revocation_reason',
+  ['manual', 'ministry-archived'],
+);
+
 export const outboxMessageKindEnum = pgEnum('outbox_message_kind', [
   'invitation.chained',
   'invitation.church-bootstrap',

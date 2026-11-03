@@ -2585,8 +2585,13 @@ paths:
       tags:
         - ministries
       description: Archive an active Ministry, keeping its history and freeing its
-        name. ChurchAdmin only; refused with the blocking Cycles while it
-        participates in an Event that has not ended.
+        name. In the same transaction, every pending Ministry Invitation to it
+        (expired included) is revoked as the caller with the reason
+        `ministry-archived`, and so is its Church Invitation when no other
+        pending Ministry Invitation still uses it; accepted Memberships are
+        untouched and no notice is sent. ChurchAdmin only; refused with the
+        blocking Cycles while it participates in an Event that has not ended,
+        changing nothing.
       parameters:
         - schema:
             type: string
@@ -2926,7 +2931,16 @@ paths:
       summary: Resend a Ministry Invitation
       tags:
         - ministries
-      description: Resend the delivery email for a Ministry Invitation.
+      description: "Queue one fresh delivery of a pending or expired Ministry
+        Invitation and restart its validity: the Ministry lifetime when
+        standalone, or the Church lifetime for the Church Invitation and every
+        still-pending Ministry Invitation sharing it. IDs, inviter, Access
+        Levels and Roles are kept. A ChurchAdmin may resend any; a Ministry
+        leader only volunteer-level invitations in Ministries they lead (403
+        INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and
+        other-Church targets are one 404. 409 INVITATION_NOT_PENDING when the
+        invitation or its Church Invitation was already accepted, declined or
+        revoked. 429 when the per-invitation cooldown or daily cap applies."
       parameters:
         - schema:
             type: string
@@ -2980,6 +2994,21 @@ paths:
                   - redemptionPath
                   - deliveryStatus
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -2996,6 +3025,132 @@ paths:
                   - message
                 additionalProperties: false
         "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/invitations/{invitationId}/revoke:
+    post:
+      operationId: revokeMinistryInvitation
+      summary: Revoke a Ministry Invitation
+      tags:
+        - ministries
+      description: Revoke a pending or expired Ministry Invitation, recording the
+        caller, the time and the reason `manual`; the body takes no actor or
+        reason. Its Church Invitation is revoked too when no other pending
+        Ministry Invitation still uses it. Accepted Memberships are untouched
+        and no notice is sent. A ChurchAdmin may revoke any; a Ministry leader
+        only volunteer-level invitations in Ministries they lead (403
+        INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and
+        other-Church targets are one 404. 409 INVITATION_NOT_PENDING when it was
+        already accepted, declined or revoked.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
           description: Default Response
           content:
             application/json:
@@ -7274,6 +7429,10 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        canResend:
+                          type: boolean
+                        canRevoke:
+                          type: boolean
                       required:
                         - kind
                         - id
@@ -7286,6 +7445,8 @@ paths:
                         - displayStatus
                         - emailDelivery
                         - lastSentAt
+                        - canResend
+                        - canRevoke
                       additionalProperties: false
                   nextCursor:
                     type: string
@@ -7515,6 +7676,219 @@ paths:
                     enum:
                       - INVITEE_ALREADY_CHURCH_MEMBER
                       - PENDING_CHURCH_INVITATION_EXISTS
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/invitations/church/{invitationId}/resend:
+    post:
+      operationId: resendChurchInvitation
+      summary: Resend a Church Invitation
+      tags:
+        - invitations
+      description: Queue one fresh invitation email for a pending or expired admin
+        Church offer and restart its validity on the Church lifetime, aligning
+        every still-pending Ministry Invitation sharing it. Recipient, inviter,
+        IDs, grants and Roles are kept. The throttle counters belong to the
+        Church Invitation only. ChurchAdmins only; a missing or other-Church
+        target is 404; 409 INVITATION_NOT_PENDING when already accepted,
+        declined or revoked; 429 when the cooldown or daily cap applies.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - church
+                  id:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  deliveryStatus:
+                    type: string
+                    enum:
+                      - pending
+                required:
+                  - kind
+                  - id
+                  - expiresAt
+                  - deliveryStatus
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/invitations/church/{invitationId}/revoke:
+    post:
+      operationId: revokeChurchInvitation
+      summary: Revoke a Church Invitation
+      tags:
+        - invitations
+      description: Revoke a pending or expired Church offer together with every
+        still-pending Ministry Invitation sharing it (expired included),
+        recording the caller, one time and the reason `manual` on each; the body
+        takes no actor or reason. Accepted, declined and revoked Ministry
+        Invitations, Roles and Memberships are untouched and no notice is sent.
+        ChurchAdmins only; a missing or other-Church target is 404; 409
+        INVITATION_NOT_PENDING when already accepted, declined or revoked.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
                   message:
                     type: string
                 required:
@@ -8502,6 +8876,53 @@ paths:
                     pattern: ^\d{6}$
                 required:
                   - code
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - INVITATION_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/redemption/debug-invitation-link:
+    get:
+      operationId: debugGetInvitationLink
+      summary: Get the joining link last emailed to an address (debug)
+      tags:
+        - redemption-debug
+      description: "Non-production only: read back the joining link of the latest
+        invitation email captured for an address, bypassing email delivery."
+      parameters:
+        - schema:
+            type: string
+            format: email
+            pattern: ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+          in: query
+          name: email
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redemptionUrl:
+                    type: string
+                    format: uri
+                required:
+                  - redemptionUrl
                 additionalProperties: false
         "404":
           description: Default Response

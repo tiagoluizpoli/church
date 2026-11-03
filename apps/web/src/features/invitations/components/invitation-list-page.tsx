@@ -1,6 +1,19 @@
 import { m } from '@church/i18n/messages';
+import { useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +32,7 @@ import {
 } from '@/components/workspace-page';
 import { InviteDialog } from '@/features/invitations/components/invite-dialog';
 import {
+  INVITATIONS_QUERY_KEY,
   type InvitationFilters,
   useInvitationList,
 } from '@/features/invitations/invitation-queries';
@@ -26,13 +40,165 @@ import type {
   ListInvitations200ItemsItem,
   ListInvitations200Options,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
+import { adminApi, invitationsApi } from '@/utils/api-instances';
 
 interface InvitationRowProps {
   item: ListInvitations200ItemsItem;
   timeZone: string;
 }
+
+interface RowActionProps {
+  item: ListInvitations200ItemsItem;
+}
+
+interface RefusalBody {
+  error?: string;
+}
+
+const RESEND_REFUSALS: Record<string, () => string> = {
+  RESEND_COOLDOWN_ACTIVE: () => m.error_resend_cooldown_active(),
+  RESEND_DAILY_CAP_EXCEEDED: () => m.error_resend_daily_cap_exceeded(),
+  INVITATION_NOT_PENDING: () => m.error_invitation_not_pending(),
+};
+
+/** Resend for a row the server allows, dispatched by its tagged kind. */
+function ResendButton({ item }: RowActionProps) {
+  const queryClient = useQueryClient();
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const [pending, setPending] = useState(false);
+  const { ministryId, id, email } = item;
+  if (!item.canResend || (item.kind === 'ministry' && !ministryId)) return null;
+
+  // Every row of the Active Church may change (siblings, delivery); filters stay as they are.
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: [...INVITATIONS_QUERY_KEY, churchId],
+    });
+  const resend = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await (item.kind === 'church'
+        ? invitationsApi.resendChurchInvitation(id)
+        : adminApi.resendMinistryInvitation(ministryId as string, id));
+      toast.success(m.invitations_resend_queued_toast({ email }));
+      await refresh();
+    } catch (error) {
+      const code = isAxiosError<RefusalBody>(error)
+        ? error.response?.data?.error
+        : undefined;
+      const known = code ? RESEND_REFUSALS[code] : undefined;
+      toast.error(known ? known() : m.invitations_resend_failed());
+      if (code === 'INVITATION_NOT_PENDING') await refresh();
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={pending}
+      aria-label={m.invitations_resend_label({ email })}
+      onClick={resend}
+    >
+      {pending ? m.invitations_resending() : m.invitations_resend()}
+    </Button>
+  );
+}
+
+/** Revoke behind a confirmation for a row the server allows, dispatched by its tagged kind; the server records who, when and why. */
+function RevokeButton({ item }: RowActionProps) {
+  const queryClient = useQueryClient();
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const { ministryId, id, email } = item;
+  if (!item.canRevoke || (item.kind === 'ministry' && !ministryId)) return null;
+
+  // The row leaves Pending and history changes; filters stay as they are.
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: [...INVITATIONS_QUERY_KEY, churchId],
+    });
+  const revoke = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await (item.kind === 'church'
+        ? invitationsApi.revokeChurchInvitation(id)
+        : adminApi.revokeMinistryInvitation(ministryId as string, id));
+      toast.success(m.invitations_revoked_toast({ email }));
+      setOpen(false);
+      await refresh();
+    } catch (error) {
+      const code = isAxiosError<RefusalBody>(error)
+        ? error.response?.data?.error
+        : undefined;
+      toast.error(
+        code === 'INVITATION_NOT_PENDING'
+          ? m.error_invitation_not_pending()
+          : m.invitations_revoke_failed(),
+      );
+      setOpen(false);
+      await refresh();
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        aria-label={m.invitations_revoke_label({ email })}
+        onClick={() => setOpen(true)}
+      >
+        {m.invitations_revoke()}
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {m.invitations_revoke_dialog_title({ email })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {item.kind === 'church'
+                ? m.invitations_revoke_church_description()
+                : m.invitations_revoke_description()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>
+              {m.invitations_revoke_cancel()}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={pending}
+              onClick={revoke}
+            >
+              {pending
+                ? m.invitations_revoking()
+                : m.invitations_revoke_confirm()}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+const REVOCATION_REASONS: Record<string, () => string> = {
+  manual: () => m.invitations_revoke_reason_manual(),
+  'ministry-archived': () => m.invitations_revoke_reason_ministry_archived(),
+};
 
 type StatusFilter = NonNullable<InvitationFilters['status']>;
 const STATUSES: StatusFilter[] = [
@@ -104,10 +270,15 @@ function closureFact({ item, timeZone }: InvitationRowProps): string | null {
           ? m.invitations_declined_link_on({ date })
           : m.invitations_closure_unavailable();
   } else {
-    fact = date
-      ? m.invitations_revoked_on({ date })
-      : m.invitations_closure_unavailable();
+    fact =
+      actor && date
+        ? m.invitations_revoked_by_on({ name: actor.name, date })
+        : date
+          ? m.invitations_revoked_on({ date })
+          : m.invitations_closure_unavailable();
   }
+  const revocationReason = reason ? REVOCATION_REASONS[reason] : undefined;
+  if (revocationReason) return `${fact} · ${revocationReason()}`;
   return reason
     ? `${fact} · ${m.invitations_closure_reason({ reason })}`
     : fact;
@@ -124,6 +295,10 @@ function InvitationRow({ item, timeZone }: InvitationRowProps) {
         {expired ? (
           <Badge variant="destructive">{m.invitations_expired_badge()}</Badge>
         ) : null}
+        <div className="ms-auto flex gap-2">
+          <ResendButton item={item} />
+          <RevokeButton item={item} />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {item.status !== 'pending' ? (
@@ -295,7 +470,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
   );
 }
 
-/** The Active Church's invitations and their history within the caller's authority; read-only. */
+/** The Active Church's invitations and their history within the caller's authority, with Resend and Revoke where allowed. */
 export function InvitationListPage() {
   const { churchTimezone } = useTimezone();
   const [filters, setFilters] = useState<InvitationFilters>({});

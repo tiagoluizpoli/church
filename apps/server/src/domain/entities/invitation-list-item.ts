@@ -64,6 +64,7 @@ export interface InvitationListFilters {
 export interface InvitationClosure {
   actor?: InvitationListNamedRef;
   at?: Date;
+  /** A revocation's `manual` or `ministry-archived`, or a decline's audit reason. */
   reason?: string;
 }
 
@@ -95,6 +96,23 @@ export interface InvitationListItem {
   emailDelivery: InvitationEmailDelivery;
   /** The latest email attempt actually sent for this offer, even if a later one failed; absent when unknown. */
   lastSentAt?: Date;
+  /** The caller may resend this stored-pending offer (expired included) within their authority. */
+  canResend: boolean;
+  /** The caller may revoke this stored-pending offer (expired included) within their authority. */
+  canRevoke: boolean;
+}
+
+/** A row as read, before the caller's authority adds its action facts. */
+export interface InvitationListRow
+  extends Omit<InvitationListItem, 'canResend' | 'canRevoke'> {
+  /** A paired offer is resendable only while its Church parent is still pending. */
+  parentPending: boolean;
+}
+
+export interface InvitationListRowsPage {
+  items: InvitationListRow[];
+  nextCursor?: string;
+  options: InvitationListOptions;
 }
 
 export interface InvitationListPage {

@@ -21,6 +21,8 @@ import {
   authenticatedInvitationStatusResponseSchema,
   confirmTransferBodySchema,
   confirmTransferOutcomeResponseSchema,
+  debugInvitationLinkQuerystringSchema,
+  debugInvitationLinkResponseSchema,
   debugVerificationCodeResponseSchema,
   declineOutcomeResponseSchema,
   existingMemberOutcomeResponseSchema,
@@ -441,6 +443,33 @@ export class RedemptionController implements FastifyController {
           if (!code)
             return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
           return reply.send({ code });
+        },
+      );
+      app.get(
+        '/debug-invitation-link',
+        {
+          schema: {
+            tags: ['redemption-debug'],
+            operationId: 'debugGetInvitationLink',
+            summary: 'Get the joining link last emailed to an address (debug)',
+            description:
+              'Non-production only: read back the joining link of the latest invitation email captured for an address, bypassing email delivery.',
+            querystring: debugInvitationLinkQuerystringSchema,
+            response: {
+              200: debugInvitationLinkResponseSchema,
+              404: unavailableRedemptionResponseSchema,
+            },
+          },
+        },
+        async (request, reply) => {
+          const { email } = request.query as z.infer<
+            typeof debugInvitationLinkQuerystringSchema
+          >;
+          const redemptionUrl =
+            await this.redemptionManager.getDebugInvitationLink({ email });
+          if (!redemptionUrl)
+            return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
+          return reply.send({ redemptionUrl });
         },
       );
     }

@@ -25,6 +25,8 @@ export interface AcceptChurchInvitationInput {
 export interface RejectChurchInvitationInput {
   churchInvitationId: string;
   sessionCookie: string;
+  /** Joins the caller's transaction, after it has locked the Church row. */
+  tx?: TransactionContext;
 }
 
 export interface SetActiveRedemptionChurchInput {

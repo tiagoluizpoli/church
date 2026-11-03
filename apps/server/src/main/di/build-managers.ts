@@ -138,6 +138,7 @@ export function buildManagers({
     new DbMinistryManager({
       ministryRepo: ministryRepository,
       volunteerRepo: volunteerRepository,
+      invitationRepo: ministryInvitationRepository,
       unitOfWork,
     });
   const ministryRoleManager =
@@ -327,6 +328,7 @@ export function buildManagers({
     overrides.invitationListManager ??
     new DbInvitationListManager({
       invitationListRepository,
+      authorityManager,
       defaultPageSize: config.invitations.pageSize,
     });
 

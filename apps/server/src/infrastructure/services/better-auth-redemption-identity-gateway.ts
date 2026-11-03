@@ -78,8 +78,9 @@ export class BetterAuthRedemptionIdentityGateway
   async rejectChurchInvitation({
     churchInvitationId,
     sessionCookie,
+    tx,
   }: RejectChurchInvitationInput): Promise<void> {
-    await this.auth.api.rejectInvitation({
+    await this.authFor({ tx }).api.rejectInvitation({
       headers: new Headers({ cookie: sessionCookie }),
       body: { invitationId: churchInvitationId },
     });

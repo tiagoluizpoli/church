@@ -1,4 +1,4 @@
-import { outboxMessage } from '@church/db';
+import { ministryInvitation, outboxMessage } from '@church/db';
 import { fromDate, toDate } from '@church/time';
 import { and, asc, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
@@ -170,6 +170,11 @@ export class DrizzleOutboxRepository implements OutboxRepository {
               eq(outboxMessage.kind, 'notification'),
               sql`${outboxMessage.payload} ->> 'kind' = 'ministry_invitation'`,
               sql`${outboxMessage.payload} -> 'data' ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+            ),
+            // An admin-upgraded pair is delivered by its Church offer's one T1.
+            and(
+              eq(outboxMessage.kind, 'invitation.church-bootstrap'),
+              sql`${outboxMessage.payload} ->> 'churchInvitationId' IN (SELECT ${ministryInvitation.churchInvitationId} FROM ${ministryInvitation} WHERE ${ministryInvitation.id}::text = ${ministryInvitationId})`,
             ),
           ),
         ),

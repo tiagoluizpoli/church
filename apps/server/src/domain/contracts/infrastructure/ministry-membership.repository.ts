@@ -52,6 +52,12 @@ export interface SaveMembershipRolesInput {
   tx: TransactionContext;
 }
 
+export interface SaveMembershipAccessInput extends SaveMembershipRolesInput {
+  accessLevel: MinistryAccessLevel;
+  /** Whether the Role set differs, so the audit carries both facts. */
+  rolesChanged: boolean;
+}
+
 export interface ListMembershipRolesInput {
   churchId: ChurchId;
   membershipId: string;
@@ -81,6 +87,11 @@ export interface MinistryMembershipRepository {
   ): Promise<UpcomingMembershipAssignment[]>;
   /** Applies the Role difference and writes its one `ministry_roles_changed` audit. */
   saveRoles(input: SaveMembershipRolesInput): Promise<void>;
+  /**
+   * Applies the level and any Role difference together, with their one
+   * `ministry_access_changed` audit.
+   */
+  saveAccess(input: SaveMembershipAccessInput): Promise<void>;
   /** The held Roles in the detail card shape, by name. */
   listRoles(input: ListMembershipRolesInput): Promise<PersonDetailRole[]>;
 }

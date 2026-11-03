@@ -10,6 +10,8 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   peopleListQuerystringSchema,
   peopleListResponseSchema,
+  personDetailResponseSchema,
+  personParamsSchema,
 } from '../dtos/people-list.dto';
 import { refuse } from '../utils/refuse';
 
@@ -52,6 +54,24 @@ export class PeopleController implements FastifyController {
     this.maxPageSize = maxPageSize;
   }
 
+  /** The caller's reach, or undefined without the People capability. A person who is both gets admin behavior. */
+  private async resolveScope({
+    churchId,
+    userId,
+  }: {
+    churchId: ChurchId;
+    userId: UserId;
+  }): Promise<PeopleListScope | undefined> {
+    const { isChurchAdmin, ledMinistries } =
+      await this.authorityGuard.resolveCallerCapabilities({ churchId, userId });
+    if (isChurchAdmin) return { kind: 'church' };
+    if (ledMinistries.length === 0) return undefined;
+    return {
+      kind: 'ministries',
+      ministryIds: ledMinistries.map((m) => MinistryId.from(m.ministryId)),
+    };
+  }
+
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
   registerRoutes(
     app: FastifyTypedInstance,
@@ -60,6 +80,42 @@ export class PeopleController implements FastifyController {
     app.addHook(
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+    );
+
+    app.get(
+      '/:memberId',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'getPerson',
+          summary: 'Get a person',
+          description:
+            'One Church Member of the Active Church with their active Ministry cards. A ChurchAdmin sees every card and the Church access facts; a Ministry leader sees only cards of Ministries they lead and no Church access. A missing, other-Church or out-of-scope member id is one 404.',
+          params: personParamsSchema,
+          response: {
+            200: personDetailResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const scope = await this.resolveScope({
+          churchId,
+          userId: UserId.from(request.userId),
+        });
+        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const result = await this.peopleListManager.get({
+          churchId,
+          scope,
+          memberId: request.params.memberId,
+        });
+        if (!result) return refuse({ reply, request, code: 'NOT_FOUND' });
+        const { person, ...capabilities } = result;
+        return reply.send({ ...person, ...capabilities });
+      },
     );
 
     app.get(
@@ -89,23 +145,11 @@ export class PeopleController implements FastifyController {
       },
       async (request, reply) => {
         const churchId = ChurchId.from(request.churchId);
-        const { isChurchAdmin, ledMinistries } =
-          await this.authorityGuard.resolveCallerCapabilities({
-            churchId,
-            userId: UserId.from(request.userId),
-          });
-        if (!isChurchAdmin && ledMinistries.length === 0) {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
-        // A person who is both gets admin behavior.
-        const scope: PeopleListScope = isChurchAdmin
-          ? { kind: 'church' }
-          : {
-              kind: 'ministries',
-              ministryIds: ledMinistries.map((m) =>
-                MinistryId.from(m.ministryId),
-              ),
-            };
+        const scope = await this.resolveScope({
+          churchId,
+          userId: UserId.from(request.userId),
+        });
+        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { cursor, limit, ...filters } = request.query as z.infer<
           typeof peopleListQuerystringSchema
         > &

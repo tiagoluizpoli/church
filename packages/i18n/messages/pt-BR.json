@@ -645,5 +645,17 @@
   "people_empty": "Nenhum membro ainda.",
   "people_empty_filtered": "Nenhum membro corresponde a estes filtros.",
   "people_load_failed": "Não foi possível carregar as pessoas.",
-  "people_no_ministries": "Sem ministério"
+  "people_no_ministries": "Sem ministério",
+  "people_detail_back": "Voltar para Pessoas",
+  "people_detail_not_found": "Este membro não foi encontrado.",
+  "people_detail_load_failed": "Não foi possível carregar este membro.",
+  "people_detail_ministries": "Ministérios",
+  "people_detail_no_ministries": "Não serve em nenhum ministério que você possa ver.",
+  "people_detail_roles": "Funções",
+  "people_detail_no_roles": "Sem funções",
+  "people_role_archived": "Arquivada",
+  "people_church_access": "Acesso à Igreja",
+  "people_church_access_admin": "Administrador da Igreja",
+  "people_church_access_member": "Membro da Igreja",
+  "people_last_admin_note": "O único Administrador desta Igreja."
 }

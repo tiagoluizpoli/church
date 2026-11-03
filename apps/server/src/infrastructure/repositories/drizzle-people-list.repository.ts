@@ -2,6 +2,8 @@ import {
   member as churchMember,
   ministry,
   ministryMembership,
+  ministryMembershipRole,
+  role,
   user,
   volunteer,
 } from '@church/db';
@@ -18,6 +20,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import type {
+  GetPersonInput,
   ListPeopleInput,
   PeopleListRepository,
 } from '../../domain/contracts/infrastructure/people-list.repository';
@@ -26,6 +29,8 @@ import type {
   PeopleListMinistry,
   PeopleListPage,
   PeopleListScope,
+  PersonDetail,
+  PersonDetailMinistry,
 } from '../../domain/entities/people-list-item';
 import { MinistryInvitationNotFoundError } from '../../domain/errors/ministry-invitation-not-found';
 import {
@@ -148,6 +153,115 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
           ? encodePeopleListCursor({ name: last.name, id: last.id })
           : undefined,
       options,
+    };
+  }
+
+  async get({
+    churchId,
+    scope,
+    memberId,
+  }: GetPersonInput): Promise<PersonDetail | undefined> {
+    const client = getClient({ db: this.db });
+    const [row] = await client
+      .select({
+        id: churchMember.id,
+        userId: churchMember.userId,
+        name: user.name,
+        email: user.email,
+        role: churchMember.role,
+      })
+      .from(churchMember)
+      .innerJoin(user, eq(user.id, churchMember.userId))
+      .where(
+        and(
+          eq(churchMember.organizationId, churchId),
+          eq(churchMember.id, memberId),
+        ),
+      )
+      .limit(1);
+    if (!row) return undefined;
+
+    const cards = await client
+      .select({
+        membershipId: ministryMembership.id,
+        ministryId: ministry.id,
+        ministryName: ministry.name,
+        ministryAccessLevel: ministryMembership.ministryAccessLevel,
+      })
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
+      .where(
+        and(
+          eq(volunteer.userId, row.userId),
+          eq(volunteer.churchId, churchId),
+          isNull(volunteer.leftAt),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
+          isNull(ministryMembership.leftAt),
+          eq(ministry.churchId, churchId),
+          isNull(ministry.deletedAt),
+          scope.kind === 'ministries'
+            ? inArray(ministry.id, scope.ministryIds)
+            : undefined,
+        ),
+      )
+      .orderBy(asc(ministry.name), asc(ministry.id));
+    // A leader's reach is the Ministries they lead: no card, no member.
+    if (scope.kind === 'ministries' && cards.length === 0) return undefined;
+
+    const roleRows =
+      cards.length === 0
+        ? []
+        : await client
+            .select({
+              membershipId: ministryMembershipRole.ministryMembershipId,
+              id: role.id,
+              name: role.name,
+              archivedAt: role.archivedAt,
+            })
+            .from(ministryMembershipRole)
+            .innerJoin(role, eq(role.id, ministryMembershipRole.roleId))
+            .where(
+              inArray(
+                ministryMembershipRole.ministryMembershipId,
+                cards.map((card) => card.membershipId),
+              ),
+            )
+            .orderBy(asc(role.name), asc(role.id));
+    const ministries: PersonDetailMinistry[] = cards.map((card) => ({
+      ...card,
+      roles: roleRows
+        .filter((r) => r.membershipId === card.membershipId)
+        .map((r) => ({ id: r.id, name: r.name, archived: !!r.archivedAt })),
+    }));
+
+    const detail = {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      ministries,
+    };
+    if (scope.kind !== 'church') return detail;
+    const isAdmin = row.role === 'admin';
+    const admins = isAdmin
+      ? await client
+          .select({ id: churchMember.id })
+          .from(churchMember)
+          .where(
+            and(
+              eq(churchMember.organizationId, churchId),
+              eq(churchMember.role, 'admin'),
+            ),
+          )
+          .limit(2)
+      : [];
+    return {
+      ...detail,
+      churchAccess: {
+        accessLevel: isAdmin ? 'admin' : 'member',
+        isLastAdmin: admins.length === 1,
+      },
     };
   }
 

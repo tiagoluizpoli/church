@@ -38,3 +38,33 @@ export const peopleListQuerystringSchema = z.object({
     })
     .optional(),
 });
+
+export const personParamsSchema = z.object({ memberId: z.string().min(1) });
+
+export const personDetailResponseSchema = z.object({
+  /** Church Membership id: opaque, not a Volunteer or User id. */
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  ministries: z.array(
+    z.object({
+      membershipId: z.string(),
+      ministryId: z.string(),
+      ministryName: z.string(),
+      ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
+      roles: z.array(
+        z.object({ id: z.string(), name: z.string(), archived: z.boolean() }),
+      ),
+    }),
+  ),
+  /** Presentation hints; false grants nothing and true is never trusted back. */
+  canChangeChurchAccess: z.boolean(),
+  canInviteToMinistry: z.boolean(),
+  /** ChurchAdmin only; absent for Ministry leaders. */
+  churchAccess: z
+    .object({
+      accessLevel: z.enum(['member', 'admin']),
+      isLastAdmin: z.boolean(),
+    })
+    .optional(),
+});

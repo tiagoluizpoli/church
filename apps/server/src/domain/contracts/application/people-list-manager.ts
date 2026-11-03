@@ -3,6 +3,7 @@ import type {
   PeopleListFilters,
   PeopleListPage,
   PeopleListScope,
+  PersonDetail,
 } from '../../entities/people-list-item';
 
 export interface ListPeopleRequest {
@@ -14,6 +15,19 @@ export interface ListPeopleRequest {
   limit?: number;
 }
 
+export interface GetPersonRequest {
+  churchId: ChurchId;
+  scope: PeopleListScope;
+  memberId: string;
+}
+
+export interface PersonDetailResult {
+  person: PersonDetail;
+  canChangeChurchAccess: boolean;
+  canInviteToMinistry: boolean;
+}
+
 export interface IPeopleListManager {
+  get(input: GetPersonRequest): Promise<PersonDetailResult | undefined>;
   list(input: ListPeopleRequest): Promise<PeopleListPage>;
 }

@@ -1,6 +1,6 @@
-import { ministry } from '@church/db';
+import { ministry, ministryMembership, role, volunteer } from '@church/db';
 import { parseInstant } from '@church/time';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -21,9 +21,10 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
-import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
 import {
   buildMinistryMembership,
+  buildRoleQualification,
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
 import {
@@ -434,5 +435,134 @@ describe('GET /people', () => {
     signIn('admin');
     const { body } = await list();
     expect(JSON.stringify(body)).not.toContain('B Band');
+  });
+});
+
+describe('GET /people/{memberId}', () => {
+  const member = (key: string, church = CHURCH_A) =>
+    `m-${key}-${church.slice(0, 2)}`;
+  const get = async (id: string) => {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/people/${id}`,
+    });
+    return { res, body: res.json() };
+  };
+
+  beforeEach(async () => {
+    const live = await buildRole({
+      db,
+      churchId: CHURCH_A,
+      ministryId: worshipId,
+      name: 'Singer',
+    });
+    const old = await buildRole({
+      db,
+      churchId: CHURCH_A,
+      ministryId: worshipId,
+      name: 'Drummer',
+    });
+    await db
+      .update(role)
+      .set({ archivedAt: new Date() })
+      .where(eq(role.id, old.id));
+    const [membership] = await db
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
+      .where(
+        and(
+          eq(volunteer.userId, 'shared'),
+          eq(ministryMembership.ministryId, worshipId),
+        ),
+      );
+    for (const roleId of [live.id, old.id]) {
+      await buildRoleQualification({
+        db,
+        churchId: CHURCH_A,
+        ministryMembershipId: membership.id,
+        roleId,
+      });
+    }
+  });
+
+  it('shows an admin every active card, held Roles with the archived marker, and Church access', async () => {
+    signIn('admin');
+    const { res, body } = await get(member('shared'));
+    expect(res.statusCode).toBe(200);
+    expect(body).toMatchObject({
+      id: member('shared'),
+      name: 'Sam Shared',
+      email: 'shared@people.test',
+      canChangeChurchAccess: true,
+      canInviteToMinistry: true,
+      churchAccess: { accessLevel: 'member', isLastAdmin: false },
+    });
+    expect(
+      body.ministries.map((m: { ministryName: string }) => m.ministryName),
+    ).toEqual(['Kids', 'Worship']);
+    expect(body.ministries[1].roles).toEqual([
+      expect.objectContaining({ name: 'Drummer', archived: true }),
+      expect.objectContaining({ name: 'Singer', archived: false }),
+    ]);
+  });
+
+  it('lets an admin inspect a Ministry-less admin and flags the last admin', async () => {
+    signIn('admin');
+    const { res, body } = await get(member('admin'));
+    expect(res.statusCode).toBe(200);
+    expect(body.ministries).toEqual([]);
+    expect(body.churchAccess).toEqual({
+      accessLevel: 'admin',
+      isLastAdmin: true,
+    });
+  });
+
+  it('omits ended, retired and archived-Ministry memberships', async () => {
+    signIn('admin');
+    for (const key of ['ended', 'retired', 'archived']) {
+      const { res, body } = await get(member(key));
+      expect(res.statusCode).toBe(200);
+      expect(body.ministries, key).toEqual([]);
+    }
+  });
+
+  it('shows a leader only led cards, no Church access and no trace of unseen Ministries', async () => {
+    signIn('wl');
+    const { res, body } = await get(member('shared'));
+    expect(res.statusCode).toBe(200);
+    expect(body.ministries).toHaveLength(1);
+    expect(body.ministries[0].ministryName).toBe('Worship');
+    expect(body).not.toHaveProperty('churchAccess');
+    expect(body.canChangeChurchAccess).toBe(false);
+    expect(JSON.stringify(body)).not.toContain('Kids');
+  });
+
+  it('answers missing, cross-Church and out-of-scope ids with the same 404', async () => {
+    signIn('wl');
+    const bodies = [];
+    for (const id of [
+      member('kidsvol'),
+      member('plain'),
+      'nope',
+      member('both', CHURCH_B),
+    ]) {
+      const { res, body } = await get(id);
+      expect(res.statusCode, id).toBe(404);
+      expect(body.error).toBe('NOT_FOUND');
+      bodies.push(body);
+    }
+    expect(new Set(bodies.map((b) => JSON.stringify(b))).size).toBe(1);
+    signIn('admin');
+    expect((await get(member('both', CHURCH_B))).res.statusCode).toBe(404);
+  });
+
+  it('refuses a volunteer, plain member and anonymous caller', async () => {
+    for (const key of ['shared', 'plain']) {
+      signIn(key);
+      expect((await get(member('wl'))).res.statusCode).toBe(403);
+    }
+    mockGetSession.mockResolvedValue(null as never);
+    expect((await get(member('wl'))).res.statusCode).toBe(401);
   });
 });

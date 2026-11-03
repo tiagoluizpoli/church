@@ -16,12 +16,15 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getCallerCapabilities = vi.fn();
 const listInvitations = vi.fn();
 const resendMinistryInvitation = vi.fn();
+const resendChurchInvitation = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 
 vi.mock('@/utils/api-instances', async () => ({
   invitationsApi: {
     listInvitations: (...args: unknown[]) => listInvitations(...args),
+    resendChurchInvitation: (...args: unknown[]) =>
+      resendChurchInvitation(...args),
   },
   adminApi: {
     resendMinistryInvitation: (...args: unknown[]) =>
@@ -472,6 +475,33 @@ describe('Invitations resend', () => {
     expect(within(leader).queryByRole('button')).not.toBeInTheDocument();
     expect(within(church).queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText('Revogar')).not.toBeInTheDocument();
+  });
+
+  it('resends a Church row through the Church client by its id and refetches', async () => {
+    const user = userEvent.setup();
+    listInvitations.mockResolvedValue(
+      page([
+        row({
+          kind: 'church',
+          id: 'ci-1',
+          ministryId: undefined,
+          email: 'admin@example.com',
+          canResend: true,
+        }),
+      ]),
+    );
+    resendChurchInvitation.mockResolvedValue({ id: 'ci-1' });
+
+    renderInvitations();
+    await user.click(await resendButton('admin@example.com'));
+
+    expect(resendChurchInvitation).toHaveBeenCalledWith('ci-1');
+    expect(resendMinistryInvitation).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.invitations_resend_queued_toast({ email: 'admin@example.com' }),
+      ),
+    );
   });
 
   it('resends through the Ministry client once, reports a queued email and refetches the current filters', async () => {

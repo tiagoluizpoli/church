@@ -31,6 +31,7 @@ import type {
   AcquireChurchOfferLockInput,
   AcquireMintLockInput,
   AlignPairedExpiryInput,
+  ApplyChurchResendInput,
   ApplyResendInput,
   ChurchInvitationStatus,
   ChurchInvitationSummary,
@@ -48,6 +49,7 @@ import type {
   HasActiveMinistryMembershipInput,
   IsInvitationAddressedToUserInput,
   LockChurchInvitationInput,
+  LockedChurchInvitation,
   LockMinistryInvitationInput,
   MinistryInvitationContext,
   MinistryInvitationRepository,
@@ -186,9 +188,14 @@ export class DrizzleMinistryInvitationRepository
     churchId,
     churchInvitationId,
     tx,
-  }: LockChurchInvitationInput): Promise<ChurchInvitationStatus | null> {
+  }: LockChurchInvitationInput): Promise<LockedChurchInvitation | null> {
     const [row] = await getClient({ db: this.db, tx })
-      .select({ status: churchInvitation.status })
+      .select({
+        status: churchInvitation.status,
+        lastResendAt: churchInvitation.lastResendAt,
+        resendCount: churchInvitation.resendCount,
+        resendWindowStartedAt: churchInvitation.resendWindowStartedAt,
+      })
       .from(churchInvitation)
       .where(
         and(
@@ -198,7 +205,36 @@ export class DrizzleMinistryInvitationRepository
       )
       .limit(1)
       .for('update');
-    return row ? (row.status as ChurchInvitationStatus) : null;
+    return row
+      ? {
+          ...row,
+          status: row.status as ChurchInvitationStatus,
+          lastResendAt: row.lastResendAt
+            ? fromDate({ date: row.lastResendAt })
+            : undefined,
+          resendWindowStartedAt: row.resendWindowStartedAt
+            ? fromDate({ date: row.resendWindowStartedAt })
+            : undefined,
+        }
+      : null;
+  }
+
+  async applyChurchResend({
+    churchId,
+    churchInvitationId,
+    throttle,
+    tx,
+  }: ApplyChurchResendInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .update(churchInvitation)
+      .set(throttle)
+      .where(
+        and(
+          eq(churchInvitation.organizationId, churchId),
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+        ),
+      );
   }
 
   async findById(input: FindByIdInput) {

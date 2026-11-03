@@ -63,7 +63,21 @@ export interface AdminInvitation {
   outcome: AdminInvitationOutcome;
 }
 
+export interface ResendChurchInvitationInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+}
+
+export interface ChurchInvitationResend {
+  churchInvitationId: string;
+  expiresAt: Instant;
+}
+
 export interface IMinistryInvitationManager {
+  /** Resends a pending or expired admin Church offer; `null` when it is missing or in another Church. */
+  resendChurch(
+    input: ResendChurchInvitationInput,
+  ): Promise<ChurchInvitationResend | null>;
   /** Invites a ChurchAdmin, upgrading a pending member offer while keeping its Ministry halves. */
   mintAdmin(input: MintAdminInvitationInput): Promise<AdminInvitation>;
   mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation>;

@@ -15,6 +15,10 @@ import {
   mintAdminInvitationConflictSchema,
 } from '../dtos/admin-invitation.dto';
 import {
+  churchInvitationResendMapper,
+  churchInvitationResendResponseSchema,
+} from '../dtos/church-invitation-resend.dto';
+import {
   invitationListMapper,
   invitationListQuerystringSchema,
   invitationListResponseSchema,
@@ -25,6 +29,10 @@ const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
+
+interface ChurchInvitationParams {
+  invitationId: string;
+}
 
 /** The page size the route's own schema bounds by the configured maximum. */
 interface ListLimitQuery {
@@ -173,6 +181,45 @@ export class InvitationController implements FastifyController {
         return reply
           .status(invitation.outcome === 'created' ? 201 : 200)
           .send(adminInvitationMapper.toResponse(invitation));
+      },
+    );
+
+    app.post(
+      '/church/:invitationId/resend',
+      {
+        schema: {
+          tags: ['invitations'],
+          operationId: 'resendChurchInvitation',
+          summary: 'Resend a Church Invitation',
+          description:
+            'Queue one fresh invitation email for a pending or expired admin Church offer and restart its validity on the Church lifetime, aligning every still-pending Ministry Invitation sharing it. Recipient, inviter, IDs, grants and Roles are kept. The throttle counters belong to the Church Invitation only. ChurchAdmins only; a missing or other-Church target is 404; 409 INVITATION_NOT_PENDING when already accepted, declined or revoked; 429 when the cooldown or daily cap applies.',
+          params: z.object({ invitationId: z.string().min(1) }),
+          response: {
+            200: churchInvitationResendResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+            429: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const canManageChurch = await this.authorityGuard.canManageChurch({
+          churchId,
+          userId: UserId.from(request.userId),
+        });
+        if (!canManageChurch) {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        const { invitationId } = request.params as ChurchInvitationParams;
+        const resent = await this.ministryInvitationManager.resendChurch({
+          churchId,
+          churchInvitationId: invitationId,
+        });
+        if (!resent) return refuse({ reply, request, code: 'NOT_FOUND' });
+        return reply.send(churchInvitationResendMapper.toResponse(resent));
       },
     );
   }

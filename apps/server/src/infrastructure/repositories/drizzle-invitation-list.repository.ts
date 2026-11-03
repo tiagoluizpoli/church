@@ -253,12 +253,13 @@ export class DrizzleInvitationListRepository
           state: 'unavailable',
         },
         lastSentAt: lastSent.get(`${row.kind}:${row.id}`),
-        // Church-row resend is not offered yet; leaders resend volunteer-level offers only.
+        // Church rows are admin-only; leaders resend volunteer-level Ministry offers only.
         canResend:
-          row.kind === 'ministry' &&
           row.status === 'pending' &&
           parentPending &&
-          (isAdmin || row.ministryAccessLevel === 'volunteer'),
+          (isAdmin ||
+            (row.kind === 'ministry' &&
+              row.ministryAccessLevel === 'volunteer')),
       }),
     );
     const last = items.at(-1);

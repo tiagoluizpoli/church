@@ -9,7 +9,8 @@ import type {
   ListInvitationsParams,
   MintAdminInvitation200,
   MintAdminInvitation201,
-  MintAdminInvitationBody
+  MintAdminInvitationBody,
+  ResendChurchInvitation200
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -45,6 +46,19 @@ const mintAdminInvitation = (
     },
       );
     }
-  return {listInvitations,mintAdminInvitation}};
+  /**
+ * Queue one fresh invitation email for a pending or expired admin Church offer and restart its validity on the Church lifetime, aligning every still-pending Ministry Invitation sharing it. Recipient, inviter, IDs, grants and Roles are kept. The throttle counters belong to the Church Invitation only. ChurchAdmins only; a missing or other-Church target is 404; 409 INVITATION_NOT_PENDING when already accepted, declined or revoked; 429 when the cooldown or daily cap applies.
+ * @summary Resend a Church Invitation
+ */
+const resendChurchInvitation = (
+    invitationId: string,
+ ) => {
+      return apiClient<ResendChurchInvitation200>(
+      {url: `/api/v1/invitations/church/${invitationId}/resend`, method: 'POST'
+    },
+      );
+    }
+  return {listInvitations,mintAdminInvitation,resendChurchInvitation}};
 export type ListInvitationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['listInvitations']>>>
 export type MintAdminInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['mintAdminInvitation']>>>
+export type ResendChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getInvitations>['resendChurchInvitation']>>>

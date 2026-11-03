@@ -1,4 +1,4 @@
-import { ministryMembership } from '@church/db';
+import { availabilityCheck, ministryMembership } from '@church/db';
 import { fromDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -154,6 +154,54 @@ describe('DrizzleUnavailableShiftRepository', () => {
         availabilityCheckId,
       }),
     ).toHaveLength(0);
+  });
+
+  it('hides the answers of a withdrawn check or an ended membership from every read', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzleUnavailableShiftRepository({
+      db: schedulingTestDb,
+    });
+    const churchId = ChurchId.from(seed.churchAId);
+    const volunteerId = VolunteerId.from(seed.adminVolunteerId);
+    const { event, shift, check } = await seedCheckWithShift(
+      seed.churchAId,
+      seed.ministryAId,
+      seed.adminVolunteerId,
+    );
+    const availabilityCheckId = AvailabilityCheckId.from(check.id);
+    await repo.replaceUnavailableShiftsForCheck({
+      churchId,
+      availabilityCheckId,
+      shiftIds: [ShiftId.from(shift.id)],
+    });
+    const reads = async () => [
+      await repo.listUnavailableShiftsByCheck({
+        churchId,
+        availabilityCheckId,
+      }),
+      await repo.listByVolunteerForEvent({
+        churchId,
+        volunteerId,
+        eventId: EventId.from(event.id),
+      }),
+      await repo.listByVolunteers({ churchId, volunteerIds: [volunteerId] }),
+    ];
+
+    await schedulingTestDb
+      .update(availabilityCheck)
+      .set({ withdrawnAt: new Date('2026-08-01T00:00:00.000Z') })
+      .where(eq(availabilityCheck.id, check.id));
+    expect(await reads()).toEqual([[], [], []]);
+
+    await schedulingTestDb
+      .update(availabilityCheck)
+      .set({ withdrawnAt: null })
+      .where(eq(availabilityCheck.id, check.id));
+    await schedulingTestDb
+      .update(ministryMembership)
+      .set({ status: 'inactive', leftAt: new Date('2026-08-01T00:00:00.000Z') })
+      .where(eq(ministryMembership.id, check.ministryMembershipId));
+    expect(await reads()).toEqual([[], [], []]);
   });
 
   it('listByVolunteers returns [] immediately for an empty volunteerIds array', async () => {

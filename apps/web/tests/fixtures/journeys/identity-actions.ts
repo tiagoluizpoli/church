@@ -218,3 +218,103 @@ export function churchInvitationIdOf({
   if (!id) throw new Error(`Not a Church Invitation link: ${redemptionPath}`);
   return id;
 }
+
+export interface ListedInvitation {
+  id: string;
+  email: string;
+  churchInvitationId?: string;
+  displayStatus: string;
+}
+
+export interface FindListedInvitationInput {
+  request: APIRequestContext;
+  email: string;
+}
+
+/**
+ * The pending offer the Invitations page lists for `email`, as the request's
+ * actor sees it. Its `churchInvitationId` is what the emailed link carries.
+ */
+export async function findListedInvitation({
+  request,
+  email,
+}: FindListedInvitationInput): Promise<ListedInvitation> {
+  const { items } = await fetchJson<{ items: ListedInvitation[] }>({
+    request,
+    path: `/api/v1/invitations?email=${encodeURIComponent(email)}`,
+  });
+  const [found] = items;
+  if (!found) throw new Error(`No listed invitation for ${email}`);
+  return found;
+}
+
+export interface JoinedOutcome {
+  kind: string;
+  volunteerId?: string | null;
+}
+
+export interface JoinViaLinkInput {
+  page: Page;
+  redemptionPath: string;
+  email: string;
+  name: string;
+  password: string;
+  churchName: string;
+}
+
+/**
+ * A new person's public join: opens the link, asks for the code, reads it
+ * from the capture sender, and submits. Returns the redeem outcome.
+ */
+export async function joinViaLink({
+  page,
+  redemptionPath,
+  email,
+  name,
+  password,
+  churchName,
+}: JoinViaLinkInput): Promise<JoinedOutcome> {
+  const churchInvitationId = churchInvitationIdOf({ redemptionPath });
+  await page.goto(redemptionPath);
+  await page
+    .getByRole('heading', { name: m.join_title({ churchName }, PT) })
+    .waitFor();
+  if (
+    (await page.getByLabel(m.join_email_label({}, PT)).inputValue()) !== email
+  )
+    throw new Error(`The join page is not addressed to ${email}`);
+  await page.getByRole('button', { name: m.join_send_code({}, PT) }).click();
+  await page
+    .getByLabel(m.join_code_label({}, PT))
+    .waitFor({ timeout: 15_000 })
+    .catch(async (error: unknown) => {
+      throw new Error(
+        `No code field for ${email}: ${(await page.locator('body').innerText()).slice(0, 400)}`,
+        { cause: error },
+      );
+    });
+  const code = await fetchDebugVerificationCode({
+    request: page.request,
+    churchInvitationId,
+  });
+  await page.getByLabel(m.join_code_label({}, PT)).fill(code);
+  await page.getByLabel(m.join_name_label({}, PT)).fill(name);
+  await page
+    .getByLabel(m.join_password_label({}, PT), { exact: true })
+    .fill(password);
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/redemption/church/${churchInvitationId}/redeem`),
+      { timeout: 20_000 },
+    ),
+    page.getByRole('button', { name: m.join_submit({}, PT) }).click(),
+  ]).catch(async (error: unknown) => {
+    throw new Error(
+      `Join as ${email} got no answer: ${(await page.locator('body').innerText()).slice(0, 400)}`,
+      { cause: error },
+    );
+  });
+  assertServedFromPinnedTarget({ response, step: `join as ${email}` });
+  return (await response.json()) as JoinedOutcome;
+}

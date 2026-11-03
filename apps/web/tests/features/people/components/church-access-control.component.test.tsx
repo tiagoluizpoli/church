@@ -39,7 +39,19 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: ChildrenProps) => children,
+  AppShell: ({
+    children,
+    breadcrumbOverrides,
+  }: ChildrenProps & {
+    breadcrumbOverrides?: { label: string | null }[];
+  }) => (
+    <>
+      <nav data-testid="crumbs">
+        {breadcrumbOverrides?.map((o) => o.label).join('|')}
+      </nav>
+      {children}
+    </>
+  ),
 }));
 
 vi.mock('@/components/theme-provider', () => ({
@@ -261,13 +273,16 @@ describe('Church access control', () => {
       demoted = true;
       return { memberId: 'mem-1', accessLevel: 'member', changed: true };
     });
-    const { router } = open();
+    const { router, queryClient } = open();
 
     await user.click(
       within(await accessSection()).getByRole('button', {
         name: m.people_remove_admin(),
       }),
     );
+    // Privileged invite options cached while the caller was an admin.
+    queryClient.setQueryData(['ministries', 'c', 'list'], { ministries: [1] });
+    queryClient.setQueryData(['invitations', 'c'], { items: [1] });
     const dialog = await screen.findByRole('alertdialog');
     expect(
       within(dialog).getByText(m.people_remove_own_admin_title()),
@@ -292,8 +307,31 @@ describe('Church access control', () => {
     ).toBeVisible();
     expect(router.state.location.pathname).toBe('/people/mem-1');
     expect(getCallerCapabilities.mock.calls.length).toBeGreaterThan(1);
+    expect(
+      queryClient.getQueryData(['ministries', 'c', 'list']),
+    ).toBeUndefined();
+    expect(queryClient.getQueryData(['invitations', 'c'])).toBeUndefined();
     expect(toastSuccess).toHaveBeenCalledWith(
       m.people_removed_own_admin_toast(),
+    );
+  });
+
+  it('drops the breadcrumb name when a refetch of the detail is refused', async () => {
+    let refused = false;
+    getPerson.mockImplementation(async () => {
+      if (refused) throw refusal(403, 'FORBIDDEN');
+      return detail();
+    });
+    const { queryClient } = open();
+    await waitFor(() =>
+      expect(screen.getByTestId('crumbs')).toHaveTextContent('Ana Souza'),
+    );
+
+    refused = true;
+    await queryClient.invalidateQueries({ queryKey: ['people'] });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('crumbs')).not.toHaveTextContent('Ana Souza'),
     );
   });
 

@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import type {
   GetPersonRequest,
   IPeopleListManager,
@@ -9,8 +10,7 @@ import type { PeopleListPage } from '../domain/entities/people-list-item';
 
 interface DbPeopleListManagerDependencies {
   peopleListRepository: PeopleListRepository;
-  /** Page size when the caller names none (validated central config). */
-  defaultPageSize: number;
+  config: Pick<AppConfig, 'people'>;
 }
 
 export class DbPeopleListManager implements IPeopleListManager {
@@ -19,10 +19,10 @@ export class DbPeopleListManager implements IPeopleListManager {
 
   constructor({
     peopleListRepository,
-    defaultPageSize,
+    config,
   }: DbPeopleListManagerDependencies) {
     this.peopleListRepository = peopleListRepository;
-    this.defaultPageSize = defaultPageSize;
+    this.defaultPageSize = config.people.pageSize;
   }
 
   async get(

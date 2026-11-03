@@ -32,7 +32,7 @@ import type {
   PersonDetail,
   PersonDetailMinistry,
 } from '../../domain/entities/people-list-item';
-import { MinistryInvitationNotFoundError } from '../../domain/errors/ministry-invitation-not-found';
+import { PeopleMinistryNotFoundError } from '../../domain/errors/people-ministry-not-found';
 import {
   decodePeopleListCursor,
   encodePeopleListCursor,
@@ -44,9 +44,12 @@ interface DrizzlePeopleListRepositoryInput {
   db: AnyDrizzleDb;
 }
 
-interface VisibleMembershipInput {
+interface VisibleScopeInput {
   churchId: string;
   scope: PeopleListScope;
+}
+
+interface VisibleMembershipInput extends VisibleScopeInput {
   /** Narrows to one visible Ministry and/or Ministry Access Level on the same membership. */
   ministryId?: string;
   level?: 'leader' | 'volunteer';
@@ -102,7 +105,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
       filters.ministryId &&
       !ministries.some(({ id }) => id === filters.ministryId)
     ) {
-      throw new MinistryInvitationNotFoundError();
+      throw new PeopleMinistryNotFoundError();
     }
     if (!isAdmin && ministries.length === 0) return { items: [], options };
 
@@ -195,16 +198,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
       .where(
         and(
           eq(volunteer.userId, row.userId),
-          eq(volunteer.churchId, churchId),
-          isNull(volunteer.leftAt),
-          eq(ministryMembership.churchId, churchId),
-          eq(ministryMembership.status, 'active'),
-          isNull(ministryMembership.leftAt),
-          eq(ministry.churchId, churchId),
-          isNull(ministry.deletedAt),
-          scope.kind === 'ministries'
-            ? inArray(ministry.id, scope.ministryIds)
-            : undefined,
+          ...activeMembershipVisible({ churchId, scope }),
         ),
       )
       .orderBy(asc(ministry.name), asc(ministry.id));
@@ -307,16 +301,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
         .where(
           and(
             eq(volunteer.userId, churchMember.userId),
-            eq(volunteer.churchId, churchId),
-            isNull(volunteer.leftAt),
-            eq(ministryMembership.churchId, churchId),
-            eq(ministryMembership.status, 'active'),
-            isNull(ministryMembership.leftAt),
-            eq(ministry.churchId, churchId),
-            isNull(ministry.deletedAt),
-            scope.kind === 'ministries'
-              ? inArray(ministry.id, scope.ministryIds)
-              : undefined,
+            ...activeMembershipVisible({ churchId, scope }),
             ministryId ? eq(ministry.id, ministryId) : undefined,
             level
               ? eq(ministryMembership.ministryAccessLevel, level)
@@ -347,16 +332,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
       .where(
         and(
           inArray(volunteer.userId, userIds),
-          eq(volunteer.churchId, churchId),
-          isNull(volunteer.leftAt),
-          eq(ministryMembership.churchId, churchId),
-          eq(ministryMembership.status, 'active'),
-          isNull(ministryMembership.leftAt),
-          eq(ministry.churchId, churchId),
-          isNull(ministry.deletedAt),
-          scope.kind === 'ministries'
-            ? inArray(ministry.id, scope.ministryIds)
-            : undefined,
+          ...activeMembershipVisible({ churchId, scope }),
         ),
       )
       .orderBy(asc(ministry.name), asc(ministry.id));
@@ -365,4 +341,23 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
     }
     return byUser;
   }
+}
+
+/** Rows that are an active Ministry Membership of a current Volunteer in a live Ministry of the Church, within the scope. */
+function activeMembershipVisible({
+  churchId,
+  scope,
+}: VisibleScopeInput): SQL[] {
+  return [
+    eq(volunteer.churchId, churchId),
+    isNull(volunteer.leftAt),
+    eq(ministryMembership.churchId, churchId),
+    eq(ministryMembership.status, 'active'),
+    isNull(ministryMembership.leftAt),
+    eq(ministry.churchId, churchId),
+    isNull(ministry.deletedAt),
+    ...(scope.kind === 'ministries'
+      ? [inArray(ministry.id, scope.ministryIds)]
+      : []),
+  ];
 }

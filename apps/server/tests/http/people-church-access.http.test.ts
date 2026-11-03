@@ -70,7 +70,7 @@ beforeAll(async () => {
   const controller = new PeopleController({
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
-      defaultPageSize: 20,
+      config: { people: { pageSize: 20, maxPageSize: 50 } },
     }),
     churchAccessManager: new DbChurchAccessManager({
       authorityManager,
@@ -79,7 +79,7 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
-    maxPageSize: 50,
+    config: { people: { pageSize: 20, maxPageSize: 50 } },
   });
   await app.register(
     async (instance) => {

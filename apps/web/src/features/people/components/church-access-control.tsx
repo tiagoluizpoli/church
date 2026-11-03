@@ -15,6 +15,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
+import { MINISTRIES_QUERY_KEY } from '@/features/ministries/ministry-queries';
 import {
   peopleDetailQueryKey,
   peopleQueryKey,
@@ -69,8 +71,13 @@ export function ChurchAccessControl({
 
   // The caller's privileged People data must not render again; refetch with what authority is left.
   const afterSelfDemotion = async () => {
-    await queryClient.resetQueries({ queryKey: peopleQueryKey({ churchId }) });
-    await queryClient.invalidateQueries({ queryKey: CALLER_CAPABILITIES_KEY });
+    // Capabilities first, with the other authority-dependent caches (invite options), so nothing privileged renders on stale authority.
+    await queryClient.resetQueries({ queryKey: CALLER_CAPABILITIES_KEY });
+    await Promise.all([
+      queryClient.resetQueries({ queryKey: MINISTRIES_QUERY_KEY }),
+      queryClient.resetQueries({ queryKey: INVITATIONS_QUERY_KEY }),
+      queryClient.resetQueries({ queryKey: peopleQueryKey({ churchId }) }),
+    ]);
     const detail = queryClient.getQueryState(
       peopleDetailQueryKey({ churchId, memberId }),
     );

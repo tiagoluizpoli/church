@@ -176,8 +176,11 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
 export function PeopleDirectoryPage() {
   const [filters, setFilters] = useState<PeopleFilters>({});
   const query = usePeopleList({ filters });
-  const items = query.data?.pages.flatMap((page) => page.items) ?? [];
-  const options = query.data?.pages[0]?.options;
+  // A refused refetch keeps React Query's previous pages; drop them so refused rows and options are not shown.
+  const data =
+    query.isError && !query.isFetchNextPageError ? undefined : query.data;
+  const items = data?.pages.flatMap((page) => page.items) ?? [];
+  const options = data?.pages[0]?.options;
   const isFiltered = Boolean(
     filters.search || filters.ministryId || filters.access,
   );

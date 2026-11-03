@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import { z } from 'zod';
 import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -38,8 +39,7 @@ interface PeopleControllerDependencies {
   churchAccessManager: IChurchAccessManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
-  /** Most people one page may ask for (validated central config). */
-  maxPageSize: number;
+  config: Pick<AppConfig, 'people'>;
 }
 
 /** The People directory: the Active Church's members within the caller's authority. */
@@ -57,13 +57,13 @@ export class PeopleController implements FastifyController {
     churchAccessManager,
     activeChurchResolver,
     authorityGuard,
-    maxPageSize,
+    config,
   }: PeopleControllerDependencies) {
     this.peopleListManager = peopleListManager;
     this.churchAccessManager = churchAccessManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
-    this.maxPageSize = maxPageSize;
+    this.maxPageSize = config.people.maxPageSize;
   }
 
   /** The caller's reach, or undefined without the People capability. A person who is both gets admin behavior. */

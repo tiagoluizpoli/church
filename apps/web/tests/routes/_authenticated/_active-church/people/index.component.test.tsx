@@ -215,6 +215,18 @@ describe('People directory', () => {
     expect(await rows()).toHaveLength(1);
   });
 
+  it('hides cached rows when a refetch is refused', async () => {
+    listPeople.mockResolvedValueOnce(page([person({})]));
+    const { queryClient } = renderPeople();
+    expect(await rows()).toHaveLength(1);
+
+    listPeople.mockRejectedValue(new Error('403'));
+    await queryClient.invalidateQueries({ queryKey: ['people'] });
+
+    expect(await screen.findByText(m.people_load_failed())).toBeInTheDocument();
+    expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument();
+  });
+
   it('uses pt-BR catalog values by default and English when the locale is English', async () => {
     listPeople.mockResolvedValue(page([person({ isAdmin: true })]));
     const { unmount } = renderPeople();

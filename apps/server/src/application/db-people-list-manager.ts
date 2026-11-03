@@ -39,30 +39,31 @@ export class DbPeopleListManager implements IPeopleListManager {
     if (!record) return undefined;
     const { userId, ...person } = record;
     // Presentation hints only, from the same gatekeeper rules the mutations use.
-    const operations: MinistryMembershipOperation[] = [
-      'editRoles',
-      'endMembership',
-    ];
-    // One batch, card-major: each card's hints in `operations` order.
-    const allowed = await this.authorityManager.canManageMinistryMemberships({
-      churchId: request.churchId,
-      userId: request.callerId,
-      targets: person.ministries.flatMap((card) =>
-        operations.map((operation) => ({
+    const hints = (operation: MinistryMembershipOperation) =>
+      this.authorityManager.canManageMinistryMemberships({
+        churchId: request.churchId,
+        userId: request.callerId,
+        targets: person.ministries.map((card) => ({
           ministryId: MinistryId.from(card.ministryId),
           subjectUserId: UserId.from(userId),
           ministryAccessLevel: card.ministryAccessLevel,
           operation,
         })),
-      ),
-    });
+      });
+    const [canEditRoles, canChangeMinistryAccess, canEndMembership] =
+      await Promise.all([
+        hints('editRoles'),
+        hints('changeLevel'),
+        hints('endMembership'),
+      ]);
     return {
       person: {
         ...person,
         ministries: person.ministries.map((card, index) => ({
           ...card,
-          canEditRoles: allowed[index * operations.length] ?? false,
-          canEndMembership: allowed[index * operations.length + 1] ?? false,
+          canEditRoles: canEditRoles[index] ?? false,
+          canChangeMinistryAccess: canChangeMinistryAccess[index] ?? false,
+          canEndMembership: canEndMembership[index] ?? false,
         })),
       },
       canChangeChurchAccess: request.scope.kind === 'church',

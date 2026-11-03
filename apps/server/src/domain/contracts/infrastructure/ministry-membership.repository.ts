@@ -66,6 +66,12 @@ export interface EndMembershipInput {
   tx: TransactionContext;
 }
 
+export interface SaveMembershipAccessInput extends SaveMembershipRolesInput {
+  accessLevel: MinistryAccessLevel;
+  /** Whether the Role set differs, so the audit carries both facts. */
+  rolesChanged: boolean;
+}
+
 export interface ListMembershipRolesInput {
   churchId: ChurchId;
   membershipId: string;
@@ -102,6 +108,11 @@ export interface MinistryMembershipRepository {
    * `ministry_membership_ended` audit. Returns the withdrawn check ids.
    */
   endMembership(input: EndMembershipInput): Promise<string[]>;
+  /**
+   * Applies the level and any Role difference together, with their one
+   * `ministry_access_changed` audit.
+   */
+  saveAccess(input: SaveMembershipAccessInput): Promise<void>;
   /** The held Roles in the detail card shape, by name. */
   listRoles(input: ListMembershipRolesInput): Promise<PersonDetailRole[]>;
 }

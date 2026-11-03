@@ -86,6 +86,7 @@ function detail(overrides: Partial<GetPerson200> = {}): GetPerson200 {
         ],
         canEditRoles: false,
         canEndMembership: false,
+        canChangeMinistryAccess: false,
       },
     ],
     ...overrides,

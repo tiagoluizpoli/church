@@ -696,5 +696,20 @@
   "people_remove_from_ministry_pending": "Removing…",
   "people_removed_from_ministry_toast": "{name} is no longer in {ministry}.",
   "people_remove_from_ministry_failed": "Couldn't remove from the Ministry. Try again.",
-  "people_remove_blocked_title": "Upcoming Assignments still need {name} in this Ministry"
+  "people_remove_blocked_title": "Upcoming Assignments still need {name} in this Ministry",
+  "people_make_leader": "Make leader",
+  "people_make_volunteer": "Make volunteer",
+  "people_make_leader_label": "Make {name} a leader of {ministry}",
+  "people_make_volunteer_label": "Make {name} a volunteer in {ministry}",
+  "people_make_leader_title": "Make {name} a leader of {ministry}?",
+  "people_make_leader_description": "{name} will be able to manage the volunteers of {ministry}. Their Roles and Assignments stay as they are.",
+  "people_make_volunteer_title": "Make {name} a volunteer in {ministry}?",
+  "people_make_volunteer_description": "{name} will no longer manage {ministry}. Their Roles and Assignments stay as they are.",
+  "people_make_volunteer_own_title": "Make yourself a volunteer in {ministry}?",
+  "people_make_volunteer_own_description": "You will no longer lead {ministry}. Your other access stays as it is.",
+  "people_make_volunteer_roles_prompt": "A volunteer needs at least one Role. Choose the Roles {name} will serve in {ministry}.",
+  "people_made_leader_toast": "{name} is now a leader of {ministry}.",
+  "people_made_volunteer_toast": "{name} is now a volunteer in {ministry}.",
+  "people_made_own_volunteer_toast": "You are now a volunteer in {ministry}.",
+  "people_ministry_access_failed": "Couldn't change the Ministry level. Try again."
 }

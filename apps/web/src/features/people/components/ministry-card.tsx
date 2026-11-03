@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { Badge } from '@/components/ui/badge';
+import { ChangeMinistryAccessDialog } from '@/features/people/components/change-ministry-access-dialog';
 import { EditRolesDialog } from '@/features/people/components/edit-roles-dialog';
 import { RemoveFromMinistryDialog } from '@/features/people/components/remove-from-ministry-dialog';
 import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
@@ -8,7 +9,6 @@ interface MinistryCardProps {
   card: GetPerson200MinistriesItem;
   memberId: string;
   personName: string;
-  /** The card is the caller's own membership. */
   isSelf: boolean;
 }
 
@@ -46,25 +46,31 @@ export function MinistryCard({
           ))
         )}
       </div>
-      {card.canEditRoles || card.canEndMembership ? (
-        <div className="flex flex-wrap gap-2">
-          {card.canEditRoles ? (
-            <EditRolesDialog
-              memberId={memberId}
-              personName={personName}
-              card={card}
-            />
-          ) : null}
-          {card.canEndMembership ? (
-            <RemoveFromMinistryDialog
-              memberId={memberId}
-              personName={personName}
-              card={card}
-              isSelf={isSelf}
-            />
-          ) : null}
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {card.canEditRoles ? (
+          <EditRolesDialog
+            memberId={memberId}
+            personName={personName}
+            card={card}
+          />
+        ) : null}
+        {card.canChangeMinistryAccess ? (
+          <ChangeMinistryAccessDialog
+            memberId={memberId}
+            personName={personName}
+            card={card}
+            isSelf={isSelf}
+          />
+        ) : null}
+        {card.canEndMembership ? (
+          <RemoveFromMinistryDialog
+            memberId={memberId}
+            personName={personName}
+            card={card}
+            isSelf={isSelf}
+          />
+        ) : null}
+      </div>
     </li>
   );
 }

@@ -71,7 +71,6 @@ export function MemberDetail({ person }: MemberDetailProps) {
                 card={card}
                 memberId={person.id}
                 personName={person.name}
-                // Only an admin can remove their own membership, and admins see churchAccess.
                 isSelf={churchAccess?.isSelf ?? false}
               />
             ))}

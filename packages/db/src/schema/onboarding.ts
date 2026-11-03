@@ -263,11 +263,23 @@ export interface MinistryMembershipEndedDetails {
   afterStatus: 'inactive';
 }
 
+/** `ministry_access_changed` details: the level, plus the complete Role set when the same operation changed it. */
+export interface MinistryAccessChangedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  beforeAccessLevel: 'leader' | 'volunteer';
+  afterAccessLevel: 'leader' | 'volunteer';
+  beforeRoleIds?: string[];
+  afterRoleIds?: string[];
+}
+
 /** Structured per-action facts; null on rows whose action records none. */
 export type IdentityAuditDetails =
   | ChurchAccessChangedDetails
   | MinistryRolesChangedDetails
-  | MinistryMembershipEndedDetails;
+  | MinistryMembershipEndedDetails
+  | MinistryAccessChangedDetails;
 
 export const identityAudit = pgTable('identity_audit', {
   id: uuid('id').primaryKey().defaultRandom(),

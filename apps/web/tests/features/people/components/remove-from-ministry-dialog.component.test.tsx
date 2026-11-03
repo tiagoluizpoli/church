@@ -72,6 +72,7 @@ function card(
     ministryAccessLevel: 'volunteer',
     roles: [{ id: 'r-singer', name: 'Singer', archived: false }],
     canEditRoles: false,
+    canChangeMinistryAccess: false,
     canEndMembership: true,
     ...overrides,
   };

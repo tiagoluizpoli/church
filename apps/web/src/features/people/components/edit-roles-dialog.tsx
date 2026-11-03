@@ -164,10 +164,7 @@ export function EditRolesDialog({
               </Alert>
             ) : null}
             {failure?.kind === 'blocked' ? (
-              <UpcomingAssignmentsAlert
-                title={m.people_roles_blocked_title()}
-                assignments={failure.assignments}
-              />
+              <UpcomingAssignmentsAlert assignments={failure.assignments} />
             ) : null}
             <DialogFooter>
               <Button

@@ -25,6 +25,7 @@ import type {
   LockMembershipTargetInput,
   MembershipTarget,
   MinistryMembershipRepository,
+  SaveMembershipAccessInput,
   SaveMembershipRolesInput,
 } from '../../domain/contracts/infrastructure/ministry-membership.repository';
 import type { PersonDetailRole } from '../../domain/entities/people-list-item';
@@ -37,6 +38,22 @@ interface DrizzleMinistryMembershipRepositoryInput {
 }
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
+
+/** The complete Role set before and after, ids sorted. */
+function roleFacts({
+  target,
+  addedRoleIds,
+  removedRoleIds,
+}: SaveMembershipRolesInput) {
+  const removed = new Set(removedRoleIds);
+  return {
+    beforeRoleIds: [...target.roleIds].sort(),
+    afterRoleIds: [
+      ...target.roleIds.filter((id) => !removed.has(id)),
+      ...addedRoleIds,
+    ].sort(),
+  };
+}
 
 export class DrizzleMinistryMembershipRepository
   implements MinistryMembershipRepository
@@ -173,14 +190,67 @@ export class DrizzleMinistryMembershipRepository
     }));
   }
 
-  async saveRoles({
+  async saveRoles(input: SaveMembershipRolesInput): Promise<void> {
+    const { churchId, actorId, target, correlationId, changedAt, tx } = input;
+    await this.applyRoleDifference(input);
+    await getClient({ db: this.db, tx })
+      .insert(identityAudit)
+      .values({
+        churchId,
+        actorId,
+        subjectId: target.subjectUserId,
+        action: 'ministry_roles_changed',
+        details: {
+          churchMembershipId: target.memberId,
+          ministryMembershipId: target.membershipId,
+          ministryId: target.ministryId,
+          ...roleFacts(input),
+        },
+        correlationId,
+        timestamp: changedAt,
+      });
+  }
+
+  async saveAccess(input: SaveMembershipAccessInput): Promise<void> {
+    const {
+      churchId,
+      actorId,
+      target,
+      accessLevel,
+      rolesChanged,
+      correlationId,
+      changedAt,
+      tx,
+    } = input;
+    const db = getClient({ db: this.db, tx });
+    await this.applyRoleDifference(input);
+    await db
+      .update(ministryMembership)
+      .set({ ministryAccessLevel: accessLevel })
+      .where(eq(ministryMembership.id, target.membershipId));
+    await db.insert(identityAudit).values({
+      churchId,
+      actorId,
+      subjectId: target.subjectUserId,
+      action: 'ministry_access_changed',
+      details: {
+        churchMembershipId: target.memberId,
+        ministryMembershipId: target.membershipId,
+        ministryId: target.ministryId,
+        beforeAccessLevel: target.ministryAccessLevel,
+        afterAccessLevel: accessLevel,
+        ...(rolesChanged ? roleFacts(input) : {}),
+      },
+      correlationId,
+      timestamp: changedAt,
+    });
+  }
+
+  private async applyRoleDifference({
     churchId,
-    actorId,
     target,
     addedRoleIds,
     removedRoleIds,
-    correlationId,
-    changedAt,
     tx,
   }: SaveMembershipRolesInput): Promise<void> {
     const db = getClient({ db: this.db, tx });
@@ -206,25 +276,6 @@ export class DrizzleMinistryMembershipRepository
         })),
       );
     }
-    const removed = new Set(removedRoleIds);
-    await db.insert(identityAudit).values({
-      churchId,
-      actorId,
-      subjectId: target.subjectUserId,
-      action: 'ministry_roles_changed',
-      details: {
-        churchMembershipId: target.memberId,
-        ministryMembershipId: target.membershipId,
-        ministryId: target.ministryId,
-        beforeRoleIds: [...target.roleIds].sort(),
-        afterRoleIds: [
-          ...target.roleIds.filter((id) => !removed.has(id)),
-          ...addedRoleIds,
-        ].sort(),
-      },
-      correlationId,
-      timestamp: changedAt,
-    });
   }
 
   async endMembership({

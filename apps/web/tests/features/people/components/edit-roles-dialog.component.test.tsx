@@ -76,6 +76,7 @@ function card(
     ],
     canEditRoles: true,
     canEndMembership: false,
+    canChangeMinistryAccess: false,
     ...overrides,
   };
 }

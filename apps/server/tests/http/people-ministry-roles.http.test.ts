@@ -1312,6 +1312,33 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
       expect(await audits()).toEqual([]);
     });
 
+    it('stops an admin whose Church access was removed while their change waited', async () => {
+      await person({ key: 'ben', access: 'admin' });
+      const [demoted, changed] = (await holding({
+        lock: lockChurch,
+        steps: [
+          () =>
+            app.inject({
+              method: 'PATCH',
+              url: `/api/v1/people/${memberId('ben')}/church-access`,
+              headers: { [USER_HEADER]: 'ada' },
+              payload: { accessLevel: 'member' },
+            }),
+          () =>
+            changeAccess({
+              as: 'ben',
+              member: 'val',
+              membership: valWorship(),
+              accessLevel: 'leader',
+            }),
+        ],
+      })) as Awaited<ReturnType<typeof changeAccess>>[];
+
+      expect(demoted?.statusCode).toBe(200);
+      expect(changed?.statusCode).toBe(404);
+      expect(await levelOf(valWorship())).toBe('volunteer');
+    });
+
     it('stops an admin whose Church access was removed while their edit waited', async () => {
       await person({ key: 'ben', access: 'admin' });
       const [demoted, edited] = (await holding({
@@ -1366,6 +1393,25 @@ describe('GET /people/:memberId Edit Roles hints', () => {
     );
   }
 
+  it('shows the level hint to admins only', async () => {
+    const level = async (as: string, target: string) =>
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/v1/people/${memberId(target)}`,
+          headers: { [USER_HEADER]: as },
+        })
+      )
+        .json()
+        .ministries.map(
+          (c: { canChangeMinistryAccess: boolean }) =>
+            c.canChangeMinistryAccess,
+        );
+    expect(await level('ada', 'kim')).toEqual([true, true]);
+    expect(await level('lea', 'val')).toEqual([false]);
+    expect(await level('lea', 'lea')).toEqual([false]);
+  });
+
   it('derives each card’s hint from the same target-aware rules as the mutation', async () => {
     expect(await hints({ as: 'ada', target: 'kim' })).toEqual({
       Kids: true,
@@ -1419,6 +1465,342 @@ describe('GET /people/:memberId Edit Roles hints', () => {
     expect(await removable({ as: 'lea', target: 'pia' })).toEqual({
       Worship: false,
     });
+  });
+});
+
+interface ChangeAccessInput {
+  as?: string;
+  member: string;
+  membership: string;
+  accessLevel: unknown;
+  roleIds?: unknown;
+  locale?: string;
+}
+
+function changeAccess({
+  as,
+  member,
+  membership,
+  accessLevel,
+  roleIds,
+  locale,
+}: ChangeAccessInput) {
+  return app.inject({
+    method: 'PATCH',
+    url: `/api/v1/people/${memberId(member)}/ministry-memberships/${membership}/access`,
+    headers: as ? { [USER_HEADER]: as } : {},
+    cookies: locale ? { [testLocale.localeCookieName]: locale } : {},
+    payload: roleIds === undefined ? { accessLevel } : { accessLevel, roleIds },
+  });
+}
+
+const levelOf = async (membershipId: string) =>
+  (
+    await db
+      .select({ level: ministryMembership.ministryAccessLevel })
+      .from(ministryMembership)
+      .where(eq(ministryMembership.id, membershipId))
+  )[0]?.level;
+
+describe('PATCH /people/:memberId/ministry-memberships/:membershipId/access', () => {
+  const ws = (key: string) => memberships.get(`${key}:${f.worship}`) ?? '';
+
+  it('lets an admin without a Volunteer profile promote a volunteer, keeping Roles and recording one audit', async () => {
+    const res = await changeAccess({
+      as: 'ada',
+      member: 'val',
+      membership: ws('val'),
+      accessLevel: 'leader',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      memberId: memberId('val'),
+      membershipId: ws('val'),
+      ministryAccessLevel: 'leader',
+      roles: [
+        { id: f.keys, name: 'Keys', archived: true },
+        { id: f.vocals, name: 'Vocals', archived: false },
+      ],
+      changed: true,
+    });
+    expect(await heldRoles(ws('val'))).toEqual([f.vocals, f.keys].sort());
+    const rows = await audits();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      churchId: CHURCH_A,
+      actorId: 'ada',
+      subjectId: 'val',
+      action: 'ministry_access_changed',
+      details: {
+        churchMembershipId: memberId('val'),
+        ministryMembershipId: ws('val'),
+        ministryId: f.worship,
+        beforeAccessLevel: 'volunteer',
+        afterAccessLevel: 'leader',
+      },
+      timestamp: new Date(NOW),
+    });
+    expect(rows[0]?.correlationId.length).toBeGreaterThan(0);
+  });
+
+  it('demotes a zero-Role leader only with an active Role, in one audit holding both facts', async () => {
+    const refused = await changeAccess({
+      as: 'ada',
+      member: 'lea',
+      membership: ws('lea'),
+      accessLevel: 'volunteer',
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json().error).toBe('MINISTRY_ROLE_REQUIRED');
+    expect(await levelOf(ws('lea'))).toBe('leader');
+    expect(await audits()).toEqual([]);
+
+    const res = await changeAccess({
+      as: 'ada',
+      member: 'lea',
+      membership: ws('lea'),
+      accessLevel: 'volunteer',
+      roleIds: [f.guitar],
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      ministryAccessLevel: 'volunteer',
+      roles: [{ id: f.guitar, name: 'Guitar', archived: false }],
+      changed: true,
+    });
+    const rows = await audits();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      action: 'ministry_access_changed',
+      details: {
+        beforeAccessLevel: 'leader',
+        afterAccessLevel: 'volunteer',
+        beforeRoleIds: [],
+        afterRoleIds: [f.guitar],
+      },
+    });
+  });
+
+  it('refuses a non-admin before any target lookup and hides foreign or mismatched targets from admins', async () => {
+    for (const as of ['lea', 'val', 'ord']) {
+      for (const membership of [
+        ws('val'),
+        '00000000-0000-4000-8000-000000000000',
+      ]) {
+        const res = await changeAccess({
+          as,
+          member: 'val',
+          membership,
+          accessLevel: 'leader',
+        });
+        expect(res.statusCode, `${as} ${membership}`).toBe(403);
+      }
+    }
+    expect(
+      (
+        await changeAccess({
+          member: 'val',
+          membership: ws('val'),
+          accessLevel: 'leader',
+        })
+      ).statusCode,
+    ).toBe(401);
+    // A membership of another person, a missing one and a non-uuid all read as 404 to an admin.
+    for (const membership of [
+      ws('pia'),
+      '00000000-0000-4000-8000-000000000000',
+      'nope',
+    ]) {
+      const res = await changeAccess({
+        as: 'ada',
+        member: 'val',
+        membership,
+        accessLevel: 'leader',
+      });
+      expect(res.statusCode, membership).toBe(404);
+    }
+    expect(await levelOf(ws('val'))).toBe('volunteer');
+    expect(await audits()).toEqual([]);
+  });
+
+  it('answers the same state with changed:false and no audit', async () => {
+    for (const [member, accessLevel, roleIds] of [
+      ['lea', 'leader', undefined],
+      ['val', 'volunteer', [f.keys, f.vocals, f.vocals]],
+    ] as const) {
+      const res = await changeAccess({
+        as: 'ada',
+        member,
+        membership: ws(member),
+        accessLevel,
+        roleIds,
+      });
+      expect(res.statusCode, member).toBe(200);
+      expect(res.json().changed).toBe(false);
+    }
+    expect(await audits()).toEqual([]);
+  });
+
+  it('lets the last leader of a Ministry be demoted, leaving other memberships and Church access alone', async () => {
+    const res = await changeAccess({
+      as: 'ada',
+      member: 'kim',
+      membership: memberships.get(`kim:${f.kids}`) ?? '',
+      accessLevel: 'volunteer',
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().roles).toEqual([
+      { id: f.teacher, name: 'Teacher', archived: false },
+    ]);
+    expect(await levelOf(ws('kim'))).toBe('volunteer');
+    expect(await heldRoles(ws('kim'))).toEqual([f.guitar]);
+  });
+
+  it('needs an active Role to demote onto, not merely a held archived one', async () => {
+    await person({ key: 'arc' });
+    await serves({
+      key: 'arc',
+      ministryId: f.worship,
+      level: 'leader',
+      roleIds: [f.drums],
+    });
+    const refused = await changeAccess({
+      as: 'ada',
+      member: 'arc',
+      membership: ws('arc'),
+      accessLevel: 'volunteer',
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json().error).toBe('MINISTRY_ROLE_REQUIRED');
+    expect(await levelOf(ws('arc'))).toBe('leader');
+
+    const ok = await changeAccess({
+      as: 'ada',
+      member: 'arc',
+      membership: ws('arc'),
+      accessLevel: 'volunteer',
+      roleIds: [f.drums, f.guitar],
+    });
+    expect(ok.statusCode).toBe(200);
+  });
+
+  it('refuses an invalid Role selection without changing the level or Roles', async () => {
+    for (const roleId of [
+      f.drums,
+      f.teacher,
+      f.foreignRole,
+      crypto.randomUUID(),
+    ]) {
+      const res = await changeAccess({
+        as: 'ada',
+        member: 'lea',
+        membership: ws('lea'),
+        accessLevel: 'volunteer',
+        roleIds: [roleId],
+      });
+      expect(res.statusCode, roleId).toBe(422);
+      expect(res.json().error).toBe('INVALID_MINISTRY_ROLE');
+    }
+    expect(await levelOf(ws('lea'))).toBe('leader');
+    expect(await heldRoles(ws('lea'))).toEqual([]);
+    expect(await audits()).toEqual([]);
+  });
+
+  describe('with an upcoming Assignment', () => {
+    const upcoming = () =>
+      service({
+        roleId: f.vocals,
+        title: 'Culto',
+        eventStart: '2026-11-15T10:00:00.000Z',
+        eventEnd: '2026-11-15T12:00:00.000Z',
+      });
+
+    it('never blocks a level-only change merely because of the Assignment', async () => {
+      await upcoming();
+      const res = await changeAccess({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+        accessLevel: 'leader',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(await levelOf(ws('val'))).toBe('leader');
+    });
+
+    it('refuses the whole level and Role operation with every blocker when a needed Role is removed', async () => {
+      const blocker = await upcoming();
+      const res = await changeAccess({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+        accessLevel: 'leader',
+        roleIds: [f.keys, f.guitar],
+      });
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({
+        error: 'UPCOMING_ASSIGNMENTS',
+        assignments: [{ ...blocker, roleName: 'Vocals' }],
+      });
+      expect(await levelOf(ws('val'))).toBe('volunteer');
+      expect(await heldRoles(ws('val'))).toEqual([f.vocals, f.keys].sort());
+      expect(await audits()).toEqual([]);
+    });
+  });
+
+  it('rolls the level and Roles back together when the audit cannot be written', async () => {
+    await db.execute(sql`
+      CREATE OR REPLACE FUNCTION test_fail_access_audit() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit unavailable'; END $$
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER test_fail_access_audit BEFORE INSERT ON identity_audit
+      FOR EACH ROW WHEN (NEW.action = 'ministry_access_changed')
+      EXECUTE FUNCTION test_fail_access_audit()
+    `);
+    try {
+      const res = await changeAccess({
+        as: 'ada',
+        member: 'val',
+        membership: ws('val'),
+        accessLevel: 'leader',
+        roleIds: [f.guitar],
+      });
+      expect(res.statusCode).toBe(500);
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER test_fail_access_audit ON identity_audit`,
+      );
+      await db.execute(sql`DROP FUNCTION test_fail_access_audit()`);
+    }
+    expect(await levelOf(ws('val'))).toBe('volunteer');
+    expect(await heldRoles(ws('val'))).toEqual([f.vocals, f.keys].sort());
+    expect(await audits()).toEqual([]);
+  });
+
+  it('applies authority at once: a promoted volunteer can manage others, a demoted leader cannot', async () => {
+    const edit = (as: string) =>
+      editRoles({
+        as,
+        member: 'kim',
+        membership: ws('kim'),
+        roleIds: [f.guitar, f.vocals],
+      });
+    expect((await edit('val')).statusCode).toBe(403);
+    await changeAccess({
+      as: 'ada',
+      member: 'val',
+      membership: ws('val'),
+      accessLevel: 'leader',
+    });
+    expect((await edit('val')).statusCode).toBe(200);
+    await changeAccess({
+      as: 'ada',
+      member: 'pia',
+      membership: ws('pia'),
+      accessLevel: 'volunteer',
+    });
+    expect((await edit('pia')).statusCode).toBe(403);
   });
 });
 

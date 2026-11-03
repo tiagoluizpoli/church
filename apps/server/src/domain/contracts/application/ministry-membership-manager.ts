@@ -38,6 +38,13 @@ export type EndMinistryMembershipOutcome =
   | { kind: 'not-found' }
   | ({ kind: 'applied' } & MinistryMembershipEnded);
 
+export interface ChangeMinistryAccessRequest
+  extends Omit<SetMinistryRolesRequest, 'roleIds'> {
+  accessLevel: MinistryAccessLevel;
+  /** The complete replacement set; omitted keeps the held Roles. */
+  roleIds?: string[];
+}
+
 export interface MinistryMembershipChange {
   memberId: string;
   membershipId: string;
@@ -67,4 +74,8 @@ export interface IMinistryMembershipManager {
   endMinistryMembership(
     input: EndMinistryMembershipRequest,
   ): Promise<EndMinistryMembershipOutcome>;
+  /** Level, and optionally the complete Role set, in one transaction and one audit. */
+  changeMinistryAccess(
+    input: ChangeMinistryAccessRequest,
+  ): Promise<MinistryMembershipOutcome>;
 }

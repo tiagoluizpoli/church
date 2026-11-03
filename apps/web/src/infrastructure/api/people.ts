@@ -7,6 +7,8 @@
 import type {
   ChangeChurchAccess200,
   ChangeChurchAccessBody,
+  ChangeMinistryAccess200,
+  ChangeMinistryAccessBody,
   EndMinistryMembership200,
   GetPerson200,
   ListPeople200,
@@ -53,6 +55,22 @@ const setMinistryRoles = (
       );
     }
   /**
+ * Make a member a leader or a volunteer of one Ministry. Only a ChurchAdmin may call it. Promotion keeps Roles; a demotion needs at least one active Role, supplied as the complete roleIds set when the member holds none. Removing a Role an upcoming Assignment depends on refuses the whole operation with every such Assignment. The level and Roles save together under one audit; the current state changes nothing. Church access and other memberships stay as they are.
+ * @summary Change a member's Ministry Access Level
+ */
+const changeMinistryAccess = (
+    memberId: string,
+    membershipId: string,
+    changeMinistryAccessBody: ChangeMinistryAccessBody,
+ ) => {
+      return apiClient<ChangeMinistryAccess200>(
+      {url: `/api/v1/people/${memberId}/ministry-memberships/${membershipId}/access`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: changeMinistryAccessBody
+    },
+      );
+    }
+  /**
  * End one active Ministry Membership: it becomes inactive with leftAt, keeping its Roles, past Assignments and answers as history, and its actionable AvailabilityChecks are withdrawn. A ChurchAdmin removes anyone; a Ministry leader removes volunteer-level members of a Ministry they lead, never a leader or themselves. Refused while an upcoming Assignment depends on the membership, with every such Assignment. Church Membership, the Volunteer profile and other Ministries are unchanged; rejoining is a new Ministry Invitation.
  * @summary Remove a member from a Ministry
  */
@@ -90,9 +108,10 @@ const listPeople = (
     },
       );
     }
-  return {changeChurchAccess,setMinistryRoles,endMinistryMembership,getPerson,listPeople}};
+  return {changeChurchAccess,setMinistryRoles,changeMinistryAccess,endMinistryMembership,getPerson,listPeople}};
 export type ChangeChurchAccessResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['changeChurchAccess']>>>
 export type SetMinistryRolesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['setMinistryRoles']>>>
+export type ChangeMinistryAccessResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['changeMinistryAccess']>>>
 export type EndMinistryMembershipResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['endMinistryMembership']>>>
 export type GetPersonResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['getPerson']>>>
 export type ListPeopleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPeople>['listPeople']>>>

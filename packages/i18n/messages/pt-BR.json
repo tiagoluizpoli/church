@@ -696,5 +696,20 @@
   "people_remove_from_ministry_pending": "Removendo…",
   "people_removed_from_ministry_toast": "{name} não faz mais parte de {ministry}.",
   "people_remove_from_ministry_failed": "Não foi possível remover do ministério. Tente novamente.",
-  "people_remove_blocked_title": "Escalas futuras ainda precisam de {name} neste ministério"
+  "people_remove_blocked_title": "Escalas futuras ainda precisam de {name} neste ministério",
+  "people_make_leader": "Tornar líder",
+  "people_make_volunteer": "Tornar voluntário",
+  "people_make_leader_label": "Tornar {name} líder de {ministry}",
+  "people_make_volunteer_label": "Tornar {name} voluntário em {ministry}",
+  "people_make_leader_title": "Tornar {name} líder de {ministry}?",
+  "people_make_leader_description": "{name} poderá gerenciar os voluntários de {ministry}. As funções e escalas continuam como estão.",
+  "people_make_volunteer_title": "Tornar {name} voluntário em {ministry}?",
+  "people_make_volunteer_description": "{name} deixará de gerenciar {ministry}. As funções e escalas continuam como estão.",
+  "people_make_volunteer_own_title": "Tornar você voluntário em {ministry}?",
+  "people_make_volunteer_own_description": "Você deixará de liderar {ministry}. Seus outros acessos continuam como estão.",
+  "people_make_volunteer_roles_prompt": "Um voluntário precisa de pelo menos uma função. Escolha as funções em que {name} servirá em {ministry}.",
+  "people_made_leader_toast": "{name} agora é líder de {ministry}.",
+  "people_made_volunteer_toast": "{name} agora é voluntário em {ministry}.",
+  "people_made_own_volunteer_toast": "Você agora é voluntário em {ministry}.",
+  "people_ministry_access_failed": "Não foi possível alterar o nível no ministério. Tente novamente."
 }

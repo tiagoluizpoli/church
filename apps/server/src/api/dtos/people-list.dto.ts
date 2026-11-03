@@ -65,6 +65,8 @@ export const personDetailResponseSchema = z.object({
       canEditRoles: z.boolean(),
       /** Gatekeeper-derived hint for Remove from Ministry; the mutation authorizes on its own. */
       canEndMembership: z.boolean(),
+      /** Same, for Make leader / Make volunteer. */
+      canChangeMinistryAccess: z.boolean(),
     }),
   ),
   /** Presentation hints; false grants nothing and true is never trusted back. */
@@ -100,6 +102,12 @@ export const ministryMembershipParamsSchema = z.object({
 export const setMinistryRolesBodySchema = z.object({
   /** The complete set; omitted Roles are removed. */
   roleIds: z.array(z.string().uuid()).max(200),
+});
+
+export const changeMinistryAccessBodySchema = z.object({
+  accessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
+  /** The complete replacement set; omitted keeps the held Roles. */
+  roleIds: z.array(z.string().uuid()).max(200).optional(),
 });
 
 export const ministryMembershipChangeResponseSchema = z.object({

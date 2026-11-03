@@ -10,14 +10,15 @@ export type UpcomingAssignment = Extract<
 >['assignments'][number];
 
 interface UpcomingAssignmentsAlertProps {
-  title: string;
   assignments: UpcomingAssignment[];
+  /** Defaults to the removed-Role wording. */
+  title?: string;
 }
 
-/** Every Assignment blocking a Ministry Membership change, each linked to the Assign board in a new tab. */
+/** The 409 blocker list: each upcoming Assignment, in Church time, with a new-tab link to its Assign board. */
 export function UpcomingAssignmentsAlert({
-  title,
   assignments,
+  title = m.people_roles_blocked_title(),
 }: UpcomingAssignmentsAlertProps) {
   const { churchTimezone } = useTimezone();
   return (

@@ -3366,6 +3366,88 @@ export type SetMinistryRoles422 = {
   message: string;
 };
 
+export type ChangeMinistryAccessBodyAccessLevel = typeof ChangeMinistryAccessBodyAccessLevel[keyof typeof ChangeMinistryAccessBodyAccessLevel];
+
+
+export const ChangeMinistryAccessBodyAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ChangeMinistryAccessBody = {
+  accessLevel: ChangeMinistryAccessBodyAccessLevel;
+  /**
+     * @maxItems 200
+     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  roleIds?: string[];
+};
+
+export type ChangeMinistryAccess200MinistryAccessLevel = typeof ChangeMinistryAccess200MinistryAccessLevel[keyof typeof ChangeMinistryAccess200MinistryAccessLevel];
+
+
+export const ChangeMinistryAccess200MinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ChangeMinistryAccess200RolesItem = {
+  id: string;
+  name: string;
+  archived: boolean;
+};
+
+export type ChangeMinistryAccess200 = {
+  memberId: string;
+  membershipId: string;
+  ministryAccessLevel: ChangeMinistryAccess200MinistryAccessLevel;
+  roles: ChangeMinistryAccess200RolesItem[];
+  changed: boolean;
+};
+
+export type ChangeMinistryAccess401 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess403 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess404 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess409 = {
+  error: string;
+  message: string;
+  assignments: {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  shiftStart: string;
+  shiftEnd: string;
+  roleId: string;
+  roleName: string;
+  sectorId: string;
+  sectorName: string;
+  ministryId: string;
+  cycleId: string;
+}[];
+} | {
+  error: string;
+  message: string;
+};
+
+export type ChangeMinistryAccess422 = {
+  error: string;
+  message: string;
+};
+
 export type EndMinistryMembership200Status = typeof EndMinistryMembership200Status[keyof typeof EndMinistryMembership200Status];
 
 
@@ -3442,6 +3524,7 @@ export type GetPerson200MinistriesItem = {
   roles: GetPerson200MinistriesItemRolesItem[];
   canEditRoles: boolean;
   canEndMembership: boolean;
+  canChangeMinistryAccess: boolean;
 };
 
 export type GetPerson200ChurchAccessAccessLevel = typeof GetPerson200ChurchAccessAccessLevel[keyof typeof GetPerson200ChurchAccessAccessLevel];

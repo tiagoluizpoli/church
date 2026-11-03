@@ -16,16 +16,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
-import { MINISTRIES_QUERY_KEY } from '@/features/ministries/ministry-queries';
+import {
+  CALLER_CAPABILITIES_KEY,
+  resetAfterSelfDemotion,
+} from '@/features/people/authority-refresh';
 import {
   type UpcomingAssignment,
   UpcomingAssignmentsAlert,
 } from '@/features/people/components/upcoming-assignments-alert';
-import {
-  peopleDetailQueryKey,
-  peopleQueryKey,
-} from '@/features/people/people-queries';
+import { peopleQueryKey } from '@/features/people/people-queries';
 import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { peopleApi } from '@/utils/api-instances';
@@ -41,8 +40,6 @@ const STALE: Record<string, () => string> = {
   FORBIDDEN: () => m.error_forbidden(),
   NOT_FOUND: () => m.people_detail_not_found(),
 };
-
-const CALLER_CAPABILITIES_KEY = ['caller-capabilities'] as const;
 
 /** Reads that list the member as serving or answering: capabilities, availability and scheduling. */
 const MEMBERSHIP_READERS = [
@@ -92,17 +89,13 @@ export function RemoveFromMinistryDialog({
 
   // Leaving a led Ministry shrinks the caller's reach: drop privileged caches before anything renders on them.
   const afterSelfRemoval = async () => {
-    await queryClient.resetQueries({ queryKey: CALLER_CAPABILITIES_KEY });
-    await Promise.all([
-      queryClient.resetQueries({ queryKey: MINISTRIES_QUERY_KEY }),
-      queryClient.resetQueries({ queryKey: INVITATIONS_QUERY_KEY }),
-      queryClient.resetQueries({ queryKey: peopleQueryKey({ churchId }) }),
-      refresh(),
-    ]);
-    const detail = queryClient.getQueryState(
-      peopleDetailQueryKey({ churchId, memberId }),
-    );
-    if (detail?.status !== 'success') await navigate({ to: '/' });
+    const { detailReadable } = await resetAfterSelfDemotion({
+      queryClient,
+      churchId,
+      memberId,
+    });
+    await refresh();
+    if (!detailReadable) await navigate({ to: '/' });
   };
 
   const start = () => {

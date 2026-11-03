@@ -11,6 +11,7 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  changeMinistryAccessBodySchema,
   churchAccessChangeBodySchema,
   churchAccessChangeResponseSchema,
   endMinistryMembershipResponseSchema,
@@ -199,6 +200,65 @@ export class PeopleController implements FastifyController {
           membershipId,
           roleIds,
         });
+        if (outcome.kind === 'forbidden') {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        if (outcome.kind === 'not-found') {
+          return refuse({ reply, request, code: 'NOT_FOUND' });
+        }
+        const { kind: _applied, ...result } = outcome;
+        return reply.send(result);
+      },
+    );
+
+    app.patch(
+      '/:memberId/ministry-memberships/:membershipId/access',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'changeMinistryAccess',
+          summary: "Change a member's Ministry Access Level",
+          description:
+            'Make a member a leader or a volunteer of one Ministry. Only a ChurchAdmin may call it. Promotion keeps Roles; a demotion needs at least one active Role, supplied as the complete roleIds set when the member holds none. Removing a Role an upcoming Assignment depends on refuses the whole operation with every such Assignment. The level and Roles save together under one audit; the current state changes nothing. Church access and other memberships stay as they are.',
+          params: ministryMembershipParamsSchema,
+          body: changeMinistryAccessBodySchema,
+          response: {
+            200: ministryMembershipChangeResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([
+              upcomingAssignmentsResponseSchema,
+              errorResponseSchema,
+            ]),
+            422: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const actorId = UserId.from(request.userId);
+        // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
+        const isAdmin = await this.authorityGuard.canManageChurch({
+          churchId,
+          userId: actorId,
+        });
+        if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const { memberId, membershipId } = request.params as z.infer<
+          typeof ministryMembershipParamsSchema
+        >;
+        const { accessLevel, roleIds } = request.body as z.infer<
+          typeof changeMinistryAccessBodySchema
+        >;
+        const outcome =
+          await this.ministryMembershipManager.changeMinistryAccess({
+            churchId,
+            actorId,
+            memberId,
+            membershipId,
+            accessLevel,
+            roleIds,
+          });
         if (outcome.kind === 'forbidden') {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }

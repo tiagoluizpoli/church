@@ -80,6 +80,7 @@ export interface PersonDetailRecord extends PersonDetail {
 export interface PersonDetailCard extends PersonDetailMinistry {
   canEditRoles: boolean;
   canEndMembership: boolean;
+  canChangeMinistryAccess: boolean;
 }
 
 export interface PersonDetailView extends Omit<PersonDetail, 'ministries'> {

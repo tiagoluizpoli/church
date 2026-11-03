@@ -93,7 +93,7 @@ const renameMinistry = (
       );
     }
   /**
- * Archive an active Ministry, keeping its history and freeing its name. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended.
+ * Archive an active Ministry, keeping its history and freeing its name. In the same transaction, every pending Ministry Invitation to it (expired included) is revoked as the caller with the reason `ministry-archived`, and so is its Church Invitation when no other pending Ministry Invitation still uses it; accepted Memberships are untouched and no notice is sent. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended, changing nothing.
  * @summary Archive a Ministry
  */
 const archiveMinistry = (

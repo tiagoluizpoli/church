@@ -258,6 +258,86 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(membership).toBeDefined();
     });
 
+    it('lets a signed-in User from another Church accept a Church offer with two Ministry halves through one Volunteer profile', async () => {
+      // adminB has an account and a Church B membership, but no membership in A.
+      const email = `${fixture.adminB}@fixture.test`;
+      const mintHalf = (input: {
+        ministryId: string;
+        ministryAccessLevel: 'volunteer' | 'leader';
+        roleIds: string[];
+      }) =>
+        invitationManager.mint({
+          churchId: ChurchId.from(fixture.churchA.id),
+          ministryId: MinistryId.from(input.ministryId),
+          inviterId: UserId.from(fixture.adminA),
+          email,
+          ministryAccessLevel: input.ministryAccessLevel,
+          roleIds: input.roleIds.map((id) => RoleId.from(id)),
+        });
+      const first = await mintHalf({
+        ministryId: fixture.ministryOneA,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [fixture.roleInMinistryOneA],
+      });
+      await mintHalf({
+        ministryId: fixture.ministryTwoA,
+        ministryAccessLevel: 'leader',
+        roleIds: [],
+      });
+      const cookie = await createSessionCookie({ userId: fixture.adminB });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${first.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.json()).toMatchObject({ kind: 'full-success' });
+      expect(
+        await testDb
+          .select({ role: member.role })
+          .from(member)
+          .where(
+            and(
+              eq(member.userId, fixture.adminB),
+              eq(member.organizationId, fixture.churchA.id),
+            ),
+          ),
+      ).toEqual([{ role: 'member' }]);
+      const profiles = await testDb
+        .select({ id: volunteer.id })
+        .from(volunteer)
+        .where(
+          and(
+            eq(volunteer.userId, fixture.adminB),
+            eq(volunteer.churchId, fixture.churchA.id),
+          ),
+        );
+      expect(profiles).toHaveLength(1);
+      const grants = await testDb
+        .select({
+          volunteerId: ministryMembership.volunteerId,
+          ministryId: ministryMembership.ministryId,
+          ministryAccessLevel: ministryMembership.ministryAccessLevel,
+        })
+        .from(ministryMembership)
+        .where(eq(ministryMembership.volunteerId, profiles[0]?.id ?? ''));
+      expect(grants).toHaveLength(2);
+      expect(grants).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            ministryId: fixture.ministryOneA,
+            ministryAccessLevel: 'volunteer',
+          }),
+          expect.objectContaining({
+            ministryId: fixture.ministryTwoA,
+            ministryAccessLevel: 'leader',
+          }),
+        ]),
+      );
+    });
+
     it('refuses acceptance into an archived Ministry, granting nothing and keeping the invitation pending', async () => {
       const invitation = await mintExistingMemberInvitation();
       const memberships = () =>

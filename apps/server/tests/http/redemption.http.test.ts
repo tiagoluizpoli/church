@@ -658,6 +658,12 @@ describe('Church invitation redemption HTTP boundary', () => {
     const invitation = await mintInvitation();
     const { app } = await createHarness();
     await requestCode({ invitationId: invitation.churchInvitationId });
+    // A direct Church revoke addresses an admin offer: upgrade the pair first.
+    await invitationManager.mintAdmin({
+      churchId: ChurchId.from(fixture.churchA.id),
+      inviterId: UserId.from(fixture.adminA),
+      email: `redemption-${fixture.churchA.slug}@fixture.test`,
+    });
     expect(
       await invitationManager.revokeChurch({
         churchId: ChurchId.from(fixture.churchA.id),

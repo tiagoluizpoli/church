@@ -1,8 +1,10 @@
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
+import type { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   GetPerson200,
   GetPerson200MinistriesItem,
@@ -110,6 +112,8 @@ beforeEach(() => {
   getPerson.mockResolvedValue(detail());
 });
 
+afterEach(() => overwriteGetLocale(() => 'pt-BR'));
+
 const names = { name: 'Ana Souza', ministry: 'Worship' };
 const open = () =>
   renderRoute({
@@ -117,9 +121,26 @@ const open = () =>
     churchTimezone: 'America/Sao_Paulo',
   });
 
+/** Scheduling and availability reads that follow a member's Roles and level. */
+const SCHEDULING_READS = [
+  ['cycle-builder', 'c-1'],
+  ['assign-cycle', 'c-1'],
+  ['ministry-schedule', 'm-worship'],
+  ['availability-checks'],
+  ['availability-status', 'c-1', 'm-worship'],
+  ['my-availability'],
+  ['volunteer-dashboard'],
+];
+
+const seedSchedulingReads = (queryClient: QueryClient) => {
+  for (const queryKey of SCHEDULING_READS) {
+    queryClient.setQueryData(queryKey, { cached: true });
+  }
+};
+
 async function openDialog(kind: 'leader' | 'volunteer') {
   const user = userEvent.setup();
-  open();
+  const { queryClient } = open();
   await user.click(
     await screen.findByRole('button', {
       name:
@@ -128,7 +149,7 @@ async function openDialog(kind: 'leader' | 'volunteer') {
           : m.people_make_volunteer_label(names),
     }),
   );
-  return { user, dialog: await screen.findByRole('dialog') };
+  return { user, dialog: await screen.findByRole('dialog'), queryClient };
 }
 
 const demoted = (roles: GetPerson200MinistriesItem['roles']) =>
@@ -210,6 +231,25 @@ describe('Make leader / Make volunteer', () => {
       expect(getCallerCapabilities.mock.calls.length).toBeGreaterThan(
         capsBefore,
       );
+    });
+  });
+
+  it('refreshes the Assign board, Ministry schedule and availability reads after a change', async () => {
+    changeMinistryAccess.mockResolvedValue({ changed: true });
+    const { user, dialog, queryClient } = await openDialog('leader');
+    seedSchedulingReads(queryClient);
+
+    await user.click(
+      within(dialog).getByRole('button', { name: m.people_make_leader() }),
+    );
+
+    await waitFor(() => {
+      for (const queryKey of SCHEDULING_READS) {
+        expect(
+          queryClient.getQueryState(queryKey)?.isInvalidated,
+          String(queryKey),
+        ).toBe(true);
+      }
     });
   });
 
@@ -365,11 +405,12 @@ describe('Make leader / Make volunteer', () => {
       ),
     );
     changeMinistryAccess.mockResolvedValue({ changed: true });
-    const { user, dialog } = await openDialog('volunteer');
+    const { user, dialog, queryClient } = await openDialog('volunteer');
     expect(
       within(dialog).getByText(m.people_make_volunteer_own_title(names)),
     ).toBeVisible();
     const capsBefore = getCallerCapabilities.mock.calls.length;
+    seedSchedulingReads(queryClient);
 
     await user.click(
       within(dialog).getByRole('button', { name: m.people_make_volunteer() }),
@@ -385,5 +426,25 @@ describe('Make leader / Make volunteer', () => {
         capsBefore,
       ),
     );
+    // Privileged scheduling and availability projections are dropped, not merely marked stale.
+    for (const queryKey of SCHEDULING_READS) {
+      expect(queryClient.getQueryData(queryKey), String(queryKey)).toBe(
+        undefined,
+      );
+    }
+  });
+
+  it('speaks English when the locale is English', async () => {
+    overwriteGetLocale(() => 'en');
+    getPerson.mockResolvedValue(demoted([]));
+    const { dialog } = await openDialog('volunteer');
+
+    expect(dialog).toHaveTextContent('Make Ana Souza a volunteer in Worship?');
+    expect(dialog).toHaveTextContent(
+      'A volunteer needs at least one Role. Choose the Roles Ana Souza will serve in Worship.',
+    );
+    expect(
+      within(dialog).getByRole('button', { name: 'Make volunteer' }),
+    ).toBeVisible();
   });
 });

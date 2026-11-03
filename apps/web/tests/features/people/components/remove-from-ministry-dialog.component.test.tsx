@@ -346,6 +346,12 @@ describe('Remove from Ministry', () => {
     const { dialog } = await openDialog();
 
     expect(dialog).toHaveTextContent('Remove Ana Souza from Worship?');
+    expect(dialog).toHaveTextContent(
+      'Ana Souza stops serving in Worship, and their open availability checks for it are withdrawn.',
+    );
     expect(confirmButton(dialog)).toHaveTextContent('Remove');
+    expect(
+      within(dialog).getByRole('button', { name: 'Cancel' }),
+    ).toBeVisible();
   });
 });

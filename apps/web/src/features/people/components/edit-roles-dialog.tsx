@@ -1,6 +1,4 @@
 import { m } from '@church/i18n/messages';
-import { useQueryClient } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
 import { type FormEvent, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -14,39 +12,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { RolePicker } from '@/features/invitations/components/invite-dialog';
+import { UpcomingAssignmentsAlert } from '@/features/people/components/upcoming-assignments-alert';
 import {
-  type UpcomingAssignment,
-  UpcomingAssignmentsAlert,
-} from '@/features/people/components/upcoming-assignments-alert';
-import { peopleQueryKey } from '@/features/people/people-queries';
+  type MembershipFailure,
+  readMembershipRefusal,
+  useMembershipChange,
+} from '@/features/people/use-membership-change';
 import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { peopleApi } from '@/utils/api-instances';
-
-interface RefusalBody {
-  error?: string;
-  assignments?: UpcomingAssignment[];
-}
 
 /** Refusals that keep the dialog open with the edits, explained in place. */
 const KEPT_OPEN: Record<string, () => string> = {
   MINISTRY_ROLE_REQUIRED: () => m.error_ministry_role_required(),
   INVALID_MINISTRY_ROLE: () => m.error_invalid_ministry_role(),
 };
-
-/** Refusals meaning the shown card was stale; the dialog closes and the member refreshes. */
-const STALE: Record<string, () => string> = {
-  MINISTRY_MEMBERSHIP_INACTIVE: () => m.error_ministry_membership_inactive(),
-  FORBIDDEN: () => m.error_forbidden(),
-  NOT_FOUND: () => m.people_detail_not_found(),
-};
-
-/** Scheduling reads whose candidate qualifications follow Role grants. */
-const QUALIFICATION_READERS = [['cycle-builder']] as const;
-
-type Failure =
-  | { kind: 'blocked'; assignments: UpcomingAssignment[] }
-  | { kind: 'message'; message: string };
 
 interface EditRolesDialogProps {
   memberId: string;
@@ -60,12 +39,12 @@ export function EditRolesDialog({
   personName,
   card,
 }: EditRolesDialogProps) {
-  const queryClient = useQueryClient();
-  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const { refresh, closeIfStale } = useMembershipChange({ memberId });
   const [open, setOpen] = useState(false);
+  const closeDialog = () => setOpen(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [failure, setFailure] = useState<MembershipFailure | null>(null);
   const [required, setRequired] = useState(false);
   const errorId = useId();
   const names = { name: personName, ministry: card.ministryName };
@@ -78,13 +57,6 @@ export function EditRolesDialog({
     setOpen(true);
   };
 
-  const refresh = () =>
-    Promise.all(
-      [peopleQueryKey({ churchId }), ...QUALIFICATION_READERS].map((queryKey) =>
-        queryClient.invalidateQueries({ queryKey }),
-      ),
-    );
-
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (pending) return;
@@ -95,26 +67,20 @@ export function EditRolesDialog({
     setPending(true);
     setFailure(null);
     try {
+      const roleIds = [...new Set(selected)];
       await peopleApi.setMinistryRoles(memberId, card.membershipId, {
-        roleIds: [...new Set(selected)],
+        roleIds,
       });
       setOpen(false);
       toast.success(m.people_roles_saved_toast({ name: personName }));
       await refresh();
     } catch (error) {
-      const body = isAxiosError<RefusalBody>(error)
-        ? error.response?.data
-        : undefined;
-      const code = body?.error ?? '';
-      if (code === 'UPCOMING_ASSIGNMENTS' && body?.assignments) {
-        setFailure({ kind: 'blocked', assignments: body.assignments });
+      const { code, assignments } = readMembershipRefusal(error);
+      if (code === 'UPCOMING_ASSIGNMENTS' && assignments) {
+        setFailure({ kind: 'blocked', assignments });
       } else if (KEPT_OPEN[code]) {
         setFailure({ kind: 'message', message: KEPT_OPEN[code]() });
-      } else if (STALE[code]) {
-        toast.error(STALE[code]());
-        setOpen(false);
-        await refresh();
-      } else {
+      } else if (!(await closeIfStale({ code, close: closeDialog }))) {
         setFailure({ kind: 'message', message: m.people_roles_failed() });
       }
     } finally {
@@ -147,6 +113,7 @@ export function EditRolesDialog({
               selected={selected}
               heldArchived={heldArchived}
               idPrefix={`edit-${card.membershipId}`}
+              selectAllKeepsSelection
               errorId={required ? errorId : undefined}
               onChange={(next) => {
                 setRequired(false);

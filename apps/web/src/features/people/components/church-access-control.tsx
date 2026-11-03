@@ -15,16 +15,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  CALLER_CAPABILITIES_KEY,
-  resetAfterSelfDemotion,
-} from '@/features/people/authority-refresh';
+import { resetAfterSelfDemotion } from '@/features/people/authority-refresh';
 import { peopleQueryKey } from '@/features/people/people-queries';
 import type {
   GetPerson200,
   GetPerson200ChurchAccess,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
+import { CALLER_CAPABILITIES_QUERY_KEY } from '@/shared/hooks/use-caller-capabilities';
 import { peopleApi } from '@/utils/api-instances';
 
 interface RefusalBody {
@@ -63,7 +61,9 @@ export function ChurchAccessControl({
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: peopleQueryKey({ churchId }) }),
-      queryClient.invalidateQueries({ queryKey: CALLER_CAPABILITIES_KEY }),
+      queryClient.invalidateQueries({
+        queryKey: CALLER_CAPABILITIES_QUERY_KEY,
+      }),
     ]);
 
   const afterSelfDemotion = async () => {

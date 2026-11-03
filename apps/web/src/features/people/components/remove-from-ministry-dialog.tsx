@@ -1,7 +1,4 @@
 import { m } from '@church/i18n/messages';
-import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,46 +13,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { UpcomingAssignmentsAlert } from '@/features/people/components/upcoming-assignments-alert';
 import {
-  CALLER_CAPABILITIES_KEY,
-  resetAfterSelfDemotion,
-} from '@/features/people/authority-refresh';
-import {
-  type UpcomingAssignment,
-  UpcomingAssignmentsAlert,
-} from '@/features/people/components/upcoming-assignments-alert';
-import { peopleQueryKey } from '@/features/people/people-queries';
+  type MembershipFailure,
+  readMembershipRefusal,
+  useMembershipChange,
+} from '@/features/people/use-membership-change';
 import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { peopleApi } from '@/utils/api-instances';
-
-interface RefusalBody {
-  error?: string;
-  assignments?: UpcomingAssignment[];
-}
-
-/** Refusals meaning the shown card was stale; the dialog closes and the member refreshes. */
-const STALE: Record<string, () => string> = {
-  MINISTRY_MEMBERSHIP_INACTIVE: () => m.error_ministry_membership_inactive(),
-  FORBIDDEN: () => m.error_forbidden(),
-  NOT_FOUND: () => m.people_detail_not_found(),
-};
-
-/** Reads that list the member as serving or answering: capabilities, availability and scheduling. */
-const MEMBERSHIP_READERS = [
-  CALLER_CAPABILITIES_KEY,
-  ['availability-checks'],
-  ['availability-status'],
-  ['my-availability'],
-  ['cycle-builder'],
-  ['assign-cycle'],
-  ['ministry-schedule'],
-  ['volunteer-dashboard'],
-] as const;
-
-type Failure =
-  | { kind: 'blocked'; assignments: UpcomingAssignment[] }
-  | { kind: 'message'; message: string };
 
 interface RemoveFromMinistryDialogProps {
   memberId: string;
@@ -72,31 +37,14 @@ export function RemoveFromMinistryDialog({
   card,
   isSelf,
 }: RemoveFromMinistryDialogProps) {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const { refresh, afterSelfReduction, closeIfStale } = useMembershipChange({
+    memberId,
+  });
   const [open, setOpen] = useState(false);
+  const closeDialog = () => setOpen(false);
   const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [failure, setFailure] = useState<MembershipFailure | null>(null);
   const names = { name: personName, ministry: card.ministryName };
-
-  const refresh = () =>
-    Promise.all(
-      [peopleQueryKey({ churchId }), ...MEMBERSHIP_READERS].map((queryKey) =>
-        queryClient.invalidateQueries({ queryKey }),
-      ),
-    );
-
-  // Leaving a led Ministry shrinks the caller's reach: drop privileged caches before anything renders on them.
-  const afterSelfRemoval = async () => {
-    const { detailReadable } = await resetAfterSelfDemotion({
-      queryClient,
-      churchId,
-      memberId,
-    });
-    await refresh();
-    if (!detailReadable) await navigate({ to: '/' });
-  };
 
   const start = () => {
     setFailure(null);
@@ -111,19 +59,12 @@ export function RemoveFromMinistryDialog({
       await peopleApi.endMinistryMembership(memberId, card.membershipId);
       setOpen(false);
       toast.success(m.people_removed_from_ministry_toast(names));
-      await (isSelf ? afterSelfRemoval() : refresh());
+      await (isSelf ? afterSelfReduction() : refresh());
     } catch (error) {
-      const body = isAxiosError<RefusalBody>(error)
-        ? error.response?.data
-        : undefined;
-      const code = body?.error ?? '';
-      if (code === 'UPCOMING_ASSIGNMENTS' && body?.assignments) {
-        setFailure({ kind: 'blocked', assignments: body.assignments });
-      } else if (STALE[code]) {
-        toast.error(STALE[code]());
-        setOpen(false);
-        await refresh();
-      } else {
+      const { code, assignments } = readMembershipRefusal(error);
+      if (code === 'UPCOMING_ASSIGNMENTS' && assignments) {
+        setFailure({ kind: 'blocked', assignments });
+      } else if (!(await closeIfStale({ code, close: closeDialog }))) {
         setFailure({
           kind: 'message',
           message: m.people_remove_from_ministry_failed(),

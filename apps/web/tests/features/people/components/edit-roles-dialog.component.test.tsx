@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
+import type { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
@@ -124,15 +125,32 @@ const open = () =>
 const editLabel = () =>
   m.people_edit_roles_label({ name: 'Ana Souza', ministry: 'Worship' });
 
+/** Scheduling and availability reads that follow a member's Roles and level. */
+const SCHEDULING_READS = [
+  ['cycle-builder', 'c-1'],
+  ['assign-cycle', 'c-1'],
+  ['ministry-schedule', 'm-worship'],
+  ['availability-checks'],
+  ['availability-status', 'c-1', 'm-worship'],
+  ['my-availability'],
+  ['volunteer-dashboard'],
+];
+
+const seedSchedulingReads = (queryClient: QueryClient) => {
+  for (const queryKey of SCHEDULING_READS) {
+    queryClient.setQueryData(queryKey, { cached: true });
+  }
+};
+
 async function openDialog() {
   const user = userEvent.setup();
-  open();
+  const { queryClient } = open();
   await user.click(await screen.findByRole('button', { name: editLabel() }));
   const dialog = await screen.findByRole('dialog', {
     name: m.people_edit_roles_title({ name: 'Ana Souza', ministry: 'Worship' }),
   });
   await within(dialog).findByRole('checkbox', { name: 'Guitar' });
-  return { user, dialog };
+  return { user, dialog, queryClient };
 }
 
 const box = (dialog: HTMLElement, name: string) =>
@@ -238,6 +256,26 @@ describe('Edit Roles', () => {
     await waitFor(() =>
       expect(getPerson.mock.calls.length).toBeGreaterThan(readsBefore),
     );
+  });
+
+  it('refreshes the Assign board, Ministry schedule and availability reads after a save', async () => {
+    setMinistryRoles.mockResolvedValue({ changed: true });
+    const { user, dialog, queryClient } = await openDialog();
+    seedSchedulingReads(queryClient);
+
+    await user.click(box(dialog, 'Guitar'));
+    await user.click(
+      within(dialog).getByRole('button', { name: m.people_roles_save() }),
+    );
+
+    await waitFor(() => {
+      for (const queryKey of SCHEDULING_READS) {
+        expect(
+          queryClient.getQueryState(queryKey)?.isInvalidated,
+          String(queryKey),
+        ).toBe(true);
+      }
+    });
   });
 
   it('keeps a volunteer-level member on a Role before calling the server', async () => {

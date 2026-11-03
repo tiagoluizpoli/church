@@ -14,6 +14,13 @@ export interface SetMinistryRolesRequest {
   roleIds: string[];
 }
 
+export interface ChangeMinistryAccessRequest
+  extends Omit<SetMinistryRolesRequest, 'roleIds'> {
+  accessLevel: MinistryAccessLevel;
+  /** The complete replacement set; omitted keeps the held Roles. */
+  roleIds?: string[];
+}
+
 export interface MinistryMembershipChange {
   memberId: string;
   membershipId: string;
@@ -37,5 +44,9 @@ export type MinistryMembershipOutcome =
 export interface IMinistryMembershipManager {
   setMinistryRoles(
     input: SetMinistryRolesRequest,
+  ): Promise<MinistryMembershipOutcome>;
+  /** Level, and optionally the complete Role set, in one transaction and one audit. */
+  changeMinistryAccess(
+    input: ChangeMinistryAccessRequest,
   ): Promise<MinistryMembershipOutcome>;
 }

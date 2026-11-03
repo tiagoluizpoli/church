@@ -1,4 +1,5 @@
 import type { AppConfig } from '@church/app-config';
+import type { MinistryMembershipOperation } from '../domain/authority/types';
 import { MinistryId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
@@ -38,23 +39,28 @@ export class DbPeopleListManager implements IPeopleListManager {
     if (!record) return undefined;
     const { userId, ...person } = record;
     // Presentation hints only, from the same gatekeeper rules the mutations use.
-    const canEditRoles =
-      await this.authorityManager.canManageMinistryMemberships({
+    const hints = (operation: MinistryMembershipOperation) =>
+      this.authorityManager.canManageMinistryMemberships({
         churchId: request.churchId,
         userId: request.callerId,
         targets: person.ministries.map((card) => ({
           ministryId: MinistryId.from(card.ministryId),
           subjectUserId: UserId.from(userId),
           ministryAccessLevel: card.ministryAccessLevel,
-          operation: 'editRoles',
+          operation,
         })),
       });
+    const [canEditRoles, canChangeMinistryAccess] = await Promise.all([
+      hints('editRoles'),
+      hints('changeLevel'),
+    ]);
     return {
       person: {
         ...person,
         ministries: person.ministries.map((card, index) => ({
           ...card,
           canEditRoles: canEditRoles[index] ?? false,
+          canChangeMinistryAccess: canChangeMinistryAccess[index] ?? false,
         })),
       },
       canChangeChurchAccess: request.scope.kind === 'church',

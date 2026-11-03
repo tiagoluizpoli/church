@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { Badge } from '@/components/ui/badge';
+import { ChangeMinistryAccessDialog } from '@/features/people/components/change-ministry-access-dialog';
 import { EditRolesDialog } from '@/features/people/components/edit-roles-dialog';
 import type { GetPerson200MinistriesItem } from '@/infrastructure/api/churchAPI.schemas';
 
@@ -7,6 +8,7 @@ interface MinistryCardProps {
   card: GetPerson200MinistriesItem;
   memberId: string;
   personName: string;
+  isSelf: boolean;
 }
 
 /** One active Ministry Membership of the scoped member detail; actions follow the server's hints. */
@@ -14,6 +16,7 @@ export function MinistryCard({
   card,
   memberId,
   personName,
+  isSelf,
 }: MinistryCardProps) {
   return (
     <li className="surface-panel space-y-2 p-4">
@@ -42,13 +45,23 @@ export function MinistryCard({
           ))
         )}
       </div>
-      {card.canEditRoles ? (
-        <EditRolesDialog
-          memberId={memberId}
-          personName={personName}
-          card={card}
-        />
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {card.canEditRoles ? (
+          <EditRolesDialog
+            memberId={memberId}
+            personName={personName}
+            card={card}
+          />
+        ) : null}
+        {card.canChangeMinistryAccess ? (
+          <ChangeMinistryAccessDialog
+            memberId={memberId}
+            personName={personName}
+            card={card}
+            isSelf={isSelf}
+          />
+        ) : null}
+      </div>
     </li>
   );
 }

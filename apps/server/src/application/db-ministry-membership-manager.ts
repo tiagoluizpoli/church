@@ -3,6 +3,7 @@ import type { MinistryMembershipOperation } from '../domain/authority/types';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
+  ChangeMinistryAccessRequest,
   IMinistryMembershipManager,
   MinistryMembershipOutcome,
   SetMinistryRolesRequest,
@@ -149,6 +150,98 @@ export class DbMinistryMembershipManager implements IMinistryMembershipManager {
         tx,
       });
       return { ...applied, roles, changed: true };
+    });
+  }
+
+  async changeMinistryAccess({
+    churchId,
+    actorId,
+    memberId,
+    membershipId,
+    accessLevel,
+    roleIds,
+  }: ChangeMinistryAccessRequest): Promise<MinistryMembershipOutcome> {
+    return this.unitOfWork.run(async (tx) => {
+      const locked = await this.lockAndAuthorize({
+        churchId,
+        actorId,
+        memberId,
+        membershipId,
+        operation: 'changeLevel',
+        tx,
+      });
+      if (locked.kind !== 'authorized') return locked;
+      const { target } = locked;
+
+      const held = await this.membershipRepository.listRoles({
+        churchId,
+        membershipId,
+        tx,
+      });
+      // Omitted roleIds keep every held Role, archived ones included.
+      const requested = new Set(roleIds ?? target.roleIds);
+      const addedRoleIds = [...requested].filter(
+        (id) => !target.roleIds.includes(id),
+      );
+      const removedRoleIds = target.roleIds.filter((id) => !requested.has(id));
+      const rolesChanged = addedRoleIds.length + removedRoleIds.length > 0;
+      if (accessLevel === target.ministryAccessLevel && !rolesChanged) {
+        return {
+          kind: 'applied',
+          memberId,
+          membershipId,
+          ministryAccessLevel: accessLevel,
+          roles: held,
+          changed: false,
+        };
+      }
+
+      const grantable = await this.roleRepository.lockActiveForUse({
+        churchId,
+        ministryId: target.ministryId,
+        roleIds: addedRoleIds,
+        tx,
+      });
+      if (grantable.length !== addedRoleIds.length) {
+        throw new InvalidMinistryRoleError();
+      }
+      // A demotion needs an active Role to land on; an unchanged volunteer keeps the plain "any Role" rule.
+      const demoting =
+        accessLevel === 'volunteer' && target.ministryAccessLevel === 'leader';
+      const resulting = demoting
+        ? addedRoleIds.length +
+          held.filter((r) => !r.archived && requested.has(r.id)).length
+        : requested.size;
+      if (accessLevel === 'volunteer' && resulting === 0) {
+        throw new MinistryRoleRequiredError();
+      }
+      await this.guardRemovedRoles({ churchId, target, removedRoleIds, tx });
+
+      await this.membershipRepository.saveAccess({
+        churchId,
+        actorId,
+        target,
+        accessLevel,
+        rolesChanged,
+        addedRoleIds,
+        removedRoleIds,
+        correlationId: crypto.randomUUID(),
+        changedAt: toDate({ instant: now() }),
+        tx,
+      });
+      const roles = await this.membershipRepository.listRoles({
+        churchId,
+        membershipId,
+        tx,
+      });
+      return {
+        kind: 'applied',
+        memberId,
+        membershipId,
+        ministryAccessLevel: accessLevel,
+        roles,
+        changed: true,
+      };
     });
   }
 

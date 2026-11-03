@@ -1,4 +1,5 @@
 import type { AppConfig } from '@church/app-config';
+import type { MinistryMembershipOperation } from '../domain/authority/types';
 import { MinistryId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
@@ -38,23 +39,30 @@ export class DbPeopleListManager implements IPeopleListManager {
     if (!record) return undefined;
     const { userId, ...person } = record;
     // Presentation hints only, from the same gatekeeper rules the mutations use.
-    const canEditRoles =
-      await this.authorityManager.canManageMinistryMemberships({
-        churchId: request.churchId,
-        userId: request.callerId,
-        targets: person.ministries.map((card) => ({
+    const operations: MinistryMembershipOperation[] = [
+      'editRoles',
+      'endMembership',
+    ];
+    // One batch, card-major: each card's hints in `operations` order.
+    const allowed = await this.authorityManager.canManageMinistryMemberships({
+      churchId: request.churchId,
+      userId: request.callerId,
+      targets: person.ministries.flatMap((card) =>
+        operations.map((operation) => ({
           ministryId: MinistryId.from(card.ministryId),
           subjectUserId: UserId.from(userId),
           ministryAccessLevel: card.ministryAccessLevel,
-          operation: 'editRoles',
+          operation,
         })),
-      });
+      ),
+    });
     return {
       person: {
         ...person,
         ministries: person.ministries.map((card, index) => ({
           ...card,
-          canEditRoles: canEditRoles[index] ?? false,
+          canEditRoles: allowed[index * operations.length] ?? false,
+          canEndMembership: allowed[index * operations.length + 1] ?? false,
         })),
       },
       canChangeChurchAccess: request.scope.kind === 'church',

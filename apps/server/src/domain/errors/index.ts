@@ -24,6 +24,7 @@ export * from './isolation-breach-error';
 export * from './last-remaining-event-time-block-error';
 export * from './ministry-in-use';
 export * from './ministry-invitation-not-found';
+export * from './ministry-membership-inactive';
 export * from './ministry-name-in-use';
 export * from './ministry-role-required';
 export * from './overlapping-cycle';

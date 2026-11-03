@@ -252,10 +252,22 @@ export interface MinistryRolesChangedDetails {
   afterRoleIds: string[];
 }
 
+export interface MinistryMembershipEndedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  /** Kept as history on the ended membership. */
+  retainedRoleIds: string[];
+  withdrawnAvailabilityCheckIds: string[];
+  beforeStatus: 'active';
+  afterStatus: 'inactive';
+}
+
 /** Structured per-action facts; null on rows whose action records none. */
 export type IdentityAuditDetails =
   | ChurchAccessChangedDetails
-  | MinistryRolesChangedDetails;
+  | MinistryRolesChangedDetails
+  | MinistryMembershipEndedDetails;
 
 export const identityAudit = pgTable('identity_audit', {
   id: uuid('id').primaryKey().defaultRandom(),

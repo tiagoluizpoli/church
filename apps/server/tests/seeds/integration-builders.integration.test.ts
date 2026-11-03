@@ -239,6 +239,90 @@ describe('integration composition of the shared seed builders', () => {
     expect(grants.map((grant) => grant.roleId)).toEqual([usher.id]);
   });
 
+  it('builds an ended Ministry Membership with its withdrawn check beside a fresh rejoined one', async () => {
+    await buildUser({
+      db: testDb,
+      id: VOLUNTEER_USER_ID,
+      name: 'Vol',
+      email: 'vol@builders.test',
+    });
+    await buildChurch({
+      db: testDb,
+      id: CHURCH_ID,
+      name: 'Built Church',
+      slug: 'built-church',
+      timezone: 'UTC',
+    });
+    const ministry = await buildMinistry({
+      db: testDb,
+      churchId: CHURCH_ID,
+      name: 'Hospitality',
+    });
+    const usher = await buildRole({
+      db: testDb,
+      churchId: CHURCH_ID,
+      ministryId: ministry.id,
+      name: 'Usher',
+    });
+    const profile = await buildVolunteer({
+      db: testDb,
+      churchId: CHURCH_ID,
+      userId: VOLUNTEER_USER_ID,
+    });
+    const cycle = await buildCycle({
+      db: testDb,
+      churchId: CHURCH_ID,
+      name: 'June',
+      startDate: parseCalendarDay({ value: '2024-06-01' }),
+      endDate: parseCalendarDay({ value: '2024-06-30' }),
+      state: 'sent',
+    });
+    const leftAt = parseInstant({ value: '2024-06-10T12:00:00Z' });
+    const ended = await buildMinistryMembership({
+      db: testDb,
+      churchId: CHURCH_ID,
+      volunteerId: profile.id,
+      ministryId: ministry.id,
+      ministryAccessLevel: 'volunteer',
+      status: 'inactive',
+      leftAt,
+      roleIds: [usher.id],
+    });
+    const withdrawn = await buildAvailabilityCheck({
+      db: testDb,
+      churchId: CHURCH_ID,
+      cycleId: cycle.id,
+      ministryMembershipId: ended.id,
+      state: 'confirmed',
+      withdrawnAt: leftAt,
+    });
+    const rejoined = await buildMinistryMembership({
+      db: testDb,
+      churchId: CHURCH_ID,
+      volunteerId: profile.id,
+      ministryId: ministry.id,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [usher.id],
+    });
+    const fresh = await buildAvailabilityCheck({
+      db: testDb,
+      churchId: CHURCH_ID,
+      cycleId: cycle.id,
+      ministryMembershipId: rejoined.id,
+    });
+
+    expect(ended).toMatchObject({
+      status: 'inactive',
+      leftAt: new Date('2024-06-10T12:00:00Z'),
+    });
+    expect(withdrawn).toMatchObject({
+      state: 'confirmed',
+      withdrawnAt: new Date('2024-06-10T12:00:00Z'),
+    });
+    expect(rejoined).toMatchObject({ status: 'active', leftAt: null });
+    expect(fresh).toMatchObject({ state: 'pending', withdrawnAt: null });
+  });
+
   it('builds a User, its Volunteer profile and Ministry Membership in one call', async () => {
     await buildChurch({
       db: testDb,

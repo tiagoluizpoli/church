@@ -3,6 +3,8 @@ import type { MinistryMembershipOperation } from '../domain/authority/types';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
+  EndMinistryMembershipOutcome,
+  EndMinistryMembershipRequest,
   IMinistryMembershipManager,
   MinistryMembershipOutcome,
   SetMinistryRolesRequest,
@@ -16,6 +18,7 @@ import type { RoleRepository } from '../domain/contracts/infrastructure/role.rep
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import { InvalidMinistryRoleError } from '../domain/errors/invalid-ministry-role';
+import { MinistryMembershipInactiveError } from '../domain/errors/ministry-membership-inactive';
 import { MinistryRoleRequiredError } from '../domain/errors/ministry-role-required';
 import { UpcomingAssignmentsError } from '../domain/errors/upcoming-assignments';
 
@@ -41,10 +44,11 @@ type LockAndAuthorizeResult =
   | { kind: 'not-found' }
   | { kind: 'authorized'; target: MembershipTarget };
 
-interface GuardRemovedRolesInput {
+interface GuardUpcomingAssignmentsInput {
   churchId: ChurchId;
   target: MembershipTarget;
-  removedRoleIds: string[];
+  /** The removed Roles; omitted guards every Role, as ending the membership does. */
+  removedRoleIds?: string[];
   tx: TransactionContext;
 }
 
@@ -130,7 +134,12 @@ export class DbMinistryMembershipManager implements IMinistryMembershipManager {
       if (target.ministryAccessLevel === 'volunteer' && requested.size === 0) {
         throw new MinistryRoleRequiredError();
       }
-      await this.guardRemovedRoles({ churchId, target, removedRoleIds, tx });
+      await this.guardUpcomingAssignments({
+        churchId,
+        target,
+        removedRoleIds,
+        tx,
+      });
 
       const changedAt = now();
       await this.membershipRepository.saveRoles({
@@ -152,7 +161,50 @@ export class DbMinistryMembershipManager implements IMinistryMembershipManager {
     });
   }
 
-  /** Church lock, locked target chain, then the actor's authority read fresh in the same transaction. */
+  endMinistryMembership({
+    churchId,
+    actorId,
+    memberId,
+    membershipId,
+  }: EndMinistryMembershipRequest): Promise<EndMinistryMembershipOutcome> {
+    return this.unitOfWork.run(async (tx) => {
+      const locked = await this.lockAndAuthorize({
+        churchId,
+        actorId,
+        memberId,
+        membershipId,
+        operation: 'endMembership',
+        tx,
+      });
+      if (locked.kind !== 'authorized') return locked;
+      const { target } = locked;
+      await this.guardUpcomingAssignments({ churchId, target, tx });
+
+      const leftAt = now();
+      await this.membershipRepository.endMembership({
+        churchId,
+        actorId,
+        target,
+        correlationId: crypto.randomUUID(),
+        changedAt: toDate({ instant: leftAt }),
+        tx,
+      });
+      return {
+        kind: 'applied',
+        memberId,
+        membershipId,
+        status: 'inactive',
+        leftAt,
+        changed: true,
+      };
+    });
+  }
+
+  /**
+   * Church lock, locked target chain, then the actor's authority read fresh
+   * in the same transaction. An ended target the actor could otherwise
+   * manage is refused as inactive; one outside their scope stays hidden.
+   */
   private async lockAndAuthorize({
     churchId,
     actorId,
@@ -182,21 +234,25 @@ export class DbMinistryMembershipManager implements IMinistryMembershipManager {
         tx,
       },
     );
-    if (decision.allowed) return { kind: 'authorized', target };
+    if (decision.allowed) {
+      if (target.status !== 'active')
+        throw new MinistryMembershipInactiveError();
+      return { kind: 'authorized', target };
+    }
     // A refused target inside the actor's visible scope is 403; anything else hides it.
     return decision.reason === 'INSUFFICIENT_ACCESS_LEVEL'
       ? { kind: 'forbidden' }
       : { kind: 'not-found' };
   }
 
-  /** The shared guard: no removed Role may still be needed by an upcoming Assignment. */
-  private async guardRemovedRoles({
+  /** The shared guard: no removed Role, or ended membership, may still be needed by an upcoming Assignment. */
+  private async guardUpcomingAssignments({
     churchId,
     target,
     removedRoleIds,
     tx,
-  }: GuardRemovedRolesInput): Promise<void> {
-    if (removedRoleIds.length === 0) return;
+  }: GuardUpcomingAssignmentsInput): Promise<void> {
+    if (removedRoleIds?.length === 0) return;
     const assignments =
       await this.membershipRepository.listUpcomingMembershipAssignments({
         churchId,

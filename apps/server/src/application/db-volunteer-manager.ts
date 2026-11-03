@@ -44,6 +44,7 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
@@ -165,6 +166,10 @@ function scheduleVolunteerName(name: string | undefined): string | undefined {
   const [firstName, ...rest] = name.trim().split(/\s+/);
   const lastName = rest.at(-1);
   return lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName;
+}
+
+interface GetOwnedCheckContextInput extends GetAvailabilityCheckInput {
+  tx?: TransactionContext;
 }
 
 interface ResolveCheckDetailInput {
@@ -640,13 +645,18 @@ export class DbVolunteerManager implements IVolunteerManager {
     };
   }
 
-  /** Loads the check context and enforces the check belongs to the requesting volunteer. */
-  private async getOwnedCheckContext(
-    input: GetAvailabilityCheckInput,
-  ): Promise<CheckContext> {
+  /**
+   * Loads the actionable check context and enforces the check belongs to the
+   * requesting volunteer. With `tx` it holds the membership against removal.
+   */
+  private async getOwnedCheckContext({
+    tx,
+    ...input
+  }: GetOwnedCheckContextInput): Promise<CheckContext> {
     const context = await this.availabilityCheckRepo.getCheckContext({
       churchId: input.churchId,
       checkId: input.checkId,
+      tx,
     });
     if ((context.volunteerId as string) !== (input.volunteerId as string)) {
       throw new CheckAccessDeniedError();
@@ -750,35 +760,37 @@ export class DbVolunteerManager implements IVolunteerManager {
   async setUnavailableShifts(
     input: SetUnavailableShiftsInput,
   ): Promise<VolunteerAvailabilityCheckDetail> {
-    const context = await this.getOwnedCheckContext(input);
-    const shifts = await this.availabilityCheckRepo.listCheckShifts({
-      churchId: input.churchId,
-      checkId: input.checkId,
-    });
+    const context = await this.unitOfWork.run(async (tx) => {
+      const context = await this.getOwnedCheckContext({ ...input, tx });
+      const shifts = await this.availabilityCheckRepo.listCheckShifts({
+        churchId: input.churchId,
+        checkId: input.checkId,
+        tx,
+      });
 
-    const wholeDayShiftIds = (input.wholeDayDates ?? []).flatMap((date) =>
-      expandWholeDayShiftIds({
-        churchDate: parseCalendarDay({ value: date }),
-        timeZone: context.timeZone,
-        shifts,
-      }),
-    );
-    const requestedShiftIds = [
-      ...new Set<ShiftId>([...input.shiftIds, ...wholeDayShiftIds]),
-    ];
+      const wholeDayShiftIds = (input.wholeDayDates ?? []).flatMap((date) =>
+        expandWholeDayShiftIds({
+          churchDate: parseCalendarDay({ value: date }),
+          timeZone: context.timeZone,
+          shifts,
+        }),
+      );
+      const requestedShiftIds = [
+        ...new Set<ShiftId>([...input.shiftIds, ...wholeDayShiftIds]),
+      ];
 
-    assertUnavailableShiftsWithinScope({
-      candidateShiftIds: shifts.map((shift) => shift.shiftId),
-      requestedShiftIds,
-    });
+      assertUnavailableShiftsWithinScope({
+        candidateShiftIds: shifts.map((shift) => shift.shiftId),
+        requestedShiftIds,
+      });
 
-    await this.unitOfWork.run(async (tx) => {
       await this.unavailableShiftRepo.replaceUnavailableShiftsForCheck({
         churchId: input.churchId,
         availabilityCheckId: input.checkId,
         shiftIds: requestedShiftIds,
         tx,
       });
+      return context;
     });
 
     return this.resolveCheckDetail({ context, input });
@@ -787,19 +799,22 @@ export class DbVolunteerManager implements IVolunteerManager {
   async confirmAvailabilityCheck(
     input: ConfirmAvailabilityCheckInput,
   ): Promise<ConfirmAvailabilityCheckResult> {
-    const context = await this.getOwnedCheckContext(input);
+    return this.unitOfWork.run(async (tx) => {
+      const context = await this.getOwnedCheckContext({ ...input, tx });
 
-    // Entity transition guards the confirm gate (pending → confirmed, FR-019).
-    context.check.confirm();
+      // Entity transition guards the confirm gate (pending → confirmed, FR-019).
+      context.check.confirm();
 
-    const confirmedAt = context.check.confirmedAt ?? nowInstant();
-    await this.availabilityCheckRepo.confirm({
-      churchId: input.churchId,
-      checkId: input.checkId,
-      confirmedAt: toDate({ instant: confirmedAt }),
+      const confirmedAt = context.check.confirmedAt ?? nowInstant();
+      await this.availabilityCheckRepo.confirm({
+        churchId: input.churchId,
+        checkId: input.checkId,
+        confirmedAt: toDate({ instant: confirmedAt }),
+        tx,
+      });
+
+      return { state: 'confirmed' as const, confirmedAt };
     });
-
-    return { state: 'confirmed', confirmedAt };
   }
 
   async respondToAssignment(

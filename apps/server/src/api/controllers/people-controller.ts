@@ -13,6 +13,7 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   churchAccessChangeBodySchema,
   churchAccessChangeResponseSchema,
+  endMinistryMembershipResponseSchema,
   ministryMembershipChangeResponseSchema,
   ministryMembershipParamsSchema,
   peopleListQuerystringSchema,
@@ -198,6 +199,55 @@ export class PeopleController implements FastifyController {
           membershipId,
           roleIds,
         });
+        if (outcome.kind === 'forbidden') {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        if (outcome.kind === 'not-found') {
+          return refuse({ reply, request, code: 'NOT_FOUND' });
+        }
+        const { kind: _applied, ...result } = outcome;
+        return reply.send(result);
+      },
+    );
+
+    app.delete(
+      '/:memberId/ministry-memberships/:membershipId',
+      {
+        schema: {
+          tags: ['people'],
+          operationId: 'endMinistryMembership',
+          summary: 'Remove a member from a Ministry',
+          description:
+            'End one active Ministry Membership: it becomes inactive with leftAt, keeping its Roles, past Assignments and answers as history, and its actionable AvailabilityChecks are withdrawn. A ChurchAdmin removes anyone; a Ministry leader removes volunteer-level members of a Ministry they lead, never a leader or themselves. Refused while an upcoming Assignment depends on the membership, with every such Assignment. Church Membership, the Volunteer profile and other Ministries are unchanged; rejoining is a new Ministry Invitation.',
+          params: ministryMembershipParamsSchema,
+          response: {
+            200: endMinistryMembershipResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([
+              upcomingAssignmentsResponseSchema,
+              errorResponseSchema,
+            ]),
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const actorId = UserId.from(request.userId);
+        // The area gate; the manager decides the target under the Church lock.
+        const scope = await this.resolveScope({ churchId, userId: actorId });
+        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const { memberId, membershipId } = request.params as z.infer<
+          typeof ministryMembershipParamsSchema
+        >;
+        const outcome =
+          await this.ministryMembershipManager.endMinistryMembership({
+            churchId,
+            actorId,
+            memberId,
+            membershipId,
+          });
         if (outcome.kind === 'forbidden') {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }

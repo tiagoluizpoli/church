@@ -64,6 +64,8 @@ export interface BuildMinistryMembershipInput {
   ministryAccessLevel: MinistryAccessLevel;
   /** Active unless a fixture needs an inactive Ministry Membership. */
   status?: SeededMinistryMembership['status'];
+  /** When an ended membership left; pair it with `status: 'inactive'`. */
+  leftAt?: Instant;
   /** Role qualifications — explicit grants; membership alone qualifies for nothing. */
   roleIds: string[];
   /** Parked Team data (BL-033); dev seeds no longer create it. */
@@ -79,6 +81,7 @@ export async function buildMinistryMembership({
   id,
   ministryAccessLevel,
   status = 'active',
+  leftAt,
   roleIds,
   teams = [],
 }: BuildMinistryMembershipInput): Promise<SeededMinistryMembership> {
@@ -92,6 +95,7 @@ export async function buildMinistryMembership({
         ministryId,
         ministryAccessLevel,
         status,
+        leftAt: leftAt && toDate({ instant: leftAt }),
       })
       .returning(),
     description: `Ministry Membership ${id}`,

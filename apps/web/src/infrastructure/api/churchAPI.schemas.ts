@@ -3247,6 +3247,86 @@ export type RevokeChurchInvitation409 = {
   message: string;
 };
 
+export type ListPeopleParams = {
+/**
+ * @minLength 1
+ * @maxLength 254
+ */
+search?: string;
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+ministryId?: string;
+access?: ListPeopleAccess;
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListPeopleAccess = typeof ListPeopleAccess[keyof typeof ListPeopleAccess];
+
+
+export const ListPeopleAccess = {
+  admin: 'admin',
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListPeople200ItemsItemMinistriesItemMinistryAccessLevel = typeof ListPeople200ItemsItemMinistriesItemMinistryAccessLevel[keyof typeof ListPeople200ItemsItemMinistriesItemMinistryAccessLevel];
+
+
+export const ListPeople200ItemsItemMinistriesItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type ListPeople200ItemsItemMinistriesItem = {
+  id: string;
+  name: string;
+  ministryAccessLevel: ListPeople200ItemsItemMinistriesItemMinistryAccessLevel;
+};
+
+export type ListPeople200ItemsItem = {
+  id: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+  ministries: ListPeople200ItemsItemMinistriesItem[];
+};
+
+export type ListPeople200OptionsMinistriesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListPeople200Options = {
+  ministries: ListPeople200OptionsMinistriesItem[];
+};
+
+export type ListPeople200 = {
+  items: ListPeople200ItemsItem[];
+  nextCursor?: string;
+  options: ListPeople200Options;
+};
+
+export type ListPeople401 = {
+  error: string;
+  message: string;
+};
+
+export type ListPeople403 = {
+  error: string;
+  message: string;
+};
+
+export type ListPeople404 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewChurchInvitation200ChurchAccessLevel = typeof PreviewChurchInvitation200ChurchAccessLevel[keyof typeof PreviewChurchInvitation200ChurchAccessLevel];
 
 

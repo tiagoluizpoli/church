@@ -635,5 +635,15 @@
   "invitations_revoke_failed": "Não foi possível revogar o convite. Tente novamente.",
   "invitations_revoked_by_on": "Revogado por {name} em {date}",
   "invitations_revoke_reason_manual": "Revogado manualmente",
-  "invitations_revoke_reason_ministry_archived": "Revogado: Ministério arquivado"
+  "invitations_revoke_reason_ministry_archived": "Revogado: Ministério arquivado",
+  "people_description": "Encontre os membros desta Igreja e veja onde servem.",
+  "people_filters_label": "Filtrar pessoas",
+  "people_filter_search": "Nome ou e-mail",
+  "people_filter_ministry": "Ministério",
+  "people_filter_access": "Acesso",
+  "people_list_label": "Pessoas",
+  "people_empty": "Nenhum membro ainda.",
+  "people_empty_filtered": "Nenhum membro corresponde a estes filtros.",
+  "people_load_failed": "Não foi possível carregar as pessoas.",
+  "people_no_ministries": "Sem ministério"
 }

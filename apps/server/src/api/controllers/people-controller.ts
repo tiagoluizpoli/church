@@ -25,6 +25,11 @@ interface ListLimitQuery {
   limit?: number;
 }
 
+interface ResolveScopeInput {
+  churchId: ChurchId;
+  userId: UserId;
+}
+
 interface PeopleControllerDependencies {
   peopleListManager: IPeopleListManager;
   activeChurchResolver: IActiveChurchResolver;
@@ -58,10 +63,7 @@ export class PeopleController implements FastifyController {
   private async resolveScope({
     churchId,
     userId,
-  }: {
-    churchId: ChurchId;
-    userId: UserId;
-  }): Promise<PeopleListScope | undefined> {
+  }: ResolveScopeInput): Promise<PeopleListScope | undefined> {
     const { isChurchAdmin, ledMinistries } =
       await this.authorityGuard.resolveCallerCapabilities({ churchId, userId });
     if (isChurchAdmin) return { kind: 'church' };

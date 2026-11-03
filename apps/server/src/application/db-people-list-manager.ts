@@ -1,0 +1,32 @@
+import type {
+  IPeopleListManager,
+  ListPeopleRequest,
+} from '../domain/contracts/application/people-list-manager';
+import type { PeopleListRepository } from '../domain/contracts/infrastructure/people-list.repository';
+import type { PeopleListPage } from '../domain/entities/people-list-item';
+
+interface DbPeopleListManagerDependencies {
+  peopleListRepository: PeopleListRepository;
+  /** Page size when the caller names none (validated central config). */
+  defaultPageSize: number;
+}
+
+export class DbPeopleListManager implements IPeopleListManager {
+  private readonly peopleListRepository: PeopleListRepository;
+  private readonly defaultPageSize: number;
+
+  constructor({
+    peopleListRepository,
+    defaultPageSize,
+  }: DbPeopleListManagerDependencies) {
+    this.peopleListRepository = peopleListRepository;
+    this.defaultPageSize = defaultPageSize;
+  }
+
+  list({ limit, ...request }: ListPeopleRequest): Promise<PeopleListPage> {
+    return this.peopleListRepository.list({
+      ...request,
+      limit: limit ?? this.defaultPageSize,
+    });
+  }
+}

@@ -7,6 +7,7 @@ export { InvitationController } from './invitation-controller';
 export { MinistryController } from './ministry-controller';
 export { MinistryRoleController } from './ministry-role-controller';
 export { NotificationController } from './notification-controller';
+export { PeopleController } from './people-controller';
 export { PrepareController } from './prepare-controller';
 export { RedemptionController } from './redemption-controller';
 export { SectorController } from './sector-controller';

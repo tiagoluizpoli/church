@@ -16,6 +16,7 @@ export * from './ministry-invitation.repository';
 export * from './ministry-participation.repository';
 export * from './notification.repository';
 export * from './outbox.repository';
+export * from './people-list.repository';
 export * from './planning-event.repository';
 export * from './redemption.repository';
 export * from './redemption-identity-gateway';

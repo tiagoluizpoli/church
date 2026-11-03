@@ -9,6 +9,7 @@ import {
   MinistryController,
   MinistryRoleController,
   NotificationController,
+  PeopleController,
   PrepareController,
   RedemptionController,
   SectorController,
@@ -46,6 +47,7 @@ export function buildControllers({
     activeChurchSelectionManager,
     notificationManager,
     invitationListManager,
+    peopleListManager,
   },
   auth: { authorityGuard, activeChurchResolver },
 }: BuildControllersInput): FastifyController[] {
@@ -115,6 +117,12 @@ export function buildControllers({
       activeChurchResolver,
       authorityGuard,
       maxPageSize: config.invitations.maxPageSize,
+    }),
+    new PeopleController({
+      peopleListManager,
+      activeChurchResolver,
+      authorityGuard,
+      maxPageSize: config.people.maxPageSize,
     }),
     new RedemptionController({
       redemptionManager,

@@ -20,6 +20,7 @@ import type {
   DeclineChurchInvitationInput,
   DeclineChurchInvitationResult,
   DeclineMinistryInvitationInput,
+  LockInvitedMinistriesInput,
   RecordChurchInvitationAcceptanceInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
@@ -68,6 +69,36 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
   private readonly db: AnyDrizzleDb;
   private readonly volunteerRepository: VolunteerRepository;
 
+  async lockInvitedMinistries({
+    churchId,
+    ministryInvitationIds,
+    tx,
+  }: LockInvitedMinistriesInput): Promise<void> {
+    if (ministryInvitationIds.length === 0) return;
+    await getClient({ db: this.db, tx })
+      .select({ id: ministry.id })
+      .from(ministry)
+      .where(
+        and(
+          withChurchIsolation({ table: ministry, churchId }),
+          inArray(
+            ministry.id,
+            getClient({ db: this.db, tx })
+              .select({ ministryId: ministryInvitation.ministryId })
+              .from(ministryInvitation)
+              .where(
+                and(
+                  withChurchIsolation({ table: ministryInvitation, churchId }),
+                  inArray(ministryInvitation.id, ministryInvitationIds),
+                ),
+              ),
+          ),
+        ),
+      )
+      .orderBy(asc(ministry.id))
+      .for('share');
+  }
+
   async acceptPendingMinistryInvitation({
     churchId,
     ministryInvitationId,
@@ -77,6 +108,11 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     auditAction,
     tx,
   }: AcceptMinistryInvitationInput): Promise<VolunteerId> {
+    await this.lockInvitedMinistries({
+      churchId,
+      ministryInvitationIds: [ministryInvitationId],
+      tx,
+    });
     const db = getClient({ db: this.db, tx });
     const [invitationRow] = await db
       .select({

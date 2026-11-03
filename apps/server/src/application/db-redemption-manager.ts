@@ -303,6 +303,14 @@ export class DbRedemptionManager implements RedemptionManager {
     now,
     tx,
   }: AdmitNewPersonInput): Promise<AdmittedNewPerson> {
+    // Ministry rows before the Church Invitation: a racing archive's order.
+    await this.redemptionRepository.lockInvitedMinistries({
+      churchId: preview.churchId,
+      ministryInvitationIds: preview.ministries.map(
+        (half) => half.ministryInvitationId,
+      ),
+      tx,
+    });
     await this.ensureChurchInvitationPending({
       churchId: preview.churchId,
       churchInvitationId: preview.churchInvitationId,
@@ -501,12 +509,22 @@ export class DbRedemptionManager implements RedemptionManager {
             },
           )
         : [];
+      const ids = [
+        ministryInvitation.id,
+        ...siblingIds,
+      ] as MinistryInvitationId[];
+      // Every half's Ministry before any invitation row, as a racing archive locks.
+      await this.redemptionRepository.lockInvitedMinistries({
+        churchId: ministryInvitation.churchId,
+        ministryInvitationIds: ids,
+        tx,
+      });
       let volunteerId: VolunteerId | null = null;
-      for (const id of [ministryInvitation.id, ...siblingIds]) {
+      for (const id of ids) {
         volunteerId =
           await this.redemptionRepository.acceptPendingMinistryInvitation({
             churchId: ministryInvitation.churchId,
-            ministryInvitationId: id as MinistryInvitationId,
+            ministryInvitationId: id,
             userId,
             acceptedAt,
             correlationId,

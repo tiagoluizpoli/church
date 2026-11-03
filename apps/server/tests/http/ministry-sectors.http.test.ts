@@ -93,6 +93,7 @@ beforeAll(async () => {
   const ministryManager = new DbMinistryManager({
     ministryRepo,
     volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    invitationRepo: {} as never,
     unitOfWork: new DrizzleUnitOfWork({ db }),
   });
   // The competing UsualSetup write path, for the archive race proof.

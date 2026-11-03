@@ -138,6 +138,7 @@ export function buildManagers({
     new DbMinistryManager({
       ministryRepo: ministryRepository,
       volunteerRepo: volunteerRepository,
+      invitationRepo: ministryInvitationRepository,
       unitOfWork,
     });
   const ministryRoleManager =

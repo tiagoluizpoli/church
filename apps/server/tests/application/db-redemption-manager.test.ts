@@ -113,6 +113,7 @@ function createHarness({
     .fn()
     .mockResolvedValue(undefined);
   const redemptionRepository: RedemptionRepository = {
+    lockInvitedMinistries: async () => {},
     async acceptPendingMinistryInvitation(input) {
       await persist();
       acceptedInputs.push(input);

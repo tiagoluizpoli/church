@@ -622,5 +622,17 @@
   "invitations_resending": "Reenviando…",
   "invitations_resend_label": "Reenviar o convite para {email}",
   "invitations_resend_queued_toast": "E-mail do convite para {email} na fila",
-  "invitations_resend_failed": "Não foi possível reenviar o convite. Tente novamente."
+  "invitations_resend_failed": "Não foi possível reenviar o convite. Tente novamente.",
+  "invitations_revoke": "Revogar",
+  "invitations_revoking": "Revogando…",
+  "invitations_revoke_label": "Revogar o convite para {email}",
+  "invitations_revoke_dialog_title": "Revogar o convite para {email}?",
+  "invitations_revoke_description": "O link do convite deixa de funcionar. Acessos já aceitos continuam, nenhum e-mail é enviado e e-mails já enviados não são recolhidos.",
+  "invitations_revoke_cancel": "Cancelar",
+  "invitations_revoke_confirm": "Revogar convite",
+  "invitations_revoked_toast": "Convite para {email} revogado",
+  "invitations_revoke_failed": "Não foi possível revogar o convite. Tente novamente.",
+  "invitations_revoked_by_on": "Revogado por {name} em {date}",
+  "invitations_revoke_reason_manual": "Revogado manualmente",
+  "invitations_revoke_reason_ministry_archived": "Revogado: Ministério arquivado"
 }

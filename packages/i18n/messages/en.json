@@ -622,5 +622,17 @@
   "invitations_resending": "Resending…",
   "invitations_resend_label": "Resend the invitation to {email}",
   "invitations_resend_queued_toast": "Invitation email to {email} queued",
-  "invitations_resend_failed": "We couldn't resend the invitation. Try again."
+  "invitations_resend_failed": "We couldn't resend the invitation. Try again.",
+  "invitations_revoke": "Revoke",
+  "invitations_revoking": "Revoking…",
+  "invitations_revoke_label": "Revoke the invitation to {email}",
+  "invitations_revoke_dialog_title": "Revoke the invitation to {email}?",
+  "invitations_revoke_description": "The invitation link stops working. Access already accepted stays, no email is sent, and emails already sent are not recalled.",
+  "invitations_revoke_cancel": "Cancel",
+  "invitations_revoke_confirm": "Revoke invitation",
+  "invitations_revoked_toast": "Invitation to {email} revoked",
+  "invitations_revoke_failed": "We couldn't revoke the invitation. Try again.",
+  "invitations_revoked_by_on": "Revoked by {name} on {date}",
+  "invitations_revoke_reason_manual": "Revoked manually",
+  "invitations_revoke_reason_ministry_archived": "Revoked: Ministry archived"
 }

@@ -16,6 +16,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getCallerCapabilities = vi.fn();
 const listInvitations = vi.fn();
 const resendMinistryInvitation = vi.fn();
+const revokeMinistryInvitation = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 
@@ -26,6 +27,8 @@ vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     resendMinistryInvitation: (...args: unknown[]) =>
       resendMinistryInvitation(...args),
+    revokeMinistryInvitation: (...args: unknown[]) =>
+      revokeMinistryInvitation(...args),
   },
   callerCapabilitiesApi: {
     getCallerCapabilities: (...args: unknown[]) =>
@@ -81,6 +84,7 @@ function row(
     emailDelivery: { state: 'unavailable' },
     lastSentAt: null,
     canResend: false,
+    canRevoke: false,
     ...overrides,
   };
 }
@@ -424,14 +428,14 @@ describe('Invitations filters and history', () => {
   });
 });
 
-describe('Invitations resend', () => {
-  function refusal(status: number, error: string) {
-    return new AxiosError('refused', String(status), undefined, undefined, {
-      status,
-      data: { error, message: error },
-    } as AxiosResponse);
-  }
+function refusal(status: number, error: string) {
+  return new AxiosError('refused', String(status), undefined, undefined, {
+    status,
+    data: { error, message: error },
+  } as AxiosResponse);
+}
 
+describe('Invitations resend', () => {
   const resendButton = (email: string) =>
     screen.findByRole('button', {
       name: m.invitations_resend_label({ email }),
@@ -532,5 +536,176 @@ describe('Invitations resend', () => {
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(text));
     expect(toastSuccess).not.toHaveBeenCalled();
     await waitFor(() => expect(button).toBeEnabled());
+  });
+});
+
+describe('Invitations revoke', () => {
+  const revokeButton = (email: string) =>
+    screen.findByRole('button', {
+      name: m.invitations_revoke_label({ email }),
+    });
+
+  it('offers Revoke only on rows the server allows, never on a Church row', async () => {
+    listInvitations.mockResolvedValue(
+      page([
+        row({
+          id: 'mi-expired',
+          email: 'expired@example.com',
+          displayStatus: 'expired',
+          canRevoke: true,
+        }),
+        row({ id: 'mi-leader', email: 'leader@example.com' }),
+        row({
+          kind: 'church',
+          id: 'ci-admin',
+          email: 'admin@example.com',
+          ministryId: undefined,
+          ministryName: undefined,
+          ministryAccessLevel: undefined,
+          churchAccessLevel: 'admin',
+          canRevoke: true,
+        }),
+      ]),
+    );
+
+    renderInvitations();
+
+    const [expired, leader, church] = await rows();
+    expect(
+      within(expired).getByRole('button', {
+        name: 'Revogar o convite para expired@example.com',
+      }),
+    ).toHaveTextContent('Revogar');
+    expect(within(leader).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(church).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('changes nothing when the confirmation is canceled', async () => {
+    const user = userEvent.setup();
+    listInvitations.mockResolvedValue(page([row({ canRevoke: true })]));
+
+    renderInvitations();
+    await user.click(await revokeButton('ana@example.com'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Revogar o convite para ana@example.com?');
+    expect(dialog).toHaveTextContent(m.invitations_revoke_description());
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
+    );
+    expect(revokeMinistryInvitation).not.toHaveBeenCalled();
+    expect(await rows()).toHaveLength(1);
+  });
+
+  it('revokes once on confirmation, blocks a second submit, reports success and refetches the current filters', async () => {
+    const user = userEvent.setup();
+    listInvitations.mockResolvedValue(page([row({ canRevoke: true })]));
+    let finish: (value: unknown) => void = () => {};
+    revokeMinistryInvitation.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+
+    renderInvitations();
+    await user.click(await revokeButton('ana@example.com'));
+    const confirm = within(await screen.findByRole('alertdialog')).getByRole(
+      'button',
+      { name: 'Revogar convite' },
+    );
+    await user.click(confirm);
+
+    await waitFor(() => expect(confirm).toBeDisabled());
+    expect(confirm).toHaveTextContent('Revogando…');
+    await user.click(confirm);
+    expect(revokeMinistryInvitation).toHaveBeenCalledTimes(1);
+    expect(revokeMinistryInvitation).toHaveBeenCalledWith('m-worship', 'mi-1');
+    const listCalls = listInvitations.mock.calls.length;
+    finish(undefined);
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        'Convite para ana@example.com revogado',
+      ),
+    );
+    await waitFor(() =>
+      expect(listInvitations.mock.calls.length).toBeGreaterThan(listCalls),
+    );
+    expect(listInvitations.mock.calls.at(-1)).toEqual(
+      listInvitations.mock.calls[0],
+    );
+  });
+
+  it.each([
+    [
+      409,
+      'INVITATION_NOT_PENDING',
+      'Este convite não está mais pendente. Atualize a lista.',
+    ],
+    [
+      403,
+      'INSUFFICIENT_INVITATION_AUTHORITY',
+      'Não foi possível revogar o convite. Tente novamente.',
+    ],
+  ] as const)('explains a %i %s refusal in Portuguese and refetches', async (status, code, text) => {
+    const user = userEvent.setup();
+    listInvitations.mockResolvedValue(page([row({ canRevoke: true })]));
+    revokeMinistryInvitation.mockRejectedValue(refusal(status, code));
+
+    renderInvitations();
+    await user.click(await revokeButton('ana@example.com'));
+    const listCalls = listInvitations.mock.calls.length;
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Revogar convite',
+      }),
+    );
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(text));
+    expect(toastSuccess).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(listInvitations.mock.calls.length).toBeGreaterThan(listCalls),
+    );
+  });
+
+  it('shows who revoked, when and why in Portuguese, archived Ministries included', async () => {
+    listInvitations.mockResolvedValue(
+      page([
+        row({
+          id: 'manual',
+          status: 'canceled',
+          displayStatus: 'revoked',
+          closure: {
+            actor: { id: 'u2', name: 'Bia' },
+            at: '2026-11-02T10:00:00Z',
+            reason: 'manual',
+          },
+        }),
+        row({
+          id: 'archived',
+          ministryName: 'Coral antigo',
+          status: 'canceled',
+          displayStatus: 'revoked',
+          closure: {
+            actor: { id: 'u3', name: 'Caio' },
+            at: '2026-11-03T10:00:00Z',
+            reason: 'ministry-archived',
+          },
+        }),
+      ]),
+    );
+
+    renderInvitations();
+
+    const [manual, archived] = await rows();
+    expect(manual).toHaveTextContent(
+      'Revogado por Bia em 02/11/2026 10:00 · Revogado manualmente',
+    );
+    expect(archived).toHaveTextContent('Coral antigo');
+    expect(archived).toHaveTextContent(
+      'Revogado por Caio em 03/11/2026 10:00 · Revogado: Ministério arquivado',
+    );
+    expect(archived).not.toHaveTextContent('ministry-archived');
   });
 });

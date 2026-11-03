@@ -342,7 +342,7 @@ export function buildManagers({
     overrides.peopleListManager ??
     new DbPeopleListManager({
       peopleListRepository,
-      defaultPageSize: config.people.pageSize,
+      config,
     });
 
   const churchAccessManager =

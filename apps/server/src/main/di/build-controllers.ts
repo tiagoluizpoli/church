@@ -124,7 +124,7 @@ export function buildControllers({
       churchAccessManager,
       activeChurchResolver,
       authorityGuard,
-      maxPageSize: config.people.maxPageSize,
+      config,
     }),
     new RedemptionController({
       redemptionManager,

@@ -112,14 +112,14 @@ function ResendButton({ item }: RowActionProps) {
   );
 }
 
-/** Revoke behind a confirmation for a Ministry row the server allows; the server records who, when and why. */
+/** Revoke behind a confirmation for a row the server allows, dispatched by its tagged kind; the server records who, when and why. */
 function RevokeButton({ item }: RowActionProps) {
   const queryClient = useQueryClient();
   const churchId = useCallerCapabilitiesScope()?.churchId;
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const { ministryId, id, email } = item;
-  if (!item.canRevoke || item.kind !== 'ministry' || !ministryId) return null;
+  if (!item.canRevoke || (item.kind === 'ministry' && !ministryId)) return null;
 
   // The row leaves Pending and history changes; filters stay as they are.
   const refresh = () =>
@@ -130,7 +130,9 @@ function RevokeButton({ item }: RowActionProps) {
     if (pending) return;
     setPending(true);
     try {
-      await adminApi.revokeMinistryInvitation(ministryId, id);
+      await (item.kind === 'church'
+        ? invitationsApi.revokeChurchInvitation(id)
+        : adminApi.revokeMinistryInvitation(ministryId as string, id));
       toast.success(m.invitations_revoked_toast({ email }));
       setOpen(false);
       await refresh();
@@ -168,7 +170,9 @@ function RevokeButton({ item }: RowActionProps) {
               {m.invitations_revoke_dialog_title({ email })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {m.invitations_revoke_description()}
+              {item.kind === 'church'
+                ? m.invitations_revoke_church_description()
+                : m.invitations_revoke_description()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

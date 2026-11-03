@@ -18,6 +18,7 @@ const listInvitations = vi.fn();
 const resendMinistryInvitation = vi.fn();
 const revokeMinistryInvitation = vi.fn();
 const resendChurchInvitation = vi.fn();
+const revokeChurchInvitation = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 
@@ -26,6 +27,8 @@ vi.mock('@/utils/api-instances', async () => ({
     listInvitations: (...args: unknown[]) => listInvitations(...args),
     resendChurchInvitation: (...args: unknown[]) =>
       resendChurchInvitation(...args),
+    revokeChurchInvitation: (...args: unknown[]) =>
+      revokeChurchInvitation(...args),
   },
   adminApi: {
     resendMinistryInvitation: (...args: unknown[]) =>
@@ -575,7 +578,7 @@ describe('Invitations revoke', () => {
       name: m.invitations_revoke_label({ email }),
     });
 
-  it('offers Revoke only on rows the server allows, never on a Church row', async () => {
+  it('offers Revoke only on rows the server allows, Church rows included', async () => {
     listInvitations.mockResolvedValue(
       page([
         row({
@@ -607,7 +610,55 @@ describe('Invitations revoke', () => {
       }),
     ).toHaveTextContent('Revogar');
     expect(within(leader).queryByRole('button')).not.toBeInTheDocument();
-    expect(within(church).queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      within(church).getByRole('button', {
+        name: 'Revogar o convite para admin@example.com',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('warns that a Church offer takes its pending Ministry invitations with it and revokes it through the Church client', async () => {
+    const user = userEvent.setup();
+    listInvitations.mockResolvedValue(
+      page([
+        row({
+          kind: 'church',
+          id: 'ci-admin',
+          email: 'admin@example.com',
+          ministryId: undefined,
+          ministryName: undefined,
+          ministryAccessLevel: undefined,
+          churchAccessLevel: 'admin',
+          canRevoke: true,
+        }),
+      ]),
+    );
+    revokeChurchInvitation.mockResolvedValue(undefined);
+
+    renderInvitations();
+    await user.click(await revokeButton('admin@example.com'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent(
+      'Revogar o convite para admin@example.com?',
+    );
+    expect(dialog).toHaveTextContent(
+      'Todos os convites de ministério pendentes desta oferta também são revogados.',
+    );
+    const listCalls = listInvitations.mock.calls.length;
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Revogar convite' }),
+    );
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        'Convite para admin@example.com revogado',
+      ),
+    );
+    expect(revokeChurchInvitation).toHaveBeenCalledWith('ci-admin');
+    expect(revokeMinistryInvitation).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(listInvitations.mock.calls.length).toBeGreaterThan(listCalls),
+    );
   });
 
   it('changes nothing when the confirmation is canceled', async () => {

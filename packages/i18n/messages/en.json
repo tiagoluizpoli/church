@@ -628,6 +628,7 @@
   "invitations_revoke_label": "Revoke the invitation to {email}",
   "invitations_revoke_dialog_title": "Revoke the invitation to {email}?",
   "invitations_revoke_description": "The invitation link stops working. Access already accepted stays, no email is sent, and emails already sent are not recalled.",
+  "invitations_revoke_church_description": "The invitation link stops working. Every pending Ministry invitation in this offer is revoked too. Access already accepted stays, no email is sent, and emails already sent are not recalled.",
   "invitations_revoke_cancel": "Cancel",
   "invitations_revoke_confirm": "Revoke invitation",
   "invitations_revoked_toast": "Invitation to {email} revoked",

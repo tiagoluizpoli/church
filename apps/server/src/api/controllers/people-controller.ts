@@ -112,7 +112,8 @@ export class PeopleController implements FastifyController {
         const result = await this.peopleListManager.get({
           churchId,
           scope,
-          memberId: request.params.memberId,
+          memberId: (request.params as z.infer<typeof personParamsSchema>)
+            .memberId,
         });
         if (!result) return refuse({ reply, request, code: 'NOT_FOUND' });
         const { person, ...capabilities } = result;

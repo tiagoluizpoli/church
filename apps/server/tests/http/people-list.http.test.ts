@@ -480,7 +480,7 @@ describe('GET /people/{memberId}', () => {
       await buildRoleQualification({
         db,
         churchId: CHURCH_A,
-        ministryMembershipId: membership.id,
+        ministryMembershipId: membership?.id ?? '',
         roleId,
       });
     }

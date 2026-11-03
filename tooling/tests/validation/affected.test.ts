@@ -162,6 +162,7 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
+      'tests/identity/invitation-journey.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -190,6 +191,7 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+      'tests/identity/invitation-journey.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -203,6 +205,7 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+      'tests/identity/invitation-journey.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -246,6 +249,7 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
+      'tests/identity/invitation-journey.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
@@ -260,6 +264,7 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
+      'tests/identity/invitation-journey.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -700,6 +705,7 @@ describe('classifyChanges', () => {
       'tests/identity/active-church-switching.spec.ts',
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
       'tests/identity/first-admin-onboarding.spec.ts',
+      'tests/identity/invitation-journey.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/route-protection.spec.ts',

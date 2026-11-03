@@ -26,6 +26,11 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
+/** The page size the route's own schema bounds by the configured maximum. */
+interface ListLimitQuery {
+  limit?: number;
+}
+
 interface InvitationControllerDependencies {
   invitationListManager: IInvitationListManager;
   ministryInvitationManager: IMinistryInvitationManager;
@@ -115,7 +120,8 @@ export class InvitationController implements FastifyController {
             };
         const { cursor, limit, ...filters } = request.query as z.infer<
           typeof invitationListQuerystringSchema
-        > & { limit?: number };
+        > &
+          ListLimitQuery;
         const page = await this.invitationListManager.list({
           churchId,
           scope,

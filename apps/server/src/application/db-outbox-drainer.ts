@@ -420,9 +420,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         if (kind === 'ministry_invitation') {
           const stillPending = await this.invitationRepository.findById({
             churchId: message.churchId,
-            ministryInvitationId: (
-              request.data as { ministryInvitationId: string }
-            ).ministryInvitationId,
+            ministryInvitationId: (request.data as MinistryInvitationSubject)
+              .ministryInvitationId,
           });
           await this.failTerminally({
             message,
@@ -672,6 +671,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       }),
     );
   }
+}
+
+interface MinistryInvitationSubject {
+  ministryInvitationId: string;
 }
 
 interface DbOutboxDrainerDependencies {

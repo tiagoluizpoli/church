@@ -41,6 +41,7 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { VerificationCodeInspector } from '../domain/contracts/infrastructure/verification-code-inspector';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
+import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { maskEmail } from '../domain/services/mask-email';
 
@@ -149,6 +150,12 @@ function isInvitationRedeemable({
       right: fromDate({ date: now }),
     }) > 0
   );
+}
+
+interface EnsureChurchInvitationPendingInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx: TransactionContext;
 }
 
 /**
@@ -261,6 +268,8 @@ export class DbRedemptionManager implements RedemptionManager {
       });
       return { ...outcome, sessionCookie: committed.sessionCookie };
     } catch (error) {
+      if (error instanceof InvitationNotPendingError)
+        return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
       const reason =
         error instanceof MinistryGrantFailure
           ? 'MINISTRY_ACCEPTANCE_FAILED'
@@ -294,6 +303,11 @@ export class DbRedemptionManager implements RedemptionManager {
     now,
     tx,
   }: AdmitNewPersonInput): Promise<AdmittedNewPerson> {
+    await this.ensureChurchInvitationPending({
+      churchId: preview.churchId,
+      churchInvitationId: preview.churchInvitationId,
+      tx,
+    });
     const account = await this.identityGateway.createAccount({
       email: preview.email,
       name,
@@ -360,6 +374,24 @@ export class DbRedemptionManager implements RedemptionManager {
   }
 
   /** After rollback: a committed User with this email (pre-existing or a racing signup) is never touched. */
+  /**
+   * Row-locks the Church Invitation before Better Auth accepts it: that write
+   * is unconditional, so without the lock a revoke committing in between
+   * would be overwritten. Same lock order as revoke (Church row, then halves).
+   */
+  private async ensureChurchInvitationPending({
+    churchId,
+    churchInvitationId,
+    tx,
+  }: EnsureChurchInvitationPendingInput): Promise<void> {
+    const status = await this.invitationRepository.lockChurchInvitation({
+      churchId,
+      churchInvitationId,
+      tx,
+    });
+    if (status !== 'pending') throw new InvitationNotPendingError();
+  }
+
   private async classifyIdentityFailure({
     email,
   }: ClassifyIdentityFailureInput): Promise<
@@ -601,6 +633,11 @@ export class DbRedemptionManager implements RedemptionManager {
         await this.unitOfWork.run(async (tx) => {
           const churchInvitationId =
             ministryInvitation.churchInvitationId as ChurchInvitationId;
+          await this.ensureChurchInvitationPending({
+            churchId: ministryInvitation.churchId,
+            churchInvitationId,
+            tx,
+          });
           await this.identityGateway.acceptChurchInvitation({
             churchInvitationId,
             sessionCookie,
@@ -613,7 +650,9 @@ export class DbRedemptionManager implements RedemptionManager {
             tx,
           });
         });
-      } catch {
+      } catch (error) {
+        if (error instanceof InvitationNotPendingError)
+          return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
         return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
       }
     }

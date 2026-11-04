@@ -4,12 +4,14 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
+import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
 import {
   cloneDatabasesFromTemplate,
   DatabaseProvisioningError,
   PROVISIONING_LOCK_KEY,
   provisionDatabases,
 } from '../src/provision-databases';
+import { worktreeOrUnspecified } from '../src/purpose-database-url-guard';
 import { scratchDatabaseName } from '../src/scratch-database-name';
 
 const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
@@ -17,7 +19,12 @@ const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
 );
 const [DEV_DATABASE = '', INT_DATABASE = '', E2E_DATABASE = ''] =
   SCRATCH_DATABASES;
-const WORKER_DATABASE = scratchDatabaseName({ purpose: 'w1', kind: 'int' });
+// A worker id no suite uses: the server's clones are w1..w2 and per-run clones use a pid,
+// and suites now run in parallel, so reusing a live name would drop another suite's database.
+const WORKER_DATABASE = integrationWorkerDatabaseName({
+  worktree: worktreeOrUnspecified(),
+  workerId: 99,
+});
 const LOCK_WAIT_MS = 300;
 const POOL_CLOSE_RACE_DATABASE_COUNT = 10;
 const POOL_CLOSE_RACE_ITERATIONS = 10;

@@ -4,6 +4,7 @@ import {
   type LaneStep,
   runStages,
 } from './run-lanes';
+import { formatLockWait, holdValidateLock } from './validate-lock';
 
 /**
  * Unit tests are CPU-bound and integration tests are DB/IO-bound, so the two
@@ -28,11 +29,18 @@ export const E2E_STEPS: LaneStep[] = [
 ];
 
 if (import.meta.main) {
-  const results = await runStages({
-    finalSteps: E2E_STEPS,
-    lanes: [LINT_TYPECHECK_UNIT_LANE, INTEGRATION_LANE],
-  });
+  const lock = await holdValidateLock({ tier: 'validate' });
+  let results: Awaited<ReturnType<typeof runStages>>;
+  try {
+    results = await runStages({
+      finalSteps: E2E_STEPS,
+      lanes: [LINT_TYPECHECK_UNIT_LANE, INTEGRATION_LANE],
+    });
+  } finally {
+    lock.release();
+  }
   console.log('');
   console.log(formatStepTable({ results }));
+  console.log(formatLockWait({ waitedMs: lock.waitedMs }));
   if (hasFailure({ results })) process.exitCode = 1;
 }

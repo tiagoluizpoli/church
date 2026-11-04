@@ -17,6 +17,7 @@ import {
   type StepResult,
 } from './run-lanes';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
+import { formatLockWait, holdValidateLock } from './validate-lock';
 
 export { classifyChanges, isScriptsOnlyAddition } from './affected-plan';
 export { readSeedImpactTrailers };
@@ -77,6 +78,8 @@ export interface RunValidationInput {
   plan: ValidationPlan;
   skipE2e: boolean;
   tier?: ValidationTier;
+  /** Keep whole-workspace unit suites in `affected` (the CI Develop Gate). */
+  wholeUnitSuites?: boolean;
 }
 
 interface RunValidationResult {
@@ -108,6 +111,8 @@ const UNIT_ONLY_LAYERS: TestLayer[] = ['test:unit'];
 // The script may run from a temporary repo, so read manifests from this checkout.
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 const UNIT_CONCURRENCY = '2';
+// db + auth + server integration run together; each has its own cloned database and capped workers.
+const INTEGRATION_CONCURRENCY = '3';
 
 /** Where the import graph can trace a changed file to the tests that use it. */
 const TRACEABLE_PATH = /^(?:apps|packages)\/[^/]+\/(?:src|tests|seeds)\//;
@@ -333,6 +338,7 @@ export function buildValidationSteps({
   plan,
   skipE2e: skipE2eArgument,
   tier = 'affected',
+  wholeUnitSuites = false,
 }: RunValidationInput): ValidationSteps {
   const noDocker = tier === 'no-docker';
   const skipE2e = skipE2eArgument || noDocker;
@@ -388,13 +394,14 @@ export function buildValidationSteps({
     const tierLayers = noDocker ? UNIT_ONLY_LAYERS : ALL_TEST_LAYERS;
     for (const testLayer of tierLayers) {
       if (!plan.testLayers.includes(testLayer)) continue;
-      const layerSteps = noDocker
-        ? buildRelatedUnitSteps({ plan })
-        : buildTestLayerSteps({
-            testLayer,
-            testTargets: plan.testTargets,
-            workspaceNames: plan.workspaceNames,
-          });
+      const layerSteps =
+        testLayer === 'test:unit' && !wholeUnitSuites
+          ? buildRelatedUnitSteps({ plan })
+          : buildTestLayerSteps({
+              testLayer,
+              testTargets: plan.testTargets,
+              workspaceNames: plan.workspaceNames,
+            });
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
       else checkLane.push(...layerSteps);
     }
@@ -443,10 +450,11 @@ async function runValidation({
   plan,
   skipE2e,
   tier,
+  wholeUnitSuites,
 }: RunValidationInput): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
   const { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane } =
-    buildValidationSteps({ onlyE2e, plan, skipE2e, tier });
+    buildValidationSteps({ onlyE2e, plan, skipE2e, tier, wholeUnitSuites });
 
   const results = await runStages({
     finalSteps: e2eSteps,
@@ -483,7 +491,10 @@ export function buildTestLayerSteps({
   const remainingWorkspaceNames = workspaceNames.filter(
     (workspaceName) => !targetedWorkspaceNames.has(workspaceName),
   );
-  const concurrency = testLayer === 'test:integration' ? '1' : UNIT_CONCURRENCY;
+  const concurrency =
+    testLayer === 'test:integration'
+      ? INTEGRATION_CONCURRENCY
+      : UNIT_CONCURRENCY;
   const steps: LaneStep[] = [];
 
   if (remainingWorkspaceNames.length > 0) {
@@ -514,36 +525,65 @@ export function buildTestLayerSteps({
   return steps;
 }
 
-/**
- * The no-docker tier's unit steps: a workspace runs only the tests whose
- * imports reach the changed files that selected it. A change the import
- * graph can't trace — root infrastructure, a deletion, or anything outside
- * `src/`, `tests/` or `seeds/` (config, env, package.json, tsconfig), test
- * setup or fixtures — runs that workspace's whole suite instead.
- */
-function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
-  const deletedPaths = new Set(plan.deletedPaths);
-  const wholeSuiteWorkspaceNames: string[] = [];
-  const relatedSteps: LaneStep[] = [];
+interface UnitSelection {
+  changedPaths: string[];
+  /** Why the whole suite runs; undefined when only related tests run. */
+  wholeSuiteReason: string | undefined;
+  workspaceName: string;
+}
 
-  for (const workspaceName of plan.workspaceNames) {
+/**
+ * Per workspace: run only the tests whose imports reach the changed files
+ * that selected it, unless the change can't be traced by the import graph —
+ * root infrastructure, a deletion, anything outside `src/`, `tests/` or
+ * `seeds/` (config, env, package.json, tsconfig), test setup or fixtures.
+ */
+function selectUnitTests({ plan }: { plan: ValidationPlan }): UnitSelection[] {
+  const deletedPaths = new Set(plan.deletedPaths);
+  return plan.workspaceNames.map((workspaceName) => {
     const reasons = plan.workspaceSelectionReasons.filter(
       (reason) => reason.workspaceName === workspaceName,
     );
     const changedPaths = [
       ...new Set(reasons.map(({ changedPath }) => changedPath)),
     ];
-    const workspacePath = RELATED_UNIT_WORKSPACE_PATHS.get(workspaceName);
-    const isTraceable =
-      workspacePath !== undefined &&
-      reasons.every(({ detail }) => detail !== 'root-infrastructure') &&
-      changedPaths.every(
+    let wholeSuiteReason: string | undefined;
+    if (!RELATED_UNIT_WORKSPACE_PATHS.has(workspaceName)) {
+      wholeSuiteReason = 'no related-test support';
+    } else if (reasons.some(({ detail }) => detail === 'root-infrastructure')) {
+      wholeSuiteReason = `root infrastructure: ${
+        reasons.find(({ detail }) => detail === 'root-infrastructure')
+          ?.changedPath
+      }`;
+    } else {
+      const untraceable = changedPaths.find(
         (changedPath) =>
-          !deletedPaths.has(changedPath) &&
-          TRACEABLE_PATH.test(changedPath) &&
-          !UNTRACEABLE_PATH.test(changedPath),
+          deletedPaths.has(changedPath) ||
+          !TRACEABLE_PATH.test(changedPath) ||
+          UNTRACEABLE_PATH.test(changedPath),
       );
-    if (!isTraceable) {
+      if (untraceable !== undefined) {
+        wholeSuiteReason = `${
+          deletedPaths.has(untraceable) ? 'deleted file' : 'untraceable change'
+        }: ${untraceable}`;
+      }
+    }
+    return { changedPaths, wholeSuiteReason, workspaceName };
+  });
+}
+
+/** Unit steps for the tiers that narrow by import graph. */
+function buildRelatedUnitSteps({ plan }: { plan: ValidationPlan }): LaneStep[] {
+  const wholeSuiteWorkspaceNames: string[] = [];
+  const relatedSteps: LaneStep[] = [];
+
+  for (const {
+    changedPaths,
+    wholeSuiteReason,
+    workspaceName,
+  } of selectUnitTests({ plan })) {
+    const workspacePath = RELATED_UNIT_WORKSPACE_PATHS.get(workspaceName);
+    if (wholeSuiteReason !== undefined || workspacePath === undefined) {
       wholeSuiteWorkspaceNames.push(workspaceName);
       continue;
     }
@@ -607,12 +647,14 @@ interface ExplainPlanInput {
   baseRef: string | undefined;
   plan: ValidationPlan;
   tier?: ValidationTier;
+  wholeUnitSuites?: boolean;
 }
 
 export function explainPlan({
   baseRef,
   plan,
   tier = 'affected',
+  wholeUnitSuites = false,
 }: ExplainPlanInput): string {
   const notRun = tier === 'no-docker' ? ' (not run by validate:no-docker)' : '';
   const lines: string[] = [
@@ -642,6 +684,20 @@ export function explainPlan({
       lines.push(
         `      ${reason.detail} <- ${reason.changedPath} (${reason.workspaceName})`,
       );
+    }
+  }
+
+  if (plan.testLayers.includes('test:unit')) {
+    lines.push('', 'Unit test selection:');
+    for (const { wholeSuiteReason, workspaceName } of selectUnitTests({
+      plan,
+    })) {
+      const mode = wholeUnitSuites
+        ? 'whole suite (CI keeps whole-workspace selection)'
+        : wholeSuiteReason === undefined
+          ? 'related tests'
+          : `whole suite (${wholeSuiteReason})`;
+      lines.push(`  - ${workspaceName}: ${mode}`);
     }
   }
 
@@ -777,20 +833,30 @@ if (import.meta.main) {
     console.error('');
     console.error(explainPlan({ baseRef, plan }));
   } else {
-    const { failed, timings } = await runValidation({
-      onlyE2e: argumentsResult.onlyE2e,
-      plan,
-      skipE2e: argumentsResult.skipE2e,
-      tier: argumentsResult.tier,
-    });
+    const lock = await holdValidateLock({ tier: argumentsResult.tier });
+    let failed: boolean;
+    let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
+    try {
+      ({ failed, timings } = await runValidation({
+        onlyE2e: argumentsResult.onlyE2e,
+        plan,
+        skipE2e: argumentsResult.skipE2e,
+        tier: argumentsResult.tier,
+        wholeUnitSuites: argumentsResult.dailyGate,
+      }));
+    } finally {
+      lock.release();
+    }
     const summary = formatTimingSummary({ timings });
     const explanation = explainPlan({
       baseRef,
       plan,
       tier: argumentsResult.tier,
+      wholeUnitSuites: argumentsResult.dailyGate,
     });
     console.log('');
     console.log(summary);
+    console.log(formatLockWait({ waitedMs: lock.waitedMs }));
     console.log('');
     console.log(explanation);
     if (process.env.GITHUB_STEP_SUMMARY) {

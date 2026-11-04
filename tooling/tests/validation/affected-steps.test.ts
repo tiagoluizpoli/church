@@ -130,6 +130,7 @@ describe('buildValidationSteps', () => {
         workspaceNames: ['web', 'server'],
       }),
       skipE2e: false,
+      wholeUnitSuites: true,
     });
 
     expect(integrationLane).toEqual([]);

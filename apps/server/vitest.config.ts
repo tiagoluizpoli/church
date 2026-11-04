@@ -100,6 +100,7 @@ export default defineConfig({
           include: [
             'tests/api/**/*.test.ts',
             'tests/application/participation-preparation.unit.test.ts',
+            'tests/application/db-availability-check-manager.test.ts',
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',

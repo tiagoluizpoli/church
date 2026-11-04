@@ -1,5 +1,11 @@
 import { appConfig } from '@church/app-config';
-import { cycle, notification, outboxMessage } from '@church/db';
+import {
+  availabilityCheck,
+  cycle,
+  ministryParticipation,
+  notification,
+  outboxMessage,
+} from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
@@ -264,6 +270,16 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       participationId: MinistryParticipationId.from(participationId),
     });
 
+    const storedParticipation = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.id, participationId));
+    expect(storedParticipation[0]?.state).toBe('availability_requested');
+    const storedChecks = await schedulingTestDb
+      .select()
+      .from(availabilityCheck)
+      .where(eq(availabilityCheck.cycleId, cycleId));
+    expect(storedChecks).toHaveLength(3);
     const queued = await outboxRows();
     expect(queued).toHaveLength(3);
     expect(queued.map((row) => row.payload)).toContainEqual(
@@ -334,6 +350,16 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     ).rejects.toThrow('boom');
 
     expect(await outboxRows()).toHaveLength(0);
+    const storedParticipation = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.id, participationId));
+    expect(storedParticipation[0]?.state).toBe('preparing');
+    const storedChecks = await schedulingTestDb
+      .select()
+      .from(availabilityCheck)
+      .where(eq(availabilityCheck.cycleId, cycleId));
+    expect(storedChecks).toHaveLength(0);
   });
 
   it('Remind enqueues availability_reminder for the still-pending members', async () => {

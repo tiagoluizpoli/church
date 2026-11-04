@@ -1,4 +1,5 @@
 import * as schema from '@church/db';
+import { clearPublicTables } from '@church/db/clear-public-tables';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -17,9 +18,7 @@ const churchId = ChurchId.from('11111111-1111-4111-8111-c11111111121');
 // Roots at `organization`/`user`: see the note on `truncateAll` in
 // `tests/integration/repositories/setup.ts`.
 async function resetDb(): Promise<void> {
-  await testDb.execute(`
-    TRUNCATE TABLE organization, "user" RESTART IDENTITY CASCADE
-  `);
+  await clearPublicTables({ pool });
 }
 
 /** Only the Church row is exercised; the other collaborators stay unused. */

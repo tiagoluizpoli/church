@@ -1,4 +1,5 @@
 import * as schema from '@church/db';
+import { clearPublicTables } from '@church/db/clear-public-tables';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
@@ -50,9 +51,7 @@ const retiredVolunteerId = VolunteerId.from(
 // Roots at `organization`/`user`: see the note on `truncateAll` in
 // `tests/integration/repositories/setup.ts`.
 async function resetDb(): Promise<void> {
-  await testDb.execute(`
-    TRUNCATE TABLE organization, "user" RESTART IDENTITY CASCADE
-  `);
+  await clearPublicTables({ pool });
 }
 
 async function seed(): Promise<void> {

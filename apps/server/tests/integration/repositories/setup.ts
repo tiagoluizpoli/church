@@ -1,4 +1,5 @@
 import * as schema from '@church/db';
+import { clearPublicTables } from '@church/db/clear-public-tables';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { parseCalendarDay, parseInstant } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -49,16 +50,12 @@ export const volunteerDashboardTimeline = {
 } as const;
 
 /**
- * Roots at `organization` and `user`, never at `church`. `church` is now an
- * extension row keyed by the organization id, so cascading from it leaves the
- * organization, its members and its invitations standing — which does not fail
- * here, it fails later as an unexplained authorization result in another spec.
- * `tests/tenancy/truncation-root.test.ts` guards this.
+ * Empties every table (see `clearPublicTables`), so no organization, member
+ * or invitation debris leaks into another spec as an unexplained
+ * authorization result. `tests/tenancy/truncation-root.test.ts` guards this.
  */
 export async function truncateAll(): Promise<void> {
-  await testDb.execute(`
-    TRUNCATE TABLE organization, "user", verification, todo RESTART IDENTITY CASCADE
-  `);
+  await clearPublicTables({ pool });
 }
 
 /**

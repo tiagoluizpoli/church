@@ -99,6 +99,7 @@ export default defineConfig({
           maxWorkers: 2,
           include: [
             'tests/api/**/*.test.ts',
+            'tests/application/participation-preparation.unit.test.ts',
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',

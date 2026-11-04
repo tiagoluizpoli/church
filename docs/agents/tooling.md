@@ -157,6 +157,37 @@ a monitoring tool your runtime does not provide. Starting the gate is not
 passing it: read its exit status and stage table, and fix every failure
 before handoff. `bun run validate` stays the final handoff or merge gate.
 
+After a red gate, do not rerun it blind: iterate on the focused failing test
+(the focused-workspace command above), then run the gate once more. On a
+wrapper run (a spec with ticket branches that get no CI), workers run the
+per-ticket gate once each and the coordinator owns the single final
+`bun run validate` on the integration branch; workers do not run it.
+
+## Validate slot
+
+`validate`, `validate:affected` and `validate:no-docker` share one slot per
+machine, across every worktree (`~/.local/state/church/validate.lock.json`,
+`tooling/validation/validate-lock.ts`). Focused test commands
+(`bunx turbo -F … --only`, `test:unit`, `test:e2e`) never take it, and CI
+skips it. A second gate prints, and repeats every 30 seconds:
+
+```text
+⏳ Waiting for the validate slot: held by <worktree> (pid <pid>, <tier>, started <n> min ago).
+```
+
+That line means the gate is queued, not hung: it starts when the holder
+finishes. A holder whose process died is taken over (`Taking over the validate
+slot from dead holder …`) with no manual cleanup; the slot is released when
+the gate passes, fails, or gets SIGINT/SIGTERM. After 30 minutes
+(`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run fails naming the holder.
+The summary ends with `Waited Ns for the validate slot.`
+
+The pre-push hook's `validate:no-docker` does wait, but at most 5 minutes
+(`lefthook.yml` sets the timeout): it must not hang a push behind a 10+ minute
+gate, and it must not push unvalidated behind one either. If the holder is
+still running, the push fails naming it; retry when it finishes. A deliberate
+`git push --no-verify` is the maintainer's override.
+
 In the next multi-ticket run, record per ticket the affected-gate run count,
 the reason for each rerun, the final outcome, and any waiting failures (sleep
 guard, unsupported monitor calls), and report them as follow-up evidence for

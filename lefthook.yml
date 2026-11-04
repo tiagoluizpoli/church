@@ -21,6 +21,9 @@ pre-push:
   parallel: true
   jobs:
     - name: no-docker-validation
+      # Waits at most 5 minutes behind a running gate, then fails naming the holder.
+      env:
+        CHURCH_VALIDATE_LOCK_TIMEOUT_MS: "300000"
       run: bun run validate:no-docker
 
 commit-msg:

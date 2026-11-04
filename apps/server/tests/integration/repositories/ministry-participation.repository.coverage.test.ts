@@ -10,6 +10,7 @@ import {
   MinistryId,
   MinistryParticipationId,
 } from '@/domain/branded-ids';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import {
   createSchedulingPhase3Cycle,
@@ -94,6 +95,38 @@ describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
       .from(ministryParticipation)
       .where(eq(ministryParticipation.id, participation.id));
     expect(afterSecondTouch?.touchedAt).toEqual(firstTouchedAt);
+  });
+
+  it("hides another Church's participation from getById and scope resolution", async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const own = await seedCycleAndEvent({ seed });
+    const foreign = await seedCycleAndEvent({
+      seed,
+      churchId: seed.churchBId,
+      ministryId: seed.ministryBId,
+    });
+    const churchId = ChurchId.from(seed.churchAId);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+    const scope = new DrizzleSchedulingScopeResolver({ db: schedulingTestDb });
+    const foreignId = MinistryParticipationId.from(foreign.participation.id);
+
+    await expect(
+      repo.getById({ churchId, participationId: foreignId }),
+    ).rejects.toThrow(NotFoundError);
+    await expect(
+      scope.resolveParticipationMinistry({
+        churchId,
+        participationId: foreignId,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      scope.resolveParticipationMinistry({
+        churchId,
+        participationId: MinistryParticipationId.from(own.participation.id),
+      }),
+    ).resolves.toBe(seed.ministryAId);
   });
 });
 

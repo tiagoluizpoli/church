@@ -1,5 +1,6 @@
 import { fromDate, parseCalendarDay, parseTimeOfDay } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
+import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import {
@@ -14,16 +15,6 @@ import {
   SectorId,
   TemplateTimeBlockId,
 } from '@/domain/branded-ids';
-import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
-import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
-import type { EventTemplateRepository } from '@/domain/contracts/infrastructure/event-template.repository';
-import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
-import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
-import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
-import type { PlanningEventRepository } from '@/domain/contracts/infrastructure/planning-event.repository';
-import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
-import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
-import type { UsualSetupRepository } from '@/domain/contracts/infrastructure/usual-setup.repository';
 import { Church } from '@/domain/entities/church';
 import { Cycle } from '@/domain/entities/cycle';
 import { Event, type EventStatus } from '@/domain/entities/event';
@@ -34,20 +25,97 @@ import { MinistryParticipation } from '@/domain/entities/ministry-participation'
 import { TemplateTimeBlock } from '@/domain/entities/template-time-block';
 import { UsualSetup } from '@/domain/entities/usual-setup';
 import {
+  DraftStaffingReconciliationRequiredError,
   EventOutsideCycleError,
   IllegalStateTransitionError,
   LastRemainingEventTimeBlockError,
+  OverlappingCycleError,
 } from '@/domain/errors';
+import {
+  createChurchRepositoryFake,
+  createCycleRepositoryFake,
+  createEventTemplateRepositoryFake,
+  createEventTimeBlockRepositoryFake,
+  createMinistryParticipationRepositoryFake,
+  createMinistryRepositoryFake,
+  createPlanningEventRepositoryFake,
+  createShiftRepositoryFake,
+  createTransactionContextFake,
+  createUnitOfWorkFake,
+  createUsualSetupRepositoryFake,
+} from '@/tests/test-support/repository-contract-fakes';
 
 const churchId = ChurchId.from('church-1');
 const cycleId = CycleId.from('cycle-1');
 const eventId = EventId.from('event-1');
 const eventTimeBlockId = EventTimeBlockId.from('block-1');
+const startDate = new Date('2099-01-01T00:00:00Z');
+const endDate = new Date('2099-02-01T00:00:00Z');
 const start = new Date('2099-01-02T09:00:00Z');
 const end = new Date('2099-01-02T10:00:00Z');
 const instant = (date: Date) => fromDate({ date });
+const tx = createTransactionContextFake();
 
-function makeEvent(status: EventStatus = 'draft', owner = cycleId) {
+/** The staffing seeder and repositories both planning managers share. */
+function createPlanningDependencies() {
+  const cycleRepository = createCycleRepositoryFake();
+  const eventRepository = createPlanningEventRepositoryFake();
+  const churchRepository = createChurchRepositoryFake();
+  churchRepository.getById.mockResolvedValue(
+    new Church({
+      id: churchId,
+      props: { name: 'Church', slug: 'church', timezone: 'UTC' },
+    }),
+  );
+  const participationRepository = createMinistryParticipationRepositoryFake();
+  const shiftRepository = createShiftRepositoryFake();
+  const usualSetupRepository = createUsualSetupRepositoryFake();
+  const ministryRepository = createMinistryRepositoryFake();
+  const unitOfWork = createUnitOfWorkFake({ tx });
+  const staffingSeeder = new UsualSetupStaffingSeeder({
+    participationRepository,
+    shiftRepository,
+    usualSetupRepository,
+    ministryRepository,
+  });
+  return {
+    cycleRepository,
+    eventRepository,
+    churchRepository,
+    participationRepository,
+    shiftRepository,
+    usualSetupRepository,
+    ministryRepository,
+    unitOfWork,
+    staffingSeeder,
+  };
+}
+
+function createCycleHarness() {
+  const cycle = new Cycle({
+    id: cycleId,
+    props: {
+      churchId,
+      name: 'January',
+      startDate: parseCalendarDay({ value: '2099-01-01' }),
+      endDate: parseCalendarDay({ value: '2099-02-01' }),
+    },
+  });
+  const dependencies = createPlanningDependencies();
+  dependencies.cycleRepository.create.mockResolvedValue(cycle);
+  dependencies.cycleRepository.findOverlapping.mockResolvedValue([]);
+  dependencies.cycleRepository.acquireChurchLock.mockResolvedValue(undefined);
+  const manager = new DbCycleManager(dependencies);
+  return { manager, cycle, ...dependencies };
+}
+
+function makeEvent({
+  status = 'draft',
+  owner = cycleId,
+}: {
+  status?: EventStatus;
+  owner?: CycleId;
+} = {}) {
   return new Event({
     id: eventId,
     props: {
@@ -60,7 +128,11 @@ function makeEvent(status: EventStatus = 'draft', owner = cycleId) {
     },
   });
 }
-function makeCycle(state: 'draft' | 'sent' | 'past' = 'draft') {
+function makeCycle({
+  state = 'draft',
+}: {
+  state?: 'draft' | 'sent' | 'past';
+} = {}) {
   return new Cycle({
     id: cycleId,
     props: {
@@ -72,7 +144,7 @@ function makeCycle(state: 'draft' | 'sent' | 'past' = 'draft') {
     },
   });
 }
-function makeBlock(owner = eventId) {
+function makeBlock({ owner = eventId }: { owner?: EventId } = {}) {
   return new EventTimeBlock({
     id: eventTimeBlockId,
     props: {
@@ -84,136 +156,234 @@ function makeBlock(owner = eventId) {
     },
   });
 }
-function createHarness() {
-  const cycleRepository: CycleRepository = {
-    create: vi.fn(),
-    list: vi.fn(),
-    getById: vi.fn().mockResolvedValue(makeCycle()),
-    findOverlapping: vi.fn(),
-    updateState: vi.fn(),
-    acquireChurchLock: vi.fn(),
-  };
-  const eventRepository: PlanningEventRepository = {
-    createEvent: vi.fn().mockResolvedValue(makeEvent()),
-    updateEvent: vi.fn().mockResolvedValue(makeEvent()),
-    getEvent: vi.fn().mockResolvedValue(makeEvent()),
-    deleteEvent: vi.fn(),
-    listCycleEvents: vi.fn().mockResolvedValue([]),
-    createEventTimeBlock: vi.fn(),
-    seedParticipations: vi.fn(),
-  };
-  const templateRepository: EventTemplateRepository = {
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    list: vi.fn(),
-    getById: vi.fn(),
-    getByIds: vi.fn().mockResolvedValue([]),
-    getUsage: vi.fn(),
-  };
-  const eventTimeBlockRepository: EventTimeBlockRepository = {
-    getById: vi.fn().mockResolvedValue(makeBlock()),
-    listByEvent: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockResolvedValue(makeBlock()),
-    update: vi.fn().mockResolvedValue(makeBlock()),
-    deleteById: vi.fn(),
-    findOverlapping: vi.fn(),
-    deleteByEvent: vi.fn(),
-    countActiveAssignments: vi.fn(),
-  };
-  const churchRepository: ChurchRepository = {
-    getById: vi.fn().mockResolvedValue(
-      new Church({
-        id: churchId,
-        props: { name: 'Church', slug: 'church', timezone: 'UTC' },
-      }),
-    ),
-    getBySlug: vi.fn(),
-    listAdminUserIds: vi.fn(),
-    findMemberEmail: vi.fn(),
-    findMemberContact: vi.fn(),
-    findUserName: vi.fn(),
-  };
-  const participationRepository: MinistryParticipationRepository = {
-    getById: vi.fn(),
-    findByMinistryEvent: vi.fn(),
-    create: vi.fn(),
-    listByEvent: vi.fn(),
-    hasCycleStaffing: vi.fn(),
-    listByMinistry: vi.fn(),
-    listByIds: vi.fn(),
-    updateState: vi.fn(),
-    listInclusions: vi.fn(),
-    replaceInclusions: vi.fn(),
-    addInclusion: vi.fn(),
-    touch: vi.fn(),
-    listScheduleSummaries: vi.fn(),
-  };
-  const shiftRepository: ShiftRepository = {
-    createMany: vi.fn(),
-    getById: vi.fn(),
-    listByParticipation: vi.fn(),
-    listByEventTimeBlock: vi.fn(),
-    update: vi.fn(),
-    deleteById: vi.fn(),
-    deleteByEventTimeBlock: vi.fn(),
-    upsertRequirement: vi.fn(),
-    listRequirementsByParticipation: vi.fn(),
-    getRequirementForShift: vi.fn(),
-  };
-  const usualSetupRepository: UsualSetupRepository = {
-    listByMinistry: vi.fn(),
-    listByChurch: vi.fn(),
-    upsertBlock: vi.fn(),
-  };
-  const ministryRepository: MinistryRepository = {
-    getById: vi.fn(),
-    listByChurch: vi.fn(),
-    create: vi.fn(),
-    rename: vi.fn(),
-    lockActive: vi.fn(),
-    listUnendedParticipationCycles: vi.fn(),
-    archive: vi.fn(),
-    getSettings: vi.fn(),
-    updateDefaultDirection: vi.fn(),
-  };
-  const unitOfWork = {
-    run: vi.fn((work: (tx: unknown) => Promise<unknown>) => work('tx')),
-    runWith: vi.fn(),
-  } as unknown as UnitOfWork;
-  const staffingSeeder = new UsualSetupStaffingSeeder({
-    participationRepository,
-    shiftRepository,
-    usualSetupRepository,
-    ministryRepository,
-  });
+
+function createPlanningEventHarness() {
+  const dependencies = createPlanningDependencies();
+  const { cycleRepository, eventRepository } = dependencies;
+  cycleRepository.getById.mockResolvedValue(makeCycle());
+  eventRepository.createEvent.mockResolvedValue(makeEvent());
+  eventRepository.updateEvent.mockResolvedValue(makeEvent());
+  eventRepository.getEvent.mockResolvedValue(makeEvent());
+  eventRepository.listCycleEvents.mockResolvedValue([]);
+  const templateRepository = createEventTemplateRepositoryFake();
+  templateRepository.getByIds.mockResolvedValue([]);
+  const eventTimeBlockRepository = createEventTimeBlockRepositoryFake();
+  eventTimeBlockRepository.getById.mockResolvedValue(makeBlock());
+  eventTimeBlockRepository.listByEvent.mockResolvedValue([]);
+  eventTimeBlockRepository.create.mockResolvedValue(makeBlock());
+  eventTimeBlockRepository.update.mockResolvedValue(makeBlock());
   const manager = new DbPlanningEventManager({
-    cycleRepository,
-    eventRepository,
+    ...dependencies,
     templateRepository,
     eventTimeBlockRepository,
-    churchRepository,
-    unitOfWork,
-    staffingSeeder,
   });
   return {
     manager,
-    cycleRepository,
-    eventRepository,
     templateRepository,
     eventTimeBlockRepository,
-    staffingSeeder,
-    churchRepository,
-    participationRepository,
-    shiftRepository,
-    usualSetupRepository,
-    ministryRepository,
+    ...dependencies,
   };
 }
 
+describe('DbCycleManager', () => {
+  it('creates a non-overlapping cycle while holding the church lock in the transaction', async () => {
+    const { manager, cycle, cycleRepository } = createCycleHarness();
+    const input = { churchId, name: 'January', startDate, endDate };
+    expect(await manager.createCycle(input)).toBe(cycle);
+    expect(cycleRepository.acquireChurchLock).toHaveBeenCalledWith({
+      churchId,
+      tx,
+    });
+    expect(cycleRepository.findOverlapping).toHaveBeenCalledWith({
+      churchId,
+      startDate,
+      endDate,
+      tx,
+    });
+    expect(cycleRepository.create).toHaveBeenCalledWith({ ...input, tx });
+  });
+
+  it('rejects an overlapping cycle without creating it', async () => {
+    const { manager, cycle, cycleRepository } = createCycleHarness();
+    vi.mocked(cycleRepository.findOverlapping).mockResolvedValue([cycle]);
+    await expect(
+      manager.createCycle({ churchId, name: 'January', startDate, endDate }),
+    ).rejects.toThrow(OverlappingCycleError);
+    expect(cycleRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('sends the cycle and seeds staffing in the same transaction', async () => {
+    const {
+      manager,
+      cycle,
+      cycleRepository,
+      eventRepository,
+      participationRepository,
+      staffingSeeder,
+    } = createCycleHarness();
+    vi.mocked(cycleRepository.getById).mockResolvedValue(cycle);
+    vi.mocked(participationRepository.hasCycleStaffing).mockResolvedValue(
+      false,
+    );
+    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([]);
+    const setup = {
+      entriesByMinistry: new Map(),
+      directionByMinistry: new Map(),
+      globalDefaultAllIn: false,
+      timeZone: 'UTC',
+    };
+    vi.spyOn(staffingSeeder, 'loadSetup').mockResolvedValue(setup);
+    const seed = vi.spyOn(staffingSeeder, 'seed').mockResolvedValue(undefined);
+    await manager.sendCycle({ churchId, cycleId });
+    expect(cycleRepository.updateState).toHaveBeenCalledWith({
+      churchId,
+      cycleId,
+      state: 'sent',
+      tx,
+    });
+    expect(seed).toHaveBeenCalledWith({
+      churchId,
+      eventTimeBlocks: [],
+      setup,
+      tx,
+    });
+  });
+
+  it('schedules draft events when sending and reopens an event on request', async () => {
+    const {
+      manager,
+      cycle,
+      cycleRepository,
+      eventRepository,
+      participationRepository,
+      staffingSeeder,
+    } = createCycleHarness();
+    const eventId = EventId.from('event-1');
+    const event = new Event({
+      id: eventId,
+      props: {
+        churchId,
+        cycleId,
+        title: 'Service',
+        start: fromDate({ date: new Date('2099-01-02T09:00:00Z') }),
+        end: fromDate({ date: new Date('2099-01-02T10:00:00Z') }),
+      },
+    });
+    vi.mocked(cycleRepository.getById).mockResolvedValue(cycle);
+    vi.mocked(participationRepository.hasCycleStaffing).mockResolvedValue(
+      false,
+    );
+    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([
+      { event, eventTimeBlocks: [] },
+    ]);
+    vi.spyOn(staffingSeeder, 'loadSetup').mockResolvedValue({
+      entriesByMinistry: new Map(),
+      directionByMinistry: new Map(),
+      globalDefaultAllIn: false,
+      timeZone: 'UTC',
+    });
+    vi.spyOn(staffingSeeder, 'seed').mockResolvedValue(undefined);
+    await manager.sendCycle({ churchId, cycleId });
+    expect(eventRepository.updateEvent).toHaveBeenCalledWith({
+      churchId,
+      eventId,
+      status: 'scheduled',
+      tx,
+    });
+    const scheduled = new Event({
+      id: eventId,
+      props: {
+        churchId,
+        cycleId,
+        title: 'Service',
+        start: event.start,
+        end: event.end,
+        status: 'scheduled',
+      },
+    });
+    vi.mocked(eventRepository.getEvent).mockResolvedValue(scheduled);
+    await manager.reopenEvent({ churchId, cycleId, eventId });
+    expect(eventRepository.updateEvent).toHaveBeenCalledWith({
+      churchId,
+      eventId,
+      status: 'draft',
+      tx,
+    });
+  });
+  it('refuses to send a draft with existing staffing', async () => {
+    const { manager, cycle, cycleRepository, participationRepository } =
+      createCycleHarness();
+    vi.mocked(cycleRepository.getById).mockResolvedValue(cycle);
+    vi.mocked(participationRepository.hasCycleStaffing).mockResolvedValue(true);
+    await expect(manager.sendCycle({ churchId, cycleId })).rejects.toThrow(
+      DraftStaffingReconciliationRequiredError,
+    );
+    expect(cycleRepository.updateState).not.toHaveBeenCalled();
+  });
+  it('marks an expired cycle past when loading its details', async () => {
+    const { manager, cycleRepository, eventRepository } = createCycleHarness();
+    const expired = new Cycle({
+      id: cycleId,
+      props: {
+        churchId,
+        name: 'Expired',
+        startDate: parseCalendarDay({ value: '2000-01-01' }),
+        endDate: parseCalendarDay({ value: '2000-02-01' }),
+      },
+    });
+    const past = new Cycle({
+      id: cycleId,
+      props: {
+        churchId,
+        name: 'Expired',
+        startDate: parseCalendarDay({ value: '2000-01-01' }),
+        endDate: parseCalendarDay({ value: '2000-02-01' }),
+        state: 'past',
+      },
+    });
+    vi.mocked(cycleRepository.getById).mockResolvedValue(expired);
+    vi.mocked(cycleRepository.updateState).mockResolvedValue(past);
+    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([]);
+
+    await expect(manager.getCycle({ churchId, cycleId })).resolves.toEqual({
+      cycle: past,
+      events: [],
+    });
+    expect(cycleRepository.updateState).toHaveBeenCalledWith({
+      churchId,
+      cycleId,
+      state: 'past',
+    });
+  });
+
+  it('rejects reopening an event from another cycle without writing', async () => {
+    const { manager, cycle, cycleRepository, eventRepository } =
+      createCycleHarness();
+    const eventId = EventId.from('event-1');
+    const event = new Event({
+      id: eventId,
+      props: {
+        churchId,
+        cycleId: CycleId.from('other-cycle'),
+        title: 'Other event',
+        start: fromDate({ date: new Date('2099-01-02T09:00:00Z') }),
+        end: fromDate({ date: new Date('2099-01-02T10:00:00Z') }),
+      },
+    });
+    vi.mocked(cycleRepository.getById).mockResolvedValue(cycle);
+    vi.mocked(eventRepository.getEvent).mockResolvedValue(event);
+
+    await expect(
+      manager.reopenEvent({ churchId, cycleId, eventId }),
+    ).rejects.toThrow('Event not found');
+    expect(eventRepository.updateEvent).not.toHaveBeenCalled();
+  });
+});
+
 describe('DbPlanningEventManager', () => {
   it('applies a template to each matching day', async () => {
-    const { manager, templateRepository, eventRepository } = createHarness();
+    const { manager, templateRepository, eventRepository } =
+      createPlanningEventHarness();
     const templateId = EventTemplateId.from('template-1');
     const blockId = TemplateTimeBlockId.from('template-block-1');
     const templateBlock = new TemplateTimeBlock({
@@ -248,16 +418,17 @@ describe('DbPlanningEventManager', () => {
       expect.objectContaining({
         sourceTemplateId: templateId,
         status: 'draft',
-        tx: 'tx',
+        tx,
       }),
     );
     expect(eventRepository.createEventTimeBlock).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceTemplateTimeBlockId: blockId, tx: 'tx' }),
+      expect.objectContaining({ sourceTemplateTimeBlockId: blockId, tx }),
     );
     expect(eventRepository.seedParticipations).toHaveBeenCalledTimes(4);
   });
   it('does not recreate generated blocks, including cancelled events, and regenerates missing dates', async () => {
-    const { manager, templateRepository, eventRepository } = createHarness();
+    const { manager, templateRepository, eventRepository } =
+      createPlanningEventHarness();
     const templateId = EventTemplateId.from('template-1');
     const blockId = TemplateTimeBlockId.from('template-block-1');
     const templateBlock = new TemplateTimeBlock({
@@ -332,8 +503,10 @@ describe('DbPlanningEventManager', () => {
       eventRepository,
       templateRepository,
       staffingSeeder,
-    } = createHarness();
-    vi.mocked(cycleRepository.getById).mockResolvedValue(makeCycle('sent'));
+    } = createPlanningEventHarness();
+    vi.mocked(cycleRepository.getById).mockResolvedValue(
+      makeCycle({ state: 'sent' }),
+    );
     const templateId = EventTemplateId.from('template-1');
     const blockId = TemplateTimeBlockId.from('template-block-1');
     const block = new TemplateTimeBlock({
@@ -370,13 +543,13 @@ describe('DbPlanningEventManager', () => {
       templateIds: [templateId],
     });
     expect(eventRepository.createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'scheduled', tx: 'tx' }),
+      expect.objectContaining({ status: 'scheduled', tx }),
     );
     expect(seed).toHaveBeenCalledWith(
       expect.objectContaining({
         churchId,
         setup,
-        tx: 'tx',
+        tx,
         eventTimeBlocks: expect.arrayContaining([
           expect.objectContaining({
             eventTimeBlockId,
@@ -396,8 +569,10 @@ describe('DbPlanningEventManager', () => {
       shiftRepository,
       usualSetupRepository,
       ministryRepository,
-    } = createHarness();
-    vi.mocked(cycleRepository.getById).mockResolvedValue(makeCycle('sent'));
+    } = createPlanningEventHarness();
+    vi.mocked(cycleRepository.getById).mockResolvedValue(
+      makeCycle({ state: 'sent' }),
+    );
     const templateId = EventTemplateId.from('template-1');
     const blockId = TemplateTimeBlockId.from('template-block-1');
     const block = new TemplateTimeBlock({
@@ -479,7 +654,7 @@ describe('DbPlanningEventManager', () => {
     expect(participationRepository.addInclusion).toHaveBeenCalledWith(
       expect.objectContaining({
         participationId: MinistryParticipationId.from('participation-profile'),
-        tx: 'tx',
+        tx,
       }),
     );
     expect(participationRepository.addInclusion).not.toHaveBeenCalledWith(
@@ -503,16 +678,16 @@ describe('DbPlanningEventManager', () => {
             ),
           }),
         ]),
-        tx: 'tx',
+        tx,
       }),
     );
     expect(shiftRepository.upsertRequirement).toHaveBeenCalledTimes(8);
     expect(shiftRepository.upsertRequirement).toHaveBeenCalledWith(
-      expect.objectContaining({ roleId, sectorId, peopleNeeded: 2, tx: 'tx' }),
+      expect.objectContaining({ roleId, sectorId, peopleNeeded: 2, tx }),
     );
   });
   it('creates a draft event and seeds participations in the same transaction', async () => {
-    const { manager, eventRepository } = createHarness();
+    const { manager, eventRepository } = createPlanningEventHarness();
     const result = await manager.createEvent({
       churchId,
       cycleId,
@@ -522,16 +697,17 @@ describe('DbPlanningEventManager', () => {
     });
     expect(result.title).toBe('Service');
     expect(eventRepository.createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ churchId, cycleId, status: 'draft', tx: 'tx' }),
+      expect.objectContaining({ churchId, cycleId, status: 'draft', tx }),
     );
     expect(eventRepository.seedParticipations).toHaveBeenCalledWith({
       churchId,
       eventId,
-      tx: 'tx',
+      tx,
     });
   });
   it('accepts a selected church calendar day whose UTC bounds cross midnight', async () => {
-    const { manager, churchRepository, eventRepository } = createHarness();
+    const { manager, churchRepository, eventRepository } =
+      createPlanningEventHarness();
     vi.mocked(churchRepository.getById).mockResolvedValue(
       new Church({
         id: churchId,
@@ -569,8 +745,11 @@ describe('DbPlanningEventManager', () => {
     expect(result.end).toBe('2099-01-03T02:59:59.999Z');
   });
   it('creates scheduled events on a sent cycle', async () => {
-    const { manager, cycleRepository, eventRepository } = createHarness();
-    vi.mocked(cycleRepository.getById).mockResolvedValue(makeCycle('sent'));
+    const { manager, cycleRepository, eventRepository } =
+      createPlanningEventHarness();
+    vi.mocked(cycleRepository.getById).mockResolvedValue(
+      makeCycle({ state: 'sent' }),
+    );
     await manager.createEvent({
       churchId,
       cycleId,
@@ -579,11 +758,12 @@ describe('DbPlanningEventManager', () => {
       end,
     });
     expect(eventRepository.createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'scheduled', tx: 'tx' }),
+      expect.objectContaining({ status: 'scheduled', tx }),
     );
   });
   it('rejects events outside the cycle or in a past cycle without writing', async () => {
-    const { manager, cycleRepository, eventRepository } = createHarness();
+    const { manager, cycleRepository, eventRepository } =
+      createPlanningEventHarness();
     await expect(
       manager.createEvent({
         churchId,
@@ -593,16 +773,18 @@ describe('DbPlanningEventManager', () => {
         end: new Date('2099-03-01T10:00:00Z'),
       }),
     ).rejects.toThrow(EventOutsideCycleError);
-    vi.mocked(cycleRepository.getById).mockResolvedValue(makeCycle('past'));
+    vi.mocked(cycleRepository.getById).mockResolvedValue(
+      makeCycle({ state: 'past' }),
+    );
     await expect(
       manager.createEvent({ churchId, cycleId, title: 'Past', start, end }),
     ).rejects.toThrow(IllegalStateTransitionError);
     expect(eventRepository.createEvent).not.toHaveBeenCalled();
   });
   it('rejects another cycle’s event without writing', async () => {
-    const { manager, eventRepository } = createHarness();
+    const { manager, eventRepository } = createPlanningEventHarness();
     vi.mocked(eventRepository.getEvent).mockResolvedValue(
-      makeEvent('draft', CycleId.from('other')),
+      makeEvent({ owner: CycleId.from('other') }),
     );
     await expect(
       manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' }),
@@ -623,29 +805,32 @@ describe('DbPlanningEventManager', () => {
     expect(eventRepository.deleteEvent).not.toHaveBeenCalled();
   });
   it('deletes draft events and soft-cancels scheduled events', async () => {
-    const { manager, eventRepository } = createHarness();
+    const { manager, eventRepository } = createPlanningEventHarness();
     await manager.cancelEvent({ churchId, cycleId, eventId });
     expect(eventRepository.deleteEvent).toHaveBeenCalledWith({
       churchId,
       eventId,
-      tx: 'tx',
+      tx,
     });
     vi.mocked(eventRepository.getEvent).mockResolvedValue(
-      makeEvent('scheduled'),
+      makeEvent({ status: 'scheduled' }),
     );
     await manager.cancelEvent({ churchId, cycleId, eventId });
     expect(eventRepository.updateEvent).toHaveBeenCalledWith({
       churchId,
       eventId,
       status: 'cancelled',
-      tx: 'tx',
+      tx,
     });
   });
   it('requires a sent cycle event to be reopened before editing or cancellation', async () => {
-    const { manager, cycleRepository, eventRepository } = createHarness();
-    vi.mocked(cycleRepository.getById).mockResolvedValue(makeCycle('sent'));
+    const { manager, cycleRepository, eventRepository } =
+      createPlanningEventHarness();
+    vi.mocked(cycleRepository.getById).mockResolvedValue(
+      makeCycle({ state: 'sent' }),
+    );
     vi.mocked(eventRepository.getEvent).mockResolvedValue(
-      makeEvent('scheduled'),
+      makeEvent({ status: 'scheduled' }),
     );
     await expect(
       manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' }),
@@ -659,12 +844,12 @@ describe('DbPlanningEventManager', () => {
       expect.objectContaining({
         title: 'Changed',
         status: 'scheduled',
-        tx: 'tx',
+        tx,
       }),
     );
   });
   it('creates, updates and deletes event time blocks within the transaction', async () => {
-    const { manager, eventTimeBlockRepository } = createHarness();
+    const { manager, eventTimeBlockRepository } = createPlanningEventHarness();
     const input = { churchId, cycleId, eventId };
     expect(
       (
@@ -685,7 +870,7 @@ describe('DbPlanningEventManager', () => {
       churchId,
       eventTimeBlockId,
       input: { startTime: undefined, endTime: undefined, label: 'Renamed' },
-      tx: 'tx',
+      tx,
     });
     vi.mocked(eventTimeBlockRepository.listByEvent).mockResolvedValue([
       makeBlock(),
@@ -695,11 +880,11 @@ describe('DbPlanningEventManager', () => {
     expect(eventTimeBlockRepository.deleteById).toHaveBeenCalledWith({
       churchId,
       eventTimeBlockId,
-      tx: 'tx',
+      tx,
     });
   });
   it('protects the last event time block and checks ownership', async () => {
-    const { manager, eventTimeBlockRepository } = createHarness();
+    const { manager, eventTimeBlockRepository } = createPlanningEventHarness();
     const input = { churchId, cycleId, eventId, eventTimeBlockId };
     vi.mocked(eventTimeBlockRepository.listByEvent).mockResolvedValue([
       makeBlock(),
@@ -708,7 +893,7 @@ describe('DbPlanningEventManager', () => {
       LastRemainingEventTimeBlockError,
     );
     vi.mocked(eventTimeBlockRepository.getById).mockResolvedValue(
-      makeBlock(EventId.from('other')),
+      makeBlock({ owner: EventId.from('other') }),
     );
     await expect(
       manager.updateEventTimeBlock({ ...input, label: 'Wrong' }),
@@ -722,10 +907,12 @@ describe('DbPlanningEventManager', () => {
       cycleRepository,
       eventRepository,
       eventTimeBlockRepository,
-    } = createHarness();
-    vi.mocked(cycleRepository.getById).mockResolvedValue(makeCycle('sent'));
+    } = createPlanningEventHarness();
+    vi.mocked(cycleRepository.getById).mockResolvedValue(
+      makeCycle({ state: 'sent' }),
+    );
     vi.mocked(eventRepository.getEvent).mockResolvedValue(
-      makeEvent('scheduled'),
+      makeEvent({ status: 'scheduled' }),
     );
     const input = { churchId, cycleId, eventId, eventTimeBlockId };
     await expect(
@@ -747,7 +934,7 @@ describe('DbPlanningEventManager', () => {
   });
   it('rejects moving an event outside its cycle and leaves blocks alone for a title edit', async () => {
     const { manager, eventRepository, eventTimeBlockRepository } =
-      createHarness();
+      createPlanningEventHarness();
     await expect(
       manager.updateEvent({
         churchId,
@@ -767,7 +954,7 @@ describe('DbPlanningEventManager', () => {
     expect(eventTimeBlockRepository.update).not.toHaveBeenCalled();
   });
   it('shifts child blocks with the event start in the same transaction', async () => {
-    const { manager, eventTimeBlockRepository } = createHarness();
+    const { manager, eventTimeBlockRepository } = createPlanningEventHarness();
     vi.mocked(eventTimeBlockRepository.listByEvent).mockResolvedValue([
       makeBlock(),
     ]);
@@ -784,7 +971,7 @@ describe('DbPlanningEventManager', () => {
         startTime: new Date('2099-01-04T12:00:00Z'),
         endTime: new Date('2099-01-04T13:00:00Z'),
       },
-      tx: 'tx',
+      tx,
     });
   });
 });

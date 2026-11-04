@@ -108,7 +108,9 @@ export default defineConfig({
             'tests/application/db-authority-manager.test.ts',
             'tests/application/db-assignment-manager.teamleader.test.ts',
             'tests/application/db-participation-manager.team-scope.test.ts',
+            'tests/application/db-cycle-manager.test.ts',
             'tests/application/db-event-manager.test.ts',
+            'tests/application/db-planning-event-manager.test.ts',
             'tests/application/db-event-template-manager.test.ts',
             'tests/application/db-ministry-invitation-manager.test.ts',
             'tests/application/db-outbox-drainer.test.ts',
@@ -142,7 +144,6 @@ export default defineConfig({
           ],
           include: [
             'tests/application/event-builder.assign.integration.test.ts',
-            'tests/application/planning-phase3.managers.test.ts',
             'tests/application/scheduling-phase7.live-changes.test.ts',
             'tests/behavior/**/*.test.ts',
             'tests/http/**/*.test.ts',

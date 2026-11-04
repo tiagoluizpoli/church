@@ -1,4 +1,5 @@
 import * as schema from '@church/db';
+import { clearPublicTables } from '@church/db/clear-public-tables';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { fromDate, fromDateColumn, type TimeOfDay } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -68,12 +69,8 @@ export interface CreatePhase3TemplateInput {
   }>;
 }
 
-// Roots at `organization`, not `church`: see the note on `truncateAll` in
-// `tests/integration/repositories/setup.ts`.
 export async function resetSchedulingPhase3Db(): Promise<void> {
-  await schedulingTestDb.execute(`
-    TRUNCATE TABLE organization, "user" RESTART IDENTITY CASCADE
-  `);
+  await clearPublicTables({ pool: schedulingTestPool });
 }
 
 export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> {

@@ -121,15 +121,18 @@ describe('canCreateCycle', () => {
     );
   });
 
-  it('rejects a start date on or after the end date', () => {
+  it('rejects an end date before the start date', () => {
     expect(
       canCreateCycle({
         cycleForm: makeCycleForm({
           startDate: '2027-01-31',
-          endDate: '2027-01-01',
+          endDate: '2027-01-30',
         }),
       }),
     ).toBe(false);
+  });
+
+  it('allows a one-day Cycle whose start and end are the same day', () => {
     expect(
       canCreateCycle({
         cycleForm: makeCycleForm({
@@ -137,7 +140,7 @@ describe('canCreateCycle', () => {
           endDate: '2027-01-01',
         }),
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 

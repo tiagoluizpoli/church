@@ -86,7 +86,7 @@ function countMatchingWeekdays({
   const dates: string[] = [];
   const cursor = new Date(start);
 
-  while (cursor < end) {
+  while (cursor <= end) {
     if (cursor.getUTCDay() === weekday) {
       dates.push(toDateString(cursor));
     }
@@ -123,7 +123,6 @@ function createPlanningMonth({
     weekday: 3,
   });
   const lastDayInsideCycle = new Date(end);
-  lastDayInsideCycle.setUTCDate(lastDayInsideCycle.getUTCDate() - 1);
   const dynamicStart = new Date(
     Date.UTC(
       lastDayInsideCycle.getUTCFullYear(),

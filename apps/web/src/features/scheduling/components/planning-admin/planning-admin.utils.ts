@@ -363,7 +363,7 @@ export function canCreateCycle({ cycleForm }: CycleFormValidityInput): boolean {
     cycleForm.name.trim() !== '' &&
     cycleForm.startDate !== '' &&
     cycleForm.endDate !== '' &&
-    cycleForm.startDate < cycleForm.endDate
+    cycleForm.startDate <= cycleForm.endDate
   );
 }
 

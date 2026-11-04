@@ -39,7 +39,7 @@ import { apiClient } from '../../utils/api-client';
 
   export const getPlanning = () => {
 /**
- * Create a new Cycle spanning a CalendarDay range for the Church.
+ * Create a new Cycle over an inclusive CalendarDay range for the Church. A one-day Cycle starts and ends on the same day; a range sharing any day with another Cycle of the Church is refused.
  * @summary Create a Cycle
  */
 const createCycle = (

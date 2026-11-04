@@ -110,6 +110,8 @@ const UNIT_ONLY_LAYERS: TestLayer[] = ['test:unit'];
 // The script may run from a temporary repo, so read manifests from this checkout.
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 const UNIT_CONCURRENCY = '2';
+// db + auth + server integration run together; each has its own cloned database and capped workers.
+const INTEGRATION_CONCURRENCY = '3';
 
 /** Where the import graph can trace a changed file to the tests that use it. */
 const TRACEABLE_PATH = /^(?:apps|packages)\/[^/]+\/(?:src|tests|seeds)\//;
@@ -488,7 +490,10 @@ export function buildTestLayerSteps({
   const remainingWorkspaceNames = workspaceNames.filter(
     (workspaceName) => !targetedWorkspaceNames.has(workspaceName),
   );
-  const concurrency = testLayer === 'test:integration' ? '1' : UNIT_CONCURRENCY;
+  const concurrency =
+    testLayer === 'test:integration'
+      ? INTEGRATION_CONCURRENCY
+      : UNIT_CONCURRENCY;
   const steps: LaneStep[] = [];
 
   if (remainingWorkspaceNames.length > 0) {

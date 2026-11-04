@@ -166,7 +166,7 @@ describe('buildValidationSteps', () => {
     ]);
   });
 
-  it('puts integration tests in the second lane with concurrency 1', () => {
+  it('puts integration tests in the second lane with concurrency above 1', () => {
     const { checkLane, integrationLane } = buildValidationSteps({
       onlyE2e: false,
       plan: makePlan({
@@ -182,7 +182,7 @@ describe('buildValidationSteps', () => {
         args: [
           'turbo',
           'test:integration',
-          '--concurrency=1',
+          '--concurrency=3',
           '--filter',
           'server',
           '--only',

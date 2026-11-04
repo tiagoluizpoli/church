@@ -17,6 +17,7 @@ import {
   type StepResult,
 } from './run-lanes';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
+import { formatLockWait, holdValidateLock } from './validate-lock';
 
 export { classifyChanges, isScriptsOnlyAddition } from './affected-plan';
 export { readSeedImpactTrailers };
@@ -827,13 +828,23 @@ if (import.meta.main) {
     console.error('');
     console.error(explainPlan({ baseRef, plan }));
   } else {
-    const { failed, timings } = await runValidation({
-      onlyE2e: argumentsResult.onlyE2e,
-      plan,
-      skipE2e: argumentsResult.skipE2e,
-      tier: argumentsResult.tier,
-      wholeUnitSuites: argumentsResult.dailyGate,
-    });
+    // CI runs on its own runner, so only local runs queue for the slot.
+    const lock = process.env.CI
+      ? { release: () => {}, waitedMs: 0 }
+      : await holdValidateLock({ tier: argumentsResult.tier });
+    let failed: boolean;
+    let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
+    try {
+      ({ failed, timings } = await runValidation({
+        onlyE2e: argumentsResult.onlyE2e,
+        plan,
+        skipE2e: argumentsResult.skipE2e,
+        tier: argumentsResult.tier,
+        wholeUnitSuites: argumentsResult.dailyGate,
+      }));
+    } finally {
+      lock.release();
+    }
     const summary = formatTimingSummary({ timings });
     const explanation = explainPlan({
       baseRef,
@@ -843,6 +854,7 @@ if (import.meta.main) {
     });
     console.log('');
     console.log(summary);
+    console.log(formatLockWait({ waitedMs: lock.waitedMs }));
     console.log('');
     console.log(explanation);
     if (process.env.GITHUB_STEP_SUMMARY) {

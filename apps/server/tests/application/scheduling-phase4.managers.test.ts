@@ -585,6 +585,16 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
       entry: { ...entry, shiftSplit: { kind: 'equal', count: 0 } },
     }),
   ).rejects.toThrow(InvalidShiftSplitError);
+  await expect(
+    manager.saveUsualSetupBlock({
+      churchId,
+      ministryId,
+      entry: {
+        ...entry,
+        headcounts: [{ shiftIndex: 1, sectorId, roleId, peopleNeeded: 0 }],
+      },
+    }),
+  ).rejects.toThrow(InvalidRequiredCountError);
 });
 
 it('flags an eligible volunteer with an overlapping active assignment', async () => {
@@ -706,6 +716,18 @@ it('creates a missing participation and returns its unincluded event block', asy
   expect(
     repositories.ministryParticipationRepository.create,
   ).toHaveBeenCalledWith({ churchId, ministryId, eventId, tx });
+  vi.mocked(
+    repositories.ministryParticipationRepository.findByMinistryEvent,
+  ).mockResolvedValue(participation);
+  const again = await manager.getCycleParticipation({
+    churchId,
+    ministryId,
+    cycleId,
+  });
+  expect(again.events[0]?.participation.id).toBe(participationId);
+  expect(
+    repositories.ministryParticipationRepository.create,
+  ).toHaveBeenCalledTimes(1);
 });
 
 it('counts only active assignments towards each required place', async () => {

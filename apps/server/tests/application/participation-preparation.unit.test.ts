@@ -1,14 +1,22 @@
 import { NotFoundError } from '@church/core';
-import { parseInstant } from '@church/time';
+import { parseInstant, parseTimeOfDay } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
+  CycleId,
   EventId,
+  EventTemplateId,
   EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
+  RoleId,
+  SectorId,
   ShiftId,
+  ShiftRequirementId,
+  TemplateTimeBlockId,
+  UserId,
+  VolunteerId,
 } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
@@ -25,11 +33,22 @@ import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructu
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import type { UsualSetupRepository } from '@/domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
+import { Assignment } from '@/domain/entities/assignment';
+import { Event } from '@/domain/entities/event';
+import { EventTemplate } from '@/domain/entities/event-template';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
+import { ParticipationEventTimeBlockInclusion } from '@/domain/entities/participation-event-time-block-inclusion';
+import { Role } from '@/domain/entities/role';
 import { Shift } from '@/domain/entities/shift';
+import { ShiftRequirement } from '@/domain/entities/shift-requirement';
+import { TemplateTimeBlock } from '@/domain/entities/template-time-block';
+import { UsualSetup } from '@/domain/entities/usual-setup';
+import { Volunteer } from '@/domain/entities/volunteer';
 import {
   IllegalStateTransitionError,
+  InvalidRequiredCountError,
+  InvalidShiftSplitError,
   ShiftOutOfBoundsError,
 } from '@/domain/errors';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
@@ -364,4 +383,414 @@ describe('participation preparation', () => {
     );
     expect(repositories.shiftRepository.deleteById).not.toHaveBeenCalled();
   });
+});
+
+it('reports full completion when no staffing places are required', async () => {
+  const { manager, repositories } = createHarness();
+  vi.mocked(
+    repositories.shiftRepository.listRequirementsByParticipation,
+  ).mockResolvedValue([]);
+  vi.mocked(
+    repositories.assignmentRepository.listByParticipation,
+  ).mockResolvedValue([]);
+  await expect(
+    manager.getCompletion({ churchId, participationId }),
+  ).resolves.toEqual({
+    participationId,
+    peopleNeeded: 0,
+    assignedCount: 0,
+    completionPercent: 100,
+  });
+});
+
+it('requests a bounded shift update and deletion during preparation', async () => {
+  const { manager, repositories } = createHarness();
+  const newStart = new Date('2026-08-02T13:00:00.000Z');
+  await manager.updateShift({
+    churchId,
+    shiftId,
+    startTime: newStart,
+    label: 'Door',
+  });
+  expect(repositories.shiftRepository.update).toHaveBeenCalledWith({
+    churchId,
+    shiftId,
+    startTime: newStart,
+    endTime: new Date('2026-08-02T15:00:00.000Z'),
+    label: 'Door',
+    tx,
+  });
+  await manager.deleteShift({ churchId, shiftId });
+  expect(repositories.shiftRepository.deleteById).toHaveBeenCalledWith({
+    churchId,
+    shiftId,
+    tx,
+  });
+});
+
+it('rejects a staffing requirement below one without writing it', async () => {
+  const { manager, repositories } = createHarness();
+  await expect(
+    manager.upsertRequirement({
+      churchId,
+      shiftId,
+      sectorId: SectorId.from('sector'),
+      roleId: RoleId.from('role'),
+      peopleNeeded: 0,
+    }),
+  ).rejects.toThrow(InvalidRequiredCountError);
+  expect(repositories.shiftRepository.upsertRequirement).not.toHaveBeenCalled();
+});
+
+it('returns schedule summaries including cycles without participation', async () => {
+  const { manager, repositories } = createHarness();
+  const row = {
+    cycleId: 'cycle',
+    name: 'Untouched',
+    startDate: new Date('2026-10-01T00:00:00Z'),
+    endDate: new Date('2026-11-01T00:00:00Z'),
+    isPartOf: false,
+    eventCount: 0,
+    eventTimeBlockCount: 0,
+    status: 'not_started' as const,
+    availabilityRequestedForAll: false,
+    availabilityRequestedForAny: false,
+  };
+  vi.mocked(
+    repositories.ministryParticipationRepository.listScheduleSummaries,
+  ).mockResolvedValue([row]);
+  await expect(
+    manager.listScheduleSummaries({ churchId, ministryId }),
+  ).resolves.toEqual([row]);
+  expect(
+    repositories.ministryParticipationRepository.listScheduleSummaries,
+  ).toHaveBeenCalledWith({ churchId, ministryId });
+});
+
+it('writes a valid staffing requirement for the participation and touches it', async () => {
+  const { manager, repositories } = createHarness();
+  const sectorId = SectorId.from('sector');
+  const roleId = RoleId.from('role');
+  const role = new Role({
+    props: { churchId, ministryId, name: 'Usher' },
+    id: roleId,
+  });
+  const requirement = new ShiftRequirement({
+    props: {
+      churchId,
+      eventTimeBlockId,
+      participationId,
+      shiftId,
+      sectorId,
+      roleId,
+      sectorName: 'Door',
+      peopleNeeded: 2,
+    },
+    id: 'requirement',
+  });
+  vi.mocked(repositories.sectorRepository.lockActive).mockResolvedValue(
+    new Set([sectorId]),
+  );
+  vi.mocked(repositories.roleRepository.lockActiveForUse).mockResolvedValue([
+    role,
+  ]);
+  vi.mocked(repositories.shiftRepository.upsertRequirement).mockResolvedValue(
+    requirement,
+  );
+  await expect(
+    manager.upsertRequirement({
+      churchId,
+      shiftId,
+      sectorId,
+      roleId,
+      peopleNeeded: 2,
+    }),
+  ).resolves.toBe(requirement);
+  expect(repositories.shiftRepository.upsertRequirement).toHaveBeenCalledWith({
+    churchId,
+    shiftId,
+    participationId,
+    sectorId,
+    roleId,
+    peopleNeeded: 2,
+    notes: undefined,
+    tx,
+  });
+  expect(
+    repositories.ministryParticipationRepository.touch,
+  ).toHaveBeenCalledWith({ churchId, participationId, tx });
+});
+
+it('lists and saves a valid usual setup and rejects invalid splits', async () => {
+  const { manager, repositories } = createHarness();
+  const templateId = EventTemplateId.from('template');
+  const sourceTemplateTimeBlockId = TemplateTimeBlockId.from('template-block');
+  const block = new TemplateTimeBlock({
+    id: sourceTemplateTimeBlockId,
+    props: {
+      churchId,
+      templateId,
+      label: 'Welcome',
+      startTime: parseTimeOfDay({ value: '09:00' }),
+      endTime: parseTimeOfDay({ value: '09:30' }),
+      order: 0,
+    },
+  });
+  const template = new EventTemplate({
+    id: templateId,
+    props: { churchId, name: 'Sunday', weekday: 0, blocks: [block] },
+  });
+  vi.mocked(repositories.eventTemplateRepository.list).mockResolvedValue([
+    template,
+  ]);
+  vi.mocked(repositories.usualSetupRepository.listByMinistry).mockResolvedValue(
+    [],
+  );
+  const entries = await manager.listUsualSetupBlocks({ churchId, ministryId });
+  expect(entries[0]?.entry).toBeUndefined();
+  const sectorId = SectorId.from('sector');
+  const roleId = RoleId.from('role');
+  const entry = {
+    sourceTemplateTimeBlockId,
+    serves: true,
+    shiftSplit: { kind: 'equal' as const, count: 2 },
+    headcounts: [{ shiftIndex: 1, sectorId, roleId, peopleNeeded: 1 }],
+  };
+  vi.mocked(repositories.sectorRepository.lockActive).mockResolvedValue(
+    new Set([sectorId]),
+  );
+  vi.mocked(repositories.roleRepository.lockActiveForUse).mockResolvedValue([
+    new Role({ id: roleId, props: { churchId, ministryId, name: 'Usher' } }),
+  ]);
+  vi.mocked(repositories.usualSetupRepository.upsertBlock).mockResolvedValue(
+    new UsualSetup({ id: 'setup', props: { churchId, ministryId, ...entry } }),
+  );
+  const result = await manager.saveUsualSetupBlock({
+    churchId,
+    ministryId,
+    entry,
+  });
+  expect(result.entry).toMatchObject(entry);
+  expect(repositories.usualSetupRepository.upsertBlock).toHaveBeenCalledWith({
+    churchId,
+    ministryId,
+    entry,
+    tx,
+  });
+  await expect(
+    manager.saveUsualSetupBlock({
+      churchId,
+      ministryId,
+      entry: { ...entry, shiftSplit: { kind: 'equal', count: 0 } },
+    }),
+  ).rejects.toThrow(InvalidShiftSplitError);
+});
+
+it('flags an eligible volunteer with an overlapping active assignment', async () => {
+  const { manager, repositories } = createHarness();
+  const volunteerId = VolunteerId.from('volunteer');
+  const otherShiftId = ShiftId.from('other-shift');
+  const volunteer = new Volunteer({
+    id: volunteerId,
+    props: { churchId, userId: UserId.from('user'), name: 'Alex' },
+  });
+  const otherShift = new Shift({
+    id: otherShiftId,
+    props: {
+      churchId,
+      participationId,
+      eventTimeBlockId,
+      startTime: parseInstant({ value: '2026-08-02T14:00:00.000Z' }),
+      endTime,
+    },
+  });
+  const assignment = new Assignment({
+    id: 'assignment',
+    props: {
+      churchId,
+      eventTimeBlockId,
+      participationId,
+      shiftId: otherShiftId,
+      volunteerId,
+      roleId: RoleId.from('role'),
+      shiftRequirementId: ShiftRequirementId.from({ raw: 'requirement' }),
+      status: 'confirmed',
+    },
+  });
+  vi.mocked(repositories.shiftRepository.getById).mockImplementation(
+    async ({ shiftId: id }) =>
+      id === otherShiftId
+        ? otherShift
+        : new Shift({
+            id: shiftId,
+            props: {
+              churchId,
+              participationId,
+              eventTimeBlockId,
+              startTime,
+              endTime,
+            },
+          }),
+  );
+  vi.mocked(
+    repositories.shiftRepository.listRequirementsByParticipation,
+  ).mockResolvedValue([]);
+  vi.mocked(repositories.volunteerRepository.listByMinistry).mockResolvedValue([
+    volunteer,
+  ]);
+  vi.mocked(
+    repositories.volunteerRepository.listMinistryMemberships,
+  ).mockResolvedValue([]);
+  vi.mocked(
+    repositories.unavailableShiftRepository.listByVolunteers,
+  ).mockResolvedValue([]);
+  vi.mocked(
+    repositories.assignmentRepository.listByVolunteers,
+  ).mockResolvedValue([assignment]);
+  const result = await manager.listEligibleVolunteers({ churchId, shiftId });
+  expect(result).toEqual([
+    expect.objectContaining({
+      volunteerId,
+      volunteerName: 'Alex',
+      hasConflict: true,
+      isAvailable: true,
+    }),
+  ]);
+  expect(
+    repositories.assignmentRepository.listByVolunteers,
+  ).toHaveBeenCalledWith({ churchId, volunteerIds: [volunteerId], tx });
+});
+
+it('creates a missing participation and returns its unincluded event block', async () => {
+  const { manager, repositories, participation, block } = createHarness();
+  const cycleId = CycleId.from('cycle');
+  const event = new Event({
+    id: eventId,
+    props: {
+      churchId,
+      cycleId,
+      title: 'Sunday',
+      start: startTime,
+      end: endTime,
+    },
+  });
+  vi.mocked(
+    repositories.planningEventRepository.listCycleEvents,
+  ).mockResolvedValue([{ event, eventTimeBlocks: [block] }]);
+  vi.mocked(
+    repositories.ministryParticipationRepository.findByMinistryEvent,
+  ).mockResolvedValue(null);
+  vi.mocked(
+    repositories.ministryParticipationRepository.create,
+  ).mockResolvedValue(participation);
+  vi.mocked(repositories.shiftRepository.listByParticipation).mockResolvedValue(
+    [],
+  );
+  vi.mocked(
+    repositories.shiftRepository.listRequirementsByParticipation,
+  ).mockResolvedValue([]);
+  const view = await manager.getCycleParticipation({
+    churchId,
+    ministryId,
+    cycleId,
+  });
+  expect(view.events).toHaveLength(1);
+  expect(view.events[0]?.participation).toMatchObject({
+    id: participationId,
+    state: 'preparing',
+  });
+  expect(view.events[0]?.eventTimeBlocks).toEqual([
+    expect.objectContaining({ eventTimeBlock: block, included: false }),
+  ]);
+  expect(
+    repositories.ministryParticipationRepository.create,
+  ).toHaveBeenCalledWith({ churchId, ministryId, eventId, tx });
+});
+
+it('counts only active assignments towards each required place', async () => {
+  const { manager, repositories } = createHarness();
+  const roleId = RoleId.from('role');
+  const requirementId = ShiftRequirementId.from({ raw: 'requirement' });
+  const requirement = new ShiftRequirement({
+    id: requirementId,
+    props: {
+      churchId,
+      eventTimeBlockId,
+      participationId,
+      shiftId,
+      roleId,
+      sectorId: SectorId.from('sector'),
+      sectorName: 'Door',
+      peopleNeeded: 2,
+    },
+  });
+  const assignment = (status: 'confirmed' | 'declined') =>
+    new Assignment({
+      props: {
+        churchId,
+        eventTimeBlockId,
+        participationId,
+        shiftId,
+        roleId,
+        shiftRequirementId: requirementId,
+        volunteerId: VolunteerId.from(status),
+        status,
+      },
+    });
+  vi.mocked(
+    repositories.shiftRepository.listRequirementsByParticipation,
+  ).mockResolvedValue([requirement]);
+  vi.mocked(
+    repositories.assignmentRepository.listByParticipation,
+  ).mockResolvedValue([assignment('confirmed'), assignment('declined')]);
+  await expect(
+    manager.getCompletion({ churchId, participationId }),
+  ).resolves.toEqual({
+    participationId,
+    peopleNeeded: 2,
+    assignedCount: 1,
+    completionPercent: 50,
+  });
+});
+
+it('rejects staffing changes after availability is requested', async () => {
+  const { manager, repositories } = createHarness('availability_requested');
+  await expect(
+    manager.upsertRequirement({
+      churchId,
+      shiftId,
+      sectorId: SectorId.from('sector'),
+      roleId: RoleId.from('role'),
+      peopleNeeded: 1,
+    }),
+  ).rejects.toThrow(IllegalStateTransitionError);
+  expect(repositories.shiftRepository.upsertRequirement).not.toHaveBeenCalled();
+});
+
+it('removes shifts when an event time block is excluded', async () => {
+  const { manager, repositories } = createHarness();
+  vi.mocked(
+    repositories.ministryParticipationRepository.listInclusions,
+  ).mockResolvedValue([
+    new ParticipationEventTimeBlockInclusion({
+      props: { churchId, participationId, eventTimeBlockId },
+      id: 'inclusion',
+    }),
+  ]);
+  await manager.setInclusions({
+    churchId,
+    participationId,
+    eventTimeBlockIds: [],
+  });
+  expect(
+    repositories.ministryParticipationRepository.replaceInclusions,
+  ).toHaveBeenCalledWith({
+    churchId,
+    participationId,
+    eventTimeBlockIds: [],
+    tx,
+  });
+  expect(
+    repositories.shiftRepository.deleteByEventTimeBlock,
+  ).toHaveBeenCalledWith({ churchId, participationId, eventTimeBlockId, tx });
 });

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import {
   acquireValidateLock,
+  holdValidateLock,
   type ValidateLock,
   validateLockPath,
 } from '../../validation/validate-lock';
@@ -108,5 +109,20 @@ describe('validate lock', () => {
     first.release();
     const second = await take();
     expect(second.waitedMs).toBeLessThan(200);
+  });
+});
+
+describe('holdValidateLock', () => {
+  it('skips the machine-wide slot under CI', async () => {
+    const previous = process.env.CI;
+    process.env.CI = 'true';
+    try {
+      expect(await holdValidateLock({ tier: 'affected' })).toMatchObject({
+        waitedMs: 0,
+      });
+    } finally {
+      if (previous === undefined) delete process.env.CI;
+      else process.env.CI = previous;
+    }
   });
 });

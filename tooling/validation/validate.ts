@@ -29,10 +29,7 @@ export const E2E_STEPS: LaneStep[] = [
 ];
 
 if (import.meta.main) {
-  // CI runs on its own runner, so only local runs queue for the slot.
-  const lock = process.env.CI
-    ? { release: () => {}, waitedMs: 0 }
-    : await holdValidateLock({ tier: 'validate' });
+  const lock = await holdValidateLock({ tier: 'validate' });
   let results: Awaited<ReturnType<typeof runStages>>;
   try {
     results = await runStages({

@@ -833,10 +833,7 @@ if (import.meta.main) {
     console.error('');
     console.error(explainPlan({ baseRef, plan }));
   } else {
-    // CI runs on its own runner, so only local runs queue for the slot.
-    const lock = process.env.CI
-      ? { release: () => {}, waitedMs: 0 }
-      : await holdValidateLock({ tier: argumentsResult.tier });
+    const lock = await holdValidateLock({ tier: argumentsResult.tier });
     let failed: boolean;
     let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
     try {

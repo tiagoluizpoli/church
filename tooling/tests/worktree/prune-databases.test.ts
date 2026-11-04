@@ -50,6 +50,15 @@ describe('selectStaleDatabases', () => {
     ).toEqual(['church_gone_drop_test_int', 'church_gone__w1_int']);
   });
 
+  it("removes a killed run's per-run clone, named after a process id", () => {
+    expect(
+      selectStaleDatabases({
+        databases: ['church_gone__w48213_int', 'church_feature_a__w48213_int'],
+        activeIdentities,
+      }),
+    ).toEqual(['church_gone__w48213_int']);
+  });
+
   it("keeps the primary checkout's databases", () => {
     expect(
       selectStaleDatabases({

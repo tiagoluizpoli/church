@@ -138,12 +138,23 @@ export async function acquireValidateLock({
   return { release, waitedMs: performance.now() - started };
 }
 
-/** Takes the slot for a gate run from the repository root; the pre-push hook sets a shorter wait through the environment. */
+export interface HoldValidateLockInput {
+  tier: string;
+}
+
+export interface FormatLockWaitInput {
+  waitedMs: number;
+}
+
+/**
+ * Takes the slot for a gate run from the repository root; the pre-push hook
+ * sets a shorter wait through the environment. CI runs on its own runner, so
+ * only local runs queue for the slot.
+ */
 export async function holdValidateLock({
   tier,
-}: {
-  tier: string;
-}): Promise<ValidateLock> {
+}: HoldValidateLockInput): Promise<ValidateLock> {
+  if (process.env.CI) return { release: () => {}, waitedMs: 0 };
   const fromEnv = Number(process.env.CHURCH_VALIDATE_LOCK_TIMEOUT_MS);
   return acquireValidateLock({
     timeoutMs: fromEnv > 0 ? fromEnv : DEFAULT_TIMEOUT_MS,
@@ -152,6 +163,6 @@ export async function holdValidateLock({
   });
 }
 
-export function formatLockWait({ waitedMs }: { waitedMs: number }): string {
+export function formatLockWait({ waitedMs }: FormatLockWaitInput): string {
   return `Waited ${(waitedMs / 1000).toFixed(1)}s for the validate slot.`;
 }

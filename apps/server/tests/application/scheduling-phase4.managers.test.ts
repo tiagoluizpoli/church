@@ -222,7 +222,7 @@ const endTime = parseInstant({ value: '2026-08-02T15:00:00.000Z' });
 const tx = {} as TransactionContext;
 
 function createHarness(
-  state: 'preparing' | 'availability_requested' = 'preparing',
+  state: 'preparing' | 'availability_requested' | 'assigning' = 'preparing',
 ) {
   const repositories = createRepositories();
   const participation = new MinistryParticipation({
@@ -257,14 +257,15 @@ function createHarness(
     run: async (work) => work(tx),
     runWith: async ({ work }) => work(tx),
   };
+  const notifications = createChurchNotificationsSpy();
   const manager = new DbParticipationManager({
     ...repositories,
     participationRepository: repositories.ministryParticipationRepository,
     eventRepository: repositories.planningEventRepository,
     unitOfWork,
-    notifications: createChurchNotificationsSpy(),
+    notifications,
   });
-  return { manager, repositories, participation, block };
+  return { manager, repositories, participation, block, notifications };
 }
 
 describe('participation preparation', () => {
@@ -793,4 +794,65 @@ it('removes shifts when an event time block is excluded', async () => {
   expect(
     repositories.shiftRepository.deleteByEventTimeBlock,
   ).toHaveBeenCalledWith({ churchId, participationId, eventTimeBlockId, tx });
+});
+
+it.each([
+  { state: 'preparing' as const, published: false },
+  { state: 'assigning' as const, published: true },
+])('publishes only eligible participation with no staffing places: $state', async ({
+  state,
+  published,
+}) => {
+  const { manager, repositories, participation, block, notifications } =
+    createHarness(state);
+  const cycleId = CycleId.from('cycle');
+  const event = new Event({
+    id: eventId,
+    props: {
+      churchId,
+      cycleId,
+      title: 'Sunday',
+      start: startTime,
+      end: endTime,
+    },
+  });
+  vi.mocked(
+    repositories.planningEventRepository.listCycleEvents,
+  ).mockResolvedValue([{ event, eventTimeBlocks: [block] }]);
+  vi.mocked(
+    repositories.ministryParticipationRepository.findByMinistryEvent,
+  ).mockResolvedValue(participation);
+  vi.mocked(
+    repositories.shiftRepository.listRequirementsByParticipation,
+  ).mockResolvedValue([]);
+  vi.mocked(
+    repositories.assignmentRepository.listByParticipation,
+  ).mockResolvedValue([]);
+  vi.mocked(repositories.volunteerRepository.listByIds).mockResolvedValue([]);
+  const result = await manager.publishCycle({
+    churchId,
+    ministryId,
+    cycleId,
+    userId: UserId.from('user'),
+  });
+  if (published) {
+    expect(result.participations).toHaveLength(1);
+    expect(
+      repositories.ministryParticipationRepository.updateState,
+    ).toHaveBeenCalledWith({
+      churchId,
+      participationId,
+      state: 'published',
+      tx,
+    });
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ to: [] }),
+    );
+  } else {
+    expect(result.participations).toEqual([]);
+    expect(
+      repositories.ministryParticipationRepository.updateState,
+    ).not.toHaveBeenCalled();
+    expect(notifications.enqueue).not.toHaveBeenCalled();
+  }
 });

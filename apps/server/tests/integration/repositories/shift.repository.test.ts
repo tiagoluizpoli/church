@@ -11,7 +11,12 @@ import {
 } from '@/domain/branded-ids';
 import { Shift } from '@/domain/entities/shift';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { buildRole, buildSector } from '@/seeds/builders/ministry';
+import {
+  buildMinistry,
+  buildRole,
+  buildSector,
+} from '@/seeds/builders/ministry';
+import { buildMinistryParticipation } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -75,6 +80,66 @@ describe('DrizzleShiftRepository', () => {
     expect(created).toHaveLength(1);
     expect(created[0]?.id).toBe(shiftEntity.id);
     expect(created[0]?.label).toBe('Whole event time block');
+  });
+
+  it('keeps shifts for two participations of the same event time block independent', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const ministry = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      name: 'Other ministry',
+    });
+    const other = await buildMinistryParticipation({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: ministry.id,
+      eventId: graph.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    const churchId = ChurchId.from(seed.churchAId);
+    const eventTimeBlockId = EventTimeBlockId.from(graph.eventTimeBlock.id);
+    const firstId = MinistryParticipationId.from(graph.participation.id);
+    const secondId = MinistryParticipationId.from(other.id);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const makeShift = (participationId: MinistryParticipationId) =>
+      new Shift({
+        props: {
+          churchId,
+          participationId,
+          eventTimeBlockId,
+          startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+          endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+        },
+      });
+    const first = makeShift(firstId);
+    const second = makeShift(secondId);
+    await repo.createMany({ churchId, shifts: [first, second] });
+    await repo.deleteByEventTimeBlock({
+      churchId,
+      participationId: firstId,
+      eventTimeBlockId,
+    });
+    expect(
+      await repo.listByEventTimeBlock({
+        churchId,
+        participationId: firstId,
+        eventTimeBlockId,
+      }),
+    ).toEqual([]);
+    expect(
+      (
+        await repo.listByEventTimeBlock({
+          churchId,
+          participationId: secondId,
+          eventTimeBlockId,
+        })
+      ).map((shift) => shift.id),
+    ).toEqual([second.id]);
   });
 
   it('getById throws NotFoundError for an invalid uuid and for a missing/foreign-church shift', async () => {

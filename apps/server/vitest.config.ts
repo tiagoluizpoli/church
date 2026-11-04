@@ -100,6 +100,7 @@ export default defineConfig({
           include: [
             'tests/api/**/*.test.ts',
             'tests/application/db-availability-check-manager.test.ts',
+            'tests/application/scheduling-phase7.live-changes.test.ts',
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',
@@ -143,7 +144,6 @@ export default defineConfig({
             'tests/application/scheduling-phase4.managers.test.ts',
             'tests/application/scheduling-phase5.volunteer-availability.test.ts',
             'tests/application/scheduling-phase6.assign.test.ts',
-            'tests/application/scheduling-phase7.live-changes.test.ts',
             'tests/behavior/**/*.test.ts',
             'tests/http/**/*.test.ts',
             'tests/integration/**/*.test.ts',

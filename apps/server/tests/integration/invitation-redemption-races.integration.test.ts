@@ -192,16 +192,26 @@ async function parked(input: { gate: Promise<void>; work: Promise<unknown> }) {
   await Promise.race([input.gate, settled]);
 }
 
-/** Resolves once another connection is queued behind a lock. */
+/**
+ * Resolves once a connection is queued behind a lock held by a parked
+ * transaction (idle in transaction), so an unrelated lock wait cannot release
+ * the race early.
+ */
 async function untilLockWait() {
   for (let attempt = 0; attempt < 200; attempt += 1) {
     const { rows } = await raceDb.execute(
-      sql`SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+      sql`SELECT count(*)::int AS waiting
+        FROM pg_stat_activity waiter
+        JOIN pg_stat_activity holder ON holder.pid = ANY(pg_blocking_pids(waiter.pid))
+        WHERE waiter.datname = current_database()
+          AND waiter.wait_event_type = 'Lock'
+          AND holder.datname = current_database()
+          AND holder.state = 'idle in transaction'`,
     );
     if ((rows[0] as { waiting: number }).waiting > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  throw new Error('No connection ever waited on a lock');
+  throw new Error('No connection ever waited on a parked transaction');
 }
 
 async function churchRow(id: string) {

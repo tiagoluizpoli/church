@@ -26,15 +26,23 @@ const templateId = '22222222-2222-2222-2222-222222222222' as EventTemplateId;
 const blockAId = '33333333-3333-3333-3333-333333333331' as TemplateTimeBlockId;
 const blockBId = '33333333-3333-3333-3333-333333333332' as TemplateTimeBlockId;
 
-// Two-week cycle: 2026-07-01 (Wed) through 2026-07-15 (exclusive),
+interface CreateCycleInput {
+  startDate?: string;
+  endDate?: string;
+}
+
+// Two-week cycle: 2026-07-01 (Wed) through 2026-07-14 (Tue) inclusive,
 // so weekday=3 (Wednesday) matches 2026-07-01 and 2026-07-08.
-function createCycle(): Cycle {
+function createCycle({
+  startDate = '2026-07-01',
+  endDate = '2026-07-14',
+}: CreateCycleInput = {}): Cycle {
   return new Cycle({
     props: {
       churchId,
       name: 'July cycle',
-      startDate: parseCalendarDay({ value: '2026-07-01' }),
-      endDate: parseCalendarDay({ value: '2026-07-15' }),
+      startDate: parseCalendarDay({ value: startDate }),
+      endDate: parseCalendarDay({ value: endDate }),
     },
   });
 }
@@ -271,7 +279,7 @@ describe('CycleEventGenerator', () => {
         churchId,
         name: 'Single day',
         startDate: parseCalendarDay({ value: '2026-07-01' }),
-        endDate: parseCalendarDay({ value: '2026-07-02' }),
+        endDate: parseCalendarDay({ value: '2026-07-01' }),
       },
     });
 
@@ -284,5 +292,73 @@ describe('CycleEventGenerator', () => {
     });
 
     expect(plans).toHaveLength(0);
+  });
+
+  it('includes a matching last day of the cycle', () => {
+    const plans = generator.generate({
+      cycle: createCycle({ endDate: '2026-07-08' }),
+      templates: [createTemplate()],
+      existingEvents: [],
+      existingFingerprints: [],
+      timeZone,
+    });
+
+    expect(
+      (plans as GeneratedCycleCreateEventPlan[]).map((plan) => plan.start),
+    ).toEqual([
+      parseInstant({ value: '2026-07-01T09:00:00.000Z' }),
+      parseInstant({ value: '2026-07-08T09:00:00.000Z' }),
+    ]);
+  });
+
+  it('generates the one matching day of a one-day cycle', () => {
+    const plans = generator.generate({
+      cycle: createCycle({ endDate: '2026-07-01' }),
+      templates: [createTemplate()],
+      existingEvents: [],
+      existingFingerprints: [],
+      timeZone,
+    });
+
+    expect(plans).toHaveLength(1);
+    expect((plans[0] as GeneratedCycleCreateEventPlan).start).toEqual(
+      parseInstant({ value: '2026-07-01T09:00:00.000Z' }),
+    );
+  });
+
+  it('lets an overnight block on the last day finish on the following day', () => {
+    const overnightTemplate = new EventTemplate({
+      props: {
+        churchId,
+        name: 'Vigil',
+        weekday: 3,
+        blocks: [
+          new TemplateTimeBlock({
+            props: {
+              churchId,
+              templateId,
+              label: 'Night watch',
+              startTime: parseTimeOfDay({ value: '22:00' }),
+              endTime: parseTimeOfDay({ value: '02:00' }),
+              order: 1,
+            },
+            id: blockAId,
+          }),
+        ],
+      },
+      id: templateId,
+    });
+
+    const plans = generator.generate({
+      cycle: createCycle({ endDate: '2026-07-08' }),
+      templates: [overnightTemplate],
+      existingEvents: [],
+      existingFingerprints: [],
+      timeZone,
+    });
+
+    expect((plans.at(-1) as GeneratedCycleCreateEventPlan).end).toEqual(
+      parseInstant({ value: '2026-07-09T02:00:00.000Z' }),
+    );
   });
 });

@@ -10,7 +10,7 @@ function createCycle() {
       churchId: '11111111-1111-1111-1111-111111111111',
       name: 'July 2026',
       startDate: parseCalendarDay({ value: '2026-07-01' }),
-      endDate: parseCalendarDay({ value: '2026-08-01' }),
+      endDate: parseCalendarDay({ value: '2026-07-31' }),
     },
     id: '22222222-2222-2222-2222-222222222222',
   });
@@ -31,7 +31,7 @@ describe('Cycle', () => {
         churchId: '11111111-1111-1111-1111-111111111111',
         name: 'Pre-sent',
         startDate: parseCalendarDay({ value: '2026-07-01' }),
-        endDate: parseCalendarDay({ value: '2026-08-01' }),
+        endDate: parseCalendarDay({ value: '2026-07-31' }),
         state: 'sent',
       },
     });
@@ -39,14 +39,27 @@ describe('Cycle', () => {
     expect(cycle.state).toBe('sent');
   });
 
-  it('rejects start dates that are not before the end date', () => {
+  it('accepts a one-day cycle whose start and end are the same day', () => {
+    const cycle = new Cycle({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111',
+        name: 'Retreat day',
+        startDate: parseCalendarDay({ value: '2026-07-01' }),
+        endDate: parseCalendarDay({ value: '2026-07-01' }),
+      },
+    });
+
+    expect(cycle.endDate).toBe('2026-07-01');
+  });
+
+  it('rejects an end date before the start date', () => {
     expect(
       () =>
         new Cycle({
           props: {
             churchId: '11111111-1111-1111-1111-111111111111',
             name: 'Broken',
-            startDate: parseCalendarDay({ value: '2026-07-01' }),
+            startDate: parseCalendarDay({ value: '2026-07-02' }),
             endDate: parseCalendarDay({ value: '2026-07-01' }),
           },
         }),
@@ -124,21 +137,38 @@ describe('Cycle', () => {
     ).toThrow(IllegalStateTransitionError);
   });
 
-  it('evaluates date containment using church-local dates', () => {
+  it('contains both boundary days by church-local date', () => {
     const cycle = createCycle();
 
-    // 2026-07-31T23:00:00-03:00 is still church-local July 31.
+    // 2026-07-01T00:30:00-03:00 is church-local July 1, the first day.
     expect(
       cycle.containsDate({
-        instant: parseInstant({ value: '2026-08-01T02:00:00.000Z' }),
+        instant: parseInstant({ value: '2026-07-01T03:30:00.000Z' }),
         timeZone: 'America/Sao_Paulo',
       }),
     ).toBe(true);
 
-    // 2026-08-01T00:30:00-03:00 is church-local August 1, the exclusive end.
+    // 2026-07-31T23:30:00-03:00 is church-local July 31, the last day, while
+    // UTC already reads August 1.
+    expect(
+      cycle.containsDate({
+        instant: parseInstant({ value: '2026-08-01T02:30:00.000Z' }),
+        timeZone: 'America/Sao_Paulo',
+      }),
+    ).toBe(true);
+
+    // 2026-08-01T00:30:00-03:00 is church-local August 1, the day after.
     expect(
       cycle.containsDate({
         instant: parseInstant({ value: '2026-08-01T03:30:00.000Z' }),
+        timeZone: 'America/Sao_Paulo',
+      }),
+    ).toBe(false);
+
+    // 2026-06-30T23:30:00-03:00 is church-local June 30, the day before.
+    expect(
+      cycle.containsDate({
+        instant: parseInstant({ value: '2026-07-01T02:30:00.000Z' }),
         timeZone: 'America/Sao_Paulo',
       }),
     ).toBe(false);

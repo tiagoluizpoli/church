@@ -167,7 +167,7 @@ function listMatchingCycleDates({
   const dates: CalendarDay[] = [];
   let cursor = cycle.startDate;
 
-  while (compareCalendarDays({ left: cursor, right: cycle.endDate }) < 0) {
+  while (compareCalendarDays({ left: cursor, right: cycle.endDate }) <= 0) {
     if (weekdayIndex({ day: cursor }) === weekday) {
       dates.push(cursor);
     }

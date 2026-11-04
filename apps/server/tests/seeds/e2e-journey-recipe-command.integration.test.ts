@@ -108,12 +108,16 @@ async function withDatabase<T>({
     connectionString: databaseUrlFor({ database }),
     max: 1,
   });
+  // pool.end() resolves before its clients' sockets close, so a later force-drop could still kill a live client (57P01); wait for each client's own 'end'.
+  const clientsEnded: Promise<void>[] = [];
+  pool.on('connect', (client) => {
+    clientsEnded.push(new Promise((resolve) => client.once('end', resolve)));
+  });
   try {
     return await use(pool);
   } finally {
-    // pool.end() resolves before its client's socket closes, so a later force-drop can still kill that client (57P01).
-    pool.on('error', () => {});
     await pool.end();
+    await Promise.all(clientsEnded);
   }
 }
 

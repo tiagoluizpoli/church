@@ -30,7 +30,11 @@ export function createTransactionContextFake() {
   return {} as TransactionContext;
 }
 
-export function createUnitOfWorkFake({ tx }: { tx: TransactionContext }) {
+interface UnitOfWorkFakeInput {
+  tx: TransactionContext;
+}
+
+export function createUnitOfWorkFake({ tx }: UnitOfWorkFakeInput) {
   // Generic methods cannot be typed through vi.fn<T>, so annotate the object.
   const unitOfWork: UnitOfWork = {
     run: vi.fn(async (work) => work(tx)),

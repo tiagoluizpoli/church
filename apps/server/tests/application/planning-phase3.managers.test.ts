@@ -16,7 +16,7 @@ import {
   TemplateTimeBlockId,
 } from '@/domain/branded-ids';
 import { Church } from '@/domain/entities/church';
-import { Cycle } from '@/domain/entities/cycle';
+import { Cycle, type CycleState } from '@/domain/entities/cycle';
 import { Event, type EventStatus } from '@/domain/entities/event';
 import { EventTemplate } from '@/domain/entities/event-template';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
@@ -109,13 +109,11 @@ function createCycleHarness() {
   return { manager, cycle, ...dependencies };
 }
 
-function makeEvent({
-  status = 'draft',
-  owner = cycleId,
-}: {
+interface MakeEventInput {
   status?: EventStatus;
   owner?: CycleId;
-} = {}) {
+}
+function makeEvent({ status = 'draft', owner = cycleId }: MakeEventInput = {}) {
   return new Event({
     id: eventId,
     props: {
@@ -128,11 +126,10 @@ function makeEvent({
     },
   });
 }
-function makeCycle({
-  state = 'draft',
-}: {
-  state?: 'draft' | 'sent' | 'past';
-} = {}) {
+interface MakeCycleInput {
+  state?: CycleState;
+}
+function makeCycle({ state = 'draft' }: MakeCycleInput = {}) {
   return new Cycle({
     id: cycleId,
     props: {
@@ -144,7 +141,10 @@ function makeCycle({
     },
   });
 }
-function makeBlock({ owner = eventId }: { owner?: EventId } = {}) {
+interface MakeBlockInput {
+  owner?: EventId;
+}
+function makeBlock({ owner = eventId }: MakeBlockInput = {}) {
   return new EventTimeBlock({
     id: eventTimeBlockId,
     props: {

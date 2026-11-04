@@ -27,7 +27,10 @@ import { AvailabilityCheck } from '@/domain/entities/availability-check';
 import { Event } from '@/domain/entities/event';
 import { EventTemplate } from '@/domain/entities/event-template';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
-import { MinistryParticipation } from '@/domain/entities/ministry-participation';
+import {
+  MinistryParticipation,
+  type ParticipationState,
+} from '@/domain/entities/ministry-participation';
 import { ParticipationEventTimeBlockInclusion } from '@/domain/entities/participation-event-time-block-inclusion';
 import { Role } from '@/domain/entities/role';
 import { Shift } from '@/domain/entities/shift';
@@ -105,11 +108,12 @@ function createRepositories() {
   };
 }
 
+interface ParticipationHarnessInput {
+  state?: ParticipationState;
+}
 function createParticipationHarness({
   state = 'preparing',
-}: {
-  state?: 'preparing' | 'availability_requested' | 'assigning';
-} = {}) {
+}: ParticipationHarnessInput = {}) {
   const repositories = createRepositories();
   const participation = new MinistryParticipation({
     props: { churchId, ministryId, eventId, state },

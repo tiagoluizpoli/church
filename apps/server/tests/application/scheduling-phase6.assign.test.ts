@@ -1,38 +1,25 @@
 import { appConfig } from '@church/app-config';
 import { parseInstant } from '@church/time';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import {
+  AssignmentId,
+  AvailabilityCheckId,
   ChurchId,
   CycleId,
+  EventId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
+  RoleId,
+  SectorId,
   ShiftId,
   ShiftRequirementId,
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
-import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
-import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
-import type { AvailabilityCheckRepository } from '@/domain/contracts/infrastructure/availability-check.repository';
-import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
-import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
-import type { EventTemplateRepository } from '@/domain/contracts/infrastructure/event-template.repository';
-import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
-import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
-import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
-import type { NotificationRepository } from '@/domain/contracts/infrastructure/notification.repository';
-import type { PlanningEventRepository } from '@/domain/contracts/infrastructure/planning-event.repository';
-import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
-import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
-import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
-import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
-import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
-import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
-import type { UsualSetupRepository } from '@/domain/contracts/infrastructure/usual-setup.repository';
-import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
 import { Ministry } from '@/domain/entities/ministry';
@@ -43,6 +30,27 @@ import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import {
+  createAssignmentAuditRepositoryFake,
+  createAssignmentRepositoryFake,
+  createAvailabilityCheckRepositoryFake,
+  createCycleRepositoryFake,
+  createEventRepositoryFake,
+  createEventTemplateRepositoryFake,
+  createEventTimeBlockRepositoryFake,
+  createMinistryParticipationRepositoryFake,
+  createMinistryRepositoryFake,
+  createNotificationRepositoryFake,
+  createPlanningEventRepositoryFake,
+  createRoleRepositoryFake,
+  createSectorRepositoryFake,
+  createShiftRepositoryFake,
+  createTransactionContextFake,
+  createUnavailableShiftRepositoryFake,
+  createUnitOfWorkFake,
+  createUsualSetupRepositoryFake,
+  createVolunteerRepositoryFake,
+} from '@/tests/test-support/repository-contract-fakes';
 
 const churchId = ChurchId.from('church');
 const ministryId = MinistryId.from('ministry');
@@ -55,215 +63,34 @@ const shiftRequirementId = ShiftRequirementId.from({ raw: 'requirement' });
 const start = parseInstant({ value: '2026-08-10T09:00:00Z' });
 const end = parseInstant({ value: '2026-08-10T10:00:00Z' });
 
-function createFixture() {
-  const assignmentRepository = {
-    create: vi.fn<AssignmentRepository['create']>(),
-    getById: vi.fn<AssignmentRepository['getById']>(),
-    findByEventTimeBlockAndVolunteer:
-      vi.fn<AssignmentRepository['findByEventTimeBlockAndVolunteer']>(),
-    listByEventTimeBlock: vi.fn<AssignmentRepository['listByEventTimeBlock']>(),
-    listByEvent: vi.fn<AssignmentRepository['listByEvent']>(),
-    listByParticipation: vi.fn<AssignmentRepository['listByParticipation']>(),
-    listByShift: vi.fn<AssignmentRepository['listByShift']>(),
-    listByVolunteer: vi.fn<AssignmentRepository['listByVolunteer']>(),
-    listByVolunteers: vi.fn<AssignmentRepository['listByVolunteers']>(),
-    listByVolunteerInRange:
-      vi.fn<AssignmentRepository['listByVolunteerInRange']>(),
-    listByRange: vi.fn<AssignmentRepository['listByRange']>(),
-    updateStatus: vi.fn<AssignmentRepository['updateStatus']>(),
-    countByVolunteerInRange:
-      vi.fn<AssignmentRepository['countByVolunteerInRange']>(),
-    deleteByEvent: vi.fn<AssignmentRepository['deleteByEvent']>(),
-    deleteById: vi.fn<AssignmentRepository['deleteById']>(),
-    listDeclinedByEventTimeBlock:
-      vi.fn<AssignmentRepository['listDeclinedByEventTimeBlock']>(),
-  } satisfies AssignmentRepository;
-  const assignmentAuditRepository = {
-    create: vi.fn<AssignmentAuditRepository['create']>(),
-    listByCycle: vi.fn<AssignmentAuditRepository['listByCycle']>(),
-    listByChurch: vi.fn<AssignmentAuditRepository['listByChurch']>(),
-    listByActor: vi.fn<AssignmentAuditRepository['listByActor']>(),
-    listByEvent: vi.fn<AssignmentAuditRepository['listByEvent']>(),
-  } satisfies AssignmentAuditRepository;
-  const shiftRepository = {
-    createMany: vi.fn<ShiftRepository['createMany']>(),
-    getById: vi.fn<ShiftRepository['getById']>(),
-    listByParticipation: vi.fn<ShiftRepository['listByParticipation']>(),
-    listByEventTimeBlock: vi.fn<ShiftRepository['listByEventTimeBlock']>(),
-    update: vi.fn<ShiftRepository['update']>(),
-    deleteById: vi.fn<ShiftRepository['deleteById']>(),
-    deleteByEventTimeBlock: vi.fn<ShiftRepository['deleteByEventTimeBlock']>(),
-    upsertRequirement: vi.fn<ShiftRepository['upsertRequirement']>(),
-    listRequirementsByParticipation:
-      vi.fn<ShiftRepository['listRequirementsByParticipation']>(),
-    getRequirementForShift: vi.fn<ShiftRepository['getRequirementForShift']>(),
-  } satisfies ShiftRepository;
-  const ministryParticipationRepository = {
-    getById: vi.fn<MinistryParticipationRepository['getById']>(),
-    findByMinistryEvent:
-      vi.fn<MinistryParticipationRepository['findByMinistryEvent']>(),
-    create: vi.fn<MinistryParticipationRepository['create']>(),
-    listByEvent: vi.fn<MinistryParticipationRepository['listByEvent']>(),
-    hasCycleStaffing:
-      vi.fn<MinistryParticipationRepository['hasCycleStaffing']>(),
-    listByMinistry: vi.fn<MinistryParticipationRepository['listByMinistry']>(),
-    listByIds: vi.fn<MinistryParticipationRepository['listByIds']>(),
-    updateState: vi.fn<MinistryParticipationRepository['updateState']>(),
-    listInclusions: vi.fn<MinistryParticipationRepository['listInclusions']>(),
-    replaceInclusions:
-      vi.fn<MinistryParticipationRepository['replaceInclusions']>(),
-    addInclusion: vi.fn<MinistryParticipationRepository['addInclusion']>(),
-    touch: vi.fn<MinistryParticipationRepository['touch']>(),
-    listScheduleSummaries:
-      vi.fn<MinistryParticipationRepository['listScheduleSummaries']>(),
-  } satisfies MinistryParticipationRepository;
-  const volunteerRepository = {
-    getById: vi.fn<VolunteerRepository['getById']>(),
-    findByUserId: vi.fn<VolunteerRepository['findByUserId']>(),
-    listByMinistry: vi.fn<VolunteerRepository['listByMinistry']>(),
-    hasMembershipInMinistry:
-      vi.fn<VolunteerRepository['hasMembershipInMinistry']>(),
-    hasRoleQualification: vi.fn<VolunteerRepository['hasRoleQualification']>(),
-    listQualifiedForRole: vi.fn<VolunteerRepository['listQualifiedForRole']>(),
-    updateStatus: vi.fn<VolunteerRepository['updateStatus']>(),
-    findByUserIdGlobally: vi.fn<VolunteerRepository['findByUserIdGlobally']>(),
-    hasLeadershipInMinistry:
-      vi.fn<VolunteerRepository['hasLeadershipInMinistry']>(),
-    listLedMinistries: vi.fn<VolunteerRepository['listLedMinistries']>(),
-    listByIds: vi.fn<VolunteerRepository['listByIds']>(),
-    listMemberMinistryIds:
-      vi.fn<VolunteerRepository['listMemberMinistryIds']>(),
-    listMinistryMemberships:
-      vi.fn<VolunteerRepository['listMinistryMemberships']>(),
-    listActiveLeaderUserIds:
-      vi.fn<VolunteerRepository['listActiveLeaderUserIds']>(),
-  } satisfies VolunteerRepository;
-  const unavailableShiftRepository = {
-    listByVolunteerForEvent:
-      vi.fn<UnavailableShiftRepository['listByVolunteerForEvent']>(),
-    listByVolunteers: vi.fn<UnavailableShiftRepository['listByVolunteers']>(),
-    listUnavailableShiftsByCheck:
-      vi.fn<UnavailableShiftRepository['listUnavailableShiftsByCheck']>(),
-    replaceUnavailableShiftsForCheck:
-      vi.fn<UnavailableShiftRepository['replaceUnavailableShiftsForCheck']>(),
-  } satisfies UnavailableShiftRepository;
-  const cycleRepository = {
-    create: vi.fn<CycleRepository['create']>(),
-    list: vi.fn<CycleRepository['list']>(),
-    getById: vi.fn<CycleRepository['getById']>(),
-    findOverlapping: vi.fn<CycleRepository['findOverlapping']>(),
-    updateState: vi.fn<CycleRepository['updateState']>(),
-    acquireChurchLock: vi.fn<CycleRepository['acquireChurchLock']>(),
-  } satisfies CycleRepository;
-  const planningEventRepository = {
-    createEvent: vi.fn<PlanningEventRepository['createEvent']>(),
-    updateEvent: vi.fn<PlanningEventRepository['updateEvent']>(),
-    getEvent: vi.fn<PlanningEventRepository['getEvent']>(),
-    deleteEvent: vi.fn<PlanningEventRepository['deleteEvent']>(),
-    listCycleEvents: vi.fn<PlanningEventRepository['listCycleEvents']>(),
-    createEventTimeBlock:
-      vi.fn<PlanningEventRepository['createEventTimeBlock']>(),
-    seedParticipations: vi.fn<PlanningEventRepository['seedParticipations']>(),
-  } satisfies PlanningEventRepository;
-  const eventTimeBlockRepository = {
-    getById: vi.fn<EventTimeBlockRepository['getById']>(),
-    listByEvent: vi.fn<EventTimeBlockRepository['listByEvent']>(),
-    create: vi.fn<EventTimeBlockRepository['create']>(),
-    update: vi.fn<EventTimeBlockRepository['update']>(),
-    deleteById: vi.fn<EventTimeBlockRepository['deleteById']>(),
-    findOverlapping: vi.fn<EventTimeBlockRepository['findOverlapping']>(),
-    deleteByEvent: vi.fn<EventTimeBlockRepository['deleteByEvent']>(),
-    countActiveAssignments:
-      vi.fn<EventTimeBlockRepository['countActiveAssignments']>(),
-  } satisfies EventTimeBlockRepository;
-  const ministryRepository = {
-    getById: vi.fn<MinistryRepository['getById']>(),
-    listByChurch: vi.fn<MinistryRepository['listByChurch']>(),
-    create: vi.fn<MinistryRepository['create']>(),
-    rename: vi.fn<MinistryRepository['rename']>(),
-    lockActive: vi.fn<MinistryRepository['lockActive']>(),
-    listUnendedParticipationCycles:
-      vi.fn<MinistryRepository['listUnendedParticipationCycles']>(),
-    archive: vi.fn<MinistryRepository['archive']>(),
-    getSettings: vi.fn<MinistryRepository['getSettings']>(),
-    updateDefaultDirection:
-      vi.fn<MinistryRepository['updateDefaultDirection']>(),
-  } satisfies MinistryRepository;
-  const usualSetupRepository = {
-    listByMinistry: vi.fn<UsualSetupRepository['listByMinistry']>(),
-    listByChurch: vi.fn<UsualSetupRepository['listByChurch']>(),
-    upsertBlock: vi.fn<UsualSetupRepository['upsertBlock']>(),
-  } satisfies UsualSetupRepository;
-  const eventTemplateRepository = {
-    create: vi.fn<EventTemplateRepository['create']>(),
-    update: vi.fn<EventTemplateRepository['update']>(),
-    delete: vi.fn<EventTemplateRepository['delete']>(),
-    list: vi.fn<EventTemplateRepository['list']>(),
-    getById: vi.fn<EventTemplateRepository['getById']>(),
-    getByIds: vi.fn<EventTemplateRepository['getByIds']>(),
-    getUsage: vi.fn<EventTemplateRepository['getUsage']>(),
-  } satisfies EventTemplateRepository;
-  const roleRepository = {
-    getById: vi.fn<RoleRepository['getById']>(),
-    listByMinistry: vi.fn<RoleRepository['listByMinistry']>(),
-    listActiveByMinistry: vi.fn<RoleRepository['listActiveByMinistry']>(),
-    create: vi.fn<RoleRepository['create']>(),
-    rename: vi.fn<RoleRepository['rename']>(),
-    lockActiveForUse: vi.fn<RoleRepository['lockActiveForUse']>(),
-    lockActiveForArchive: vi.fn<RoleRepository['lockActiveForArchive']>(),
-    listArchiveBlockers: vi.fn<RoleRepository['listArchiveBlockers']>(),
-    archive: vi.fn<RoleRepository['archive']>(),
-  } satisfies RoleRepository;
-  const sectorRepository = {
-    listByMinistry: vi.fn<SectorRepository['listByMinistry']>(),
-    getById: vi.fn<SectorRepository['getById']>(),
-    lockActive: vi.fn<SectorRepository['lockActive']>(),
-    create: vi.fn<SectorRepository['create']>(),
-    rename: vi.fn<SectorRepository['rename']>(),
-    lockActiveForArchive: vi.fn<SectorRepository['lockActiveForArchive']>(),
-    listArchiveBlockers: vi.fn<SectorRepository['listArchiveBlockers']>(),
-    markArchived: vi.fn<SectorRepository['markArchived']>(),
-  } satisfies SectorRepository;
-  const notificationRepository = {
-    create: vi.fn<NotificationRepository['create']>(),
-    list: vi.fn<NotificationRepository['list']>(),
-    countUnread: vi.fn<NotificationRepository['countUnread']>(),
-    markRead: vi.fn<NotificationRepository['markRead']>(),
-    markAllRead: vi.fn<NotificationRepository['markAllRead']>(),
-  } satisfies NotificationRepository;
-  const eventRepository = {
-    getMinistryId: vi.fn<EventRepository['getMinistryId']>(),
-    getById: vi.fn<EventRepository['getById']>(),
-    getWithEventTimeBlocks: vi.fn<EventRepository['getWithEventTimeBlocks']>(),
-    listByMinistry: vi.fn<EventRepository['listByMinistry']>(),
-    create: vi.fn<EventRepository['create']>(),
-    updateStatus: vi.fn<EventRepository['updateStatus']>(),
-    update: vi.fn<EventRepository['update']>(),
-  } satisfies EventRepository;
-  const availabilityCheckRepository = {
-    listActiveMemberships:
-      vi.fn<AvailabilityCheckRepository['listActiveMemberships']>(),
-    listByCycle: vi.fn<AvailabilityCheckRepository['listByCycle']>(),
-    createMany: vi.fn<AvailabilityCheckRepository['createMany']>(),
-    getCheckContext: vi.fn<AvailabilityCheckRepository['getCheckContext']>(),
-    listByVolunteer: vi.fn<AvailabilityCheckRepository['listByVolunteer']>(),
-    listCheckShifts: vi.fn<AvailabilityCheckRepository['listCheckShifts']>(),
-    listMinistryLeaderVolunteerIds:
-      vi.fn<AvailabilityCheckRepository['listMinistryLeaderVolunteerIds']>(),
-    confirm: vi.fn<AvailabilityCheckRepository['confirm']>(),
-  } satisfies AvailabilityCheckRepository;
-  const tx = {} as TransactionContext;
-  const unitOfWork: UnitOfWork = {
-    run: vi.fn(async (work) => work(tx)),
-    runWith: vi.fn(async ({ work }) => work(tx)),
-  };
+function createHarness() {
+  const assignmentRepository = createAssignmentRepositoryFake();
+  const assignmentAuditRepository = createAssignmentAuditRepositoryFake();
+  const shiftRepository = createShiftRepositoryFake();
+  const ministryParticipationRepository =
+    createMinistryParticipationRepositoryFake();
+  const volunteerRepository = createVolunteerRepositoryFake();
+  const unavailableShiftRepository = createUnavailableShiftRepositoryFake();
+  const cycleRepository = createCycleRepositoryFake();
+  const planningEventRepository = createPlanningEventRepositoryFake();
+  const eventTimeBlockRepository = createEventTimeBlockRepositoryFake();
+  const ministryRepository = createMinistryRepositoryFake();
+  const usualSetupRepository = createUsualSetupRepositoryFake();
+  const eventTemplateRepository = createEventTemplateRepositoryFake();
+  const roleRepository = createRoleRepositoryFake();
+  const sectorRepository = createSectorRepositoryFake();
+  const notificationRepository = createNotificationRepositoryFake();
+  const eventRepository = createEventRepositoryFake();
+  const availabilityCheckRepository = createAvailabilityCheckRepositoryFake();
+  const tx = createTransactionContextFake();
+  const unitOfWork = createUnitOfWorkFake({ tx });
   const notifications = createChurchNotificationsSpy();
   const participation = new MinistryParticipation({
     id: participationId,
     props: {
       churchId,
       ministryId,
-      eventId: 'event',
+      eventId: EventId.from('event'),
       state: 'availability_requested',
     },
   });
@@ -272,7 +99,7 @@ function createFixture() {
     props: {
       churchId,
       participationId,
-      eventTimeBlockId: 'block',
+      eventTimeBlockId: EventTimeBlockId.from('block'),
       startTime: start,
       endTime: end,
       label: 'Morning',
@@ -283,33 +110,33 @@ function createFixture() {
     props: {
       churchId,
       participationId,
-      eventTimeBlockId: 'block',
+      eventTimeBlockId: EventTimeBlockId.from('block'),
       shiftId,
-      roleId: 'role',
-      sectorId: 'sector',
+      roleId: RoleId.from('role'),
+      sectorId: SectorId.from('sector'),
       sectorName: 'Alpha',
       peopleNeeded: 1,
     },
   });
   const assignment = new Assignment({
-    id: 'assignment',
+    id: AssignmentId.from('assignment'),
     props: {
       churchId,
       participationId,
-      eventTimeBlockId: 'block',
+      eventTimeBlockId: EventTimeBlockId.from('block'),
       shiftId,
       volunteerId,
-      roleId: 'role',
+      roleId: RoleId.from('role'),
       shiftRequirementId,
       status: 'pending',
     },
   });
   const volunteer = new Volunteer({
     id: volunteerId,
-    props: { churchId, userId: 'user', name: 'Alice Alpha' },
+    props: { churchId, userId: UserId.from('user'), name: 'Alice Alpha' },
   });
   const event = new Event({
-    id: 'event',
+    id: EventId.from('event'),
     props: { churchId, cycleId, title: 'Service', start, end },
   });
   const ministry = new Ministry({
@@ -407,56 +234,56 @@ function createFixture() {
 
 describe('Assignment and publication managers', () => {
   it('caps completion per requirement and excludes declined and cancelled assignments', async () => {
-    const f = createFixture();
+    const f = createHarness();
     const beta = new ShiftRequirement({
-      id: 'beta',
+      id: ShiftRequirementId.from({ raw: 'beta' }),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
-        roleId: 'role',
-        sectorId: 'beta-sector',
+        roleId: RoleId.from('role'),
+        sectorId: SectorId.from('beta-sector'),
         sectorName: 'Beta',
         peopleNeeded: 1,
       },
     });
     const extra = new Assignment({
-      id: 'extra',
+      id: AssignmentId.from('extra'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
-        volunteerId: 'other',
-        roleId: 'role',
+        volunteerId: VolunteerId.from('other'),
+        roleId: RoleId.from('role'),
         shiftRequirementId,
         status: 'confirmed',
       },
     });
     const declined = new Assignment({
-      id: 'declined',
+      id: AssignmentId.from('declined'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
-        volunteerId: 'third',
-        roleId: 'role',
-        shiftRequirementId: 'beta',
+        volunteerId: VolunteerId.from('third'),
+        roleId: RoleId.from('role'),
+        shiftRequirementId: ShiftRequirementId.from({ raw: 'beta' }),
         status: 'declined',
       },
     });
     const cancelled = new Assignment({
-      id: 'cancelled',
+      id: AssignmentId.from('cancelled'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
-        volunteerId: 'fourth',
-        roleId: 'role',
-        shiftRequirementId: 'beta',
+        volunteerId: VolunteerId.from('fourth'),
+        roleId: RoleId.from('role'),
+        shiftRequirementId: ShiftRequirementId.from({ raw: 'beta' }),
         status: 'cancelled',
       },
     });
@@ -480,7 +307,7 @@ describe('Assignment and publication managers', () => {
   });
 
   it('creates a pending assignment for the requested requirement and starts assigning', async () => {
-    const f = createFixture();
+    const f = createHarness();
     const result = await f.assignmentManager.createParticipationAssignment({
       churchId,
       shiftId,
@@ -493,7 +320,7 @@ describe('Assignment and publication managers', () => {
     expect(f.assignmentRepository.create).toHaveBeenCalledWith({
       churchId,
       input: {
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         participationId,
         shiftId,
         volunteerId,
@@ -512,16 +339,16 @@ describe('Assignment and publication managers', () => {
   });
 
   it('rejects overlapping active assignments', async () => {
-    const f = createFixture();
+    const f = createHarness();
     const overlap = new Assignment({
-      id: 'overlap',
+      id: AssignmentId.from('overlap'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
-        shiftId: 'other-shift',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
+        shiftId: ShiftId.from('other-shift'),
         volunteerId,
-        roleId: 'role',
+        roleId: RoleId.from('role'),
         shiftRequirementId,
         status: 'confirmed',
       },
@@ -540,7 +367,7 @@ describe('Assignment and publication managers', () => {
   });
 
   it('requires confirmation before publishing an incomplete participation and notifies its assigned volunteers', async () => {
-    const f = createFixture();
+    const f = createHarness();
     f.assignmentRepository.listByParticipation.mockResolvedValue([]);
     const input = { churchId, cycleId, ministryId, userId: actorId };
     await expect(
@@ -558,10 +385,10 @@ describe('Assignment and publication managers', () => {
         props: {
           churchId,
           participationId,
-          eventTimeBlockId: 'block',
+          eventTimeBlockId: EventTimeBlockId.from('block'),
           shiftId,
-          roleId: 'role',
-          sectorId: 'sector',
+          roleId: RoleId.from('role'),
+          sectorId: SectorId.from('sector'),
           sectorName: 'Alpha',
           peopleNeeded: 2,
         },
@@ -579,39 +406,44 @@ describe('Assignment and publication managers', () => {
     expect(f.notifications.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'schedule_published',
-        to: [{ userId: 'user', churchId }],
+        to: [{ userId: UserId.from('user'), churchId }],
       }),
     );
   });
 
   it('shows only published participation assignments with visible statuses', async () => {
-    const f = createFixture();
+    const f = createHarness();
     const published = new MinistryParticipation({
-      id: 'published',
-      props: { churchId, ministryId, eventId: 'event', state: 'published' },
-    });
-    const visible = new Assignment({
-      id: 'visible',
+      id: MinistryParticipationId.from('published'),
       props: {
         churchId,
-        participationId: 'published',
-        eventTimeBlockId: 'block',
+        ministryId,
+        eventId: EventId.from('event'),
+        state: 'published',
+      },
+    });
+    const visible = new Assignment({
+      id: AssignmentId.from('visible'),
+      props: {
+        churchId,
+        participationId: MinistryParticipationId.from('published'),
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
         volunteerId,
-        roleId: 'role',
+        roleId: RoleId.from('role'),
         shiftRequirementId,
         status: 'confirmed',
       },
     });
     const draft = new Assignment({
-      id: 'draft',
+      id: AssignmentId.from('draft'),
       props: {
         churchId,
-        participationId: 'published',
-        eventTimeBlockId: 'block',
+        participationId: MinistryParticipationId.from('published'),
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
         volunteerId,
-        roleId: 'role',
+        roleId: RoleId.from('role'),
         shiftRequirementId,
         status: 'draft',
       },
@@ -631,35 +463,47 @@ describe('Assignment and publication managers', () => {
   });
 
   it('ranks available volunteers by earlier service and marks unavailable volunteers last', async () => {
-    const f = createFixture();
+    const f = createHarness();
     const ada = new Volunteer({
-      id: 'ada',
-      props: { churchId, userId: 'ada-user', name: 'Ada Lovelace' },
+      id: VolunteerId.from('ada'),
+      props: {
+        churchId,
+        userId: UserId.from('ada-user'),
+        name: 'Ada Lovelace',
+      },
     });
     const grace = new Volunteer({
-      id: 'grace',
-      props: { churchId, userId: 'grace-user', name: 'Grace Hopper' },
+      id: VolunteerId.from('grace'),
+      props: {
+        churchId,
+        userId: UserId.from('grace-user'),
+        name: 'Grace Hopper',
+      },
     });
     const alan = new Volunteer({
-      id: 'alan',
-      props: { churchId, userId: 'alan-user', name: 'Alan Turing' },
+      id: VolunteerId.from('alan'),
+      props: {
+        churchId,
+        userId: UserId.from('alan-user'),
+        name: 'Alan Turing',
+      },
     });
     const older = new Shift({
-      id: 'older',
+      id: ShiftId.from('older'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         startTime: parseInstant({ value: '2026-08-01T09:00:00Z' }),
         endTime: parseInstant({ value: '2026-08-01T10:00:00Z' }),
       },
     });
     const newer = new Shift({
-      id: 'newer',
+      id: ShiftId.from('newer'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         startTime: parseInstant({ value: '2026-08-02T09:00:00Z' }),
         endTime: parseInstant({ value: '2026-08-02T10:00:00Z' }),
       },
@@ -670,10 +514,10 @@ describe('Assignment and publication managers', () => {
         props: {
           churchId,
           participationId,
-          eventTimeBlockId: 'block',
+          eventTimeBlockId: EventTimeBlockId.from('block'),
           shiftId: priorShift,
           volunteerId: volunteer,
-          roleId: 'role',
+          roleId: RoleId.from('role'),
           shiftRequirementId,
           status: 'confirmed',
         },
@@ -694,9 +538,9 @@ describe('Assignment and publication managers', () => {
       new UnavailableShift({
         props: {
           churchId,
-          availabilityCheckId: 'check',
+          availabilityCheckId: AvailabilityCheckId.from('check'),
           shiftId,
-          volunteerId: 'alan',
+          volunteerId: VolunteerId.from('alan'),
           shiftStartTime: start,
           shiftEndTime: end,
         },
@@ -716,30 +560,30 @@ describe('Assignment and publication managers', () => {
   });
 
   it('maps same-role sector requirements to their own assignments and open places', async () => {
-    const f = createFixture();
+    const f = createHarness();
     const beta = new ShiftRequirement({
-      id: 'beta',
+      id: ShiftRequirementId.from({ raw: 'beta' }),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
-        roleId: 'role',
-        sectorId: 'beta-sector',
+        roleId: RoleId.from('role'),
+        sectorId: SectorId.from('beta-sector'),
         sectorName: 'Beta',
         peopleNeeded: 1,
       },
     });
     const declined = new Assignment({
-      id: 'declined',
+      id: AssignmentId.from('declined'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         shiftId,
         volunteerId,
-        roleId: 'role',
-        shiftRequirementId: 'beta',
+        roleId: RoleId.from('role'),
+        shiftRequirementId: ShiftRequirementId.from({ raw: 'beta' }),
         status: 'declined',
       },
     });
@@ -758,7 +602,10 @@ describe('Assignment and publication managers', () => {
       declined,
     ]);
     f.roleRepository.listByMinistry.mockResolvedValue([
-      new Role({ id: 'role', props: { churchId, ministryId, name: 'Host' } }),
+      new Role({
+        id: RoleId.from('role'),
+        props: { churchId, ministryId, name: 'Host' },
+      }),
     ]);
     const schedule = await f.volunteerManager.getMinistrySchedule({
       churchId,
@@ -790,12 +637,12 @@ describe('Assignment and publication managers', () => {
   });
 
   it('warns when an assignment is requested for an unavailable volunteer', async () => {
-    const f = createFixture();
+    const f = createHarness();
     f.unavailableShiftRepository.listByVolunteers.mockResolvedValue([
       new UnavailableShift({
         props: {
           churchId,
-          availabilityCheckId: 'check',
+          availabilityCheckId: AvailabilityCheckId.from('check'),
           shiftId,
           volunteerId,
           shiftStartTime: start,
@@ -816,7 +663,7 @@ describe('Assignment and publication managers', () => {
   });
 
   it('refuses a duplicate on the same shift and a requirement from another shift', async () => {
-    const f = createFixture();
+    const f = createHarness();
     f.assignmentRepository.listByShift.mockResolvedValue([f.assignment]);
     const input = {
       churchId,
@@ -838,14 +685,14 @@ describe('Assignment and publication managers', () => {
   });
 
   it('breaks equal eligibility ties by name and flags overlapping service', async () => {
-    const f = createFixture();
+    const f = createHarness();
     const zoe = new Volunteer({
-      id: 'zoe',
-      props: { churchId, userId: 'zoe-user', name: 'Zoe' },
+      id: VolunteerId.from('zoe'),
+      props: { churchId, userId: UserId.from('zoe-user'), name: 'Zoe' },
     });
     const amy = new Volunteer({
-      id: 'amy',
-      props: { churchId, userId: 'amy-user', name: 'Amy' },
+      id: VolunteerId.from('amy'),
+      props: { churchId, userId: UserId.from('amy-user'), name: 'Amy' },
     });
     f.volunteerRepository.listQualifiedForRole.mockResolvedValue([zoe, amy]);
     const eligible = await f.participationManager.listEligibleVolunteers({
@@ -854,24 +701,24 @@ describe('Assignment and publication managers', () => {
     });
     expect(eligible.map((item) => item.volunteerName)).toEqual(['Amy', 'Zoe']);
     const overlapShift = new Shift({
-      id: 'overlap',
+      id: ShiftId.from('overlap'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
         startTime: start,
         endTime: end,
       },
     });
     const overlap = new Assignment({
-      id: 'overlap-assignment',
+      id: AssignmentId.from('overlap-assignment'),
       props: {
         churchId,
         participationId,
-        eventTimeBlockId: 'block',
-        shiftId: 'overlap',
-        volunteerId: 'amy',
-        roleId: 'role',
+        eventTimeBlockId: EventTimeBlockId.from('block'),
+        shiftId: ShiftId.from('overlap'),
+        volunteerId: VolunteerId.from('amy'),
+        roleId: RoleId.from('role'),
         shiftRequirementId,
         status: 'confirmed',
       },

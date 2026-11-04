@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
+  AssignmentId,
   ChurchId,
   CycleId,
   EventId,
@@ -11,12 +12,14 @@ import {
   EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
+  ParticipationEventTimeBlockInclusionId,
   RoleId,
   SectorId,
   ShiftId,
   ShiftRequirementId,
   TemplateTimeBlockId,
   UserId,
+  UsualSetupId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
@@ -376,7 +379,7 @@ it('rejects a staffing requirement below one without writing it', async () => {
 it('returns schedule summaries including cycles without participation', async () => {
   const { manager, repositories } = createParticipationHarness();
   const row = {
-    cycleId: 'cycle',
+    cycleId: CycleId.from('cycle'),
     name: 'Untouched',
     startDate: new Date('2026-10-01T00:00:00Z'),
     endDate: new Date('2026-11-01T00:00:00Z'),
@@ -417,7 +420,7 @@ it('writes a valid staffing requirement for the participation and touches it', a
       sectorName: 'Door',
       peopleNeeded: 2,
     },
-    id: 'requirement',
+    id: ShiftRequirementId.from({ raw: 'requirement' }),
   });
   vi.mocked(repositories.sectorRepository.lockActive).mockResolvedValue(
     new Set([sectorId]),
@@ -494,7 +497,10 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
     new Role({ id: roleId, props: { churchId, ministryId, name: 'Usher' } }),
   ]);
   vi.mocked(repositories.usualSetupRepository.upsertBlock).mockResolvedValue(
-    new UsualSetup({ id: 'setup', props: { churchId, ministryId, ...entry } }),
+    new UsualSetup({
+      id: UsualSetupId.from('setup'),
+      props: { churchId, ministryId, ...entry },
+    }),
   );
   const result = await manager.saveUsualSetupBlock({
     churchId,
@@ -546,7 +552,7 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
     },
   });
   const assignment = new Assignment({
-    id: 'assignment',
+    id: AssignmentId.from('assignment'),
     props: {
       churchId,
       eventTimeBlockId,
@@ -730,7 +736,7 @@ it('removes shifts when an event time block is excluded', async () => {
   ).mockResolvedValue([
     new ParticipationEventTimeBlockInclusion({
       props: { churchId, participationId, eventTimeBlockId },
-      id: 'inclusion',
+      id: ParticipationEventTimeBlockInclusionId.from('inclusion'),
     }),
   ]);
   await manager.setInclusions({

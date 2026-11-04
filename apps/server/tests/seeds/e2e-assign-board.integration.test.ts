@@ -250,7 +250,7 @@ describe('assign-board E2E journey recipe', () => {
       .from(cycle)
       .where(eq(cycle.id, journey.cycle.id));
     expect(cycleRow?.startDate.toISOString()).toBe('2026-12-28T00:00:00.000Z');
-    expect(cycleRow?.endDate.toISOString()).toBe('2027-01-25T00:00:00.000Z');
+    expect(cycleRow?.endDate.toISOString()).toBe('2027-01-24T00:00:00.000Z');
     for (const { id, day } of [service, teamService]) {
       const { eventRow, shiftRow } = await eventRows({ eventId: id });
       expect(eventRow?.start.toISOString()).toBe(`${day}T12:00:00.000Z`);
@@ -277,7 +277,7 @@ describe('assign-board E2E journey recipe', () => {
       .from(cycle)
       .where(eq(cycle.id, journey.cycle.id));
     expect(cycleRow?.startDate.toISOString()).toBe('2027-03-01T00:00:00.000Z');
-    expect(cycleRow?.endDate.toISOString()).toBe('2027-03-29T00:00:00.000Z');
+    expect(cycleRow?.endDate.toISOString()).toBe('2027-03-28T00:00:00.000Z');
 
     for (const { id, day } of [service, teamService, assignedService]) {
       const { eventRow, shiftRow } = await eventRows({ eventId: id });

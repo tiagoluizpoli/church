@@ -610,7 +610,7 @@ describe('development seed recipe', () => {
       {
         churchId: seeded.church.id,
         startDate: '2026-02-01',
-        endDate: '2026-03-01',
+        endDate: '2026-02-28',
         state: 'sent',
       },
     ]);

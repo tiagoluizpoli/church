@@ -22,7 +22,6 @@ import {
   volunteer,
 } from '@church/db';
 import {
-  addCalendarDays,
   type CalendarDay,
   enumerateCalendarDays,
   weekdayIndex,
@@ -128,10 +127,7 @@ function expectedGatherings({
 }: ExpectedGatheringsInput): ExpectedGathering[] {
   const { templates, servingRules, dynamicEvents } = blueprint.gatherings;
   const gatherings: ExpectedGathering[] = [];
-  for (const day of enumerateCalendarDays({
-    start: startDate,
-    end: addCalendarDays({ day: endDate, days: -1 }),
-  })) {
+  for (const day of enumerateCalendarDays({ start: startDate, end: endDate })) {
     const weekday = weekdayIndex({ day });
     const week = Math.floor((Number(day.slice(8, 10)) - 1) / 7) + 1;
     for (const template of templates.filter((t) => t.weekday === weekday)) {

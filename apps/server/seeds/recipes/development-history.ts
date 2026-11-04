@@ -177,7 +177,7 @@ function planEvents({
 }: PlanEventsInput): PlannedEvent[] {
   const days = enumerateCalendarDays({
     start: window.startDate,
-    end: addCalendarDays({ day: window.endDate, days: -1 }),
+    end: window.endDate,
   });
   const seenByWeekday = new Map<number, number>();
   const events: PlannedEvent[] = [];

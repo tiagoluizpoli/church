@@ -9,8 +9,8 @@ import { describe, expect, it } from 'vitest';
 import { cycleWindow } from '@/seeds/e2e/recipes/scheduling-cycle-window';
 
 const SUNDAY = 0;
-const WINDOW_SPAN_DAYS = 29;
-const MIN_SUNDAYS = 4;
+const INCLUDED_DAYS = 28;
+const SUNDAYS_IN_FOUR_WEEKS = 4;
 /** 2026-10-04 is a Sunday; the next seven days cover every weekday. */
 const WEEK_ANCHORS = Array.from({ length: 7 }, (_, offset) =>
   addCalendarDays({
@@ -23,11 +23,24 @@ interface DayInput {
   day: CalendarDay;
 }
 
+/** Every day from startDate through endDate, both included. */
+function includedDays({ day }: DayInput): CalendarDay[] {
+  const { startDate, endDate } = cycleWindow({ anchor: day });
+  const days: CalendarDay[] = [];
+  for (
+    let cursor = startDate;
+    cursor <= endDate;
+    cursor = addCalendarDays({ day: cursor, days: 1 })
+  ) {
+    days.push(cursor);
+  }
+  return days;
+}
+
 function sundaysIn({ day }: DayInput): CalendarDay[] {
-  const { startDate } = cycleWindow({ anchor: day });
-  return Array.from({ length: WINDOW_SPAN_DAYS }, (_, offset) =>
-    addCalendarDays({ day: startDate, days: offset }),
-  ).filter((candidate) => weekdayIndex({ day: candidate }) === SUNDAY);
+  return includedDays({ day }).filter(
+    (candidate) => weekdayIndex({ day: candidate }) === SUNDAY,
+  );
 }
 
 interface DaysBetweenInput {
@@ -53,7 +66,15 @@ describe('cycleWindow', () => {
     const { cancelLeadTimeDays } = appConfig.assignment;
     const daysToFirstSunday = daysBetween({ from: day, to: first });
     expect(daysToFirstSunday).toBeGreaterThan(cancelLeadTimeDays);
-    expect(sundays.length).toBeGreaterThanOrEqual(MIN_SUNDAYS);
+    expect(sundays).toHaveLength(SUNDAYS_IN_FOUR_WEEKS);
+  });
+
+  it.each(
+    WEEK_ANCHORS.map((day) => ({ day })),
+  )('includes exactly 28 days, its last day being endDate, for anchor $day', ({
+    day,
+  }) => {
+    expect(includedDays({ day })).toHaveLength(INCLUDED_DAYS);
   });
 
   it('covers all seven weekdays', () => {

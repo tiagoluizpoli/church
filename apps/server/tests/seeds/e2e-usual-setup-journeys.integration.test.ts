@@ -249,14 +249,14 @@ describe('usual-setup journey recipes (#329 cluster B)', () => {
     expect(early.anchor).toBe('2026-03-15');
     expect(early.cycleWindow).toEqual({
       startDate: '2026-03-20',
-      endDate: '2026-04-17',
+      endDate: '2026-04-16',
     });
 
     const late = await load({ journeyKey: 'beta', anchor: LATE_ANCHOR });
     expect(late.anchor).toBe('2027-03-01');
     expect(late.cycleWindow).toEqual({
       startDate: '2027-03-06',
-      endDate: '2027-04-03',
+      endDate: '2027-04-02',
     });
     expect(await datedRowCounts({ churchId: late.church.id })).toEqual([0, 0]);
   });

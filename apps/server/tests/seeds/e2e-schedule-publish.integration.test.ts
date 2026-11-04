@@ -105,7 +105,8 @@ describe('schedule-publish E2E journey recipe', () => {
       .where(eq(cycle.id, journey.cycle.id));
     expect(cycleRow?.startDate.toISOString().slice(0, 10)).toBe(LATE_ANCHOR);
     expect(cycleRow?.endDate.toISOString().slice(0, 10)).toBe(
-      addCalendarDays({ day: LATE_ANCHOR, days: 28 }),
+      // The 28th included day.
+      addCalendarDays({ day: LATE_ANCHOR, days: 27 }),
     );
     expect(eventDay > LATE_ANCHOR).toBe(true);
   });

@@ -99,6 +99,7 @@ export default defineConfig({
           maxWorkers: 2,
           include: [
             'tests/api/**/*.test.ts',
+            'tests/application/scheduling-phase4.managers.test.ts',
             'tests/application/scheduling-phase6.assign.test.ts',
             'tests/application/db-availability-check-manager.test.ts',
             'tests/application/scheduling-phase5.volunteer-availability.test.ts',
@@ -144,7 +145,6 @@ export default defineConfig({
           ],
           include: [
             'tests/application/event-builder.assign.integration.test.ts',
-            'tests/application/scheduling-phase4.managers.test.ts',
             'tests/behavior/**/*.test.ts',
             'tests/http/**/*.test.ts',
             'tests/integration/**/*.test.ts',

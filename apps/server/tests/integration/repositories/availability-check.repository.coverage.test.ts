@@ -48,7 +48,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
     expect(result).toEqual([]);
   });
 
-  it('listCheckShifts defaults a missing shift label to undefined', async () => {
+  it('filters and orders check shifts, stores confirmation, and isolates churches', async () => {
     const { ministryMembership } = await import('@church/db');
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
@@ -91,6 +91,38 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       ministryMembershipId: membership.id,
     });
 
+    const otherCycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Other cycle',
+      startDate: new Date('2026-09-01T00:00:00.000Z'),
+      endDate: new Date('2026-10-01T00:00:00.000Z'),
+    });
+    const otherGraph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: otherCycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Other cycle service',
+      start: new Date('2026-09-02T09:00:00.000Z'),
+      end: new Date('2026-09-02T11:00:00.000Z'),
+      status: 'scheduled',
+    });
+    await buildShift({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      participationId: otherGraph.participation.id,
+      eventTimeBlockId: otherGraph.eventTimeBlock.id,
+      start: fromDate({ date: otherGraph.eventTimeBlock.startTime }),
+      end: fromDate({ date: otherGraph.eventTimeBlock.endTime }),
+    });
+    const laterShift = await buildShift({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      start: fromDate({ date: new Date('2026-08-02T10:00:00.000Z') }),
+      end: fromDate({ date: new Date('2026-08-02T11:00:00.000Z') }),
+      label: 'Later',
+    });
     const repo = new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,
     });
@@ -99,8 +131,34 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       checkId: AvailabilityCheckId.from(checkRow.id),
     });
 
-    expect(rows).toHaveLength(1);
+    expect(rows.map((row) => row.shiftId)).toEqual([
+      shiftRow.id,
+      laterShift.id,
+    ]);
     expect(rows[0]?.label).toBeUndefined();
-    expect(rows[0]?.shiftId).toBe(shiftRow.id);
+    expect(
+      await repo.listCheckShifts({
+        churchId: ChurchId.from(seed.churchBId),
+        checkId: AvailabilityCheckId.from(checkRow.id),
+      }),
+    ).toEqual([]);
+    const confirmedAt = new Date('2026-08-01T12:00:00.000Z');
+    await repo.confirm({
+      churchId: ChurchId.from(seed.churchAId),
+      checkId: AvailabilityCheckId.from(checkRow.id),
+      confirmedAt,
+    });
+    const context = await repo.getCheckContext({
+      churchId: ChurchId.from(seed.churchAId),
+      checkId: AvailabilityCheckId.from(checkRow.id),
+    });
+    expect(context.check.state).toBe('confirmed');
+    expect(context.check.confirmedAt).toBe(fromDate({ date: confirmedAt }));
+    await expect(
+      repo.getCheckContext({
+        churchId: ChurchId.from(seed.churchBId),
+        checkId: AvailabilityCheckId.from(checkRow.id),
+      }),
+    ).rejects.toThrow(NotFoundError);
   });
 });

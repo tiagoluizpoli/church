@@ -85,6 +85,35 @@ describe('Phase 3 planning repositories', () => {
     expect(otherChurchOverlaps).toHaveLength(0);
   });
 
+  it('treats cycle ranges as half-open, so adjacent cycles do not overlap', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repository = new DrizzleCycleRepository({
+      db: schedulingTestDb,
+    });
+    const churchId = ChurchId.from(seed.churchAId);
+
+    await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'August 2026',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+    });
+
+    const startsAtExistingEnd = await repository.findOverlapping({
+      churchId,
+      startDate: new Date('2026-09-01T00:00:00.000Z'),
+      endDate: new Date('2026-10-01T00:00:00.000Z'),
+    });
+    const endsAtExistingStart = await repository.findOverlapping({
+      churchId,
+      startDate: new Date('2026-07-01T00:00:00.000Z'),
+      endDate: new Date('2026-08-01T00:00:00.000Z'),
+    });
+
+    expect(startsAtExistingEnd).toEqual([]);
+    expect(endsAtExistingStart).toEqual([]);
+  });
+
   it('round-trips templates with ordered blocks and deletes them cleanly', async () => {
     const seed = await seedSchedulingPhase3Base();
     const repository = new DrizzleEventTemplateRepository({

@@ -122,6 +122,37 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     });
     expect(retrieved.shiftRequirementId).toBe(requirement.id);
     expect(retrieved.roleId).toBe(roleRow.id);
+    await expect(
+      repo.create({
+        churchId,
+        input: {
+          shiftId: ShiftId.from(shiftRow.id),
+          volunteerId: VolunteerId.from(seed.adminVolunteerId),
+          shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
+        },
+      }),
+    ).rejects.toMatchObject({
+      cause: {
+        code: '23505',
+        constraint: 'assignment_shift_volunteer_idx',
+      },
+    });
+    await repo.updateStatus({
+      churchId,
+      assignmentId: createdViaShiftId.id,
+      input: { status: 'cancelled' },
+    });
+    await expect(
+      repo.create({
+        churchId,
+        input: {
+          shiftId: ShiftId.from(shiftRow.id),
+          volunteerId: VolunteerId.from(seed.adminVolunteerId),
+          shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
+        },
+      }),
+    ).resolves.toMatchObject({ shiftId: shiftRow.id });
+
     await schedulingTestDb
       .delete(shiftRequirement)
       .where(eq(shiftRequirement.id, requirement.id));

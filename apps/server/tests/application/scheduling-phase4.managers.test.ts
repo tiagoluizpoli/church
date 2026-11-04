@@ -1,16 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { NotFoundError } from '@church/core';
-import {
-  ministryParticipation,
-  outboxMessage,
-  shift as shiftTable,
-} from '@church/db';
+import { ministryParticipation, shift as shiftTable } from '@church/db';
 import { fromDate, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
-import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
@@ -34,14 +28,12 @@ import {
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
@@ -74,7 +66,6 @@ import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifi
 
 interface Phase4Managers {
   participationManager: DbParticipationManager;
-  availabilityManager: DbAvailabilityCheckManager;
   notificationSpy: ReturnType<typeof createChurchNotificationsSpy>;
 }
 
@@ -93,9 +84,6 @@ function createPhase4Managers(
   });
   const cycleRepository = new DrizzleCycleRepository({ db: schedulingTestDb });
   const usualSetupRepository = new DrizzleUsualSetupRepository({
-    db: schedulingTestDb,
-  });
-  const availabilityCheckRepository = new DrizzleAvailabilityCheckRepository({
     db: schedulingTestDb,
   });
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
@@ -126,14 +114,6 @@ function createPhase4Managers(
       }),
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
       sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
-      notifications: notifications ?? notificationSpy,
-      unitOfWork,
-    }),
-    availabilityManager: new DbAvailabilityCheckManager({
-      participationRepository,
-      eventRepository,
-      availabilityCheckRepository,
-      cycleRepository,
       notifications: notifications ?? notificationSpy,
       unitOfWork,
     }),
@@ -592,188 +572,6 @@ describe('Phase 4 participation manager — Iteration 3 touch()/listScheduleSumm
   });
 });
 
-describe('Phase 4 availability check manager (DL2-AF)', () => {
-  beforeEach(async () => {
-    await resetSchedulingPhase3Db();
-  });
-
-  it('DL2-AF-01/02/03 asking for availability creates one check per active membership and notifies each once', async () => {
-    const seed = await seedSchedulingPhase3Base();
-    const { participation, cycle } = await seedCycleWithEvent({ seed });
-    const { availabilityManager, notificationSpy } = createPhase4Managers();
-
-    await buildVolunteerWithMembership({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      userId: 'vol-user-1',
-      name: 'Vol 1',
-      email: 'v1@test.com',
-      volunteerId: '99999999-9999-4999-8999-999999999991',
-    });
-    await buildVolunteerWithMembership({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      userId: 'vol-user-2',
-      name: 'Vol 2',
-      email: 'v2@test.com',
-      volunteerId: '99999999-9999-4999-8999-999999999992',
-    });
-    await buildVolunteerWithMembership({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      userId: 'vol-user-3',
-      name: 'Vol 3',
-      email: 'v3@test.com',
-      volunteerId: '99999999-9999-4999-8999-999999999993',
-      status: 'inactive',
-    });
-
-    const result = await availabilityManager.askAvailability({
-      churchId: ChurchId.from(seed.churchAId),
-      participationId: MinistryParticipationId.from(participation.id),
-    });
-
-    // admin leader membership (from base seed) + two active volunteers; inactive excluded
-    expect(result.createdCheckCount).toBe(3);
-    expect(notificationSpy.enqueue).toHaveBeenCalledTimes(1);
-    const [call] = notificationSpy.enqueue.mock.calls[0] ?? [];
-    expect(call).toMatchObject({
-      kind: 'availability_opened',
-      data: { cycleId: cycle.id, ministryId: seed.ministryAId },
-    });
-    const recipients = call?.to.map((recipient) => recipient.userId) ?? [];
-    expect(recipients).toHaveLength(3);
-    expect(recipients).toEqual(
-      expect.arrayContaining(['vol-user-1', 'vol-user-2']),
-    );
-    expect(recipients).not.toContain('vol-user-3');
-  });
-
-  it('DL2-AF-04/05 asking for availability flips state transactionally and never duplicates checks across events of the same cycle', async () => {
-    const seed = await seedSchedulingPhase3Base();
-    const graph1 = await seedCycleWithEvent({ seed });
-    const graph2 = await createSchedulingPhase3EventGraph({
-      churchId: seed.churchAId,
-      cycleId: graph1.cycle.id,
-      ministryId: seed.ministryAId,
-      title: 'Second Sunday',
-      start: new Date('2026-08-09T12:00:00.000Z'),
-      end: new Date('2026-08-09T15:00:00.000Z'),
-      status: 'scheduled',
-    });
-    const { availabilityManager, notificationSpy } = createPhase4Managers();
-    const churchId = ChurchId.from(seed.churchAId);
-
-    const first = await availabilityManager.askAvailability({
-      churchId,
-      participationId: MinistryParticipationId.from(graph1.participation.id),
-    });
-    expect(first.createdCheckCount).toBe(1);
-
-    const participationRepo = new DrizzleMinistryParticipationRepository({
-      db: schedulingTestDb,
-    });
-    const updated = await participationRepo.getById({
-      churchId,
-      participationId: MinistryParticipationId.from(graph1.participation.id),
-    });
-    expect(updated.state).toBe('availability_requested');
-
-    // firing again on the SAME participation is an illegal transition
-    await expect(
-      availabilityManager.askAvailability({
-        churchId,
-        participationId: MinistryParticipationId.from(graph1.participation.id),
-      }),
-    ).rejects.toThrow(IllegalStateTransitionError);
-
-    // firing a second event's participation in the same cycle creates no duplicate checks
-    notificationSpy.enqueue.mockClear();
-    const second = await availabilityManager.askAvailability({
-      churchId,
-      participationId: MinistryParticipationId.from(graph2.participation.id),
-    });
-    expect(second.createdCheckCount).toBe(0);
-    expect(notificationSpy.enqueue.mock.calls[0]?.[0].to).toEqual([]);
-  });
-
-  it('DL2-AF-06 resendReminder re-notifies pending checks without creating new ones', async () => {
-    const seed = await seedSchedulingPhase3Base();
-    const { participation } = await seedCycleWithEvent({ seed });
-    const { availabilityManager, notificationSpy } = createPhase4Managers();
-    const churchId = ChurchId.from(seed.churchAId);
-    const participationId = MinistryParticipationId.from(participation.id);
-
-    await expect(
-      availabilityManager.resendReminder({ churchId, participationId }),
-    ).rejects.toThrow(IllegalStateTransitionError);
-
-    await availabilityManager.askAvailability({ churchId, participationId });
-    notificationSpy.enqueue.mockClear();
-
-    await availabilityManager.resendReminder({ churchId, participationId });
-
-    expect(notificationSpy.enqueue).toHaveBeenCalledTimes(1);
-    expect(notificationSpy.enqueue.mock.calls[0]?.[0]).toMatchObject({
-      kind: 'availability_reminder',
-    });
-    expect(notificationSpy.enqueue.mock.calls[0]?.[0].to).toHaveLength(1);
-    const checks = await schedulingTestDb
-      .select()
-      .from((await import('@church/db')).availabilityCheck);
-    expect(checks).toHaveLength(1);
-  });
-
-  it('DL2-AF-07 checks and request scope are church-isolated', async () => {
-    const seed = await seedSchedulingPhase3Base();
-    const graphB = await seedCycleWithEvent({
-      seed,
-      churchId: seed.churchBId,
-      ministryId: seed.ministryBId,
-    });
-    const { availabilityManager } = createPhase4Managers();
-
-    await expect(
-      availabilityManager.askAvailability({
-        churchId: ChurchId.from(seed.churchAId),
-        participationId: MinistryParticipationId.from(graphB.participation.id),
-      }),
-    ).rejects.toThrow();
-  });
-
-  it('DL2-AF-08 the Ask commits its notification rows with the state change', async () => {
-    const seed = await seedSchedulingPhase3Base();
-    const { participation, cycle } = await seedCycleWithEvent({ seed });
-    const outboxRepository = new DrizzleOutboxRepository({
-      db: schedulingTestDb,
-    });
-    const { availabilityManager } = createPhase4Managers(
-      new ChurchNotifications({ outboxRepository }),
-    );
-
-    await availabilityManager.askAvailability({
-      churchId: ChurchId.from(seed.churchAId),
-      participationId: MinistryParticipationId.from(participation.id),
-    });
-
-    const rows = await schedulingTestDb
-      .select()
-      .from(outboxMessage)
-      .where(eq(outboxMessage.churchId, seed.churchAId));
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.kind).toBe('notification');
-    expect(rows[0]?.payload).toMatchObject({
-      kind: 'availability_opened',
-      to: { userId: seed.adminUserId, churchId: seed.churchAId },
-      data: { cycleId: cycle.id, ministryId: seed.ministryAId },
-    });
-  });
-});
-
 interface SeedPhase4RoleInput {
   churchId: string;
   ministryId: string;
@@ -1117,97 +915,5 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, us
     for (const [call] of notificationSpy.enqueue.mock.calls) {
       expect(call.to).toEqual([]);
     }
-  });
-});
-
-describe('Phase 4 availability check manager status listings (DL2-AF status surfaces)', () => {
-  beforeEach(async () => {
-    await resetSchedulingPhase3Db();
-  });
-
-  it('listCheckStatuses/listCycleCheckStatuses report per-membership state, distinguishing requested-and-pending, confirmed, and never-requested', async () => {
-    const seed = await seedSchedulingPhase3Base();
-    const { participation, cycle } = await seedCycleWithEvent({ seed });
-    const { availabilityManager } = createPhase4Managers();
-    const churchId = ChurchId.from(seed.churchAId);
-    const participationId = MinistryParticipationId.from(participation.id);
-
-    // Base seed already made the admin volunteer a leader-membership of ministryA.
-    // Add one more active member who never gets requested (proves the "no check yet" branch).
-    await buildVolunteerWithMembership({
-      db: schedulingTestDb,
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      userId: 'phase4-status-user',
-      name: 'Status User',
-      email: 'phase4-status@test.com',
-      volunteerId: '99999999-9999-4999-8999-999999999981',
-    });
-
-    const beforeFire = await availabilityManager.listCycleCheckStatuses({
-      churchId,
-      cycleId: CycleId.from(cycle.id),
-      ministryId: MinistryId.from(seed.ministryAId),
-    });
-    expect(beforeFire).toHaveLength(2);
-    expect(beforeFire.every((row) => row.state === undefined)).toBe(true);
-
-    await availabilityManager.askAvailability({ churchId, participationId });
-
-    const viaParticipation = await availabilityManager.listCheckStatuses({
-      churchId,
-      participationId,
-    });
-    expect(viaParticipation).toHaveLength(2);
-    expect(viaParticipation.every((row) => row.state === 'pending')).toBe(true);
-
-    const adminRow = viaParticipation.find(
-      (row) => row.volunteerId === seed.adminVolunteerId,
-    );
-    expect(adminRow?.confirmedAt).toBeUndefined();
-
-    // Confirm one membership's check directly, then re-list and see the split state.
-    const [checkRow] = await schedulingTestDb
-      .select()
-      .from((await import('@church/db')).availabilityCheck)
-      .innerJoin(
-        (await import('@church/db')).ministryMembership,
-        eq(
-          (await import('@church/db')).availabilityCheck.ministryMembershipId,
-          (await import('@church/db')).ministryMembership.id,
-        ),
-      )
-      .where(
-        eq(
-          (await import('@church/db')).ministryMembership.volunteerId,
-          seed.adminVolunteerId,
-        ),
-      );
-    if (!checkRow)
-      throw new Error('expected a requested check for the admin volunteer');
-    await schedulingTestDb
-      .update((await import('@church/db')).availabilityCheck)
-      .set({ state: 'confirmed', confirmedAt: new Date() })
-      .where(
-        eq(
-          (await import('@church/db')).availabilityCheck.id,
-          checkRow.availability_check.id,
-        ),
-      );
-
-    const afterConfirm = await availabilityManager.listCycleCheckStatuses({
-      churchId,
-      cycleId: CycleId.from(cycle.id),
-      ministryId: MinistryId.from(seed.ministryAId),
-    });
-    const confirmedRow = afterConfirm.find(
-      (row) => row.volunteerId === seed.adminVolunteerId,
-    );
-    const stillPendingRow = afterConfirm.find(
-      (row) => row.volunteerId === '99999999-9999-4999-8999-999999999981',
-    );
-    expect(confirmedRow?.state).toBe('confirmed');
-    expect(typeof confirmedRow?.confirmedAt).toBe('string');
-    expect(stillPendingRow?.state).toBe('pending');
   });
 });

@@ -19,15 +19,11 @@ interface WorkerWorktreePortionInput {
   worktree: string;
 }
 
-/** The worktree part of a worker name: the identity itself, or, when it would
- * not leave room for a 7-digit worker id, a prefix plus a hash of the whole
- * identity, so long identities stay distinct and prunable. */
-function workerWorktreePortion({
+/** A bounded stand-in for an identity too long for a 7-digit worker id: a
+ * prefix plus a hash of the whole identity, so it stays distinct and prunable. */
+function boundedWorktreePortion({
   worktree,
 }: WorkerWorktreePortionInput): string {
-  if (worktree.length <= WORKTREE_BUDGET) {
-    return worktree;
-  }
   const hash = createHash('sha256')
     .update(worktree)
     .digest('hex')
@@ -51,8 +47,12 @@ export function integrationWorkerDatabaseName(
     throw new Error(`"${workerId}" is not a valid integration worker id.`);
   }
   const valid = WORKTREE_IDENTITY.test(worktree);
-  const portion = valid ? workerWorktreePortion({ worktree }) : worktree;
-  const name = `${NAME_PREFIX}${portion}${WORKER_MARKER}${workerId}${NAME_SUFFIX}`;
+  const fullName = `${NAME_PREFIX}${worktree}${WORKER_MARKER}${workerId}${NAME_SUFFIX}`;
+  // The full identity is kept whenever it fits, so existing names never move.
+  const name =
+    valid && fullName.length > POSTGRES_IDENTIFIER_LIMIT
+      ? `${NAME_PREFIX}${boundedWorktreePortion({ worktree })}${WORKER_MARKER}${workerId}${NAME_SUFFIX}`
+      : fullName;
   if (!valid || name.length > POSTGRES_IDENTIFIER_LIMIT) {
     throw new Error(
       `"${name}" is not a valid integration worker database name (lowercase letters, digits and underscores, at most ${POSTGRES_IDENTIFIER_LIMIT} characters).`,
@@ -75,7 +75,9 @@ export function isIntegrationWorkerDatabaseName(
     return false;
   }
   const portion =
-    worktree === undefined ? '[a-z0-9_]+' : workerWorktreePortion({ worktree });
+    worktree === undefined
+      ? '[a-z0-9_]+'
+      : `(?:${worktree}|${boundedWorktreePortion({ worktree })})`;
   return new RegExp(
     `^${NAME_PREFIX}${portion}${WORKER_MARKER}[1-9][0-9]*${NAME_SUFFIX}$`,
   ).test(database);

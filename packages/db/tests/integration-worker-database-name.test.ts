@@ -33,6 +33,12 @@ describe('integrationWorkerDatabaseName', () => {
     const siblingWorktree = 'tiagoluizpoli_spec_695_inclusive_dat__9f0e1d2c';
     const largePid = 4_194_304;
 
+    it('keeps its full identity for a worker id that still fits', () => {
+      expect(
+        integrationWorkerDatabaseName({ worktree: longWorktree, workerId: 2 }),
+      ).toBe(`church_${longWorktree}__w2_int`);
+    });
+
     it('keeps the full pid within the PostgreSQL identifier limit', () => {
       const name = integrationWorkerDatabaseName({
         worktree: longWorktree,
@@ -58,10 +64,13 @@ describe('integrationWorkerDatabaseName', () => {
       );
     });
 
-    it('is recognized for its own worktree only, so pruning finds it', () => {
+    it.each([
+      2,
+      largePid,
+    ])('is recognized for its own worktree only with worker id %s, so pruning finds it', (workerId) => {
       const database = integrationWorkerDatabaseName({
         worktree: longWorktree,
-        workerId: largePid,
+        workerId,
       });
 
       expect(isIntegrationWorkerDatabaseName({ database })).toBe(true);

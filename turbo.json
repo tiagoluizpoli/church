@@ -25,7 +25,6 @@
       "cache": false
     },
     "test:integration": {
-      "dependsOn": ["^test:integration"],
       "passThroughEnv": [
         "DATABASE_URL",
         "BETTER_AUTH_SECRET",

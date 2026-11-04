@@ -52,7 +52,7 @@ through it. It:
 | Script | Runs | Needs Docker | Used by |
 |---|---|---|---|
 | `validate:no-docker` | lint and its guards, typecheck, seed-impact check, unit tests picked by import graph (whole suite when the graph can't trace a change or reaches no test) | no | the pre-push hook |
-| `validate:affected` | the above, plus integration tests and the selected browser journeys, on whole affected workspaces | yes | the per-ticket check, and the Develop Gate in CI |
+| `validate:affected` | the above, plus integration tests and the selected browser journeys, on whole affected workspaces; unit tests picked by import graph with the same fallbacks (whole suite under `--daily-gate`, which CI passes) | yes | the per-ticket check, and the Develop Gate in CI |
 | `validate` | everything | yes | final handoff and the release gate |
 
 - The pre-push hook runs `validate:no-docker`. Integration and browser-journey
@@ -60,7 +60,7 @@ through it. It:
 - The per-ticket check is the full `validate:affected`. Ticket branches that
   merge into a wrapper's integration branch get no CI, so this run is their
   only integration and E2E check before the combined pull request.
-- Unit tests are picked by import graph only in `validate:no-docker`: each
+- Unit tests are picked by import graph in `validate:no-docker` and `validate:affected`, by one shared rule: each
   affected workspace, and each dependent of a changed shared package, runs
   `vitest related` with the changed files that selected it, so a changed unit
   test file runs itself. A workspace runs its whole unit suite instead when
@@ -70,8 +70,16 @@ through it. It:
   `tests/` or `seeds/`, and also when `vitest related` finds no test that
   imports its changes. Missing information widens the selection, never
   narrows it to nothing.
-- CI, `validate:affected` and `validate` keep whole-workspace selection. CI
-  is the only thing that blocks a merge.
+- CI (`validate:affected --daily-gate`) and `validate` keep whole-workspace
+  selection for every layer. In `validate:affected` integration tests and
+  browser journeys also keep whole affected-workspace selection; the run
+  summary lists, per workspace, whether unit tests were narrowed or ran whole
+  and why. CI is the only thing that blocks a merge.
+- Quality argument: narrowing is safe in the per-ticket check because it is
+  not the last line of defence. Ticket branches on a wrapper get no CI, so the
+  wrapper's final `validate` (whole-workspace, every layer) is the whole-suite
+  backstop before the combined pull request; anything the import graph misses
+  is caught there.
 
 ### Playwright is critical-journey-only
 

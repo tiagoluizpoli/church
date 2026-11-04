@@ -108,9 +108,8 @@ describe('assignment audit deletion persistence', () => {
 
     // The `assignment_audit.assignment_id` FK is ON DELETE CASCADE, so the
     // audit row written just before the delete is itself removed once the
-    // parent assignment is gone — this is a separate, pre-existing schema
-    // property (audit history does not outlive its assignment), not
-    // something this fix changes.
+    // parent assignment is gone: audit history does not outlive its
+    // assignment.
     const audit = await schedulingTestDb
       .select()
       .from(assignmentAudit)

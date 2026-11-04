@@ -131,7 +131,12 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
           shiftRequirementId: ShiftRequirementId.from({ raw: requirement.id }),
         },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      cause: {
+        code: '23505',
+        constraint: 'assignment_shift_volunteer_idx',
+      },
+    });
     await repo.updateStatus({
       churchId,
       assignmentId: createdViaShiftId.id,

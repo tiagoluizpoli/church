@@ -252,7 +252,9 @@ paths:
       summary: Create a Cycle
       tags:
         - planning
-      description: Create a new Cycle spanning a CalendarDay range for the Church.
+      description: Create a new Cycle over an inclusive CalendarDay range for the
+        Church. A one-day Cycle starts and ends on the same day; a range sharing
+        any day with another Cycle of the Church is refused.
       requestBody:
         required: true
         content:
@@ -263,6 +265,7 @@ paths:
                 name:
                   type: string
                   minLength: 1
+                  maxLength: 255
                 startDate:
                   type: string
                   format: date
@@ -320,6 +323,45 @@ paths:
                   - state
                   - createdAt
                   - updatedAt
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  conflictingCycles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        startDate:
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                        endDate:
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      required:
+                        - id
+                        - name
+                        - startDate
+                        - endDate
+                      additionalProperties: false
+                required:
+                  - error
+                  - message
+                  - conflictingCycles
                 additionalProperties: false
     get:
       operationId: listCycles

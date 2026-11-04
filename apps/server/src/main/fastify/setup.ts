@@ -20,6 +20,7 @@ import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
 import {
   archiveBlockers,
+  conflictingCycles,
   domainErrorMessage,
   existingInvitation,
   upcomingAssignments,
@@ -168,6 +169,7 @@ export async function createFastify({
       const blockers = archiveBlockers(error);
       const existing = existingInvitation(error);
       const assignments = upcomingAssignments(error);
+      const cycles = conflictingCycles(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
@@ -175,6 +177,7 @@ export async function createFastify({
         ...(blockers && { blockers }),
         ...(existing && { existingInvitation: existing }),
         ...(assignments && { assignments }),
+        ...(cycles && { conflictingCycles: cycles }),
       });
     }
 

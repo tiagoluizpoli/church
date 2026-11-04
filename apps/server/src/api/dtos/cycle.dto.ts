@@ -8,10 +8,27 @@ import {
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
 
+/** Matches the `cycle.name` column length. */
+const CYCLE_NAME_MAX_LENGTH = 255;
+
 export const createCycleBodySchema = z.object({
-  name: z.string().min(1),
+  name: z.string().trim().min(1).max(CYCLE_NAME_MAX_LENGTH),
   startDate: z.string().date(),
   endDate: z.string().date(),
+});
+
+/** A 409 `OVERLAPPING_CYCLE`: the localized envelope plus each colliding Cycle. */
+export const overlappingCycleResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  conflictingCycles: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      startDate: calendarDaySchema,
+      endDate: calendarDaySchema,
+    }),
+  ),
 });
 
 export const listCyclesQuerySchema = z.object({

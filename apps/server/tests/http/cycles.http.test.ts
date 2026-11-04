@@ -1,0 +1,721 @@
+import { randomUUID } from 'node:crypto';
+import { cycle, event } from '@church/db';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { m } from '@church/i18n/messages';
+import {
+  fromDateColumn,
+  parseCalendarDay,
+  parseInstant,
+  parseTimeOfDay,
+  resetClock,
+  setTestClock,
+} from '@church/time';
+import { eq } from 'drizzle-orm';
+import pg from 'pg';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import { AuthorityGuard } from '@/api/auth/authority-guard';
+import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbCycleManager } from '@/application/db-cycle-manager';
+import { DbEventTemplateManager } from '@/application/db-event-template-manager';
+import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
+import {
+  ChurchId,
+  MinistryId,
+  UserId,
+  VolunteerId,
+} from '@/domain/branded-ids';
+import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
+import { createFastify } from '@/main/fastify/setup';
+import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { buildEventTemplate } from '@/seeds/builders/planning';
+import { buildCycle } from '@/seeds/builders/scheduling';
+import {
+  resetSchedulingPhase3Db,
+  schedulingTestDb,
+  seedSchedulingPhase3Base,
+} from '@/tests/scheduling-reshape/setup';
+import { testLocale } from '@/tests/test-support/fastify-locale';
+
+vi.mock('@/main/di/server-auth', () => ({
+  auth: { api: { getSession: vi.fn() } },
+}));
+
+const mockGetSession = vi.mocked(
+  (await import('@/main/di/server-auth')).auth.api.getSession,
+);
+
+const activeChurchResolver = { resolve: vi.fn() };
+const actorRepository = { resolveActor: vi.fn() };
+const db = schedulingTestDb;
+const cycleRepository = new DrizzleCycleRepository({ db });
+
+/** Church A is America/Sao_Paulo (UTC-3, no DST). */
+const CHURCH_OCTOBER_1_NOON = '2026-10-01T15:00:00.000Z';
+const MAX_NAME_LENGTH = 255;
+
+let app: FastifyTypedInstance;
+
+beforeAll(async () => {
+  const churchRepository = new DrizzleChurchRepository({ db });
+  const eventRepository = new DrizzlePlanningEventRepository({ db });
+  const unitOfWork = new DrizzleUnitOfWork({ db });
+  const participationRepository = new DrizzleMinistryParticipationRepository({
+    db,
+  });
+  const templateRepository = new DrizzleEventTemplateRepository({ db });
+  const staffingSeeder = new UsualSetupStaffingSeeder({
+    participationRepository,
+    shiftRepository: new DrizzleShiftRepository({ db }),
+    usualSetupRepository: new DrizzleUsualSetupRepository({ db }),
+    ministryRepository: new DrizzleMinistryRepository({ db }),
+  });
+  app = await createFastify({ locale: testLocale });
+  // Real managers, repositories and AuthorityService decision; only the
+  // session, the Active Church selection and the actor lookup are seams.
+  const controller = new ChurchAdminController({
+    cycleManager: new DbCycleManager({
+      cycleRepository,
+      eventRepository,
+      churchRepository,
+      unitOfWork,
+      participationRepository,
+      staffingSeeder,
+    }),
+    planningEventManager: new DbPlanningEventManager({
+      cycleRepository,
+      eventRepository,
+      templateRepository,
+      churchRepository,
+      unitOfWork,
+      staffingSeeder,
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+    }),
+    eventTemplateManager: new DbEventTemplateManager({
+      templateRepository,
+      unitOfWork,
+    }),
+    activeChurchResolver: activeChurchResolver as never,
+    ministryManager: {} as never,
+    authorityGuard: new AuthorityGuard({
+      manager: new DbAuthorityManager({
+        actorRepository: actorRepository as never,
+        scopeRepository: {} as never,
+        eventRepository: {} as never,
+        eventTimeBlockRepository: {} as never,
+        ministryRepository: {} as never,
+      }),
+    }),
+  });
+  await app.register(
+    async (instance) => {
+      instance.register(controller.registerRoutes.bind(controller), {
+        prefix: controller.prefix,
+      });
+    },
+    { prefix: '/api/v1' },
+  );
+  await app.ready();
+});
+
+afterAll(async () => {
+  await app.close();
+});
+
+beforeEach(async () => {
+  vi.resetAllMocks();
+  setTestClock({ instant: parseInstant({ value: CHURCH_OCTOBER_1_NOON }) });
+  await resetSchedulingPhase3Db();
+});
+
+afterEach(() => resetClock());
+
+type Persona = 'admin' | 'member' | 'leader';
+
+interface SignInInput {
+  persona?: Persona;
+}
+
+/** A signed-in actor of Church A; a ChurchAdmin has no Volunteer profile. */
+async function signIn({ persona = 'admin' }: SignInInput = {}) {
+  const seed = await seedSchedulingPhase3Base();
+  const churchId = ChurchId.from(seed.churchAId);
+  const isLeader = persona === 'leader';
+  mockGetSession.mockResolvedValue({
+    user: { id: seed.adminUserId },
+    session: { activeOrganizationId: null },
+  } as never);
+  activeChurchResolver.resolve.mockResolvedValue({
+    status: 'resolved',
+    churchId: seed.churchAId,
+    volunteerId: null,
+    autoSelected: false,
+  });
+  actorRepository.resolveActor.mockResolvedValue({
+    userId: UserId.from(seed.adminUserId),
+    activeChurchId: churchId,
+    volunteerId: isLeader ? VolunteerId.from(seed.adminVolunteerId) : null,
+    churchMembership: {
+      churchId,
+      accessLevel: persona === 'admin' ? 'admin' : 'member',
+    },
+    ministryMemberships: isLeader
+      ? [
+          {
+            churchId,
+            ministryId: MinistryId.from(seed.ministryAId),
+            accessLevel: 'leader',
+            qualifiedRoleIds: [],
+          },
+        ]
+      : [],
+  });
+  return seed;
+}
+
+interface CycleBody {
+  name?: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface PostCycleInput {
+  payload: unknown;
+  locale?: 'en' | 'pt-BR';
+}
+
+function postCycle({ payload, locale }: PostCycleInput) {
+  return app.inject({
+    method: 'POST',
+    url: '/api/v1/admin/cycles',
+    payload: payload as never,
+    cookies: locale ? { [testLocale.localeCookieName]: locale } : {},
+  });
+}
+
+function createCycle({ name = 'October', ...dates }: CycleBody) {
+  return postCycle({ payload: { name, ...dates } });
+}
+
+interface SeedCycleInput {
+  churchId: string;
+  name?: string;
+  startDate: string;
+  endDate: string;
+  state?: 'draft' | 'sent' | 'past';
+}
+
+function seedCycle({
+  name = 'Seeded',
+  state = 'draft',
+  ...input
+}: SeedCycleInput) {
+  return buildCycle({
+    db,
+    name,
+    state,
+    ...input,
+    startDate: parseCalendarDay({ value: input.startDate }),
+    endDate: parseCalendarDay({ value: input.endDate }),
+  });
+}
+
+async function storedRanges() {
+  const rows = await db
+    .select()
+    .from(cycle)
+    .orderBy(cycle.startDate, cycle.churchId);
+  return rows.map((row) => ({
+    churchId: row.churchId,
+    startDate: fromDateColumn({ date: row.startDate }),
+    endDate: fromDateColumn({ date: row.endDate }),
+  }));
+}
+
+describe('POST /admin/cycles', () => {
+  it('creates a one-day Draft whose single day is its first and last', async () => {
+    const seed = await signIn();
+
+    const response = await createCycle({
+      name: 'Retreat',
+      startDate: '2026-10-25',
+      endDate: '2026-10-25',
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      name: 'Retreat',
+      startDate: '2026-10-25',
+      endDate: '2026-10-25',
+      state: 'draft',
+    });
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${response.json().id}`,
+    });
+    expect(detail.json().cycle).toMatchObject({
+      churchId: seed.churchAId,
+      startDate: '2026-10-25',
+      endDate: '2026-10-25',
+      state: 'draft',
+    });
+  });
+
+  it('refuses reversed dates with a localized INVALID_DATE_RANGE', async () => {
+    await signIn();
+    const reversed = {
+      name: 'Backwards',
+      startDate: '2026-10-26',
+      endDate: '2026-10-25',
+    };
+
+    const ptBr = await postCycle({ payload: reversed });
+    const en = await postCycle({ payload: reversed, locale: 'en' });
+
+    expect(ptBr.statusCode).toBe(400);
+    expect(ptBr.json()).toEqual({
+      error: 'INVALID_DATE_RANGE',
+      message: m.error_invalid_date_range({}, { locale: 'pt-BR' }),
+    });
+    expect(en.json().message).toBe(
+      m.error_invalid_date_range({}, { locale: 'en' }),
+    );
+    expect(m.error_invalid_date_range({}, { locale: 'en' })).toBe(
+      "The end date can't be before the start date.",
+    );
+    expect(await storedRanges()).toEqual([]);
+  });
+
+  it.each([
+    [
+      'a malformed date',
+      { name: 'October', startDate: '2026-02-30', endDate: '2026-03-01' },
+    ],
+    [
+      'a blank name',
+      { name: '   ', startDate: '2026-10-01', endDate: '2026-10-02' },
+    ],
+    [
+      'an oversized name',
+      {
+        name: 'x'.repeat(MAX_NAME_LENGTH + 1),
+        startDate: '2026-10-01',
+        endDate: '2026-10-02',
+      },
+    ],
+  ])('refuses %s with 422 VALIDATION_ERROR', async (_case, payload) => {
+    await signIn();
+
+    const response = await postCycle({ payload });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().error).toBe('VALIDATION_ERROR');
+    expect(await storedRanges()).toEqual([]);
+  });
+
+  it('trims the name and accepts one of exactly the maximum length', async () => {
+    await signIn();
+    const longest = 'x'.repeat(MAX_NAME_LENGTH);
+
+    const trimmed = await createCycle({
+      name: '  October  ',
+      startDate: '2026-10-01',
+      endDate: '2026-10-02',
+    });
+    const maximal = await createCycle({
+      name: longest,
+      startDate: '2026-10-03',
+      endDate: '2026-10-04',
+    });
+
+    expect(trimmed.json().name).toBe('October');
+    expect(maximal.json().name).toBe(longest);
+  });
+
+  it('refuses a shared endpoint, naming the conflicting Cycle in the Active Church only', async () => {
+    const seed = await signIn();
+    const existing = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Early October',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    await seedCycle({
+      churchId: seed.churchBId,
+      name: 'Foreign',
+      startDate: '2026-10-20',
+      endDate: '2026-10-31',
+    });
+
+    const response = await postCycle({
+      payload: { name: 'Late', startDate: '2026-10-25', endDate: '2026-10-31' },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: 'OVERLAPPING_CYCLE',
+      message: m.error_overlapping_cycle({}, { locale: 'pt-BR' }),
+      conflictingCycles: [
+        {
+          id: existing.id,
+          name: 'Early October',
+          startDate: '2026-10-12',
+          endDate: '2026-10-25',
+        },
+      ],
+    });
+  });
+
+  it('accepts the next day, a gap and the same dates as another Church', async () => {
+    const seed = await signIn();
+    await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    await seedCycle({
+      churchId: seed.churchBId,
+      startDate: '2026-11-01',
+      endDate: '2026-11-30',
+    });
+
+    const adjacent = await createCycle({
+      startDate: '2026-10-26',
+      endDate: '2026-10-31',
+    });
+    const afterGap = await createCycle({
+      startDate: '2026-11-05',
+      endDate: '2026-11-30',
+    });
+
+    expect(adjacent.statusCode).toBe(201);
+    expect(afterGap.statusCode).toBe(201);
+  });
+
+  it('lets only one of two concurrent overlapping creates commit', async () => {
+    await signIn();
+
+    const responses = await Promise.all([
+      createCycle({ startDate: '2026-10-10', endDate: '2026-10-20' }),
+      createCycle({ startDate: '2026-10-20', endDate: '2026-10-30' }),
+    ]);
+
+    expect(responses.map((response) => response.statusCode).sort()).toEqual([
+      201, 409,
+    ]);
+    const winner = responses.find((response) => response.statusCode === 201);
+    const loser = responses.find((response) => response.statusCode === 409);
+    expect(loser?.json().conflictingCycles).toEqual([
+      expect.objectContaining({ id: winner?.json().id }),
+    ]);
+    expect(await storedRanges()).toHaveLength(1);
+  });
+
+  it('translates a database exclusion race into the same scoped refusal', async () => {
+    const seed = await signIn();
+    const existing = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Committed first',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+
+    // The repository alone skips the manager's lock and pre-check, as a racing
+    // writer that read before the other committed would.
+    const insert = cycleRepository.create({
+      churchId: ChurchId.from(seed.churchAId),
+      name: 'Racer',
+      startDate: new Date('2026-10-25T00:00:00.000Z'),
+      endDate: new Date('2026-10-26T00:00:00.000Z'),
+    });
+
+    await expect(insert).rejects.toBeInstanceOf(OverlappingCycleError);
+    await expect(insert).rejects.toMatchObject({
+      conflictingCycles: [
+        {
+          id: existing.id,
+          name: 'Committed first',
+          startDate: '2026-10-12',
+          endDate: '2026-10-25',
+        },
+      ],
+    });
+  });
+});
+
+describe('Cycle access', () => {
+  it('returns 401 when signed out', async () => {
+    mockGetSession.mockResolvedValue(null as never);
+
+    const response = await createCycle({
+      startDate: '2026-10-01',
+      endDate: '2026-10-01',
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it.each([
+    'member',
+    'leader',
+  ] as const)('returns 403 to a %s without the ChurchAdmin capability', async (persona) => {
+    await signIn({ persona });
+
+    const response = await createCycle({
+      startDate: '2026-10-01',
+      endDate: '2026-10-01',
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await storedRanges()).toEqual([]);
+  });
+
+  it('returns the same scoped 404 for a missing and a foreign Cycle', async () => {
+    const seed = await signIn();
+    const foreign = await seedCycle({
+      churchId: seed.churchBId,
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+    });
+
+    for (const cycleId of [randomUUID(), foreign.id]) {
+      const detail = await app.inject({
+        method: 'GET',
+        url: `/api/v1/admin/cycles/${cycleId}`,
+      });
+      const apply = await app.inject({
+        method: 'POST',
+        url: `/api/v1/admin/cycles/${cycleId}/apply-templates`,
+        payload: { templateIds: [randomUUID()] },
+      });
+
+      expect(detail.statusCode).toBe(404);
+      expect(apply.statusCode).toBe(404);
+      expect(detail.json().error).toBe('NOT_FOUND');
+    }
+  });
+});
+
+const LOCK_WAIT_DEADLINE_MS = 5000;
+const LOCK_WAIT_POLL_MS = 20;
+
+async function waitForChurchLockWaiter(holder: pg.Client) {
+  const deadline = Date.now() + LOCK_WAIT_DEADLINE_MS;
+  while (Date.now() < deadline) {
+    // The holder is inside a transaction, which would otherwise see one frozen activity snapshot.
+    await holder.query('SELECT pg_stat_clear_snapshot()');
+    const { rows } = await holder.query(
+      `SELECT count(*)::int AS waiting FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event_type = 'Lock'
+         AND query ILIKE '%pg_advisory_xact_lock%'`,
+    );
+    if (rows[0].waiting >= 1) return;
+    await new Promise((resolve) => setTimeout(resolve, LOCK_WAIT_POLL_MS));
+  }
+  throw new Error('no request reached the Church lock');
+}
+
+describe('Cycle last day', () => {
+  const time = (value: string) => parseTimeOfDay({ value });
+
+  async function seedSundayTemplate(churchId: string) {
+    const { template } = await buildEventTemplate({
+      db,
+      churchId,
+      name: 'Sunday',
+      weekday: 0,
+      blocks: [
+        { label: 'Service', startTime: time('19:00'), endTime: time('21:00') },
+      ],
+    });
+    return template;
+  }
+
+  function applyTemplates(cycleId: string, templateId: string) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/cycles/${cycleId}/apply-templates`,
+      payload: { templateIds: [templateId] },
+    });
+  }
+
+  async function eventStarts(cycleId: string) {
+    const rows = await db
+      .select()
+      .from(event)
+      .where(eq(event.cycleId, cycleId))
+      .orderBy(event.start);
+    return rows.map((row) => row.start.toISOString());
+  }
+
+  it('generates matching Events on the last day and on a one-day Cycle', async () => {
+    const seed = await signIn();
+    const template = await seedSundayTemplate(seed.churchAId);
+    // Monday 12 – Sunday 25 October.
+    const fortnight = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const oneDay = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-11-01',
+      endDate: '2026-11-01',
+    });
+
+    const fortnightApply = await applyTemplates(fortnight.id, template.id);
+    const oneDayApply = await applyTemplates(oneDay.id, template.id);
+
+    expect(fortnightApply.json()).toEqual({
+      generatedEventCount: 2,
+      generatedEventTimeBlockCount: 2,
+    });
+    expect(await eventStarts(fortnight.id)).toEqual([
+      '2026-10-18T22:00:00.000Z',
+      '2026-10-25T22:00:00.000Z',
+    ]);
+    expect(oneDayApply.json().generatedEventCount).toBe(1);
+  });
+
+  it('makes Apply wait on the Church lock and read what its holder committed', async () => {
+    const seed = await signIn();
+    const template = await seedSundayTemplate(seed.churchAId);
+    const fortnight = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const holder = new pg.Client({
+      connectionString: getIntegrationDatabaseUrl(),
+    });
+    await holder.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        seed.churchAId,
+      ]);
+      // inject() dispatches only once awaited; start the request now.
+      const pending = applyTemplates(fortnight.id, template.id).then(
+        (response) => response,
+      );
+      await waitForChurchLockWaiter(holder);
+      // A concurrent writer's occurrence on the 18th, committed while Apply waits.
+      await holder.query(
+        `INSERT INTO event (church_id, cycle_id, source_template_id, title, start, "end")
+         VALUES ($1, $2, $3, 'Sunday', '2026-10-18T22:00:00Z', '2026-10-19T00:00:00Z')`,
+        [seed.churchAId, fortnight.id, template.id],
+      );
+      await holder.query('COMMIT');
+
+      const response = await pending;
+
+      expect(response.json().generatedEventCount).toBe(1);
+      expect(await eventStarts(fortnight.id)).toEqual([
+        '2026-10-18T22:00:00.000Z',
+        '2026-10-25T22:00:00.000Z',
+      ]);
+    } finally {
+      await holder.end();
+    }
+  });
+
+  describe('while UTC is already the next day', () => {
+    // 23:30 on Sunday 25 October in São Paulo is 02:30 on the 26th in UTC.
+    const CHURCH_LAST_EVENING = '2026-10-26T02:30:00.000Z';
+    // 00:30 on Monday 26 October in São Paulo.
+    const CHURCH_NEXT_DAY = '2026-10-26T03:30:00.000Z';
+
+    function createEvent(cycleId: string, start: string, end: string) {
+      return app.inject({
+        method: 'POST',
+        url: `/api/v1/admin/cycles/${cycleId}/events`,
+        payload: { title: 'Vigil', start, end },
+      });
+    }
+
+    it('keeps the Cycle current and writable through its final Church day', async () => {
+      const seed = await signIn();
+      const fortnight = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+      setTestClock({ instant: parseInstant({ value: CHURCH_LAST_EVENING }) });
+
+      const detail = await app.inject({
+        method: 'GET',
+        url: `/api/v1/admin/cycles/${fortnight.id}`,
+      });
+      // Starts 23:45 on the last Church day and spills into the next day.
+      const spillover = await createEvent(
+        fortnight.id,
+        '2026-10-26T02:45:00.000Z',
+        '2026-10-26T05:00:00.000Z',
+      );
+      const nextDayStart = await createEvent(
+        fortnight.id,
+        CHURCH_NEXT_DAY,
+        '2026-10-26T05:00:00.000Z',
+      );
+
+      expect(detail.json().cycle.state).toBe('draft');
+      expect(spillover.statusCode).toBe(201);
+      expect(nextDayStart.statusCode).toBe(409);
+      expect(nextDayStart.json()).toEqual({
+        error: 'EVENT_OUTSIDE_CYCLE',
+        message: m.error_event_outside_cycle({}, { locale: 'pt-BR' }),
+      });
+    });
+
+    it('becomes Past on the next Church day, found by the Past filter and closed to writes', async () => {
+      const seed = await signIn();
+      const fortnight = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+      setTestClock({ instant: parseInstant({ value: CHURCH_NEXT_DAY }) });
+
+      const past = await app.inject({
+        method: 'GET',
+        url: '/api/v1/admin/cycles?state=past',
+      });
+      const drafts = await app.inject({
+        method: 'GET',
+        url: '/api/v1/admin/cycles?state=draft',
+      });
+      const write = await createEvent(
+        fortnight.id,
+        '2026-10-25T22:00:00.000Z',
+        '2026-10-25T23:00:00.000Z',
+      );
+
+      expect(past.json().cycles).toEqual([
+        expect.objectContaining({ id: fortnight.id, state: 'past' }),
+      ]);
+      expect(drafts.json().cycles).toEqual([]);
+      expect(write.statusCode).toBe(409);
+      expect(write.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    });
+  });
+});

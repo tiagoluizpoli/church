@@ -50,7 +50,7 @@ const cycleId = CycleId.from('cycle-1');
 const eventId = EventId.from('event-1');
 const eventTimeBlockId = EventTimeBlockId.from('block-1');
 const startDate = new Date('2099-01-01T00:00:00Z');
-const endDate = new Date('2099-02-01T00:00:00Z');
+const endDate = new Date('2099-01-31T00:00:00Z');
 const start = new Date('2099-01-02T09:00:00Z');
 const end = new Date('2099-01-02T10:00:00Z');
 const instant = (date: Date) => fromDate({ date });
@@ -98,7 +98,7 @@ function createCycleHarness() {
       churchId,
       name: 'January',
       startDate: parseCalendarDay({ value: '2099-01-01' }),
-      endDate: parseCalendarDay({ value: '2099-02-01' }),
+      endDate: parseCalendarDay({ value: '2099-01-31' }),
     },
   });
   const dependencies = createPlanningDependencies();
@@ -136,7 +136,7 @@ function makeCycle({ state = 'draft' }: MakeCycleInput = {}) {
       churchId,
       name: 'January',
       startDate: parseCalendarDay({ value: '2099-01-01' }),
-      endDate: parseCalendarDay({ value: '2099-02-01' }),
+      endDate: parseCalendarDay({ value: '2099-01-31' }),
       state,
     },
   });
@@ -328,7 +328,7 @@ describe('DbCycleManager', () => {
         churchId,
         name: 'Expired',
         startDate: parseCalendarDay({ value: '2000-01-01' }),
-        endDate: parseCalendarDay({ value: '2000-02-01' }),
+        endDate: parseCalendarDay({ value: '2000-01-31' }),
       },
     });
     const past = new Cycle({
@@ -337,7 +337,7 @@ describe('DbCycleManager', () => {
         churchId,
         name: 'Expired',
         startDate: parseCalendarDay({ value: '2000-01-01' }),
-        endDate: parseCalendarDay({ value: '2000-02-01' }),
+        endDate: parseCalendarDay({ value: '2000-01-31' }),
         state: 'past',
       },
     });

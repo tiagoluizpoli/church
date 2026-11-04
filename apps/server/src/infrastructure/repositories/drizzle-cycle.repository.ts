@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { cycle } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, eq, gt, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import type {
   AcquireCycleChurchLockInput,
   CreateCycleInput,
@@ -12,9 +12,17 @@ import type {
   UpdateCycleStateInput,
 } from '../../domain/contracts/infrastructure/cycle.repository';
 import type { Cycle } from '../../domain/entities/cycle';
+import { OverlappingCycleError } from '../../domain/errors/overlapping-cycle';
 import { mapCycle } from '../mappers/cycle.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
+import {
+  isConstraintViolation,
+  PG_EXCLUSION_VIOLATION,
+} from './unique-violation';
+
+/** The Church-scoped inclusive daterange exclusion (migration 0042). */
+const CHURCH_DATE_EXCLUSION_CONSTRAINT = 'cycle_church_date_excl';
 
 interface DrizzleCycleRepositoryInput {
   db: AnyDrizzleDb;
@@ -38,7 +46,26 @@ export class DrizzleCycleRepository implements CycleRepository {
         endDate: input.endDate,
         state: input.state ?? 'draft',
       })
-      .returning();
+      .returning()
+      .catch(async (error: unknown) => {
+        if (
+          !isConstraintViolation({
+            error,
+            code: PG_EXCLUSION_VIOLATION,
+            constraint: CHURCH_DATE_EXCLUSION_CONSTRAINT,
+          })
+        ) {
+          throw error;
+        }
+        // The failed transaction is aborted; the committed winner is read
+        // outside it, scoped to the Church, never from the PostgreSQL message.
+        const conflicts = await this.findOverlapping({
+          churchId: input.churchId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+        });
+        throw new OverlappingCycleError({ conflictingCycles: conflicts });
+      });
 
     if (!row) {
       throw new Error('Cycle insert failed');
@@ -97,8 +124,8 @@ export class DrizzleCycleRepository implements CycleRepository {
       .where(
         and(
           withChurchIsolation({ table: cycle, churchId: input.churchId }),
-          lt(cycle.startDate, input.endDate),
-          gt(cycle.endDate, input.startDate),
+          lte(cycle.startDate, input.endDate),
+          gte(cycle.endDate, input.startDate),
         ),
       );
 

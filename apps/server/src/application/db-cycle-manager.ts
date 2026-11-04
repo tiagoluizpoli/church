@@ -1,5 +1,5 @@
 import { NotFoundError } from '@church/core';
-import { compareCalendarDays, now, today } from '@church/time';
+import { compareCalendarDays, fromDateColumn, now, today } from '@church/time';
 import type {
   CreateCycleManagerInput,
   CycleDetails,
@@ -14,7 +14,7 @@ import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.r
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { Cycle } from '../domain/entities/cycle';
+import { Cycle } from '../domain/entities/cycle';
 import {
   DraftStaffingReconciliationRequiredError,
   IllegalStateTransitionError,
@@ -61,6 +61,16 @@ export class DbCycleManager implements ICycleManager {
   }
 
   async createCycle(input: CreateCycleManagerInput): Promise<Cycle> {
+    // The desired aggregate refuses a reversed range before any write.
+    new Cycle({
+      props: {
+        churchId: input.churchId,
+        name: input.name,
+        startDate: fromDateColumn({ date: input.startDate }),
+        endDate: fromDateColumn({ date: input.endDate }),
+      },
+    });
+
     return this.unitOfWork.run(async (tx) => {
       await this.cycleRepository.acquireChurchLock({
         churchId: input.churchId,
@@ -75,7 +85,7 @@ export class DbCycleManager implements ICycleManager {
       });
 
       if (overlaps.length > 0) {
-        throw new OverlappingCycleError();
+        throw new OverlappingCycleError({ conflictingCycles: overlaps });
       }
 
       return this.cycleRepository.create({
@@ -87,7 +97,11 @@ export class DbCycleManager implements ICycleManager {
 
   async listCycles(input: ListCyclesManagerInput): Promise<Cycle[]> {
     const church = await this.churchRepository.getById({ id: input.churchId });
-    const cycles = await this.cycleRepository.list(input);
+    // Every row is resolved before the state filter, so a Cycle that elapsed
+    // while still stored as Draft or Sent is found as Past.
+    const cycles = await this.cycleRepository.list({
+      churchId: input.churchId,
+    });
     const resolvedCycles = await Promise.all(
       cycles.map((cycle) =>
         this.ensureResolvedCycle({
@@ -207,6 +221,11 @@ export class DbCycleManager implements ICycleManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureResolvedCycle({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -241,7 +260,8 @@ export class DbCycleManager implements ICycleManager {
 
     const churchToday = today({ instant: now(), timeZone: churchTimeZone });
 
-    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) < 0) {
+    // endDate is the Cycle's last day: it elapses on the following Church day.
+    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) <= 0) {
       return cycle;
     }
 

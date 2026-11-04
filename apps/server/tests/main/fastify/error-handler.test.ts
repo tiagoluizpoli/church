@@ -16,7 +16,7 @@ let app: FastifyTypedInstance;
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
   app.get('/boom/domain', async () => {
-    throw new OverlappingCycleError();
+    throw new OverlappingCycleError({ conflictingCycles: [] });
   });
   app.get('/boom/headcount', async () => {
     throw new DuplicateHeadcountError();
@@ -44,6 +44,7 @@ describe('error handler locale', () => {
     expect(res.json()).toEqual({
       error: 'OVERLAPPING_CYCLE',
       message: m.error_overlapping_cycle({}, { locale: 'pt-BR' }),
+      conflictingCycles: [],
     });
   });
 
@@ -52,6 +53,7 @@ describe('error handler locale', () => {
     expect(res.json()).toEqual({
       error: 'OVERLAPPING_CYCLE',
       message: m.error_overlapping_cycle({}, { locale: 'en' }),
+      conflictingCycles: [],
     });
   });
 
@@ -101,7 +103,7 @@ describe('error handler logs', () => {
       request.log = { ...request.log, warn } as typeof request.log;
     });
     logged.get('/x', async () => {
-      throw new OverlappingCycleError();
+      throw new OverlappingCycleError({ conflictingCycles: [] });
     });
     await logged.ready();
     await logged.inject({ method: 'GET', url: '/x' });

@@ -94,6 +94,11 @@ interface DbPlanningEventManagerDependencies {
   eventTimeBlockRepository: EventTimeBlockRepository;
 }
 
+/**
+ * Every write takes the Church's Cycle lock (shared with Cycle create and
+ * Send) before reading mutable Cycle or child state, so conflicting Cycle and
+ * Event writes serialize.
+ */
 export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly generator = new CycleEventGenerator();
   private readonly staffingSeeder: UsualSetupStaffingSeeder;
@@ -129,6 +134,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -261,6 +271,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -298,6 +313,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -460,6 +480,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     action,
     tx,
   }: EnsureWritableEventInput): Promise<Event> {
+    await this.cycleRepository.acquireChurchLock({
+      churchId: input.churchId,
+      tx,
+    });
+
     const cycle = await this.ensureCycleWritable({
       cycle: await this.cycleRepository.getById({ ...input, tx }),
       churchTimeZone: church.timezone,
@@ -516,6 +541,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -567,7 +597,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
     const churchToday = today({ instant: now(), timeZone: churchTimeZone });
 
-    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) >= 0) {
+    // endDate is the Cycle's last day: writes stay open through it.
+    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
       await this.cycleRepository.updateState({
         churchId: cycle.churchId,
         cycleId: cycle.id,

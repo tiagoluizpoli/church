@@ -26,6 +26,7 @@ import {
   cycleMapper,
   cycleResponseSchema,
   listCyclesQuerySchema,
+  overlappingCycleResponseSchema,
 } from '../dtos/cycle.dto';
 import {
   createEventBodySchema,
@@ -167,9 +168,12 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'createCycle',
           summary: 'Create a Cycle',
           description:
-            'Create a new Cycle spanning a CalendarDay range for the Church.',
+            'Create a new Cycle over an inclusive CalendarDay range for the Church. A one-day Cycle starts and ends on the same day; a range sharing any day with another Cycle of the Church is refused.',
           body: createCycleBodySchema,
-          response: { 201: cycleResponseSchema },
+          response: {
+            201: cycleResponseSchema,
+            409: overlappingCycleResponseSchema,
+          },
         },
       },
       async (request, reply) => {

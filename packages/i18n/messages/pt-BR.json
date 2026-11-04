@@ -33,7 +33,7 @@
   "password_recovery_reset_failed": "Não foi possível alterar a senha. Tente novamente.",
   "password_recovery_link_expired": "Este link expirou. Solicite um novo.",
   "password_recovery_request_new_link": "Solicitar novo link",
-  "error_invalid_date_range": "A data de início deve ser anterior à data de término.",
+  "error_invalid_date_range": "A data de término não pode ser anterior à data de início.",
   "error_invalid_time_range": "O horário de início deve ser anterior ao horário de término.",
   "error_invalid_required_count": "A quantidade necessária deve ser de pelo menos 1.",
   "error_invalid_shift_split": "Este turno não pode ser dividido dessa forma.",

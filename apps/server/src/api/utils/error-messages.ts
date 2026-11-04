@@ -5,6 +5,10 @@ import { type ErrorMessage, errorMessage } from './error-table';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
 import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
 import {
+  type ConflictingCycleReference,
+  OverlappingCycleError,
+} from '@/domain/errors/overlapping-cycle';
+import {
   type ExistingInvitationReference,
   PendingMinistryInvitationExistsError,
 } from '@/domain/errors/pending-ministry-invitation-exists';
@@ -59,6 +63,15 @@ export function upcomingAssignments(
 ): UpcomingMembershipAssignment[] | undefined {
   return error instanceof UpcomingAssignmentsError
     ? error.assignments
+    : undefined;
+}
+
+/** The Active Church's Cycles an overlapping range collides with, also sent to the client. */
+export function conflictingCycles(
+  error: DomainError,
+): ConflictingCycleReference[] | undefined {
+  return error instanceof OverlappingCycleError
+    ? error.conflictingCycles
     : undefined;
 }
 

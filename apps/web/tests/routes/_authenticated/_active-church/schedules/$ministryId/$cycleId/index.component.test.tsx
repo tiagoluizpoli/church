@@ -9,6 +9,7 @@ beforeEach(() => {
 });
 
 const getCycle = vi.fn();
+const listScheduleSummaries = vi.fn();
 const listMinistries = vi.fn();
 const getCycleParticipation = vi.fn();
 const getScheduleBuilderData = vi.fn();
@@ -22,6 +23,8 @@ const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     getCycle: (...args: unknown[]) => getCycle(...args),
+    listScheduleSummaries: (...args: unknown[]) =>
+      listScheduleSummaries(...args),
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     getCycleParticipation: (...args: unknown[]) =>
       getCycleParticipation(...args),
@@ -70,18 +73,21 @@ function renderWorkspace() {
   });
 }
 
-const CYCLE_RESPONSE = {
-  cycle: {
-    id: 'cycle-1',
-    churchId: 'church-1',
-    name: 'August 2026',
-    startDate: '2026-07-10T00:00:00',
-    endDate: '2026-07-12T00:00:00',
-    state: 'sent',
-    createdAt: '2026-07-01T00:00:00',
-    updatedAt: '2026-07-01T00:00:00',
-  },
-  events: [],
+const SCHEDULE_SUMMARIES_RESPONSE = {
+  cycles: [
+    {
+      cycleId: 'cycle-1',
+      name: 'August 2026',
+      startDate: '2026-07-10',
+      endDate: '2026-07-12',
+      isPartOf: true,
+      eventCount: 2,
+      eventTimeBlockCount: 2,
+      status: 'not_started',
+      availabilityRequestedForAll: false,
+      availabilityRequestedForAny: false,
+    },
+  ],
 };
 
 const MINISTRIES_RESPONSE = {
@@ -177,8 +183,32 @@ const PARTICIPATION_RESPONSE = {
 };
 
 describe('Prepare workspace route composition (US3/T028)', () => {
+  it('opens the N2 Prepare destination for an ordinary leader without admin Cycle access', async () => {
+    getCycle.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 403 },
+    });
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [],
+      events: [],
+      sectors: [],
+    });
+
+    renderWorkspace();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Greeters · August 2026' }),
+    ).toBeVisible();
+    expect(await screen.findByTestId('prepare-workspace-stack')).toBeVisible();
+    expect(listScheduleSummaries).toHaveBeenCalledWith('ministry-1');
+    expect(getCycle).not.toHaveBeenCalled();
+  });
+
   it('enables Save split only after split configuration changes, independent of headcounts (T044)', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -238,7 +268,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
   });
 
   it('stacks day strip, horizontal filters, then time block list in workspace order (T042)', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -272,7 +302,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
   });
 
   it('renders the ministry+cycle header, calendar, filters, and time block list together', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -307,7 +337,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
 
   it('operates fully at a mobile viewport width — calendar, filters, and time block list all reachable (T023a)', async () => {
     window.innerWidth = 375;
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -346,7 +376,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
   });
 
   it('filters the time block list to a clicked calendar day with no network request', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -382,7 +412,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
 
 describe('Prepare workspace headcount save partial-failure isolation (Iteration 2/T045b/FR-022b)', () => {
   it('lets a succeeded role headcount stay saved when a sibling role in the same batch fails, and only retries the failed one', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -489,7 +519,7 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
 
 describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-025)', () => {
   it('keeps a pending headcount draft in memory across a Serving -> Not serving -> Serving round trip within the same visit', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
       roles: [{ id: 'role-1', name: 'Greeter' }],
@@ -569,7 +599,7 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
 
 describe('Prepare workspace route — permission failure (US3/T023c)', () => {
   it('renders a permission-denied state on a 403, not a crash', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockRejectedValue({
       isAxiosError: true,
@@ -587,7 +617,7 @@ describe('Prepare workspace route — permission failure (US3/T023c)', () => {
 
 describe('Prepare workspace route — network failure (US3/T023d)', () => {
   it('renders a retryable error state, not a crash or infinite spinner', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockRejectedValue({
       isAxiosError: true,
@@ -604,7 +634,7 @@ describe('Prepare workspace route — network failure (US3/T023d)', () => {
 
 describe('Prepare workspace batched save (US4/T029)', () => {
   it('calls askAvailability exactly once call per touched participation, not per time block/shift', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -643,7 +673,7 @@ describe('Prepare workspace batched save (US4/T029)', () => {
 
 describe('Prepare workspace send-availability confirmation (P0 hardening)', () => {
   it('does not send anything until the confirmation dialog is accepted', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -678,7 +708,7 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
   });
 
   it('sends only the touched events named in the confirmation dialog', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -717,7 +747,7 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
 
 describe('Prepare workspace remains editable post-release (US4/T030/FR-017)', () => {
   it('uses resendAvailabilityReminder (not askAvailability) for a participation already past prepare', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -761,7 +791,7 @@ describe('Prepare workspace remains editable post-release (US4/T030/FR-017)', ()
 
 describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
   it('blocks navigation for a never-saved split change even with no touched participation (T048)', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -812,7 +842,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
   });
 
   it('blocks navigation away when there are touched, unsaved edits', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -847,7 +877,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
   });
 
   it('does not block navigation when there are no unsaved edits', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -873,7 +903,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
 
 describe('Prepare workspace double-submit guard (US4/T030b)', () => {
   it('disables the save action after the first click, sending exactly one batch', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -919,7 +949,7 @@ describe('Prepare workspace double-submit guard (US4/T030b)', () => {
 
 describe('Prepare workspace mid-flight save unmount (US4/T030c)', () => {
   it('does not throw when navigating away while the batch is still in flight', async () => {
-    getCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({

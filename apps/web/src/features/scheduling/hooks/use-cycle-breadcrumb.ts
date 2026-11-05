@@ -9,23 +9,32 @@ export interface BreadcrumbSegmentOverride {
 
 /**
  * Resolves the breadcrumb label for the cycle-id route segment.
- * `useParams({ strict: false })` only yields `cycleId` when the matched
- * route is `/cycles/$cycleId` — the sibling `new` route and
- * `/event-templates` are separate static routes with no such param, so no
- * manual segment/path exclusion list is needed here.
+ * Planning pages use the admin Cycle detail; Schedule pages resolve the
+ * same label from the Ministry-scoped summaries available to leaders.
  */
 export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
-  const { cycleId } = useParams({ strict: false });
+  const { cycleId, ministryId } = useParams({ strict: false });
   const cycleDetailsQuery = useQuery({
     queryKey: ['cycle-details', cycleId],
     queryFn: () => adminApi.getCycle(cycleId ?? ''),
-    enabled: cycleId !== undefined,
+    enabled: cycleId !== undefined && ministryId === undefined,
     retry: false,
   });
+  const scheduleSummariesQuery = useQuery({
+    queryKey: ['prepare-cycle-summaries', ministryId],
+    queryFn: () => adminApi.listScheduleSummaries(ministryId ?? ''),
+    enabled: cycleId !== undefined && ministryId !== undefined,
+    retry: false,
+  });
+  const cycleName = ministryId
+    ? scheduleSummariesQuery.data?.cycles.find(
+        (cycle) => cycle.cycleId === cycleId,
+      )?.name
+    : cycleDetailsQuery.data?.cycle.name;
 
-  if (cycleId === undefined || !cycleDetailsQuery.data) {
+  if (cycleId === undefined || !cycleName) {
     return null;
   }
 
-  return { segment: cycleId, label: cycleDetailsQuery.data.cycle.name };
+  return { segment: cycleId, label: cycleName };
 }

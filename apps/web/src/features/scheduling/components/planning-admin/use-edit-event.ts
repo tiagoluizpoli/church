@@ -1,11 +1,7 @@
 import { m } from '@church/i18n/messages';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { toast } from 'sonner';
 import {
   type EventEditorCycleRange,
   editEventForm,
-  toEventSaveRefusal,
   toUpdateEventBody,
 } from './event-editor.utils';
 import type { EventEditorState } from './event-editor-form';
@@ -32,52 +28,19 @@ export function useEditEvent({
   graph,
   timeZone,
 }: UseEditEventInput): EventEditorState {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const eventId = graph.event.id;
-  const { form, setRefusal, fields } = useEventForm({
+  const { fields, pending, onSave } = useEventForm({
+    cycleId,
     initialForm: () => editEventForm({ graph }),
     cycle,
     timeZone,
-  });
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      adminApi.updatePlanningEvent(
-        cycleId,
-        eventId,
-        toUpdateEventBody({ form }),
-      ),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
-        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
-      ]);
-      toast.success(m.event_editor_updated_toast());
-      await navigate({
-        to: '/cycles/$cycleId',
-        params: { cycleId },
-        search: { eventId },
-      });
-    },
-    onError: async (error) => {
-      const refusal = toEventSaveRefusal({ error });
-      setRefusal(refusal);
-      if (refusal.stateConflict) {
-        await queryClient.invalidateQueries({
-          queryKey: ['cycle-details', cycleId],
-        });
-      }
+    successMessage: m.event_editor_updated_toast(),
+    save: async (form) => {
+      const body = toUpdateEventBody({ form });
+      await adminApi.updatePlanningEvent(cycleId, eventId, body);
+      return eventId;
     },
   });
 
-  return {
-    ...fields,
-    pending: mutation.isPending,
-    onSave: () => {
-      if (!mutation.isPending) {
-        mutation.mutate();
-      }
-    },
-  };
+  return { ...fields, pending, onSave };
 }

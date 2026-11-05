@@ -1,4 +1,7 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   addEventBlock,
   canSaveEvent,
@@ -11,9 +14,13 @@ import {
   type EventFieldChange,
   type EventSaveRefusal,
   eventEditorErrors,
+  toEventSaveRefusal,
 } from './event-editor.utils';
 
 export interface UseEventFormInput {
+  cycleId: string;
+  save: (form: EventEditorFormState) => Promise<string>;
+  successMessage: string;
   initialForm: () => EventEditorFormState;
   cycle: EventEditorCycleRange;
   timeZone: string;
@@ -37,26 +44,62 @@ export interface EventEditorFields {
 
 export interface UseEventFormResult {
   form: EventEditorFormState;
-  setRefusal: (refusal: EventSaveRefusal | null) => void;
+  pending: boolean;
+  onSave: () => void;
   fields: EventEditorFields;
 }
 
 /**
  * Draft Event state shared by the new and edit pages. Any edit clears the
- * last save refusal; a failed save never discards what was entered.
+ * last save refusal; a failed save never discards what was entered. Shared
+ * save handling refreshes the Cycle, reveals the saved Event and reconciles
+ * state conflicts; callers retain their request shape and success copy.
  */
 export function useEventForm({
+  cycleId,
+  save,
+  successMessage,
   initialForm,
   cycle,
   timeZone,
 }: UseEventFormInput): UseEventFormResult {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [form, setForm] = useState<EventEditorFormState>(initialForm);
   const [refusal, setRefusal] = useState<EventSaveRefusal | null>(null);
   const errors = eventEditorErrors({ form, cycle, timeZone });
 
+  const mutation = useMutation({
+    mutationFn: () => save(form),
+    onSuccess: async (eventId) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
+        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
+      ]);
+      toast.success(successMessage);
+      await navigate({
+        to: '/cycles/$cycleId',
+        params: { cycleId },
+        search: { eventId },
+      });
+    },
+    onError: async (error) => {
+      const refusal = toEventSaveRefusal({ error });
+      setRefusal(refusal);
+      if (refusal.stateConflict) {
+        await queryClient.invalidateQueries({
+          queryKey: ['cycle-details', cycleId],
+        });
+      }
+    },
+  });
+
   return {
     form,
-    setRefusal,
+    pending: mutation.isPending,
+    onSave: () => {
+      if (!mutation.isPending) mutation.mutate();
+    },
     fields: {
       form,
       errors,

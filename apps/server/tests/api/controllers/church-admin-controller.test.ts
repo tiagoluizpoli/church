@@ -50,6 +50,7 @@ const planningEventManager = {
   generateFromTemplates: vi.fn(),
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
+  deleteEvent: vi.fn(),
   cancelEvent: vi.fn(),
   createEventTimeBlock: vi.fn(),
   updateEventTimeBlock: vi.fn(),

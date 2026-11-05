@@ -2,10 +2,7 @@ import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type {
-  ConfirmDeleteEventInput,
-  ConfirmDeleteEventTimeBlockInput,
-} from './calendar-row';
+import type { ConfirmDeleteEventTimeBlockInput } from './calendar-row';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
   eventStatusBadgeVariant,
@@ -33,9 +30,7 @@ export interface PlanningEventCardProps {
   /** The reviewed Cycle, for the nested Edit Event link. */
   cycleId: string;
   isReadOnly: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  onDeleteEventConfirm: (input: ConfirmDeleteEventInput) => void;
   onDeleteEventTimeBlockConfirm: (
     input: ConfirmDeleteEventTimeBlockInput,
   ) => void;
@@ -47,16 +42,13 @@ export interface PlanningEventCardProps {
  * shared boolean would pop both surfaces' confirm dialogs open at once. */
 type ConfirmState =
   | { kind: 'none' }
-  | { kind: 'event' }
   | { kind: 'event-time-block'; eventTimeBlockId: string };
 
 export function PlanningEventCard({
   row,
   cycleId,
   isReadOnly,
-  deleteEventPending,
   deleteEventTimeBlockPending,
-  onDeleteEventConfirm,
   onDeleteEventTimeBlockConfirm,
 }: PlanningEventCardProps) {
   const [confirmState, setConfirmState] = useState<ConfirmState>({
@@ -66,18 +58,8 @@ export function PlanningEventCard({
 
   /** Auto-close the confirm dialog on the falling edge of pending (mutation
    * settled) instead of synchronously in the click handler — otherwise the
-   * dialog disappears before `deleteEventPending`/`deleteEventTimeBlockPending` ever
+   * dialog disappears before `deleteEventTimeBlockPending` ever
    * gets a chance to render, leaving no visible feedback during the delete. */
-  const prevDeleteEventPendingRef = useRef(deleteEventPending);
-  useEffect(() => {
-    if (prevDeleteEventPendingRef.current && !deleteEventPending) {
-      setConfirmState((current) =>
-        current.kind === 'event' ? { kind: 'none' } : current,
-      );
-    }
-    prevDeleteEventPendingRef.current = deleteEventPending;
-  }, [deleteEventPending]);
-
   const prevDeleteEventTimeBlockPendingRef = useRef(
     deleteEventTimeBlockPending,
   );
@@ -132,49 +114,6 @@ export function PlanningEventCard({
           >
             <Pencil className="size-3.5" /> {m.cycle_review_edit()}
           </Link>
-          <AlertDialog
-            open={confirmState.kind === 'event'}
-            onOpenChange={(open) =>
-              setConfirmState(open ? { kind: 'event' } : { kind: 'none' })
-            }
-          >
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  size="touch"
-                  variant="destructive"
-                  aria-label={m.cycle_review_delete_day({ title: row.title })}
-                >
-                  <Trash2 className="size-3.5" /> {m.cycle_review_delete()}
-                </Button>
-              }
-            />
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {m.cycle_review_delete_day_title()}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {m.cycle_review_delete_day_description({ title: row.title })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleteEventPending}>
-                  {m.cycle_review_cancel()}
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  disabled={deleteEventPending}
-                  onClick={() => onDeleteEventConfirm({ eventId: row.eventId })}
-                >
-                  {deleteEventPending
-                    ? m.cycle_review_deleting()
-                    : m.cycle_review_delete_event_confirm()}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       ) : null}
 

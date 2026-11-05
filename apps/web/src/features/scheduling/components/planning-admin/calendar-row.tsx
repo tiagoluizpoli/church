@@ -119,9 +119,7 @@ export function calendarRowEventId({
 export interface CalendarRowKeyInput {
   visibleRow: CalendarVisibleRow;
   isExpanded: boolean;
-  isConfirmingDeleteEvent: boolean;
   isConfirmingDeleteEventTimeBlock: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
 }
 
@@ -136,9 +134,7 @@ export interface CalendarRowKeyInput {
 export function calendarRowKey({
   visibleRow,
   isExpanded,
-  isConfirmingDeleteEvent,
   isConfirmingDeleteEventTimeBlock,
-  deleteEventPending,
   deleteEventTimeBlockPending,
 }: CalendarRowKeyInput): string {
   const id = visibleRowId({ visibleRow });
@@ -149,7 +145,7 @@ export function calendarRowKey({
         ? `${visibleRow.row.title}-${visibleRow.row.location ?? ''}-${visibleRow.row.start}-${visibleRow.row.end}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
         : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
 
-  return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
+  return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
 }
 
 interface ConfirmDeleteDialogContentProps {
@@ -206,15 +202,6 @@ export interface ToggleEventExpandedInput {
   eventId: string;
 }
 
-export interface ConfirmDeleteEventOpenChangeInput {
-  eventId: string;
-  open: boolean;
-}
-
-export interface ConfirmDeleteEventInput {
-  eventId: string;
-}
-
 export interface ConfirmDeleteEventTimeBlockOpenChangeInput {
   eventTimeBlockId: string;
   open: boolean;
@@ -232,14 +219,10 @@ export interface RenderCalendarCellInput {
   cycleId: string;
   isExpanded: boolean;
   isReadOnly: boolean;
-  isConfirmingDeleteEvent: boolean;
   isConfirmingDeleteEventTimeBlock: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
-  onDeleteEventOpenChange: (input: ConfirmDeleteEventOpenChangeInput) => void;
-  onDeleteEventConfirm: (input: ConfirmDeleteEventInput) => void;
   onDeleteEventTimeBlockOpenChange: (
     input: ConfirmDeleteEventTimeBlockOpenChangeInput,
   ) => void;
@@ -258,14 +241,10 @@ export function renderCalendarCell({
   cycleId,
   isExpanded,
   isReadOnly,
-  isConfirmingDeleteEvent,
   isConfirmingDeleteEventTimeBlock,
-  deleteEventPending,
   deleteEventTimeBlockPending,
   timeZone,
   onToggleExpand,
-  onDeleteEventOpenChange,
-  onDeleteEventConfirm,
   onDeleteEventTimeBlockOpenChange,
   onDeleteEventTimeBlockConfirm,
 }: RenderCalendarCellInput) {
@@ -282,12 +261,8 @@ export function renderCalendarCell({
       cycleId={cycleId}
       isExpanded={isExpanded}
       isReadOnly={isReadOnly}
-      isConfirmingDelete={isConfirmingDeleteEvent}
-      deletePending={deleteEventPending}
       timeZone={timeZone}
       onToggleExpand={onToggleExpand}
-      onDeleteOpenChange={onDeleteEventOpenChange}
-      onDeleteConfirm={onDeleteEventConfirm}
     />
   ) : (
     <EventTimeBlockRowCell
@@ -309,12 +284,8 @@ interface ParentRowCellProps {
   cycleId: string;
   isExpanded: boolean;
   isReadOnly: boolean;
-  isConfirmingDelete: boolean;
-  deletePending: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
-  onDeleteOpenChange: (input: ConfirmDeleteEventOpenChangeInput) => void;
-  onDeleteConfirm: (input: ConfirmDeleteEventInput) => void;
 }
 
 function ParentRowCell({
@@ -323,12 +294,8 @@ function ParentRowCell({
   cycleId,
   isExpanded,
   isReadOnly,
-  isConfirmingDelete,
-  deletePending,
   timeZone,
   onToggleExpand,
-  onDeleteOpenChange,
-  onDeleteConfirm,
 }: ParentRowCellProps) {
   return (
     <>
@@ -378,38 +345,6 @@ function ParentRowCell({
           >
             <Pencil className="size-3.5" />
           </Link>
-          <AlertDialog
-            open={isConfirmingDelete}
-            onOpenChange={(open) =>
-              onDeleteOpenChange({ eventId: row.eventId, open })
-            }
-          >
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  size="icon-xs"
-                  variant="destructive"
-                  aria-label={m.cycle_review_delete_day({ title: row.title })}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              }
-            />
-            <ConfirmDeleteDialogContent
-              title={m.cycle_review_delete_day_title()}
-              description={m.cycle_review_delete_day_description({
-                title: row.title,
-              })}
-              actionLabel={
-                deletePending
-                  ? m.cycle_review_deleting()
-                  : m.cycle_review_delete_event_confirm()
-              }
-              disabled={deletePending}
-              onConfirm={() => onDeleteConfirm({ eventId: row.eventId })}
-            />
-          </AlertDialog>
         </span>
       ) : null}
     </>

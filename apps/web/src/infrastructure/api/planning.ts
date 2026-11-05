@@ -15,6 +15,7 @@ import type {
   CreatePlanningEventBody,
   CreatePlanningEventTimeBlock201,
   CreatePlanningEventTimeBlockBody,
+  DeletePlanningEvent204,
   DeletePlanningEventTimeBlock204,
   GetCycle200,
   GetCycleSendSummary200,
@@ -269,6 +270,19 @@ const updatePlanningEvent = (
       );
     }
   /**
+ * Hard-delete an unsent Draft Event of a Draft Cycle with its draft calendar and participation data. No Notification is created.
+ * @summary Delete a Draft Event
+ */
+const deletePlanningEvent = (
+    cycleId: string,
+    eventId: string,
+ ) => {
+      return apiClient<DeletePlanningEvent204>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}`, method: 'DELETE'
+    },
+      );
+    }
+  /**
  * Cancel an Event within its Cycle.
  * @summary Cancel an Event
  */
@@ -343,7 +357,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
@@ -361,6 +375,7 @@ export type GetEventTemplateUsageResult = NonNullable<Awaited<ReturnType<ReturnT
 export type ApplyPlanningTemplatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['applyPlanningTemplates']>>>
 export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEvent']>>>
 export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEvent']>>>
+export type DeletePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEvent']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['cancelPlanningEvent']>>>
 export type CreatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEventTimeBlock']>>>
 export type UpdatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventTimeBlock']>>>

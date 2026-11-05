@@ -792,13 +792,9 @@
   "cycle_review_edit": "Edit",
   "cycle_review_delete": "Delete",
   "cycle_review_edit_day": "Edit day {title}",
-  "cycle_review_delete_day": "Delete day {title}",
   "cycle_review_delete_time_block": "Delete time block {label}",
-  "cycle_review_delete_day_title": "Delete this day?",
-  "cycle_review_delete_day_description": "This removes \"{title}\" and its time blocks from the cycle.",
   "cycle_review_delete_time_block_title": "Delete this time block?",
   "cycle_review_delete_time_block_description": "This removes \"{label}\" from the day.",
-  "cycle_review_delete_event_confirm": "Delete event",
   "cycle_review_delete_time_block_confirm": "Delete time block",
   "cycle_review_deleting": "Deleting…",
   "cycle_review_cancel": "Cancel",
@@ -855,5 +851,12 @@
   "cycle_header_period": "Period",
   "cycle_header_events": "Events",
   "cycle_header_time_blocks": "Time blocks",
-  "cycle_header_status": "Status"
+  "cycle_header_status": "Status",
+  "event_editor_delete": "Delete",
+  "event_editor_delete_title": "Delete this event?",
+  "event_editor_delete_description": "This permanently deletes \"{title}\", its time blocks and its draft staffing. Nothing has been sent, so no one is notified.",
+  "event_editor_delete_dismiss": "Keep event",
+  "event_editor_delete_confirm": "Delete event",
+  "event_editor_deleting": "Deleting…",
+  "event_editor_deleted_toast": "Event deleted."
 }

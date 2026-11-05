@@ -14,10 +14,6 @@ export interface UsePlanningAdminMutationsProps {
   selectedCycle: SelectedCycle | null;
 }
 
-export interface DeleteEventInput {
-  eventId: string;
-}
-
 export interface DeleteEventTimeBlockInput {
   eventId: string;
   eventTimeBlockId: string;
@@ -75,10 +71,8 @@ function usePlanningMutation<TVariables, TResult>({
 
 export interface UsePlanningAdminMutationsResult {
   sendCyclePending: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
   handleSendCycle: () => void;
-  handleDeleteEvent: (input: DeleteEventInput) => void;
   handleDeleteEventTimeBlock: (input: DeleteEventTimeBlockInput) => void;
 }
 
@@ -91,17 +85,6 @@ export function usePlanningAdminMutations({
     mutationFn: (cycleId: string) => adminApi.sendCycle(cycleId),
     invalidateQueryKeys: [['cycles'], ['cycle-details', selectedCycleId]],
     successMessage: 'Cycle sent',
-    queryClient,
-  });
-
-  const deleteEvent = usePlanningMutation({
-    mutationFn: ({ eventId }: DeleteEventInput) =>
-      adminApi.cancelPlanningEvent(
-        getSelectedCycleIdOrThrow({ selectedCycleId }),
-        eventId,
-      ),
-    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Event deleted',
     queryClient,
   });
 
@@ -123,20 +106,14 @@ export function usePlanningAdminMutations({
     }
   }
 
-  function handleDeleteEvent(input: DeleteEventInput) {
-    deleteEvent.mutate(input);
-  }
-
   function handleDeleteEventTimeBlock(input: DeleteEventTimeBlockInput) {
     deleteEventTimeBlock.mutate(input);
   }
 
   return {
     sendCyclePending: sendCycle.isPending,
-    deleteEventPending: deleteEvent.isPending,
     deleteEventTimeBlockPending: deleteEventTimeBlock.isPending,
     handleSendCycle,
-    handleDeleteEvent,
     handleDeleteEventTimeBlock,
   };
 }

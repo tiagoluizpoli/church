@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { EventDeleteButton } from './event-delete-button';
 import type { EventEditorCycleRange } from './event-editor.utils';
 import { EventEditorForm } from './event-editor-form';
 import {
@@ -79,7 +80,16 @@ function EventEditForm({ cycleId, cycle, graph }: EventEditFormProps) {
   return (
     <EventEditorForm
       {...editor}
-      actions={<CancelToCycle cycleId={cycleId} />}
+      actions={
+        <>
+          <CancelToCycle cycleId={cycleId} />
+          <EventDeleteButton
+            cycleId={cycleId}
+            eventId={graph.event.id}
+            title={graph.event.title}
+          />
+        </>
+      }
     />
   );
 }

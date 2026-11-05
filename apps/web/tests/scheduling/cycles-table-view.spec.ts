@@ -366,17 +366,22 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     // Row ids are regenerated per page load; the review marks the saved Event.
     const editedRow = table.getByTestId('revealed-event-row');
 
-    // Delete the whole day. cancelPlanningEvent soft-deletes at the data
-    // layer, but per FR-006 the row and its time blocks must disappear from the
-    // table and the header's event/time block counts must decrease.
+    // Delete the whole day from its nested page: the row and its time
+    // blocks must disappear from the table and the header's event/time block counts must decrease.
     const eventCountChipBefore = await page
       .getByTestId('cycle-event-count-chip')
       .textContent();
 
-    await editedRow.getByRole('button', { name: /^Excluir dia/ }).click();
-    await page.getByRole('button', { name: 'Excluir evento' }).click();
+    await editedRow.getByRole('link', { name: /^Editar dia/ }).click();
+    await page.getByTestId('event-delete-open').click();
+    await page
+      .getByRole('button', {
+        name: m.event_editor_delete_confirm({}, { locale: 'pt-BR' }),
+      })
+      .click();
 
-    await expect(editedRow).not.toBeAttached();
+    await expect(page).toHaveURL(/\/cycles\/[^/?]+$/);
+    await expect(table.getByText('Worship (edited)')).not.toBeAttached();
     await expect
       .poll(() => page.getByTestId('cycle-event-count-chip').textContent())
       .not.toBe(eventCountChipBefore);
@@ -443,8 +448,14 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       mobileList.getByText(`${newEventTitle} (edited)`),
     ).toBeVisible();
 
-    await newCard.getByRole('button', { name: /^Excluir dia/ }).click();
-    await page.getByRole('button', { name: 'Excluir evento' }).click();
+    await newCard.getByRole('link', { name: /^Editar dia/ }).click();
+    await page.getByTestId('event-delete-open').click();
+    await page
+      .getByRole('button', {
+        name: m.event_editor_delete_confirm({}, { locale: 'pt-BR' }),
+      })
+      .click();
+    await expect(page).toHaveURL(/\/cycles\/[^/?]+$/);
     await expect(
       mobileList.getByText(`${newEventTitle} (edited)`),
     ).not.toBeAttached();

@@ -10,6 +10,7 @@ import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const getCycle = vi.fn();
 const updatePlanningEvent = vi.fn();
+const deletePlanningEvent = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
 
@@ -17,6 +18,7 @@ vi.mock('@/utils/api-instances', () => ({
   adminApi: {
     getCycle: (...args: unknown[]) => getCycle(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
+    deletePlanningEvent: (...args: unknown[]) => deletePlanningEvent(...args),
   },
 }));
 vi.mock('sonner', () => ({
@@ -363,5 +365,108 @@ describe('EventEditPage', () => {
       await screen.findByTestId('event-edit-not-draft'),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('event-editor-form')).not.toBeInTheDocument();
+  });
+});
+
+describe('Delete a Draft Event', () => {
+  async function openDialog(user: UserEvent) {
+    await screen.findByTestId('event-editor-form');
+    await user.click(screen.getByTestId('event-delete-open'));
+    return screen.findByRole('alertdialog');
+  }
+
+  it('dismissing the confirmation makes no request', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const dialog = await openDialog(user);
+    expect(dialog).toHaveTextContent(m.event_editor_delete_title());
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.event_editor_delete_dismiss(),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
+    );
+    expect(deletePlanningEvent).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows pending status, submits once, then returns to the review', async () => {
+    let resolveDelete: (value: unknown) => void = () => undefined;
+    deletePlanningEvent.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDelete = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await openDialog(user);
+
+    await user.click(screen.getByTestId('event-delete-confirm'));
+    const pending = await screen.findByRole('button', {
+      name: m.event_editor_deleting(),
+    });
+    expect(pending).toBeDisabled();
+    await user.click(pending);
+    expect(deletePlanningEvent).toHaveBeenCalledTimes(1);
+    expect(deletePlanningEvent).toHaveBeenCalledWith('cycle-1', 'event-1');
+
+    resolveDelete(undefined);
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/cycles/$cycleId',
+        params: { cycleId: 'cycle-1' },
+      }),
+    );
+    expect(toastSuccess).toHaveBeenCalledWith(m.event_editor_deleted_toast());
+  });
+
+  it('keeps the confirmation on failure and retries', async () => {
+    deletePlanningEvent.mockRejectedValueOnce(
+      refusal({ status: 500, data: { message: 'Server broke' } }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await openDialog(user);
+
+    await user.click(screen.getByTestId('event-delete-confirm'));
+
+    expect(await screen.findByTestId('event-delete-error')).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+
+    deletePlanningEvent.mockResolvedValue(undefined);
+    await user.click(screen.getByTestId('event-delete-confirm'));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(deletePlanningEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it('reloads the authoritative Cycle after a state conflict and hides draft actions', async () => {
+    deletePlanningEvent.mockRejectedValue(
+      refusal({
+        status: 409,
+        data: {
+          error: 'ILLEGAL_STATE_TRANSITION',
+          message: m.error_illegal_state_transition(),
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await openDialog(user);
+    getCycle.mockResolvedValue(
+      cycleResponse({ state: 'sent', eventStatus: 'scheduled' }),
+    );
+
+    await user.click(screen.getByTestId('event-delete-confirm'));
+
+    expect(
+      await screen.findByTestId('event-edit-not-draft'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('event-delete-open')).not.toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

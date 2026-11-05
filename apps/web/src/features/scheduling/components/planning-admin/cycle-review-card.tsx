@@ -38,11 +38,9 @@ interface CycleReviewCardProps {
 
 type DialogState =
   | { kind: 'none' }
-  | { kind: 'confirm-delete-event'; eventId: string }
   | { kind: 'confirm-delete-event-time-block'; eventTimeBlockId: string };
 
 type DialogAction =
-  | { type: 'confirm-delete-event'; eventId: string }
   | { type: 'confirm-delete-event-time-block'; eventTimeBlockId: string }
   | { type: 'close' };
 
@@ -50,8 +48,6 @@ type DialogAction =
 // named-parameters-ignore: React useReducer calls reducers as (state, action)
 function dialogReducer(state: DialogState, action: DialogAction): DialogState {
   switch (action.type) {
-    case 'confirm-delete-event':
-      return { kind: 'confirm-delete-event', eventId: action.eventId };
     case 'confirm-delete-event-time-block':
       return {
         kind: 'confirm-delete-event-time-block',
@@ -62,21 +58,6 @@ function dialogReducer(state: DialogState, action: DialogAction): DialogState {
     default:
       return state;
   }
-}
-
-interface IsConfirmingDeleteEventInput {
-  dialogState: DialogState;
-  eventId: string;
-}
-
-function isConfirmingDeleteEvent({
-  dialogState,
-  eventId,
-}: IsConfirmingDeleteEventInput): boolean {
-  return (
-    dialogState.kind === 'confirm-delete-event' &&
-    dialogState.eventId === eventId
-  );
 }
 
 interface IsConfirmingDeleteEventTimeBlockInput {
@@ -108,8 +89,6 @@ export function CycleReviewCard({
     cycleEvents,
     sendCyclePending,
     handleSendCycle,
-    deleteEventPending,
-    handleDeleteEvent,
     deleteEventTimeBlockPending,
     handleDeleteEventTimeBlock,
   } = useCycleReviewCard();
@@ -138,22 +117,9 @@ export function CycleReviewCard({
 
   /** Auto-close the confirm-delete dialog on the falling edge of pending
    * (mutation settled) instead of synchronously in the confirm handler —
-   * otherwise the dialog disappears before `deleteEventPending`/
-   * `deleteEventTimeBlockPending` ever gets a chance to render, leaving no visible
+   * otherwise the dialog disappears before `deleteEventTimeBlockPending` ever gets a chance to render, leaving no visible
    * feedback during the delete (mirrors the same fix in PlanningEventCard,
    * the mobile fork of this same delete flow). */
-  const prevDeleteEventPendingRef = useRef(deleteEventPending);
-  useEffect(() => {
-    if (
-      prevDeleteEventPendingRef.current &&
-      !deleteEventPending &&
-      dialogState.kind === 'confirm-delete-event'
-    ) {
-      dispatchDialog({ type: 'close' });
-    }
-    prevDeleteEventPendingRef.current = deleteEventPending;
-  }, [deleteEventPending, dialogState]);
-
   const prevDeleteEventTimeBlockPendingRef = useRef(
     deleteEventTimeBlockPending,
   );
@@ -303,17 +269,12 @@ export function CycleReviewCard({
                       isExpanded: calendarRowsState.expandedEventIds.has(
                         calendarRowEventId({ visibleRow: item }),
                       ),
-                      isConfirmingDeleteEvent: isConfirmingDeleteEvent({
-                        dialogState,
-                        eventId: calendarRowEventId({ visibleRow: item }),
-                      }),
                       isConfirmingDeleteEventTimeBlock:
                         item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
                           dialogState,
                           eventTimeBlockId: item.eventTimeBlockId,
                         }),
-                      deleteEventPending,
                       deleteEventTimeBlockPending,
                     })
                   }
@@ -326,28 +287,15 @@ export function CycleReviewCard({
                         calendarRowEventId({ visibleRow: item }),
                       ),
                       isReadOnly,
-                      isConfirmingDeleteEvent: isConfirmingDeleteEvent({
-                        dialogState,
-                        eventId: calendarRowEventId({ visibleRow: item }),
-                      }),
                       isConfirmingDeleteEventTimeBlock:
                         item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
                           dialogState,
                           eventTimeBlockId: item.eventTimeBlockId,
                         }),
-                      deleteEventPending,
                       deleteEventTimeBlockPending,
                       timeZone: churchTimezone,
                       onToggleExpand: toggleEventExpanded,
-                      onDeleteEventOpenChange: ({ eventId, open }) =>
-                        dispatchDialog(
-                          open
-                            ? { type: 'confirm-delete-event', eventId }
-                            : { type: 'close' },
-                        ),
-                      onDeleteEventConfirm: ({ eventId }) =>
-                        handleDeleteEvent({ eventId }),
                       onDeleteEventTimeBlockOpenChange: ({
                         eventTimeBlockId,
                         open,
@@ -380,11 +328,9 @@ export function CycleReviewCard({
                         row={item.row}
                         cycleId={reviewedCycle.id}
                         isReadOnly={isReadOnly}
-                        deleteEventPending={deleteEventPending}
                         deleteEventTimeBlockPending={
                           deleteEventTimeBlockPending
                         }
-                        onDeleteEventConfirm={handleDeleteEvent}
                         onDeleteEventTimeBlockConfirm={
                           handleDeleteEventTimeBlock
                         }

@@ -13,7 +13,6 @@ import {
 } from './planning-admin.utils';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import {
-  type DeleteEventInput,
   type DeleteEventTimeBlockInput,
   usePlanningAdminMutations,
 } from './use-planning-admin-mutations';
@@ -42,12 +41,10 @@ export interface UsePlanningAdminResult {
   cycleDetailsError: unknown;
   refetchCycleDetails: () => void;
   sendCyclePending: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
   handleSelectCycle: (input: SelectCycleInput) => void;
   handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
-  handleDeleteEvent: (input: DeleteEventInput) => void;
   handleDeleteEventTimeBlock: (input: DeleteEventTimeBlockInput) => void;
 }
 
@@ -123,12 +120,10 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       void cycleDetailsQuery.refetch();
     },
     sendCyclePending: mutationHandlers.sendCyclePending,
-    deleteEventPending: mutationHandlers.deleteEventPending,
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
     handleSendCycle: mutationHandlers.handleSendCycle,
-    handleDeleteEvent: mutationHandlers.handleDeleteEvent,
     handleDeleteEventTimeBlock: mutationHandlers.handleDeleteEventTimeBlock,
   };
 }

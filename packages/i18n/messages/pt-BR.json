@@ -792,13 +792,9 @@
   "cycle_review_edit": "Editar",
   "cycle_review_delete": "Excluir",
   "cycle_review_edit_day": "Editar dia {title}",
-  "cycle_review_delete_day": "Excluir dia {title}",
   "cycle_review_delete_time_block": "Excluir horário {label}",
-  "cycle_review_delete_day_title": "Excluir este dia?",
-  "cycle_review_delete_day_description": "Isso remove \"{title}\" e os horários dele do ciclo.",
   "cycle_review_delete_time_block_title": "Excluir este horário?",
   "cycle_review_delete_time_block_description": "Isso remove \"{label}\" do dia.",
-  "cycle_review_delete_event_confirm": "Excluir evento",
   "cycle_review_delete_time_block_confirm": "Excluir horário",
   "cycle_review_deleting": "Excluindo…",
   "cycle_review_cancel": "Cancelar",
@@ -855,5 +851,12 @@
   "cycle_header_period": "Período",
   "cycle_header_events": "Eventos",
   "cycle_header_time_blocks": "Horários",
-  "cycle_header_status": "Situação"
+  "cycle_header_status": "Situação",
+  "event_editor_delete": "Excluir",
+  "event_editor_delete_title": "Excluir este evento?",
+  "event_editor_delete_description": "Isso exclui permanentemente \"{title}\", seus blocos de horário e a escala em rascunho. Nada foi enviado, então ninguém é notificado.",
+  "event_editor_delete_dismiss": "Manter evento",
+  "event_editor_delete_confirm": "Excluir evento",
+  "event_editor_deleting": "Excluindo…",
+  "event_editor_deleted_toast": "Evento excluído."
 }

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
@@ -98,6 +98,9 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     expect(
       screen.getByTestId('open-apply-templates-dialog-button'),
     ).toBeVisible();
+    expect(
+      screen.queryByTestId('open-template-library-button'),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
   });
 
@@ -162,10 +165,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-    renderCycles();
-
-    await screen.findByText('Existing cycles');
-    await user.click(screen.getByTestId('open-template-library-button'));
+    renderCycles('/event-templates');
 
     expect(await screen.findByText('Modelos salvos')).toBeVisible();
     expect(screen.queryByTestId('template-name-input')).not.toBeInTheDocument();
@@ -201,10 +201,8 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     getEventTemplate.mockResolvedValue(template);
 
     const user = userEvent.setup();
-    renderCycles();
+    renderCycles('/event-templates');
 
-    await screen.findByText('Existing cycles');
-    await user.click(screen.getByTestId('open-template-library-button'));
     await user.click(await screen.findByTestId('edit-template-button'));
 
     expect(await screen.findByTestId('template-edit-page')).toBeVisible();
@@ -291,19 +289,17 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     await user.click(screen.getByTestId('open-apply-templates-dialog-button'));
 
     expect(
-      await screen.findByRole('dialog', { name: 'Apply templates' }),
+      await screen.findByRole('dialog', { name: 'Aplicar modelos' }),
     ).toBeVisible();
 
     const checkbox = screen.getByTestId('template-select-checkbox');
-    expect(checkbox).not.toBeChecked();
-    await user.click(checkbox);
-    expect(checkbox).toBeChecked();
+    await waitFor(() => expect(checkbox).toBeChecked());
 
     const applyButton = screen.getByTestId('apply-templates-button');
     await user.click(applyButton);
 
     expect(
-      screen.getByRole('dialog', { name: 'Apply templates' }),
+      screen.getByRole('dialog', { name: 'Aplicar modelos' }),
     ).toBeVisible();
     expect(
       await screen.findByTestId('apply-templates-error'),
@@ -476,15 +472,13 @@ describe('Cycle header visibility (chip-leak fix)', () => {
       ],
     });
 
-    const user = userEvent.setup();
-    renderCycles();
+    renderCycles('/event-templates');
 
-    await screen.findByText('Existing cycles');
-    await user.click(screen.getByTestId('open-template-library-button'));
-
-    expect(
-      await screen.findByTestId('planning-templates-total-chip'),
-    ).toHaveTextContent('2');
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('planning-templates-total-chip'),
+      ).toHaveTextContent('2'),
+    );
     expect(screen.queryByTestId('cycles-total-chip')).not.toBeInTheDocument();
   });
 });

@@ -109,35 +109,6 @@ export function useCycleListCard(): CycleListCardModel {
   };
 }
 
-export type TemplateApplyDialogModel = Pick<
-  UsePlanningAdminResult,
-  | 'templates'
-  | 'templatesLoading'
-  | 'selectedTemplateIds'
-  | 'selectedCycleId'
-  | 'applyTemplatesPending'
-  | 'applyTemplatesError'
-  | 'resetApplyTemplates'
-  | 'handleToggleTemplateSelection'
-  | 'handleApplyTemplates'
->;
-
-export function useTemplateApplyDialog(): TemplateApplyDialogModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    templates: context.templates,
-    templatesLoading: context.templatesLoading,
-    selectedTemplateIds: context.selectedTemplateIds,
-    selectedCycleId: context.selectedCycleId,
-    applyTemplatesPending: context.applyTemplatesPending,
-    applyTemplatesError: context.applyTemplatesError,
-    resetApplyTemplates: context.resetApplyTemplates,
-    handleToggleTemplateSelection: context.handleToggleTemplateSelection,
-    handleApplyTemplates: context.handleApplyTemplates,
-  };
-}
-
 export interface CycleSelectionModel {
   selectedCycleId: string | null;
   handleSelectCycle: (input: SelectCycleInput) => void;

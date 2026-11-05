@@ -197,7 +197,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await expect(page.getByTestId('selected-cycle-state')).toHaveText('draft');
 
   const cycleReviewUrl = page.url();
-  await page.getByTestId('open-template-library-button').click();
+  await page.goto('/event-templates');
 
   await createTemplateOnNestedPage({
     page,
@@ -236,7 +236,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.getByTestId('open-apply-templates-dialog-button').click();
 
   const applyTemplatesDialog = page.getByRole('dialog', {
-    name: 'Apply templates',
+    name: 'Aplicar modelos',
   });
   const applyTemplateOptions = applyTemplatesDialog.getByTestId(
     'apply-template-option',
@@ -345,7 +345,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     page.getByTestId('open-apply-templates-dialog-button'),
   ).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add event' })).toHaveCount(0);
-  await expect(page.getByTestId('open-template-library-button')).toBeVisible();
+  await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
 
   // A second session of the ChurchAdmin, who leads Worship: it sees the
   // sent cycle too.

@@ -113,7 +113,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       page,
       testInfo,
     });
-    await page.getByTestId('open-template-library-button').click();
+    await page.goto('/event-templates');
 
     const templatesTable = page.getByRole('grid', { name: 'Modelos salvos' });
     await expect(templatesTable).toBeVisible();
@@ -217,7 +217,7 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
 
     const cycleReviewUrl = page.url();
-    await page.getByTestId('open-template-library-button').click();
+    await page.goto('/event-templates');
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('saved-template-row').first()).toBeVisible();
 
@@ -261,7 +261,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
     const cycleReviewUrl = page.url();
-    await page.getByTestId('open-template-library-button').click();
+    await page.goto('/event-templates');
     await createTemplateOnNestedPage({
       page,
       name: templateName,
@@ -275,7 +275,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await page.goto(cycleReviewUrl);
     await page.getByTestId('open-apply-templates-dialog-button').click();
     const applyTemplatesDialog = page.getByRole('dialog', {
-      name: 'Apply templates',
+      name: 'Aplicar modelos',
     });
     await applyTemplatesDialog
       .getByTestId('apply-template-option')

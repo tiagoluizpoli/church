@@ -174,13 +174,6 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         className="flex flex-wrap items-center justify-end gap-2"
         data-testid="cycles-actions-row"
       >
-        <Link
-          to="/event-templates"
-          data-testid="open-template-library-button"
-          className={buttonVariants({ variant: 'outline' })}
-        >
-          Template library
-        </Link>
         {canMutateCalendar ? (
           <Button
             type="button"
@@ -211,6 +204,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
           <ApplyTemplatesDialog
             open={applyTemplatesOpen}
             onOpenChange={setApplyTemplatesOpen}
+            cycleId={selectedCycle.id}
             selectedCycleName={selectedCycle.name}
           />
           <QuickCreateEventModal

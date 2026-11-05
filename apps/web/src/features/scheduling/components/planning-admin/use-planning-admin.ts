@@ -13,11 +13,8 @@ import {
 } from './planning-admin.utils';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import {
-  type CreateEventTimeBlockInput,
   type DeleteEventInput,
   type DeleteEventTimeBlockInput,
-  type UpdateEventInput,
-  type UpdateEventTimeBlockInput,
   usePlanningAdminMutations,
 } from './use-planning-admin-mutations';
 import { adminApi } from '@/utils/api-instances';
@@ -45,18 +42,12 @@ export interface UsePlanningAdminResult {
   cycleDetailsError: unknown;
   refetchCycleDetails: () => void;
   sendCyclePending: boolean;
-  updateEventPending: boolean;
   deleteEventPending: boolean;
-  createEventTimeBlockPending: boolean;
-  updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
   handleSelectCycle: (input: SelectCycleInput) => void;
   handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
-  handleUpdateEvent: (input: UpdateEventInput) => void;
   handleDeleteEvent: (input: DeleteEventInput) => void;
-  handleCreateEventTimeBlock: (input: CreateEventTimeBlockInput) => void;
-  handleUpdateEventTimeBlock: (input: UpdateEventTimeBlockInput) => void;
   handleDeleteEventTimeBlock: (input: DeleteEventTimeBlockInput) => void;
 }
 
@@ -132,18 +123,12 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       void cycleDetailsQuery.refetch();
     },
     sendCyclePending: mutationHandlers.sendCyclePending,
-    updateEventPending: mutationHandlers.updateEventPending,
     deleteEventPending: mutationHandlers.deleteEventPending,
-    createEventTimeBlockPending: mutationHandlers.createEventTimeBlockPending,
-    updateEventTimeBlockPending: mutationHandlers.updateEventTimeBlockPending,
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
     handleSendCycle: mutationHandlers.handleSendCycle,
-    handleUpdateEvent: mutationHandlers.handleUpdateEvent,
     handleDeleteEvent: mutationHandlers.handleDeleteEvent,
-    handleCreateEventTimeBlock: mutationHandlers.handleCreateEventTimeBlock,
-    handleUpdateEventTimeBlock: mutationHandlers.handleUpdateEventTimeBlock,
     handleDeleteEventTimeBlock: mutationHandlers.handleDeleteEventTimeBlock,
   };
 }

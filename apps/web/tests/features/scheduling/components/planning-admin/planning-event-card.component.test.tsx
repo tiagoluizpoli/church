@@ -1,11 +1,28 @@
 import { m } from '@church/i18n/messages';
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { CycleCalendarTableRow } from '@/features/scheduling/components/planning-admin/planning-admin.types';
 import { PlanningEventCard } from '@/features/scheduling/components/planning-admin/planning-event-card';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
+
+interface MockLinkProps {
+  children: ReactNode;
+  params?: Record<string, string>;
+  'aria-label'?: string;
+}
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, params, 'aria-label': label }: MockLinkProps) => (
+    <a
+      aria-label={label}
+      href={`/cycles/${params?.cycleId}/events/${params?.eventId}`}
+    >
+      {children}
+    </a>
+  ),
+}));
 
 interface RenderInput {
   churchTimezone?: string;
@@ -69,16 +86,14 @@ function baseProps() {
   return {
     deleteEventPending: false,
     deleteEventTimeBlockPending: false,
-    onAddEventTimeBlockRequest: vi.fn(),
-    onEditEventRequest: vi.fn(),
+    cycleId: 'cycle-1',
     onDeleteEventConfirm: vi.fn(),
-    onEditEventTimeBlockRequest: vi.fn(),
     onDeleteEventTimeBlockConfirm: vi.fn(),
   };
 }
 
 describe('PlanningEventCard affordances (US1)', () => {
-  it('renders add/edit/delete affordances for a day-event and its time blocks when not read-only', () => {
+  it('links Edit to the nested Event page and keeps the delete affordances when not read-only', () => {
     render(
       <PlanningEventCard
         row={rowWithTwoEventTimeBlocks()}
@@ -88,18 +103,16 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', {
-        name: 'Adicionar horário a Sunday Service',
-      }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: 'Editar dia Sunday Service' }),
+    ).toHaveAttribute('href', '/cycles/cycle-1/events/event-1');
     expect(
-      screen.getByRole('button', { name: 'Editar dia Sunday Service' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: /^Adicionar horário/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Editar horário Worship' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Editar horário Worship' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Excluir horário Worship' }),
@@ -130,16 +143,10 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.queryByRole('button', { name: /^Add eventTimeBlock/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /^Editar dia/ }),
+      screen.queryByRole('link', { name: /^Editar dia/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Excluir dia/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /^Edit eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Delete eventTimeBlock/ }),
@@ -156,7 +163,6 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
     const user = userEvent.setup();
 
-    expect(screen.getByText('Adicionar horário')).toBeVisible();
     expect(screen.getByText('Editar')).toBeVisible();
     await user.click(
       screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),

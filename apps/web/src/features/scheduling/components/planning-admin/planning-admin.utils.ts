@@ -1,13 +1,10 @@
 import { m } from '@church/i18n/messages';
 import {
   addCalendarDays,
-  addMilliseconds,
   formatMonthYear,
   formatWeekdayOfIndex,
-  type Instant,
   instantSpan,
   type Locale,
-  millisecondsBetween,
   parseCalendarDay,
   parseInstant,
   parseTimeOfDay,
@@ -40,10 +37,6 @@ import { pluralMessage } from '@/shared/utils/plural';
 import { describeSpan } from '@/shared/utils/span-description';
 
 let templateTemplateTimeBlockDraftCounter = 0;
-
-interface FormatDateInput {
-  date: string;
-}
 
 interface DescribeTemplateInput {
   template: PlanningTemplateSummary;
@@ -188,10 +181,6 @@ export function getSelectedCycleIdOrThrow({
   return selectedCycleId;
 }
 
-function cycleDateKey({ date }: FormatDateInput): string {
-  return date.slice(0, 10);
-}
-
 export function describeTemplate({
   template,
   locale,
@@ -316,32 +305,6 @@ export function eventStatusBadgeVariant({
   }
 
   return 'secondary';
-}
-
-export interface ShiftedEndInput {
-  newStart: Instant;
-  originalStart: string;
-  originalEnd: string;
-}
-
-/**
- * Preserves a day/event's own duration when only its start moves (FR-007's
- * date edit): shifts the end by the same delta so start < end always holds,
- * mirroring FR-007a's time-block-cascade delta but for the event row itself.
- */
-export function shiftedEnd({
-  newStart,
-  originalStart,
-  originalEnd,
-}: ShiftedEndInput): Instant {
-  const delta = millisecondsBetween({
-    start: parseInstant({ value: originalStart }),
-    end: newStart,
-  });
-  return addMilliseconds({
-    instant: parseInstant({ value: originalEnd }),
-    milliseconds: delta,
-  });
 }
 
 export function calculateTotalEventTimeBlocks({
@@ -581,25 +544,6 @@ export function groupRowsByWeek({
   }
 
   return [...weeks.values()];
-}
-
-export interface IsMultiDayEventInput {
-  eventStart: string;
-  eventEnd: string;
-}
-
-/**
- * A time block's start/end only needs its own date field when the parent event
- * spans 2+ calendar days (a multi-day day-based event) — for a single-day
- * event the date is already implied, so the time block dialogs show time only.
- */
-export function isMultiDayEvent({
-  eventStart,
-  eventEnd,
-}: IsMultiDayEventInput): boolean {
-  return (
-    cycleDateKey({ date: eventStart }) !== cycleDateKey({ date: eventEnd })
-  );
 }
 
 export interface EventSpanLabelInput {

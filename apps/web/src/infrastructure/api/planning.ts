@@ -239,8 +239,8 @@ const createPlanningEvent = (
       );
     }
   /**
- * Update an Event's title, description, location, or scheduled Instants.
- * @summary Update an Event
+ * Replace a Draft Event in a Draft Cycle with its complete desired fields and EventTimeBlocks, validated as a final graph before any write. A block with an id is updated in place and keeps its source-template link; a block without one is created as a manual block; an omitted persisted block is deleted. Submitted bounds are saved exactly. The stored description and source-template ids are kept.
+ * @summary Edit a Draft Event with its Time blocks
  */
 const updatePlanningEvent = (
     cycleId: string,

@@ -689,28 +689,39 @@ export type CreatePlanningEvent422 = {
   issues?: unknown[];
 };
 
-export type UpdatePlanningEventBody = {
+export type UpdatePlanningEventBodyEventTimeBlocksItem = {
   /** @minLength 1 */
-  title?: string;
-  description?: string;
-  location?: string;
+  label: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  start?: string;
+  startTime: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  end?: string;
+  endTime: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id?: string;
 };
 
-export type UpdatePlanningEvent200Status = typeof UpdatePlanningEvent200Status[keyof typeof UpdatePlanningEvent200Status];
+export type UpdatePlanningEventBody = {
+  /** @minLength 1 */
+  title: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  eventTimeBlocks: UpdatePlanningEventBodyEventTimeBlocksItem[];
+};
+
+export type UpdatePlanningEvent200EventStatus = typeof UpdatePlanningEvent200EventStatus[keyof typeof UpdatePlanningEvent200EventStatus];
 
 
-export const UpdatePlanningEvent200Status = {
+export const UpdatePlanningEvent200EventStatus = {
   draft: 'draft',
   scheduled: 'scheduled',
   cancelled: 'cancelled',
   past: 'past',
 } as const;
 
-export type UpdatePlanningEvent200 = {
+export type UpdatePlanningEvent200Event = {
   id: string;
   churchId: string;
   cycleId: string;
@@ -722,11 +733,78 @@ export type UpdatePlanningEvent200 = {
   start: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   end: string;
-  status: UpdatePlanningEvent200Status;
+  status: UpdatePlanningEvent200EventStatus;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type UpdatePlanningEvent200EventTimeBlocksItemStatus = typeof UpdatePlanningEvent200EventTimeBlocksItemStatus[keyof typeof UpdatePlanningEvent200EventTimeBlocksItemStatus];
+
+
+export const UpdatePlanningEvent200EventTimeBlocksItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type UpdatePlanningEvent200EventTimeBlocksItemRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  notes?: string;
+};
+
+export type UpdatePlanningEvent200EventTimeBlocksItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  status: UpdatePlanningEvent200EventTimeBlocksItemStatus;
+  requirements: UpdatePlanningEvent200EventTimeBlocksItemRequirementsItem[];
+};
+
+export type UpdatePlanningEvent200 = {
+  event: UpdatePlanningEvent200Event;
+  eventTimeBlocks: UpdatePlanningEvent200EventTimeBlocksItem[];
+};
+
+export type UpdatePlanningEvent422Error = typeof UpdatePlanningEvent422Error[keyof typeof UpdatePlanningEvent422Error];
+
+
+export const UpdatePlanningEvent422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdatePlanningEvent422Reason = typeof UpdatePlanningEvent422Reason[keyof typeof UpdatePlanningEvent422Reason];
+
+
+export const UpdatePlanningEvent422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+} as const;
+
+export type UpdatePlanningEvent422 = {
+  error: UpdatePlanningEvent422Error;
+  message: string;
+  reason?: UpdatePlanningEvent422Reason;
+  field?: string;
+  issues?: unknown[];
 };
 
 export type CreatePlanningEventTimeBlockBody = {

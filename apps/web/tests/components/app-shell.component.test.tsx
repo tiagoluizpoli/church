@@ -38,6 +38,7 @@ vi.mock('@tanstack/react-router', () => ({
   ),
   useLocation: () => ({ pathname: mockPathname, href: mockHref }),
   useNavigate: () => mockNavigate,
+  useParams: () => mockParams,
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -55,8 +56,14 @@ vi.mock('@/shared/hooks/use-caller-capabilities', async (importOriginal) => ({
 
 vi.mock('@/utils/api-instances', async () => {
   const { activeChurchApiMock } = await import('@/tests/setup/active-church');
-  return { activeChurchApi: activeChurchApiMock };
+  return {
+    activeChurchApi: activeChurchApiMock,
+    adminApi: { getCycle: (...args: unknown[]) => mockGetCycle(...args) },
+  };
 });
+
+const mockGetCycle = vi.fn();
+let mockParams: Record<string, string> = {};
 
 const mockedUseCallerCapabilities = vi.mocked(useCallerCapabilities);
 
@@ -390,6 +397,38 @@ describe('AppShell flat nav per persona (F7)', () => {
       'October',
       m.breadcrumb_new_event(),
     ]);
+  });
+
+  it("reads Home › Cycles › name › Event name on a Cycle's nested Event page", async () => {
+    asPersona({ isChurchAdmin: true });
+    mockPathname = '/cycles/cycle-1/events/event-1';
+    mockParams = { cycleId: 'cycle-1', eventId: 'event-1' };
+    mockGetCycle.mockResolvedValue({
+      cycle: { id: 'cycle-1', name: 'October' },
+      events: [{ event: { id: 'event-1', title: 'Youth retreat' } }],
+    });
+
+    function EventShell() {
+      const overrides = [
+        { segment: 'cycle-1', label: 'October' },
+        ...useCycleEventBreadcrumbs(),
+      ];
+      return (
+        <AppShell notificationBell={null} breadcrumbOverrides={overrides}>
+          content
+        </AppShell>
+      );
+    }
+    renderWithProviders(<EventShell />);
+
+    const breadcrumbs = screen.getByTestId('breadcrumbs');
+    expect(await within(breadcrumbs).findByText('Youth retreat')).toBeVisible();
+    expect(
+      within(breadcrumbs)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([HOME, m.nav_cycles(), 'October', 'Youth retreat']);
+    mockParams = {};
   });
 
   it.each([

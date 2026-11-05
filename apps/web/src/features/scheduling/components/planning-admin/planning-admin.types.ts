@@ -1,4 +1,4 @@
-import type { Instant, TimeOfDay } from '@church/time';
+import type { TimeOfDay } from '@church/time';
 import type {
   GetCycle200Cycle,
   GetCycle200EventsItem,
@@ -76,31 +76,4 @@ export interface CycleCalendarWeek {
 
 export interface ExpandedCalendarRowsState {
   expandedEventIds: ReadonlySet<string>;
-}
-
-export interface EditingEventState {
-  eventId: string;
-  title: string;
-  description: string;
-  location: string;
-  start: Instant;
-  originalStart: string;
-  originalEnd: string;
-}
-
-export interface EditingEventTimeBlockState {
-  eventId: string;
-  eventTimeBlockId: string;
-  label: string;
-  start: Instant;
-  end: Instant;
-  isMultiDayEvent: boolean;
-}
-
-export interface CreatingEventTimeBlockState {
-  eventId: string;
-  label: string;
-  start: Instant;
-  end: Instant;
-  isMultiDayEvent: boolean;
 }

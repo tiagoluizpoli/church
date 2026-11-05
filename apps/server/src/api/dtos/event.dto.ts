@@ -3,15 +3,6 @@ import { z } from 'zod';
 import type { ScheduleBuilderData } from '../../domain/contracts/application/event-manager';
 import type { Event } from '../../domain/entities/event';
 
-export const createEventBodySchema = z.object({
-  ministryId: z.string(),
-  title: z.string().min(1),
-  description: z.string().optional(),
-  location: z.string().optional(),
-  start: z.string().datetime(),
-  end: z.string().datetime(),
-});
-
 export const listEventsQuerySchema = z.object({
   ministryId: z.string(),
   status: z.enum(['draft', 'scheduled', 'cancelled', 'past']).optional(),

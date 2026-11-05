@@ -1,15 +1,17 @@
 import { NotFoundError } from '@church/core';
 import {
-  addMilliseconds,
   compareCalendarDays,
   compareInstants,
   fromDate,
-  millisecondsBetween,
   now,
   toDate,
   today,
 } from '@church/time';
-import type { EventId, EventTimeBlockId } from '../domain/branded-ids';
+import type {
+  ChurchId,
+  EventId,
+  EventTimeBlockId,
+} from '../domain/branded-ids';
 import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
@@ -34,7 +36,6 @@ import type { Cycle } from '../domain/entities/cycle';
 import type { Event } from '../domain/entities/event';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import {
-  EventOutsideCycleError,
   IllegalStateTransitionError,
   LastRemainingEventTimeBlockError,
 } from '../domain/errors';
@@ -43,7 +44,10 @@ import {
   type ExistingGeneratedEventTimeBlockFingerprint,
   eventTimeBlockEnvelope,
 } from '../domain/services/cycle-event-generator';
-import { assertEventGraph } from '../domain/services/event-graph';
+import {
+  assertEventGraph,
+  type EventGraph,
+} from '../domain/services/event-graph';
 
 interface EnsureCycleWritableInput {
   cycle: Cycle;
@@ -302,15 +306,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       }
 
       assertEventGraph({
-        graph: {
-          start: fromDate({ date: input.start }),
-          end: fromDate({ date: input.end }),
-          eventTimeBlocks: input.eventTimeBlocks.map((block) => ({
-            label: block.label,
-            startTime: fromDate({ date: block.startTime }),
-            endTime: fromDate({ date: block.endTime }),
-          })),
-        },
+        graph: toProposedGraph(input),
         cycle,
         timeZone: church.timezone,
       });
@@ -348,106 +344,131 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
-      const listed = await this.eventTimeBlockRepository.listByEvent({
+      const eventTimeBlocks = await this.listInOrder({
         churchId: input.churchId,
         eventId: event.id,
+        blockIds,
         tx,
       });
-      const listedById = new Map(listed.map((block) => [block.id, block]));
-      // In submitted order; every id was inserted above in this transaction.
-      const eventTimeBlocks = blockIds.flatMap(
-        (id) => listedById.get(id) ?? [],
-      );
-
       return { event, eventTimeBlocks };
     });
   }
 
-  async updateEvent(input: UpdatePlanningEventManagerInput): Promise<Event> {
+  async updateEvent(
+    input: UpdatePlanningEventManagerInput,
+  ): Promise<PlanningEventGraph> {
     const church = await this.churchRepository.getById({ id: input.churchId });
+    const { churchId, eventId } = input;
 
     return this.unitOfWork.run(async (tx) => {
-      await this.cycleRepository.acquireChurchLock({
-        churchId: input.churchId,
-        tx,
-      });
+      await this.cycleRepository.acquireChurchLock({ churchId, tx });
 
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
       const currentEvent = await this.getCycleEvent({ input, tx });
-
-      if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
+      // Draft-only: a reopened Event of a Sent Cycle is no back door.
+      if (cycle.state !== 'draft' || currentEvent.status !== 'draft') {
         throw new IllegalStateTransitionError({
-          from: currentEvent.status,
+          from: cycle.state === 'draft' ? currentEvent.status : cycle.state,
           to: 'update',
         });
       }
 
-      if (input.start) {
-        assertEventStartsWithinCycle({
-          cycle,
-          eventStart: input.start,
-          churchTimeZone: church.timezone,
-        });
+      const persisted = await this.eventTimeBlockRepository.listByEvent({
+        churchId,
+        eventId,
+        tx,
+      });
+      const persistedIds = new Set<string>(persisted.map(({ id }) => id));
+      const alien = input.eventTimeBlocks.find(
+        ({ id }) => id !== undefined && !persistedIds.has(id),
+      );
+      if (alien?.id) {
+        throw new NotFoundError(`EventTimeBlock not found: ${alien.id}`);
       }
 
-      const updatedEvent = await this.eventRepository.updateEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
+      assertEventGraph({
+        graph: toProposedGraph(input),
+        cycle,
+        timeZone: church.timezone,
+      });
+
+      // The stored description and source-template ids are left as they are.
+      const event = await this.eventRepository.updateEvent({
+        churchId,
+        eventId,
         title: input.title,
-        description: input.description,
-        location: input.location,
+        location: input.location ?? null,
         start: input.start,
         end: input.end,
-        status: cycle.state === 'sent' ? 'scheduled' : currentEvent.status,
         tx,
       });
 
-      const newStart = input.start
-        ? fromDate({ date: input.start })
-        : undefined;
-
-      if (newStart && newStart !== currentEvent.start) {
-        const delta = millisecondsBetween({
-          start: currentEvent.start,
-          end: newStart,
-        });
-        const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent(
-          { churchId: input.churchId, eventId: input.eventId, tx },
-        );
-
-        // Sequential await is required here: node-postgres emits deprecation
-        // warnings and will fail under pg@9.0 if concurrent queries are executed
-        // on a single transaction connection (tx). Although each update targets
-        // a distinct row, we must process them sequentially to preserve the
-        // single-connection model used by the transaction client.
-        for (const eventTimeBlock of eventTimeBlocks) {
-          await this.eventTimeBlockRepository.update({
-            churchId: input.churchId,
-            eventTimeBlockId: eventTimeBlock.id,
-            input: {
-              startTime: toDate({
-                instant: addMilliseconds({
-                  instant: eventTimeBlock.startTime,
-                  milliseconds: delta,
-                }),
-              }),
-              endTime: toDate({
-                instant: addMilliseconds({
-                  instant: eventTimeBlock.endTime,
-                  milliseconds: delta,
-                }),
-              }),
-            },
+      const retainedIds = new Set<string>(
+        input.eventTimeBlocks.flatMap(({ id }) => id ?? []),
+      );
+      // Sequential: concurrent queries on one transaction connection warn in pg.
+      for (const { id } of persisted) {
+        if (!retainedIds.has(id)) {
+          await this.eventTimeBlockRepository.deleteById({
+            churchId,
+            eventTimeBlockId: id,
             tx,
           });
         }
       }
 
-      return updatedEvent;
+      const blockIds: EventTimeBlockId[] = [];
+      for (const block of input.eventTimeBlocks) {
+        const { id, label, startTime, endTime } = block;
+        if (id) {
+          await this.eventTimeBlockRepository.update({
+            churchId,
+            eventTimeBlockId: id,
+            input: { label, startTime, endTime },
+            tx,
+          });
+          blockIds.push(id);
+        } else {
+          blockIds.push(
+            await this.eventRepository.createEventTimeBlock({
+              churchId,
+              eventId,
+              label,
+              startTime,
+              endTime,
+              tx,
+            }),
+          );
+        }
+      }
+
+      const eventTimeBlocks = await this.listInOrder({
+        churchId,
+        eventId,
+        blockIds,
+        tx,
+      });
+      return { event, eventTimeBlocks };
     });
+  }
+
+  /** The Event's blocks in submitted order; every id was written in `tx`. */
+  private async listInOrder({
+    churchId,
+    eventId,
+    blockIds,
+    tx,
+  }: ListInOrderInput): Promise<EventTimeBlock[]> {
+    const listed = await this.eventTimeBlockRepository.listByEvent({
+      churchId,
+      eventId,
+      tx,
+    });
+    const listedById = new Map(listed.map((block) => [block.id, block]));
+    return blockIds.flatMap((id) => listedById.get(id) ?? []);
   }
 
   async createEventTimeBlock(
@@ -665,23 +686,29 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   }
 }
 
-interface AssertEventStartsWithinCycleInput {
-  cycle: Cycle;
-  eventStart: Date;
-  churchTimeZone: string;
+interface ListInOrderInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  blockIds: EventTimeBlockId[];
+  tx: TransactionContext;
 }
 
-function assertEventStartsWithinCycle({
-  cycle,
-  eventStart,
-  churchTimeZone,
-}: AssertEventStartsWithinCycleInput): void {
-  if (
-    !cycle.containsDate({
-      instant: fromDate({ date: eventStart }),
-      timeZone: churchTimeZone,
-    })
-  ) {
-    throw new EventOutsideCycleError();
-  }
+/** A create or edit request as the shared final-graph validator reads it. */
+function toProposedGraph({
+  start,
+  end,
+  eventTimeBlocks,
+}:
+  | CreatePlanningEventManagerInput
+  | UpdatePlanningEventManagerInput): EventGraph {
+  return {
+    start: fromDate({ date: start }),
+    end: fromDate({ date: end }),
+    eventTimeBlocks: eventTimeBlocks.map((block) => ({
+      id: 'id' in block ? block.id : undefined,
+      label: block.label,
+      startTime: fromDate({ date: block.startTime }),
+      endTime: fromDate({ date: block.endTime }),
+    })),
+  };
 }

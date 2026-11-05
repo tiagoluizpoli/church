@@ -43,15 +43,25 @@ export interface PlanningEventGraph {
   eventTimeBlocks: EventTimeBlock[];
 }
 
+/** One Time block of a complete Event edit; `id` names a retained block. */
+export interface PlanningEventTimeBlockEdit
+  extends PlanningEventTimeBlockDraft {
+  id?: EventTimeBlockId;
+}
+
+/**
+ * The complete desired Draft Event: retained ids update in place, blocks
+ * without an id are created and omitted persisted blocks are deleted.
+ */
 export interface UpdatePlanningEventManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   eventId: EventId;
-  title?: string;
-  description?: string;
+  title: string;
   location?: string;
-  start?: Date;
-  end?: Date;
+  start: Date;
+  end: Date;
+  eventTimeBlocks: PlanningEventTimeBlockEdit[];
 }
 
 export interface CancelPlanningEventManagerInput {
@@ -93,7 +103,9 @@ export interface IPlanningEventManager {
   createEvent(
     input: CreatePlanningEventManagerInput,
   ): Promise<PlanningEventGraph>;
-  updateEvent(input: UpdatePlanningEventManagerInput): Promise<Event>;
+  updateEvent(
+    input: UpdatePlanningEventManagerInput,
+  ): Promise<PlanningEventGraph>;
   cancelEvent(input: CancelPlanningEventManagerInput): Promise<void>;
   createEventTimeBlock(
     input: CreatePlanningEventTimeBlockManagerInput,

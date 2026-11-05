@@ -4,6 +4,7 @@ import {
   formatCalendarDateOnly,
   formatInstantOf,
 } from '@/shared/utils/church-time';
+import { pluralMessage } from '@/shared/utils/plural';
 
 export interface RenderedNotification {
   title: string;
@@ -68,6 +69,12 @@ export function renderNotification(
         kindLabel: m.notification_kind_schedule_published(),
       };
     }
+    case 'cycle_ready_to_prepare':
+      return {
+        ...cycleReadyToPrepareWords(item.data),
+        kindLabel: m.notification_kind_cycle_ready_to_prepare(),
+        actionLabel: m.notification_cycle_ready_to_prepare_action(),
+      };
     default:
       return {
         title: m.notification_unknown_title(),
@@ -137,5 +144,42 @@ function availabilityFacts(data: AvailabilityData) {
     cycleName: data.cycleName,
     startDate: formatCalendarDateOnly({ value: data.cycleStartDate }),
     endDate: formatCalendarDateOnly({ value: data.cycleEndDate }),
+  };
+}
+
+type CycleReadyToPrepareData = Extract<
+  GetNotifications200ItemsItem,
+  { kind: 'cycle_ready_to_prepare' }
+>['data'];
+
+/** N2: the sent Cycle, its days and Events, and the recipient's Ministries. */
+function cycleReadyToPrepareWords(data: CycleReadyToPrepareData) {
+  const { cycleName, eventCount, ministries } = data;
+  const events = pluralMessage({
+    count: eventCount,
+    one: m.notification_cycle_ready_to_prepare_events_one,
+    other: () =>
+      m.notification_cycle_ready_to_prepare_events_other({ count: eventCount }),
+  });
+  const ministryList = {
+    ministryNames: ministries.map((ministry) => ministry.name).join(', '),
+  };
+  return {
+    title: m.notification_cycle_ready_to_prepare_title({ cycleName }),
+    body: [
+      m.notification_cycle_ready_to_prepare_body({
+        cycleName,
+        startDate: formatCalendarDateOnly({ value: data.cycleStartDate }),
+        endDate: formatCalendarDateOnly({ value: data.cycleEndDate }),
+        events,
+      }),
+      pluralMessage({
+        count: ministries.length,
+        one: () =>
+          m.notification_cycle_ready_to_prepare_ministries_one(ministryList),
+        other: () =>
+          m.notification_cycle_ready_to_prepare_ministries_other(ministryList),
+      }),
+    ].join('\n'),
   };
 }

@@ -337,6 +337,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   );
 
   await page.getByTestId('send-cycle-button').click();
+  await page.getByTestId('confirm-cycle-send-button').click();
   await expect(page.getByTestId('selected-cycle-state')).toHaveText(
     m.cycle_state_sent({}, { locale: 'pt-BR' }),
   );

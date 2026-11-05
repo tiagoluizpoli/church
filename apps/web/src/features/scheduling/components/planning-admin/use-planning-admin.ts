@@ -44,14 +44,12 @@ export interface UsePlanningAdminResult {
   cycleDetailsLoading: boolean;
   cycleDetailsError: unknown;
   refetchCycleDetails: () => void;
-  sendCyclePending: boolean;
   updateEventPending: boolean;
   deleteEventPending: boolean;
   createEventTimeBlockPending: boolean;
   updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
   handleSelectCycle: (input: SelectCycleInput) => void;
-  handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
   handleDeleteEvent: (input: DeleteEventInput) => void;
@@ -110,7 +108,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const mutationHandlers = usePlanningAdminMutations({
     queryClient,
     selectedCycleId,
-    selectedCycle,
   });
 
   return {
@@ -131,7 +128,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     refetchCycleDetails: () => {
       void cycleDetailsQuery.refetch();
     },
-    sendCyclePending: mutationHandlers.sendCyclePending,
     updateEventPending: mutationHandlers.updateEventPending,
     deleteEventPending: mutationHandlers.deleteEventPending,
     createEventTimeBlockPending: mutationHandlers.createEventTimeBlockPending,
@@ -139,7 +135,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
-    handleSendCycle: mutationHandlers.handleSendCycle,
     handleUpdateEvent: mutationHandlers.handleUpdateEvent,
     handleDeleteEvent: mutationHandlers.handleDeleteEvent,
     handleCreateEventTimeBlock: mutationHandlers.handleCreateEventTimeBlock,

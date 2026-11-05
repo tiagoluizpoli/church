@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadCycleTenantsJourney } from '@/tests/fixtures/journeys/cycle-tenants';
@@ -16,6 +16,32 @@ interface CycleSummaryResponse {
 
 interface CycleListResponse {
   cycles: CycleSummaryResponse[];
+}
+
+interface AddEventViaApiInput {
+  page: Page;
+  cycleId: string;
+  day: string;
+}
+
+/** A valid one-block Event at midday UTC on `day`, so Send is not refused as empty. */
+async function addEventViaApi({ page, cycleId, day }: AddEventViaApiInput) {
+  const start = `${day}T15:00:00.000Z`;
+  const end = `${day}T17:00:00.000Z`;
+  const response = await page.request.post(
+    `${SERVER_URL}/api/v1/admin/cycles/${cycleId}/events`,
+    {
+      data: {
+        title: 'Midday service',
+        start,
+        end,
+        eventTimeBlocks: [
+          { label: 'Midday service', startTime: start, endTime: end },
+        ],
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
 }
 
 interface CycleResponse {
@@ -119,6 +145,7 @@ test.describe('DL4-X2 network failure on send', () => {
     );
     expect(cycleResponse.ok()).toBeTruthy();
     const cycle = (await cycleResponse.json()) as CycleResponse;
+    await addEventViaApi({ page, cycleId: cycle.id, day: month.startDate });
 
     await page.route('**/cycles/*/send', (route) => route.abort('failed'));
 
@@ -135,10 +162,13 @@ test.describe('DL4-X2 network failure on send', () => {
     );
 
     await page.getByTestId('send-cycle-button').click();
+    await page.getByTestId('confirm-cycle-send-button').click();
 
-    await expect(
-      page.locator('[data-sonner-toast][data-type="error"]'),
-    ).toBeVisible();
+    // The confirmation stays open with the failure, ready to retry.
+    await expect(page.getByTestId('cycle-send-error')).toHaveText(
+      m.cycle_send_failed({}, { locale: 'pt-BR' }),
+    );
+    await expect(page.getByTestId('confirm-cycle-send-button')).toBeEnabled();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_draft({}, { locale: 'pt-BR' }),
     );
@@ -181,6 +211,7 @@ test.describe('DL4-X3 double-submit has no duplicate side effect', () => {
     );
     expect(cycleResponse.ok()).toBeTruthy();
     const cycle = (await cycleResponse.json()) as CycleResponse;
+    await addEventViaApi({ page, cycleId: cycle.id, day: month.startDate });
 
     const [first, second] = await Promise.all([
       page.request.post(`${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/send`),

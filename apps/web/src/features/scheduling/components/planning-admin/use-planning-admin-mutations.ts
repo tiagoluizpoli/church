@@ -1,7 +1,6 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { SelectedCycle } from './planning-admin.types';
 import {
   getErrorMessage,
   getSelectedCycleIdOrThrow,
@@ -11,7 +10,6 @@ import { adminApi } from '@/utils/api-instances';
 export interface UsePlanningAdminMutationsProps {
   queryClient: QueryClient;
   selectedCycleId: string | null;
-  selectedCycle: SelectedCycle | null;
 }
 
 export interface UpdateEventInput {
@@ -98,13 +96,11 @@ function usePlanningMutation<TVariables, TResult>({
 }
 
 export interface UsePlanningAdminMutationsResult {
-  sendCyclePending: boolean;
   updateEventPending: boolean;
   deleteEventPending: boolean;
   createEventTimeBlockPending: boolean;
   updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  handleSendCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
   handleDeleteEvent: (input: DeleteEventInput) => void;
   handleCreateEventTimeBlock: (input: CreateEventTimeBlockInput) => void;
@@ -115,15 +111,7 @@ export interface UsePlanningAdminMutationsResult {
 export function usePlanningAdminMutations({
   queryClient,
   selectedCycleId,
-  selectedCycle,
 }: UsePlanningAdminMutationsProps): UsePlanningAdminMutationsResult {
-  const sendCycle = usePlanningMutation({
-    mutationFn: (cycleId: string) => adminApi.sendCycle(cycleId),
-    invalidateQueryKeys: [['cycles'], ['cycle-details', selectedCycleId]],
-    successMessage: 'Cycle sent',
-    queryClient,
-  });
-
   const updateEvent = usePlanningMutation({
     mutationFn: ({ eventId, ...body }: UpdateEventInput) =>
       adminApi.updatePlanningEvent(
@@ -188,12 +176,6 @@ export function usePlanningAdminMutations({
     queryClient,
   });
 
-  function handleSendCycle() {
-    if (selectedCycle) {
-      sendCycle.mutate(selectedCycle.id);
-    }
-  }
-
   function handleUpdateEvent(input: UpdateEventInput) {
     updateEvent.mutate(input);
   }
@@ -215,13 +197,11 @@ export function usePlanningAdminMutations({
   }
 
   return {
-    sendCyclePending: sendCycle.isPending,
     updateEventPending: updateEvent.isPending,
     deleteEventPending: deleteEvent.isPending,
     createEventTimeBlockPending: createEventTimeBlock.isPending,
     updateEventTimeBlockPending: updateEventTimeBlock.isPending,
     deleteEventTimeBlockPending: deleteEventTimeBlock.isPending,
-    handleSendCycle,
     handleUpdateEvent,
     handleDeleteEvent,
     handleCreateEventTimeBlock,

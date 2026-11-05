@@ -222,6 +222,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     await page.getByTestId('send-cycle-button').click();
+    await page.getByTestId('confirm-cycle-send-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
@@ -414,6 +415,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
 
     // Send the cycle: no edit/delete controls should render anywhere.
     await page.getByTestId('send-cycle-button').click();
+    await page.getByTestId('confirm-cycle-send-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
@@ -536,6 +538,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
 
     // Send the cycle: no mobile add/edit/delete affordance may remain.
     await page.getByTestId('send-cycle-button').click();
+    await page.getByTestId('confirm-cycle-send-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );

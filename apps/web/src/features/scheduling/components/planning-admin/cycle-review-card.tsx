@@ -16,6 +16,7 @@ import {
   weekLabel,
 } from './calendar-row';
 import { CreateEventTimeBlockDialog } from './create-event-time-block-dialog';
+import { CycleSendAction } from './cycle-send-dialog';
 import { EditEventDialog } from './edit-event-dialog';
 import { EditEventTimeBlockDialog } from './edit-event-time-block-dialog';
 import type {
@@ -182,8 +183,6 @@ export function CycleReviewCard({
     cycleDetailsError,
     refetchCycleDetails,
     cycleEvents,
-    sendCyclePending,
-    handleSendCycle,
     updateEventPending,
     deleteEventPending,
     handleUpdateEvent,
@@ -522,16 +521,11 @@ export function CycleReviewCard({
                     {m.cycle_review_send_hint()}
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  data-testid="send-cycle-button"
-                  disabled={sendCyclePending}
-                  onClick={handleSendCycle}
-                >
-                  {sendCyclePending
-                    ? m.cycle_review_sending()
-                    : m.cycle_review_send()}
-                </Button>
+                <CycleSendAction
+                  cycleId={reviewedCycle.id}
+                  cycleName={reviewedCycle.name}
+                  eventCount={cycleEvents.length}
+                />
               </div>
             )}
 

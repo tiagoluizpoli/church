@@ -203,8 +203,6 @@ export type CycleReviewCardModel = Pick<
   | 'refetchCycleDetails'
   | 'cycleEvents'
   | 'ownedEventCount'
-  | 'sendCyclePending'
-  | 'handleSendCycle'
   | 'updateEventPending'
   | 'deleteEventPending'
   | 'createEventTimeBlockPending'
@@ -238,7 +236,5 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     handleCreateEventTimeBlock: context.handleCreateEventTimeBlock,
     handleUpdateEventTimeBlock: context.handleUpdateEventTimeBlock,
     handleDeleteEventTimeBlock: context.handleDeleteEventTimeBlock,
-    sendCyclePending: context.sendCyclePending,
-    handleSendCycle: context.handleSendCycle,
   };
 }

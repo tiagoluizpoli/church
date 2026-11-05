@@ -15,6 +15,8 @@ const getCycle = vi.fn();
 const getEventTemplate = vi.fn();
 const applyPlanningTemplates = vi.fn();
 const deleteCycle = vi.fn();
+const getCycleSendSummary = vi.fn();
+const sendCycle = vi.fn();
 const updateCycle = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
@@ -28,6 +30,8 @@ vi.mock('@/utils/api-instances', async () => ({
       applyPlanningTemplates(...args),
     deleteCycle: (...args: unknown[]) => deleteCycle(...args),
     updateCycle: (...args: unknown[]) => updateCycle(...args),
+    getCycleSendSummary: (...args: unknown[]) => getCycleSendSummary(...args),
+    sendCycle: (...args: unknown[]) => sendCycle(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -822,6 +826,39 @@ describe('Direct Cycle review route', () => {
     expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^(Edit|Delete|Add)/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refetches the Cycle after Send and removes its Draft controls', async () => {
+    listCycles.mockResolvedValue({ cycles: [] });
+    getCycle.mockResolvedValue(
+      details({ id: 'cycle-1', name: 'October', state: 'draft' }),
+    );
+    getCycleSendSummary.mockResolvedValue({
+      eventCount: 1,
+      prefilledMinistryCount: 0,
+    });
+    sendCycle.mockImplementation(async () => {
+      getCycle.mockResolvedValue(
+        details({ id: 'cycle-1', name: 'October', state: 'sent' }),
+      );
+    });
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+
+    await user.click(await screen.findByTestId('send-cycle-button'));
+    expect(await screen.findByText(m.cycle_send_prefill_zero())).toBeVisible();
+    await user.click(screen.getByTestId('confirm-cycle-send-button'));
+
+    expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
+      m.cycle_state_sent(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument(),
+    );
+    expect(sendCycle).toHaveBeenCalledWith('cycle-1');
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
     ).not.toBeInTheDocument();
   });
 

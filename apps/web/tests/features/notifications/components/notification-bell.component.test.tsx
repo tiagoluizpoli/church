@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import type { NotificationInboxItem } from '@/features/notifications/hooks/use-notification-inbox';
 import { useNotificationInbox } from '@/features/notifications/hooks/use-notification-inbox';
+import { renderNotification } from '@/features/notifications/lib/notification-render';
 import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { renderWithProviders } from '@/tests/setup/render';
 
@@ -201,6 +202,62 @@ describe('NotificationBell', () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/invitations/ministry/$invitationId',
       params: { invitationId: INVITATION_ID },
+    });
+  });
+
+  it('shows N2 in the detail sheet and Prepare opens the Cycle-preserving picker for several Ministries', async () => {
+    const user = userEvent.setup();
+    const cycleId = '44444444-4444-4444-8444-444444444444';
+    const kidsId = '55555555-5555-4555-8555-555555555555';
+    const source: GetNotifications200ItemsItem = {
+      id: 'notification-2',
+      kind: 'cycle_ready_to_prepare',
+      data: {
+        cycleId,
+        cycleName: 'Outubro',
+        cycleStartDate: '2026-10-12',
+        cycleEndDate: '2026-10-25',
+        eventCount: 2,
+        ministries: [
+          { id: MINISTRY_ID, name: 'Worship' },
+          { id: kidsId, name: 'Kids' },
+        ],
+      },
+      createdAt: '2026-10-01T08:00:00.000Z',
+    };
+    const rendered = renderNotification(source);
+    const item: NotificationInboxItem = {
+      ...invitationItem(),
+      id: source.id,
+      title: rendered.title,
+      body: rendered.body,
+      type: rendered.kindLabel,
+      actionLabel: rendered.actionLabel,
+      source,
+    };
+    mockedUseNotificationInbox.mockReturnValue(
+      createInboxHookResult({ items: [item], selectedNotification: item }),
+    );
+
+    renderWithProviders(<NotificationBell />);
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet).toHaveTextContent(
+      m.notification_cycle_ready_to_prepare_title({ cycleName: 'Outubro' }),
+    );
+    expect(sheet).toHaveTextContent(
+      m.notification_cycle_ready_to_prepare_ministries_other({
+        ministryNames: 'Worship, Kids',
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.notification_cycle_ready_to_prepare_action(),
+      }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/schedules',
+      search: { cycleId, ministryIds: `${MINISTRY_ID},${kidsId}` },
     });
   });
 

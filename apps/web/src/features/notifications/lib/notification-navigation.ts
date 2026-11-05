@@ -9,6 +9,14 @@ export type NotificationNavigationTarget =
       params: { invitationId: string };
     }
   | {
+      to: '/schedules/$ministryId/$cycleId';
+      params: { ministryId: string; cycleId: string };
+    }
+  | {
+      to: '/schedules';
+      search: { cycleId: string; ministryIds: string };
+    }
+  | {
       to: '/dashboard';
       search: {
         section: 'availability' | 'assignments';
@@ -58,6 +66,27 @@ export function resolveNotificationDestination(
         },
         isFallback: false,
       };
+    case 'cycle_ready_to_prepare': {
+      const { cycleId, ministries } = item.data;
+      const [only, ...others] = ministries;
+      // One Ministry opens its Schedule; several open the Cycle-keeping picker.
+      return {
+        target:
+          only && others.length === 0
+            ? {
+                to: '/schedules/$ministryId/$cycleId',
+                params: { ministryId: only.id, cycleId },
+              }
+            : {
+                to: '/schedules',
+                search: {
+                  cycleId,
+                  ministryIds: ministries.map(({ id }) => id).join(','),
+                },
+              },
+        isFallback: false,
+      };
+    }
     default:
       return { target: { to: '/notifications' }, isFallback: true };
   }

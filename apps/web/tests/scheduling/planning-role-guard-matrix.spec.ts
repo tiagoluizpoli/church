@@ -12,7 +12,7 @@ import { loadCycleAccessJourney } from '@/tests/fixtures/journeys/planning-admin
 // server-side rejected for a plain Volunteer (no Leader/TeamLeader/ChurchAdmin
 // capacity). "Denied" here means: no protected ministry/event/cycle data or
 // mutating action is ever reachable, not necessarily a redirect.
-test.describe('Leader direct access to the other scheduling routes', () => {
+test.describe('ChurchAdmin direct access to the other scheduling routes', () => {
   // #217 — merged in from the removed planning-role-guards.spec.ts: the
   // matrix's denial case is only half the authorization proof without a
   // positive control showing the same two routes are actually reachable for
@@ -22,7 +22,7 @@ test.describe('Leader direct access to the other scheduling routes', () => {
   // once the planning-admin page has rendered (e.g. opening the create-cycle
   // dialog), which is stronger implicit proof than the deleted spec's bare
   // getByTestId('planning-admin-page') visibility check.
-  test('a Leader can load /schedules and the cycle builder directly', async ({
+  test('a ChurchAdmin can load /schedules and the cycle builder directly', async ({
     page,
   }, testInfo) => {
     const journey = loadCycleAccessJourney({ testInfo });

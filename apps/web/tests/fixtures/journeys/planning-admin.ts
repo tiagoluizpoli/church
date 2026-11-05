@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   ASSIGN_CYCLE_SCHEMA,
   ASSIGN_JOURNEY_BASE_SCHEMA,
+  ASSIGN_NAMED_ROW_SCHEMA,
   ASSIGN_PERSONA_SCHEMA,
   assignMinistrySchema,
   CYCLE_WINDOW_SCHEMA,
@@ -26,9 +27,10 @@ const PLANNING_ADMIN_FIELDS = {
   }),
 };
 
-export const PLANNING_ADMIN_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend(
-  PLANNING_ADMIN_FIELDS,
-);
+export const PLANNING_ADMIN_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
+  ...PLANNING_ADMIN_FIELDS,
+  sundayTemplate: ASSIGN_NAMED_ROW_SCHEMA,
+});
 
 export type PlanningAdminJourney = z.infer<
   typeof PLANNING_ADMIN_JOURNEY_SCHEMA

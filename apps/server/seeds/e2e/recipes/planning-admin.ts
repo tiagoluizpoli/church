@@ -1,3 +1,5 @@
+import { parseTimeOfDay } from '@church/time';
+import { buildEventTemplate, buildUsualSetup } from '../../builders/planning';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
   type CreateJourneyRecipeInput,
@@ -8,6 +10,7 @@ import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
   type AssignChurch,
   type AssignChurchPlan,
+  type AssignNamedRow,
   assignChurchRootKinds,
   buildAssignChurch,
 } from './assign-church';
@@ -22,9 +25,10 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.planningAdmin;
  * The Church whose ChurchAdmin plans (#329: cycle administration, the
  * create-event form, template library and Cycle-to-leader handoff): a
  * ChurchAdmin who does not lead, a distinct Worship leader, and a plain
- * Volunteer persona for the denial checks. It holds no Cycle: the journey creates the cycles it
- * mutates, in a window of its own Church, so no other journey can overlap
- * them. Shared by the cycle-access recipe.
+ * Volunteer persona for the denial checks. The Sunday template has a
+ * source-bound Usual setup for Worship. It holds no Cycle: the journey
+ * creates the Cycles it mutates in its own Church. The cycle-access recipe
+ * shares the persona plan, without this template or setup.
  */
 export const PLANNING_ADMIN_PLAN = {
   ministries: {
@@ -62,7 +66,9 @@ export const PLANNING_ADMIN_PLAN = {
 
 export interface PlanningAdminJourney
   extends AssignChurch<typeof PLANNING_ADMIN_PLAN>,
-    SchedulingJourneyDates {}
+    SchedulingJourneyDates {
+  sundayTemplate: AssignNamedRow;
+}
 
 export function createPlanningAdminRecipe({
   journeyKey,
@@ -82,7 +88,57 @@ export function createPlanningAdminRecipe({
       tag,
       plan: PLANNING_ADMIN_PLAN,
     });
-    return { anchor, ...graph, cycleWindow: cycleWindow({ anchor }) };
+    const welcomeBlockId = idOf({ kind: 'template-sunday-block-welcome' });
+    const { template } = await buildEventTemplate({
+      db,
+      churchId: graph.church.id,
+      id: idOf({ kind: 'template-sunday' }),
+      name: 'J5 Worship',
+      weekday: 0,
+      blocks: [
+        {
+          id: welcomeBlockId,
+          label: 'Welcome',
+          startTime: parseTimeOfDay({ value: '09:00' }),
+          endTime: parseTimeOfDay({ value: '09:30' }),
+        },
+        {
+          id: idOf({ kind: 'template-sunday-block-message' }),
+          label: 'Message',
+          startTime: parseTimeOfDay({ value: '09:30' }),
+          endTime: parseTimeOfDay({ value: '10:30' }),
+        },
+        {
+          id: idOf({ kind: 'template-sunday-block-prayer' }),
+          label: 'Prayer',
+          startTime: parseTimeOfDay({ value: '10:30' }),
+          endTime: parseTimeOfDay({ value: '11:00' }),
+        },
+      ],
+    });
+    await buildUsualSetup({
+      db,
+      churchId: graph.church.id,
+      id: idOf({ kind: 'usual-setup-welcome' }),
+      ministryId: graph.ministries.worship.id,
+      sourceTemplateTimeBlockId: welcomeBlockId,
+      serves: true,
+      shiftSplit: { kind: 'equal', count: 1 },
+      headcounts: [
+        {
+          shiftIndex: 0,
+          sectorId: graph.ministries.worship.sectors.main.id,
+          roleId: graph.ministries.worship.roles.usher.id,
+          peopleNeeded: 1,
+        },
+      ],
+    });
+    return {
+      anchor,
+      ...graph,
+      sundayTemplate: { id: template.id, name: template.name },
+      cycleWindow: cycleWindow({ anchor }),
+    };
   }
 
   return {

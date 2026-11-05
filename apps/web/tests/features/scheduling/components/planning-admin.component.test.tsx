@@ -317,7 +317,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 });
 
 describe('CyclesActions (US4)', () => {
-  it('renders "Add event" beside "Apply template" in the top action row for a draft cycle, and opens the create-event modal', async () => {
+  it('renders "Add event" beside "Apply template" for a draft cycle, linking to its nested New Event page', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -349,19 +349,13 @@ describe('CyclesActions (US4)', () => {
     const applyTemplateButton = within(actionsRow).getByTestId(
       'open-apply-templates-dialog-button',
     );
-    const addManualEventButton = within(actionsRow).getByRole('button', {
+    const addEventLink = within(actionsRow).getByRole('link', {
       name: m.cycles_add_event_button(),
     });
     expect(applyTemplateButton).toBeVisible();
     expect(applyTemplateButton).toHaveTextContent('Aplicar modelo');
-    expect(addManualEventButton).toHaveTextContent('Adicionar evento');
-    expect(addManualEventButton).toBeVisible();
-
-    await user.click(addManualEventButton);
-
-    expect(
-      await screen.findByRole('dialog', { name: 'New Event' }),
-    ).toBeVisible();
+    expect(addEventLink).toHaveTextContent('Adicionar evento');
+    expect(addEventLink).toHaveAttribute('href', '/cycles/cycle-1/events/new');
   });
 
   it('does not render a "Manual exceptions" panel in the review body', async () => {

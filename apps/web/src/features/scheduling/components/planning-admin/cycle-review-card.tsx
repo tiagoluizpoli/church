@@ -1,7 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { parseInstant, parseTimeOfDay, today, toInstant } from '@church/time';
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { QuickCreateEventModal } from '../quick-create-event-modal';
 import {
   buildVisibleCalendarRows,
   type CalendarVisibleRow,
@@ -45,6 +44,8 @@ interface CycleReviewCardProps {
   isReadOnly: boolean;
   /** The Cycle id of the route; data for any other Cycle is never shown. */
   cycleId?: string;
+  /** A just-saved Event to expand and scroll into view once loaded. */
+  revealEventId?: string;
 }
 
 const DEFAULT_EVENT_TIME_BLOCK_START_TIME = parseTimeOfDay({ value: '09:00' });
@@ -169,7 +170,11 @@ function isConfirmingDeleteEventTimeBlock({
   );
 }
 
-export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
+export function CycleReviewCard({
+  isReadOnly,
+  cycleId,
+  revealEventId,
+}: CycleReviewCardProps) {
   const {
     selectedCycleId,
     selectedCycle,
@@ -196,7 +201,22 @@ export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
   const [dialogState, dispatchDialog] = useReducer(dialogReducer, {
     kind: 'none',
   });
-  const [addEventOpen, setAddEventOpen] = useState(false);
+  const revealed = cycleEvents.some(
+    (eventGroup) => eventGroup.event.id === revealEventId,
+  );
+
+  useEffect(() => {
+    if (!revealEventId || !revealed) return;
+    setCalendarRowsState((current) => ({
+      expandedEventIds: new Set([...current.expandedEventIds, revealEventId]),
+    }));
+    // Both the table row and its mobile card carry the reveal test id.
+    for (const element of document.querySelectorAll(
+      '[data-testid="revealed-event-row"]',
+    )) {
+      element.scrollIntoView?.({ block: 'center' });
+    }
+  }, [revealEventId, revealed]);
 
   /** Auto-close the confirm-delete dialog on the falling edge of pending
    * (mutation settled) instead of synchronously in the confirm handler —
@@ -540,17 +560,10 @@ export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
                     (row) => row.kind !== 'event-time-block',
                   )}
                   mobileListTestId="planning-events-list"
-                  mobileListHeader={
-                    !isReadOnly ? (
-                      <Button
-                        type="button"
-                        size="touch"
-                        variant="outline"
-                        onClick={() => setAddEventOpen(true)}
-                      >
-                        {m.cycle_review_add_day_event()}
-                      </Button>
-                    ) : null
+                  rowTestId={({ item }) =>
+                    item.kind === 'parent' && item.row.eventId === revealEventId
+                      ? 'revealed-event-row'
+                      : undefined
                   }
                   rowId={({ item }) => visibleRowId({ visibleRow: item })}
                   rowKey={({ item }) =>
@@ -709,15 +722,6 @@ export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
         }}
         onSubmit={submitCreateEventTimeBlock}
       />
-
-      {selectedCycleId ? (
-        <QuickCreateEventModal
-          open={addEventOpen}
-          onOpenChange={setAddEventOpen}
-          cycleId={selectedCycleId}
-          onCreated={() => undefined}
-        />
-      ) : null}
     </Card>
   );
 }

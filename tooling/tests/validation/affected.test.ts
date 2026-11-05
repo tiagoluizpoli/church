@@ -315,10 +315,10 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the same admin-plan journey for the top-level planning-admin container and its quick-create modal', () => {
+  it('selects the admin-plan journey for the top-level planning-admin container and its nested New Event page', () => {
     for (const changedPath of [
       'apps/web/src/features/scheduling/components/planning-admin.tsx',
-      'apps/web/src/features/scheduling/components/quick-create-event-modal.tsx',
+      'apps/web/src/features/scheduling/components/planning-admin/event-create-page.tsx',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 

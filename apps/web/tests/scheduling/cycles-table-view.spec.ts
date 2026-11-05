@@ -6,6 +6,7 @@ import {
   createEventTemplateViaApi,
 } from './cycle-api.helpers';
 import { fillDatePickerField } from './date-picker.helpers';
+import { addEventOnNestedPage } from './event-create.helpers';
 import {
   dayOfMonth,
   nonSundayDay,
@@ -230,7 +231,9 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await expect(calendarTable).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Adicionar evento', exact: true }),
+      page.getByRole('link', {
+        name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
+      }),
     ).not.toBeAttached();
     await expect(page.getByTestId('send-cycle-button')).not.toBeAttached();
   });
@@ -435,26 +438,23 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     const mobileList = page.getByTestId('planning-events-list');
     await expect(mobileList).toBeVisible();
 
-    // Add a day-event from the mobile surface — opens as a bottom drawer.
-    await mobileList
-      .getByRole('button', { name: 'Adicionar evento do dia' })
-      .click();
-    const addDialog = page.getByRole('dialog', { name: 'New Event' });
-    await expect(addDialog).toBeVisible();
+    // Add an Event through the one nested New Event page. It must land
+    // inside the seeded cycle's own window (derived from the journey anchor,
+    // see createCycleWithSundayTemplateApplied) and off any templated Sunday.
     const newEventTitle = 'Mobile Added';
-    await addDialog.getByLabel('Title').fill(newEventTitle);
-    // Must land inside the seeded cycle's own window (derived from the
-    // journey anchor, see createCycleWithSundayTemplateApplied)
-    // and off any templated Sunday, or the create is rejected as out of
-    // range / colliding with an existing day.
-    await fillDatePickerField({
+    await addEventOnNestedPage({
       page,
-      trigger: addDialog.getByLabel('Start date'),
-      date: nonSundayDay({ day: dayOfMonth({ monthStart, dayOfMonth: 15 }) }),
+      title: newEventTitle,
+      startDate: nonSundayDay({
+        day: dayOfMonth({ monthStart, dayOfMonth: 15 }),
+      }),
     });
-    await addDialog.getByRole('button', { name: 'Create' }).click();
-    await expect(addDialog).not.toBeAttached();
-    await expect(mobileList.getByText(newEventTitle)).toBeVisible();
+    // Its card is revealed, with the whole-Event Time block that shares its title.
+    await expect(
+      mobileList
+        .getByTestId('planning-event-card')
+        .filter({ hasText: newEventTitle }),
+    ).toBeVisible();
 
     // Edit and delete that new day-event.
     const newCard = mobileList
@@ -540,7 +540,9 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
     await expect(
-      mobileList.getByRole('button', { name: 'Adicionar evento do dia' }),
+      page.getByRole('link', {
+        name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
+      }),
     ).not.toBeAttached();
     await expect(
       mobileList.getByRole('button', { name: /^Editar dia/ }),

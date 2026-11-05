@@ -10,14 +10,12 @@ import {
   PlanningAdminProvider,
   useCycleSelection,
 } from '@/features/scheduling/components/planning-admin/planning-admin-context';
-import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getCycle = vi.fn();
-const createPlanningEvent = vi.fn().mockResolvedValue({ id: 'event-new' });
 const updatePlanningEvent = vi.fn().mockResolvedValue({});
 const cancelPlanningEvent = vi.fn().mockResolvedValue(undefined);
 const createPlanningEventTimeBlock = vi.fn().mockResolvedValue({});
@@ -29,7 +27,6 @@ vi.mock('@/utils/api-instances', () => ({
     listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
     getCycle: (...args: unknown[]) => getCycle(...args),
-    createPlanningEvent: (...args: unknown[]) => createPlanningEvent(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
     cancelPlanningEvent: (...args: unknown[]) => cancelPlanningEvent(...args),
     createPlanningEventTimeBlock: (...args: unknown[]) =>
@@ -44,16 +41,18 @@ vi.mock('@/utils/api-instances', () => ({
 interface RenderCycleReviewCardInput {
   isReadOnly?: boolean;
   churchTimezone?: string;
+  revealEventId?: string;
 }
 
 function render({
   isReadOnly = false,
   churchTimezone,
+  revealEventId,
 }: RenderCycleReviewCardInput = {}) {
   return renderWithProviders(
     <PlanningAdminProvider>
       <CycleListCard />
-      <CycleReviewCard isReadOnly={isReadOnly} />
+      <CycleReviewCard isReadOnly={isReadOnly} revealEventId={revealEventId} />
     </PlanningAdminProvider>,
     { churchTimezone },
   );
@@ -1046,8 +1045,36 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
   });
 });
 
-describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
-  it('opens QuickCreateEventModal, through its ResponsiveFormSurface shell, from the mobile list', async () => {
+describe('CycleReviewCard reveal of a saved Event', () => {
+  it('expands and marks the Event named by the route, leaving others collapsed', async () => {
+    listCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
+
+    render({ revealEventId: 'event-1' });
+    await selectTheOnlyCycle();
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
+
+    expect(await within(table).findByText('Worship')).toBeInTheDocument();
+    const revealed = within(table).getByTestId('revealed-event-row');
+    expect(revealed).toHaveTextContent('Sunday Service');
+    expect(within(table).queryAllByTestId('revealed-event-row')).toHaveLength(
+      1,
+    );
+  });
+
+  it('offers no add-Event trigger inside the review list', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -1065,51 +1092,9 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
     await selectTheOnlyCycle();
     const mobileList = await screen.findByTestId('planning-events-list');
 
-    const user = userEvent.setup();
-    await user.click(
-      within(mobileList).getByRole('button', {
-        name: m.cycle_review_add_day_event(),
-      }),
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: 'New Event' });
-    await user.type(within(dialog).getByLabelText('Title'), 'Youth Night');
-    await pickCalendarDate({
-      user,
-      trigger: within(dialog).getByLabelText('Start date'),
-      date: '2026-08-09',
-    });
-    await user.click(within(dialog).getByRole('button', { name: 'Create' }));
-
-    await waitFor(() =>
-      expect(createPlanningEvent).toHaveBeenCalledWith(
-        'cycle-1',
-        expect.objectContaining({ title: 'Youth Night' }),
-      ),
-    );
-  });
-
-  it('does not render the mobile add day-event trigger when read-only', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'sent',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'sent' }));
-
-    render({ isReadOnly: true });
-    await selectTheOnlyCycle();
-    const mobileList = await screen.findByTestId('planning-events-list');
-
     expect(
       within(mobileList).queryByRole('button', {
-        name: m.cycle_review_add_day_event(),
+        name: m.cycles_add_event_button(),
       }),
     ).not.toBeInTheDocument();
   });
@@ -1192,7 +1177,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
     expect(
       within(mobileList).getAllByTestId('planning-event-card'),
     ).toHaveLength(2);
-    expect(mobileList.children).toHaveLength(4); // "Add day-event" button + week heading + 2 cards
+    expect(mobileList.children).toHaveLength(3); // week heading + 2 cards
   });
 
   it('is one-shot, not a synced toggle: re-collapsing one row after "Expand all" still lets "Collapse all" collapse everything', async () => {

@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
 import { CycleDeleteDialog } from './planning-admin/cycle-delete-dialog';
@@ -17,8 +17,7 @@ import {
   useCycleSelection,
   useIsPlanningAccessDenied,
 } from './planning-admin/planning-admin-context';
-import { QuickCreateEventModal } from './quick-create-event-modal';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
   CardDescription,
@@ -40,11 +39,17 @@ function isTemplatesPath({ pathname }: PathnameInput): boolean {
   return pathname.includes('/event-templates');
 }
 
+/** A nested Event page under a Cycle, e.g. `/cycles/:id/events/new`. */
+function isEventEditorPath({ pathname }: PathnameInput): boolean {
+  return pathname.includes('/events/');
+}
+
 function isReviewingCyclePath({ pathname }: PathnameInput): boolean {
   return (
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&
-    !isTemplatesPath({ pathname })
+    !isTemplatesPath({ pathname }) &&
+    !isEventEditorPath({ pathname })
   );
 }
 
@@ -69,11 +74,7 @@ function describePlanningIntro({
     };
   }
 
-  if (
-    pathname !== CYCLES_PATH &&
-    pathname !== `${CYCLES_PATH}/` &&
-    selectedCycleName
-  ) {
+  if (isReviewingCyclePath({ pathname }) && selectedCycleName) {
     return {
       title: selectedCycleName,
       description:
@@ -147,7 +148,9 @@ function PlanningAdminLayout() {
         }
       />
 
-      {isTemplatesView ? null : <CyclesActions pathname={pathname} />}
+      {isTemplatesView || isEventEditorPath({ pathname }) ? null : (
+        <CyclesActions pathname={pathname} />
+      )}
 
       <Outlet />
     </WorkspacePage>
@@ -165,7 +168,6 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
   const [deleteCycleOpen, setDeleteCycleOpen] = useState(false);
   const [editCycleOpen, setEditCycleOpen] = useState(false);
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
-  const [createEventOpen, setCreateEventOpen] = useState(false);
   const isReviewingCycle = isReviewingCyclePath({ pathname });
   const canMutateCalendar =
     isReviewingCycle &&
@@ -188,10 +190,15 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
             {m.cycles_apply_button()}
           </Button>
         ) : null}
-        {canMutateCalendar ? (
-          <Button type="button" onClick={() => setCreateEventOpen(true)}>
+        {canEditDraft && selectedCycle ? (
+          <Link
+            to="/cycles/$cycleId/events/new"
+            params={{ cycleId: selectedCycle.id }}
+            data-testid="add-event-link"
+            className={buttonVariants()}
+          >
             {m.cycles_add_event_button()}
-          </Button>
+          </Link>
         ) : null}
         {canEditDraft ? (
           <Button
@@ -244,20 +251,12 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
       ) : null}
 
       {isReviewingCycle && selectedCycle ? (
-        <>
-          <ApplyTemplatesDialog
-            open={applyTemplatesOpen}
-            onOpenChange={setApplyTemplatesOpen}
-            cycleId={selectedCycle.id}
-            selectedCycleName={selectedCycle.name}
-          />
-          <QuickCreateEventModal
-            open={createEventOpen}
-            onOpenChange={setCreateEventOpen}
-            cycleId={selectedCycle.id}
-            onCreated={() => undefined}
-          />
-        </>
+        <ApplyTemplatesDialog
+          open={applyTemplatesOpen}
+          onOpenChange={setApplyTemplatesOpen}
+          cycleId={selectedCycle.id}
+          selectedCycleName={selectedCycle.name}
+        />
       ) : null}
     </>
   );

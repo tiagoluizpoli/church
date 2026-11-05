@@ -224,8 +224,8 @@ const applyPlanningTemplates = (
       );
     }
   /**
- * Create a one-off Event within a Cycle without using an EventTemplate.
- * @summary Create a manual Event
+ * Create a one-off or multi-day Draft Event and every one of its EventTimeBlocks together, with its participation scaffold and no staffing. Its Church-local start day must fall within the inclusive Cycle; its end may spill past it.
+ * @summary Create a Draft Event with its Time blocks
  */
 const createPlanningEvent = (
     cycleId: string,

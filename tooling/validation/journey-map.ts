@@ -275,11 +275,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: PLANNING_ADMIN_SPEC_PATHS,
   },
   {
-    sourcePathPrefix:
-      'apps/web/src/features/scheduling/components/quick-create-event-modal.tsx',
-    specPaths: PLANNING_ADMIN_SPEC_PATHS,
-  },
-  {
     // Shared by every prepare component and route (manual-split-editor,
     // ministry-prepare-list, prepare-event-time-block-list, prepare-filters,
     // prepare-calendar, cycle-list.utils).

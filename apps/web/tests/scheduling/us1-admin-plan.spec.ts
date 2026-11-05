@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
+import { addEventOnNestedPage } from './event-create.helpers';
 import { planningMonth } from './planning-month.helpers';
 import { createTemplateOnNestedPage } from './template-create.helpers';
 import {
@@ -273,24 +274,18 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     sundayGatheringName,
   );
 
-  // FR-012: the one canonical create-event UI, reused here for a
-  // cycle manual event (same form as the ministry "New Event" modal).
-  await page
-    .getByRole('button', { name: 'Adicionar evento', exact: true })
-    .click();
-  const createEventDialog = page.getByRole('dialog');
-  await createEventDialog.getByLabel('Title').fill('Three-day retreat');
-  await fillDatePickerField({
+  // F6: a timed multi-day Event, saved with its Time block on the nested
+  // New Event page; Save returns to the review revealing it.
+  await addEventOnNestedPage({
     page,
-    trigger: createEventDialog.getByLabel('Start date'),
-    date: month.dynamicStartDate,
+    title: 'Three-day retreat',
+    startDate: month.dynamicStartDate,
+    endDate: month.dynamicEndDate,
+    endTime: '12:00',
   });
-  await fillDatePickerField({
-    page,
-    trigger: createEventDialog.getByLabel('End date'),
-    date: month.dynamicEndDate,
-  });
-  await createEventDialog.getByRole('button', { name: 'Create' }).click();
+  await expect(
+    page.getByTestId('planning-events-list').getByTestId('revealed-event-row'),
+  ).toContainText('Three-day retreat');
 
   await expect(page.getByTestId('planning-event-card')).toHaveCount(
     month.expectedEvents + 1,
@@ -352,7 +347,9 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     page.getByTestId('open-apply-templates-dialog-button'),
   ).toHaveCount(0);
   await expect(
-    page.getByRole('button', { name: 'Adicionar evento', exact: true }),
+    page.getByRole('link', {
+      name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
+    }),
   ).toHaveCount(0);
   await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
 

@@ -4,6 +4,7 @@ import { useUsualSetupBlockBreadcrumb } from '@/features/ministries/usual-setup-
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { usePersonBreadcrumb } from '@/features/people/people-queries';
 import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
+import { useCycleEventBreadcrumbs } from '@/features/scheduling/hooks/use-cycle-event-breadcrumbs';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import { useTemplateBreadcrumb } from '@/features/scheduling/hooks/use-template-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
@@ -150,12 +151,14 @@ function ActiveChurchLayout() {
   const templateBreadcrumb = useTemplateBreadcrumb();
   const usualSetupBlockBreadcrumb = useUsualSetupBlockBreadcrumb({ churchId });
   const personBreadcrumb = usePersonBreadcrumb({ churchId });
+  const cycleEventBreadcrumbs = useCycleEventBreadcrumbs();
   const overrides = [
     cycleBreadcrumb,
     ministryBreadcrumb,
     templateBreadcrumb,
     usualSetupBlockBreadcrumb,
     personBreadcrumb,
+    ...cycleEventBreadcrumbs,
   ].filter((override) => override !== null);
   const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;
 

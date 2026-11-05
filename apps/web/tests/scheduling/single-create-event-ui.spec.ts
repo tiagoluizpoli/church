@@ -1,12 +1,15 @@
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { m } from '@church/i18n/messages';
+import { expect, type Page, test } from '@playwright/test';
 import { createCycleViaApi } from './cycle-api.helpers';
-import { fillDatePickerField } from './date-picker.helpers';
+import { addEventOnNestedPage } from './event-create.helpers';
 import { dayOfMonth, planningMonth } from './planning-month.helpers';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import {
   loadPlanningAdminJourney,
   type PlanningAdminJourney,
 } from '@/tests/fixtures/journeys/planning-admin';
+
+const LOCALE = { locale: 'pt-BR' } as const;
 
 /** Mirrors `formatDayOf` (apps/web/src/shared/utils/church-time.ts), which
  * every event display renders through — assertions against
@@ -16,18 +19,6 @@ function toDisplayDate(isoDate: string): string {
   const [year, month, day] = isoDate.split('-').map(Number);
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${pad(day)}/${pad(month)}/${year}`;
-}
-
-async function assertCanonicalCreateEventForm(dialog: Locator): Promise<void> {
-  await expect(
-    dialog.getByRole('heading', { name: 'New Event' }),
-  ).toBeVisible();
-  await expect(dialog.getByLabel('Title')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
-
-  // A start date and an optional end date; no time fields — time blocks own the time.
-  await expect(dialog.getByLabel('Start date')).toBeVisible();
-  await expect(dialog.getByLabel('End date')).toBeVisible();
 }
 
 interface CreateOpenCycleParams {
@@ -42,7 +33,7 @@ async function createOpenCycle({
   page,
   journey,
   name,
-}: CreateOpenCycleParams): Promise<void> {
+}: CreateOpenCycleParams): Promise<string> {
   const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
   const cycle = await createCycleViaApi({
     page,
@@ -52,47 +43,51 @@ async function createOpenCycle({
   });
   await page.goto(`/cycles/${cycle.id}`);
   await expect(
-    page.getByRole('button', { name: 'Adicionar evento', exact: true }),
+    page.getByRole('link', { name: m.cycles_add_event_button({}, LOCALE) }),
   ).toBeVisible();
+  return cycle.id;
 }
 
-test('exactly one create-event UI is reachable from every entry point (FR-012, SC-004)', async ({
+test('a Draft Cycle has exactly one create-Event entry: its nested New Event page', async ({
   page,
 }, testInfo) => {
   const journey = loadPlanningAdminJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.admin });
 
-  // Entry point 1: the cycles list. A ChurchAdmin navigates directly to /cycles.
-  await page.goto('/cycles');
-  await expect(page).toHaveURL(/\/cycles/);
-
-  // Entry point 2: the cycle itself — the one canonical form.
-  await createOpenCycle({
+  const cycleId = await createOpenCycle({
     page,
     journey,
     name: 'Single create-event UI check',
   });
+  await expect(
+    page.getByRole('link', { name: m.cycles_add_event_button({}, LOCALE) }),
+  ).toHaveCount(1);
   await page
-    .getByRole('button', { name: 'Adicionar evento', exact: true })
+    .getByRole('link', { name: m.cycles_add_event_button({}, LOCALE) })
     .click();
-  const planningDialog = page.getByRole('dialog');
-  await assertCanonicalCreateEventForm(planningDialog);
-  await planningDialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(planningDialog).not.toBeVisible();
 
-  // No second, structurally different create-event form exists anywhere
-  // reachable from either surface.
-  await expect(page.getByTestId('planning-event-title-input')).toHaveCount(0);
-  await expect(page.getByTestId('create-planning-event-button')).toHaveCount(0);
+  await expect(page).toHaveURL(`/cycles/${cycleId}/events/new`);
+  await expect(
+    page.getByLabel(m.event_editor_title_label({}, LOCALE)),
+  ).toBeVisible();
+  await expect(page.getByTestId('event-start-time')).toBeVisible();
+  await expect(page.getByTestId('event-end-time')).toBeVisible();
+  await expect(page.getByTestId('event-time-block-row')).toHaveCount(1);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await page
+    .getByRole('link', { name: m.event_editor_cancel({}, LOCALE) })
+    .click();
+  await expect(page).toHaveURL(`/cycles/${cycleId}`);
 });
 
-test.describe('quick-create stores church-local Instants (#149)', () => {
+test.describe('the New Event page stores church-local Instants (#149)', () => {
   // churchA (this fixture's church) is America/Sao_Paulo (UTC-3); a browser
-  // far ahead of it (UTC+13) would show the wrong calendar day if the modal
-  // ever went back to stamping literal UTC midnight.
+  // far ahead of it (UTC+13) would show the wrong calendar day if the page
+  // ever read days in the browser's own zone.
   test.use({ timezoneId: 'Pacific/Auckland' });
 
-  test('the created Event appears on the picked CalendarDay in the Church Timezone', async ({
+  test('the saved Event appears on the picked CalendarDay in the Church Timezone', async ({
     page,
   }, testInfo) => {
     const journey = loadPlanningAdminJourney({ testInfo });
@@ -108,19 +103,8 @@ test.describe('quick-create stores church-local Instants (#149)', () => {
       name: 'Church TZ boundary check',
     });
 
-    await page
-      .getByRole('button', { name: 'Adicionar evento', exact: true })
-      .click();
-    const dialog = page.getByRole('dialog');
     const title = 'Church TZ event';
-    await dialog.getByLabel('Title').fill(title);
-    await fillDatePickerField({
-      page,
-      trigger: dialog.getByLabel('Start date'),
-      date: pickedDate,
-    });
-    await dialog.getByRole('button', { name: 'Create' }).click();
-    await expect(dialog).not.toBeVisible();
+    await addEventOnNestedPage({ page, title, startDate: pickedDate });
 
     await expect(page.getByTestId('planning-events-list')).toContainText(title);
     await expect(page.getByTestId('planning-events-list')).toContainText(

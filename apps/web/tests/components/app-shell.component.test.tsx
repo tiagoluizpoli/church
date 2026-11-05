@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@/components/app-shell';
+import { useCycleEventBreadcrumbs } from '@/features/scheduling/hooks/use-cycle-event-breadcrumbs';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { activeChurchApiMock } from '@/tests/setup/active-church';
@@ -361,6 +362,34 @@ describe('AppShell flat nav per persona (F7)', () => {
     expect(within(breadcrumbs).getByText(HOME)).toBeVisible();
     expect(within(breadcrumbs).getByText(m.nav_cycles())).toBeVisible();
     expect(within(breadcrumbs).getByText('August 2026')).toBeVisible();
+  });
+
+  it("reads Home › Cycles › name › New Event on a Cycle's nested New Event page", () => {
+    asPersona({ isChurchAdmin: true });
+    mockPathname = '/cycles/cycle-1/events/new';
+
+    function NewEventShell() {
+      const overrides = [
+        { segment: 'cycle-1', label: 'October' },
+        ...useCycleEventBreadcrumbs(),
+      ];
+      return (
+        <AppShell notificationBell={null} breadcrumbOverrides={overrides}>
+          content
+        </AppShell>
+      );
+    }
+    renderWithProviders(<NewEventShell />);
+
+    const crumbs = within(screen.getByTestId('breadcrumbs'))
+      .getAllByRole('listitem')
+      .map((item) => item.textContent);
+    expect(crumbs).toEqual([
+      HOME,
+      m.nav_cycles(),
+      'October',
+      m.breadcrumb_new_event(),
+    ]);
   });
 
   it.each([

@@ -24,6 +24,8 @@ import type {
   ListEventTemplates200,
   SetMinistryDefaultDirection200,
   SetMinistryDefaultDirectionBody,
+  UpdateCycle200,
+  UpdateCycleBody,
   UpdateEventTemplate200,
   UpdateEventTemplateBody,
   UpdatePlanningEvent200,
@@ -74,6 +76,21 @@ const getCycle = (
  ) => {
       return apiClient<GetCycle200>(
       {url: `/api/v1/admin/cycles/${cycleId}`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Rename or re-date a Draft Cycle; name, startDate and endDate are submitted together as an inclusive CalendarDay range. The Cycle never conflicts with itself. A range sharing a day with another Cycle, or excluding the Church-local start day of any owned Event, is refused; Events are never moved. Sent and Past Cycles are refused.
+ * @summary Edit a Draft Cycle
+ */
+const updateCycle = (
+    cycleId: string,
+    updateCycleBody: UpdateCycleBody,
+ ) => {
+      return apiClient<UpdateCycle200>(
+      {url: `/api/v1/admin/cycles/${cycleId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updateCycleBody
     },
       );
     }
@@ -312,10 +329,11 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,deleteCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
+export type UpdateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updateCycle']>>>
 export type DeleteCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deleteCycle']>>>
 export type SendCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['sendCycle']>>>
 export type ReopenPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['reopenPlanningEvent']>>>

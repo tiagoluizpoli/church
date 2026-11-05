@@ -88,19 +88,21 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Add time block to Sunday Service' }),
+      screen.getByRole('button', {
+        name: 'Adicionar horário a Sunday Service',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Edit day Sunday Service' }),
+      screen.getByRole('button', { name: 'Editar dia Sunday Service' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Delete day Sunday Service' }),
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Edit time block Worship' }),
+      screen.getByRole('button', { name: 'Editar horário Worship' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Delete time block Worship' }),
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeEnabled();
   });
 
@@ -114,7 +116,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Delete time block Midweek' }),
+      screen.getByRole('button', { name: 'Excluir horário Midweek' }),
     ).toBeDisabled();
   });
 
@@ -131,10 +133,10 @@ describe('PlanningEventCard affordances (US1)', () => {
       screen.queryByRole('button', { name: /^Add eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Edit day/ }),
+      screen.queryByRole('button', { name: /^Editar dia/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Delete day/ }),
+      screen.queryByRole('button', { name: /^Excluir dia/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Edit eventTimeBlock/ }),
@@ -142,6 +144,40 @@ describe('PlanningEventCard affordances (US1)', () => {
     expect(
       screen.queryByRole('button', { name: /^Delete eventTimeBlock/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('words the visible controls and both confirmations in pt-BR', async () => {
+    render(
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly={false}
+        {...baseProps()}
+      />,
+    );
+    const user = userEvent.setup();
+
+    expect(screen.getByText('Adicionar horário')).toBeVisible();
+    expect(screen.getByText('Editar')).toBeVisible();
+    await user.click(
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
+    );
+    let dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Excluir este dia?')).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        'Isso remove "Sunday Service" e os horários dele do ciclo.',
+      ),
+    ).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    await user.click(
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
+    );
+    dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Excluir este horário?')).toBeVisible();
+    expect(
+      within(dialog).getByText('Isso remove "Worship" do dia.'),
+    ).toBeVisible();
   });
 
   it('calls onDeleteEventConfirm after confirming the delete-day dialog', async () => {
@@ -156,11 +192,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete day Sunday Service' }),
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete event' }),
+      within(dialog).getByRole('button', { name: 'Excluir evento' }),
     );
 
     expect(props.onDeleteEventConfirm).toHaveBeenCalledWith({
@@ -180,11 +216,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete time block Worship' }),
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete time block' }),
+      within(dialog).getByRole('button', { name: 'Excluir horário' }),
     );
 
     expect(props.onDeleteEventTimeBlockConfirm).toHaveBeenCalledWith({
@@ -203,10 +239,10 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     const dayDelete = screen.getByRole('button', {
-      name: 'Delete day Sunday Service',
+      name: 'Excluir dia Sunday Service',
     });
     const eventTimeBlockDelete = screen.getByRole('button', {
-      name: 'Delete time block Worship',
+      name: 'Excluir horário Worship',
     });
 
     expect(dayDelete.className).toContain('bg-destructive/10');
@@ -225,11 +261,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete day Sunday Service' }),
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete event' }),
+      within(dialog).getByRole('button', { name: 'Excluir evento' }),
     );
 
     // Simulate the mutation going pending: dialog must stay open, not close
@@ -246,8 +282,8 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Excluindo…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
 
     // Mutation settles: dialog auto-closes.
     rerender(
@@ -275,11 +311,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete time block Worship' }),
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete time block' }),
+      within(dialog).getByRole('button', { name: 'Excluir horário' }),
     );
 
     rerender(
@@ -294,7 +330,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Excluindo…' })).toBeDisabled();
 
     rerender(
       <TimezoneProvider churchTimezone="UTC">

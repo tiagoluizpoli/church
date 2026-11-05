@@ -173,7 +173,9 @@ function ConfirmDeleteDialogContent({
         <AlertDialogDescription>{description}</AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel disabled={disabled}>Cancel</AlertDialogCancel>
+        <AlertDialogCancel disabled={disabled}>
+          {m.cycle_review_cancel()}
+        </AlertDialogCancel>
         <AlertDialogAction
           variant="destructive"
           disabled={disabled}
@@ -359,7 +361,9 @@ function ParentRowCell({
             size="icon-xs"
             variant="ghost"
             aria-label={
-              isExpanded ? `Collapse ${row.title}` : `Expand ${row.title}`
+              isExpanded
+                ? m.cycle_review_collapse_event({ title: row.title })
+                : m.cycle_review_expand_event({ title: row.title })
             }
             onClick={() => onToggleExpand({ eventId: row.eventId })}
           >
@@ -392,7 +396,7 @@ function ParentRowCell({
             type="button"
             size="icon-xs"
             variant="ghost"
-            aria-label={`Add time block to ${row.title}`}
+            aria-label={m.cycle_review_add_time_block_to({ title: row.title })}
             onClick={() => onAddEventTimeBlockRequest({ row })}
           >
             <Plus className="size-3.5" />
@@ -401,7 +405,7 @@ function ParentRowCell({
             type="button"
             size="icon-xs"
             variant="ghost"
-            aria-label={`Edit day ${row.title}`}
+            aria-label={m.cycle_review_edit_day({ title: row.title })}
             onClick={() => onEditEventRequest({ row })}
           >
             <Pencil className="size-3.5" />
@@ -418,16 +422,22 @@ function ParentRowCell({
                   type="button"
                   size="icon-xs"
                   variant="destructive"
-                  aria-label={`Delete day ${row.title}`}
+                  aria-label={m.cycle_review_delete_day({ title: row.title })}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
               }
             />
             <ConfirmDeleteDialogContent
-              title="Delete this day?"
-              description={`This removes "${row.title}" and its time blocks from the cycle.`}
-              actionLabel={deletePending ? 'Deleting…' : 'Delete event'}
+              title={m.cycle_review_delete_day_title()}
+              description={m.cycle_review_delete_day_description({
+                title: row.title,
+              })}
+              actionLabel={
+                deletePending
+                  ? m.cycle_review_deleting()
+                  : m.cycle_review_delete_event_confirm()
+              }
               disabled={deletePending}
               onConfirm={() => onDeleteConfirm({ eventId: row.eventId })}
             />
@@ -483,7 +493,9 @@ function EventTimeBlockRowCell({
             type="button"
             size="icon-xs"
             variant="ghost"
-            aria-label={`Edit time block ${visibleRow.label}`}
+            aria-label={m.cycle_review_edit_time_block({
+              label: visibleRow.label,
+            })}
             onClick={() =>
               onEditEventTimeBlockRequest({
                 parentId: visibleRow.parentId,
@@ -502,7 +514,9 @@ function EventTimeBlockRowCell({
               size="icon-xs"
               variant="destructive"
               disabled
-              aria-label={`Delete time block ${visibleRow.label}`}
+              aria-label={m.cycle_review_delete_time_block({
+                label: visibleRow.label,
+              })}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -522,16 +536,24 @@ function EventTimeBlockRowCell({
                     type="button"
                     size="icon-xs"
                     variant="destructive"
-                    aria-label={`Delete time block ${visibleRow.label}`}
+                    aria-label={m.cycle_review_delete_time_block({
+                      label: visibleRow.label,
+                    })}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                 }
               />
               <ConfirmDeleteDialogContent
-                title="Delete this time block?"
-                description={`This removes "${visibleRow.label}" from the day.`}
-                actionLabel={deletePending ? 'Deleting…' : 'Delete time block'}
+                title={m.cycle_review_delete_time_block_title()}
+                description={m.cycle_review_delete_time_block_description({
+                  label: visibleRow.label,
+                })}
+                actionLabel={
+                  deletePending
+                    ? m.cycle_review_deleting()
+                    : m.cycle_review_delete_time_block_confirm()
+                }
                 disabled={deletePending}
                 onConfirm={() =>
                   onDeleteConfirm({

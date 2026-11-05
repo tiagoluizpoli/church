@@ -200,7 +200,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
 
     const eventTimeBlockTimeCells = within(table).getAllByText(isTimeRangeText);
@@ -231,7 +231,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     });
     let user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     const utcTimeRange =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
@@ -243,7 +243,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     table = await screen.findByRole('grid', { name: m.cycle_review_title() });
     user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     const kiritimatiTimeRange =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
@@ -277,7 +277,7 @@ describe('CycleReviewCard table view (US2)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
 
     expect(within(table).getByText('Worship')).toBeInTheDocument();
@@ -285,7 +285,7 @@ describe('CycleReviewCard table view (US2)', () => {
     expect(within(table).queryByText('Midweek')).not.toBeInTheDocument();
 
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Wednesday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Wednesday Service' }),
     );
     expect(
       within(table).getByText(m.cycle_review_time_block_fallback()),
@@ -293,7 +293,7 @@ describe('CycleReviewCard table view (US2)', () => {
     expect(within(table).getByText('Worship')).toBeInTheDocument();
 
     await user.click(
-      within(table).getByRole('button', { name: 'Collapse Sunday Service' }),
+      within(table).getByRole('button', { name: 'Recolher Sunday Service' }),
     );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
     expect(
@@ -408,29 +408,29 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     });
 
     expect(
-      within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
     ).toBeInTheDocument();
     expect(
-      within(table).getByRole('button', { name: 'Edit day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Editar dia Sunday Service' }),
     ).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     expect(
-      within(table).getByRole('button', { name: 'Delete time block Worship' }),
+      within(table).getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeEnabled();
     expect(
-      within(table).getByRole('button', { name: 'Edit time block Worship' }),
+      within(table).getByRole('button', { name: 'Editar horário Worship' }),
     ).toBeInTheDocument();
 
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Wednesday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Wednesday Service' }),
     );
     expect(
       within(table).getByRole('button', {
-        name: `Delete time block ${m.cycle_review_time_block_fallback()}`,
+        name: `Excluir horário ${m.cycle_review_time_block_fallback()}`,
       }),
     ).toBeDisabled();
   });
@@ -457,10 +457,10 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'Delete event' }),
+      await screen.findByRole('button', { name: 'Excluir evento' }),
     );
 
     await waitFor(() =>
@@ -490,13 +490,13 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Delete time block Worship' }),
+      within(table).getByRole('button', { name: 'Excluir horário Worship' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'Delete time block' }),
+      await screen.findByRole('button', { name: 'Excluir horário' }),
     );
 
     await waitFor(() =>
@@ -537,18 +537,18 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'Delete event' }),
+      await screen.findByRole('button', { name: 'Excluir evento' }),
     );
 
     const dialog = await screen.findByRole('alertdialog');
     expect(
-      await within(dialog).findByRole('button', { name: 'Deleting…' }),
+      await within(dialog).findByRole('button', { name: 'Excluindo…' }),
     ).toBeDisabled();
     expect(
-      within(dialog).getByRole('button', { name: 'Cancel' }),
+      within(dialog).getByRole('button', { name: 'Cancelar' }),
     ).toBeDisabled();
 
     resolveDelete();
@@ -586,21 +586,21 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Delete time block Worship' }),
+      within(table).getByRole('button', { name: 'Excluir horário Worship' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'Delete time block' }),
+      await screen.findByRole('button', { name: 'Excluir horário' }),
     );
 
     const dialog = await screen.findByRole('alertdialog');
     expect(
-      await within(dialog).findByRole('button', { name: 'Deleting…' }),
+      await within(dialog).findByRole('button', { name: 'Excluindo…' }),
     ).toBeDisabled();
     expect(
-      within(dialog).getByRole('button', { name: 'Cancel' }),
+      within(dialog).getByRole('button', { name: 'Cancelar' }),
     ).toBeDisabled();
 
     resolveDelete();
@@ -630,25 +630,25 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     });
 
     expect(
-      within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
     ).toHaveClass('text-destructive');
     expect(
-      within(table).getByRole('button', { name: 'Edit day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Editar dia Sunday Service' }),
     ).not.toHaveClass('text-destructive');
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     expect(
-      within(table).getByRole('button', { name: 'Delete time block Worship' }),
+      within(table).getByRole('button', { name: 'Excluir horário Worship' }),
     ).toHaveClass('text-destructive');
 
     await user.click(
-      within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
     );
     expect(
-      await screen.findByRole('button', { name: 'Delete event' }),
+      await screen.findByRole('button', { name: 'Excluir evento' }),
     ).toHaveClass('text-destructive');
   });
 
@@ -675,7 +675,7 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     const user = userEvent.setup();
     await user.click(
       within(table).getByRole('button', {
-        name: 'Add time block to Sunday Service',
+        name: 'Adicionar horário a Sunday Service',
       }),
     );
 
@@ -718,7 +718,7 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Edit day Sunday Service' }),
+      within(table).getByRole('button', { name: 'Editar dia Sunday Service' }),
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit day' });
@@ -772,10 +772,10 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Edit time block Worship' }),
+      within(table).getByRole('button', { name: 'Editar horário Worship' }),
     );
 
     const dialog = await screen.findByRole('dialog', {
@@ -831,14 +831,14 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
 
     expect(
-      within(table).queryByRole('button', { name: /^Delete day/ }),
+      within(table).queryByRole('button', { name: /^Excluir dia/ }),
     ).not.toBeInTheDocument();
     expect(
-      within(table).queryByRole('button', { name: /^Edit day/ }),
+      within(table).queryByRole('button', { name: /^Editar dia/ }),
     ).not.toBeInTheDocument();
     expect(
       within(table).queryByRole('button', { name: /^Delete eventTimeBlock/ }),
@@ -929,7 +929,7 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
     const user = userEvent.setup();
     await user.click(
       within(table).getByRole('button', {
-        name: 'Add time block to Sunday Service',
+        name: 'Adicionar horário a Sunday Service',
       }),
     );
 
@@ -956,7 +956,7 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
     const user = userEvent.setup();
     await user.click(
       within(table).getByRole('button', {
-        name: 'Add time block to Retreat Weekend',
+        name: 'Adicionar horário a Retreat Weekend',
       }),
     );
 
@@ -991,10 +991,10 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Edit time block Worship' }),
+      within(table).getByRole('button', { name: 'Editar horário Worship' }),
     );
 
     const dialog = await screen.findByRole('dialog', {
@@ -1019,10 +1019,10 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
 
     const user = userEvent.setup();
     await user.click(
-      within(table).getByRole('button', { name: 'Expand Retreat Weekend' }),
+      within(table).getByRole('button', { name: 'Expandir Retreat Weekend' }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Edit time block Check-in' }),
+      within(table).getByRole('button', { name: 'Editar horário Check-in' }),
     );
 
     const dialog = await screen.findByRole('dialog', {
@@ -1220,7 +1220,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
       screen.getByRole('button', { name: m.cycle_review_expand_all() }),
     );
     await user.click(
-      within(table).getByRole('button', { name: 'Collapse Sunday Service' }),
+      within(table).getByRole('button', { name: 'Recolher Sunday Service' }),
     );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
     expect(

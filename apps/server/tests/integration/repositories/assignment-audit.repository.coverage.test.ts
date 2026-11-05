@@ -1,7 +1,7 @@
 import { eventTimeBlock } from '@church/db';
-import { fromDate } from '@church/time';
+import { fromDate, resetClock, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AssignmentId, ChurchId, EventId, UserId } from '@/domain/branded-ids';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { buildRole } from '@/seeds/builders/ministry';
@@ -81,6 +81,10 @@ async function seedAssignment(input: {
 }
 
 describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
+  afterEach(() => {
+    resetClock();
+  });
+
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
@@ -143,9 +147,17 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);
 
+    // Pin distinct instants: back-to-back real-clock writes can tie on the
+    // millisecond, and a tie makes the desc order undefined.
+    setTestClock({
+      instant: fromDate({ date: new Date('2026-08-01T00:00:00.000Z') }),
+    });
     await repo.create({
       churchId,
       input: { assignmentId, actorId, action: 'created' },
+    });
+    setTestClock({
+      instant: fromDate({ date: new Date('2026-08-01T00:00:01.000Z') }),
     });
     await repo.create({
       churchId,

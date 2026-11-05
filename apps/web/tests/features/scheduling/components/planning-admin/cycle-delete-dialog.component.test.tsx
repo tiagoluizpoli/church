@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CycleDeleteDialog } from '@/features/scheduling/components/planning-admin/cycle-delete-dialog';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -120,5 +121,43 @@ describe('CycleDeleteDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Excluir ciclo' }));
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
     expect(deleteCycle).toHaveBeenCalledTimes(2);
+  });
+
+  it('refetches the Cycle and shows the server refusal after a stale-state 409', async () => {
+    const refusal = new AxiosError('conflict');
+    refusal.response = {
+      status: 409,
+      data: { message: 'Only a Draft Cycle can be deleted.' },
+    } as AxiosResponse;
+    deleteCycle.mockRejectedValueOnce(refusal);
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const user = renderDialog({ queryClient });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir ciclo' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Only a Draft Cycle can be deleted.',
+    );
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['cycles'] });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ['cycle-details', 'cycle-1'],
+    });
+    expect(onDeleted).not.toHaveBeenCalled();
+  });
+
+  it('keeps the generic message for a failure with no server response', async () => {
+    deleteCycle.mockRejectedValueOnce(new AxiosError('Network Error'));
+    const user = renderDialog();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir ciclo' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível excluir o ciclo.',
+    );
   });
 });

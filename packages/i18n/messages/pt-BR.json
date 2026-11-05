@@ -763,6 +763,7 @@
   "cycle_apply_title": "Aplicar modelos",
   "cycle_apply_description": "Adiciona os eventos e horários que faltam em {cycleName}. O que já existe permanece como está.",
   "cycle_apply_loading": "Carregando modelos de evento…",
+  "cycle_apply_retry": "Tentar novamente",
   "cycle_apply_load_failed": "Não foi possível carregar os modelos de evento. Tente novamente.",
   "cycle_apply_empty": "Nenhum modelo de evento ainda. Crie um e volte para aplicá-lo aqui.",
   "cycle_apply_empty_link": "Abrir modelos de evento",

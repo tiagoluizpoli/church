@@ -160,7 +160,7 @@ interface CyclesActionsProps {
 }
 
 function CyclesActions({ pathname }: CyclesActionsProps) {
-  const { selectedCycle, cycleEvents } = useCycleReviewCard();
+  const { selectedCycle, ownedEventCount } = useCycleReviewCard();
   const { handleClearSelectedCycle } = useCycleSelection();
   const navigate = useNavigate();
   const [deleteCycleOpen, setDeleteCycleOpen] = useState(false);
@@ -234,7 +234,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         <CycleDeleteDialog
           cycleId={selectedCycle.id}
           cycleName={selectedCycle.name}
-          eventCount={cycleEvents.length}
+          eventCount={ownedEventCount}
           onClose={() => setDeleteCycleOpen(false)}
           onDeleted={() => {
             setDeleteCycleOpen(false);

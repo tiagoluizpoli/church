@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
@@ -451,6 +452,124 @@ describe('Cycle deletion', () => {
     expect(deleteCycle).toHaveBeenCalledWith('cycle-1');
     expect(screen.queryByTestId('cycle-option')).not.toBeInTheDocument();
     expect(screen.queryByTestId('selected-cycle-name')).not.toBeInTheDocument();
+  });
+});
+
+describe('Cycle deletion and Apply against a stale Draft', () => {
+  const draft = {
+    id: 'cycle-1',
+    name: 'August 2026',
+    startDate: '2026-08-01',
+    endDate: '2026-08-31',
+    state: 'draft',
+  };
+
+  function eventGroup(id: string, status: string) {
+    return {
+      event: {
+        id,
+        title: id,
+        start: '2026-08-02T13:00:00.000Z',
+        end: '2026-08-02T15:00:00.000Z',
+        status,
+      },
+      eventTimeBlocks: [],
+    };
+  }
+
+  function refusal(status: number, message: string) {
+    const error = new AxiosError(message);
+    error.response = {
+      status,
+      data: { message },
+    } as AxiosResponse;
+    return error;
+  }
+
+  it('counts every owned Event in the delete confirmation, cancelled ones included', async () => {
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({
+      cycle: draft,
+      events: [
+        eventGroup('e1', 'scheduled'),
+        eventGroup('e2', 'cancelled'),
+        eventGroup('e3', 'cancelled'),
+      ],
+    });
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+
+    expect(await screen.findByTestId('cycle-delete-count')).toHaveTextContent(
+      '3 eventos serão excluídos',
+    );
+  });
+
+  it('refetches after a stale delete refusal, shows the refusal and hides the Draft actions', async () => {
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    deleteCycle.mockRejectedValue(
+      refusal(409, 'Only a Draft Cycle can be deleted.'),
+    );
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+    getCycle.mockResolvedValue({
+      cycle: { ...draft, state: 'sent' },
+      events: [],
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir ciclo' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-cycle-button'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('edit-cycle-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refetches after a stale Apply refusal and hides the Draft actions', async () => {
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    const sunday = {
+      id: 'template-1',
+      name: 'Sunday',
+      weekday: 0,
+      blocks: [],
+    };
+    listEventTemplates.mockResolvedValue({ templates: [sunday] });
+    applyPlanningTemplates.mockRejectedValue(
+      refusal(409, 'Only a Draft Cycle can take templates.'),
+    );
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+    await user.click(
+      await screen.findByTestId('open-apply-templates-dialog-button'),
+    );
+    getCycle.mockResolvedValue({
+      cycle: { ...draft, state: 'sent' },
+      events: [],
+    });
+    await screen.findAllByTestId('template-select-checkbox');
+
+    await user.click(screen.getByTestId('apply-templates-button'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-cycle-button'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
+    ).not.toBeInTheDocument();
+    listEventTemplates.mockResolvedValue({ templates: [] });
   });
 });
 

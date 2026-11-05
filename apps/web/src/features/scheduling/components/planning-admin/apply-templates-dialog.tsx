@@ -64,13 +64,20 @@ export function ApplyTemplatesDialog({
   });
   const templates = templatesQuery.data?.templates;
   const [selection, setSelection] = useState<Selection>(null);
+  const templatesFetching = templatesQuery.isFetching;
+  const templatesFailed = templatesQuery.isError;
+  const selectionSeeded = selection !== null;
 
   useEffect(() => {
     if (!open) {
       setSelection(null);
       return;
     }
-    if (templates) {
+    // A cached list may predate the entry fetch; wait for the fresh one.
+    if (
+      templates &&
+      (selectionSeeded || (!templatesFetching && !templatesFailed))
+    ) {
       setSelection((current) =>
         reconcileSelection({
           selection: current,
@@ -78,18 +85,24 @@ export function ApplyTemplatesDialog({
         }),
       );
     }
-  }, [open, templates]);
+  }, [open, templates, templatesFetching, templatesFailed, selectionSeeded]);
+
+  function refreshCycle() {
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
+      queryClient.invalidateQueries({ queryKey: ['cycles'] }),
+    ]);
+  }
 
   const applyMutation = useMutation({
     mutationFn: (templateIds: string[]) =>
       adminApi.applyPlanningTemplates(cycleId, { templateIds }),
+    // A refusal may come from a state this page has not seen yet.
+    onError: () => refreshCycle(),
     onSuccess: async (counts) => {
       const { generatedEventCount: events, generatedEventTimeBlockCount } =
         counts;
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
-        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
-      ]);
+      await refreshCycle();
       toast.success(
         events === 0 && generatedEventTimeBlockCount === 0
           ? m.cycle_apply_nothing_new()
@@ -135,10 +148,20 @@ export function ApplyTemplatesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {templatesQuery.isError ? (
-          <p className="text-destructive text-sm" role="alert">
-            {m.cycle_apply_load_failed()}
-          </p>
+        {templatesQuery.isError && selection === null ? (
+          <div className="space-y-2">
+            <p className="text-destructive text-sm" role="alert">
+              {m.cycle_apply_load_failed()}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void templatesQuery.refetch()}
+            >
+              {m.cycle_apply_retry()}
+            </Button>
+          </div>
         ) : templates === undefined ? (
           <p className="text-muted-foreground text-sm">
             {m.cycle_apply_loading()}

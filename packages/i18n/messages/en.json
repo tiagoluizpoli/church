@@ -763,6 +763,7 @@
   "cycle_apply_title": "Apply templates",
   "cycle_apply_description": "Adds the Events and time blocks that are missing from {cycleName}. Anything already there stays as it is.",
   "cycle_apply_loading": "Loading Event templates…",
+  "cycle_apply_retry": "Try again",
   "cycle_apply_load_failed": "Couldn't load the Event templates. Try again.",
   "cycle_apply_empty": "No Event templates yet. Create one, then come back to apply it here.",
   "cycle_apply_empty_link": "Open Event templates",

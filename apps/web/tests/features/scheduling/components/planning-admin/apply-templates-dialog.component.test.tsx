@@ -249,4 +249,44 @@ describe('ApplyTemplatesDialog', () => {
     );
     expect(screen.queryByTestId('apply-templates-setup-link')).toBeNull();
   });
+
+  it('checks every current template on entry even when the cached list is stale', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(TEMPLATE_LIST_QUERY_KEY, { templates: [SUNDAY] });
+    renderDialog(queryClient);
+
+    await waitFor(async () => expect(await checkboxes()).toHaveLength(2));
+
+    for (const box of await checkboxes()) expect(box).toBeChecked();
+  });
+
+  it('retries a failed entry fetch and then checks every template', async () => {
+    listEventTemplates.mockRejectedValueOnce(new Error('down'));
+    const { user } = renderDialog();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Tentar novamente' }),
+    );
+
+    const boxes = await checkboxes();
+    expect(boxes).toHaveLength(2);
+    for (const box of boxes) expect(box).toBeChecked();
+  });
+
+  it('keeps the choices when a later refetch fails', async () => {
+    const { user, client } = renderDialog();
+    const [, midweek] = await checkboxes();
+    await user.click(midweek as HTMLElement);
+    listEventTemplates.mockRejectedValue(new Error('down'));
+
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: TEMPLATE_LIST_QUERY_KEY });
+    });
+
+    const [sunday, stillMidweek] = await checkboxes();
+    expect(sunday).toBeChecked();
+    expect(stillMidweek).not.toBeChecked();
+  });
 });

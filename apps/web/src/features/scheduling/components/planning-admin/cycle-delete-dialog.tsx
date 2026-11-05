@@ -1,6 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { toast } from 'sonner';
+import { getErrorMessage } from './planning-admin.utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +36,13 @@ export function CycleDeleteDialog({
   const queryClient = useQueryClient();
   const remove = useMutation({
     mutationFn: () => adminApi.deleteCycle(cycleId),
+    onError: async () => {
+      // A refusal may come from a state this page has not seen yet.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
+        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
+      ]);
+    },
     onSuccess: async () => {
       queryClient.removeQueries({ queryKey: ['cycle-details', cycleId] });
       await queryClient.invalidateQueries({ queryKey: ['cycles'] });
@@ -73,7 +82,9 @@ export function CycleDeleteDialog({
             role="alert"
             data-testid="cycle-delete-error"
           >
-            {m.cycles_delete_failed()}
+            {isAxiosError(remove.error) && remove.error.response
+              ? getErrorMessage({ error: remove.error })
+              : m.cycles_delete_failed()}
           </p>
         ) : null}
         <AlertDialogFooter>

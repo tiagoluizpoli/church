@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
@@ -29,7 +30,7 @@ test.describe('DL4-X1 cross-tenant isolation on the $cycleId route', () => {
     await expect(page.getByTestId('selected-cycle-name')).toHaveCount(0);
     await expect(page.getByTestId('planning-events-list')).toHaveCount(0);
     await expect(
-      page.getByText('Escolha um ciclo para revisar seu calendário.'),
+      page.getByText(m.cycle_review_not_found({}, { locale: 'pt-BR' })),
     ).toBeVisible();
   });
 });

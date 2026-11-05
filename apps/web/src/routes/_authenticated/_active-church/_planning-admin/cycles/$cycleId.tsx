@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { CycleReviewCard } from '@/features/scheduling/components/planning-admin/cycle-review-card';
-import { cycleIsSent } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
+import { cycleIsReadOnly } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
 import {
   useCycleReviewCard,
   useCycleSelection,
@@ -15,19 +15,15 @@ export const Route = createFileRoute(
 
 function CycleReviewRoute() {
   const { cycleId } = Route.useParams();
-  const { selectedCycleId, handleSelectCycle } = useCycleSelection();
+  const { handleSelectCycle } = useCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
 
-  useEffect(() => {
+  // Before paint, so a previously selected Cycle is never shown for this id.
+  useLayoutEffect(() => {
     handleSelectCycle({ cycleId });
   }, [cycleId, handleSelectCycle]);
 
-  const isReadOnly = cycleIsSent({ cycle: selectedCycle });
+  const isReadOnly = cycleIsReadOnly({ cycle: selectedCycle });
 
-  // Until the selection follows the URL it still points at the previous Cycle.
-  if (selectedCycleId !== cycleId) {
-    return null;
-  }
-
-  return <CycleReviewCard isReadOnly={isReadOnly} />;
+  return <CycleReviewCard cycleId={cycleId} isReadOnly={isReadOnly} />;
 }

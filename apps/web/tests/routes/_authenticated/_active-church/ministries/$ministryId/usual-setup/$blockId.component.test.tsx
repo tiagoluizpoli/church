@@ -121,9 +121,9 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
     });
     await openForm(SERVICE_ID);
 
-    expect(screen.getByText(m.usual_setup_needs_review() + '.')).toBeVisible();
+    expect(screen.getByText(`${m.usual_setup_needs_review()}.`)).toBeVisible();
     expect(
-      screen.getByText(m.usual_setup_needs_review() + '.').parentElement,
+      screen.getByText(`${m.usual_setup_needs_review()}.`).parentElement,
     ).toHaveTextContent(m.usual_setup_review_fallback());
     expect(
       within(screen.getByTestId('shift-split-end-2'))

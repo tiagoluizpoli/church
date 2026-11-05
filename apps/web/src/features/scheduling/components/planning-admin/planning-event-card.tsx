@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
@@ -9,8 +10,9 @@ import type {
 } from './calendar-row';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
-  eventSpanLabel,
   eventStatusBadgeVariant,
+  eventStatusLabel,
+  timeBlockCountLabel,
 } from './planning-admin.utils';
 import {
   AlertDialog,
@@ -26,7 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
+import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface PlanningEventCardProps {
   row: CycleCalendarTableRow;
@@ -104,21 +106,24 @@ export function PlanningEventCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="font-medium text-base">{row.title}</div>
+          {row.location ? (
+            <div className="text-muted-foreground text-xs">
+              {m.cycle_review_location({ location: row.location })}
+            </div>
+          ) : null}
           <div className="text-muted-foreground text-xs">
-            {formatDayOf({ value: row.start, timeZone: churchTimezone })}
-          </div>
-          <div className="text-muted-foreground text-xs">
-            {eventSpanLabel({
+            {formatInstantRangeOf({
               start: row.start,
               end: row.end,
               timeZone: churchTimezone,
-            })}{' '}
-            · {row.eventTimeBlocks.length} time block
-            {row.eventTimeBlocks.length === 1 ? '' : 's'}
+            })}
+          </div>
+          <div className="text-muted-foreground text-xs">
+            {timeBlockCountLabel({ count: row.eventTimeBlocks.length })}
           </div>
         </div>
         <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
-          {row.status}
+          {eventStatusLabel({ status: row.status })}
         </Badge>
       </div>
 

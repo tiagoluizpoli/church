@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type {
   CycleEventGroup,
   CycleSummary,
@@ -13,7 +13,6 @@ import {
 } from './planning-admin.utils';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import {
-  type ApplyTemplatesOptions,
   type CreateEventTimeBlockInput,
   type DeleteEventInput,
   type DeleteEventTimeBlockInput,
@@ -25,11 +24,6 @@ import { adminApi } from '@/utils/api-instances';
 
 export interface SelectCycleInput {
   cycleId: string;
-}
-
-interface ToggleTemplateSelectionInput {
-  templateId: string;
-  checked: boolean;
 }
 
 export interface UsePlanningAdminResult {
@@ -46,19 +40,15 @@ export interface UsePlanningAdminResult {
   refetchCycles: () => void;
   templatesLoading: boolean;
   cycleDetailsLoading: boolean;
-  applyTemplatesPending: boolean;
-  applyTemplatesError: string | null;
+  cycleDetailsError: unknown;
+  refetchCycleDetails: () => void;
   sendCyclePending: boolean;
   updateEventPending: boolean;
   deleteEventPending: boolean;
   createEventTimeBlockPending: boolean;
   updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  selectedTemplateIds: string[];
-  resetApplyTemplates: () => void;
   handleSelectCycle: (input: SelectCycleInput) => void;
-  handleToggleTemplateSelection: (input: ToggleTemplateSelectionInput) => void;
-  handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
@@ -71,7 +61,6 @@ export interface UsePlanningAdminResult {
 export function usePlanningAdmin(): UsePlanningAdminResult {
   const queryClient = useQueryClient();
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
-  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
 
   const cyclesQuery = useQuery({
     queryKey: ['cycles'],
@@ -104,22 +93,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     events: cycleEvents,
   });
 
-  useEffect(() => {
-    setSelectedTemplateIds((currentSelection) => {
-      const filtered = currentSelection.filter((templateId) =>
-        templates.some((template) => template.id === templateId),
-      );
-      // Bail out with the same reference when nothing was actually removed —
-      // `.filter()` always allocates a new array, and without this guard a
-      // still-unstable `templates` reference (e.g. while its query is
-      // pending, `?? []` allocates fresh each render) turns this into an
-      // infinite render loop (setState → new templates ref → effect reruns).
-      return filtered.length === currentSelection.length
-        ? currentSelection
-        : filtered;
-    });
-  }, [templates]);
-
   const isAccessDenied = useMemo(
     () =>
       isForbiddenError({ error: cyclesQuery.error }) ||
@@ -135,7 +108,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     queryClient,
     selectedCycleId,
     selectedCycle,
-    selectedTemplateIds,
   });
 
   return {
@@ -151,30 +123,18 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     refetchCycles: () => void cyclesQuery.refetch(),
     templatesLoading: templatesQuery.isLoading,
     cycleDetailsLoading: cycleDetailsQuery.isLoading,
-    applyTemplatesPending: mutationHandlers.applyTemplatesPending,
-    applyTemplatesError: mutationHandlers.applyTemplatesError,
+    cycleDetailsError: cycleDetailsQuery.error,
+    refetchCycleDetails: () => {
+      void cycleDetailsQuery.refetch();
+    },
     sendCyclePending: mutationHandlers.sendCyclePending,
     updateEventPending: mutationHandlers.updateEventPending,
     deleteEventPending: mutationHandlers.deleteEventPending,
     createEventTimeBlockPending: mutationHandlers.createEventTimeBlockPending,
     updateEventTimeBlockPending: mutationHandlers.updateEventTimeBlockPending,
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
-    selectedTemplateIds,
-    resetApplyTemplates: mutationHandlers.resetApplyTemplates,
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
-    handleToggleTemplateSelection: ({
-      templateId,
-      checked,
-    }: ToggleTemplateSelectionInput) =>
-      setSelectedTemplateIds((currentSelection) =>
-        checked
-          ? [...new Set([...currentSelection, templateId])]
-          : currentSelection.filter(
-              (currentTemplateId) => currentTemplateId !== templateId,
-            ),
-      ),
-    handleApplyTemplates: mutationHandlers.handleApplyTemplates,
     handleSendCycle: mutationHandlers.handleSendCycle,
     handleUpdateEvent: mutationHandlers.handleUpdateEvent,
     handleDeleteEvent: mutationHandlers.handleDeleteEvent,

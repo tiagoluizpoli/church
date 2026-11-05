@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { Link, Outlet, useLocation } from '@tanstack/react-router';
+import { Outlet, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
 import {
@@ -7,7 +7,7 @@ import {
   CycleListStats,
   PlanningTemplateLibraryStats,
 } from './planning-admin/cycle-header';
-import { cycleIsSent } from './planning-admin/planning-admin.utils';
+import { cycleIsReadOnly } from './planning-admin/planning-admin.utils';
 import {
   PlanningAdminProvider,
   useCycleHeader,
@@ -15,7 +15,7 @@ import {
   useIsPlanningAccessDenied,
 } from './planning-admin/planning-admin-context';
 import { QuickCreateEventModal } from './quick-create-event-modal';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardDescription,
@@ -164,7 +164,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
   const canMutateCalendar =
     isReviewingCycle &&
     Boolean(selectedCycle) &&
-    !cycleIsSent({ cycle: selectedCycle });
+    !cycleIsReadOnly({ cycle: selectedCycle });
 
   return (
     <>
@@ -172,13 +172,6 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         className="flex flex-wrap items-center justify-end gap-2"
         data-testid="cycles-actions-row"
       >
-        <Link
-          to="/event-templates"
-          data-testid="open-template-library-button"
-          className={buttonVariants({ variant: 'outline' })}
-        >
-          Template library
-        </Link>
         {canMutateCalendar ? (
           <Button
             type="button"
@@ -200,6 +193,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
           <ApplyTemplatesDialog
             open={applyTemplatesOpen}
             onOpenChange={setApplyTemplatesOpen}
+            cycleId={selectedCycle.id}
             selectedCycleName={selectedCycle.name}
           />
           <QuickCreateEventModal

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
@@ -129,14 +130,18 @@ test.describe('DL4-X2 network failure on send', () => {
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(
       month.cycleName,
     );
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('draft');
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_draft({}, { locale: 'pt-BR' }),
+    );
 
     await page.getByTestId('send-cycle-button').click();
 
     await expect(
       page.locator('[data-sonner-toast][data-type="error"]'),
     ).toBeVisible();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('draft');
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_draft({}, { locale: 'pt-BR' }),
+    );
 
     // Confirm no partial state server-side either — the cycle is still
     // draft after the aborted request.

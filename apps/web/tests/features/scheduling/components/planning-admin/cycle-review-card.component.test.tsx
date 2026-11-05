@@ -1,10 +1,15 @@
 import { m } from '@church/i18n/messages';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
+import { useLayoutEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { CycleReviewCard } from '@/features/scheduling/components/planning-admin/cycle-review-card';
-import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
+import {
+  PlanningAdminProvider,
+  useCycleSelection,
+} from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
@@ -58,10 +63,6 @@ async function selectTheOnlyCycle() {
   const user = userEvent.setup();
   await user.click(await screen.findByTestId('cycle-option'));
   return user;
-}
-
-function isDateOnlyText(content: string): boolean {
-  return /^\d{2}\/\d{2}\/\d{4}$/.test(content);
 }
 
 /** `dd/MM/yyyy HH:mm – HH:mm`, or `dd/MM/yyyy HH:mm – dd/MM/yyyy HH:mm` when
@@ -148,7 +149,9 @@ describe('CycleReviewCard header consolidation (US1)', () => {
     render();
     await selectTheOnlyCycle();
 
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     const reviewBody = table.closest(
       '[data-slot="card-content"]',
     ) as HTMLElement;
@@ -163,12 +166,14 @@ describe('CycleReviewCard header consolidation (US1)', () => {
     expect(
       within(reviewBody).queryByText('2026-08-01'),
     ).not.toBeInTheDocument();
-    expect(within(reviewBody).getByText('Calendar review')).toBeInTheDocument();
+    expect(
+      within(reviewBody).getByText(m.cycle_review_title()),
+    ).toBeInTheDocument();
   });
 });
 
 describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
-  it('renders a day row date-only and an expanded time block row as a dated instant range, with no raw ISO or arrow', async () => {
+  it('renders a day row with its full span and an expanded time block row as a dated instant range, with no raw ISO or arrow', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -185,9 +190,11 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     render({ churchTimezone: 'UTC' });
     await selectTheOnlyCycle();
 
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
-    expect(within(table).getAllByText(isDateOnlyText).length).toBe(2);
+    expect(within(table).getAllByText(isTimeRangeText).length).toBe(2);
     expect(within(table).queryByText(/Z/)).not.toBeInTheDocument();
     expect(within(table).queryByText(/→/)).not.toBeInTheDocument();
 
@@ -219,7 +226,9 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
 
     render({ churchTimezone: 'UTC' });
     await selectTheOnlyCycle();
-    let table = await screen.findByRole('grid', { name: 'Calendar review' });
+    let table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     let user = userEvent.setup();
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
@@ -231,7 +240,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
 
     render({ churchTimezone: 'Pacific/Kiritimati' });
     await selectTheOnlyCycle();
-    table = await screen.findByRole('grid', { name: 'Calendar review' });
+    table = await screen.findByRole('grid', { name: m.cycle_review_title() });
     user = userEvent.setup();
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
@@ -261,7 +270,9 @@ describe('CycleReviewCard table view (US2)', () => {
     render();
     await selectTheOnlyCycle();
 
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
 
     const user = userEvent.setup();
@@ -276,14 +287,18 @@ describe('CycleReviewCard table view (US2)', () => {
     await user.click(
       within(table).getByRole('button', { name: 'Expand Wednesday Service' }),
     );
-    expect(within(table).getByText('Time block')).toBeInTheDocument();
+    expect(
+      within(table).getByText(m.cycle_review_time_block_fallback()),
+    ).toBeInTheDocument();
     expect(within(table).getByText('Worship')).toBeInTheDocument();
 
     await user.click(
       within(table).getByRole('button', { name: 'Collapse Sunday Service' }),
     );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).getByText('Time block')).toBeInTheDocument();
+    expect(
+      within(table).getByText(m.cycle_review_time_block_fallback()),
+    ).toBeInTheDocument();
   });
 
   it('keeps the sent cycle table read-only with no new editing affordance', async () => {
@@ -303,7 +318,9 @@ describe('CycleReviewCard table view (US2)', () => {
     render({ isReadOnly: true });
     await selectTheOnlyCycle();
 
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     expect(table).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Add event' }),
@@ -337,11 +354,9 @@ describe('CycleReviewCard table view (US2)', () => {
     render();
     await selectTheOnlyCycle();
 
+    expect(await screen.findByText(m.cycle_review_empty())).toBeInTheDocument();
     expect(
-      await screen.findByText(m.cycles_detail_empty()),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('grid', { name: 'Calendar review' }),
+      screen.queryByRole('grid', { name: m.cycle_review_title() }),
     ).not.toBeInTheDocument();
   });
 });
@@ -363,7 +378,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     expect(
       within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
@@ -388,7 +405,7 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     );
     expect(
       within(table).getByRole('button', {
-        name: 'Delete time block Time block',
+        name: `Delete time block ${m.cycle_review_time_block_fallback()}`,
       }),
     ).toBeDisabled();
   });
@@ -409,7 +426,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -440,7 +459,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -485,7 +506,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -532,7 +555,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -575,7 +600,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     expect(
       within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
@@ -616,7 +643,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -658,7 +687,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -710,7 +741,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -767,7 +800,9 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
 
     render({ isReadOnly: true });
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -862,7 +897,9 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -887,7 +924,9 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -921,7 +960,9 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -947,7 +988,9 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
     await user.click(
@@ -1060,19 +1103,31 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).queryByText('Time block')).not.toBeInTheDocument();
+    expect(
+      within(table).queryByText(m.cycle_review_time_block_fallback()),
+    ).not.toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await user.click(
+      screen.getByRole('button', { name: m.cycle_review_expand_all() }),
+    );
     expect(within(table).getByText('Worship')).toBeInTheDocument();
     expect(within(table).getByText('Message')).toBeInTheDocument();
-    expect(within(table).getByText('Time block')).toBeInTheDocument();
+    expect(
+      within(table).getByText(m.cycle_review_time_block_fallback()),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    await user.click(
+      screen.getByRole('button', { name: m.cycle_review_collapse_all() }),
+    );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).queryByText('Time block')).not.toBeInTheDocument();
+    expect(
+      within(table).queryByText(m.cycle_review_time_block_fallback()),
+    ).not.toBeInTheDocument();
   });
 
   it('does not leak expanded time block rows into the mobile card list', async () => {
@@ -1097,7 +1152,9 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
     ).toHaveLength(2);
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await user.click(
+      screen.getByRole('button', { name: m.cycle_review_expand_all() }),
+    );
 
     // Expanding on desktop must not add time block rows to the mobile list, which
     // has no card representation for them (`renderMobileCard` renders
@@ -1106,7 +1163,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
     expect(
       within(mobileList).getAllByTestId('planning-event-card'),
     ).toHaveLength(2);
-    expect(mobileList.children).toHaveLength(3); // "Add day-event" button + 2 cards
+    expect(mobileList.children).toHaveLength(4); // "Add day-event" button + week heading + 2 cards
   });
 
   it('is one-shot, not a synced toggle: re-collapsing one row after "Expand all" still lets "Collapse all" collapse everything', async () => {
@@ -1125,18 +1182,213 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
 
     render();
     await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    const table = await screen.findByRole('grid', {
+      name: m.cycle_review_title(),
+    });
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await user.click(
+      screen.getByRole('button', { name: m.cycle_review_expand_all() }),
+    );
     await user.click(
       within(table).getByRole('button', { name: 'Collapse Sunday Service' }),
     );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).getByText('Time block')).toBeInTheDocument();
+    expect(
+      within(table).getByText(m.cycle_review_time_block_fallback()),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    await user.click(
+      screen.getByRole('button', { name: m.cycle_review_collapse_all() }),
+    );
     expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
-    expect(within(table).queryByText('Time block')).not.toBeInTheDocument();
+    expect(
+      within(table).queryByText(m.cycle_review_time_block_fallback()),
+    ).not.toBeInTheDocument();
   });
 });
+
+describe('CycleReviewCard weekly review', () => {
+  function reviewEvent({
+    id,
+    title,
+    start,
+    end,
+    location,
+  }: {
+    id: string;
+    title: string;
+    start: string;
+    end: string;
+    location?: string;
+  }) {
+    return {
+      event: { id, title, start, end, location, status: 'scheduled' },
+      eventTimeBlocks: [
+        {
+          id: `${id}-block`,
+          label: `${title} block`,
+          startTime: start,
+          endTime: end,
+        },
+      ],
+    };
+  }
+
+  async function renderWeeks(events: ReturnType<typeof reviewEvent>[]) {
+    listCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'October 2026',
+          startDate: '2026-10-11',
+          endDate: '2026-10-24',
+          state: 'draft',
+        },
+      ],
+    });
+    getCycle.mockResolvedValue({
+      cycle: {
+        id: 'cycle-1',
+        name: 'October 2026',
+        startDate: '2026-10-11',
+        endDate: '2026-10-24',
+        state: 'draft',
+      },
+      events,
+    });
+    // Church is UTC-3: 23:00 Saturday 17th there is already Sunday 18th in UTC.
+    render({ churchTimezone: 'America/Sao_Paulo' });
+    await selectTheOnlyCycle();
+    return screen.findByRole('grid', { name: m.cycle_review_title() });
+  }
+
+  it('orders Events by start inside Church-local weeks, using the Church day rather than the UTC day', async () => {
+    const table = await renderWeeks([
+      reviewEvent({
+        id: 'e3',
+        title: 'Next Sunday',
+        start: '2026-10-18T13:00:00Z',
+        end: '2026-10-18T15:00:00Z',
+      }),
+      reviewEvent({
+        id: 'e2',
+        title: 'Saturday night',
+        start: '2026-10-18T02:00:00Z',
+        end: '2026-10-18T04:00:00Z',
+      }),
+      reviewEvent({
+        id: 'e1',
+        title: 'First Sunday',
+        start: '2026-10-11T13:00:00Z',
+        end: '2026-10-11T15:00:00Z',
+      }),
+    ]);
+
+    const labels = within(table)
+      .getAllByRole('rowheader')
+      .map((cell) => cell.textContent);
+
+    expect(labels).toEqual([
+      m.cycle_review_week({ start: '11/10/2026', end: '17/10/2026' }),
+      expect.stringContaining('First Sunday'),
+      expect.stringContaining('Saturday night'),
+      m.cycle_review_week({ start: '18/10/2026', end: '24/10/2026' }),
+      expect.stringContaining('Next Sunday'),
+    ]);
+  });
+
+  it('shows a multi-day Event once with its location, full span and counts consistent with the header', async () => {
+    const table = await renderWeeks([
+      reviewEvent({
+        id: 'retreat',
+        title: 'Retreat',
+        location: 'Mountain camp',
+        start: '2026-10-16T22:00:00Z',
+        end: '2026-10-19T14:00:00Z',
+      }),
+    ]);
+
+    expect(within(table).getAllByText(/Retreat/)).toHaveLength(1);
+    expect(
+      within(table).getByText(
+        m.cycle_review_location({ location: 'Mountain camp' }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByText('16/10/2026 19:00 – 19/10/2026 11:00'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('CycleReviewCard resolution states', () => {
+  it('shows a loading state, never another Cycle, while the route Cycle resolves', async () => {
+    getCycle.mockReturnValue(new Promise(() => undefined));
+    listCycles.mockResolvedValue({ cycles: [] });
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <SelectCycle cycleId="cycle-2" />
+        <CycleReviewCard cycleId="cycle-2" isReadOnly={false} />
+      </PlanningAdminProvider>,
+    );
+
+    expect(await screen.findByTestId('cycle-review-loading')).toHaveTextContent(
+      m.cycle_review_loading(),
+    );
+    expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
+  });
+
+  it('keeps a retryable failure distinct from an empty Cycle', async () => {
+    getCycle.mockRejectedValueOnce(new Error('network'));
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
+    listCycles.mockResolvedValue({ cycles: [] });
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <SelectCycle cycleId="cycle-1" />
+        <CycleReviewCard cycleId="cycle-1" isReadOnly={false} />
+      </PlanningAdminProvider>,
+    );
+
+    const alert = await screen.findByTestId('cycle-review-error');
+    expect(alert).toHaveTextContent(m.cycle_review_error());
+    expect(screen.queryByTestId('cycle-review-empty')).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(alert).getByRole('button', { name: m.event_templates_retry() }),
+    );
+
+    expect(
+      await screen.findByRole('grid', { name: m.cycle_review_title() }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the scoped not-found message for a missing Cycle', async () => {
+    getCycle.mockRejectedValue(
+      Object.assign(new AxiosError('missing'), { response: { status: 404 } }),
+    );
+    listCycles.mockResolvedValue({ cycles: [] });
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <SelectCycle cycleId="missing" />
+        <CycleReviewCard cycleId="missing" isReadOnly={false} />
+      </PlanningAdminProvider>,
+    );
+
+    expect(
+      await screen.findByTestId('cycle-review-not-found'),
+    ).toHaveTextContent(m.cycle_review_not_found());
+  });
+});
+
+interface SelectCycleProps {
+  cycleId: string;
+}
+
+/** Stands in for the route, which selects its `$cycleId` on mount. */
+function SelectCycle({ cycleId }: SelectCycleProps) {
+  const { handleSelectCycle } = useCycleSelection();
+  useLayoutEffect(() => {
+    handleSelectCycle({ cycleId });
+  }, [cycleId, handleSelectCycle]);
+  return null;
+}

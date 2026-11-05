@@ -1,4 +1,5 @@
-import { stateBadgeVariant } from './planning-admin.utils';
+import { m } from '@church/i18n/messages';
+import { cycleStateLabel, stateBadgeVariant } from './planning-admin.utils';
 import {
   useCycleHeader,
   useCycleListStats,
@@ -55,28 +56,30 @@ export function CycleHeader({ showName = true }: CycleHeaderProps) {
             {nameAndStatus.name}
           </span>
         ) : (
-          <span className="text-muted-foreground text-xs">Status</span>
+          <span className="text-muted-foreground text-xs">
+            {m.cycle_header_status()}
+          </span>
         )}
         <Badge
           data-testid="selected-cycle-state"
           variant={stateBadgeVariant({ state: nameAndStatus.status })}
         >
-          {nameAndStatus.status}
+          {cycleStateLabel({ state: nameAndStatus.status })}
         </Badge>
       </div>
       <HeaderStatChip
         testId="cycle-period-chip"
-        label="Window"
+        label={m.cycle_header_period()}
         value={`${formatCalendarDateOnly({ value: period.startDate })} → ${formatCalendarDateOnly({ value: period.endDate })}`}
       />
       <HeaderStatChip
         testId="cycle-event-count-chip"
-        label="Events"
+        label={m.cycle_header_events()}
         value={String(counts.eventCount)}
       />
       <HeaderStatChip
         testId="cycle-event-time-block-count-chip"
-        label="Time blocks"
+        label={m.cycle_header_time_blocks()}
         value={String(counts.eventTimeBlockCount)}
       />
     </div>

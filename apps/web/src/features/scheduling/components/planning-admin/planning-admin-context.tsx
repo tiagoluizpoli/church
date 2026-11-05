@@ -89,35 +89,6 @@ export function useCycleListCard(): CycleListCardModel {
   };
 }
 
-export type TemplateApplyDialogModel = Pick<
-  UsePlanningAdminResult,
-  | 'templates'
-  | 'templatesLoading'
-  | 'selectedTemplateIds'
-  | 'selectedCycleId'
-  | 'applyTemplatesPending'
-  | 'applyTemplatesError'
-  | 'resetApplyTemplates'
-  | 'handleToggleTemplateSelection'
-  | 'handleApplyTemplates'
->;
-
-export function useTemplateApplyDialog(): TemplateApplyDialogModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    templates: context.templates,
-    templatesLoading: context.templatesLoading,
-    selectedTemplateIds: context.selectedTemplateIds,
-    selectedCycleId: context.selectedCycleId,
-    applyTemplatesPending: context.applyTemplatesPending,
-    applyTemplatesError: context.applyTemplatesError,
-    resetApplyTemplates: context.resetApplyTemplates,
-    handleToggleTemplateSelection: context.handleToggleTemplateSelection,
-    handleApplyTemplates: context.handleApplyTemplates,
-  };
-}
-
 export interface CycleSelectionModel {
   selectedCycleId: string | null;
   handleSelectCycle: (input: SelectCycleInput) => void;
@@ -228,6 +199,8 @@ export type CycleReviewCardModel = Pick<
   | 'selectedCycleId'
   | 'selectedCycle'
   | 'cycleDetailsLoading'
+  | 'cycleDetailsError'
+  | 'refetchCycleDetails'
   | 'cycleEvents'
   | 'sendCyclePending'
   | 'handleSendCycle'
@@ -250,6 +223,8 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     selectedCycleId: context.selectedCycleId,
     selectedCycle: context.selectedCycle,
     cycleDetailsLoading: context.cycleDetailsLoading,
+    cycleDetailsError: context.cycleDetailsError,
+    refetchCycleDetails: context.refetchCycleDetails,
     cycleEvents: context.cycleEvents,
     updateEventPending: context.updateEventPending,
     deleteEventPending: context.deleteEventPending,

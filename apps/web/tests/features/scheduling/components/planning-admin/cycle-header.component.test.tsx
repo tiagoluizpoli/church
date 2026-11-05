@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -84,7 +85,7 @@ describe('CycleHeader (T058)', () => {
     expect(nameStatusChip).not.toBe(periodChip);
     expect(nameStatusChip).toHaveTextContent('August 2026');
     expect(screen.getByTestId('selected-cycle-state')).toHaveTextContent(
-      'sent',
+      m.cycle_state_sent(),
     );
     expect(periodChip).toHaveTextContent('01/08/2026');
     expect(periodChip).toHaveTextContent('31/08/2026');

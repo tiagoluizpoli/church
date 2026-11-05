@@ -45,7 +45,7 @@ describe('planning journey recipes (#329 planning cluster)', () => {
     });
   });
 
-  it('planning-admin holds an admin and a Volunteer but no cycle, with a window after the anchor', async () => {
+  it('planning-admin holds a non-leading admin, distinct Worship leader and Volunteer but no cycle, with a window after the anchor', async () => {
     const journey = await runE2eJourneyRecipe({
       db: testDb,
       recipe: createPlanningAdminRecipe({
@@ -58,7 +58,15 @@ describe('planning journey recipes (#329 planning cluster)', () => {
     expect(await accessLevelsOf({ churchId: journey.church.id })).toEqual([
       'admin',
       'member',
+      'member',
     ]);
+    expect(journey.personas.admin.userId).not.toBe(
+      journey.personas.leader.userId,
+    );
+    expect(journey.personas.leader.userId).not.toBe(
+      journey.personas.volunteer.userId,
+    );
+    expect(journey.ministries.worship.id).toBeDefined();
     expect(journey.cycleWindow).toEqual({
       startDate: '2027-01-02',
       endDate: '2027-01-29',

@@ -21,6 +21,7 @@ const PLANNING_ADMIN_FIELDS = {
   }),
   personas: z.object({
     admin: ASSIGN_PERSONA_SCHEMA,
+    leader: ASSIGN_PERSONA_SCHEMA,
     volunteer: ASSIGN_PERSONA_SCHEMA,
   }),
 };
@@ -33,8 +34,8 @@ export type PlanningAdminJourney = z.infer<
   typeof PLANNING_ADMIN_JOURNEY_SCHEMA
 >;
 
-/** Loads this test's own Church, ChurchAdmin and Volunteer; no Cycle,
- * and signs nobody in. */
+/** Loads this test's own Church, ChurchAdmin, distinct Ministry leader and
+ * Volunteer; no Cycle, and signs nobody in. */
 export function loadPlanningAdminJourney({
   testInfo,
 }: LoadAssignJourneyInput): PlanningAdminJourney {

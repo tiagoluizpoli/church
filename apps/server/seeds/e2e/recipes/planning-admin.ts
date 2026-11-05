@@ -20,9 +20,9 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.planningAdmin;
 
 /**
  * The Church whose ChurchAdmin plans (#329: cycle administration, the
- * create-event form, template library, cycle send edge cases): a Worship
- * Ministry the admin leads, and a plain Volunteer persona for the denial
- * checks. It holds no Cycle: the journey creates the cycles it
+ * create-event form, template library and Cycle-to-leader handoff): a
+ * ChurchAdmin who does not lead, a distinct Worship leader, and a plain
+ * Volunteer persona for the denial checks. It holds no Cycle: the journey creates the cycles it
  * mutates, in a window of its own Church, so no other journey can overlap
  * them. Shared by the cycle-access recipe.
  */
@@ -38,6 +38,11 @@ export const PLANNING_ADMIN_PLAN = {
     admin: {
       name: 'Lia Prado',
       churchAccessLevel: 'admin',
+      memberships: [],
+    },
+    leader: {
+      name: 'Marina Costa',
+      churchAccessLevel: 'member',
       memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
     volunteer: {

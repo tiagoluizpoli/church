@@ -13,6 +13,8 @@ import {
   type PlanningAdminJourney,
 } from '@/tests/fixtures/journeys/planning-admin';
 
+const OUTBOX_NOTIFICATION_TIMEOUT_MS = 15_000;
+
 interface PlanningMonth {
   cycleName: string;
   startDate: string;
@@ -294,6 +296,48 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     'Three-day retreat',
   );
 
+  // F7: editing the retained whole-Event block keeps this multi-day Event in
+  // the review before the handoff.
+  await page
+    .getByTestId('planning-events-list')
+    .getByTestId('revealed-event-row')
+    .getByRole('link', { name: /^Editar dia/ })
+    .click();
+  await page
+    .getByTestId('event-time-block-row')
+    .getByLabel(m.event_editor_block_label({}, { locale: 'pt-BR' }))
+    .fill('Retreat welcome');
+  await page
+    .getByRole('button', {
+      name: m.event_editor_create_submit({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(
+    page.getByTestId('planning-events-list').getByTestId('revealed-event-row'),
+  ).toContainText('Retreat welcome');
+
+  // F8: discard a separate Draft Event through the nested editor. Its
+  // deletion must not disturb the retained retreat or the generated Events.
+  await addEventOnNestedPage({
+    page,
+    title: 'Discarded draft',
+    startDate: month.dynamicStartDate,
+  });
+  await page
+    .getByTestId('planning-events-list')
+    .getByTestId('revealed-event-row')
+    .getByRole('link', { name: /^Editar dia/ })
+    .click();
+  await page.getByTestId('event-delete-open').click();
+  await page
+    .getByRole('button', {
+      name: m.event_editor_delete_confirm({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(page.getByText('Discarded draft', { exact: true })).toHaveCount(
+    0,
+  );
+
   // Phase 8: "Create cycle" only lives on the cycles list view now (not on a
   // cycle's own review page) — go back to the list (FR-018/FR-019 nav
   // restructure). The breadcrumb link back to the list is desktop-only
@@ -337,7 +381,12 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   );
 
   await page.getByTestId('send-cycle-button').click();
-  await page.getByTestId('confirm-cycle-send-button').click();
+  const sendDialog = page.getByTestId('cycle-send-dialog');
+  await expect(sendDialog).toContainText(
+    m.cycle_send_irreversible({}, { locale: 'pt-BR' }),
+  );
+  await expect(sendDialog.getByTestId('cycle-send-summary')).toBeVisible();
+  await sendDialog.getByTestId('confirm-cycle-send-button').click();
   await expect(page.getByTestId('selected-cycle-state')).toHaveText(
     m.cycle_state_sent({}, { locale: 'pt-BR' }),
   );
@@ -354,20 +403,58 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   ).toHaveCount(0);
   await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
 
-  // A second session of the ChurchAdmin, who leads Worship: it sees the
-  // sent cycle too.
+  // J5: the distinct Ministry leader receives N2 through the actual Send
+  // transaction and outbox, then its localized bell detail opens the one
+  // Ministry's exact Prepare destination.
+  const cycleId = cycleReviewUrl.split('/').at(-1);
+  if (!cycleId) throw new Error('Expected the review URL to contain a Cycle');
   const leaderContext = await newPersonaContext({
     browser,
-    persona: journey.personas.admin,
+    persona: journey.personas.leader,
   });
   const leaderPage = await leaderContext.newPage();
-  await leaderPage.goto('/cycles');
-  await leaderPage
-    .getByTestId('cycle-option')
-    .filter({ hasText: month.cycleName })
+  await leaderPage.goto('/');
+  const bell = leaderPage.getByRole('button', {
+    name: m.notification_bell_label({}, { locale: 'pt-BR' }),
+  });
+  const notificationTitle = m.notification_cycle_ready_to_prepare_title(
+    { cycleName: month.cycleName },
+    { locale: 'pt-BR' },
+  );
+  const notificationItem = leaderPage.getByText(notificationTitle, {
+    exact: true,
+  });
+  // The inbox polls much less frequently than the server's outbox drainer.
+  // Reload through the browser until a real inbox response includes N2; no
+  // Notification is inserted or mutated outside the Send transaction.
+  await expect
+    .poll(
+      async () => {
+        const inboxResponse = leaderPage.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/notifications') &&
+            response.request().method() === 'GET',
+        );
+        await leaderPage.reload();
+        await inboxResponse;
+        await bell.click();
+        return await notificationItem.count();
+      },
+      { timeout: OUTBOX_NOTIFICATION_TIMEOUT_MS },
+    )
+    .toBe(1);
+  await notificationItem.click();
+  const notificationSheet = leaderPage.getByRole('dialog');
+  await notificationSheet
+    .getByRole('button', {
+      name: m.notification_cycle_ready_to_prepare_action(
+        {},
+        { locale: 'pt-BR' },
+      ),
+    })
     .click();
-  await expect(leaderPage.getByTestId('selected-cycle-name')).toHaveText(
-    month.cycleName,
+  await expect(leaderPage).toHaveURL(
+    `/schedules/${journey.ministries.worship.id}/${cycleId}`,
   );
   await leaderContext.close();
 

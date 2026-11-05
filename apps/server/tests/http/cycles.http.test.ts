@@ -719,3 +719,53 @@ describe('Cycle last day', () => {
     });
   });
 });
+
+describe('GET /admin/cycles', () => {
+  it('lists the Active Church newest start first, whatever order they were created in', async () => {
+    const seed = await signIn();
+    const middle = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Middle',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const oldest = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Oldest',
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+    });
+    const newest = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Newest',
+      startDate: '2026-11-01',
+      endDate: '2026-11-01',
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response.json().cycles.map((listed: { id: string }) => listed.id),
+    ).toEqual([newest.id, middle.id, oldest.id]);
+  });
+
+  it('answers 401 signed out and 403 without the capability', async () => {
+    await signIn({ persona: 'member' });
+    const forbidden = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles',
+    });
+    mockGetSession.mockResolvedValue(null as never);
+    const signedOut = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles',
+    });
+
+    expect(forbidden.statusCode).toBe(403);
+    expect(signedOut.statusCode).toBe(401);
+  });
+});

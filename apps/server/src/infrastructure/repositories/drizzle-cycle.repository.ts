@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { cycle } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type {
   AcquireCycleChurchLockInput,
   CreateCycleInput,
@@ -88,7 +88,9 @@ export class DrizzleCycleRepository implements CycleRepository {
       .select()
       .from(cycle)
       .where(and(...conditions))
-      .orderBy(cycle.startDate);
+      // Newest first; Cycles of one Church never overlap, so id only keeps the
+      // order total.
+      .orderBy(desc(cycle.startDate), desc(cycle.endDate), cycle.id);
 
     return rows.map(mapCycle);
   }

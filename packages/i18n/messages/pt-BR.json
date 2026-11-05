@@ -711,5 +711,16 @@
   "people_made_leader_toast": "{name} agora é líder de {ministry}.",
   "people_made_volunteer_toast": "{name} agora é voluntário em {ministry}.",
   "people_made_own_volunteer_toast": "Você agora é voluntário em {ministry}.",
-  "people_ministry_access_failed": "Não foi possível alterar o nível no ministério. Tente novamente."
+  "people_ministry_access_failed": "Não foi possível alterar o nível no ministério. Tente novamente.",
+  "cycles_delete_button": "Excluir rascunho",
+  "cycles_delete_title": "Excluir {name}?",
+  "cycles_delete_description": "Isso exclui definitivamente o ciclo em rascunho e tudo o que foi planejado nele. Os modelos de evento, a configuração padrão e os ministérios não são afetados, e ninguém é notificado.",
+  "cycles_delete_count_zero": "Este ciclo não tem eventos.",
+  "cycles_delete_count_one": "1 evento será excluído, com seus blocos de horário e a participação dos ministérios.",
+  "cycles_delete_count_other": "{count} eventos serão excluídos, com seus blocos de horário e a participação dos ministérios.",
+  "cycles_delete_cancel": "Manter rascunho",
+  "cycles_delete_confirm": "Excluir ciclo",
+  "cycles_delete_pending": "Excluindo…",
+  "cycles_delete_failed": "Não foi possível excluir o ciclo. Nada foi alterado. Tente novamente.",
+  "cycles_deleted_toast": "Ciclo excluído"
 }

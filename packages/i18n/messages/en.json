@@ -711,5 +711,16 @@
   "people_made_leader_toast": "{name} is now a leader of {ministry}.",
   "people_made_volunteer_toast": "{name} is now a volunteer in {ministry}.",
   "people_made_own_volunteer_toast": "You are now a volunteer in {ministry}.",
-  "people_ministry_access_failed": "Couldn't change the Ministry level. Try again."
+  "people_ministry_access_failed": "Couldn't change the Ministry level. Try again.",
+  "cycles_delete_button": "Delete Draft",
+  "cycles_delete_title": "Delete {name}?",
+  "cycles_delete_description": "This permanently deletes the Draft Cycle and everything planned in it. Event templates, Usual setup and Ministries are not affected, and nobody is notified.",
+  "cycles_delete_count_zero": "This Cycle has no Events.",
+  "cycles_delete_count_one": "1 Event will be deleted, with its time blocks and Ministry participation.",
+  "cycles_delete_count_other": "{count} Events will be deleted, with their time blocks and Ministry participation.",
+  "cycles_delete_cancel": "Keep Draft",
+  "cycles_delete_confirm": "Delete Cycle",
+  "cycles_delete_pending": "Deleting…",
+  "cycles_delete_failed": "Couldn't delete the Cycle. Nothing was changed. Try again.",
+  "cycles_deleted_toast": "Cycle deleted"
 }

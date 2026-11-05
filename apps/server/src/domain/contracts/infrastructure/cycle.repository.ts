@@ -37,6 +37,12 @@ export interface UpdateCycleStateInput {
   tx?: TransactionContext;
 }
 
+export interface DeleteCycleInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  tx?: TransactionContext;
+}
+
 export interface AcquireCycleChurchLockInput {
   churchId: ChurchId;
   tx: TransactionContext;
@@ -48,5 +54,7 @@ export interface CycleRepository {
   getById(input: GetCycleInput): Promise<Cycle>;
   findOverlapping(input: FindOverlappingCyclesInput): Promise<Cycle[]>;
   updateState(input: UpdateCycleStateInput): Promise<Cycle>;
+  /** Removes the Cycle; its Events, Time Blocks and participation cascade. */
+  delete(input: DeleteCycleInput): Promise<void>;
   acquireChurchLock(input: AcquireCycleChurchLockInput): Promise<void>;
 }

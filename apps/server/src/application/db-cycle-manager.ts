@@ -3,6 +3,7 @@ import { compareCalendarDays, fromDateColumn, now, today } from '@church/time';
 import type {
   CreateCycleManagerInput,
   CycleDetails,
+  DeleteCycleManagerInput,
   GetCycleManagerInput,
   ICycleManager,
   ListCyclesManagerInput,
@@ -214,6 +215,33 @@ export class DbCycleManager implements ICycleManager {
         }),
         tx,
       });
+    });
+  }
+
+  async deleteCycle(input: DeleteCycleManagerInput): Promise<void> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+
+    await this.unitOfWork.run(async (tx) => {
+      // The Event-count the admin confirmed is informational: the owned graph
+      // is whatever exists once the lock is held.
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
+      const cycle = await this.ensureResolvedCycle({
+        cycle: await this.cycleRepository.getById({ ...input, tx }),
+        churchTimeZone: church.timezone,
+      });
+
+      if (cycle.state !== 'draft') {
+        throw new IllegalStateTransitionError({
+          from: cycle.state,
+          to: 'deleted',
+        });
+      }
+
+      await this.cycleRepository.delete({ ...input, tx });
     });
   }
 

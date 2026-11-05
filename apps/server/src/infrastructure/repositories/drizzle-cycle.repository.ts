@@ -6,6 +6,7 @@ import type {
   AcquireCycleChurchLockInput,
   CreateCycleInput,
   CycleRepository,
+  DeleteCycleInput,
   FindOverlappingCyclesInput,
   GetCycleInput,
   ListCyclesInput,
@@ -153,6 +154,23 @@ export class DrizzleCycleRepository implements CycleRepository {
     }
 
     return mapCycle(row);
+  }
+
+  async delete(input: DeleteCycleInput): Promise<void> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .delete(cycle)
+      .where(
+        and(
+          eq(cycle.id, input.cycleId),
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
+        ),
+      )
+      .returning({ id: cycle.id });
+
+    if (rows.length === 0) {
+      throw new NotFoundError(`Cycle not found: ${input.cycleId}`);
+    }
   }
 
   async acquireChurchLock(input: AcquireCycleChurchLockInput): Promise<void> {

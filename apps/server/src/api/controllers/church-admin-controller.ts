@@ -252,6 +252,27 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.delete(
+      '/cycles/:cycleId',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'deleteCycle',
+          summary: 'Delete a Draft Cycle',
+          description:
+            'Hard-delete a Draft Cycle with every Event, Time Block and participation it owns. Sent and Past Cycles are refused.',
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        await this.cycleManager.deleteCycle({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.status(204).send();
+      },
+    );
+
     app.post(
       '/cycles/:cycleId/events/:eventId/reopen',
       {

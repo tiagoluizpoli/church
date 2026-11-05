@@ -618,6 +618,22 @@ paths:
                   - cycle
                   - events
                 additionalProperties: false
+    delete:
+      operationId: deleteCycle
+      summary: Delete a Draft Cycle
+      tags:
+        - planning
+      description: Hard-delete a Draft Cycle with every Event, Time Block and
+        participation it owns. Sent and Past Cycles are refused.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
   /api/v1/admin/cycles/{cycleId}/send:
     post:
       operationId: sendCycle

@@ -104,10 +104,9 @@ function PlanningAdminLayout() {
       <div className="space-y-5">
         <Card className="surface-panel" data-testid="planning-access-denied">
           <CardHeader>
-            <CardTitle>Planning is admin-only</CardTitle>
+            <CardTitle>{m.cycles_admin_only_title()}</CardTitle>
             <CardDescription>
-              Draft cycles stay hidden from volunteers. Ask a church admin if
-              you need access.
+              {m.cycles_admin_only_description()}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -186,12 +185,12 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
             data-testid="open-apply-templates-dialog-button"
             onClick={() => setApplyTemplatesOpen(true)}
           >
-            Apply template
+            {m.cycles_apply_button()}
           </Button>
         ) : null}
         {canMutateCalendar ? (
           <Button type="button" onClick={() => setCreateEventOpen(true)}>
-            Add event
+            {m.cycles_add_event_button()}
           </Button>
         ) : null}
         {canEditDraft ? (

@@ -499,8 +499,7 @@ export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
                     {m.cycle_review_title()}
                   </div>
                   <div className="text-muted-foreground text-xs">
-                    Confirm dates, eventTimeBlocks, and event types before
-                    sending the package.
+                    {m.cycle_review_send_hint()}
                   </div>
                 </div>
                 <Button
@@ -509,7 +508,9 @@ export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
                   disabled={sendCyclePending}
                   onClick={handleSendCycle}
                 >
-                  {sendCyclePending ? 'Sending…' : 'Send to Ministries'}
+                  {sendCyclePending
+                    ? m.cycle_review_sending()
+                    : m.cycle_review_send()}
                 </Button>
               </div>
             )}
@@ -547,7 +548,7 @@ export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
                         variant="outline"
                         onClick={() => setAddEventOpen(true)}
                       >
-                        Add day-event
+                        {m.cycle_review_add_day_event()}
                       </Button>
                     ) : null
                   }

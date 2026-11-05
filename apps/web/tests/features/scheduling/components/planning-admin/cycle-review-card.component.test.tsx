@@ -301,6 +301,31 @@ describe('CycleReviewCard table view (US2)', () => {
     ).toBeInTheDocument();
   });
 
+  it('localizes the Draft send controls', async () => {
+    listCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
+
+    render({});
+    await selectTheOnlyCycle();
+
+    expect(await screen.findByTestId('send-cycle-button')).toHaveTextContent(
+      'Enviar aos ministérios',
+    );
+    expect(
+      screen.getByText(/Confirme as datas, os horários e os tipos de evento/),
+    ).toBeVisible();
+  });
+
   it('keeps the sent cycle table read-only with no new editing affordance', async () => {
     listCycles.mockResolvedValue({
       cycles: [
@@ -323,7 +348,7 @@ describe('CycleReviewCard table view (US2)', () => {
     });
     expect(table).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Add event' }),
+      screen.queryByRole('button', { name: m.cycles_add_event_button() }),
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
   });
@@ -1042,7 +1067,9 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      within(mobileList).getByRole('button', { name: 'Add day-event' }),
+      within(mobileList).getByRole('button', {
+        name: m.cycle_review_add_day_event(),
+      }),
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'New Event' });
@@ -1081,7 +1108,9 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
     const mobileList = await screen.findByTestId('planning-events-list');
 
     expect(
-      within(mobileList).queryByRole('button', { name: 'Add day-event' }),
+      within(mobileList).queryByRole('button', {
+        name: m.cycle_review_add_day_event(),
+      }),
     ).not.toBeInTheDocument();
   });
 });

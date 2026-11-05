@@ -350,9 +350,11 @@ describe('CyclesActions (US4)', () => {
       'open-apply-templates-dialog-button',
     );
     const addManualEventButton = within(actionsRow).getByRole('button', {
-      name: 'Add event',
+      name: m.cycles_add_event_button(),
     });
     expect(applyTemplateButton).toBeVisible();
+    expect(applyTemplateButton).toHaveTextContent('Aplicar modelo');
+    expect(addManualEventButton).toHaveTextContent('Adicionar evento');
     expect(addManualEventButton).toBeVisible();
 
     await user.click(addManualEventButton);

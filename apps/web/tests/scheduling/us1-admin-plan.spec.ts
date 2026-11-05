@@ -275,7 +275,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
 
   // FR-012: the one canonical create-event UI, reused here for a
   // cycle manual event (same form as the ministry "New Event" modal).
-  await page.getByRole('button', { name: 'Add event' }).click();
+  await page.getByRole('button', { name: m.cycles_add_event_button() }).click();
   const createEventDialog = page.getByRole('dialog');
   await createEventDialog.getByLabel('Title').fill('Three-day retreat');
   await fillDatePickerField({
@@ -349,7 +349,9 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await expect(
     page.getByTestId('open-apply-templates-dialog-button'),
   ).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Add event' })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: m.cycles_add_event_button() }),
+  ).toHaveCount(0);
   await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
 
   // A second session of the ChurchAdmin, who leads Worship: it sees the

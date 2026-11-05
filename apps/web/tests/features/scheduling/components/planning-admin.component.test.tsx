@@ -447,7 +447,7 @@ describe('Cycle deletion', () => {
       await screen.findByRole('button', { name: 'Excluir ciclo' }),
     );
 
-    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
     expect(deleteCycle).toHaveBeenCalledWith('cycle-1');
     expect(screen.queryByTestId('cycle-option')).not.toBeInTheDocument();
     expect(screen.queryByTestId('selected-cycle-name')).not.toBeInTheDocument();

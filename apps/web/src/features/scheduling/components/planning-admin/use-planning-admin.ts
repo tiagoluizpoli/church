@@ -56,6 +56,8 @@ export interface UsePlanningAdminResult {
   cyclesLoading: boolean;
   templatesLoading: boolean;
   cycleDetailsLoading: boolean;
+  cycleDetailsError: unknown;
+  refetchCycleDetails: () => void;
   canCreateCycle: boolean;
   createCyclePending: boolean;
   applyTemplatesPending: boolean;
@@ -176,6 +178,10 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     cyclesLoading: cyclesQuery.isLoading,
     templatesLoading: templatesQuery.isLoading,
     cycleDetailsLoading: cycleDetailsQuery.isLoading,
+    cycleDetailsError: cycleDetailsQuery.error,
+    refetchCycleDetails: () => {
+      void cycleDetailsQuery.refetch();
+    },
     canCreateCycle: canCreateCycle({ cycleForm }),
     createCyclePending: mutationHandlers.createCyclePending,
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,

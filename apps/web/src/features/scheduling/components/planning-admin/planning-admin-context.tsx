@@ -248,6 +248,8 @@ export type CycleReviewCardModel = Pick<
   | 'selectedCycleId'
   | 'selectedCycle'
   | 'cycleDetailsLoading'
+  | 'cycleDetailsError'
+  | 'refetchCycleDetails'
   | 'cycleEvents'
   | 'sendCyclePending'
   | 'handleSendCycle'
@@ -270,6 +272,8 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     selectedCycleId: context.selectedCycleId,
     selectedCycle: context.selectedCycle,
     cycleDetailsLoading: context.cycleDetailsLoading,
+    cycleDetailsError: context.cycleDetailsError,
+    refetchCycleDetails: context.refetchCycleDetails,
     cycleEvents: context.cycleEvents,
     updateEventPending: context.updateEventPending,
     deleteEventPending: context.deleteEventPending,

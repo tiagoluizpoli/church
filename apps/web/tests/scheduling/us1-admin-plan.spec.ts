@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
 import { planningMonth } from './planning-month.helpers';
@@ -194,7 +195,9 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(
     month.cycleName,
   );
-  await expect(page.getByTestId('selected-cycle-state')).toHaveText('draft');
+  await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+    m.cycle_state_draft(),
+  );
 
   const cycleReviewUrl = page.url();
   await page.getByTestId('open-template-library-button').click();
@@ -337,7 +340,9 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   );
 
   await page.getByTestId('send-cycle-button').click();
-  await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
+  await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+    m.cycle_state_sent(),
+  );
 
   // Step-sequence gating: sent-review is read-only — no editable
   // template/apply controls, while the template library stays reachable.

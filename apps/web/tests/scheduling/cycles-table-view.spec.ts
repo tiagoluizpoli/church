@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, type Page, type TestInfo, test } from '@playwright/test';
 import {
   applyTemplatesViaApi,
@@ -147,7 +148,9 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       testInfo,
     });
 
-    const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
+    const calendarTable = page.getByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     await expect(calendarTable).toBeVisible();
 
     const weekdayRow = calendarTable
@@ -168,23 +171,33 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
   }, testInfo) => {
     await createCycleWithSundayTemplateApplied({ page, testInfo });
 
-    const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
+    const calendarTable = page.getByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     await expect(calendarTable).toBeVisible();
     const rowCount = await calendarTable.getByRole('row').count();
 
-    await page.getByRole('button', { name: 'Expand all' }).click();
+    await page
+      .getByRole('button', { name: m.cycle_review_expand_all() })
+      .click();
     await expect(calendarTable.getByText('Worship').first()).toBeVisible();
     expect(await calendarTable.getByText('Worship').count()).toBe(rowCount - 1);
 
-    await page.getByRole('button', { name: 'Collapse all' }).click();
+    await page
+      .getByRole('button', { name: m.cycle_review_collapse_all() })
+      .click();
     await expect(calendarTable.getByText('Worship')).toHaveCount(0);
 
     // One-shot, not a synced toggle: re-expanding one row manually after
     // "Expand all" then "Collapse all" must still collapse everything.
-    await page.getByRole('button', { name: 'Expand all' }).click();
+    await page
+      .getByRole('button', { name: m.cycle_review_expand_all() })
+      .click();
     const firstRow = calendarTable.getByRole('row').nth(1);
     await firstRow.getByRole('button', { name: /^Collapse/ }).click();
-    await page.getByRole('button', { name: 'Collapse all' }).click();
+    await page
+      .getByRole('button', { name: m.cycle_review_collapse_all() })
+      .click();
     await expect(calendarTable.getByText('Worship')).toHaveCount(0);
   });
 
@@ -194,9 +207,13 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     await page.getByTestId('send-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_sent(),
+    );
 
-    const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
+    const calendarTable = page.getByRole('grid', {
+      name: m.cycle_review_title(),
+    });
     await expect(calendarTable).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Add event' }),
@@ -287,7 +304,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
       page.getByTestId('planning-event-card').first(),
     ).toBeAttached();
 
-    const table = page.getByRole('grid', { name: 'Calendar review' });
+    const table = page.getByRole('grid', { name: m.cycle_review_title() });
     await expect(table).toBeVisible();
 
     const firstMatch = table
@@ -380,7 +397,9 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
 
     // Send the cycle: no edit/delete controls should render anywhere.
     await page.getByTestId('send-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_sent(),
+    );
     await expect(
       table.getByRole('button', { name: /^Delete day/ }),
     ).toHaveCount(0);
@@ -501,7 +520,9 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
 
     // Send the cycle: no mobile add/edit/delete affordance may remain.
     await page.getByTestId('send-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_sent(),
+    );
     await expect(
       mobileList.getByRole('button', { name: 'Add day-event' }),
     ).not.toBeAttached();
@@ -550,7 +571,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await secondPage.goto(cycleUrl);
     await secondPage.getByTestId('send-cycle-button').click();
     await expect(secondPage.getByTestId('selected-cycle-state')).toHaveText(
-      'sent',
+      m.cycle_state_sent(),
     );
     await secondContext.close();
 
@@ -613,7 +634,7 @@ test.describe('Cycles table view — breakpoint crossing (US3)', () => {
     });
 
     await expect(
-      page.getByRole('grid', { name: 'Calendar review' }),
+      page.getByRole('grid', { name: m.cycle_review_title() }),
     ).toBeVisible();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
@@ -624,7 +645,7 @@ test.describe('Cycles table view — breakpoint crossing (US3)', () => {
 
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(
-      page.getByRole('grid', { name: 'Calendar review' }),
+      page.getByRole('grid', { name: m.cycle_review_title() }),
     ).toBeVisible();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
   });

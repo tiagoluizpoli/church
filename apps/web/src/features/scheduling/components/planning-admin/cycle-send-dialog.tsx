@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getErrorMessage } from './planning-admin.utils';
 import { RetryAlert } from './retry-alert';
@@ -69,8 +69,14 @@ export interface CycleSendDialogProps {
   onClose: () => void;
 }
 
+interface InvalidEvent {
+  id: string;
+  title: string;
+}
+
 interface RefusalBody {
-  invalidEvents?: { id: string; title: string }[];
+  error?: string;
+  invalidEvents?: InvalidEvent[];
 }
 
 interface RefusalInput {
@@ -81,6 +87,28 @@ interface RefusalInput {
 function invalidEventsOf({ error }: RefusalInput) {
   if (!isAxiosError(error)) return [];
   return (error.response?.data as RefusalBody | undefined)?.invalidEvents ?? [];
+}
+
+const SUMMARY_CONFLICT_STATUS = 409;
+const FIRST_SERVER_ERROR_STATUS = 500;
+const RECOVERABLE_SUMMARY_STATUSES = new Set([408, 429]);
+
+function isSummaryStateConflict({ error }: RefusalInput) {
+  if (!isAxiosError<RefusalBody>(error)) return false;
+  const { response } = error;
+  return (
+    response?.status === SUMMARY_CONFLICT_STATUS &&
+    response.data?.error === 'ILLEGAL_STATE_TRANSITION'
+  );
+}
+
+function isRecoverableSummaryError({ error }: RefusalInput) {
+  if (!isAxiosError(error) || !error.response) return true;
+  const { status } = error.response;
+  return (
+    status >= FIRST_SERVER_ERROR_STATUS ||
+    RECOVERABLE_SUMMARY_STATUSES.has(status)
+  );
 }
 
 function refusalMessage({ error }: RefusalInput) {
@@ -115,11 +143,19 @@ export function CycleSendDialog({
     retry: false,
     gcTime: 0,
   });
-  const refreshCycle = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
-      queryClient.invalidateQueries({ queryKey: ['cycles'] }),
-    ]);
+  const refreshCycle = useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
+        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
+      ]),
+    [queryClient, cycleId],
+  );
+  useEffect(() => {
+    if (isSummaryStateConflict({ error: summary.error })) {
+      void refreshCycle();
+    }
+  }, [summary.error, refreshCycle]);
   const send = useMutation({
     mutationFn: () => adminApi.sendCycle(cycleId),
     onError: async () => {
@@ -139,6 +175,8 @@ export function CycleSendDialog({
       onClose();
     },
   });
+  const canRetrySummary =
+    summary.isError && isRecoverableSummaryError({ error: summary.error });
   const invalidEvents = invalidEventsOf({
     error: send.error ?? summary.error,
   });
@@ -163,11 +201,12 @@ export function CycleSendDialog({
           <p className="text-muted-foreground text-sm">
             {m.cycle_send_summary_loading()}
           </p>
-        ) : summary.isError && !isAxiosError(summary.error) ? (
+        ) : canRetrySummary ? (
           <RetryAlert
             message={m.cycle_send_summary_error()}
             testId="cycle-send-summary-error"
             onRetry={() => summary.refetch()}
+            disabled={summary.isFetching}
           />
         ) : summary.data ? (
           <ul className="space-y-1 text-sm" data-testid="cycle-send-summary">
@@ -184,7 +223,7 @@ export function CycleSendDialog({
             <li>{prefillMessage(summary.data.prefilledMinistryCount)}</li>
           </ul>
         ) : null}
-        {send.isError || (summary.isError && isAxiosError(summary.error)) ? (
+        {send.isError || (summary.isError && !canRetrySummary) ? (
           <div
             className="space-y-1 text-destructive text-sm"
             role="alert"
@@ -205,12 +244,14 @@ export function CycleSendDialog({
             {m.cycle_send_cancel()}
           </AlertDialogCancel>
           <AlertDialogAction
-            disabled={send.isPending}
+            disabled={
+              send.isPending || !summary.isSuccess || summary.isFetching
+            }
             data-testid="confirm-cycle-send-button"
             onClick={(event) => {
               // Keep the dialog open until the mutation settles.
               event.preventDefault();
-              send.mutate();
+              if (summary.isSuccess && !summary.isFetching) send.mutate();
             }}
           >
             {send.isPending ? m.cycle_review_sending() : m.cycle_review_send()}

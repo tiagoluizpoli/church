@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { screen, waitFor } from '@testing-library/react';
+import { useQuery } from '@tanstack/react-query';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { toast } from 'sonner';
@@ -9,11 +10,13 @@ import { renderWithProviders } from '@/tests/setup/render';
 
 const getCycleSendSummary = vi.fn();
 const sendCycle = vi.fn();
+const getCycle = vi.fn();
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
     getCycleSendSummary: (...args: unknown[]) => getCycleSendSummary(...args),
     sendCycle: (...args: unknown[]) => sendCycle(...args),
+    getCycle: (...args: unknown[]) => getCycle(...args),
   },
 }));
 
@@ -53,9 +56,26 @@ async function openConfirmation() {
   return user;
 }
 
+/** An active Cycle read, as on review: authoritative Sent state removes Draft actions. */
+function CycleReview() {
+  const cycle = useQuery({
+    queryKey: ['cycle-details', 'cycle-1'],
+    queryFn: () => getCycle('cycle-1'),
+  });
+  return (
+    <>
+      <output data-testid="cycle-state">{cycle.data?.state}</output>
+      {cycle.data?.state === 'draft' ? (
+        <CycleSendAction cycleId="cycle-1" cycleName="Outubro" eventCount={3} />
+      ) : null}
+    </>
+  );
+}
+
 beforeEach(() => {
   getCycleSendSummary.mockReset();
   sendCycle.mockReset();
+  getCycle.mockReset();
   getCycleSendSummary.mockResolvedValue({
     eventCount: 3,
     prefilledMinistryCount: 1,
@@ -84,6 +104,82 @@ describe('Send to Ministries confirmation', () => {
     ).toBeVisible();
     expect(screen.getByText(m.cycle_send_prefill_one())).toBeVisible();
     expect(getCycleSendSummary).toHaveBeenCalledWith('cycle-1');
+  });
+
+  it('waits for successful summary counts before enabling Send', async () => {
+    let finishSummary: (value: {
+      eventCount: number;
+      prefilledMinistryCount: number;
+    }) => void = () => {};
+    getCycleSendSummary.mockReturnValue(
+      new Promise((resolve) => {
+        finishSummary = resolve;
+      }),
+    );
+    const user = await openConfirmation();
+    const confirm = await screen.findByTestId('confirm-cycle-send-button');
+
+    expect(screen.getByText(m.cycle_send_summary_loading())).toBeVisible();
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(sendCycle).not.toHaveBeenCalled();
+
+    finishSummary({ eventCount: 3, prefilledMinistryCount: 1 });
+    expect(await screen.findByTestId('cycle-send-summary')).toBeVisible();
+    await waitFor(() => expect(confirm).toBeEnabled());
+    expect(sendCycle).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      failure: 'Axios network',
+      error: new AxiosError('Network Error', 'ERR_NETWORK'),
+    },
+    {
+      failure: 'Axios server',
+      error: new AxiosError(
+        'Unavailable',
+        'ERR_BAD_RESPONSE',
+        undefined,
+        undefined,
+        { status: 503, data: {} } as AxiosResponse,
+      ),
+    },
+    { failure: 'non-Axios', error: new Error('offline') },
+  ])('keeps Send disabled after a $failure summary failure and offers retry', async ({
+    error,
+  }) => {
+    let finishSummary: (value: {
+      eventCount: number;
+      prefilledMinistryCount: number;
+    }) => void = () => {};
+    getCycleSendSummary.mockRejectedValueOnce(error).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishSummary = resolve;
+      }),
+    );
+    const user = await openConfirmation();
+    const alert = await screen.findByTestId('cycle-send-summary-error');
+    const confirm = screen.getByTestId('confirm-cycle-send-button');
+    expect(alert).toHaveTextContent(m.cycle_send_summary_error());
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(sendCycle).not.toHaveBeenCalled();
+
+    await user.click(
+      within(alert).getByRole('button', { name: m.event_templates_retry() }),
+    );
+    expect(confirm).toBeDisabled();
+    expect(sendCycle).not.toHaveBeenCalled();
+    finishSummary({ eventCount: 3, prefilledMinistryCount: 1 });
+    expect(await screen.findByTestId('cycle-send-summary')).toBeVisible();
+    await waitFor(() => expect(confirm).toBeEnabled());
+    expect(getCycleSendSummary).toHaveBeenCalledTimes(2);
+    await user.click(confirm);
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
+    );
+    expect(sendCycle).toHaveBeenCalledTimes(1);
   });
 
   it('does nothing when dismissed', async () => {
@@ -158,6 +254,29 @@ describe('Send to Ministries confirmation', () => {
     expect(error).toHaveTextContent('Retiro antigo');
     expect(screen.getByRole('alertdialog')).toBeVisible();
     await waitFor(() => expect(getCycleSendSummary).toHaveBeenCalledTimes(2));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('refreshes an authoritative Sent Cycle after a summary conflict without sending or reporting success', async () => {
+    getCycle
+      .mockResolvedValueOnce({ state: 'draft' })
+      .mockResolvedValue({ state: 'sent' });
+    getCycleSendSummary.mockRejectedValue(
+      conflict({
+        error: 'ILLEGAL_STATE_TRANSITION',
+        message: m.error_illegal_state_transition(),
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<CycleReview />);
+    await user.click(await screen.findByTestId('send-cycle-button'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cycle-state')).toHaveTextContent('sent'),
+    );
+    expect(getCycle).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
+    expect(sendCycle).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
   });
 

@@ -1,4 +1,3 @@
-import { m } from '@church/i18n/messages';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { createCycleViaApi } from './cycle-api.helpers';
 import { fillDatePickerField } from './date-picker.helpers';
@@ -53,7 +52,7 @@ async function createOpenCycle({
   });
   await page.goto(`/cycles/${cycle.id}`);
   await expect(
-    page.getByRole('button', { name: m.cycles_add_event_button() }),
+    page.getByRole('button', { name: 'Adicionar evento', exact: true }),
   ).toBeVisible();
 }
 
@@ -73,7 +72,9 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
     journey,
     name: 'Single create-event UI check',
   });
-  await page.getByRole('button', { name: m.cycles_add_event_button() }).click();
+  await page
+    .getByRole('button', { name: 'Adicionar evento', exact: true })
+    .click();
   const planningDialog = page.getByRole('dialog');
   await assertCanonicalCreateEventForm(planningDialog);
   await planningDialog.getByRole('button', { name: 'Cancel' }).click();
@@ -108,7 +109,7 @@ test.describe('quick-create stores church-local Instants (#149)', () => {
     });
 
     await page
-      .getByRole('button', { name: m.cycles_add_event_button() })
+      .getByRole('button', { name: 'Adicionar evento', exact: true })
       .click();
     const dialog = page.getByRole('dialog');
     const title = 'Church TZ event';

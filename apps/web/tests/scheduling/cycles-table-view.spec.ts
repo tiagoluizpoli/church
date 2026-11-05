@@ -230,7 +230,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await expect(calendarTable).toBeVisible();
     await expect(
-      page.getByRole('button', { name: m.cycles_add_event_button() }),
+      page.getByRole('button', { name: 'Adicionar evento', exact: true }),
     ).not.toBeAttached();
     await expect(page.getByTestId('send-cycle-button')).not.toBeAttached();
   });
@@ -439,7 +439,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
 
     // Add a day-event from the mobile surface — opens as a bottom drawer.
     await mobileList
-      .getByRole('button', { name: m.cycle_review_add_day_event() })
+      .getByRole('button', { name: 'Adicionar evento do dia' })
       .click();
     const addDialog = page.getByRole('dialog', { name: 'New Event' });
     await expect(addDialog).toBeVisible();
@@ -542,7 +542,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
     await expect(
-      mobileList.getByRole('button', { name: m.cycle_review_add_day_event() }),
+      mobileList.getByRole('button', { name: 'Adicionar evento do dia' }),
     ).not.toBeAttached();
     await expect(
       mobileList.getByRole('button', { name: /^Edit day/ }),

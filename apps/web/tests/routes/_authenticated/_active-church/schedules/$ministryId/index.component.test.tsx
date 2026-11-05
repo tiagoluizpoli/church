@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -325,12 +326,12 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
 
     const dateStart = screen.getByTestId('prepare-cycle-date-start-filter');
     await pickCalendarDate({ user, trigger: dateStart, date: '2026-08-15' });
-    expect(dateStart).not.toHaveTextContent('Pick a date');
+    expect(dateStart).not.toHaveTextContent(m.date_picker_placeholder());
 
     await user.click(
       screen.getByTestId('prepare-cycle-date-start-filter-clear'),
     );
-    expect(dateStart).toHaveTextContent('Pick a date');
+    expect(dateStart).toHaveTextContent(m.date_picker_placeholder());
     // Clearing a single field is still just a draft edit — Apply reflects it.
     expect(screen.getByTestId('prepare-cycle-filters-apply')).toBeDisabled();
   });

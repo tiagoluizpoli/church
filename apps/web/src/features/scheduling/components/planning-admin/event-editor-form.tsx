@@ -63,6 +63,8 @@ function EventInstantField({
         timeZone={timeZone}
         data-testid={id}
         aria-labelledby={`${id}-label`}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         onChange={onChange}
       />
       <FieldError id={`${id}-error`} message={error} />
@@ -160,7 +162,7 @@ function EventBlockRow({
           label={m.event_editor_start_label()}
           value={block.start}
           timeZone={timeZone}
-          error={undefined}
+          error={errors.time}
           onChange={(value) =>
             onBlockChange({ blockKey: block.key, field: 'start', value })
           }

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseTimeOfDay, type TimeOfDay } from '@church/time';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -131,7 +132,7 @@ describe('TimeOfDayField', () => {
     // The chevron opens the list as-is, without typing over the held value —
     // the mouse path to the same list a keyboard user reaches by typing.
     await user.click(
-      screen.getByRole('button', { name: 'Pick a common time' }),
+      screen.getByRole('button', { name: m.time_of_day_pick_common() }),
     );
 
     const listbox = await screen.findByRole('listbox');

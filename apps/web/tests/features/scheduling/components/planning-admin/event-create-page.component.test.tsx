@@ -216,6 +216,63 @@ describe('EventCreatePage', () => {
     expect(createPlanningEvent).not.toHaveBeenCalled();
   });
 
+  it('associates invalid Event and block dates and time segments with their own errors, clearing them after correction', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByTestId('event-editor-form');
+    await user.type(titleInput(), 'Service');
+
+    const expectInvalidInstant = (id: string, message: string) => {
+      const date = screen.getByTestId(`${id}-date`);
+      expect(date).toHaveAttribute('aria-invalid', 'true');
+      expect(date).toHaveAccessibleDescription(message);
+      for (const segment of within(
+        screen.getByTestId(`${id}-time`),
+      ).getAllByRole('spinbutton')) {
+        expect(segment).toHaveAttribute('aria-invalid', 'true');
+        expect(segment).toHaveAccessibleDescription(new RegExp(message));
+      }
+    };
+
+    await setTime({ user, testId: 'event-end', time: '18:00' });
+    expectInvalidInstant(
+      'event-end',
+      m.error_validation_invalid_event_bounds(),
+    );
+    await setTime({ user, testId: 'event-end', time: '21:00' });
+    expect(screen.getByTestId('event-end-date')).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    for (const segment of within(
+      screen.getByTestId('event-end-time'),
+    ).getAllByRole('spinbutton')) {
+      expect(segment).not.toHaveAttribute('aria-invalid', 'true');
+      expect(segment).not.toHaveAccessibleDescription(
+        new RegExp(m.error_validation_invalid_event_bounds()),
+      );
+    }
+
+    await setTime({ user, testId: 'event-block-1-start', time: '18:00' });
+    expectInvalidInstant(
+      'event-block-1-start',
+      m.error_validation_event_time_block_out_of_bounds(),
+    );
+    expectInvalidInstant(
+      'event-block-1-end',
+      m.error_validation_event_time_block_out_of_bounds(),
+    );
+    expect(screen.getByTestId('event-start-date')).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+
+    await setDay({ user, testId: 'event-start', date: '2026-10-26' });
+    expectInvalidInstant('event-start', m.error_event_outside_cycle());
+    expect(saveButton()).toBeDisabled();
+    expect(createPlanningEvent).not.toHaveBeenCalled();
+  });
+
   it('saves a multi-day retreat ending after the Cycle and returns to the review revealing it', async () => {
     createPlanningEvent.mockResolvedValue({
       event: { id: 'event-9' },

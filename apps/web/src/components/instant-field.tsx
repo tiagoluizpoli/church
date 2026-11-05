@@ -15,6 +15,8 @@ export interface InstantFieldProps {
   onChange: (instant: Instant) => void;
   disabled?: boolean;
   'aria-labelledby'?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   'data-testid'?: string;
 }
 
@@ -32,6 +34,8 @@ export function InstantField({
   onChange,
   disabled,
   'aria-labelledby': ariaLabelledby,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedby,
   'data-testid': dataTestId,
 }: InstantFieldProps) {
   const day = today({ instant: value, timeZone });
@@ -42,6 +46,9 @@ export function InstantField({
       <DatePickerField
         id={`${idPrefix}-date`}
         value={day}
+        aria-labelledby={ariaLabelledby}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedby}
         disabled={disabled}
         data-testid={dataTestId ? `${dataTestId}-date` : undefined}
         onChange={(nextDayValue) =>
@@ -57,6 +64,8 @@ export function InstantField({
       <TimeOfDayField
         id={`${idPrefix}-time`}
         value={time}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedby}
         disabled={disabled}
         aria-labelledby={ariaLabelledby}
         data-testid={dataTestId ? `${dataTestId}-time` : undefined}

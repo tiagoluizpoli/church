@@ -889,5 +889,9 @@
   "event_editor_delete_dismiss": "Manter evento",
   "event_editor_delete_confirm": "Excluir evento",
   "event_editor_deleting": "Excluindo…",
-  "event_editor_deleted_toast": "Evento excluído."
+  "event_editor_deleted_toast": "Evento excluído.",
+  "date_picker_placeholder": "Escolha uma data",
+  "date_picker_clear": "Limpar data",
+  "time_of_day_pick_common": "Escolher um horário comum",
+  "time_of_day_common_times": "Horários comuns"
 }

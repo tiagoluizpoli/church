@@ -889,5 +889,9 @@
   "event_editor_delete_dismiss": "Keep event",
   "event_editor_delete_confirm": "Delete event",
   "event_editor_deleting": "Deleting…",
-  "event_editor_deleted_toast": "Event deleted."
+  "event_editor_deleted_toast": "Event deleted.",
+  "date_picker_placeholder": "Pick a date",
+  "date_picker_clear": "Clear date",
+  "time_of_day_pick_common": "Pick a common time",
+  "time_of_day_common_times": "Common times"
 }

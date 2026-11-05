@@ -445,6 +445,24 @@ export function conflictingCyclesOf({
     : [];
 }
 
+export interface OutsideEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+}
+
+/** The Events a 409 `EVENT_OUTSIDE_CYCLE` edit refusal names; none for any other failure. */
+export function outsideEventsOf({ error }: ErrorMessageInput): OutsideEvent[] {
+  const data = isAxiosError(error) ? error.response?.data : undefined;
+  return data &&
+    typeof data === 'object' &&
+    'outsideEvents' in data &&
+    Array.isArray(data.outsideEvents)
+    ? data.outsideEvents
+    : [];
+}
+
 export function canSaveTemplate({
   templateForm,
 }: TemplateFormValidityInput): boolean {

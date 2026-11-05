@@ -9,6 +9,7 @@ import {
   getErrorMessage,
   isCycleNameTooLong,
   isCycleRangeReversed,
+  outsideEventsOf,
   suggestCycleName,
 } from './planning-admin.utils';
 import { DatePickerField } from '@/components/date-picker-field';
@@ -16,7 +17,11 @@ import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatCalendarDateOnly } from '@/shared/utils/church-time';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import {
+  formatCalendarDateOnly,
+  formatInstantRangeOf,
+} from '@/shared/utils/church-time';
 
 export type CycleFormValues = CycleFormState;
 
@@ -46,6 +51,8 @@ interface FormState {
 interface SubmitFailure {
   message: string;
   conflicts: string[];
+  /** Every Event an edited range would exclude, each one named. */
+  outsideEvents: string[];
 }
 
 interface InitialFormInput {
@@ -71,6 +78,7 @@ export function CycleFormDialog({
   onSubmit,
 }: CycleFormDialogProps) {
   const formId = useId();
+  const { churchTimezone } = useTimezone();
   const [form, setForm] = useState<FormState>(() =>
     initialForm({ initialValues }),
   );
@@ -116,6 +124,16 @@ export function CycleFormDialog({
             name: conflict.name,
             startDate: formatCalendarDateOnly({ value: conflict.startDate }),
             endDate: formatCalendarDateOnly({ value: conflict.endDate }),
+          }),
+        ),
+        outsideEvents: outsideEventsOf({ error }).map((outside) =>
+          m.cycles_form_outside_event_item({
+            title: outside.title,
+            range: formatInstantRangeOf({
+              start: outside.start,
+              end: outside.end,
+              timeZone: churchTimezone,
+            }),
           }),
         ),
       });
@@ -208,7 +226,7 @@ export function CycleFormDialog({
           </p>
         ) : null}
         {failure ? (
-          <p
+          <div
             role="alert"
             className="text-destructive text-sm"
             data-testid="cycle-create-error"
@@ -217,7 +235,19 @@ export function CycleFormDialog({
             {failure.conflicts.length > 0
               ? ` ${m.cycles_form_conflicts({ conflicts: failure.conflicts.join(', ') })}`
               : null}
-          </p>
+            {failure.outsideEvents.length > 0 ? (
+              <>
+                {` ${m.cycles_form_outside_events()}`}
+                <ul className="list-disc ps-5">
+                  {failure.outsideEvents.map((outside, index) => (
+                    // Two Events may share a title and time; order is stable.
+                    // biome-ignore lint/suspicious/noArrayIndexKey: display-only list rebuilt per failure
+                    <li key={index}>{outside}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
         ) : null}
       </form>
     </ResponsiveFormSurface>

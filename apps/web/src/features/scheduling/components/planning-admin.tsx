@@ -8,6 +8,7 @@ import {
   CycleListStats,
   PlanningTemplateLibraryStats,
 } from './planning-admin/cycle-header';
+import { EditCycleDialog } from './planning-admin/edit-cycle-dialog';
 import { cycleIsReadOnly } from './planning-admin/planning-admin.utils';
 import {
   PlanningAdminProvider,
@@ -163,6 +164,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
   const { handleClearSelectedCycle } = useCycleSelection();
   const navigate = useNavigate();
   const [deleteCycleOpen, setDeleteCycleOpen] = useState(false);
+  const [editCycleOpen, setEditCycleOpen] = useState(false);
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const isReviewingCycle = isReviewingCyclePath({ pathname });
@@ -170,7 +172,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
     isReviewingCycle &&
     Boolean(selectedCycle) &&
     !cycleIsReadOnly({ cycle: selectedCycle });
-  const canDeleteCycle = isReviewingCycle && selectedCycle?.state === 'draft';
+  const canEditDraft = isReviewingCycle && selectedCycle?.state === 'draft';
 
   return (
     <>
@@ -192,7 +194,17 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
             Add event
           </Button>
         ) : null}
-        {canDeleteCycle ? (
+        {canEditDraft ? (
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="edit-cycle-button"
+            onClick={() => setEditCycleOpen(true)}
+          >
+            {m.cycles_edit_button()}
+          </Button>
+        ) : null}
+        {canEditDraft ? (
           <Button
             type="button"
             variant="outline"
@@ -204,7 +216,21 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         ) : null}
       </div>
 
-      {canDeleteCycle && deleteCycleOpen && selectedCycle ? (
+      {canEditDraft && selectedCycle ? (
+        <EditCycleDialog
+          open={editCycleOpen}
+          onOpenChange={setEditCycleOpen}
+          cycle={{
+            id: selectedCycle.id,
+            name: selectedCycle.name,
+            // The picker edits CalendarDays; the bound's day is its prefix.
+            startDate: selectedCycle.startDate.slice(0, 10),
+            endDate: selectedCycle.endDate.slice(0, 10),
+          }}
+        />
+      ) : null}
+
+      {canEditDraft && deleteCycleOpen && selectedCycle ? (
         <CycleDeleteDialog
           cycleId={selectedCycle.id}
           cycleName={selectedCycle.name}

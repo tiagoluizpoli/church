@@ -14,6 +14,7 @@ const getCycle = vi.fn();
 const getEventTemplate = vi.fn();
 const applyPlanningTemplates = vi.fn();
 const deleteCycle = vi.fn();
+const updateCycle = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -25,6 +26,7 @@ vi.mock('@/utils/api-instances', async () => ({
     applyPlanningTemplates: (...args: unknown[]) =>
       applyPlanningTemplates(...args),
     deleteCycle: (...args: unknown[]) => deleteCycle(...args),
+    updateCycle: (...args: unknown[]) => updateCycle(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -449,6 +451,62 @@ describe('Cycle deletion', () => {
     expect(deleteCycle).toHaveBeenCalledWith('cycle-1');
     expect(screen.queryByTestId('cycle-option')).not.toBeInTheDocument();
     expect(screen.queryByTestId('selected-cycle-name')).not.toBeInTheDocument();
+  });
+});
+
+describe('Cycle edit', () => {
+  const draft = {
+    id: 'cycle-1',
+    name: 'August 2026',
+    startDate: '2026-08-01',
+    endDate: '2026-08-31',
+    state: 'draft' as const,
+  };
+
+  it('edits a Draft in place, refreshing its name on the same detail', async () => {
+    const renamed = { ...draft, name: 'Retiro de agosto' };
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    updateCycle.mockImplementation(async () => {
+      listCycles.mockResolvedValue({ cycles: [renamed] });
+      getCycle.mockResolvedValue({ cycle: renamed, events: [] });
+      return renamed;
+    });
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await user.click(await screen.findByTestId('edit-cycle-button'));
+    const name = await screen.findByTestId('cycle-name-input');
+    expect(name).toHaveValue('August 2026');
+    await user.clear(name);
+    await user.type(name, 'Retiro de agosto');
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('selected-cycle-name')).toHaveTextContent(
+        'Retiro de agosto',
+      ),
+    );
+    expect(updateCycle).toHaveBeenCalledWith('cycle-1', {
+      name: 'Retiro de agosto',
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('does not offer Edit on a sent Cycle', async () => {
+    const sent = { ...draft, state: 'sent' as const };
+    listCycles.mockResolvedValue({ cycles: [sent] });
+    getCycle.mockResolvedValue({ cycle: sent, events: [] });
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await screen.findByTestId('selected-cycle-state');
+
+    expect(screen.queryByTestId('edit-cycle-button')).not.toBeInTheDocument();
   });
 });
 

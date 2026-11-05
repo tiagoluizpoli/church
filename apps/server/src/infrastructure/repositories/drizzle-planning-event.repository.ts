@@ -155,7 +155,12 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           withChurchIsolation({ table: event, churchId: input.churchId }),
         ),
       )
-      .orderBy(asc(event.start));
+      .orderBy(
+        asc(event.start),
+        asc(event.end),
+        asc(event.title),
+        asc(event.id),
+      );
 
     return Promise.all(
       eventRows.map(async (eventRow) => {
@@ -171,7 +176,11 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
               }),
             ),
           )
-          .orderBy(asc(eventTimeBlock.startTime));
+          .orderBy(
+            asc(eventTimeBlock.startTime),
+            asc(eventTimeBlock.endTime),
+            asc(eventTimeBlock.id),
+          );
 
         const eventTimeBlocks = await Promise.all(
           eventTimeBlockRows.map(async (eventTimeBlockRow) => {

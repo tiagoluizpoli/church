@@ -9,7 +9,7 @@ import {
   toDate,
   today,
 } from '@church/time';
-import type { EventId } from '../domain/branded-ids';
+import type { EventId, EventTimeBlockId } from '../domain/branded-ids';
 import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
@@ -18,6 +18,7 @@ import type {
   GeneratedPlanningCounts,
   GeneratePlanningTemplatesInput,
   IPlanningEventManager,
+  PlanningEventGraph,
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
@@ -42,6 +43,7 @@ import {
   type ExistingGeneratedEventTimeBlockFingerprint,
   eventTimeBlockEnvelope,
 } from '../domain/services/cycle-event-generator';
+import { assertEventGraph } from '../domain/services/event-graph';
 
 interface EnsureCycleWritableInput {
   cycle: Cycle;
@@ -276,7 +278,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
-  async createEvent(input: CreatePlanningEventManagerInput): Promise<Event> {
+  async createEvent(
+    input: CreatePlanningEventManagerInput,
+  ): Promise<PlanningEventGraph> {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
@@ -289,24 +293,54 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
+      // Draft-only: post-Send additions belong to their own operation.
+      if (cycle.state !== 'draft') {
+        throw new IllegalStateTransitionError({
+          from: cycle.state,
+          to: 'create-event',
+        });
+      }
 
-      assertEventStartsWithinCycle({
+      assertEventGraph({
+        graph: {
+          start: fromDate({ date: input.start }),
+          end: fromDate({ date: input.end }),
+          eventTimeBlocks: input.eventTimeBlocks.map((block) => ({
+            label: block.label,
+            startTime: fromDate({ date: block.startTime }),
+            endTime: fromDate({ date: block.endTime }),
+          })),
+        },
         cycle,
-        eventStart: input.start,
-        churchTimeZone: church.timezone,
+        timeZone: church.timezone,
       });
 
       const event = await this.eventRepository.createEvent({
         churchId: input.churchId,
         cycleId: input.cycleId,
         title: input.title,
-        description: input.description,
         location: input.location,
         start: input.start,
         end: input.end,
-        status: cycle.state === 'sent' ? 'scheduled' : 'draft',
+        status: 'draft',
         tx,
       });
+
+      // A plain insert: no Shift is seeded for a Draft block.
+      const blockIds: EventTimeBlockId[] = [];
+      // Sequential: concurrent queries on one transaction connection warn in pg.
+      for (const block of input.eventTimeBlocks) {
+        blockIds.push(
+          await this.eventRepository.createEventTimeBlock({
+            churchId: input.churchId,
+            eventId: event.id,
+            label: block.label,
+            startTime: block.startTime,
+            endTime: block.endTime,
+            tx,
+          }),
+        );
+      }
 
       await this.eventRepository.seedParticipations({
         churchId: input.churchId,
@@ -314,7 +348,18 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
-      return event;
+      const listed = await this.eventTimeBlockRepository.listByEvent({
+        churchId: input.churchId,
+        eventId: event.id,
+        tx,
+      });
+      const listedById = new Map(listed.map((block) => [block.id, block]));
+      // In submitted order; every id was inserted above in this transaction.
+      const eventTimeBlocks = blockIds.flatMap(
+        (id) => listedById.get(id) ?? [],
+      );
+
+      return { event, eventTimeBlocks };
     });
   }
 

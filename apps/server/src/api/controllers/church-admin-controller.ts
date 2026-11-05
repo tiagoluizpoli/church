@@ -53,6 +53,12 @@ import {
 } from '../dtos/event-time-block.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
+  type CreatePlanningEventBody,
+  createPlanningEventBodySchema,
+  eventGraphMapper,
+  eventGraphResponseSchema,
+} from '../dtos/planning-event.dto';
+import {
   type SetDefaultDirectionBody,
   setDefaultDirectionBodySchema,
 } from '../dtos/usual-setup.dto';
@@ -87,18 +93,15 @@ interface MinistryRouteParams {
   ministryId: string;
 }
 
-const manualPlanningEventBodySchema = createEventBodySchema.omit({
-  ministryId: true,
-});
-
-const updatePlanningEventBodySchema = manualPlanningEventBodySchema.partial();
+const updatePlanningEventBodySchema = createEventBodySchema
+  .omit({ ministryId: true })
+  .partial();
 
 const notFoundResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
 
-type ManualPlanningEventBody = z.infer<typeof manualPlanningEventBodySchema>;
 type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
 
 interface ChurchAdminControllerDependencies {
@@ -503,26 +506,34 @@ export class ChurchAdminController implements FastifyController {
         schema: {
           tags: ['planning'],
           operationId: 'createPlanningEvent',
-          summary: 'Create a manual Event',
+          summary: 'Create a Draft Event with its Time blocks',
           description:
-            'Create a one-off Event within a Cycle without using an EventTemplate.',
-          body: manualPlanningEventBodySchema,
-          response: { 201: eventResponseSchema },
+            'Create a one-off or multi-day Draft Event and every one of its EventTimeBlocks together, with its participation scaffold and no staffing. Its Church-local start day must fall within the inclusive Cycle; its end may spill past it.',
+          body: createPlanningEventBodySchema,
+          response: {
+            201: eventGraphResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleRouteParams;
-        const body = request.body as ManualPlanningEventBody;
-        const event = await this.planningEventManager.createEvent({
+        const body = request.body as CreatePlanningEventBody;
+        const location = body.location?.trim();
+        const graph = await this.planningEventManager.createEvent({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           title: body.title,
-          description: body.description,
-          location: body.location,
+          location: location ? location : undefined,
           start: dateFromInstantString({ value: body.start }),
           end: dateFromInstantString({ value: body.end }),
+          eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
+            label: block.label,
+            startTime: dateFromInstantString({ value: block.startTime }),
+            endTime: dateFromInstantString({ value: block.endTime }),
+          })),
         });
-        return reply.status(201).send(eventMapper.toResponse(event));
+        return reply.status(201).send(eventGraphMapper.toResponse(graph));
       },
     );
 

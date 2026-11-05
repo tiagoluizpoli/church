@@ -148,27 +148,32 @@ describe('Planning transaction guarantees', () => {
       startDate: new Date('2027-06-01T00:00:00.000Z'),
       endDate: new Date('2027-07-01T00:00:00.000Z'),
     });
-    const cascadeEvent = await eventManager.createEvent({
-      churchId: churchAId,
-      cycleId: cycle.id,
-      title: 'Cascade day',
-      start: new Date('2027-06-02T09:00:00.000Z'),
-      end: new Date('2027-06-02T12:00:00.000Z'),
+    const { event: cascadeEvent, eventTimeBlocks: createdBlocks } =
+      await eventManager.createEvent({
+        churchId: churchAId,
+        cycleId: cycle.id,
+        title: 'Cascade day',
+        start: new Date('2027-06-02T09:00:00.000Z'),
+        end: new Date('2027-06-02T12:00:00.000Z'),
+        eventTimeBlocks: [
+          {
+            label: 'Opening',
+            startTime: new Date('2027-06-02T09:00:00.000Z'),
+            endTime: new Date('2027-06-02T10:00:00.000Z'),
+          },
+        ],
+      });
+    const [eventTimeBlockOne] = await schedulingTestDb
+      .select()
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, createdBlocks[0]?.id ?? ''));
+    if (!eventTimeBlockOne) throw new Error('expected the created block');
+    const eventTimeBlockTwo = await seedEventTimeBlock({
+      churchId: seed.churchAId,
+      eventId: cascadeEvent.id,
+      startTime: new Date('2027-06-02T10:30:00.000Z'),
+      endTime: new Date('2027-06-02T11:30:00.000Z'),
     });
-    const [eventTimeBlockOne, eventTimeBlockTwo] = await Promise.all([
-      seedEventTimeBlock({
-        churchId: seed.churchAId,
-        eventId: cascadeEvent.id,
-        startTime: new Date('2027-06-02T09:00:00.000Z'),
-        endTime: new Date('2027-06-02T10:00:00.000Z'),
-      }),
-      seedEventTimeBlock({
-        churchId: seed.churchAId,
-        eventId: cascadeEvent.id,
-        startTime: new Date('2027-06-02T10:30:00.000Z'),
-        endTime: new Date('2027-06-02T11:30:00.000Z'),
-      }),
-    ]);
 
     // Changing only title/endDate must NOT move any event time block.
     await eventManager.updateEvent({
@@ -234,19 +239,24 @@ describe('Planning transaction guarantees', () => {
     // Atomic rollback: if an event time block in the cascade loop fails partway through,
     // the whole transaction — including the event's own startDate — must
     // roll back together, not leave a half-shifted day.
-    const rollbackEvent = await eventManager.createEvent({
+    const {
+      event: rollbackEvent,
+      eventTimeBlocks: [survivingEventTimeBlock],
+    } = await eventManager.createEvent({
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'Rollback day',
       start: new Date('2027-06-10T09:00:00.000Z'),
       end: new Date('2027-06-10T10:00:00.000Z'),
+      eventTimeBlocks: [
+        {
+          label: 'Surviving',
+          startTime: new Date('2027-06-10T09:00:00.000Z'),
+          endTime: new Date('2027-06-10T10:00:00.000Z'),
+        },
+      ],
     });
-    const survivingEventTimeBlock = await seedEventTimeBlock({
-      churchId: seed.churchAId,
-      eventId: rollbackEvent.id,
-      startTime: new Date('2027-06-10T09:00:00.000Z'),
-      endTime: new Date('2027-06-10T10:00:00.000Z'),
-    });
+    if (!survivingEventTimeBlock) throw new Error('expected the created block');
     const failingEventTimeBlock = await seedEventTimeBlock({
       churchId: seed.churchAId,
       eventId: rollbackEvent.id,

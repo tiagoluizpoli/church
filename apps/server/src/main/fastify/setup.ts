@@ -25,6 +25,7 @@ import {
   existingInvitation,
   outsideEvents,
   upcomingAssignments,
+  validationField,
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
@@ -167,6 +168,7 @@ export async function createFastify({
         request.log.warn({ code: error.code }, 'No catalog message for code');
       }
       const reason = validationReason(error);
+      const field = validationField(error);
       const blockers = archiveBlockers(error);
       const existing = existingInvitation(error);
       const assignments = upcomingAssignments(error);
@@ -176,6 +178,7 @@ export async function createFastify({
         error: error.code,
         message: message ?? genericError,
         ...(reason && { reason }),
+        ...(field && { field }),
         ...(blockers && { blockers }),
         ...(existing && { existingInvitation: existing }),
         ...(assignments && { assignments }),

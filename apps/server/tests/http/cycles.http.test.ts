@@ -801,7 +801,12 @@ describe('Cycle last day', () => {
       return app.inject({
         method: 'POST',
         url: `/api/v1/admin/cycles/${cycleId}/events`,
-        payload: { title: 'Vigil', start, end },
+        payload: {
+          title: 'Vigil',
+          start,
+          end,
+          eventTimeBlocks: [{ label: 'Vigil', startTime: start, endTime: end }],
+        },
       });
     }
 
@@ -1780,6 +1785,13 @@ describe('PATCH /admin/cycles/:cycleId', () => {
               title: 'Late',
               start: '2026-10-25T22:00:00.000Z',
               end: '2026-10-26T00:00:00.000Z',
+              eventTimeBlocks: [
+                {
+                  label: 'Late',
+                  startTime: '2026-10-25T22:00:00.000Z',
+                  endTime: '2026-10-26T00:00:00.000Z',
+                },
+              ],
             },
           })
           .then((response) => response);

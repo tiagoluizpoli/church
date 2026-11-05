@@ -6,6 +6,7 @@ export * from './cross-church-volunteer-conflict';
 export * from './cross-ministry-scope';
 export * from './draft-staffing-reconciliation-required';
 export * from './duplicate-headcount';
+export * from './event-graph-rule';
 export * from './event-outside-cycle';
 export * from './illegal-state-transition';
 export * from './insufficient-invitation-authority';

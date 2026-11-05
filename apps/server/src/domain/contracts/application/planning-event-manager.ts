@@ -19,14 +19,28 @@ export interface GeneratedPlanningCounts {
   generatedEventTimeBlockCount: number;
 }
 
+/** One Time block of a complete Event create. */
+export interface PlanningEventTimeBlockDraft {
+  label: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+/** A Draft Event with every one of its Time blocks, saved together. */
 export interface CreatePlanningEventManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   title: string;
-  description?: string;
   location?: string;
   start: Date;
   end: Date;
+  eventTimeBlocks: PlanningEventTimeBlockDraft[];
+}
+
+/** An Event with its EventTimeBlocks, as a create or edit returns them. */
+export interface PlanningEventGraph {
+  event: Event;
+  eventTimeBlocks: EventTimeBlock[];
 }
 
 export interface UpdatePlanningEventManagerInput {
@@ -76,7 +90,9 @@ export interface IPlanningEventManager {
   generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
   ): Promise<GeneratedPlanningCounts>;
-  createEvent(input: CreatePlanningEventManagerInput): Promise<Event>;
+  createEvent(
+    input: CreatePlanningEventManagerInput,
+  ): Promise<PlanningEventGraph>;
   updateEvent(input: UpdatePlanningEventManagerInput): Promise<Event>;
   cancelEvent(input: CancelPlanningEventManagerInput): Promise<void>;
   createEventTimeBlock(

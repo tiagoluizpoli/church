@@ -3,6 +3,7 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
+import { EventGraphRuleError } from '@/domain/errors/event-graph-rule';
 import {
   EventOutsideCycleError,
   type OutsideEventReference,
@@ -36,6 +37,15 @@ export const VALIDATION_REASON_MESSAGES: Record<
   USUAL_SETUP_EMPTY: m.error_validation_usual_setup_empty,
   INVALID_SHIFT_INDEX: m.error_validation_invalid_shift_index,
   INVITATION_ROLE_REQUIRED: m.error_validation_invitation_role_required,
+  INVALID_EVENT_BOUNDS: m.error_validation_invalid_event_bounds,
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS:
+    m.error_validation_event_time_block_out_of_bounds,
+  EVENT_TIME_BLOCK_LABEL_REQUIRED:
+    m.error_validation_event_time_block_label_required,
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL:
+    m.error_validation_duplicate_event_time_block_label,
+  DUPLICATE_EVENT_TIME_BLOCK_ID:
+    m.error_validation_duplicate_event_time_block_id,
 };
 
 interface DomainErrorMessageInput {
@@ -48,6 +58,11 @@ export function validationReason(
   error: DomainError,
 ): ValidationReason | undefined {
   return error instanceof ValidationRuleError ? error.reason : undefined;
+}
+
+/** The request field a final Event-graph rule refused, also sent to the client. */
+export function validationField(error: DomainError): string | undefined {
+  return error instanceof EventGraphRuleError ? error.field : undefined;
 }
 
 /** The typed locations that block an archive, also sent to the client. */

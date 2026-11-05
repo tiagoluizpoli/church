@@ -2,11 +2,10 @@ import { calendarDaySchema, fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { CycleDetails } from '../../domain/contracts/application/cycle-manager';
 import type { Cycle } from '../../domain/entities/cycle';
-import { eventMapper, eventResponseSchema } from './event.dto';
 import {
-  eventTimeBlockMapper,
-  eventTimeBlockResponseSchema,
-} from './event-time-block.dto';
+  eventGraphMapper,
+  eventGraphResponseSchema,
+} from './planning-event.dto';
 
 /** Matches the `cycle.name` column length. */
 const CYCLE_NAME_MAX_LENGTH = 255;
@@ -78,12 +77,7 @@ export const cycleListResponseSchema = z.object({
 
 export const cycleDetailsResponseSchema = z.object({
   cycle: cycleResponseSchema,
-  events: z.array(
-    z.object({
-      event: eventResponseSchema,
-      eventTimeBlocks: z.array(eventTimeBlockResponseSchema),
-    }),
-  ),
+  events: z.array(eventGraphResponseSchema),
 });
 
 export type CycleResponse = z.infer<typeof cycleResponseSchema>;
@@ -109,12 +103,7 @@ export const cycleMapper = {
   detailsToResponse(details: CycleDetails) {
     return {
       cycle: toCycleResponse(details.cycle),
-      events: details.events.map((eventGroup) => ({
-        event: eventMapper.toResponse(eventGroup.event),
-        eventTimeBlocks: eventGroup.eventTimeBlocks.map(
-          eventTimeBlockMapper.toResponse,
-        ),
-      })),
+      events: details.events.map(eventGraphMapper.toResponse),
     };
   },
 };

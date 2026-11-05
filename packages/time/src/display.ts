@@ -146,6 +146,18 @@ export function formatDayLabel({
   return locale === 'pt-BR' ? plain.toLowerCase() : plain;
 }
 
+/** `October 2026` / `Outubro 2026`: the month and year of the day. */
+export function formatMonthYear({
+  day,
+  locale,
+}: CalendarDayLocaleInput): string {
+  const month = new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
+  return `${capitalize(month)} ${splitCalendarDay({ day }).year}`;
+}
+
 export interface TimeOfDayFormatInput {
   time: TimeOfDay;
 }

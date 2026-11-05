@@ -1,21 +1,24 @@
 import { m } from '@church/i18n/messages';
-import { Link, Outlet, useLocation } from '@tanstack/react-router';
+import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
+import { CycleDeleteDialog } from './planning-admin/cycle-delete-dialog';
 import {
   CycleHeader,
   CycleListStats,
   PlanningTemplateLibraryStats,
 } from './planning-admin/cycle-header';
-import { cycleIsSent } from './planning-admin/planning-admin.utils';
+import { EditCycleDialog } from './planning-admin/edit-cycle-dialog';
+import { cycleIsReadOnly } from './planning-admin/planning-admin.utils';
 import {
   PlanningAdminProvider,
   useCycleHeader,
   useCycleReviewCard,
+  useCycleSelection,
   useIsPlanningAccessDenied,
 } from './planning-admin/planning-admin-context';
 import { QuickCreateEventModal } from './quick-create-event-modal';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardDescription,
@@ -41,7 +44,6 @@ function isReviewingCyclePath({ pathname }: PathnameInput): boolean {
   return (
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&
-    !pathname.endsWith('/new') &&
     !isTemplatesPath({ pathname })
   );
 }
@@ -80,9 +82,8 @@ function describePlanningIntro({
   }
 
   return {
-    title: 'Cycles',
-    description:
-      'Start from the cycle list, open the one you want to review, and only bring template work or cycle creation into view when you need it.',
+    title: m.cycles_title(),
+    description: m.cycles_description(),
   };
 }
 
@@ -103,10 +104,9 @@ function PlanningAdminLayout() {
       <div className="space-y-5">
         <Card className="surface-panel" data-testid="planning-access-denied">
           <CardHeader>
-            <CardTitle>Planning is admin-only</CardTitle>
+            <CardTitle>{m.cycles_admin_only_title()}</CardTitle>
             <CardDescription>
-              Draft cycles stay hidden from volunteers. Ask a church admin if
-              you need access.
+              {m.cycles_admin_only_description()}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -159,14 +159,19 @@ interface CyclesActionsProps {
 }
 
 function CyclesActions({ pathname }: CyclesActionsProps) {
-  const { selectedCycle } = useCycleReviewCard();
+  const { selectedCycle, ownedEventCount } = useCycleReviewCard();
+  const { handleClearSelectedCycle } = useCycleSelection();
+  const navigate = useNavigate();
+  const [deleteCycleOpen, setDeleteCycleOpen] = useState(false);
+  const [editCycleOpen, setEditCycleOpen] = useState(false);
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const isReviewingCycle = isReviewingCyclePath({ pathname });
   const canMutateCalendar =
     isReviewingCycle &&
     Boolean(selectedCycle) &&
-    !cycleIsSent({ cycle: selectedCycle });
+    !cycleIsReadOnly({ cycle: selectedCycle });
+  const canEditDraft = isReviewingCycle && selectedCycle?.state === 'draft';
 
   return (
     <>
@@ -174,43 +179,76 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         className="flex flex-wrap items-center justify-end gap-2"
         data-testid="cycles-actions-row"
       >
-        <Link
-          to="/event-templates"
-          data-testid="open-template-library-button"
-          className={buttonVariants({ variant: 'outline' })}
-        >
-          Template library
-        </Link>
         {canMutateCalendar ? (
           <Button
             type="button"
             data-testid="open-apply-templates-dialog-button"
             onClick={() => setApplyTemplatesOpen(true)}
           >
-            Apply template
+            {m.cycles_apply_button()}
           </Button>
         ) : null}
         {canMutateCalendar ? (
           <Button type="button" onClick={() => setCreateEventOpen(true)}>
-            Add event
+            {m.cycles_add_event_button()}
           </Button>
         ) : null}
-        {isReviewingCycle ? null : (
-          <Link
-            to="/cycles/new"
-            data-testid="open-create-cycle-dialog-button"
-            className={buttonVariants({ variant: 'default' })}
+        {canEditDraft ? (
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="edit-cycle-button"
+            onClick={() => setEditCycleOpen(true)}
           >
-            Create cycle
-          </Link>
-        )}
+            {m.cycles_edit_button()}
+          </Button>
+        ) : null}
+        {canEditDraft ? (
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="delete-cycle-button"
+            onClick={() => setDeleteCycleOpen(true)}
+          >
+            {m.cycles_delete_button()}
+          </Button>
+        ) : null}
       </div>
+
+      {canEditDraft && selectedCycle ? (
+        <EditCycleDialog
+          open={editCycleOpen}
+          onOpenChange={setEditCycleOpen}
+          cycle={{
+            id: selectedCycle.id,
+            name: selectedCycle.name,
+            // The picker edits CalendarDays; the bound's day is its prefix.
+            startDate: selectedCycle.startDate.slice(0, 10),
+            endDate: selectedCycle.endDate.slice(0, 10),
+          }}
+        />
+      ) : null}
+
+      {canEditDraft && deleteCycleOpen && selectedCycle ? (
+        <CycleDeleteDialog
+          cycleId={selectedCycle.id}
+          cycleName={selectedCycle.name}
+          eventCount={ownedEventCount}
+          onClose={() => setDeleteCycleOpen(false)}
+          onDeleted={() => {
+            setDeleteCycleOpen(false);
+            handleClearSelectedCycle();
+            navigate({ to: CYCLES_PATH });
+          }}
+        />
+      ) : null}
 
       {isReviewingCycle && selectedCycle ? (
         <>
           <ApplyTemplatesDialog
             open={applyTemplatesOpen}
             onOpenChange={setApplyTemplatesOpen}
+            cycleId={selectedCycle.id}
             selectedCycleName={selectedCycle.name}
           />
           <QuickCreateEventModal

@@ -166,7 +166,9 @@ describe('Church admin planning routes', () => {
 
     expect(success.statusCode).toBe(201);
 
-    cycleManager.createCycle.mockRejectedValueOnce(new OverlappingCycleError());
+    cycleManager.createCycle.mockRejectedValueOnce(
+      new OverlappingCycleError({ conflictingCycles: [] }),
+    );
     const conflict = await app.inject({
       method: 'POST',
       url: '/api/v1/admin/cycles',

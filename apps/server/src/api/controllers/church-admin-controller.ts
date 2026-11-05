@@ -26,6 +26,9 @@ import {
   cycleMapper,
   cycleResponseSchema,
   listCyclesQuerySchema,
+  overlappingCycleResponseSchema,
+  updateCycleBodySchema,
+  updateCycleConflictResponseSchema,
 } from '../dtos/cycle.dto';
 import {
   createEventBodySchema,
@@ -167,9 +170,12 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'createCycle',
           summary: 'Create a Cycle',
           description:
-            'Create a new Cycle spanning a CalendarDay range for the Church.',
+            'Create a new Cycle over an inclusive CalendarDay range for the Church. A one-day Cycle starts and ends on the same day; a range sharing any day with another Cycle of the Church is refused.',
           body: createCycleBodySchema,
-          response: { 201: cycleResponseSchema },
+          response: {
+            201: cycleResponseSchema,
+            409: overlappingCycleResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -241,6 +247,57 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId } = request.params as CycleRouteParams;
         await this.cycleManager.sendCycle({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.status(204).send();
+      },
+    );
+
+    app.patch(
+      '/cycles/:cycleId',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'updateCycle',
+          summary: 'Edit a Draft Cycle',
+          description:
+            'Rename or re-date a Draft Cycle; name, startDate and endDate are submitted together as an inclusive CalendarDay range. The Cycle never conflicts with itself. A range sharing a day with another Cycle, or excluding the Church-local start day of any owned Event, is refused; Events are never moved. Sent and Past Cycles are refused.',
+          body: updateCycleBodySchema,
+          response: {
+            200: cycleResponseSchema,
+            409: updateCycleConflictResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const body = request.body as z.infer<typeof updateCycleBodySchema>;
+        const cycle = await this.cycleManager.updateCycle({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          name: body.name,
+          startDate: dateFromCalendarDayString({ value: body.startDate }),
+          endDate: dateFromCalendarDayString({ value: body.endDate }),
+        });
+        return reply.send(cycleMapper.toResponse(cycle));
+      },
+    );
+
+    app.delete(
+      '/cycles/:cycleId',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'deleteCycle',
+          summary: 'Delete a Draft Cycle',
+          description:
+            'Hard-delete a Draft Cycle with every Event, Time Block and participation it owns. Sent and Past Cycles are refused.',
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        await this.cycleManager.deleteCycle({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
         });

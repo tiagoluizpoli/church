@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
 import { planningMonth } from './planning-month.helpers';
@@ -86,7 +87,7 @@ function countMatchingWeekdays({
   const dates: string[] = [];
   const cursor = new Date(start);
 
-  while (cursor < end) {
+  while (cursor <= end) {
     if (cursor.getUTCDay() === weekday) {
       dates.push(toDateString(cursor));
     }
@@ -123,7 +124,6 @@ function createPlanningMonth({
     weekday: 3,
   });
   const lastDayInsideCycle = new Date(end);
-  lastDayInsideCycle.setUTCDate(lastDayInsideCycle.getUTCDate() - 1);
   const dynamicStart = new Date(
     Date.UTC(
       lastDayInsideCycle.getUTCFullYear(),
@@ -178,7 +178,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.goto('/cycles');
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
+  const createCycleDialog = page.getByRole('dialog', { name: 'Novo ciclo' });
   await createCycleDialog.getByTestId('cycle-name-input').fill(month.cycleName);
   await fillDatePickerField({
     page,
@@ -195,10 +195,12 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(
     month.cycleName,
   );
-  await expect(page.getByTestId('selected-cycle-state')).toHaveText('draft');
+  await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+    m.cycle_state_draft({}, { locale: 'pt-BR' }),
+  );
 
   const cycleReviewUrl = page.url();
-  await page.getByTestId('open-template-library-button').click();
+  await page.goto('/event-templates');
 
   await createTemplateOnNestedPage({
     page,
@@ -237,7 +239,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.getByTestId('open-apply-templates-dialog-button').click();
 
   const applyTemplatesDialog = page.getByRole('dialog', {
-    name: 'Apply templates',
+    name: 'Aplicar modelos',
   });
   const applyTemplateOptions = applyTemplatesDialog.getByTestId(
     'apply-template-option',
@@ -273,7 +275,9 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
 
   // FR-012: the one canonical create-event UI, reused here for a
   // cycle manual event (same form as the ministry "New Event" modal).
-  await page.getByRole('button', { name: 'Add event' }).click();
+  await page
+    .getByRole('button', { name: 'Adicionar evento', exact: true })
+    .click();
   const createEventDialog = page.getByRole('dialog');
   await createEventDialog.getByLabel('Title').fill('Three-day retreat');
   await fillDatePickerField({
@@ -305,7 +309,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.goto('/cycles');
   await expect(page).toHaveURL(/\/cycles\/?$/);
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  const overlapDialog = page.getByRole('dialog', { name: 'Create cycle' });
+  const overlapDialog = page.getByRole('dialog', { name: 'Novo ciclo' });
   await overlapDialog
     .getByTestId('cycle-name-input')
     .fill(`${month.cycleName} overlap`);
@@ -338,15 +342,19 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   );
 
   await page.getByTestId('send-cycle-button').click();
-  await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
+  await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+    m.cycle_state_sent({}, { locale: 'pt-BR' }),
+  );
 
   // Step-sequence gating: sent-review is read-only — no editable
   // template/apply controls, while the template library stays reachable.
   await expect(
     page.getByTestId('open-apply-templates-dialog-button'),
   ).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Add event' })).toHaveCount(0);
-  await expect(page.getByTestId('open-template-library-button')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Adicionar evento', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
 
   // A second session of the ChurchAdmin, who leads Worship: it sees the
   // sent cycle too.

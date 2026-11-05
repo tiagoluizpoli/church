@@ -66,36 +66,14 @@ export function usePlanningStep(): PlanningStep {
   return 'template-and-review';
 }
 
-export type CreateCycleCardModel = Pick<
-  UsePlanningAdminResult,
-  | 'cycleForm'
-  | 'cycleErrorMessage'
-  | 'canCreateCycle'
-  | 'createCyclePending'
-  | 'handleCycleNameChange'
-  | 'handleCycleStartDateChange'
-  | 'handleCycleEndDateChange'
-  | 'handleCreateCycle'
->;
-
-export function useCreateCycleCard(): CreateCycleCardModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    cycleForm: context.cycleForm,
-    cycleErrorMessage: context.cycleErrorMessage,
-    canCreateCycle: context.canCreateCycle,
-    createCyclePending: context.createCyclePending,
-    handleCycleNameChange: context.handleCycleNameChange,
-    handleCycleStartDateChange: context.handleCycleStartDateChange,
-    handleCycleEndDateChange: context.handleCycleEndDateChange,
-    handleCreateCycle: context.handleCreateCycle,
-  };
-}
-
 export type CycleListCardModel = Pick<
   UsePlanningAdminResult,
-  'cycles' | 'cyclesLoading' | 'selectedCycleId' | 'handleSelectCycle'
+  | 'cycles'
+  | 'cyclesLoading'
+  | 'cyclesError'
+  | 'refetchCycles'
+  | 'selectedCycleId'
+  | 'handleSelectCycle'
 >;
 
 export function useCycleListCard(): CycleListCardModel {
@@ -104,37 +82,10 @@ export function useCycleListCard(): CycleListCardModel {
   return {
     cycles: context.cycles,
     cyclesLoading: context.cyclesLoading,
+    cyclesError: context.cyclesError,
+    refetchCycles: context.refetchCycles,
     selectedCycleId: context.selectedCycleId,
     handleSelectCycle: context.handleSelectCycle,
-  };
-}
-
-export type TemplateApplyDialogModel = Pick<
-  UsePlanningAdminResult,
-  | 'templates'
-  | 'templatesLoading'
-  | 'selectedTemplateIds'
-  | 'selectedCycleId'
-  | 'applyTemplatesPending'
-  | 'applyTemplatesError'
-  | 'resetApplyTemplates'
-  | 'handleToggleTemplateSelection'
-  | 'handleApplyTemplates'
->;
-
-export function useTemplateApplyDialog(): TemplateApplyDialogModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    templates: context.templates,
-    templatesLoading: context.templatesLoading,
-    selectedTemplateIds: context.selectedTemplateIds,
-    selectedCycleId: context.selectedCycleId,
-    applyTemplatesPending: context.applyTemplatesPending,
-    applyTemplatesError: context.applyTemplatesError,
-    resetApplyTemplates: context.resetApplyTemplates,
-    handleToggleTemplateSelection: context.handleToggleTemplateSelection,
-    handleApplyTemplates: context.handleApplyTemplates,
   };
 }
 
@@ -248,7 +199,10 @@ export type CycleReviewCardModel = Pick<
   | 'selectedCycleId'
   | 'selectedCycle'
   | 'cycleDetailsLoading'
+  | 'cycleDetailsError'
+  | 'refetchCycleDetails'
   | 'cycleEvents'
+  | 'ownedEventCount'
   | 'sendCyclePending'
   | 'handleSendCycle'
   | 'updateEventPending'
@@ -270,7 +224,10 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     selectedCycleId: context.selectedCycleId,
     selectedCycle: context.selectedCycle,
     cycleDetailsLoading: context.cycleDetailsLoading,
+    cycleDetailsError: context.cycleDetailsError,
+    refetchCycleDetails: context.refetchCycleDetails,
     cycleEvents: context.cycleEvents,
+    ownedEventCount: context.ownedEventCount,
     updateEventPending: context.updateEventPending,
     deleteEventPending: context.deleteEventPending,
     createEventTimeBlockPending: context.createEventTimeBlockPending,

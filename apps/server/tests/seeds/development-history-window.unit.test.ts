@@ -8,27 +8,33 @@ describe('historicalCycleWindow', () => {
       label: 'mid-month',
       anchor: '2026-03-15',
       startDate: '2026-02-01',
-      endDate: '2026-03-01',
+      endDate: '2026-02-28',
     },
     {
       label: 'the first day of a month',
       anchor: '2026-03-01',
       startDate: '2026-02-01',
-      endDate: '2026-03-01',
+      endDate: '2026-02-28',
     },
     {
       label: 'the last day of a month',
       anchor: '2026-03-31',
       startDate: '2026-02-01',
-      endDate: '2026-03-01',
+      endDate: '2026-02-28',
     },
     {
       label: 'January, across the year',
       anchor: '2027-01-10',
       startDate: '2026-12-01',
-      endDate: '2027-01-01',
+      endDate: '2026-12-31',
     },
-  ])('is the previous complete calendar month for an anchor on $label', ({
+    {
+      label: 'March of a leap year',
+      anchor: '2028-03-10',
+      startDate: '2028-02-01',
+      endDate: '2028-02-29',
+    },
+  ])('is the previous complete calendar month, last day included, for an anchor on $label', ({
     anchor,
     startDate,
     endDate,

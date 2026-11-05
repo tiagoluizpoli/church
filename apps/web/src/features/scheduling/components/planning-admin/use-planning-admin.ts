@@ -1,22 +1,18 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type {
   CycleEventGroup,
-  CycleFormState,
   CycleSummary,
   PlanningTemplateSummary,
   SelectedCycle,
 } from './planning-admin.types';
 import {
   calculateTotalEventTimeBlocks,
-  canCreateCycle,
-  createEmptyCycleForm,
   getSelectedCycleIdOrThrow,
   isForbiddenError,
 } from './planning-admin.utils';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import {
-  type ApplyTemplatesOptions,
   type CreateEventTimeBlockInput,
   type DeleteEventInput,
   type DeleteEventTimeBlockInput,
@@ -30,19 +26,6 @@ export interface SelectCycleInput {
   cycleId: string;
 }
 
-interface CycleNameChangeInput {
-  name: string;
-}
-
-interface CycleDateChangeInput {
-  date: string;
-}
-
-interface ToggleTemplateSelectionInput {
-  templateId: string;
-  checked: boolean;
-}
-
 export interface UsePlanningAdminResult {
   isAccessDenied: boolean;
   cycles: CycleSummary[];
@@ -50,31 +33,24 @@ export interface UsePlanningAdminResult {
   selectedCycleId: string | null;
   selectedCycle: SelectedCycle | null;
   cycleEvents: CycleEventGroup[];
+  /** Every owned Event, cancelled ones included: what a Cycle delete removes. */
+  ownedEventCount: number;
   totalEventTimeBlocks: number;
-  cycleForm: CycleFormState;
-  cycleErrorMessage: string | null;
   cyclesLoading: boolean;
+  /** The list read failed for a reason other than missing access. */
+  cyclesError: boolean;
+  refetchCycles: () => void;
   templatesLoading: boolean;
   cycleDetailsLoading: boolean;
-  canCreateCycle: boolean;
-  createCyclePending: boolean;
-  applyTemplatesPending: boolean;
-  applyTemplatesError: string | null;
+  cycleDetailsError: unknown;
+  refetchCycleDetails: () => void;
   sendCyclePending: boolean;
   updateEventPending: boolean;
   deleteEventPending: boolean;
   createEventTimeBlockPending: boolean;
   updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  selectedTemplateIds: string[];
-  resetApplyTemplates: () => void;
-  handleCycleNameChange: (input: CycleNameChangeInput) => void;
-  handleCycleStartDateChange: (input: CycleDateChangeInput) => void;
-  handleCycleEndDateChange: (input: CycleDateChangeInput) => void;
   handleSelectCycle: (input: SelectCycleInput) => void;
-  handleToggleTemplateSelection: (input: ToggleTemplateSelectionInput) => void;
-  handleCreateCycle: () => void;
-  handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
@@ -87,12 +63,6 @@ export interface UsePlanningAdminResult {
 export function usePlanningAdmin(): UsePlanningAdminResult {
   const queryClient = useQueryClient();
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
-  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  const [cycleForm, setCycleForm] =
-    useState<CycleFormState>(createEmptyCycleForm);
-  const [cycleErrorMessage, setCycleErrorMessage] = useState<string | null>(
-    null,
-  );
 
   const cyclesQuery = useQuery({
     queryKey: ['cycles'],
@@ -118,28 +88,13 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   // A cancelled event (FR-006's day-delete) is a soft delete at the data
   // layer only — the Calendar review table and header counts must still
   // treat it as removed, per FR-006's acceptance scenario and edge case.
-  const cycleEvents = (cycleDetailsQuery.data?.events ?? []).filter(
+  const allEvents = cycleDetailsQuery.data?.events ?? [];
+  const cycleEvents = allEvents.filter(
     (eventGroup) => eventGroup.event.status !== 'cancelled',
   );
   const totalEventTimeBlocks = calculateTotalEventTimeBlocks({
     events: cycleEvents,
   });
-
-  useEffect(() => {
-    setSelectedTemplateIds((currentSelection) => {
-      const filtered = currentSelection.filter((templateId) =>
-        templates.some((template) => template.id === templateId),
-      );
-      // Bail out with the same reference when nothing was actually removed —
-      // `.filter()` always allocates a new array, and without this guard a
-      // still-unstable `templates` reference (e.g. while its query is
-      // pending, `?? []` allocates fresh each render) turns this into an
-      // infinite render loop (setState → new templates ref → effect reruns).
-      return filtered.length === currentSelection.length
-        ? currentSelection
-        : filtered;
-    });
-  }, [templates]);
 
   const isAccessDenied = useMemo(
     () =>
@@ -156,11 +111,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     queryClient,
     selectedCycleId,
     selectedCycle,
-    selectedTemplateIds,
-    cycleForm,
-    setCycleErrorMessage,
-    setCycleForm,
-    setSelectedCycleId,
   });
 
   return {
@@ -170,45 +120,25 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     selectedCycleId,
     selectedCycle,
     cycleEvents,
+    ownedEventCount: allEvents.length,
     totalEventTimeBlocks,
-    cycleForm,
-    cycleErrorMessage,
     cyclesLoading: cyclesQuery.isLoading,
+    cyclesError: cyclesQuery.isError && !isAccessDenied,
+    refetchCycles: () => void cyclesQuery.refetch(),
     templatesLoading: templatesQuery.isLoading,
     cycleDetailsLoading: cycleDetailsQuery.isLoading,
-    canCreateCycle: canCreateCycle({ cycleForm }),
-    createCyclePending: mutationHandlers.createCyclePending,
-    applyTemplatesPending: mutationHandlers.applyTemplatesPending,
-    applyTemplatesError: mutationHandlers.applyTemplatesError,
+    cycleDetailsError: cycleDetailsQuery.error,
+    refetchCycleDetails: () => {
+      void cycleDetailsQuery.refetch();
+    },
     sendCyclePending: mutationHandlers.sendCyclePending,
     updateEventPending: mutationHandlers.updateEventPending,
     deleteEventPending: mutationHandlers.deleteEventPending,
     createEventTimeBlockPending: mutationHandlers.createEventTimeBlockPending,
     updateEventTimeBlockPending: mutationHandlers.updateEventTimeBlockPending,
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
-    selectedTemplateIds,
-    resetApplyTemplates: mutationHandlers.resetApplyTemplates,
-    handleCycleNameChange: ({ name }: CycleNameChangeInput) =>
-      setCycleForm((currentForm) => ({ ...currentForm, name })),
-    handleCycleStartDateChange: ({ date }: CycleDateChangeInput) =>
-      setCycleForm((currentForm) => ({ ...currentForm, startDate: date })),
-    handleCycleEndDateChange: ({ date }: CycleDateChangeInput) =>
-      setCycleForm((currentForm) => ({ ...currentForm, endDate: date })),
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
-    handleToggleTemplateSelection: ({
-      templateId,
-      checked,
-    }: ToggleTemplateSelectionInput) =>
-      setSelectedTemplateIds((currentSelection) =>
-        checked
-          ? [...new Set([...currentSelection, templateId])]
-          : currentSelection.filter(
-              (currentTemplateId) => currentTemplateId !== templateId,
-            ),
-      ),
-    handleCreateCycle: mutationHandlers.handleCreateCycle,
-    handleApplyTemplates: mutationHandlers.handleApplyTemplates,
     handleSendCycle: mutationHandlers.handleSendCycle,
     handleUpdateEvent: mutationHandlers.handleUpdateEvent,
     handleDeleteEvent: mutationHandlers.handleDeleteEvent,

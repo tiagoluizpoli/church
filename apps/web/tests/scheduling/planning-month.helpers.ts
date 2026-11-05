@@ -34,14 +34,15 @@ function fromDay({ day }: DayInput): Date {
   return new Date(`${day}T00:00:00Z`);
 }
 
-/** The whole calendar month after the anchor's. */
+/** The whole calendar month after the anchor's, both bounds included. */
 export function planningMonth({ anchor }: AnchorInput): PlanningMonthWindow {
   const base = fromDay({ day: anchor });
   const start = new Date(
     Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 1),
   );
+  // Day 0 of the next month is this month's last day, the Cycle's inclusive end.
   const end = new Date(
-    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0),
   );
   return { startDate: toDay({ date: start }), endDate: toDay({ date: end }) };
 }

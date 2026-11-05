@@ -51,7 +51,9 @@ async function createOpenCycle({
     endDate,
   });
   await page.goto(`/cycles/${cycle.id}`);
-  await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Adicionar evento', exact: true }),
+  ).toBeVisible();
 }
 
 test('exactly one create-event UI is reachable from every entry point (FR-012, SC-004)', async ({
@@ -70,7 +72,9 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
     journey,
     name: 'Single create-event UI check',
   });
-  await page.getByRole('button', { name: 'Add event' }).click();
+  await page
+    .getByRole('button', { name: 'Adicionar evento', exact: true })
+    .click();
   const planningDialog = page.getByRole('dialog');
   await assertCanonicalCreateEventForm(planningDialog);
   await planningDialog.getByRole('button', { name: 'Cancel' }).click();
@@ -104,7 +108,9 @@ test.describe('quick-create stores church-local Instants (#149)', () => {
       name: 'Church TZ boundary check',
     });
 
-    await page.getByRole('button', { name: 'Add event' }).click();
+    await page
+      .getByRole('button', { name: 'Adicionar evento', exact: true })
+      .click();
     const dialog = page.getByRole('dialog');
     const title = 'Church TZ event';
     await dialog.getByLabel('Title').fill(title);

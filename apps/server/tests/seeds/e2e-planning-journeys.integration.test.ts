@@ -61,7 +61,7 @@ describe('planning journey recipes (#329 planning cluster)', () => {
     ]);
     expect(journey.cycleWindow).toEqual({
       startDate: '2027-01-02',
-      endDate: '2027-01-30',
+      endDate: '2027-01-29',
     });
   });
 

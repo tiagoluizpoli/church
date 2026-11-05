@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, type Page, type TestInfo, test } from '@playwright/test';
 import {
   applyTemplatesViaApi,
@@ -85,16 +86,16 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
 
     await page.goto('/cycles');
-    const cyclesTable = page.getByRole('grid', { name: 'Existing cycles' });
+    const cyclesTable = page.getByRole('grid', { name: 'Atuais e futuros' });
     await expect(cyclesTable).toBeVisible();
     await expect(
-      cyclesTable.getByRole('columnheader', { name: 'Name' }),
+      cyclesTable.getByRole('columnheader', { name: 'Nome' }),
     ).toBeVisible();
     await expect(
-      cyclesTable.getByRole('columnheader', { name: 'Window' }),
+      cyclesTable.getByRole('columnheader', { name: 'Datas' }),
     ).toBeVisible();
     await expect(
-      cyclesTable.getByRole('columnheader', { name: 'Status' }),
+      cyclesTable.getByRole('columnheader', { name: 'Situação' }),
     ).toBeVisible();
 
     const cycleRow = cyclesTable.getByRole('row', {
@@ -113,7 +114,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       page,
       testInfo,
     });
-    await page.getByTestId('open-template-library-button').click();
+    await page.goto('/event-templates');
 
     const templatesTable = page.getByRole('grid', { name: 'Modelos salvos' });
     await expect(templatesTable).toBeVisible();
@@ -147,7 +148,9 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       testInfo,
     });
 
-    const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
+    const calendarTable = page.getByRole('grid', {
+      name: m.cycle_review_title({}, { locale: 'pt-BR' }),
+    });
     await expect(calendarTable).toBeVisible();
 
     const weekdayRow = calendarTable
@@ -156,10 +159,10 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     await expect(weekdayRow).toBeVisible();
     await expect(calendarTable.getByText('Worship')).not.toBeVisible();
 
-    await weekdayRow.getByRole('button', { name: /^Expand/ }).click();
+    await weekdayRow.getByRole('button', { name: /^Expandir/ }).click();
     await expect(calendarTable.getByText('Worship')).toBeVisible();
 
-    await weekdayRow.getByRole('button', { name: /^Collapse/ }).click();
+    await weekdayRow.getByRole('button', { name: /^Recolher/ }).click();
     await expect(calendarTable.getByText('Worship')).not.toBeVisible();
   });
 
@@ -168,23 +171,47 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
   }, testInfo) => {
     await createCycleWithSundayTemplateApplied({ page, testInfo });
 
-    const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
+    const calendarTable = page.getByRole('grid', {
+      name: m.cycle_review_title({}, { locale: 'pt-BR' }),
+    });
     await expect(calendarTable).toBeVisible();
-    const rowCount = await calendarTable.getByRole('row').count();
+    // Header row and the week heading rows are not Events.
+    const weekRows = await calendarTable
+      .getByRole('row', { name: /^Semana de/ })
+      .count();
+    const rowCount = (await calendarTable.getByRole('row').count()) - weekRows;
 
-    await page.getByRole('button', { name: 'Expand all' }).click();
+    await page
+      .getByRole('button', {
+        name: m.cycle_review_expand_all({}, { locale: 'pt-BR' }),
+      })
+      .click();
     await expect(calendarTable.getByText('Worship').first()).toBeVisible();
     expect(await calendarTable.getByText('Worship').count()).toBe(rowCount - 1);
 
-    await page.getByRole('button', { name: 'Collapse all' }).click();
+    await page
+      .getByRole('button', {
+        name: m.cycle_review_collapse_all({}, { locale: 'pt-BR' }),
+      })
+      .click();
     await expect(calendarTable.getByText('Worship')).toHaveCount(0);
 
     // One-shot, not a synced toggle: re-expanding one row manually after
     // "Expand all" then "Collapse all" must still collapse everything.
-    await page.getByRole('button', { name: 'Expand all' }).click();
-    const firstRow = calendarTable.getByRole('row').nth(1);
-    await firstRow.getByRole('button', { name: /^Collapse/ }).click();
-    await page.getByRole('button', { name: 'Collapse all' }).click();
+    await page
+      .getByRole('button', {
+        name: m.cycle_review_expand_all({}, { locale: 'pt-BR' }),
+      })
+      .click();
+    await calendarTable
+      .getByRole('button', { name: /^Recolher/ })
+      .first()
+      .click();
+    await page
+      .getByRole('button', {
+        name: m.cycle_review_collapse_all({}, { locale: 'pt-BR' }),
+      })
+      .click();
     await expect(calendarTable.getByText('Worship')).toHaveCount(0);
   });
 
@@ -194,12 +221,16 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     await page.getByTestId('send-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_sent({}, { locale: 'pt-BR' }),
+    );
 
-    const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
+    const calendarTable = page.getByRole('grid', {
+      name: m.cycle_review_title({}, { locale: 'pt-BR' }),
+    });
     await expect(calendarTable).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Add event' }),
+      page.getByRole('button', { name: 'Adicionar evento', exact: true }),
     ).not.toBeAttached();
     await expect(page.getByTestId('send-cycle-button')).not.toBeAttached();
   });
@@ -217,7 +248,7 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
 
     const cycleReviewUrl = page.url();
-    await page.getByTestId('open-template-library-button').click();
+    await page.goto('/event-templates');
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('saved-template-row').first()).toBeVisible();
 
@@ -244,7 +275,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await page.goto('/cycles');
     await page.getByTestId('open-create-cycle-dialog-button').click();
     const createCycleDialog = page.getByRole('dialog', {
-      name: 'Create cycle',
+      name: 'Novo ciclo',
     });
     await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
     await fillDatePickerField({
@@ -261,7 +292,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
     const cycleReviewUrl = page.url();
-    await page.getByTestId('open-template-library-button').click();
+    await page.goto('/event-templates');
     await createTemplateOnNestedPage({
       page,
       name: templateName,
@@ -275,7 +306,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await page.goto(cycleReviewUrl);
     await page.getByTestId('open-apply-templates-dialog-button').click();
     const applyTemplatesDialog = page.getByRole('dialog', {
-      name: 'Apply templates',
+      name: 'Aplicar modelos',
     });
     await applyTemplatesDialog
       .getByTestId('apply-template-option')
@@ -287,7 +318,9 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
       page.getByTestId('planning-event-card').first(),
     ).toBeAttached();
 
-    const table = page.getByRole('grid', { name: 'Calendar review' });
+    const table = page.getByRole('grid', {
+      name: m.cycle_review_title({}, { locale: 'pt-BR' }),
+    });
     await expect(table).toBeVisible();
 
     const firstMatch = table
@@ -298,19 +331,19 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     // different Sunday partway through the test.
     const dayRowId = await firstMatch.getAttribute('id');
     const dayRow = page.locator(`#${dayRowId}`);
-    await dayRow.getByRole('button', { name: /^Expand/ }).click();
+    await dayRow.getByRole('button', { name: /^Expandir/ }).click();
 
     // Delete the non-last time block (Message); Worship must remain, and its own
     // delete control becomes disabled once it's the day's only time block.
     await table
-      .getByRole('button', { name: 'Delete time block Message' })
+      .getByRole('button', { name: 'Excluir horário Message' })
       .click();
-    await page.getByRole('button', { name: 'Delete time block' }).click();
+    await page.getByRole('button', { name: 'Excluir horário' }).click();
     await expect(
-      table.getByRole('button', { name: 'Delete time block Message' }),
+      table.getByRole('button', { name: 'Excluir horário Message' }),
     ).not.toBeAttached();
     await expect(
-      table.getByRole('button', { name: 'Delete time block Worship' }),
+      table.getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeDisabled();
 
     // Edit the day's start date (+1 day); FR-007a's cascade shifts the
@@ -320,7 +353,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     // and is visible end-to-end via the day row's own date text changing.
     const dayRowTextBefore = await dayRow.textContent();
 
-    await dayRow.getByRole('button', { name: /^Edit day/ }).click();
+    await dayRow.getByRole('button', { name: /^Editar dia/ }).click();
     const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
     // `InstantField` (src/components/instant-field.tsx) pairs a
     // `DatePickerField` with a `TimeOfDayField`, not a single labelled
@@ -350,9 +383,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await expect.poll(() => dayRow.textContent()).not.toBe(dayRowTextBefore);
 
     // Edit the time block itself.
-    await table
-      .getByRole('button', { name: 'Edit time block Worship' })
-      .click();
+    await table.getByRole('button', { name: 'Editar horário Worship' }).click();
     const editEventTimeBlockDialog = page.getByRole('dialog', {
       name: 'Edit time block',
     });
@@ -370,8 +401,8 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
       .getByTestId('cycle-event-count-chip')
       .textContent();
 
-    await dayRow.getByRole('button', { name: /^Delete day/ }).click();
-    await page.getByRole('button', { name: 'Delete event' }).click();
+    await dayRow.getByRole('button', { name: /^Excluir dia/ }).click();
+    await page.getByRole('button', { name: 'Excluir evento' }).click();
 
     await expect(dayRow).not.toBeAttached();
     await expect
@@ -380,13 +411,15 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
 
     // Send the cycle: no edit/delete controls should render anywhere.
     await page.getByTestId('send-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
-    await expect(
-      table.getByRole('button', { name: /^Delete day/ }),
-    ).toHaveCount(0);
-    await expect(table.getByRole('button', { name: /^Edit day/ })).toHaveCount(
-      0,
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
+    await expect(
+      table.getByRole('button', { name: /^Excluir dia/ }),
+    ).toHaveCount(0);
+    await expect(
+      table.getByRole('button', { name: /^Editar dia/ }),
+    ).toHaveCount(0);
   });
 });
 
@@ -403,7 +436,9 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await expect(mobileList).toBeVisible();
 
     // Add a day-event from the mobile surface — opens as a bottom drawer.
-    await mobileList.getByRole('button', { name: 'Add day-event' }).click();
+    await mobileList
+      .getByRole('button', { name: 'Adicionar evento do dia' })
+      .click();
     const addDialog = page.getByRole('dialog', { name: 'New Event' });
     await expect(addDialog).toBeVisible();
     const newEventTitle = 'Mobile Added';
@@ -425,7 +460,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     const newCard = mobileList
       .getByTestId('planning-event-card')
       .filter({ hasText: newEventTitle });
-    await newCard.getByRole('button', { name: /^Edit day/ }).click();
+    await newCard.getByRole('button', { name: /^Editar dia/ }).click();
     const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
     await editDayDialog.getByLabel('Title').fill(`${newEventTitle} (edited)`);
     await editDayDialog.getByRole('button', { name: 'Save' }).click();
@@ -434,8 +469,8 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       mobileList.getByText(`${newEventTitle} (edited)`),
     ).toBeVisible();
 
-    await newCard.getByRole('button', { name: /^Delete day/ }).click();
-    await page.getByRole('button', { name: 'Delete event' }).click();
+    await newCard.getByRole('button', { name: /^Excluir dia/ }).click();
+    await page.getByRole('button', { name: 'Excluir evento' }).click();
     await expect(
       mobileList.getByText(`${newEventTitle} (edited)`),
     ).not.toBeAttached();
@@ -447,7 +482,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       .filter({ hasText: templateName })
       .first();
     await templatedCard
-      .getByRole('button', { name: /^Add time block to/ })
+      .getByRole('button', { name: /^Adicionar horário a/ })
       .click();
     const addEventTimeBlockDialog = page.getByRole('dialog', {
       name: 'Add time block',
@@ -472,7 +507,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await expect(templatedCard.getByText('Prayer')).toBeVisible();
 
     await templatedCard
-      .getByRole('button', { name: 'Edit time block Prayer' })
+      .getByRole('button', { name: 'Editar horário Prayer' })
       .click();
     const editEventTimeBlockDialog = page.getByRole('dialog', {
       name: 'Edit time block',
@@ -487,35 +522,37 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     // Delete the added time block; the day's original templated time block must remain
     // and, once it is the only time block left, its own delete becomes disabled.
     await templatedCard
-      .getByRole('button', { name: 'Delete time block Prayer (edited)' })
+      .getByRole('button', { name: 'Excluir horário Prayer (edited)' })
       .click();
-    await page.getByRole('button', { name: 'Delete time block' }).click();
+    await page.getByRole('button', { name: 'Excluir horário' }).click();
     await expect(
       templatedCard.getByRole('button', {
-        name: 'Delete time block Prayer (edited)',
+        name: 'Excluir horário Prayer (edited)',
       }),
     ).not.toBeAttached();
     await expect(
-      templatedCard.getByRole('button', { name: 'Delete time block Worship' }),
+      templatedCard.getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeDisabled();
 
     // Send the cycle: no mobile add/edit/delete affordance may remain.
     await page.getByTestId('send-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+      m.cycle_state_sent({}, { locale: 'pt-BR' }),
+    );
     await expect(
-      mobileList.getByRole('button', { name: 'Add day-event' }),
+      mobileList.getByRole('button', { name: 'Adicionar evento do dia' }),
     ).not.toBeAttached();
     await expect(
-      mobileList.getByRole('button', { name: /^Edit day/ }),
+      mobileList.getByRole('button', { name: /^Editar dia/ }),
     ).toHaveCount(0);
     await expect(
-      mobileList.getByRole('button', { name: /^Delete day/ }),
+      mobileList.getByRole('button', { name: /^Excluir dia/ }),
     ).toHaveCount(0);
     await expect(
-      mobileList.getByRole('button', { name: /^Edit time block/ }),
+      mobileList.getByRole('button', { name: /^Editar horário/ }),
     ).toHaveCount(0);
     await expect(
-      mobileList.getByRole('button', { name: /^Delete time block/ }),
+      mobileList.getByRole('button', { name: /^Excluir horário/ }),
     ).toHaveCount(0);
   });
 
@@ -533,7 +570,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       .filter({ hasText: templateName })
       .first();
 
-    await templatedCard.getByRole('button', { name: /^Edit day/ }).click();
+    await templatedCard.getByRole('button', { name: /^Editar dia/ }).click();
     const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
     await expect(editDayDialog).toBeVisible();
     await editDayDialog.getByLabel('Title').fill('Raced edit');
@@ -550,7 +587,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await secondPage.goto(cycleUrl);
     await secondPage.getByTestId('send-cycle-button').click();
     await expect(secondPage.getByTestId('selected-cycle-state')).toHaveText(
-      'sent',
+      m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
     await secondContext.close();
 
@@ -613,7 +650,9 @@ test.describe('Cycles table view — breakpoint crossing (US3)', () => {
     });
 
     await expect(
-      page.getByRole('grid', { name: 'Calendar review' }),
+      page.getByRole('grid', {
+        name: m.cycle_review_title({}, { locale: 'pt-BR' }),
+      }),
     ).toBeVisible();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
@@ -624,7 +663,9 @@ test.describe('Cycles table view — breakpoint crossing (US3)', () => {
 
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(
-      page.getByRole('grid', { name: 'Calendar review' }),
+      page.getByRole('grid', {
+        name: m.cycle_review_title({}, { locale: 'pt-BR' }),
+      }),
     ).toBeVisible();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
   });

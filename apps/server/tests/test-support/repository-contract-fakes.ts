@@ -111,6 +111,8 @@ export function createCycleRepositoryFake() {
     getById: vi.fn<CycleRepository['getById']>(),
     findOverlapping: vi.fn<CycleRepository['findOverlapping']>(),
     updateState: vi.fn<CycleRepository['updateState']>(),
+    update: vi.fn<CycleRepository['update']>(),
+    delete: vi.fn<CycleRepository['delete']>(),
     acquireChurchLock: vi.fn<CycleRepository['acquireChurchLock']>(),
   } satisfies CycleRepository;
 }

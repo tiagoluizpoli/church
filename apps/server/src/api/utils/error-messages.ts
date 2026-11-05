@@ -3,7 +3,15 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
+import {
+  EventOutsideCycleError,
+  type OutsideEventReference,
+} from '@/domain/errors/event-outside-cycle';
 import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
+import {
+  type ConflictingCycleReference,
+  OverlappingCycleError,
+} from '@/domain/errors/overlapping-cycle';
 import {
   type ExistingInvitationReference,
   PendingMinistryInvitationExistsError,
@@ -59,6 +67,24 @@ export function upcomingAssignments(
 ): UpcomingMembershipAssignment[] | undefined {
   return error instanceof UpcomingAssignmentsError
     ? error.assignments
+    : undefined;
+}
+
+/** The Active Church's Cycles an overlapping range collides with, also sent to the client. */
+export function conflictingCycles(
+  error: DomainError,
+): ConflictingCycleReference[] | undefined {
+  return error instanceof OverlappingCycleError
+    ? error.conflictingCycles
+    : undefined;
+}
+
+/** The owned Events a Cycle range edit would exclude, also sent to the client. */
+export function outsideEvents(
+  error: DomainError,
+): OutsideEventReference[] | undefined {
+  return error instanceof EventOutsideCycleError
+    ? error.outsideEvents
     : undefined;
 }
 

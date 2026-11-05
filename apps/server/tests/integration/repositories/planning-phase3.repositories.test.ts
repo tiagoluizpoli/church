@@ -85,7 +85,7 @@ describe('Phase 3 planning repositories', () => {
     expect(otherChurchOverlaps).toHaveLength(0);
   });
 
-  it('treats cycle ranges as half-open, so adjacent cycles do not overlap', async () => {
+  it('treats cycle ranges as inclusive: a shared day overlaps, the next day does not', async () => {
     const seed = await seedSchedulingPhase3Base();
     const repository = new DrizzleCycleRepository({
       db: schedulingTestDb,
@@ -96,22 +96,38 @@ describe('Phase 3 planning repositories', () => {
       churchId: seed.churchAId,
       name: 'August 2026',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
-      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      endDate: new Date('2026-08-31T00:00:00.000Z'),
     });
 
-    const startsAtExistingEnd = await repository.findOverlapping({
+    const startsOnExistingEnd = await repository.findOverlapping({
       churchId,
-      startDate: new Date('2026-09-01T00:00:00.000Z'),
-      endDate: new Date('2026-10-01T00:00:00.000Z'),
+      startDate: new Date('2026-08-31T00:00:00.000Z'),
+      endDate: new Date('2026-09-30T00:00:00.000Z'),
     });
-    const endsAtExistingStart = await repository.findOverlapping({
+    const endsOnExistingStart = await repository.findOverlapping({
       churchId,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
       endDate: new Date('2026-08-01T00:00:00.000Z'),
     });
+    const startsTheNextDay = await repository.findOverlapping({
+      churchId,
+      startDate: new Date('2026-09-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-30T00:00:00.000Z'),
+    });
+    const endsTheDayBefore = await repository.findOverlapping({
+      churchId,
+      startDate: new Date('2026-07-01T00:00:00.000Z'),
+      endDate: new Date('2026-07-31T00:00:00.000Z'),
+    });
 
-    expect(startsAtExistingEnd).toEqual([]);
-    expect(endsAtExistingStart).toEqual([]);
+    expect(startsOnExistingEnd.map((cycle) => cycle.name)).toEqual([
+      'August 2026',
+    ]);
+    expect(endsOnExistingStart.map((cycle) => cycle.name)).toEqual([
+      'August 2026',
+    ]);
+    expect(startsTheNextDay).toEqual([]);
+    expect(endsTheDayBefore).toEqual([]);
   });
 
   it('round-trips templates with ordered blocks and deletes them cleanly', async () => {

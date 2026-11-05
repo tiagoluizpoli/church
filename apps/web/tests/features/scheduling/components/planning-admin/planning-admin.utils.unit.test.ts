@@ -13,14 +13,18 @@ import {
   calculateTotalEventTimeBlocks,
   canCreateCycle,
   canSaveTemplate,
-  cycleIsSent,
+  conflictingCyclesOf,
+  cycleIsReadOnly,
   describeTemplateTimeBlockSpan,
   eventSpanLabel,
   eventStatusBadgeVariant,
   getErrorMessage,
+  groupCyclesForList,
+  groupRowsByWeek,
   isMultiDayEvent,
   shiftedEnd,
   stateBadgeVariant,
+  suggestCycleName,
   templateBlockErrors,
   toTemplateRequestBlocks,
 } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
@@ -121,15 +125,18 @@ describe('canCreateCycle', () => {
     );
   });
 
-  it('rejects a start date on or after the end date', () => {
+  it('rejects an end date before the start date', () => {
     expect(
       canCreateCycle({
         cycleForm: makeCycleForm({
           startDate: '2027-01-31',
-          endDate: '2027-01-01',
+          endDate: '2027-01-30',
         }),
       }),
     ).toBe(false);
+  });
+
+  it('allows a one-day Cycle whose start and end are the same day', () => {
     expect(
       canCreateCycle({
         cycleForm: makeCycleForm({
@@ -137,7 +144,83 @@ describe('canCreateCycle', () => {
           endDate: '2027-01-01',
         }),
       }),
+    ).toBe(true);
+  });
+});
+
+describe('canCreateCycle name rules', () => {
+  it('accepts 255 characters after trimming and refuses 256', () => {
+    expect(
+      canCreateCycle({
+        cycleForm: makeCycleForm({ name: `  ${'a'.repeat(255)}  ` }),
+      }),
+    ).toBe(true);
+    expect(
+      canCreateCycle({ cycleForm: makeCycleForm({ name: 'a'.repeat(256) }) }),
     ).toBe(false);
+  });
+});
+
+describe('suggestCycleName', () => {
+  it('names the start month and year in the locale', () => {
+    expect(suggestCycleName({ startDate: '2026-10-12', locale: 'en' })).toBe(
+      'October 2026',
+    );
+    expect(suggestCycleName({ startDate: '2026-10-12', locale: 'pt-BR' })).toBe(
+      'Outubro 2026',
+    );
+  });
+
+  it('suggests nothing until a start date is chosen', () => {
+    expect(suggestCycleName({ startDate: '', locale: 'en' })).toBe('');
+  });
+});
+
+function makeListedCycle(
+  id: string,
+  startDate: string,
+  state: 'draft' | 'sent' | 'past' = 'draft',
+) {
+  return makeCycle({ id, startDate, endDate: startDate, state });
+}
+
+describe('groupCyclesForList', () => {
+  it('splits Past from current and orders each newest start first, ties by end then id', () => {
+    const groups = groupCyclesForList({
+      cycles: [
+        makeListedCycle('a', '2026-09-01', 'past'),
+        makeListedCycle('b', '2026-10-01'),
+        makeListedCycle('c', '2026-11-01', 'sent'),
+        makeListedCycle('d', '2026-08-01', 'past'),
+        { ...makeListedCycle('e', '2026-10-01'), endDate: '2026-10-20' },
+      ],
+    });
+
+    expect(groups.current.map((cycle) => cycle.id)).toEqual(['c', 'e', 'b']);
+    expect(groups.past.map((cycle) => cycle.id)).toEqual(['a', 'd']);
+  });
+});
+
+describe('conflictingCyclesOf', () => {
+  const conflict = {
+    id: 'cycle-2',
+    name: 'October',
+    startDate: '2026-10-01',
+    endDate: '2026-10-31',
+  };
+
+  it('reads the Cycles named by a 409 envelope', () => {
+    const error = new AxiosError('conflict');
+    error.response = {
+      status: 409,
+      data: { error: 'OVERLAPPING_CYCLE', conflictingCycles: [conflict] },
+    } as AxiosResponse;
+
+    expect(conflictingCyclesOf({ error })).toEqual([conflict]);
+  });
+
+  it('finds none in any other failure', () => {
+    expect(conflictingCyclesOf({ error: new Error('boom') })).toEqual([]);
   });
 });
 
@@ -309,12 +392,87 @@ describe('calculateTotalEventTimeBlocks', () => {
   });
 });
 
-describe('cycleIsSent', () => {
-  it('is true only for a sent cycle', () => {
-    expect(cycleIsSent({ cycle: makeCycle({ state: 'sent' }) })).toBe(true);
-    expect(cycleIsSent({ cycle: makeCycle({ state: 'draft' }) })).toBe(false);
-    expect(cycleIsSent({ cycle: null })).toBe(false);
-    expect(cycleIsSent({ cycle: undefined })).toBe(false);
+describe('cycleIsReadOnly', () => {
+  it('is true for a sent or past cycle and false for a draft or none', () => {
+    expect(cycleIsReadOnly({ cycle: makeCycle({ state: 'sent' }) })).toBe(true);
+    expect(cycleIsReadOnly({ cycle: makeCycle({ state: 'past' }) })).toBe(true);
+    expect(cycleIsReadOnly({ cycle: makeCycle({ state: 'draft' }) })).toBe(
+      false,
+    );
+    expect(cycleIsReadOnly({ cycle: null })).toBe(false);
+    expect(cycleIsReadOnly({ cycle: undefined })).toBe(false);
+  });
+});
+
+describe('groupRowsByWeek', () => {
+  const row = (
+    eventId: string,
+    start: string,
+    end: string,
+    title = eventId,
+  ) => ({
+    eventId,
+    title,
+    start,
+    end,
+    status: 'scheduled' as const,
+    eventTimeBlocks: [],
+  });
+
+  it('groups by the Sunday-first Church week of the start day, in start order', () => {
+    const weeks = groupRowsByWeek({
+      timeZone: 'America/Sao_Paulo',
+      rows: [
+        row('next-sunday', '2026-10-18T13:00:00Z', '2026-10-18T15:00:00Z'),
+        row('saturday', '2026-10-17T13:00:00Z', '2026-10-17T15:00:00Z'),
+        row('sunday', '2026-10-11T13:00:00Z', '2026-10-11T15:00:00Z'),
+      ],
+    });
+
+    expect(
+      weeks.map(({ weekStart, weekEnd, rows }) => [
+        weekStart,
+        weekEnd,
+        rows.map((r) => r.eventId),
+      ]),
+    ).toEqual([
+      ['2026-10-11', '2026-10-17', ['sunday', 'saturday']],
+      ['2026-10-18', '2026-10-24', ['next-sunday']],
+    ]);
+  });
+
+  it('uses the Church day, not the UTC day, and shows a multi-day Event once in its start week', () => {
+    // 22:00 Saturday in Sao Paulo is already Sunday in UTC; it ends the next week.
+    const weeks = groupRowsByWeek({
+      timeZone: 'America/Sao_Paulo',
+      rows: [row('retreat', '2026-10-18T01:00:00Z', '2026-10-21T20:00:00Z')],
+    });
+
+    expect(weeks).toHaveLength(1);
+    expect(weeks[0]).toMatchObject({
+      weekStart: '2026-10-11',
+      rows: [expect.objectContaining({ eventId: 'retreat' })],
+    });
+  });
+
+  it('breaks start ties by end, title, then id', () => {
+    const start = '2026-10-14T13:00:00Z';
+    const weeks = groupRowsByWeek({
+      timeZone: 'UTC',
+      rows: [
+        row('b', start, '2026-10-14T16:00:00Z', 'Same'),
+        row('a2', start, '2026-10-14T15:00:00Z', 'Same'),
+        row('a1', start, '2026-10-14T15:00:00Z', 'Same'),
+        row('z', start, '2026-10-14T15:00:00Z', 'Alpha'),
+      ],
+    });
+
+    expect(weeks[0]?.rows.map((r) => r.eventId)).toEqual([
+      'z',
+      'a1',
+      'a2',
+      'b',
+    ]);
   });
 });
 

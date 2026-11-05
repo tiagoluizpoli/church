@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
@@ -9,8 +10,9 @@ import type {
 } from './calendar-row';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
-  eventSpanLabel,
   eventStatusBadgeVariant,
+  eventStatusLabel,
+  timeBlockCountLabel,
 } from './planning-admin.utils';
 import {
   AlertDialog,
@@ -26,7 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
+import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface PlanningEventCardProps {
   row: CycleCalendarTableRow;
@@ -104,21 +106,24 @@ export function PlanningEventCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="font-medium text-base">{row.title}</div>
+          {row.location ? (
+            <div className="text-muted-foreground text-xs">
+              {m.cycle_review_location({ location: row.location })}
+            </div>
+          ) : null}
           <div className="text-muted-foreground text-xs">
-            {formatDayOf({ value: row.start, timeZone: churchTimezone })}
-          </div>
-          <div className="text-muted-foreground text-xs">
-            {eventSpanLabel({
+            {formatInstantRangeOf({
               start: row.start,
               end: row.end,
               timeZone: churchTimezone,
-            })}{' '}
-            · {row.eventTimeBlocks.length} time block
-            {row.eventTimeBlocks.length === 1 ? '' : 's'}
+            })}
+          </div>
+          <div className="text-muted-foreground text-xs">
+            {timeBlockCountLabel({ count: row.eventTimeBlocks.length })}
           </div>
         </div>
         <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
-          {row.status}
+          {eventStatusLabel({ status: row.status })}
         </Badge>
       </div>
 
@@ -128,19 +133,19 @@ export function PlanningEventCard({
             type="button"
             size="touch"
             variant="ghost"
-            aria-label={`Add time block to ${row.title}`}
+            aria-label={m.cycle_review_add_time_block_to({ title: row.title })}
             onClick={() => onAddEventTimeBlockRequest({ row })}
           >
-            <Plus className="size-3.5" /> Add time block
+            <Plus className="size-3.5" /> {m.cycle_review_add_time_block()}
           </Button>
           <Button
             type="button"
             size="touch"
             variant="ghost"
-            aria-label={`Edit day ${row.title}`}
+            aria-label={m.cycle_review_edit_day({ title: row.title })}
             onClick={() => onEditEventRequest({ row })}
           >
-            <Pencil className="size-3.5" /> Edit
+            <Pencil className="size-3.5" /> {m.cycle_review_edit()}
           </Button>
           <AlertDialog
             open={confirmState.kind === 'event'}
@@ -154,29 +159,33 @@ export function PlanningEventCard({
                   type="button"
                   size="touch"
                   variant="destructive"
-                  aria-label={`Delete day ${row.title}`}
+                  aria-label={m.cycle_review_delete_day({ title: row.title })}
                 >
-                  <Trash2 className="size-3.5" /> Delete
+                  <Trash2 className="size-3.5" /> {m.cycle_review_delete()}
                 </Button>
               }
             />
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete this day?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {m.cycle_review_delete_day_title()}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This removes "{row.title}" and its time blocks from the cycle.
+                  {m.cycle_review_delete_day_description({ title: row.title })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={deleteEventPending}>
-                  Cancel
+                  {m.cycle_review_cancel()}
                 </AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
                   disabled={deleteEventPending}
                   onClick={() => onDeleteEventConfirm({ eventId: row.eventId })}
                 >
-                  {deleteEventPending ? 'Deleting…' : 'Delete event'}
+                  {deleteEventPending
+                    ? m.cycle_review_deleting()
+                    : m.cycle_review_delete_event_confirm()}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -208,7 +217,9 @@ export function PlanningEventCard({
                     type="button"
                     size="icon-touch"
                     variant="ghost"
-                    aria-label={`Edit time block ${eventTimeBlock.label}`}
+                    aria-label={m.cycle_review_edit_time_block({
+                      label: eventTimeBlock.label,
+                    })}
                     onClick={() =>
                       onEditEventTimeBlockRequest({
                         parentId: row.eventId,
@@ -227,7 +238,9 @@ export function PlanningEventCard({
                       size="icon-touch"
                       variant="destructive"
                       disabled
-                      aria-label={`Delete time block ${eventTimeBlock.label}`}
+                      aria-label={m.cycle_review_delete_time_block({
+                        label: eventTimeBlock.label,
+                      })}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
@@ -256,7 +269,9 @@ export function PlanningEventCard({
                             type="button"
                             size="icon-touch"
                             variant="destructive"
-                            aria-label={`Delete time block ${eventTimeBlock.label}`}
+                            aria-label={m.cycle_review_delete_time_block({
+                              label: eventTimeBlock.label,
+                            })}
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
@@ -265,17 +280,19 @@ export function PlanningEventCard({
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            Delete this time block?
+                            {m.cycle_review_delete_time_block_title()}
                           </AlertDialogTitle>
                           <AlertDialogDescription>
-                            This removes "{eventTimeBlock.label}" from the day.
+                            {m.cycle_review_delete_time_block_description({
+                              label: eventTimeBlock.label,
+                            })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel
                             disabled={deleteEventTimeBlockPending}
                           >
-                            Cancel
+                            {m.cycle_review_cancel()}
                           </AlertDialogCancel>
                           <AlertDialogAction
                             variant="destructive"
@@ -289,8 +306,8 @@ export function PlanningEventCard({
                             }
                           >
                             {deleteEventTimeBlockPending
-                              ? 'Deleting…'
-                              : 'Delete time block'}
+                              ? m.cycle_review_deleting()
+                              : m.cycle_review_delete_time_block_confirm()}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

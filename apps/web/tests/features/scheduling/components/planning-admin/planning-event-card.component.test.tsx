@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
@@ -87,19 +88,21 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Add time block to Sunday Service' }),
+      screen.getByRole('button', {
+        name: 'Adicionar horário a Sunday Service',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Edit day Sunday Service' }),
+      screen.getByRole('button', { name: 'Editar dia Sunday Service' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Delete day Sunday Service' }),
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Edit time block Worship' }),
+      screen.getByRole('button', { name: 'Editar horário Worship' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Delete time block Worship' }),
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeEnabled();
   });
 
@@ -113,7 +116,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Delete time block Midweek' }),
+      screen.getByRole('button', { name: 'Excluir horário Midweek' }),
     ).toBeDisabled();
   });
 
@@ -130,10 +133,10 @@ describe('PlanningEventCard affordances (US1)', () => {
       screen.queryByRole('button', { name: /^Add eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Edit day/ }),
+      screen.queryByRole('button', { name: /^Editar dia/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /^Delete day/ }),
+      screen.queryByRole('button', { name: /^Excluir dia/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Edit eventTimeBlock/ }),
@@ -141,6 +144,40 @@ describe('PlanningEventCard affordances (US1)', () => {
     expect(
       screen.queryByRole('button', { name: /^Delete eventTimeBlock/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('words the visible controls and both confirmations in pt-BR', async () => {
+    render(
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly={false}
+        {...baseProps()}
+      />,
+    );
+    const user = userEvent.setup();
+
+    expect(screen.getByText('Adicionar horário')).toBeVisible();
+    expect(screen.getByText('Editar')).toBeVisible();
+    await user.click(
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
+    );
+    let dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Excluir este dia?')).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        'Isso remove "Sunday Service" e os horários dele do ciclo.',
+      ),
+    ).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    await user.click(
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
+    );
+    dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Excluir este horário?')).toBeVisible();
+    expect(
+      within(dialog).getByText('Isso remove "Worship" do dia.'),
+    ).toBeVisible();
   });
 
   it('calls onDeleteEventConfirm after confirming the delete-day dialog', async () => {
@@ -155,11 +192,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete day Sunday Service' }),
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete event' }),
+      within(dialog).getByRole('button', { name: 'Excluir evento' }),
     );
 
     expect(props.onDeleteEventConfirm).toHaveBeenCalledWith({
@@ -179,11 +216,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete time block Worship' }),
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete time block' }),
+      within(dialog).getByRole('button', { name: 'Excluir horário' }),
     );
 
     expect(props.onDeleteEventTimeBlockConfirm).toHaveBeenCalledWith({
@@ -202,10 +239,10 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     const dayDelete = screen.getByRole('button', {
-      name: 'Delete day Sunday Service',
+      name: 'Excluir dia Sunday Service',
     });
     const eventTimeBlockDelete = screen.getByRole('button', {
-      name: 'Delete time block Worship',
+      name: 'Excluir horário Worship',
     });
 
     expect(dayDelete.className).toContain('bg-destructive/10');
@@ -224,11 +261,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete day Sunday Service' }),
+      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete event' }),
+      within(dialog).getByRole('button', { name: 'Excluir evento' }),
     );
 
     // Simulate the mutation going pending: dialog must stay open, not close
@@ -245,8 +282,8 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Excluindo…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
 
     // Mutation settles: dialog auto-closes.
     rerender(
@@ -274,11 +311,11 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole('button', { name: 'Delete time block Worship' }),
+      screen.getByRole('button', { name: 'Excluir horário Worship' }),
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete time block' }),
+      within(dialog).getByRole('button', { name: 'Excluir horário' }),
     );
 
     rerender(
@@ -293,7 +330,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Excluindo…' })).toBeDisabled();
 
     rerender(
       <TimezoneProvider churchTimezone="UTC">
@@ -309,10 +346,6 @@ describe('PlanningEventCard affordances (US1)', () => {
   });
 });
 
-function isDateOnlyText(content: string): boolean {
-  return /^\d{2}\/\d{2}\/\d{4}$/.test(content);
-}
-
 /** `dd/MM/yyyy HH:mm – HH:mm`, or `dd/MM/yyyy HH:mm – dd/MM/yyyy HH:mm` when
  * the time block's range crosses a church-local day boundary. */
 function isTimeRangeText(content: string): boolean {
@@ -322,7 +355,7 @@ function isTimeRangeText(content: string): boolean {
 }
 
 describe('PlanningEventCard timezone-aware formatting (US2)', () => {
-  it("renders a day's date date-only and a time block's time as a dated instant range, with no raw ISO or arrow", () => {
+  it("renders the Event's full span and a time block's time as dated instant ranges, with no raw ISO or arrow", () => {
     render(
       <PlanningEventCard
         row={rowWithTwoEventTimeBlocks()}
@@ -333,7 +366,6 @@ describe('PlanningEventCard timezone-aware formatting (US2)', () => {
     );
 
     const card = screen.getByTestId('planning-event-card');
-    expect(within(card).getAllByText(isDateOnlyText).length).toBeGreaterThan(0);
     expect(within(card).getAllByText(isTimeRangeText).length).toBeGreaterThan(
       0,
     );
@@ -393,12 +425,73 @@ describe('PlanningEventCard exact-string display under a non-UTC ambient TZ (#15
     );
 
     const card = screen.getByTestId('planning-event-card');
-    expect(within(card).getByText('02/08/2026')).toBeInTheDocument();
+    expect(
+      within(card).getByText('02/08/2026 09:00 – 11:00'),
+    ).toBeInTheDocument();
     expect(
       within(card).getByText('02/08/2026 09:00 – 10:00'),
     ).toBeInTheDocument();
     expect(
       within(card).getByText('02/08/2026 10:00 – 11:00'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('PlanningEventCard review content', () => {
+  it('shows a multi-day Event once with its full span, its location and an overnight block with its spillover date', () => {
+    render(
+      <PlanningEventCard
+        row={{
+          eventId: 'event-retreat',
+          title: 'Youth retreat',
+          location: 'Mountain camp',
+          start: '2026-08-07T20:00:00Z',
+          end: '2026-08-09T15:00:00Z',
+          status: 'scheduled',
+          eventTimeBlocks: [
+            {
+              eventTimeBlockId: 'block-vigil',
+              label: 'Night vigil',
+              startTime: '2026-08-07T22:00:00Z',
+              endTime: '2026-08-08T02:00:00Z',
+              isOnlyEventTimeBlockInEvent: false,
+            },
+            {
+              eventTimeBlockId: 'block-closing',
+              label: 'Closing',
+              startTime: '2026-08-09T13:00:00Z',
+              endTime: '2026-08-09T15:00:00Z',
+              isOnlyEventTimeBlockInEvent: false,
+            },
+          ],
+        }}
+        isReadOnly
+        {...baseProps()}
+      />,
+      { churchTimezone: 'UTC' },
+    );
+
+    const card = screen.getByTestId('planning-event-card');
+    expect(within(card).getByText('Youth retreat')).toBeInTheDocument();
+    expect(
+      within(card).getByText(
+        m.cycle_review_location({ location: 'Mountain camp' }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByText('07/08/2026 20:00 – 09/08/2026 15:00'),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByText('07/08/2026 22:00 – 08/08/2026 02:00'),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByText(
+        m.cycle_review_time_block_count_other({ count: 2 }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByText(m.event_status_scheduled()),
+    ).toBeInTheDocument();
+    expect(within(card).queryByRole('button')).not.toBeInTheDocument();
   });
 });

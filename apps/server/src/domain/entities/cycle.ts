@@ -50,7 +50,7 @@ export class Cycle extends Entity<CycleProps, CycleId> {
       compareCalendarDays({
         left: normalizedProps.startDate,
         right: normalizedProps.endDate,
-      }) >= 0
+      }) > 0
     ) {
       throw new InvalidDateRangeError();
     }
@@ -113,7 +113,7 @@ export class Cycle extends Entity<CycleProps, CycleId> {
     const day = today({ instant, timeZone });
     return (
       compareCalendarDays({ left: day, right: this.startDate }) >= 0 &&
-      compareCalendarDays({ left: day, right: this.endDate }) < 0
+      compareCalendarDays({ left: day, right: this.endDate }) <= 0
     );
   }
 }

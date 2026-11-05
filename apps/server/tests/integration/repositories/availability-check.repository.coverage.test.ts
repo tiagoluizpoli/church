@@ -55,7 +55,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       churchId: seed.churchAId,
       name: `Cycle-${Math.random().toString(36).slice(2, 8)}`,
       startDate: new Date('2026-08-01T00:00:00.000Z'),
-      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      endDate: new Date('2026-08-31T00:00:00.000Z'),
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -95,7 +95,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       churchId: seed.churchAId,
       name: 'Other cycle',
       startDate: new Date('2026-09-01T00:00:00.000Z'),
-      endDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-30T00:00:00.000Z'),
     });
     const otherGraph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,

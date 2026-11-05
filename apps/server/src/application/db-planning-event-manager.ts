@@ -2,12 +2,14 @@ import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
   compareCalendarDays,
+  compareInstants,
   fromDate,
   millisecondsBetween,
   now,
   toDate,
   today,
 } from '@church/time';
+import type { EventId } from '../domain/branded-ids';
 import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
@@ -38,11 +40,8 @@ import {
 import {
   CycleEventGenerator,
   type ExistingGeneratedEventTimeBlockFingerprint,
+  eventTimeBlockEnvelope,
 } from '../domain/services/cycle-event-generator';
-import type {
-  StaffingSeedEventTimeBlock,
-  UsualSetupStaffingSeeder,
-} from './usual-setup-staffing-seeder';
 
 interface EnsureCycleWritableInput {
   cycle: Cycle;
@@ -90,13 +89,16 @@ interface DbPlanningEventManagerDependencies {
   templateRepository: EventTemplateRepository;
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
-  staffingSeeder: UsualSetupStaffingSeeder;
   eventTimeBlockRepository: EventTimeBlockRepository;
 }
 
+/**
+ * Every write takes the Church's Cycle lock (shared with Cycle create and
+ * Send) before reading mutable Cycle or child state, so conflicting Cycle and
+ * Event writes serialize.
+ */
 export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly generator = new CycleEventGenerator();
-  private readonly staffingSeeder: UsualSetupStaffingSeeder;
 
   private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
@@ -111,7 +113,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     templateRepository,
     churchRepository,
     unitOfWork,
-    staffingSeeder,
     eventTimeBlockRepository,
   }: DbPlanningEventManagerDependencies) {
     this.cycleRepository = cycleRepository;
@@ -120,24 +121,40 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
-    this.staffingSeeder = staffingSeeder;
   }
 
   async generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
   ): Promise<GeneratedPlanningCounts> {
     const church = await this.churchRepository.getById({ id: input.churchId });
+    const templateIds = [...new Set(input.templateIds)];
 
     return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
+      // Apply is Draft-only: a Sent Cycle's staffing is decided at Send.
+      if (cycle.state !== 'draft') {
+        throw new IllegalStateTransitionError({
+          from: cycle.state,
+          to: 'apply-templates',
+        });
+      }
+
       const templates = await this.templateRepository.getByIds({
         churchId: input.churchId,
-        templateIds: input.templateIds,
+        templateIds,
         tx,
       });
+      if (templates.length !== templateIds.length) {
+        throw new NotFoundError('Event template not found');
+      }
       const existingEvents = await this.eventRepository.listCycleEvents({
         churchId: input.churchId,
         cycleId: input.cycleId,
@@ -153,6 +170,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             timeZone: church.timezone,
           }),
           sourceTemplateId: eventGroup.event.sourceTemplateId,
+          cancelled: eventGroup.event.status === 'cancelled',
         })),
         existingFingerprints: existingEvents.flatMap((eventGroup) => {
           const fingerprints: ExistingGeneratedEventTimeBlockFingerprint[] = [];
@@ -176,78 +194,79 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         }),
         timeZone: church.timezone,
       });
-
-      // A Draft gets calendar copies only: Send pre-fills its staffing from
-      // the setup saved by then. Blocks added to a Sent Cycle seed now.
-      const setup =
-        cycle.state === 'sent'
-          ? await this.staffingSeeder.loadSetup({
-              churchId: input.churchId,
-              timeZone: church.timezone,
-              tx,
-            })
-          : null;
-      const addedEventTimeBlocks: StaffingSeedEventTimeBlock[] = [];
+      const existingById = new Map(
+        existingEvents.map((eventGroup) => [eventGroup.event.id, eventGroup]),
+      );
 
       let generatedEventCount = 0;
       let generatedEventTimeBlockCount = 0;
 
       for (const plan of plans) {
-        const targetEventId =
-          plan.kind === 'create_event'
-            ? (
-                await this.eventRepository.createEvent({
-                  churchId: input.churchId,
-                  cycleId: input.cycleId,
-                  sourceTemplateId: plan.sourceTemplateId,
-                  title: plan.title,
-                  start: toDate({ instant: plan.start }),
-                  end: toDate({ instant: plan.end }),
-                  status: cycle.state === 'sent' ? 'scheduled' : 'draft',
-                  tx,
-                })
-              ).id
-            : plan.eventId;
+        let targetEventId: EventId;
 
         if (plan.kind === 'create_event') {
+          const created = await this.eventRepository.createEvent({
+            churchId: input.churchId,
+            cycleId: input.cycleId,
+            sourceTemplateId: plan.sourceTemplateId,
+            title: plan.title,
+            start: toDate({ instant: plan.start }),
+            end: toDate({ instant: plan.end }),
+            status: 'draft',
+            tx,
+          });
+          targetEventId = created.id;
           await this.eventRepository.seedParticipations({
             churchId: input.churchId,
             eventId: targetEventId,
             tx,
           });
           generatedEventCount += 1;
+        } else {
+          targetEventId = plan.eventId;
+          const existing = existingById.get(targetEventId);
+          if (existing) {
+            const { start, end } = eventTimeBlockEnvelope({
+              eventTimeBlocks: [
+                {
+                  startTime: existing.event.start,
+                  endTime: existing.event.end,
+                },
+                ...existing.eventTimeBlocks.map(({ startTime, endTime }) => ({
+                  startTime,
+                  endTime,
+                })),
+                ...plan.eventTimeBlocks,
+              ],
+            });
+            const grows =
+              compareInstants({ left: start, right: existing.event.start }) <
+                0 ||
+              compareInstants({ left: end, right: existing.event.end }) > 0;
+            if (grows) {
+              await this.eventRepository.updateEvent({
+                churchId: input.churchId,
+                eventId: targetEventId,
+                start: toDate({ instant: start }),
+                end: toDate({ instant: end }),
+                tx,
+              });
+            }
+          }
         }
 
         for (const eventTimeBlock of plan.eventTimeBlocks) {
-          const eventTimeBlockId =
-            await this.eventRepository.createEventTimeBlock({
-              churchId: input.churchId,
-              eventId: targetEventId,
-              sourceTemplateTimeBlockId:
-                eventTimeBlock.sourceTemplateTimeBlockId,
-              startTime: toDate({ instant: eventTimeBlock.startTime }),
-              endTime: toDate({ instant: eventTimeBlock.endTime }),
-              label: eventTimeBlock.label,
-              tx,
-            });
-          addedEventTimeBlocks.push({
+          await this.eventRepository.createEventTimeBlock({
+            churchId: input.churchId,
             eventId: targetEventId,
-            eventTimeBlockId,
             sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
-            startTime: eventTimeBlock.startTime,
-            endTime: eventTimeBlock.endTime,
+            startTime: toDate({ instant: eventTimeBlock.startTime }),
+            endTime: toDate({ instant: eventTimeBlock.endTime }),
+            label: eventTimeBlock.label,
+            tx,
           });
           generatedEventTimeBlockCount += 1;
         }
-      }
-
-      if (setup) {
-        await this.staffingSeeder.seed({
-          churchId: input.churchId,
-          eventTimeBlocks: addedEventTimeBlocks,
-          setup,
-          tx,
-        });
       }
 
       return {
@@ -261,6 +280,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -298,6 +322,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -460,6 +489,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     action,
     tx,
   }: EnsureWritableEventInput): Promise<Event> {
+    await this.cycleRepository.acquireChurchLock({
+      churchId: input.churchId,
+      tx,
+    });
+
     const cycle = await this.ensureCycleWritable({
       cycle: await this.cycleRepository.getById({ ...input, tx }),
       churchTimeZone: church.timezone,
@@ -516,6 +550,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
@@ -567,7 +606,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
     const churchToday = today({ instant: now(), timeZone: churchTimeZone });
 
-    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) >= 0) {
+    // endDate is the Cycle's last day: writes stay open through it.
+    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
       await this.cycleRepository.updateState({
         churchId: cycle.churchId,
         cycleId: cycle.id,

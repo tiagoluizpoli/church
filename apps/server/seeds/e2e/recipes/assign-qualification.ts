@@ -129,7 +129,8 @@ export function createAssignQualificationRecipe({
       id: idOf({ kind: 'cycle' }),
       name: 'Ciclo da Equipe',
       startDate: anchor,
-      endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS }),
+      // The last of CYCLE_LENGTH_DAYS included days.
+      endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS - 1 }),
       state: 'sent',
     });
     // Draft and `availability_requested`: the journey schedules the Event and

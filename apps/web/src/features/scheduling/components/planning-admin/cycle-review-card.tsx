@@ -1,18 +1,20 @@
+import { m } from '@church/i18n/messages';
 import { parseInstant, parseTimeOfDay, today, toInstant } from '@church/time';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { QuickCreateEventModal } from '../quick-create-event-modal';
 import {
   buildVisibleCalendarRows,
-  CALENDAR_TABLE_COLUMNS,
   type CalendarVisibleRow,
   calendarRowEventId,
   calendarRowKey,
+  calendarTableColumns,
   renderCalendarCell,
   type StartCreateEventTimeBlockInput,
   type StartEditEventInput,
   type StartEditEventTimeBlockInput,
   type ToggleEventExpandedInput,
   visibleRowId,
+  weekLabel,
 } from './calendar-row';
 import { CreateEventTimeBlockDialog } from './create-event-time-block-dialog';
 import { EditEventDialog } from './edit-event-dialog';
@@ -25,12 +27,15 @@ import type {
   ExpandedCalendarRowsState,
 } from './planning-admin.types';
 import {
+  groupRowsByWeek,
   isMultiDayEvent,
+  isNotFoundError,
   shiftedEnd,
   toCycleCalendarTableRow,
 } from './planning-admin.utils';
 import { useCycleReviewCard } from './planning-admin-context';
 import { PlanningEventCard } from './planning-event-card';
+import { RetryAlert } from './retry-alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
@@ -38,6 +43,8 @@ import { useTimezone } from '@/shared/hooks/use-timezone';
 
 interface CycleReviewCardProps {
   isReadOnly: boolean;
+  /** The Cycle id of the route; data for any other Cycle is never shown. */
+  cycleId?: string;
 }
 
 const DEFAULT_EVENT_TIME_BLOCK_START_TIME = parseTimeOfDay({ value: '09:00' });
@@ -162,11 +169,13 @@ function isConfirmingDeleteEventTimeBlock({
   );
 }
 
-export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
+export function CycleReviewCard({ isReadOnly, cycleId }: CycleReviewCardProps) {
   const {
     selectedCycleId,
     selectedCycle,
     cycleDetailsLoading,
+    cycleDetailsError,
+    refetchCycleDetails,
     cycleEvents,
     sendCyclePending,
     handleSendCycle,
@@ -435,35 +444,62 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
   }
 
   const visibleCalendarRows = buildVisibleCalendarRows({
-    rows: cycleEvents.map(
-      (eventGroup): CycleCalendarTableRow =>
-        toCycleCalendarTableRow({ eventGroup }),
-    ),
+    weeks: groupRowsByWeek({
+      rows: cycleEvents.map(
+        (eventGroup): CycleCalendarTableRow =>
+          toCycleCalendarTableRow({ eventGroup }),
+      ),
+      timeZone: churchTimezone,
+    }),
     expandedEventIds: calendarRowsState.expandedEventIds,
   });
+  const isShowingOtherCycle =
+    cycleId !== undefined && selectedCycle?.id !== cycleId;
+  const reviewedCycle = isShowingOtherCycle ? null : selectedCycle;
 
   return (
     <Card className="surface-panel">
       <CardContent className="space-y-4">
         {!selectedCycleId ? (
           <p className="text-muted-foreground text-sm">
-            Select or create a cycle to continue.
+            {m.cycle_review_select()}
           </p>
-        ) : cycleDetailsLoading ? (
-          <p className="text-muted-foreground text-sm">
-            Loading cycle details…
+        ) : cycleDetailsError ? (
+          isNotFoundError({ error: cycleDetailsError }) ? (
+            <p
+              className="text-muted-foreground text-sm"
+              data-testid="cycle-review-not-found"
+            >
+              {m.cycle_review_not_found()}
+            </p>
+          ) : (
+            <RetryAlert
+              message={m.cycle_review_error()}
+              testId="cycle-review-error"
+              onRetry={refetchCycleDetails}
+            />
+          )
+        ) : cycleDetailsLoading || !reviewedCycle ? (
+          <p
+            className="text-muted-foreground text-sm"
+            data-testid="cycle-review-loading"
+          >
+            {m.cycle_review_loading()}
           </p>
-        ) : selectedCycle ? (
+        ) : (
           <div className="space-y-3">
             {isReadOnly ? (
-              <div className="font-medium text-sm">Calendar review</div>
+              <div className="font-medium text-sm">
+                {m.cycle_review_title()}
+              </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="font-medium text-sm">Calendar review</div>
+                  <div className="font-medium text-sm">
+                    {m.cycle_review_title()}
+                  </div>
                   <div className="text-muted-foreground text-xs">
-                    Confirm dates, eventTimeBlocks, and event types before
-                    sending the package.
+                    {m.cycle_review_send_hint()}
                   </div>
                 </div>
                 <Button
@@ -472,7 +508,9 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                   disabled={sendCyclePending}
                   onClick={handleSendCycle}
                 >
-                  {sendCyclePending ? 'Sending…' : 'Send to Ministries'}
+                  {sendCyclePending
+                    ? m.cycle_review_sending()
+                    : m.cycle_review_send()}
                 </Button>
               </div>
             )}
@@ -482,24 +520,24 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                 <div className="hidden md:block">
                   <div className="mb-2 flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={expandAll}>
-                      Expand all
+                      {m.cycle_review_expand_all()}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={collapseAll}
                     >
-                      Collapse all
+                      {m.cycle_review_collapse_all()}
                     </Button>
                   </div>
                 </div>
 
                 <DataTable<CalendarVisibleRow>
-                  aria-label="Calendar review"
-                  columns={CALENDAR_TABLE_COLUMNS}
+                  aria-label={m.cycle_review_title()}
+                  columns={calendarTableColumns()}
                   items={visibleCalendarRows}
                   mobileItems={visibleCalendarRows.filter(
-                    (row) => row.kind === 'parent',
+                    (row) => row.kind !== 'event-time-block',
                   )}
                   mobileListTestId="planning-events-list"
                   mobileListHeader={
@@ -510,7 +548,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                         variant="outline"
                         onClick={() => setAddEventOpen(true)}
                       >
-                        Add day-event
+                        {m.cycle_review_add_day_event()}
                       </Button>
                     ) : null
                   }
@@ -591,7 +629,11 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                     })
                   }
                   renderMobileCard={({ item }) =>
-                    item.kind === 'parent' ? (
+                    item.kind === 'week' ? (
+                      <h3 className="font-semibold text-sm">
+                        {weekLabel(item)}
+                      </h3>
+                    ) : item.kind === 'parent' ? (
                       <PlanningEventCard
                         row={item.row}
                         isReadOnly={isReadOnly}
@@ -612,16 +654,14 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                 />
               </>
             ) : (
-              <p className="text-muted-foreground text-sm">
-                No events in this cycle yet. Apply templates or add a manual
-                event.
+              <p
+                className="text-muted-foreground text-sm"
+                data-testid="cycle-review-empty"
+              >
+                {m.cycle_review_empty()}
               </p>
             )}
           </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">
-            Pick a cycle to review its generated calendar.
-          </p>
         )}
       </CardContent>
 

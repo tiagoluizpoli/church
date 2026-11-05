@@ -295,6 +295,13 @@
       "when": 1793730944419,
       "tag": "0041_availability-check-withdrawn-at",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793835130520,
+      "tag": "0042_cycle-inclusive-end-date",
+      "breakpoints": true
     }
   ]
 }

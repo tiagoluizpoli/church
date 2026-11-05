@@ -74,7 +74,6 @@ function createManagers() {
       templateRepository,
       churchRepository,
       unitOfWork,
-      staffingSeeder,
       eventTimeBlockRepository,
     }),
     templateManager: new DbEventTemplateManager({

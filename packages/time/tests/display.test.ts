@@ -7,6 +7,7 @@ import {
   formatDayLabel,
   formatInstant,
   formatInstantPrecise,
+  formatMonthYear,
   formatRecency,
   formatRelative,
   formatTimeOfDay,
@@ -462,6 +463,26 @@ describe('formatDayLabel', () => {
   it('reads like `Sun 11 Oct` in en, without padding the day', () => {
     expect(formatDayLabel({ day: day('2026-10-04'), locale: 'en' })).toBe(
       'Sun 4 Oct',
+    );
+  });
+});
+
+describe('formatMonthYear', () => {
+  it('names the month of the day in the locale, capitalized', () => {
+    expect(formatMonthYear({ day: day('2026-10-12'), locale: 'en' })).toBe(
+      'October 2026',
+    );
+    expect(formatMonthYear({ day: day('2026-10-12'), locale: 'pt-BR' })).toBe(
+      'Outubro 2026',
+    );
+  });
+
+  it('does not shift the month at its first or last day', () => {
+    expect(formatMonthYear({ day: day('2026-03-01'), locale: 'pt-BR' })).toBe(
+      'Março 2026',
+    );
+    expect(formatMonthYear({ day: day('2026-12-31'), locale: 'en' })).toBe(
+      'December 2026',
     );
   });
 });

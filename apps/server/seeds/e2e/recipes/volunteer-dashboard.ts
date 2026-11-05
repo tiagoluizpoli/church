@@ -131,7 +131,8 @@ export function createVolunteerDashboardRecipe({
       id: idOf({ kind: 'cycle' }),
       name: 'Ciclo E2E',
       startDate: anchor,
-      endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS }),
+      // The last of CYCLE_LENGTH_DAYS included days.
+      endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS - 1 }),
       state: 'sent',
     });
 

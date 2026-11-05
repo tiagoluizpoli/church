@@ -1,5 +1,7 @@
-import { screen, within } from '@testing-library/react';
+import { m } from '@church/i18n/messages';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
@@ -12,6 +14,8 @@ const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getCycle = vi.fn();
 const getEventTemplate = vi.fn();
 const applyPlanningTemplates = vi.fn();
+const deleteCycle = vi.fn();
+const updateCycle = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -22,6 +26,8 @@ vi.mock('@/utils/api-instances', async () => ({
     getEventTemplate: (...args: unknown[]) => getEventTemplate(...args),
     applyPlanningTemplates: (...args: unknown[]) =>
       applyPlanningTemplates(...args),
+    deleteCycle: (...args: unknown[]) => deleteCycle(...args),
+    updateCycle: (...args: unknown[]) => updateCycle(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -55,7 +61,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 
     renderCycles();
 
-    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
     expect(screen.getByTestId('open-create-cycle-dialog-button')).toBeVisible();
@@ -87,17 +93,20 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
 
     const cycleOption = await screen.findByTestId('cycle-option');
     expect(cycleOption).toHaveAttribute('aria-selected', 'false');
     await user.click(cycleOption);
 
-    expect(await screen.findByText('Calendar review')).toBeVisible();
+    expect(await screen.findByText(m.cycle_review_title())).toBeVisible();
     expect(
       screen.getByTestId('open-apply-templates-dialog-button'),
     ).toBeVisible();
+    expect(
+      screen.queryByTestId('open-template-library-button'),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
   });
 
@@ -130,7 +139,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     await user.click(await screen.findByTestId('cycle-option'));
 
     expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
-      'sent',
+      m.cycle_state_sent(),
     );
     expect(
       screen.queryByTestId('open-apply-templates-dialog-button'),
@@ -140,32 +149,31 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the "Cycles" page title behind the create-cycle dialog instead of swapping it to "Create cycle"', async () => {
+  it('opens New cycle over the list without leaving /cycles, keeping the page title', async () => {
     listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-    renderCycles();
+    const { router } = renderCycles();
 
-    await screen.findByText('Existing cycles');
+    await screen.findByText(m.cycles_list_title());
     await user.click(screen.getByTestId('open-create-cycle-dialog-button'));
 
     expect(
-      await screen.findByRole('dialog', { name: 'Create cycle' }),
+      await screen.findByRole('dialog', { name: m.cycles_form_title_new() }),
     ).toBeVisible();
+    expect(router.state.location.pathname).toBe('/cycles');
+    expect(router.state.location.searchStr).toBe('');
     // The h1 lives in the (now aria-hidden, inert) page behind the dialog,
     // so query it directly instead of screen.getByRole('heading', ...),
     // which excludes aria-hidden content from the accessibility tree.
-    expect(document.querySelector('h1')).toHaveTextContent('Cycles');
+    expect(document.querySelector('h1')).toHaveTextContent(m.cycles_title());
   });
 
   it('keeps the template library as a saved-list view and opens creation on a nested page without loading a cycle', async () => {
     listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-    renderCycles();
-
-    await screen.findByText('Existing cycles');
-    await user.click(screen.getByTestId('open-template-library-button'));
+    renderCycles('/event-templates');
 
     expect(await screen.findByText('Modelos salvos')).toBeVisible();
     expect(screen.queryByTestId('template-name-input')).not.toBeInTheDocument();
@@ -201,10 +209,8 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     getEventTemplate.mockResolvedValue(template);
 
     const user = userEvent.setup();
-    renderCycles();
+    renderCycles('/event-templates');
 
-    await screen.findByText('Existing cycles');
-    await user.click(screen.getByTestId('open-template-library-button'));
     await user.click(await screen.findByTestId('edit-template-button'));
 
     expect(await screen.findByTestId('template-edit-page')).toBeVisible();
@@ -291,19 +297,17 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     await user.click(screen.getByTestId('open-apply-templates-dialog-button'));
 
     expect(
-      await screen.findByRole('dialog', { name: 'Apply templates' }),
+      await screen.findByRole('dialog', { name: 'Aplicar modelos' }),
     ).toBeVisible();
 
     const checkbox = screen.getByTestId('template-select-checkbox');
-    expect(checkbox).not.toBeChecked();
-    await user.click(checkbox);
-    expect(checkbox).toBeChecked();
+    await waitFor(() => expect(checkbox).toBeChecked());
 
     const applyButton = screen.getByTestId('apply-templates-button');
     await user.click(applyButton);
 
     expect(
-      screen.getByRole('dialog', { name: 'Apply templates' }),
+      screen.getByRole('dialog', { name: 'Aplicar modelos' }),
     ).toBeVisible();
     expect(
       await screen.findByTestId('apply-templates-error'),
@@ -346,9 +350,11 @@ describe('CyclesActions (US4)', () => {
       'open-apply-templates-dialog-button',
     );
     const addManualEventButton = within(actionsRow).getByRole('button', {
-      name: 'Add event',
+      name: m.cycles_add_event_button(),
     });
     expect(applyTemplateButton).toBeVisible();
+    expect(applyTemplateButton).toHaveTextContent('Aplicar modelo');
+    expect(addManualEventButton).toHaveTextContent('Adicionar evento');
     expect(addManualEventButton).toBeVisible();
 
     await user.click(addManualEventButton);
@@ -385,9 +391,243 @@ describe('CyclesActions (US4)', () => {
     renderCycles();
 
     await user.click(await screen.findByTestId('cycle-option'));
-    await screen.findByText('Calendar review');
+    await screen.findByText(m.cycle_review_title());
 
     expect(screen.queryByText('Manual exceptions')).not.toBeInTheDocument();
+  });
+});
+
+describe('Cycle deletion', () => {
+  function mockCycle(state: 'draft' | 'sent') {
+    const cycle = {
+      id: 'cycle-1',
+      name: 'August 2026',
+      startDate: '2026-08-01T00:00:00.000Z',
+      endDate: '2026-08-31T00:00:00.000Z',
+      state,
+    };
+    listCycles.mockResolvedValue({ cycles: [cycle] });
+    getCycle.mockResolvedValue({ cycle, events: [] });
+  }
+
+  it('offers Delete only on a Draft, behind a confirmation that deletes nothing until confirmed', async () => {
+    mockCycle('draft');
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Excluir August 2026?' }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Manter rascunho' }));
+    expect(deleteCycle).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('does not offer Delete on a sent Cycle', async () => {
+    mockCycle('sent');
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await screen.findByTestId('selected-cycle-state');
+
+    expect(screen.queryByTestId('delete-cycle-button')).not.toBeInTheDocument();
+  });
+
+  it('returns to the refreshed list with no selection after a confirmed delete', async () => {
+    mockCycle('draft');
+    deleteCycle.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+    listCycles.mockResolvedValue({ cycles: [] });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir ciclo' }),
+    );
+
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+    expect(deleteCycle).toHaveBeenCalledWith('cycle-1');
+    expect(screen.queryByTestId('cycle-option')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('selected-cycle-name')).not.toBeInTheDocument();
+  });
+});
+
+describe('Cycle deletion and Apply against a stale Draft', () => {
+  const draft = {
+    id: 'cycle-1',
+    name: 'August 2026',
+    startDate: '2026-08-01',
+    endDate: '2026-08-31',
+    state: 'draft',
+  };
+
+  function eventGroup(id: string, status: string) {
+    return {
+      event: {
+        id,
+        title: id,
+        start: '2026-08-02T13:00:00.000Z',
+        end: '2026-08-02T15:00:00.000Z',
+        status,
+      },
+      eventTimeBlocks: [],
+    };
+  }
+
+  function refusal(status: number, message: string) {
+    const error = new AxiosError(message);
+    error.response = {
+      status,
+      data: { message },
+    } as AxiosResponse;
+    return error;
+  }
+
+  it('counts every owned Event in the delete confirmation, cancelled ones included', async () => {
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({
+      cycle: draft,
+      events: [
+        eventGroup('e1', 'scheduled'),
+        eventGroup('e2', 'cancelled'),
+        eventGroup('e3', 'cancelled'),
+      ],
+    });
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+
+    expect(await screen.findByTestId('cycle-delete-count')).toHaveTextContent(
+      '3 eventos serão excluídos',
+    );
+  });
+
+  it('refetches after a stale delete refusal, shows the refusal and hides the Draft actions', async () => {
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    deleteCycle.mockRejectedValue(
+      refusal(409, 'Only a Draft Cycle can be deleted.'),
+    );
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+    getCycle.mockResolvedValue({
+      cycle: { ...draft, state: 'sent' },
+      events: [],
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir ciclo' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-cycle-button'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('edit-cycle-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refetches after a stale Apply refusal and hides the Draft actions', async () => {
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    const sunday = {
+      id: 'template-1',
+      name: 'Sunday',
+      weekday: 0,
+      blocks: [],
+    };
+    listEventTemplates.mockResolvedValue({ templates: [sunday] });
+    applyPlanningTemplates.mockRejectedValue(
+      refusal(409, 'Only a Draft Cycle can take templates.'),
+    );
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+    await user.click(
+      await screen.findByTestId('open-apply-templates-dialog-button'),
+    );
+    getCycle.mockResolvedValue({
+      cycle: { ...draft, state: 'sent' },
+      events: [],
+    });
+    await screen.findAllByTestId('template-select-checkbox');
+
+    await user.click(screen.getByTestId('apply-templates-button'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-cycle-button'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
+    ).not.toBeInTheDocument();
+    listEventTemplates.mockResolvedValue({ templates: [] });
+  });
+});
+
+describe('Cycle edit', () => {
+  const draft = {
+    id: 'cycle-1',
+    name: 'August 2026',
+    startDate: '2026-08-01',
+    endDate: '2026-08-31',
+    state: 'draft' as const,
+  };
+
+  it('edits a Draft in place, refreshing its name on the same detail', async () => {
+    const renamed = { ...draft, name: 'Retiro de agosto' };
+    listCycles.mockResolvedValue({ cycles: [draft] });
+    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    updateCycle.mockImplementation(async () => {
+      listCycles.mockResolvedValue({ cycles: [renamed] });
+      getCycle.mockResolvedValue({ cycle: renamed, events: [] });
+      return renamed;
+    });
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await user.click(await screen.findByTestId('edit-cycle-button'));
+    const name = await screen.findByTestId('cycle-name-input');
+    expect(name).toHaveValue('August 2026');
+    await user.clear(name);
+    await user.type(name, 'Retiro de agosto');
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('selected-cycle-name')).toHaveTextContent(
+        'Retiro de agosto',
+      ),
+    );
+    expect(updateCycle).toHaveBeenCalledWith('cycle-1', {
+      name: 'Retiro de agosto',
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('does not offer Edit on a sent Cycle', async () => {
+    const sent = { ...draft, state: 'sent' as const };
+    listCycles.mockResolvedValue({ cycles: [sent] });
+    getCycle.mockResolvedValue({ cycle: sent, events: [] });
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await screen.findByTestId('selected-cycle-state');
+
+    expect(screen.queryByTestId('edit-cycle-button')).not.toBeInTheDocument();
   });
 });
 
@@ -476,15 +716,13 @@ describe('Cycle header visibility (chip-leak fix)', () => {
       ],
     });
 
-    const user = userEvent.setup();
-    renderCycles();
+    renderCycles('/event-templates');
 
-    await screen.findByText('Existing cycles');
-    await user.click(screen.getByTestId('open-template-library-button'));
-
-    expect(
-      await screen.findByTestId('planning-templates-total-chip'),
-    ).toHaveTextContent('2');
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('planning-templates-total-chip'),
+      ).toHaveTextContent('2'),
+    );
     expect(screen.queryByTestId('cycles-total-chip')).not.toBeInTheDocument();
   });
 });
@@ -517,7 +755,103 @@ describe('CycleListCard selection state', () => {
     );
 
     const options = await screen.findAllByTestId('cycle-option');
-    expect(options[0]).toHaveAttribute('aria-selected', 'true');
-    expect(options[1]).toHaveAttribute('aria-selected', 'false');
+    // Newest start first: September, then the selected August.
+    expect(options[0]).toHaveAttribute('aria-selected', 'false');
+    expect(options[1]).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+describe('Direct Cycle review route', () => {
+  function details({
+    id,
+    name,
+    state,
+  }: {
+    id: string;
+    name: string;
+    state: string;
+  }) {
+    return {
+      cycle: {
+        id,
+        name,
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+        state,
+      },
+      events: [
+        {
+          event: {
+            id: `${id}-event`,
+            title: 'Sunday Service',
+            start: '2026-10-18T13:00:00.000Z',
+            end: '2026-10-18T15:00:00.000Z',
+            status: 'scheduled',
+          },
+          eventTimeBlocks: [
+            {
+              id: `${id}-block`,
+              label: 'Worship',
+              startTime: '2026-10-18T13:00:00.000Z',
+              endTime: '2026-10-18T15:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  it.each([
+    'sent',
+    'past',
+  ] as const)('keeps a %s Cycle read-only with localized state and counts', async (state) => {
+    listCycles.mockResolvedValue({ cycles: [] });
+    getCycle.mockResolvedValue(
+      details({ id: 'cycle-1', name: 'October', state }),
+    );
+
+    renderCycles('/cycles/cycle-1');
+
+    expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
+      state === 'sent' ? m.cycle_state_sent() : m.cycle_state_past(),
+    );
+    expect(screen.getByTestId('cycle-event-count-chip')).toHaveTextContent('1');
+    expect(
+      screen.getByTestId('cycle-event-time-block-count-chip'),
+    ).toHaveTextContent('1');
+    expect(screen.getByTestId('cycle-period-chip')).toHaveTextContent(
+      '12/10/2026 → 25/10/2026',
+    );
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^(Edit|Delete|Add)/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('never shows the previously reviewed Cycle while navigating directly to another', async () => {
+    listCycles.mockResolvedValue({ cycles: [] });
+    getCycle.mockImplementation(async (id: string) =>
+      id === 'cycle-1'
+        ? details({ id, name: 'First Cycle', state: 'draft' })
+        : new Promise(() => undefined),
+    );
+
+    const { router } = renderCycles('/cycles/cycle-1');
+    expect((await screen.findAllByText('First Cycle'))[0]).toBeVisible();
+
+    await router.navigate({
+      to: '/cycles/$cycleId',
+      params: { cycleId: 'cycle-2' },
+    });
+
+    expect(await screen.findByTestId('cycle-review-loading')).toBeVisible();
+    expect(screen.queryByText('First Cycle')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
+    ).not.toBeInTheDocument();
   });
 });

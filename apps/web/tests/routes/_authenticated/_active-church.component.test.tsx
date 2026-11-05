@@ -204,7 +204,7 @@ describe('the Active Church guard (_active-church)', () => {
 
     renderCycles();
 
-    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
   });
 
   it('sends the visitor to /no-access when no Church Membership resolves', async () => {
@@ -317,7 +317,7 @@ describe('the Active Church guard (_active-church)', () => {
 
     renderCycles();
 
-    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
   });
 
   describe('cross-Church deep links', () => {
@@ -341,7 +341,7 @@ describe('the Active Church guard (_active-church)', () => {
 
       const { router } = renderWithChurchParam('church-1');
 
-      expect(await screen.findByText('Existing cycles')).toBeVisible();
+      expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
       expect(router.state.location.pathname).toBe('/cycles');
       expect(selectActiveChurch).not.toHaveBeenCalled();
     });
@@ -400,7 +400,7 @@ describe('the Active Church guard (_active-church)', () => {
           churchId: 'church-2',
         });
       });
-      expect(await screen.findByText('Existing cycles')).toBeVisible();
+      expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
       expect(router.state.location.pathname).toBe('/cycles');
     });
 

@@ -59,10 +59,19 @@ export interface CycleCalendarEventTimeBlockRow {
 export interface CycleCalendarTableRow {
   eventId: string;
   title: string;
+  location?: string;
   start: string;
   end: string;
   status: CycleEventGroup['event']['status'];
   eventTimeBlocks: CycleCalendarEventTimeBlockRow[];
+}
+
+/** One Church-local calendar week (Sunday–Saturday) of the review, holding
+ * the Events that start in it. Bounds are CalendarDay strings. */
+export interface CycleCalendarWeek {
+  weekStart: string;
+  weekEnd: string;
+  rows: CycleCalendarTableRow[];
 }
 
 export interface ExpandedCalendarRowsState {

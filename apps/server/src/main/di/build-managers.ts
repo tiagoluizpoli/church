@@ -269,7 +269,6 @@ export function buildManagers({
       templateRepository: eventTemplateRepository,
       churchRepository,
       unitOfWork,
-      staffingSeeder,
       eventTimeBlockRepository,
     });
   const volunteerManager =

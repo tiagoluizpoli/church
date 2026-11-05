@@ -9,10 +9,6 @@ import {
   EventId,
   EventTemplateId,
   EventTimeBlockId,
-  MinistryId,
-  MinistryParticipationId,
-  RoleId,
-  SectorId,
   TemplateTimeBlockId,
 } from '@/domain/branded-ids';
 import { Church } from '@/domain/entities/church';
@@ -20,10 +16,7 @@ import { Cycle, type CycleState } from '@/domain/entities/cycle';
 import { Event, type EventStatus } from '@/domain/entities/event';
 import { EventTemplate } from '@/domain/entities/event-template';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
-import { Ministry } from '@/domain/entities/ministry';
-import { MinistryParticipation } from '@/domain/entities/ministry-participation';
 import { TemplateTimeBlock } from '@/domain/entities/template-time-block';
-import { UsualSetup } from '@/domain/entities/usual-setup';
 import {
   DraftStaffingReconciliationRequiredError,
   EventOutsideCycleError,
@@ -50,7 +43,7 @@ const cycleId = CycleId.from('cycle-1');
 const eventId = EventId.from('event-1');
 const eventTimeBlockId = EventTimeBlockId.from('block-1');
 const startDate = new Date('2099-01-01T00:00:00Z');
-const endDate = new Date('2099-02-01T00:00:00Z');
+const endDate = new Date('2099-01-31T00:00:00Z');
 const start = new Date('2099-01-02T09:00:00Z');
 const end = new Date('2099-01-02T10:00:00Z');
 const instant = (date: Date) => fromDate({ date });
@@ -98,7 +91,7 @@ function createCycleHarness() {
       churchId,
       name: 'January',
       startDate: parseCalendarDay({ value: '2099-01-01' }),
-      endDate: parseCalendarDay({ value: '2099-02-01' }),
+      endDate: parseCalendarDay({ value: '2099-01-31' }),
     },
   });
   const dependencies = createPlanningDependencies();
@@ -136,7 +129,7 @@ function makeCycle({ state = 'draft' }: MakeCycleInput = {}) {
       churchId,
       name: 'January',
       startDate: parseCalendarDay({ value: '2099-01-01' }),
-      endDate: parseCalendarDay({ value: '2099-02-01' }),
+      endDate: parseCalendarDay({ value: '2099-01-31' }),
       state,
     },
   });
@@ -328,7 +321,7 @@ describe('DbCycleManager', () => {
         churchId,
         name: 'Expired',
         startDate: parseCalendarDay({ value: '2000-01-01' }),
-        endDate: parseCalendarDay({ value: '2000-02-01' }),
+        endDate: parseCalendarDay({ value: '2000-01-31' }),
       },
     });
     const past = new Cycle({
@@ -337,7 +330,7 @@ describe('DbCycleManager', () => {
         churchId,
         name: 'Expired',
         startDate: parseCalendarDay({ value: '2000-01-01' }),
-        endDate: parseCalendarDay({ value: '2000-02-01' }),
+        endDate: parseCalendarDay({ value: '2000-01-31' }),
         state: 'past',
       },
     });
@@ -496,195 +489,20 @@ describe('DbPlanningEventManager', () => {
       generatedEventTimeBlockCount: 1,
     });
   });
-  it('seeds newly generated blocks when applying a template to a sent cycle', async () => {
-    const {
-      manager,
-      cycleRepository,
-      eventRepository,
-      templateRepository,
-      staffingSeeder,
-    } = createPlanningEventHarness();
+  it('refuses to apply templates to a sent cycle without writing', async () => {
+    const { manager, cycleRepository, eventRepository } =
+      createPlanningEventHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(
       makeCycle({ state: 'sent' }),
     );
-    const templateId = EventTemplateId.from('template-1');
-    const blockId = TemplateTimeBlockId.from('template-block-1');
-    const block = new TemplateTimeBlock({
-      id: blockId,
-      props: {
+    await expect(
+      manager.generateFromTemplates({
         churchId,
-        templateId,
-        label: 'Service',
-        startTime: parseTimeOfDay({ value: '09:00' }),
-        endTime: parseTimeOfDay({ value: '10:00' }),
-        order: 0,
-      },
-    });
-    vi.mocked(templateRepository.getByIds).mockResolvedValue([
-      new EventTemplate({
-        id: templateId,
-        props: { churchId, name: 'Sunday', weekday: 0, blocks: [block] },
+        cycleId,
+        templateIds: [EventTemplateId.from('template-1')],
       }),
-    ]);
-    vi.mocked(eventRepository.createEventTimeBlock).mockResolvedValue(
-      eventTimeBlockId,
-    );
-    const setup = {
-      entriesByMinistry: new Map(),
-      directionByMinistry: new Map(),
-      globalDefaultAllIn: false,
-      timeZone: 'UTC',
-    };
-    vi.spyOn(staffingSeeder, 'loadSetup').mockResolvedValue(setup);
-    const seed = vi.spyOn(staffingSeeder, 'seed').mockResolvedValue(undefined);
-    await manager.generateFromTemplates({
-      churchId,
-      cycleId,
-      templateIds: [templateId],
-    });
-    expect(eventRepository.createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'scheduled', tx }),
-    );
-    expect(seed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        churchId,
-        setup,
-        tx,
-        eventTimeBlocks: expect.arrayContaining([
-          expect.objectContaining({
-            eventTimeBlockId,
-            sourceTemplateTimeBlockId: blockId,
-          }),
-        ]),
-      }),
-    );
-  });
-  it('applies usual setup precedence, split shifts and headcounts when seeding a sent cycle', async () => {
-    const {
-      manager,
-      cycleRepository,
-      eventRepository,
-      templateRepository,
-      participationRepository,
-      shiftRepository,
-      usualSetupRepository,
-      ministryRepository,
-    } = createPlanningEventHarness();
-    vi.mocked(cycleRepository.getById).mockResolvedValue(
-      makeCycle({ state: 'sent' }),
-    );
-    const templateId = EventTemplateId.from('template-1');
-    const blockId = TemplateTimeBlockId.from('template-block-1');
-    const block = new TemplateTimeBlock({
-      id: blockId,
-      props: {
-        churchId,
-        templateId,
-        label: 'Service',
-        startTime: parseTimeOfDay({ value: '09:00' }),
-        endTime: parseTimeOfDay({ value: '10:00' }),
-        order: 0,
-      },
-    });
-    vi.mocked(templateRepository.getByIds).mockResolvedValue([
-      new EventTemplate({
-        id: templateId,
-        props: { churchId, name: 'Sunday', weekday: 0, blocks: [block] },
-      }),
-    ]);
-    vi.mocked(eventRepository.createEventTimeBlock).mockResolvedValue(
-      eventTimeBlockId,
-    );
-    const profileId = MinistryId.from('profile');
-    const defaultInId = MinistryId.from('default-in');
-    const defaultOutId = MinistryId.from('default-out');
-    const excludedId = MinistryId.from('excluded');
-    const roleId = RoleId.from('role');
-    const sectorId = SectorId.from('sector');
-    const ministries = [
-      [profileId, 'all_out'],
-      [defaultInId, 'all_in'],
-      [defaultOutId, 'all_out'],
-      [excludedId, 'all_in'],
-    ] as const;
-    vi.mocked(ministryRepository.listByChurch).mockResolvedValue(
-      ministries.map(
-        ([id, direction]) =>
-          new Ministry({
-            id,
-            props: { churchId, name: id, defaultDirection: direction },
-          }),
-      ),
-    );
-    const setup = (ministryId: MinistryId, serves: boolean) =>
-      new UsualSetup({
-        props: {
-          churchId,
-          ministryId,
-          sourceTemplateTimeBlockId: blockId,
-          serves,
-          shiftSplit: { kind: 'equal', count: 2 },
-          headcounts: serves
-            ? [
-                { shiftIndex: 0, roleId, sectorId, peopleNeeded: 2 },
-                { shiftIndex: 1, roleId, sectorId, peopleNeeded: 2 },
-              ]
-            : [],
-        },
-      });
-    vi.mocked(usualSetupRepository.listByChurch).mockResolvedValue([
-      setup(profileId, true),
-      setup(excludedId, false),
-    ]);
-    vi.mocked(participationRepository.listByEvent).mockResolvedValue(
-      ministries.map(
-        ([ministryId]) =>
-          new MinistryParticipation({
-            id: MinistryParticipationId.from(`participation-${ministryId}`),
-            props: { churchId, ministryId, eventId },
-          }),
-      ),
-    );
-    await manager.generateFromTemplates({
-      churchId,
-      cycleId,
-      templateIds: [templateId],
-    });
-    expect(participationRepository.addInclusion).toHaveBeenCalledTimes(8);
-    expect(participationRepository.addInclusion).toHaveBeenCalledWith(
-      expect.objectContaining({
-        participationId: MinistryParticipationId.from('participation-profile'),
-        tx,
-      }),
-    );
-    expect(participationRepository.addInclusion).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        participationId: MinistryParticipationId.from('participation-excluded'),
-      }),
-    );
-    expect(participationRepository.addInclusion).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        participationId: MinistryParticipationId.from(
-          'participation-default-out',
-        ),
-      }),
-    );
-    expect(shiftRepository.createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        shifts: expect.arrayContaining([
-          expect.objectContaining({
-            participationId: MinistryParticipationId.from(
-              'participation-profile',
-            ),
-          }),
-        ]),
-        tx,
-      }),
-    );
-    expect(shiftRepository.upsertRequirement).toHaveBeenCalledTimes(8);
-    expect(shiftRepository.upsertRequirement).toHaveBeenCalledWith(
-      expect.objectContaining({ roleId, sectorId, peopleNeeded: 2, tx }),
-    );
+    ).rejects.toThrow(IllegalStateTransitionError);
+    expect(eventRepository.createEvent).not.toHaveBeenCalled();
   });
   it('creates a draft event and seeds participations in the same transaction', async () => {
     const { manager, eventRepository } = createPlanningEventHarness();

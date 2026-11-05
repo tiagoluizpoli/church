@@ -64,7 +64,7 @@ export const cycle = pgTable(
       .notNull(),
   },
   (table) => [
-    check('cycle_date_check', sql`${table.startDate} < ${table.endDate}`),
+    check('cycle_date_check', sql`${table.startDate} <= ${table.endDate}`),
     index('cycle_church_state_idx').on(table.churchId, table.state),
   ],
 );

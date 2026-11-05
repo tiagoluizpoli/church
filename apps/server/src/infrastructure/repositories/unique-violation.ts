@@ -1,5 +1,7 @@
 /** PostgreSQL `unique_violation` SQLSTATE. */
 export const PG_UNIQUE_VIOLATION = '23505';
+/** PostgreSQL `exclusion_violation` SQLSTATE. */
+export const PG_EXCLUSION_VIOLATION = '23P01';
 
 interface PostgresErrorFields {
   code?: unknown;
@@ -16,17 +18,34 @@ export interface IsUniqueViolationInput {
   constraint: string;
 }
 
+export interface IsConstraintViolationInput extends IsUniqueViolationInput {
+  code: string;
+}
+
 /**
- * True when `error`, or an error it wraps on `.cause`, violates `constraint`.
- * drizzle-orm wraps the raw `pg` error in a `DrizzleQueryError`.
+ * True when `error`, or an error it wraps on `.cause`, carries SQLSTATE `code`
+ * for `constraint`. drizzle-orm wraps the raw `pg` error in a
+ * `DrizzleQueryError`.
  */
+export function isConstraintViolation({
+  error,
+  code,
+  constraint,
+}: IsConstraintViolationInput): boolean {
+  if (!hasPostgresErrorFields(error)) return false;
+  return (
+    (error.code === code && error.constraint === constraint) ||
+    isConstraintViolation({ error: error.cause, code, constraint })
+  );
+}
+
 export function isUniqueViolation({
   error,
   constraint,
 }: IsUniqueViolationInput): boolean {
-  if (!hasPostgresErrorFields(error)) return false;
-  return (
-    (error.code === PG_UNIQUE_VIOLATION && error.constraint === constraint) ||
-    isUniqueViolation({ error: error.cause, constraint })
-  );
+  return isConstraintViolation({
+    error,
+    code: PG_UNIQUE_VIOLATION,
+    constraint,
+  });
 }

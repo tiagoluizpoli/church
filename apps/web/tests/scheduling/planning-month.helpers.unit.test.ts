@@ -5,21 +5,21 @@ describe('planningMonth', () => {
   it('spans the calendar month after the anchor', () => {
     expect(planningMonth({ anchor: '2026-03-15' })).toEqual({
       startDate: '2026-04-01',
-      endDate: '2026-05-01',
+      endDate: '2026-04-30',
     });
   });
 
   it('rolls over the year boundary', () => {
     expect(planningMonth({ anchor: '2026-12-28' })).toEqual({
       startDate: '2027-01-01',
-      endDate: '2027-02-01',
+      endDate: '2027-01-31',
     });
   });
 
   it('starts after a month-end anchor', () => {
     expect(planningMonth({ anchor: '2026-01-31' })).toEqual({
       startDate: '2026-02-01',
-      endDate: '2026-03-01',
+      endDate: '2026-02-28',
     });
   });
 });

@@ -19,13 +19,71 @@ describe('integrationWorkerDatabaseName', () => {
     ).toThrow(/worker id/);
   });
 
-  it('refuses a name beyond the PostgreSQL identifier limit', () => {
+  it('refuses a worker id too long for the PostgreSQL identifier limit', () => {
     expect(() =>
       integrationWorkerDatabaseName({
         worktree: 'a'.repeat(60),
-        workerId: 1,
+        workerId: 9_999_999_999,
       }),
     ).toThrow(/63/);
+  });
+
+  describe('with an identity too long to leave room for a pid', () => {
+    const longWorktree = 'tiagoluizpoli_spec_695_inclusive_dat__2c456c23';
+    const siblingWorktree = 'tiagoluizpoli_spec_695_inclusive_dat__9f0e1d2c';
+    const largePid = 4_194_304;
+
+    it('keeps its full identity for a worker id that still fits', () => {
+      expect(
+        integrationWorkerDatabaseName({ worktree: longWorktree, workerId: 2 }),
+      ).toBe(`church_${longWorktree}__w2_int`);
+    });
+
+    it('keeps the full pid within the PostgreSQL identifier limit', () => {
+      const name = integrationWorkerDatabaseName({
+        worktree: longWorktree,
+        workerId: largePid,
+      });
+
+      expect(name.length).toBeLessThanOrEqual(63);
+      expect(name).toMatch(
+        /^church_tiagoluizpoli_spec_695_[a-z0-9_]+__w4194304_int$/,
+      );
+    });
+
+    it('is deterministic and distinct per identity and per run', () => {
+      const name = (worktree: string, workerId: number) =>
+        integrationWorkerDatabaseName({ worktree, workerId });
+
+      expect(name(longWorktree, largePid)).toBe(name(longWorktree, largePid));
+      expect(name(longWorktree, largePid)).not.toBe(
+        name(siblingWorktree, largePid),
+      );
+      expect(name(longWorktree, largePid)).not.toBe(
+        name(longWorktree, largePid - 1),
+      );
+    });
+
+    it.each([
+      2,
+      largePid,
+    ])('is recognized for its own worktree only with worker id %s, so pruning finds it', (workerId) => {
+      const database = integrationWorkerDatabaseName({
+        worktree: longWorktree,
+        workerId,
+      });
+
+      expect(isIntegrationWorkerDatabaseName({ database })).toBe(true);
+      expect(
+        isIntegrationWorkerDatabaseName({ database, worktree: longWorktree }),
+      ).toBe(true);
+      expect(
+        isIntegrationWorkerDatabaseName({
+          database,
+          worktree: siblingWorktree,
+        }),
+      ).toBe(false);
+    });
   });
 });
 

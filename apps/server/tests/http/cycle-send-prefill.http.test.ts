@@ -119,7 +119,6 @@ function createManagers() {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-      staffingSeeder,
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,

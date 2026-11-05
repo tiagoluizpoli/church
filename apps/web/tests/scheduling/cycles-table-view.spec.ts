@@ -591,6 +591,7 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     const secondPage = await secondContext.newPage();
     await secondPage.goto(cycleUrl);
     await secondPage.getByTestId('send-cycle-button').click();
+    await secondPage.getByTestId('confirm-cycle-send-button').click();
     await expect(secondPage.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );

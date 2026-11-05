@@ -1,5 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { cycle, event } from '@church/db';
+import {
+  cycle,
+  event,
+  eventTemplate,
+  eventTimeBlock,
+  ministry,
+  ministryParticipation,
+  outboxMessage,
+} from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { m } from '@church/i18n/messages';
 import {
@@ -53,6 +61,7 @@ import {
   buildCycle,
   buildEvent,
   buildEventTimeBlock,
+  buildMinistryParticipation,
 } from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
@@ -909,5 +918,316 @@ describe('GET /admin/cycles', () => {
 
     expect(forbidden.statusCode).toBe(403);
     expect(signedOut.statusCode).toBe(401);
+  });
+});
+
+describe('DELETE /admin/cycles/:cycleId', () => {
+  const DELETE_START = parseInstant({ value: '2026-10-18T22:00:00Z' });
+  const DELETE_END = parseInstant({ value: '2026-10-19T00:00:00Z' });
+
+  function deleteCycle(cycleId: string) {
+    return app.inject({
+      method: 'DELETE',
+      url: `/api/v1/admin/cycles/${cycleId}`,
+    });
+  }
+
+  interface SeedGraphInput {
+    churchId: string;
+    ministryId: string;
+    cycleId: string;
+    eventStatus?: 'draft' | 'scheduled' | 'cancelled';
+  }
+
+  async function seedGraph({
+    churchId,
+    ministryId,
+    cycleId,
+    eventStatus = 'draft',
+  }: SeedGraphInput) {
+    const seededEvent = await buildEvent({
+      db,
+      churchId,
+      cycleId,
+      title: 'Sunday',
+      start: DELETE_START,
+      end: DELETE_END,
+      status: eventStatus,
+    });
+    const block = await buildEventTimeBlock({
+      db,
+      churchId,
+      eventId: seededEvent.id,
+      start: DELETE_START,
+      end: DELETE_END,
+    });
+    await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId,
+      eventId: seededEvent.id,
+      state: 'preparing',
+      eventTimeBlockIds: [block.id],
+    });
+    return seededEvent;
+  }
+
+  async function graphCounts() {
+    const [cycles, events, blocks, participations, outbox] = await Promise.all([
+      db.select().from(cycle),
+      db.select().from(event),
+      db.select().from(eventTimeBlock),
+      db.select().from(ministryParticipation),
+      db.select().from(outboxMessage),
+    ]);
+    return {
+      cycles: cycles.length,
+      events: events.length,
+      blocks: blocks.length,
+      participations: participations.length,
+      outbox: outbox.length,
+    };
+  }
+
+  it('hard-deletes a Draft with its owned graph, keeping templates, Ministries and other Cycles', async () => {
+    const seed = await signIn();
+    const template = await buildEventTemplate({
+      db,
+      churchId: seed.churchAId,
+      name: 'Sunday',
+      weekday: 0,
+      blocks: [],
+    });
+    const doomed = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const kept = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-11-01',
+      endDate: '2026-11-07',
+    });
+    // A retained legacy cancelled Event is removed with the rest.
+    await seedGraph({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      cycleId: doomed.id,
+    });
+    await seedGraph({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      cycleId: doomed.id,
+      eventStatus: 'cancelled',
+    });
+    const survivor = await seedGraph({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      cycleId: kept.id,
+    });
+
+    const response = await deleteCycle(doomed.id);
+
+    expect(response.statusCode).toBe(204);
+    expect(await graphCounts()).toEqual({
+      cycles: 1,
+      events: 1,
+      blocks: 1,
+      participations: 1,
+      outbox: 0,
+    });
+    expect((await db.select().from(event))[0]?.id).toBe(survivor.id);
+    expect((await db.select().from(eventTemplate)).map((t) => t.id)).toContain(
+      template.template.id,
+    );
+    expect(await db.select().from(ministry)).not.toHaveLength(0);
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${doomed.id}`,
+    });
+    expect(detail.statusCode).toBe(404);
+  });
+
+  it.each([
+    'sent',
+    'past',
+  ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION and keeps its graph', async (state) => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state,
+    });
+    await seedGraph({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      cycleId: target.id,
+    });
+    const before = await graphCounts();
+
+    const response = await deleteCycle(target.id);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    expect(await graphCounts()).toEqual(before);
+  });
+
+  it('refuses a Draft whose last day already elapsed in the Church', async () => {
+    const seed = await signIn();
+    const elapsed = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+    });
+    await seedGraph({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      cycleId: elapsed.id,
+    });
+
+    const response = await deleteCycle(elapsed.id);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    expect((await graphCounts()).events).toBe(1);
+  });
+
+  it('returns 401 signed out and 403 without the ChurchAdmin capability, deleting nothing', async () => {
+    mockGetSession.mockResolvedValue(null as never);
+    const signedOut = await deleteCycle(randomUUID());
+    expect(signedOut.statusCode).toBe(401);
+
+    for (const persona of ['member', 'leader'] as const) {
+      const seed = await signIn({ persona });
+      const target = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+
+      const response = await deleteCycle(target.id);
+
+      expect(response.statusCode).toBe(403);
+      expect((await graphCounts()).cycles).toBe(1);
+      await resetSchedulingPhase3Db();
+    }
+  });
+
+  it('returns the same 404 for a missing and a foreign Cycle, deleting nothing', async () => {
+    const seed = await signIn();
+    const foreign = await seedCycle({
+      churchId: seed.churchBId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+
+    for (const cycleId of [randomUUID(), foreign.id]) {
+      const response = await deleteCycle(cycleId);
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error).toBe('NOT_FOUND');
+    }
+    expect((await graphCounts()).cycles).toBe(1);
+  });
+
+  it('rolls the whole graph back when the transaction fails', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    await seedGraph({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      cycleId: target.id,
+    });
+    const before = await graphCounts();
+    const failure = new Error('commit failed');
+    const spy = vi
+      .spyOn(DrizzleCycleRepository.prototype, 'delete')
+      .mockImplementationOnce(async (input) => {
+        // Run the real delete, then fail so the transaction must roll back.
+        spy.mockRestore();
+        await cycleRepository.delete(input);
+        throw failure;
+      });
+
+    const response = await deleteCycle(target.id);
+
+    expect(response.statusCode).toBe(500);
+    expect(await graphCounts()).toEqual(before);
+  });
+
+  describe('against concurrent writers', () => {
+    async function holdChurchLock(churchId: string) {
+      const holder = new pg.Client({
+        connectionString: getIntegrationDatabaseUrl(),
+      });
+      await holder.connect();
+      await holder.query('BEGIN');
+      await holder.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        churchId,
+      ]);
+      return holder;
+    }
+
+    it('deletes an Event inserted by a writer that held the lock first', async () => {
+      const seed = await signIn();
+      const target = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+      const holder = await holdChurchLock(seed.churchAId);
+      try {
+        const pending = deleteCycle(target.id).then((response) => response);
+        await waitForChurchLockWaiter(holder);
+        await holder.query(
+          `INSERT INTO event (church_id, cycle_id, title, start, "end")
+           VALUES ($1, $2, 'Late', '2026-10-18T22:00:00Z', '2026-10-19T00:00:00Z')`,
+          [seed.churchAId, target.id],
+        );
+        await holder.query('COMMIT');
+
+        const response = await pending;
+
+        expect(response.statusCode).toBe(204);
+        expect(await graphCounts()).toMatchObject({ cycles: 0, events: 0 });
+      } finally {
+        await holder.end();
+      }
+    });
+
+    it('refuses with 409 when a Send committed first, keeping the graph', async () => {
+      const seed = await signIn();
+      const target = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+      await seedGraph({
+        churchId: seed.churchAId,
+        ministryId: seed.ministryAId,
+        cycleId: target.id,
+      });
+      const holder = await holdChurchLock(seed.churchAId);
+      try {
+        const pending = deleteCycle(target.id).then((response) => response);
+        await waitForChurchLockWaiter(holder);
+        await holder.query(`UPDATE cycle SET state = 'sent' WHERE id = $1`, [
+          target.id,
+        ]);
+        await holder.query('COMMIT');
+
+        const response = await pending;
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+        expect((await graphCounts()).events).toBe(1);
+      } finally {
+        await holder.end();
+      }
+    });
   });
 });

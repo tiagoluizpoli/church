@@ -13,6 +13,7 @@ const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getCycle = vi.fn();
 const getEventTemplate = vi.fn();
 const applyPlanningTemplates = vi.fn();
+const deleteCycle = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -23,6 +24,7 @@ vi.mock('@/utils/api-instances', async () => ({
     getEventTemplate: (...args: unknown[]) => getEventTemplate(...args),
     applyPlanningTemplates: (...args: unknown[]) =>
       applyPlanningTemplates(...args),
+    deleteCycle: (...args: unknown[]) => deleteCycle(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -387,6 +389,66 @@ describe('CyclesActions (US4)', () => {
     await screen.findByText(m.cycle_review_title());
 
     expect(screen.queryByText('Manual exceptions')).not.toBeInTheDocument();
+  });
+});
+
+describe('Cycle deletion', () => {
+  function mockCycle(state: 'draft' | 'sent') {
+    const cycle = {
+      id: 'cycle-1',
+      name: 'August 2026',
+      startDate: '2026-08-01T00:00:00.000Z',
+      endDate: '2026-08-31T00:00:00.000Z',
+      state,
+    };
+    listCycles.mockResolvedValue({ cycles: [cycle] });
+    getCycle.mockResolvedValue({ cycle, events: [] });
+  }
+
+  it('offers Delete only on a Draft, behind a confirmation that deletes nothing until confirmed', async () => {
+    mockCycle('draft');
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Excluir August 2026?' }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Manter rascunho' }));
+    expect(deleteCycle).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('does not offer Delete on a sent Cycle', async () => {
+    mockCycle('sent');
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+
+    await screen.findByTestId('selected-cycle-state');
+
+    expect(screen.queryByTestId('delete-cycle-button')).not.toBeInTheDocument();
+  });
+
+  it('returns to the refreshed list with no selection after a confirmed delete', async () => {
+    mockCycle('draft');
+    deleteCycle.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderCycles();
+    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(await screen.findByTestId('delete-cycle-button'));
+    listCycles.mockResolvedValue({ cycles: [] });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir ciclo' }),
+    );
+
+    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(deleteCycle).toHaveBeenCalledWith('cycle-1');
+    expect(screen.queryByTestId('cycle-option')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('selected-cycle-name')).not.toBeInTheDocument();
   });
 });
 

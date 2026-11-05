@@ -24,6 +24,11 @@ export interface SendCycleManagerInput {
   cycleId: CycleId;
 }
 
+export interface DeleteCycleManagerInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+}
+
 export interface ReopenPlanningEventManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
@@ -40,5 +45,6 @@ export interface ICycleManager {
   listCycles(input: ListCyclesManagerInput): Promise<Cycle[]>;
   getCycle(input: GetCycleManagerInput): Promise<CycleDetails>;
   sendCycle(input: SendCycleManagerInput): Promise<void>;
+  deleteCycle(input: DeleteCycleManagerInput): Promise<void>;
   reopenEvent(input: ReopenPlanningEventManagerInput): Promise<void>;
 }

@@ -1,7 +1,8 @@
 import { m } from '@church/i18n/messages';
-import { Outlet, useLocation } from '@tanstack/react-router';
+import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
+import { CycleDeleteDialog } from './planning-admin/cycle-delete-dialog';
 import {
   CycleHeader,
   CycleListStats,
@@ -12,6 +13,7 @@ import {
   PlanningAdminProvider,
   useCycleHeader,
   useCycleReviewCard,
+  useCycleSelection,
   useIsPlanningAccessDenied,
 } from './planning-admin/planning-admin-context';
 import { QuickCreateEventModal } from './quick-create-event-modal';
@@ -157,7 +159,10 @@ interface CyclesActionsProps {
 }
 
 function CyclesActions({ pathname }: CyclesActionsProps) {
-  const { selectedCycle } = useCycleReviewCard();
+  const { selectedCycle, cycleEvents } = useCycleReviewCard();
+  const { handleClearSelectedCycle } = useCycleSelection();
+  const navigate = useNavigate();
+  const [deleteCycleOpen, setDeleteCycleOpen] = useState(false);
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const isReviewingCycle = isReviewingCyclePath({ pathname });
@@ -165,6 +170,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
     isReviewingCycle &&
     Boolean(selectedCycle) &&
     !cycleIsReadOnly({ cycle: selectedCycle });
+  const canDeleteCycle = isReviewingCycle && selectedCycle?.state === 'draft';
 
   return (
     <>
@@ -186,7 +192,31 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
             Add event
           </Button>
         ) : null}
+        {canDeleteCycle ? (
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="delete-cycle-button"
+            onClick={() => setDeleteCycleOpen(true)}
+          >
+            {m.cycles_delete_button()}
+          </Button>
+        ) : null}
       </div>
+
+      {canDeleteCycle && deleteCycleOpen && selectedCycle ? (
+        <CycleDeleteDialog
+          cycleId={selectedCycle.id}
+          cycleName={selectedCycle.name}
+          eventCount={cycleEvents.length}
+          onClose={() => setDeleteCycleOpen(false)}
+          onDeleted={() => {
+            setDeleteCycleOpen(false);
+            handleClearSelectedCycle();
+            navigate({ to: CYCLES_PATH });
+          }}
+        />
+      ) : null}
 
       {isReviewingCycle && selectedCycle ? (
         <>

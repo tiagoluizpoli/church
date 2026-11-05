@@ -78,6 +78,18 @@ const getCycle = (
       );
     }
   /**
+ * Hard-delete a Draft Cycle with every Event, Time Block and participation it owns. Sent and Past Cycles are refused.
+ * @summary Delete a Draft Cycle
+ */
+const deleteCycle = (
+    cycleId: string,
+ ) => {
+      return apiClient<void>(
+      {url: `/api/v1/admin/cycles/${cycleId}`, method: 'DELETE'
+    },
+      );
+    }
+  /**
  * Send a Cycle, transitioning its Events from draft to scheduled.
  * @summary Send a Cycle
  */
@@ -300,10 +312,11 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,deleteCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
+export type DeleteCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deleteCycle']>>>
 export type SendCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['sendCycle']>>>
 export type ReopenPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['reopenPlanningEvent']>>>
 export type CreateEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createEventTemplate']>>>

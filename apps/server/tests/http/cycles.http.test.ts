@@ -108,7 +108,6 @@ beforeAll(async () => {
       templateRepository,
       churchRepository,
       unitOfWork,
-      staffingSeeder,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
     }),
     eventTemplateManager: new DbEventTemplateManager({

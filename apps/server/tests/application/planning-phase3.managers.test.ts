@@ -693,7 +693,15 @@ describe('DbPlanningEventManager', () => {
       makeEvent({ owner: CycleId.from('other') }),
     );
     await expect(
-      manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' }),
+      manager.updateEvent({
+        churchId,
+        cycleId,
+        eventId,
+        title: 'Changed',
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Changed', startTime: start, endTime: end }],
+      }),
     ).rejects.toThrow('Event not found');
     await expect(
       manager.cancelEvent({ churchId, cycleId, eventId }),
@@ -729,7 +737,7 @@ describe('DbPlanningEventManager', () => {
       tx,
     });
   });
-  it('requires a sent cycle event to be reopened before editing or cancellation', async () => {
+  it('refuses editing or cancelling a sent Cycle event, even one reopened to draft', async () => {
     const { manager, cycleRepository, eventRepository } =
       createPlanningEventHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(
@@ -739,20 +747,32 @@ describe('DbPlanningEventManager', () => {
       makeEvent({ status: 'scheduled' }),
     );
     await expect(
-      manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' }),
+      manager.updateEvent({
+        churchId,
+        cycleId,
+        eventId,
+        title: 'Changed',
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Changed', startTime: start, endTime: end }],
+      }),
     ).rejects.toThrow(IllegalStateTransitionError);
     await expect(
       manager.cancelEvent({ churchId, cycleId, eventId }),
     ).rejects.toThrow(IllegalStateTransitionError);
     vi.mocked(eventRepository.getEvent).mockResolvedValue(makeEvent());
-    await manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' });
-    expect(eventRepository.updateEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
+    await expect(
+      manager.updateEvent({
+        churchId,
+        cycleId,
+        eventId,
         title: 'Changed',
-        status: 'scheduled',
-        tx,
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Changed', startTime: start, endTime: end }],
       }),
-    );
+    ).rejects.toThrow(IllegalStateTransitionError);
+    expect(eventRepository.updateEvent).not.toHaveBeenCalled();
   });
   it('creates, updates and deletes event time blocks within the transaction', async () => {
     const { manager, eventTimeBlockRepository } = createPlanningEventHarness();
@@ -837,47 +857,5 @@ describe('DbPlanningEventManager', () => {
       IllegalStateTransitionError,
     );
     expect(eventTimeBlockRepository.update).not.toHaveBeenCalled();
-  });
-  it('rejects moving an event outside its cycle and leaves blocks alone for a title edit', async () => {
-    const { manager, eventRepository, eventTimeBlockRepository } =
-      createPlanningEventHarness();
-    await expect(
-      manager.updateEvent({
-        churchId,
-        cycleId,
-        eventId,
-        start: new Date('2099-03-01T09:00:00Z'),
-      }),
-    ).rejects.toThrow(EventOutsideCycleError);
-    expect(eventRepository.updateEvent).not.toHaveBeenCalled();
-    await manager.updateEvent({
-      churchId,
-      cycleId,
-      eventId,
-      title: 'Retitled',
-    });
-    expect(eventTimeBlockRepository.listByEvent).not.toHaveBeenCalled();
-    expect(eventTimeBlockRepository.update).not.toHaveBeenCalled();
-  });
-  it('shifts child blocks with the event start in the same transaction', async () => {
-    const { manager, eventTimeBlockRepository } = createPlanningEventHarness();
-    vi.mocked(eventTimeBlockRepository.listByEvent).mockResolvedValue([
-      makeBlock(),
-    ]);
-    await manager.updateEvent({
-      churchId,
-      cycleId,
-      eventId,
-      start: new Date('2099-01-04T12:00:00Z'),
-    });
-    expect(eventTimeBlockRepository.update).toHaveBeenCalledWith({
-      churchId,
-      eventTimeBlockId,
-      input: {
-        startTime: new Date('2099-01-04T12:00:00Z'),
-        endTime: new Date('2099-01-04T13:00:00Z'),
-      },
-      tx,
-    });
   });
 });

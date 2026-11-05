@@ -25,6 +25,24 @@ export type CreatePlanningEventBody = z.infer<
   typeof createPlanningEventBodySchema
 >;
 
+/**
+ * The complete desired Draft Event: a block with `id` is retained and updated
+ * in place, one without is created and an omitted persisted block is deleted.
+ */
+export const updatePlanningEventBodySchema = createPlanningEventBodySchema
+  .omit({ eventTimeBlocks: true })
+  .extend({
+    eventTimeBlocks: z.array(
+      planningEventTimeBlockBodySchema.extend({
+        id: z.string().uuid().optional(),
+      }),
+    ),
+  });
+
+export type UpdatePlanningEventBody = z.infer<
+  typeof updatePlanningEventBodySchema
+>;
+
 /** An Event with its EventTimeBlocks, as Cycle detail, create and edit return it. */
 export const eventGraphResponseSchema = z.object({
   event: eventResponseSchema,

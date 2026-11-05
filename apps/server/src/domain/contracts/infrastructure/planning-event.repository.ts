@@ -31,7 +31,8 @@ export interface UpdatePlanningEventInput {
   eventId: EventId;
   title?: string;
   description?: string;
-  location?: string;
+  /** `null` clears the location. */
+  location?: string | null;
   start?: Date;
   end?: Date;
   status?: EventStatus;

@@ -12,32 +12,8 @@ export interface UsePlanningAdminMutationsProps {
   selectedCycleId: string | null;
 }
 
-export interface UpdateEventInput {
-  eventId: string;
-  title?: string;
-  description?: string;
-  location?: string;
-  start?: string;
-  end?: string;
-}
-
 export interface DeleteEventInput {
   eventId: string;
-}
-
-export interface CreateEventTimeBlockInput {
-  eventId: string;
-  startTime: string;
-  endTime: string;
-  label?: string;
-}
-
-export interface UpdateEventTimeBlockInput {
-  eventId: string;
-  eventTimeBlockId: string;
-  startTime?: string;
-  endTime?: string;
-  label?: string;
 }
 
 export interface DeleteEventTimeBlockInput {
@@ -96,15 +72,9 @@ function usePlanningMutation<TVariables, TResult>({
 }
 
 export interface UsePlanningAdminMutationsResult {
-  updateEventPending: boolean;
   deleteEventPending: boolean;
-  createEventTimeBlockPending: boolean;
-  updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  handleUpdateEvent: (input: UpdateEventInput) => void;
   handleDeleteEvent: (input: DeleteEventInput) => void;
-  handleCreateEventTimeBlock: (input: CreateEventTimeBlockInput) => void;
-  handleUpdateEventTimeBlock: (input: UpdateEventTimeBlockInput) => void;
   handleDeleteEventTimeBlock: (input: DeleteEventTimeBlockInput) => void;
 }
 
@@ -112,18 +82,6 @@ export function usePlanningAdminMutations({
   queryClient,
   selectedCycleId,
 }: UsePlanningAdminMutationsProps): UsePlanningAdminMutationsResult {
-  const updateEvent = usePlanningMutation({
-    mutationFn: ({ eventId, ...body }: UpdateEventInput) =>
-      adminApi.updatePlanningEvent(
-        getSelectedCycleIdOrThrow({ selectedCycleId }),
-        eventId,
-        body,
-      ),
-    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Event updated',
-    queryClient,
-  });
-
   const deleteEvent = usePlanningMutation({
     mutationFn: ({ eventId }: DeleteEventInput) =>
       adminApi.cancelPlanningEvent(
@@ -132,35 +90,6 @@ export function usePlanningAdminMutations({
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: 'Event deleted',
-    queryClient,
-  });
-
-  const createEventTimeBlock = usePlanningMutation({
-    mutationFn: ({ eventId, ...body }: CreateEventTimeBlockInput) =>
-      adminApi.createPlanningEventTimeBlock(
-        getSelectedCycleIdOrThrow({ selectedCycleId }),
-        eventId,
-        body,
-      ),
-    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Time block added',
-    queryClient,
-  });
-
-  const updateEventTimeBlock = usePlanningMutation({
-    mutationFn: ({
-      eventId,
-      eventTimeBlockId,
-      ...body
-    }: UpdateEventTimeBlockInput) =>
-      adminApi.updatePlanningEventTimeBlock(
-        getSelectedCycleIdOrThrow({ selectedCycleId }),
-        eventId,
-        eventTimeBlockId,
-        body,
-      ),
-    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Time block updated',
     queryClient,
   });
 
@@ -176,20 +105,8 @@ export function usePlanningAdminMutations({
     queryClient,
   });
 
-  function handleUpdateEvent(input: UpdateEventInput) {
-    updateEvent.mutate(input);
-  }
-
   function handleDeleteEvent(input: DeleteEventInput) {
     deleteEvent.mutate(input);
-  }
-
-  function handleCreateEventTimeBlock(input: CreateEventTimeBlockInput) {
-    createEventTimeBlock.mutate(input);
-  }
-
-  function handleUpdateEventTimeBlock(input: UpdateEventTimeBlockInput) {
-    updateEventTimeBlock.mutate(input);
   }
 
   function handleDeleteEventTimeBlock(input: DeleteEventTimeBlockInput) {
@@ -197,15 +114,9 @@ export function usePlanningAdminMutations({
   }
 
   return {
-    updateEventPending: updateEvent.isPending,
     deleteEventPending: deleteEvent.isPending,
-    createEventTimeBlockPending: createEventTimeBlock.isPending,
-    updateEventTimeBlockPending: updateEventTimeBlock.isPending,
     deleteEventTimeBlockPending: deleteEventTimeBlock.isPending,
-    handleUpdateEvent,
     handleDeleteEvent,
-    handleCreateEventTimeBlock,
-    handleUpdateEventTimeBlock,
     handleDeleteEventTimeBlock,
   };
 }

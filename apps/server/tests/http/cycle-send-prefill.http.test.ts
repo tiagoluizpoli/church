@@ -446,6 +446,66 @@ async function cycleState(cycleId: string) {
   };
 }
 
+/** The applied Sunday Event and its Welcome and Service copies. */
+async function appliedSunday(fixture: Seed) {
+  const db = schedulingTestDb;
+  const [sunday] = await db
+    .select({ id: event.id })
+    .from(event)
+    .where(and(eq(event.cycleId, fixture.cycleId), eq(event.title, 'Sunday')));
+  if (!sunday) throw new Error('Sunday event');
+  const blocks = await db
+    .select({ id: eventTimeBlock.id, label: eventTimeBlock.label })
+    .from(eventTimeBlock)
+    .where(eq(eventTimeBlock.eventId, sunday.id));
+  const byLabel = new Map(blocks.map(({ id, label }) => [label, id]));
+  return {
+    eventId: sunday.id,
+    welcomeId: byLabel.get('Welcome'),
+    serviceId: byLabel.get('Service'),
+  };
+}
+
+interface EditSundayInput {
+  fixture: Seed;
+  sunday: Awaited<ReturnType<typeof appliedSunday>>;
+}
+
+/**
+ * The complete Sunday edit: Welcome retimed to 08:30–09:30 and relabelled
+ * Arrival, Service kept, and a manual Lunch row added.
+ */
+function editSunday({ fixture, sunday }: EditSundayInput) {
+  return app.inject({
+    method: 'PATCH',
+    url: `/api/v1/admin/cycles/${fixture.cycleId}/events/${sunday.eventId}`,
+    payload: {
+      title: 'Edited Sunday',
+      start: '2027-01-03T11:30:00.000Z',
+      end: '2027-01-03T16:00:00.000Z',
+      eventTimeBlocks: [
+        {
+          id: sunday.welcomeId,
+          label: 'Arrival',
+          startTime: '2027-01-03T11:30:00.000Z',
+          endTime: '2027-01-03T12:30:00.000Z',
+        },
+        {
+          id: sunday.serviceId,
+          label: 'Service',
+          startTime: '2027-01-03T13:00:00.000Z',
+          endTime: '2027-01-03T15:00:00.000Z',
+        },
+        {
+          label: 'Lunch',
+          startTime: '2027-01-03T15:00:00.000Z',
+          endTime: '2027-01-03T16:00:00.000Z',
+        },
+      ],
+    },
+  });
+}
+
 const SERVING_WELCOME = (fixture: Seed) => ({
   serves: true,
   shiftSplit: {
@@ -766,6 +826,75 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
     expect(shifts).toHaveLength(3);
     // The seeded admin leads the only led Ministry: one N2, not two.
     expect(await queuedCount()).toBe(1);
+  });
+
+  it('seeds a generated block retimed and relabelled through the Event edit from its source, and leaves a manual row unseeded', async () => {
+    const fixture = await seed();
+    expect((await applyTemplates(fixture)).statusCode).toBe(201);
+    const sunday = await appliedSunday(fixture);
+    expect((await editSunday({ fixture, sunday })).statusCode).toBe(200);
+
+    expect((await send(fixture)).statusCode).toBe(204);
+
+    const { shifts } = await staffing(fixture.cycleId);
+    expect(
+      shifts.filter(
+        (row) => row.ministry === 'All in' && row.block !== 'Night',
+      ),
+    ).toEqual([
+      {
+        ministry: 'All in',
+        block: 'Arrival',
+        start: '2027-01-03T11:30:00.000Z',
+        end: '2027-01-03T12:30:00.000Z',
+        requirements: [],
+      },
+      {
+        ministry: 'All in',
+        block: 'Service',
+        start: '2027-01-03T13:00:00.000Z',
+        end: '2027-01-03T15:00:00.000Z',
+        requirements: [],
+      },
+    ]);
+    expect(shifts.filter((row) => row.block === 'Lunch')).toEqual([]);
+  });
+
+  it('serializes a concurrent Event edit and Send into one valid order that never edits the Sent calendar', async () => {
+    const fixture = await seed();
+    await applyTemplates(fixture);
+    const sunday = await appliedSunday(fixture);
+
+    const [edit, sent] = await Promise.all([
+      editSunday({ fixture, sunday }),
+      send(fixture),
+    ]);
+
+    expect(sent.statusCode).toBe(204);
+    const [stored] = await schedulingTestDb
+      .select({ title: event.title, status: event.status })
+      .from(event)
+      .where(eq(event.id, sunday.eventId));
+    const blocks = await schedulingTestDb
+      .select({ label: eventTimeBlock.label })
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.eventId, sunday.eventId))
+      .orderBy(asc(eventTimeBlock.startTime));
+    if (edit.statusCode === 200) {
+      // Edit first: Send scheduled the edited graph.
+      expect(stored).toEqual({ title: 'Edited Sunday', status: 'scheduled' });
+      expect(blocks.map(({ label }) => label)).toEqual([
+        'Arrival',
+        'Service',
+        'Lunch',
+      ]);
+    } else {
+      // Send first: the stale edit is refused and the Sent calendar stays.
+      expect(edit.statusCode).toBe(409);
+      expect(edit.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+      expect(stored).toEqual({ title: 'Sunday', status: 'scheduled' });
+      expect(blocks.map(({ label }) => label)).toEqual(['Welcome', 'Service']);
+    }
   });
 
   it('rolls back every staffing row and the Cycle and Event states when a staffing write fails', async () => {

@@ -33,11 +33,6 @@ import {
   updateCycleConflictResponseSchema,
 } from '../dtos/cycle.dto';
 import {
-  createEventBodySchema,
-  eventMapper,
-  eventResponseSchema,
-} from '../dtos/event.dto';
-import {
   applyTemplatesBodySchema,
   createEventTemplateBodySchema,
   eventTemplateListResponseSchema,
@@ -59,6 +54,8 @@ import {
   createPlanningEventBodySchema,
   eventGraphMapper,
   eventGraphResponseSchema,
+  type UpdatePlanningEventBody,
+  updatePlanningEventBodySchema,
 } from '../dtos/planning-event.dto';
 import {
   type SetDefaultDirectionBody,
@@ -95,16 +92,10 @@ interface MinistryRouteParams {
   ministryId: string;
 }
 
-const updatePlanningEventBodySchema = createEventBodySchema
-  .omit({ ministryId: true })
-  .partial();
-
 const notFoundResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
 
 interface ChurchAdminControllerDependencies {
   cycleManager: ICycleManager;
@@ -571,27 +562,36 @@ export class ChurchAdminController implements FastifyController {
         schema: {
           tags: ['planning'],
           operationId: 'updatePlanningEvent',
-          summary: 'Update an Event',
+          summary: 'Edit a Draft Event with its Time blocks',
           description:
-            "Update an Event's title, description, location, or scheduled Instants.",
+            'Replace a Draft Event in a Draft Cycle with its complete desired fields and EventTimeBlocks, validated as a final graph before any write. A block with an id is updated in place and keeps its source-template link; a block without one is created as a manual block; an omitted persisted block is deleted. Submitted bounds are saved exactly. The stored description and source-template ids are kept.',
           body: updatePlanningEventBodySchema,
-          response: { 200: eventResponseSchema },
+          response: {
+            200: eventGraphResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         const body = request.body as UpdatePlanningEventBody;
-        const event = await this.planningEventManager.updateEvent({
+        const location = body.location?.trim();
+        const graph = await this.planningEventManager.updateEvent({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           title: body.title,
-          description: body.description,
-          location: body.location,
-          start: optionalDateFromInstantString({ value: body.start }),
-          end: optionalDateFromInstantString({ value: body.end }),
+          location: location ? location : undefined,
+          start: dateFromInstantString({ value: body.start }),
+          end: dateFromInstantString({ value: body.end }),
+          eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
+            id: block.id ? EventTimeBlockId.from(block.id) : undefined,
+            label: block.label,
+            startTime: dateFromInstantString({ value: block.startTime }),
+            endTime: dateFromInstantString({ value: block.endTime }),
+          })),
         });
-        return reply.send(eventMapper.toResponse(event));
+        return reply.send(eventGraphMapper.toResponse(graph));
       },
     );
 

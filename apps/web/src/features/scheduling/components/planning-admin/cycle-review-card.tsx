@@ -1,5 +1,4 @@
 import { m } from '@church/i18n/messages';
-import { parseInstant, parseTimeOfDay, today, toInstant } from '@church/time';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   buildVisibleCalendarRows,
@@ -8,29 +7,18 @@ import {
   calendarRowKey,
   calendarTableColumns,
   renderCalendarCell,
-  type StartCreateEventTimeBlockInput,
-  type StartEditEventInput,
-  type StartEditEventTimeBlockInput,
   type ToggleEventExpandedInput,
   visibleRowId,
   weekLabel,
 } from './calendar-row';
-import { CreateEventTimeBlockDialog } from './create-event-time-block-dialog';
 import { CycleSendAction } from './cycle-send-dialog';
-import { EditEventDialog } from './edit-event-dialog';
-import { EditEventTimeBlockDialog } from './edit-event-time-block-dialog';
 import type {
-  CreatingEventTimeBlockState,
   CycleCalendarTableRow,
-  EditingEventState,
-  EditingEventTimeBlockState,
   ExpandedCalendarRowsState,
 } from './planning-admin.types';
 import {
   groupRowsByWeek,
-  isMultiDayEvent,
   isNotFoundError,
-  shiftedEnd,
   toCycleCalendarTableRow,
 } from './planning-admin.utils';
 import { useCycleReviewCard } from './planning-admin-context';
@@ -49,66 +37,20 @@ interface CycleReviewCardProps {
   revealEventId?: string;
 }
 
-const DEFAULT_EVENT_TIME_BLOCK_START_TIME = parseTimeOfDay({ value: '09:00' });
-const DEFAULT_EVENT_TIME_BLOCK_END_TIME = parseTimeOfDay({ value: '10:00' });
-
 type DialogState =
   | { kind: 'none' }
-  | { kind: 'edit-event'; event: EditingEventState }
-  | {
-      kind: 'edit-event-time-block';
-      eventTimeBlock: EditingEventTimeBlockState;
-    }
-  | {
-      kind: 'create-event-time-block';
-      eventTimeBlock: CreatingEventTimeBlockState;
-    }
   | { kind: 'confirm-delete-event'; eventId: string }
   | { kind: 'confirm-delete-event-time-block'; eventTimeBlockId: string };
 
 type DialogAction =
-  | { type: 'edit-event'; event: EditingEventState }
-  | {
-      type: 'edit-event-time-block';
-      eventTimeBlock: EditingEventTimeBlockState;
-    }
-  | {
-      type: 'create-event-time-block';
-      eventTimeBlock: CreatingEventTimeBlockState;
-    }
   | { type: 'confirm-delete-event'; eventId: string }
   | { type: 'confirm-delete-event-time-block'; eventTimeBlockId: string }
-  | { type: 'update-edit-event'; event: EditingEventState }
-  | {
-      type: 'update-edit-event-time-block';
-      eventTimeBlock: EditingEventTimeBlockState;
-    }
-  | {
-      type: 'update-create-event-time-block';
-      eventTimeBlock: CreatingEventTimeBlockState;
-    }
   | { type: 'close' };
 
-/** The five dialog/confirmation `useState` calls this card used to carry
- * (`editingEvent`/`editingEventTimeBlock`/`creatingEventTimeBlock`/`confirmDeleteEventId`/
- * `confirmDeleteEventTimeBlockId`) modeled one mutually-exclusive "which dialog is
- * open" concept — nothing stopped two being non-null at once. This
- * discriminated-union reducer makes that exclusivity structural. */
+/** Which delete confirmation is open: mutually exclusive by construction. */
 // named-parameters-ignore: React useReducer calls reducers as (state, action)
 function dialogReducer(state: DialogState, action: DialogAction): DialogState {
   switch (action.type) {
-    case 'edit-event':
-      return { kind: 'edit-event', event: action.event };
-    case 'edit-event-time-block':
-      return {
-        kind: 'edit-event-time-block',
-        eventTimeBlock: action.eventTimeBlock,
-      };
-    case 'create-event-time-block':
-      return {
-        kind: 'create-event-time-block',
-        eventTimeBlock: action.eventTimeBlock,
-      };
     case 'confirm-delete-event':
       return { kind: 'confirm-delete-event', eventId: action.eventId };
     case 'confirm-delete-event-time-block':
@@ -116,24 +58,6 @@ function dialogReducer(state: DialogState, action: DialogAction): DialogState {
         kind: 'confirm-delete-event-time-block',
         eventTimeBlockId: action.eventTimeBlockId,
       };
-    case 'update-edit-event':
-      return state.kind === 'edit-event'
-        ? { kind: 'edit-event', event: action.event }
-        : state;
-    case 'update-edit-event-time-block':
-      return state.kind === 'edit-event-time-block'
-        ? {
-            kind: 'edit-event-time-block',
-            eventTimeBlock: action.eventTimeBlock,
-          }
-        : state;
-    case 'update-create-event-time-block':
-      return state.kind === 'create-event-time-block'
-        ? {
-            kind: 'create-event-time-block',
-            eventTimeBlock: action.eventTimeBlock,
-          }
-        : state;
     case 'close':
       return { kind: 'none' };
     default:
@@ -183,15 +107,9 @@ export function CycleReviewCard({
     cycleDetailsError,
     refetchCycleDetails,
     cycleEvents,
-    updateEventPending,
     deleteEventPending,
-    handleUpdateEvent,
     handleDeleteEvent,
-    createEventTimeBlockPending,
-    updateEventTimeBlockPending,
     deleteEventTimeBlockPending,
-    handleCreateEventTimeBlock,
-    handleUpdateEventTimeBlock,
     handleDeleteEventTimeBlock,
   } = useCycleReviewCard();
   const { churchTimezone } = useTimezone();
@@ -249,63 +167,6 @@ export function CycleReviewCard({
     prevDeleteEventTimeBlockPendingRef.current = deleteEventTimeBlockPending;
   }, [deleteEventTimeBlockPending, dialogState]);
 
-  /** Same falling-edge-of-pending close as the delete dialogs above, applied
-   * to edit/create — closing synchronously in the submit handler let the
-   * dialog report success before the mutation (and its cache invalidation)
-   * had actually settled, so a sent-cycle rejection or a slow request left
-   * the table showing stale data with no visible link between the closed
-   * dialog and the eventual toast. */
-  const prevUpdateEventPendingRef = useRef(updateEventPending);
-  useEffect(() => {
-    if (
-      prevUpdateEventPendingRef.current &&
-      !updateEventPending &&
-      dialogState.kind === 'edit-event'
-    ) {
-      dispatchDialog({ type: 'close' });
-    }
-    prevUpdateEventPendingRef.current = updateEventPending;
-  }, [updateEventPending, dialogState]);
-
-  const prevUpdateEventTimeBlockPendingRef = useRef(
-    updateEventTimeBlockPending,
-  );
-  useEffect(() => {
-    if (
-      prevUpdateEventTimeBlockPendingRef.current &&
-      !updateEventTimeBlockPending &&
-      dialogState.kind === 'edit-event-time-block'
-    ) {
-      dispatchDialog({ type: 'close' });
-    }
-    prevUpdateEventTimeBlockPendingRef.current = updateEventTimeBlockPending;
-  }, [updateEventTimeBlockPending, dialogState]);
-
-  const prevCreateEventTimeBlockPendingRef = useRef(
-    createEventTimeBlockPending,
-  );
-  useEffect(() => {
-    if (
-      prevCreateEventTimeBlockPendingRef.current &&
-      !createEventTimeBlockPending &&
-      dialogState.kind === 'create-event-time-block'
-    ) {
-      dispatchDialog({ type: 'close' });
-    }
-    prevCreateEventTimeBlockPendingRef.current = createEventTimeBlockPending;
-  }, [createEventTimeBlockPending, dialogState]);
-
-  const editingEvent =
-    dialogState.kind === 'edit-event' ? dialogState.event : null;
-  const editingEventTimeBlock =
-    dialogState.kind === 'edit-event-time-block'
-      ? dialogState.eventTimeBlock
-      : null;
-  const creatingEventTimeBlock =
-    dialogState.kind === 'create-event-time-block'
-      ? dialogState.eventTimeBlock
-      : null;
-
   function toggleEventExpanded({ eventId }: ToggleEventExpandedInput): void {
     setCalendarRowsState((current) => {
       const next = new Set(current.expandedEventIds);
@@ -330,136 +191,6 @@ export function CycleReviewCard({
 
   function collapseAll(): void {
     setCalendarRowsState({ expandedEventIds: new Set() });
-  }
-
-  function startEditEvent({ row }: StartEditEventInput): void {
-    const source = cycleEvents.find(
-      (eventGroup) => eventGroup.event.id === row.eventId,
-    );
-
-    if (!source) return;
-
-    dispatchDialog({
-      type: 'edit-event',
-      event: {
-        eventId: row.eventId,
-        title: row.title,
-        description: source.event.description ?? '',
-        location: source.event.location ?? '',
-        start: parseInstant({ value: row.start }),
-        originalStart: source.event.start,
-        originalEnd: source.event.end,
-      },
-    });
-  }
-
-  function submitEditEvent(): void {
-    if (dialogState.kind !== 'edit-event') return;
-    const { event } = dialogState;
-
-    handleUpdateEvent({
-      eventId: event.eventId,
-      title: event.title,
-      description: event.description || undefined,
-      location: event.location || undefined,
-      start: event.start,
-      end: shiftedEnd({
-        newStart: event.start,
-        originalStart: event.originalStart,
-        originalEnd: event.originalEnd,
-      }),
-    });
-  }
-
-  function startEditEventTimeBlock({
-    parentId,
-    eventTimeBlockId,
-    label,
-    startTime,
-    endTime,
-  }: StartEditEventTimeBlockInput): void {
-    const source = cycleEvents.find(
-      (eventGroup) => eventGroup.event.id === parentId,
-    );
-
-    if (!source) return;
-
-    dispatchDialog({
-      type: 'edit-event-time-block',
-      eventTimeBlock: {
-        eventId: parentId,
-        eventTimeBlockId,
-        label,
-        start: parseInstant({ value: startTime }),
-        end: parseInstant({ value: endTime }),
-        isMultiDayEvent: isMultiDayEvent({
-          eventStart: source.event.start,
-          eventEnd: source.event.end,
-        }),
-      },
-    });
-  }
-
-  function submitEditEventTimeBlock(): void {
-    if (dialogState.kind !== 'edit-event-time-block') return;
-    const { eventTimeBlock } = dialogState;
-
-    handleUpdateEventTimeBlock({
-      eventId: eventTimeBlock.eventId,
-      eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
-      label: eventTimeBlock.label,
-      startTime: eventTimeBlock.start,
-      endTime: eventTimeBlock.end,
-    });
-  }
-
-  function startCreateEventTimeBlock({
-    row,
-  }: StartCreateEventTimeBlockInput): void {
-    const source = cycleEvents.find(
-      (eventGroup) => eventGroup.event.id === row.eventId,
-    );
-
-    if (!source) return;
-
-    const day = today({
-      instant: parseInstant({ value: row.start }),
-      timeZone: churchTimezone,
-    });
-
-    dispatchDialog({
-      type: 'create-event-time-block',
-      eventTimeBlock: {
-        eventId: row.eventId,
-        label: '',
-        start: toInstant({
-          day,
-          time: DEFAULT_EVENT_TIME_BLOCK_START_TIME,
-          timeZone: churchTimezone,
-        }),
-        end: toInstant({
-          day,
-          time: DEFAULT_EVENT_TIME_BLOCK_END_TIME,
-          timeZone: churchTimezone,
-        }),
-        isMultiDayEvent: isMultiDayEvent({
-          eventStart: source.event.start,
-          eventEnd: source.event.end,
-        }),
-      },
-    });
-  }
-
-  function submitCreateEventTimeBlock(): void {
-    if (dialogState.kind !== 'create-event-time-block') return;
-    const { eventTimeBlock } = dialogState;
-
-    handleCreateEventTimeBlock({
-      eventId: eventTimeBlock.eventId,
-      label: eventTimeBlock.label || undefined,
-      startTime: eventTimeBlock.start,
-      endTime: eventTimeBlock.end,
-    });
   }
 
   const visibleCalendarRows = buildVisibleCalendarRows({
@@ -584,6 +315,7 @@ export function CycleReviewCard({
                     renderCalendarCell({
                       item,
                       column,
+                      cycleId: reviewedCycle.id,
                       isExpanded: calendarRowsState.expandedEventIds.has(
                         calendarRowEventId({ visibleRow: item }),
                       ),
@@ -602,8 +334,6 @@ export function CycleReviewCard({
                       deleteEventTimeBlockPending,
                       timeZone: churchTimezone,
                       onToggleExpand: toggleEventExpanded,
-                      onAddEventTimeBlockRequest: startCreateEventTimeBlock,
-                      onEditEventRequest: startEditEvent,
                       onDeleteEventOpenChange: ({ eventId, open }) =>
                         dispatchDialog(
                           open
@@ -612,7 +342,6 @@ export function CycleReviewCard({
                         ),
                       onDeleteEventConfirm: ({ eventId }) =>
                         handleDeleteEvent({ eventId }),
-                      onEditEventTimeBlockRequest: startEditEventTimeBlock,
                       onDeleteEventTimeBlockOpenChange: ({
                         eventTimeBlockId,
                         open,
@@ -643,15 +372,13 @@ export function CycleReviewCard({
                     ) : item.kind === 'parent' ? (
                       <PlanningEventCard
                         row={item.row}
+                        cycleId={reviewedCycle.id}
                         isReadOnly={isReadOnly}
                         deleteEventPending={deleteEventPending}
                         deleteEventTimeBlockPending={
                           deleteEventTimeBlockPending
                         }
-                        onAddEventTimeBlockRequest={startCreateEventTimeBlock}
-                        onEditEventRequest={startEditEvent}
                         onDeleteEventConfirm={handleDeleteEvent}
-                        onEditEventTimeBlockRequest={startEditEventTimeBlock}
                         onDeleteEventTimeBlockConfirm={
                           handleDeleteEventTimeBlock
                         }
@@ -671,51 +398,6 @@ export function CycleReviewCard({
           </div>
         )}
       </CardContent>
-
-      <EditEventDialog
-        editingEvent={editingEvent}
-        updateEventPending={updateEventPending}
-        timeZone={churchTimezone}
-        onChange={(event) =>
-          dispatchDialog({ type: 'update-edit-event', event })
-        }
-        onOpenChange={(open) => {
-          if (!open) dispatchDialog({ type: 'close' });
-        }}
-        onSubmit={submitEditEvent}
-      />
-
-      <EditEventTimeBlockDialog
-        editingEventTimeBlock={editingEventTimeBlock}
-        updateEventTimeBlockPending={updateEventTimeBlockPending}
-        timeZone={churchTimezone}
-        onChange={(eventTimeBlock) =>
-          dispatchDialog({
-            type: 'update-edit-event-time-block',
-            eventTimeBlock,
-          })
-        }
-        onOpenChange={(open) => {
-          if (!open) dispatchDialog({ type: 'close' });
-        }}
-        onSubmit={submitEditEventTimeBlock}
-      />
-
-      <CreateEventTimeBlockDialog
-        creatingEventTimeBlock={creatingEventTimeBlock}
-        createEventTimeBlockPending={createEventTimeBlockPending}
-        timeZone={churchTimezone}
-        onChange={(eventTimeBlock) =>
-          dispatchDialog({
-            type: 'update-create-event-time-block',
-            eventTimeBlock,
-          })
-        }
-        onOpenChange={(open) => {
-          if (!open) dispatchDialog({ type: 'close' });
-        }}
-        onSubmit={submitCreateEventTimeBlock}
-      />
     </Card>
   );
 }

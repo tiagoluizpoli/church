@@ -1,12 +1,10 @@
 import { m } from '@church/i18n/messages';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
   ConfirmDeleteEventInput,
   ConfirmDeleteEventTimeBlockInput,
-  StartCreateEventTimeBlockInput,
-  StartEditEventInput,
-  StartEditEventTimeBlockInput,
 } from './calendar-row';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
@@ -26,19 +24,18 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface PlanningEventCardProps {
   row: CycleCalendarTableRow;
+  /** The reviewed Cycle, for the nested Edit Event link. */
+  cycleId: string;
   isReadOnly: boolean;
   deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  onAddEventTimeBlockRequest: (input: StartCreateEventTimeBlockInput) => void;
-  onEditEventRequest: (input: StartEditEventInput) => void;
   onDeleteEventConfirm: (input: ConfirmDeleteEventInput) => void;
-  onEditEventTimeBlockRequest: (input: StartEditEventTimeBlockInput) => void;
   onDeleteEventTimeBlockConfirm: (
     input: ConfirmDeleteEventTimeBlockInput,
   ) => void;
@@ -55,13 +52,11 @@ type ConfirmState =
 
 export function PlanningEventCard({
   row,
+  cycleId,
   isReadOnly,
   deleteEventPending,
   deleteEventTimeBlockPending,
-  onAddEventTimeBlockRequest,
-  onEditEventRequest,
   onDeleteEventConfirm,
-  onEditEventTimeBlockRequest,
   onDeleteEventTimeBlockConfirm,
 }: PlanningEventCardProps) {
   const [confirmState, setConfirmState] = useState<ConfirmState>({
@@ -129,24 +124,14 @@ export function PlanningEventCard({
 
       {!isReadOnly ? (
         <div className="mt-3 flex items-center gap-1">
-          <Button
-            type="button"
-            size="touch"
-            variant="ghost"
-            aria-label={m.cycle_review_add_time_block_to({ title: row.title })}
-            onClick={() => onAddEventTimeBlockRequest({ row })}
-          >
-            <Plus className="size-3.5" /> {m.cycle_review_add_time_block()}
-          </Button>
-          <Button
-            type="button"
-            size="touch"
-            variant="ghost"
+          <Link
+            to="/cycles/$cycleId/events/$eventId"
+            params={{ cycleId, eventId: row.eventId }}
+            className={buttonVariants({ size: 'touch', variant: 'ghost' })}
             aria-label={m.cycle_review_edit_day({ title: row.title })}
-            onClick={() => onEditEventRequest({ row })}
           >
             <Pencil className="size-3.5" /> {m.cycle_review_edit()}
-          </Button>
+          </Link>
           <AlertDialog
             open={confirmState.kind === 'event'}
             onOpenChange={(open) =>
@@ -213,25 +198,6 @@ export function PlanningEventCard({
               </span>
               {!isReadOnly ? (
                 <span className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    size="icon-touch"
-                    variant="ghost"
-                    aria-label={m.cycle_review_edit_time_block({
-                      label: eventTimeBlock.label,
-                    })}
-                    onClick={() =>
-                      onEditEventTimeBlockRequest({
-                        parentId: row.eventId,
-                        eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
-                        label: eventTimeBlock.label,
-                        startTime: eventTimeBlock.startTime,
-                        endTime: eventTimeBlock.endTime,
-                      })
-                    }
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
                   {eventTimeBlock.isOnlyEventTimeBlockInEvent ? (
                     <Button
                       type="button"

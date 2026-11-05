@@ -4,13 +4,18 @@ import {
   compareInstants,
   type Instant,
   parseCalendarDay,
+  parseInstant,
   parseTimeOfDay,
   today,
   toInstant,
 } from '@church/time';
 import { isAxiosError } from 'axios';
 import { getErrorMessage } from './planning-admin.utils';
-import type { CreatePlanningEventBody } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  CreatePlanningEventBody,
+  GetCycle200EventsItem,
+  UpdatePlanningEventBody,
+} from '@/infrastructure/api/churchAPI.schemas';
 
 /** One labelled Time block row; `id` is set only for a persisted block. */
 export interface EventEditorBlock {
@@ -68,6 +73,31 @@ export function createEventForm({
     blocks: [
       { key: nextBlockKey(), label: '', start, end, followsEvent: true },
     ],
+  };
+}
+
+interface EditEventFormInput {
+  graph: GetCycle200EventsItem;
+}
+
+/** A persisted Event as the editor holds it: every row is already its own. */
+export function editEventForm({
+  graph,
+}: EditEventFormInput): EventEditorFormState {
+  const { event, eventTimeBlocks } = graph;
+  return {
+    title: event.title,
+    location: event.location ?? '',
+    start: parseInstant({ value: event.start }),
+    end: parseInstant({ value: event.end }),
+    blocks: eventTimeBlocks.map((block) => ({
+      key: nextBlockKey(),
+      id: block.id,
+      label: block.label ?? '',
+      start: parseInstant({ value: block.startTime }),
+      end: parseInstant({ value: block.endTime }),
+      followsEvent: false,
+    })),
   };
 }
 
@@ -260,6 +290,24 @@ export function toCreateEventBody({
       startTime: block.start,
       endTime: block.end,
     })),
+  };
+}
+
+interface ToUpdateEventBodyInput {
+  form: EventEditorFormState;
+}
+
+/** The complete desired graph: rows keep their ids; new rows have none. */
+export function toUpdateEventBody({
+  form,
+}: ToUpdateEventBodyInput): UpdatePlanningEventBody {
+  const body = toCreateEventBody({ form });
+  return {
+    ...body,
+    eventTimeBlocks: body.eventTimeBlocks.map((block, index) => {
+      const id = form.blocks[index]?.id;
+      return id ? { id, ...block } : block;
+    }),
   };
 }
 

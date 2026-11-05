@@ -131,7 +131,7 @@ test.describe('DL4-X2 network failure on send', () => {
       month.cycleName,
     );
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
-      m.cycle_state_draft(),
+      m.cycle_state_draft({}, { locale: 'pt-BR' }),
     );
 
     await page.getByTestId('send-cycle-button').click();
@@ -140,7 +140,7 @@ test.describe('DL4-X2 network failure on send', () => {
       page.locator('[data-sonner-toast][data-type="error"]'),
     ).toBeVisible();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
-      m.cycle_state_draft(),
+      m.cycle_state_draft({}, { locale: 'pt-BR' }),
     );
 
     // Confirm no partial state server-side either — the cycle is still

@@ -196,7 +196,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     month.cycleName,
   );
   await expect(page.getByTestId('selected-cycle-state')).toHaveText(
-    m.cycle_state_draft(),
+    m.cycle_state_draft({}, { locale: 'pt-BR' }),
   );
 
   const cycleReviewUrl = page.url();
@@ -341,7 +341,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
 
   await page.getByTestId('send-cycle-button').click();
   await expect(page.getByTestId('selected-cycle-state')).toHaveText(
-    m.cycle_state_sent(),
+    m.cycle_state_sent({}, { locale: 'pt-BR' }),
   );
 
   // Step-sequence gating: sent-review is read-only — no editable

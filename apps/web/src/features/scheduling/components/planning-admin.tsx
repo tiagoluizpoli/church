@@ -8,7 +8,7 @@ import {
   CycleListStats,
   PlanningTemplateLibraryStats,
 } from './planning-admin/cycle-header';
-import { cycleIsSent } from './planning-admin/planning-admin.utils';
+import { cycleIsReadOnly } from './planning-admin/planning-admin.utils';
 import {
   PlanningAdminProvider,
   useCycleHeader,
@@ -171,7 +171,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
   const canMutateCalendar =
     isReviewingCycle &&
     Boolean(selectedCycle) &&
-    !cycleIsSent({ cycle: selectedCycle });
+    !cycleIsReadOnly({ cycle: selectedCycle });
   const canDeleteCycle = isReviewingCycle && selectedCycle?.state === 'draft';
 
   return (
@@ -180,13 +180,6 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         className="flex flex-wrap items-center justify-end gap-2"
         data-testid="cycles-actions-row"
       >
-        <Link
-          to="/event-templates"
-          data-testid="open-template-library-button"
-          className={buttonVariants({ variant: 'outline' })}
-        >
-          Template library
-        </Link>
         {canMutateCalendar ? (
           <Button
             type="button"
@@ -241,6 +234,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
           <ApplyTemplatesDialog
             open={applyTemplatesOpen}
             onOpenChange={setApplyTemplatesOpen}
+            cycleId={selectedCycle.id}
             selectedCycleName={selectedCycle.name}
           />
           <QuickCreateEventModal

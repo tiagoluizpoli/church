@@ -365,7 +365,9 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
   }
 
   async getByIds(input: GetEventTemplatesByIdsInput): Promise<EventTemplate[]> {
-    if (input.templateIds.length === 0) {
+    // A malformed id can match nothing; keep it out of the uuid comparison.
+    const templateIds = input.templateIds.filter((id) => isValidUuid(id));
+    if (templateIds.length === 0) {
       return [];
     }
 
@@ -379,7 +381,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
             table: eventTemplate,
             churchId: input.churchId,
           }),
-          inArray(eventTemplate.id, input.templateIds),
+          inArray(eventTemplate.id, templateIds),
         ),
       );
 

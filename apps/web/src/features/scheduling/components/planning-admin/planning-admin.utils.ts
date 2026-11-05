@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import {
+  addCalendarDays,
   addMilliseconds,
   formatWeekdayOfIndex,
   type Instant,
@@ -10,11 +11,13 @@ import {
   parseTimeOfDay,
   type TimeOfDay,
   timeOfDaySpan,
+  weekdayIndex,
 } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   CycleCalendarEventTimeBlockRow,
   CycleCalendarTableRow,
+  CycleCalendarWeek,
   CycleEventGroup,
   CycleFormState,
   CycleSummary,
@@ -30,7 +33,7 @@ import type {
   ListCycles200CyclesItemState,
   UpdateEventTemplateBody,
 } from '@/infrastructure/api/churchAPI.schemas';
-import { formatCalendarDateOnly } from '@/shared/utils/church-time';
+import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
 import { describeSpan } from '@/shared/utils/span-description';
 
@@ -389,8 +392,102 @@ export function canSaveTemplate({
   );
 }
 
-export function cycleIsSent({ cycle }: SelectedCycleInput): boolean {
-  return cycle?.state === 'sent';
+/** Sent and Past Cycles are review-only: only a Draft exposes mutation controls. */
+export function cycleIsReadOnly({ cycle }: SelectedCycleInput): boolean {
+  return Boolean(cycle) && cycle?.state !== 'draft';
+}
+
+interface CycleStateLabelInput {
+  state: SelectedCycle['state'];
+}
+
+export function cycleStateLabel({ state }: CycleStateLabelInput): string {
+  if (state === 'sent') return m.cycle_state_sent();
+  if (state === 'past') return m.cycle_state_past();
+  return m.cycle_state_draft();
+}
+
+interface EventStatusLabelInput {
+  status: CycleEventGroup['event']['status'];
+}
+
+export function eventStatusLabel({ status }: EventStatusLabelInput): string {
+  if (status === 'scheduled') return m.event_status_scheduled();
+  if (status === 'cancelled') return m.event_status_cancelled();
+  if (status === 'past') return m.event_status_past();
+  return m.event_status_draft();
+}
+
+interface TimeBlockCountInput {
+  count: number;
+}
+
+export function timeBlockCountLabel({ count }: TimeBlockCountInput): string {
+  return pluralMessage({
+    count,
+    one: () => m.cycle_review_time_block_count_one(),
+    other: () => m.cycle_review_time_block_count_other({ count }),
+  });
+}
+
+interface ErrorStatusInput {
+  error: unknown;
+}
+
+export function isNotFoundError({ error }: ErrorStatusInput): boolean {
+  return isAxiosError(error) && error.response?.status === 404;
+}
+
+const DAYS_IN_WEEK = 7;
+
+interface CompareRowsInput {
+  left: CycleCalendarTableRow;
+  right: CycleCalendarTableRow;
+}
+
+/** Start ascending; equal starts fall back to end, title, then id so the
+ * order never depends on the response order. */
+function compareReviewRows({ left, right }: CompareRowsInput): number {
+  return (
+    Date.parse(left.start) - Date.parse(right.start) ||
+    Date.parse(left.end) - Date.parse(right.end) ||
+    left.title.localeCompare(right.title) ||
+    left.eventId.localeCompare(right.eventId)
+  );
+}
+
+interface GroupRowsByWeekInput {
+  rows: CycleCalendarTableRow[];
+  timeZone: string;
+}
+
+/** Groups Events by the Sunday-first Church-local week of their start day
+ * (the weekday-index convention of Event templates), so a multi-day Event
+ * appears once, in the week it starts. */
+export function groupRowsByWeek({
+  rows,
+  timeZone,
+}: GroupRowsByWeekInput): CycleCalendarWeek[] {
+  const weeks = new Map<string, CycleCalendarWeek>();
+
+  for (const row of [...rows].sort((left, right) =>
+    compareReviewRows({ left, right }),
+  )) {
+    const day = dayOf({ value: row.start, timeZone });
+    const weekStart = addCalendarDays({
+      day,
+      days: -weekdayIndex({ day }),
+    });
+    const week = weeks.get(weekStart) ?? {
+      weekStart,
+      weekEnd: addCalendarDays({ day: weekStart, days: DAYS_IN_WEEK - 1 }),
+      rows: [],
+    };
+    week.rows.push(row);
+    weeks.set(weekStart, week);
+  }
+
+  return [...weeks.values()];
 }
 
 export interface IsMultiDayEventInput {
@@ -468,13 +565,14 @@ export function toCycleCalendarTableRow({
   return {
     eventId: eventGroup.event.id,
     title: eventGroup.event.title,
+    location: eventGroup.event.location,
     start: eventGroup.event.start,
     end: eventGroup.event.end,
     status: eventGroup.event.status,
     eventTimeBlocks: eventGroup.eventTimeBlocks.map(
       (eventTimeBlock): CycleCalendarEventTimeBlockRow => ({
         eventTimeBlockId: eventTimeBlock.id,
-        label: eventTimeBlock.label ?? 'Time block',
+        label: eventTimeBlock.label ?? m.cycle_review_time_block_fallback(),
         startTime: eventTimeBlock.startTime,
         endTime: eventTimeBlock.endTime,
         isOnlyEventTimeBlockInEvent,

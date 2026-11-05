@@ -121,7 +121,6 @@ beforeAll(async () => {
       templateRepository,
       churchRepository,
       unitOfWork,
-      staffingSeeder,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
@@ -526,6 +525,145 @@ describe('Cycle access', () => {
       expect(apply.statusCode).toBe(404);
       expect(detail.json().error).toBe('NOT_FOUND');
     }
+  });
+});
+
+describe('GET /admin/cycles/:cycleId', () => {
+  const at = (value: string) => parseInstant({ value });
+
+  async function seedReviewCycle(input: {
+    churchId: string;
+    state?: 'draft' | 'sent' | 'past';
+  }) {
+    return seedCycle({
+      ...input,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+  }
+
+  it('returns every Event in start order with deterministic ties, its location and every time block', async () => {
+    const seed = await signIn();
+    const reviewCycle = await seedReviewCycle({ churchId: seed.churchAId });
+    const base = { db, churchId: seed.churchAId, cycleId: reviewCycle.id };
+    // Same start: the earlier end, then the title, decide the order.
+    const longer = await buildEvent({
+      ...base,
+      title: 'Retreat',
+      start: at('2026-10-17T12:00:00.000Z'),
+      end: at('2026-10-19T20:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const shorter = await buildEvent({
+      ...base,
+      title: 'Prayer',
+      start: at('2026-10-17T12:00:00.000Z'),
+      end: at('2026-10-17T14:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const earlier = await buildEvent({
+      ...base,
+      title: 'Vigil',
+      start: at('2026-10-14T22:00:00.000Z'),
+      end: at('2026-10-15T04:00:00.000Z'),
+      status: 'scheduled',
+    });
+    await db
+      .update(event)
+      .set({ location: 'Main hall' })
+      .where(eq(event.id, earlier.id));
+    // Inserted out of order; the overnight block ends the next Church day.
+    await buildEventTimeBlock({
+      ...base,
+      eventId: earlier.id,
+      label: 'Watch',
+      start: at('2026-10-15T01:00:00.000Z'),
+      end: at('2026-10-15T04:00:00.000Z'),
+    });
+    await buildEventTimeBlock({
+      ...base,
+      eventId: earlier.id,
+      label: 'Opening',
+      start: at('2026-10-14T22:00:00.000Z'),
+      end: at('2026-10-15T00:00:00.000Z'),
+    });
+    const foreign = await seedReviewCycle({ churchId: seed.churchBId });
+    await buildEvent({
+      db,
+      churchId: seed.churchBId,
+      cycleId: foreign.id,
+      title: 'Foreign',
+      start: at('2026-10-14T22:00:00.000Z'),
+      end: at('2026-10-14T23:00:00.000Z'),
+      status: 'scheduled',
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${reviewCycle.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const { cycle: detail, events } = response.json();
+    expect(detail).toMatchObject({
+      id: reviewCycle.id,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    expect(
+      events.map((group: { event: { id: string } }) => group.event.id),
+    ).toEqual([earlier.id, shorter.id, longer.id]);
+    expect(events[0].event.location).toBe('Main hall');
+    expect(
+      events[0].eventTimeBlocks.map(
+        (block: { label: string; startTime: string; endTime: string }) => [
+          block.label,
+          block.startTime,
+          block.endTime,
+        ],
+      ),
+    ).toEqual([
+      ['Opening', '2026-10-14T22:00:00.000Z', '2026-10-15T00:00:00.000Z'],
+      ['Watch', '2026-10-15T01:00:00.000Z', '2026-10-15T04:00:00.000Z'],
+    ]);
+  });
+
+  it.each([
+    'sent',
+    'past',
+  ] as const)('returns a stored %s Cycle with its complete graph', async (state) => {
+    const seed = await signIn();
+    const stored = await seedReviewCycle({ churchId: seed.churchAId, state });
+    await buildEvent({
+      db,
+      churchId: seed.churchAId,
+      cycleId: stored.id,
+      title: 'Service',
+      start: at('2026-10-18T22:00:00.000Z'),
+      end: at('2026-10-19T00:00:00.000Z'),
+      status: 'scheduled',
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${stored.id}`,
+    });
+
+    expect(response.json().cycle.state).toBe(state);
+    expect(response.json().events).toHaveLength(1);
+  });
+
+  it('refuses a signed-out request and a member without the ChurchAdmin capability', async () => {
+    const seed = await signIn({ persona: 'member' });
+    const stored = await seedReviewCycle({ churchId: seed.churchAId });
+    const url = `/api/v1/admin/cycles/${stored.id}`;
+
+    const forbidden = await app.inject({ method: 'GET', url });
+    mockGetSession.mockResolvedValue(null as never);
+    const signedOut = await app.inject({ method: 'GET', url });
+
+    expect(forbidden.statusCode).toBe(403);
+    expect(signedOut.statusCode).toBe(401);
   });
 });
 

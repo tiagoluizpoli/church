@@ -2,6 +2,7 @@ import {
   addCalendarDays,
   type CalendarDay,
   compareCalendarDays,
+  compareInstants,
   type Instant,
   type TimeOfDay,
   timeOfDaySpan,
@@ -25,6 +26,8 @@ export interface ExistingGeneratedEvent {
   eventId: EventId;
   eventDate: CalendarDay;
   sourceTemplateId?: EventTemplateId;
+  /** A legacy cancelled copy still occupies its slot but is never revived. */
+  cancelled?: boolean;
 }
 
 export interface GenerateCycleEventsInput {
@@ -125,16 +128,17 @@ export class CycleEventGenerator {
             }),
           }));
 
-        const [firstEventTimeBlock, ...restEventTimeBlocks] = eventTimeBlocks;
-        const lastEventTimeBlock =
-          restEventTimeBlocks.at(-1) ?? firstEventTimeBlock;
-        if (!firstEventTimeBlock || !lastEventTimeBlock) {
+        if (eventTimeBlocks.length === 0) {
           continue;
         }
 
         const existingEvent = existingEventMap.get(
           `${eventDate}::${template.id as EventTemplateId}`,
         );
+
+        if (existingEvent?.cancelled) {
+          continue;
+        }
 
         if (existingEvent) {
           plans.push({
@@ -149,8 +153,7 @@ export class CycleEventGenerator {
           kind: 'create_event',
           sourceTemplateId: template.id as EventTemplateId,
           title: template.name,
-          start: firstEventTimeBlock.startTime,
-          end: lastEventTimeBlock.endTime,
+          ...eventTimeBlockEnvelope({ eventTimeBlocks }),
           eventTimeBlocks,
         });
       }
@@ -158,6 +161,35 @@ export class CycleEventGenerator {
 
     return plans;
   }
+}
+
+export interface EventTimeBlockEnvelope {
+  start: Instant;
+  end: Instant;
+}
+
+interface EventTimeBlockEnvelopeInput {
+  eventTimeBlocks: EventTimeBlockBounds[];
+}
+
+/** Earliest start and latest end: an overnight block may end after a later one. */
+export function eventTimeBlockEnvelope({
+  eventTimeBlocks,
+}: EventTimeBlockEnvelopeInput): EventTimeBlockEnvelope {
+  const [first, ...rest] = eventTimeBlocks;
+  if (!first) {
+    throw new Error('An envelope needs at least one time block.');
+  }
+  let { startTime: start, endTime: end } = first;
+  for (const block of rest) {
+    if (compareInstants({ left: block.startTime, right: start }) < 0) {
+      start = block.startTime;
+    }
+    if (compareInstants({ left: block.endTime, right: end }) > 0) {
+      end = block.endTime;
+    }
+  }
+  return { start, end };
 }
 
 function listMatchingCycleDates({

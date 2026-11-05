@@ -36,9 +36,9 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
   await expect(page).toHaveURL(/\/cycles\/(?!new$)[^/]+$/);
   const cycleReviewUrl = page.url();
 
-  // Opening the template library from a selected cycle changes the URL too
+  // Visiting the template library from a selected cycle changes the URL too
   // (previously `activeView` component state only).
-  await page.getByTestId('open-template-library-button').click();
+  await page.goto('/event-templates');
   await expect(page).toHaveURL(/\/event-templates$/);
   await expect(page.getByText('Modelos salvos')).toBeVisible();
 

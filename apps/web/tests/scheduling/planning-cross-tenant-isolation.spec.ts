@@ -29,7 +29,7 @@ test.describe('DL4-X1 cross-tenant isolation on the $cycleId route', () => {
     await expect(page.getByTestId('selected-cycle-name')).toHaveCount(0);
     await expect(page.getByTestId('planning-events-list')).toHaveCount(0);
     await expect(
-      page.getByText('Pick a cycle to review its generated calendar.'),
+      page.getByText('Escolha um ciclo para revisar seu calendário.'),
     ).toBeVisible();
   });
 });

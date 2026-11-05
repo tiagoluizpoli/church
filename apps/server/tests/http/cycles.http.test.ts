@@ -39,6 +39,7 @@ import { DbPlanningEventManager } from '@/application/db-planning-event-manager'
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import {
   ChurchId,
+  CycleId,
   MinistryId,
   UserId,
   VolunteerId,
@@ -1228,6 +1229,653 @@ describe('DELETE /admin/cycles/:cycleId', () => {
       } finally {
         await holder.end();
       }
+    });
+  });
+});
+
+describe('PATCH /admin/cycles/:cycleId', () => {
+  interface PatchCycleInput {
+    cycleId: string;
+    payload: unknown;
+    locale?: 'en' | 'pt-BR';
+  }
+
+  function patchCycle({ cycleId, payload, locale }: PatchCycleInput) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}`,
+      payload: payload as never,
+      cookies: locale ? { [testLocale.localeCookieName]: locale } : {},
+    });
+  }
+
+  it('renames and widens a Draft, returning the updated Cycle', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'October',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+
+    const response = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: '  Late October  ',
+        startDate: '2026-10-05',
+        endDate: '2026-10-31',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: target.id,
+      name: 'Late October',
+      startDate: '2026-10-05',
+      endDate: '2026-10-31',
+      state: 'draft',
+    });
+    expect(await storedRanges()).toEqual([
+      {
+        churchId: seed.churchAId,
+        startDate: '2026-10-05',
+        endDate: '2026-10-31',
+      },
+    ]);
+  });
+
+  interface SeedOwnedEventInput {
+    churchId: string;
+    cycleId: string;
+    title: string;
+    start: string;
+    end: string;
+  }
+
+  function seedOwnedEvent({ start, end, ...input }: SeedOwnedEventInput) {
+    return buildEvent({
+      db,
+      ...input,
+      start: parseInstant({ value: start }),
+      end: parseInstant({ value: end }),
+      status: 'draft',
+    });
+  }
+
+  async function storedEvents() {
+    const rows = await db.select().from(event).orderBy(event.start);
+    return rows.map((row) => ({
+      id: row.id,
+      cycleId: row.cycleId,
+      start: row.start.toISOString(),
+      end: row.end.toISOString(),
+    }));
+  }
+
+  async function storedCycle(cycleId: string) {
+    const [row] = await db.select().from(cycle).where(eq(cycle.id, cycleId));
+    return {
+      name: row?.name,
+      startDate: row && fromDateColumn({ date: row.startDate }),
+      endDate: row && fromDateColumn({ date: row.endDate }),
+      state: row?.state,
+    };
+  }
+
+  it('accepts unchanged dates and a single-day range without conflicting with itself', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-26',
+      endDate: '2026-10-31',
+    });
+
+    const unchanged = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: 'Renamed',
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      },
+    });
+    const singleDay = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: 'Retreat',
+        startDate: '2026-10-25',
+        endDate: '2026-10-25',
+      },
+    });
+
+    expect(unchanged.statusCode).toBe(200);
+    expect(unchanged.json().name).toBe('Renamed');
+    expect(singleDay.statusCode).toBe(200);
+    expect(await storedCycle(target.id)).toEqual({
+      name: 'Retreat',
+      startDate: '2026-10-25',
+      endDate: '2026-10-25',
+      state: 'draft',
+    });
+  });
+
+  it('refuses an overlap naming the other Cycle in the Active Church only, writing nothing', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'October',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const neighbour = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'November',
+      startDate: '2026-11-01',
+      endDate: '2026-11-30',
+    });
+    await seedCycle({
+      churchId: seed.churchBId,
+      startDate: '2026-10-26',
+      endDate: '2026-10-31',
+    });
+    const payload = {
+      name: 'Longer',
+      startDate: '2026-10-12',
+      endDate: '2026-11-01',
+    };
+
+    const ptBr = await patchCycle({ cycleId: target.id, payload });
+    const en = await patchCycle({ cycleId: target.id, payload, locale: 'en' });
+
+    expect(ptBr.statusCode).toBe(409);
+    expect(ptBr.json()).toEqual({
+      error: 'OVERLAPPING_CYCLE',
+      message: m.error_overlapping_cycle({}, { locale: 'pt-BR' }),
+      conflictingCycles: [
+        {
+          id: neighbour.id,
+          name: 'November',
+          startDate: '2026-11-01',
+          endDate: '2026-11-30',
+        },
+      ],
+    });
+    expect(en.json().message).toBe(
+      m.error_overlapping_cycle({}, { locale: 'en' }),
+    );
+    expect(await storedCycle(target.id)).toMatchObject({
+      name: 'October',
+      endDate: '2026-10-25',
+    });
+  });
+
+  it('refuses a shrink naming every excluded Event, while a spillover end is allowed', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'October',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    // 19:00 on the 12th and the 25th in São Paulo; the 25th's ends a day later.
+    const first = await seedOwnedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+      title: 'Opening',
+      start: '2026-10-12T22:00:00.000Z',
+      end: '2026-10-13T00:00:00.000Z',
+    });
+    const last = await seedOwnedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+      title: 'Closing vigil',
+      start: '2026-10-25T22:00:00.000Z',
+      end: '2026-10-26T22:00:00.000Z',
+    });
+    // 23:30 on the 24th in São Paulo is already the 25th in UTC.
+    await seedOwnedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+      title: 'Late prayer',
+      start: '2026-10-25T02:30:00.000Z',
+      end: '2026-10-25T03:30:00.000Z',
+    });
+    const before = await storedEvents();
+
+    const shrink = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: 'Middle',
+        startDate: '2026-10-13',
+        endDate: '2026-10-24',
+      },
+      locale: 'en',
+    });
+
+    expect(shrink.statusCode).toBe(409);
+    expect(shrink.json()).toEqual({
+      error: 'EVENT_OUTSIDE_CYCLE',
+      message: m.error_event_outside_cycle({}, { locale: 'en' }),
+      outsideEvents: [
+        {
+          id: first.id,
+          title: 'Opening',
+          start: '2026-10-12T22:00:00.000Z',
+          end: '2026-10-13T00:00:00.000Z',
+        },
+        {
+          id: last.id,
+          title: 'Closing vigil',
+          start: '2026-10-25T22:00:00.000Z',
+          end: '2026-10-26T22:00:00.000Z',
+        },
+      ],
+    });
+    expect(await storedCycle(target.id)).toMatchObject({ name: 'October' });
+    expect(await storedEvents()).toEqual(before);
+
+    // Both start days stay inside; the vigil's end spills past the 25th.
+    const keepsStarts = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: 'October',
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      },
+    });
+    const widened = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: 'October',
+        startDate: '2026-10-01',
+        endDate: '2026-10-31',
+      },
+    });
+
+    expect(keepsStarts.statusCode).toBe(200);
+    expect(widened.statusCode).toBe(200);
+    // Widening neither moves nor generates Events.
+    expect(await storedEvents()).toEqual(before);
+  });
+
+  it.each([
+    'sent',
+    'past',
+  ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION, changing nothing', async (state) => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Frozen',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state,
+    });
+
+    const response = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: 'Thawed',
+        startDate: '2026-10-12',
+        endDate: '2026-10-26',
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: 'ILLEGAL_STATE_TRANSITION',
+      message: m.error_illegal_state_transition({}, { locale: 'pt-BR' }),
+    });
+    expect(await storedCycle(target.id)).toEqual({
+      name: 'Frozen',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state,
+    });
+  });
+
+  it('refuses a Draft whose last day has elapsed, resolving it as Past', async () => {
+    const seed = await signIn();
+    const elapsed = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'September',
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+    });
+
+    const response = await patchCycle({
+      cycleId: elapsed.id,
+      payload: {
+        name: 'Again',
+        startDate: '2026-09-01',
+        endDate: '2026-10-05',
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    expect(await storedCycle(elapsed.id)).toEqual({
+      name: 'September',
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+      state: 'past',
+    });
+  });
+
+  it('validates the body as on creation, writing nothing', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'October',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+
+    const reversed = await patchCycle({
+      cycleId: target.id,
+      payload: {
+        name: 'October',
+        startDate: '2026-10-26',
+        endDate: '2026-10-25',
+      },
+    });
+    const blank = await patchCycle({
+      cycleId: target.id,
+      payload: { name: '  ', startDate: '2026-10-12', endDate: '2026-10-25' },
+    });
+    const partial = await patchCycle({
+      cycleId: target.id,
+      payload: { name: 'Only a name' },
+    });
+
+    expect(reversed.statusCode).toBe(400);
+    expect(reversed.json().error).toBe('INVALID_DATE_RANGE');
+    expect(blank.statusCode).toBe(422);
+    expect(partial.statusCode).toBe(422);
+    expect(await storedCycle(target.id)).toMatchObject({
+      name: 'October',
+      endDate: '2026-10-25',
+    });
+  });
+
+  it('answers 401 signed out, 403 without the capability and the same 404 for missing and foreign Cycles', async () => {
+    const payload = {
+      name: 'Edited',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    };
+    mockGetSession.mockResolvedValue(null as never);
+    const signedOut = await patchCycle({ cycleId: randomUUID(), payload });
+    expect(signedOut.statusCode).toBe(401);
+
+    for (const persona of ['member', 'leader'] as const) {
+      const seed = await signIn({ persona });
+      const target = await seedCycle({
+        churchId: seed.churchAId,
+        name: 'October',
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+
+      const response = await patchCycle({ cycleId: target.id, payload });
+
+      expect(response.statusCode).toBe(403);
+      expect((await storedCycle(target.id)).name).toBe('October');
+      await resetSchedulingPhase3Db();
+    }
+
+    const seed = await signIn();
+    const foreign = await seedCycle({
+      churchId: seed.churchBId,
+      name: 'Foreign',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    for (const cycleId of [randomUUID(), foreign.id]) {
+      const response = await patchCycle({ cycleId, payload });
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error).toBe('NOT_FOUND');
+    }
+    expect((await storedCycle(foreign.id)).name).toBe('Foreign');
+  });
+
+  it('rolls the edit back when the transaction fails after the write', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'October',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const spy = vi
+      .spyOn(DrizzleCycleRepository.prototype, 'update')
+      .mockImplementationOnce(async (input) => {
+        // Run the real update, then fail so the transaction must roll back.
+        spy.mockRestore();
+        await cycleRepository.update(input);
+        throw new Error('commit failed');
+      });
+
+    const response = await patchCycle({
+      cycleId: target.id,
+      payload: { name: 'Lost', startDate: '2026-10-01', endDate: '2026-10-31' },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(await storedCycle(target.id)).toEqual({
+      name: 'October',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state: 'draft',
+    });
+  });
+
+  it('translates a database exclusion race on update into the scoped refusal, excluding itself', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const committed = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Committed first',
+      startDate: '2026-10-26',
+      endDate: '2026-10-31',
+    });
+
+    // The repository alone skips the manager's lock and pre-check.
+    const update = cycleRepository.update({
+      churchId: ChurchId.from(seed.churchAId),
+      cycleId: CycleId.from(target.id),
+      name: 'Racer',
+      startDate: new Date('2026-10-12T00:00:00.000Z'),
+      endDate: new Date('2026-10-26T00:00:00.000Z'),
+    });
+
+    await expect(update).rejects.toBeInstanceOf(OverlappingCycleError);
+    await expect(update).rejects.toMatchObject({
+      conflictingCycles: [
+        {
+          id: committed.id,
+          name: 'Committed first',
+          startDate: '2026-10-26',
+          endDate: '2026-10-31',
+        },
+      ],
+    });
+  });
+
+  describe('against concurrent writers', () => {
+    async function holdChurchLock(churchId: string) {
+      const holder = new pg.Client({
+        connectionString: getIntegrationDatabaseUrl(),
+      });
+      await holder.connect();
+      await holder.query('BEGIN');
+      await holder.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        churchId,
+      ]);
+      return holder;
+    }
+
+    it('refuses a shrink that would exclude an Event committed while it waited', async () => {
+      const seed = await signIn();
+      const target = await seedCycle({
+        churchId: seed.churchAId,
+        name: 'October',
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+      const holder = await holdChurchLock(seed.churchAId);
+      try {
+        const pending = patchCycle({
+          cycleId: target.id,
+          payload: {
+            name: 'Short',
+            startDate: '2026-10-12',
+            endDate: '2026-10-20',
+          },
+        }).then((response) => response);
+        await waitForChurchLockWaiter(holder);
+        await holder.query(
+          `INSERT INTO event (church_id, cycle_id, title, start, "end")
+           VALUES ($1, $2, 'Late', '2026-10-25T22:00:00Z', '2026-10-26T00:00:00Z')`,
+          [seed.churchAId, target.id],
+        );
+        await holder.query('COMMIT');
+
+        const response = await pending;
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toBe('EVENT_OUTSIDE_CYCLE');
+        expect(response.json().outsideEvents).toEqual([
+          expect.objectContaining({ title: 'Late' }),
+        ]);
+        expect(await storedCycle(target.id)).toMatchObject({
+          endDate: '2026-10-25',
+        });
+      } finally {
+        await holder.end();
+      }
+    });
+
+    it('makes an Event insertion that waited on a committed shrink read the new range', async () => {
+      const seed = await signIn();
+      const target = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+      const holder = await holdChurchLock(seed.churchAId);
+      try {
+        const pending = app
+          .inject({
+            method: 'POST',
+            url: `/api/v1/admin/cycles/${target.id}/events`,
+            payload: {
+              title: 'Late',
+              start: '2026-10-25T22:00:00.000Z',
+              end: '2026-10-26T00:00:00.000Z',
+            },
+          })
+          .then((response) => response);
+        await waitForChurchLockWaiter(holder);
+        // A range edit that held the lock first commits its shrink.
+        await holder.query(
+          `UPDATE cycle SET end_date = '2026-10-20' WHERE id = $1`,
+          [target.id],
+        );
+        await holder.query('COMMIT');
+
+        const response = await pending;
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toBe('EVENT_OUTSIDE_CYCLE');
+        expect(await storedEvents()).toEqual([]);
+      } finally {
+        await holder.end();
+      }
+    });
+
+    it('refuses with 409 when a Send committed first', async () => {
+      const seed = await signIn();
+      const target = await seedCycle({
+        churchId: seed.churchAId,
+        name: 'October',
+        startDate: '2026-10-12',
+        endDate: '2026-10-25',
+      });
+      const holder = await holdChurchLock(seed.churchAId);
+      try {
+        const pending = patchCycle({
+          cycleId: target.id,
+          payload: {
+            name: 'Late edit',
+            startDate: '2026-10-12',
+            endDate: '2026-10-26',
+          },
+        }).then((response) => response);
+        await waitForChurchLockWaiter(holder);
+        await holder.query(`UPDATE cycle SET state = 'sent' WHERE id = $1`, [
+          target.id,
+        ]);
+        await holder.query('COMMIT');
+
+        const response = await pending;
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+        expect(await storedCycle(target.id)).toMatchObject({
+          name: 'October',
+          endDate: '2026-10-25',
+          state: 'sent',
+        });
+      } finally {
+        await holder.end();
+      }
+    });
+
+    it('lets only one of two concurrent edits into the same days commit', async () => {
+      const seed = await signIn();
+      const early = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-01',
+        endDate: '2026-10-10',
+      });
+      const late = await seedCycle({
+        churchId: seed.churchAId,
+        startDate: '2026-10-21',
+        endDate: '2026-10-31',
+      });
+
+      const responses = await Promise.all([
+        patchCycle({
+          cycleId: early.id,
+          payload: {
+            name: 'Early',
+            startDate: '2026-10-01',
+            endDate: '2026-10-15',
+          },
+        }),
+        patchCycle({
+          cycleId: late.id,
+          payload: {
+            name: 'Late',
+            startDate: '2026-10-15',
+            endDate: '2026-10-31',
+          },
+        }),
+      ]);
+
+      expect(responses.map((response) => response.statusCode).sort()).toEqual([
+        200, 409,
+      ]);
+      const loser = responses.find((response) => response.statusCode === 409);
+      expect(loser?.json().error).toBe('OVERLAPPING_CYCLE');
     });
   });
 });

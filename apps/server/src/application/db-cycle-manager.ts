@@ -9,6 +9,7 @@ import type {
   ListCyclesManagerInput,
   ReopenPlanningEventManagerInput,
   SendCycleManagerInput,
+  UpdateCycleManagerInput,
 } from '../domain/contracts/application/cycle-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
@@ -18,6 +19,7 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import { Cycle } from '../domain/entities/cycle';
 import {
   DraftStaffingReconciliationRequiredError,
+  EventOutsideCycleError,
   IllegalStateTransitionError,
   OverlappingCycleError,
 } from '../domain/errors';
@@ -215,6 +217,75 @@ export class DbCycleManager implements ICycleManager {
         }),
         tx,
       });
+    });
+  }
+
+  async updateCycle(input: UpdateCycleManagerInput): Promise<Cycle> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    // The desired aggregate refuses a reversed range before any write.
+    const desired = new Cycle({
+      props: {
+        churchId: input.churchId,
+        name: input.name,
+        startDate: fromDateColumn({ date: input.startDate }),
+        endDate: fromDateColumn({ date: input.endDate }),
+      },
+    });
+
+    return this.unitOfWork.run(async (tx) => {
+      // Event writers, Apply, Send and delete hold the same lock, so the state,
+      // range and owned Events read below stay true until this commits.
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
+      const cycle = await this.ensureResolvedCycle({
+        cycle: await this.cycleRepository.getById({ ...input, tx }),
+        churchTimeZone: church.timezone,
+      });
+
+      if (cycle.state !== 'draft') {
+        throw new IllegalStateTransitionError({
+          from: cycle.state,
+          to: 'edited',
+        });
+      }
+
+      const overlaps = await this.cycleRepository.findOverlapping({
+        churchId: input.churchId,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        excludeCycleId: input.cycleId,
+        tx,
+      });
+
+      if (overlaps.length > 0) {
+        throw new OverlappingCycleError({ conflictingCycles: overlaps });
+      }
+
+      // Events are never moved to fit: any excluded start refuses the edit.
+      const outside = (
+        await this.eventRepository.listCycleEvents({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          tx,
+        })
+      )
+        .map((eventGroup) => eventGroup.event)
+        .filter(
+          (event) =>
+            !desired.containsDate({
+              instant: event.start,
+              timeZone: church.timezone,
+            }),
+        );
+
+      if (outside.length > 0) {
+        throw new EventOutsideCycleError({ outsideEvents: outside });
+      }
+
+      return this.cycleRepository.update({ ...input, tx });
     });
   }
 

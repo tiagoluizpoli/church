@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { cycle } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
 import type {
   AcquireCycleChurchLockInput,
   CreateCycleInput,
@@ -10,6 +10,7 @@ import type {
   FindOverlappingCyclesInput,
   GetCycleInput,
   ListCyclesInput,
+  UpdateCycleInput,
   UpdateCycleStateInput,
 } from '../../domain/contracts/infrastructure/cycle.repository';
 import type { Cycle } from '../../domain/entities/cycle';
@@ -24,6 +25,11 @@ import {
 
 /** The Church-scoped inclusive daterange exclusion (migration 0042). */
 const CHURCH_DATE_EXCLUSION_CONSTRAINT = 'cycle_church_date_excl';
+
+interface RefuseExclusionRaceInput {
+  error: unknown;
+  range: Omit<FindOverlappingCyclesInput, 'tx'>;
+}
 
 interface DrizzleCycleRepositoryInput {
   db: AnyDrizzleDb;
@@ -48,25 +54,9 @@ export class DrizzleCycleRepository implements CycleRepository {
         state: input.state ?? 'draft',
       })
       .returning()
-      .catch(async (error: unknown) => {
-        if (
-          !isConstraintViolation({
-            error,
-            code: PG_EXCLUSION_VIOLATION,
-            constraint: CHURCH_DATE_EXCLUSION_CONSTRAINT,
-          })
-        ) {
-          throw error;
-        }
-        // The failed transaction is aborted; the committed winner is read
-        // outside it, scoped to the Church, never from the PostgreSQL message.
-        const conflicts = await this.findOverlapping({
-          churchId: input.churchId,
-          startDate: input.startDate,
-          endDate: input.endDate,
-        });
-        throw new OverlappingCycleError({ conflictingCycles: conflicts });
-      });
+      .catch((error: unknown) =>
+        this.refuseExclusionRace({ error, range: input }),
+      );
 
     if (!row) {
       throw new Error('Cycle insert failed');
@@ -129,6 +119,7 @@ export class DrizzleCycleRepository implements CycleRepository {
           withChurchIsolation({ table: cycle, churchId: input.churchId }),
           lte(cycle.startDate, input.endDate),
           gte(cycle.endDate, input.startDate),
+          input.excludeCycleId ? ne(cycle.id, input.excludeCycleId) : undefined,
         ),
       );
 
@@ -173,6 +164,61 @@ export class DrizzleCycleRepository implements CycleRepository {
     if (rows.length === 0) {
       throw new NotFoundError(`Cycle not found: ${input.cycleId}`);
     }
+  }
+
+  async update(input: UpdateCycleInput): Promise<Cycle> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const [row] = await db
+      .update(cycle)
+      .set({
+        name: input.name,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        updatedAt: nowAsDate(),
+      })
+      .where(
+        and(
+          eq(cycle.id, input.cycleId),
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
+        ),
+      )
+      .returning()
+      .catch((error: unknown) =>
+        this.refuseExclusionRace({
+          error,
+          range: { ...input, excludeCycleId: input.cycleId },
+        }),
+      );
+
+    if (!row) {
+      throw new NotFoundError(`Cycle not found: ${input.cycleId}`);
+    }
+
+    return mapCycle(row);
+  }
+
+  private async refuseExclusionRace({
+    error,
+    range,
+  }: RefuseExclusionRaceInput): Promise<never> {
+    if (
+      !isConstraintViolation({
+        error,
+        code: PG_EXCLUSION_VIOLATION,
+        constraint: CHURCH_DATE_EXCLUSION_CONSTRAINT,
+      })
+    ) {
+      throw error;
+    }
+    // The failed transaction is aborted; the committed winner is read
+    // outside it, scoped to the Church, never from the PostgreSQL message.
+    const conflicts = await this.findOverlapping({
+      churchId: range.churchId,
+      startDate: range.startDate,
+      endDate: range.endDate,
+      excludeCycleId: range.excludeCycleId,
+    });
+    throw new OverlappingCycleError({ conflictingCycles: conflicts });
   }
 
   async acquireChurchLock(input: AcquireCycleChurchLockInput): Promise<void> {

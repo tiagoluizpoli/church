@@ -17,18 +17,44 @@ export const createCycleBodySchema = z.object({
   endDate: z.string().date(),
 });
 
+/** An edit submits every editable field together, validated as on creation. */
+export const updateCycleBodySchema = createCycleBodySchema;
+
+const conflictingCyclesSchema = z.array(
+  z.object({
+    id: z.string(),
+    name: z.string(),
+    startDate: calendarDaySchema,
+    endDate: calendarDaySchema,
+  }),
+);
+
 /** A 409 `OVERLAPPING_CYCLE`: the localized envelope plus each colliding Cycle. */
 export const overlappingCycleResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
-  conflictingCycles: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      startDate: calendarDaySchema,
-      endDate: calendarDaySchema,
-    }),
-  ),
+  conflictingCycles: conflictingCyclesSchema,
+});
+
+/**
+ * A 409 to an edit: `OVERLAPPING_CYCLE` with `conflictingCycles`,
+ * `EVENT_OUTSIDE_CYCLE` with every excluded Event, or a bare
+ * `ILLEGAL_STATE_TRANSITION` envelope.
+ */
+export const updateCycleConflictResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  conflictingCycles: conflictingCyclesSchema.optional(),
+  outsideEvents: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        start: instantSchema,
+        end: instantSchema,
+      }),
+    )
+    .optional(),
 });
 
 export const listCyclesQuerySchema = z.object({

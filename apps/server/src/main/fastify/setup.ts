@@ -23,6 +23,7 @@ import {
   conflictingCycles,
   domainErrorMessage,
   existingInvitation,
+  invalidEvents,
   outsideEvents,
   upcomingAssignments,
   validationField,
@@ -174,6 +175,7 @@ export async function createFastify({
       const assignments = upcomingAssignments(error);
       const cycles = conflictingCycles(error);
       const outside = outsideEvents(error);
+      const invalid = invalidEvents(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
@@ -184,6 +186,7 @@ export async function createFastify({
         ...(assignments && { assignments }),
         ...(cycles && { conflictingCycles: cycles }),
         ...(outside && { outsideEvents: outside }),
+        ...(invalid && { invalidEvents: invalid }),
       });
     }
 

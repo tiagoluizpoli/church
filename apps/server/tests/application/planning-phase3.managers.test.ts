@@ -36,6 +36,7 @@ import {
   createTransactionContextFake,
   createUnitOfWorkFake,
   createUsualSetupRepositoryFake,
+  createVolunteerRepositoryFake,
 } from '@/tests/test-support/repository-contract-fakes';
 
 const churchId = ChurchId.from('church-1');
@@ -71,6 +72,8 @@ function createPlanningDependencies() {
     usualSetupRepository,
     ministryRepository,
   });
+  const volunteerRepository = createVolunteerRepositoryFake();
+  volunteerRepository.listActiveMinistryLeaderships.mockResolvedValue([]);
   return {
     cycleRepository,
     eventRepository,
@@ -81,6 +84,8 @@ function createPlanningDependencies() {
     ministryRepository,
     unitOfWork,
     staffingSeeder,
+    volunteerRepository,
+    notifications: { enqueue: vi.fn(async () => undefined) },
   };
 }
 
@@ -218,7 +223,29 @@ describe('DbCycleManager', () => {
     vi.mocked(participationRepository.hasCycleStaffing).mockResolvedValue(
       false,
     );
-    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([]);
+    const event = new Event({
+      id: EventId.from('event-1'),
+      props: {
+        churchId,
+        cycleId,
+        title: 'Service',
+        start: fromDate({ date: new Date('2099-01-02T09:00:00Z') }),
+        end: fromDate({ date: new Date('2099-01-02T10:00:00Z') }),
+      },
+    });
+    const block = new EventTimeBlock({
+      id: 'block-1',
+      props: {
+        churchId,
+        eventId: event.id,
+        label: 'Service',
+        startTime: event.start,
+        endTime: event.end,
+      },
+    });
+    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([
+      { event, eventTimeBlocks: [block] },
+    ]);
     const setup = {
       entriesByMinistry: new Map(),
       directionByMinistry: new Map(),
@@ -236,7 +263,15 @@ describe('DbCycleManager', () => {
     });
     expect(seed).toHaveBeenCalledWith({
       churchId,
-      eventTimeBlocks: [],
+      eventTimeBlocks: [
+        {
+          eventId: event.id,
+          eventTimeBlockId: block.id,
+          sourceTemplateTimeBlockId: undefined,
+          startTime: block.startTime,
+          endTime: block.endTime,
+        },
+      ],
       setup,
       tx,
     });
@@ -267,7 +302,20 @@ describe('DbCycleManager', () => {
       false,
     );
     vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([
-      { event, eventTimeBlocks: [] },
+      {
+        event,
+        eventTimeBlocks: [
+          new EventTimeBlock({
+            props: {
+              churchId,
+              eventId,
+              label: 'Service',
+              startTime: event.start,
+              endTime: event.end,
+            },
+          }),
+        ],
+      },
     ]);
     vi.spyOn(staffingSeeder, 'loadSetup').mockResolvedValue({
       entriesByMinistry: new Map(),
@@ -304,9 +352,30 @@ describe('DbCycleManager', () => {
     });
   });
   it('refuses to send a draft with existing staffing', async () => {
-    const { manager, cycle, cycleRepository, participationRepository } =
-      createCycleHarness();
+    const {
+      manager,
+      cycle,
+      cycleRepository,
+      eventRepository,
+      participationRepository,
+    } = createCycleHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(cycle);
+    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([
+      {
+        event: makeEvent(),
+        eventTimeBlocks: [
+          new EventTimeBlock({
+            props: {
+              churchId,
+              eventId,
+              label: 'Service',
+              startTime: instant(start),
+              endTime: instant(end),
+            },
+          }),
+        ],
+      },
+    ]);
     vi.mocked(participationRepository.hasCycleStaffing).mockResolvedValue(true);
     await expect(manager.sendCycle({ churchId, cycleId })).rejects.toThrow(
       DraftStaffingReconciliationRequiredError,

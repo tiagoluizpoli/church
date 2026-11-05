@@ -81,6 +81,24 @@ export interface VolunteerRepository {
   listActiveLeaderUserIds(
     input: ListActiveLeaderUserIdsInput,
   ): Promise<UserId[]>;
+
+  /**
+   * Every active leadership of an active Ministry in this Church, by current
+   * (not retired) profile: one row per User and Ministry.
+   */
+  listActiveMinistryLeaderships(
+    input: ListActiveMinistryLeadershipsInput,
+  ): Promise<ActiveMinistryLeadership[]>;
+}
+
+export interface ListActiveMinistryLeadershipsInput {
+  churchId: ChurchId;
+  tx?: TransactionContext;
+}
+
+export interface ActiveMinistryLeadership {
+  userId: UserId;
+  ministryId: MinistryId;
 }
 
 export interface ListActiveLeaderUserIdsInput {

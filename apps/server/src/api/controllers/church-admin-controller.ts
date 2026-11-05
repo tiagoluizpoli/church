@@ -25,8 +25,10 @@ import {
   cycleListResponseSchema,
   cycleMapper,
   cycleResponseSchema,
+  cycleSendSummaryResponseSchema,
   listCyclesQuerySchema,
   overlappingCycleResponseSchema,
+  sendCycleConflictResponseSchema,
   updateCycleBodySchema,
   updateCycleConflictResponseSchema,
 } from '../dtos/cycle.dto';
@@ -236,6 +238,31 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.get(
+      '/cycles/:cycleId/send-summary',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'getCycleSendSummary',
+          summary: 'Summarize a Draft Cycle before Send',
+          description:
+            'Advisory confirmation facts for a Draft Cycle: its Event count and the distinct active Ministries the Usual setup would pre-fill. Send rechecks everything itself. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS) and Sent/Past Cycles.',
+          response: {
+            200: cycleSendSummaryResponseSchema,
+            409: sendCycleConflictResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const summary = await this.cycleManager.getSendSummary({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.send(summary);
+      },
+    );
+
     app.post(
       '/cycles/:cycleId/send',
       {
@@ -244,7 +271,8 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'sendCycle',
           summary: 'Send a Cycle',
           description:
-            'Send a Cycle, transitioning its Events from draft to scheduled.',
+            'Send a Draft Cycle to its Ministries in one transaction: schedule its Events, pre-fill staffing from the Usual setup and enqueue one Cycle-ready Notification per User leading an active Ministry. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS), a Draft already holding staffing (DRAFT_STAFFING_RECONCILIATION_REQUIRED) and Sent/Past Cycles (ILLEGAL_STATE_TRANSITION).',
+          response: { 204: z.null(), 409: sendCycleConflictResponseSchema },
         },
       },
       async (request, reply) => {

@@ -5,6 +5,7 @@ import {
   eventTimeBlock,
   ministry,
   ministryParticipation,
+  outboxMessage,
   participationEventTimeBlockInclusion,
   sector,
   shift,
@@ -27,6 +28,7 @@ import {
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { UsualSetupController } from '@/api/controllers/usual-setup-controller';
+import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -40,6 +42,7 @@ import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/dr
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
@@ -111,6 +114,10 @@ function createManagers() {
       unitOfWork,
       participationRepository,
       staffingSeeder,
+      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -336,6 +343,19 @@ function send(fixture: Seed, locale?: string) {
   return post(`/admin/cycles/${fixture.cycleId}/send`, undefined, locale);
 }
 
+async function summary(fixture: Seed) {
+  const response = await app.inject({
+    method: 'GET',
+    url: `/api/v1/admin/cycles/${fixture.cycleId}/send-summary`,
+  });
+  expect(response.statusCode).toBe(200);
+  return response.json();
+}
+
+async function queuedCount() {
+  return (await schedulingTestDb.select().from(outboxMessage)).length;
+}
+
 function saveSetup(ministryId: string, blockId: string, entry: object) {
   return app.inject({
     method: 'PUT',
@@ -492,6 +512,12 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
         })
       ).statusCode,
     ).toBe(200);
+    // The confirmation counts what this same policy will pre-fill: All in and
+    // Worship, each once however many blocks they get.
+    expect(await summary(fixture)).toEqual({
+      eventCount: 2,
+      prefilledMinistryCount: 2,
+    });
 
     expect((await send(fixture)).statusCode).toBe(204);
 
@@ -575,6 +601,11 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
         and(eq(event.cycleId, fixture.cycleId), eq(event.title, 'Sunday')),
       );
     if (!sunday) throw new Error('Sunday event');
+    // A later one-off block on the same day, inside the widened Event.
+    await db
+      .update(event)
+      .set({ end: new Date('2027-01-03T19:00:00Z') })
+      .where(eq(event.id, sunday.id));
     await buildEventTimeBlock({
       db,
       churchId: fixture.churchId,
@@ -733,6 +764,8 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
     const { inclusions, shifts } = await staffing(fixture.cycleId);
     expect(inclusions).toHaveLength(3);
     expect(shifts).toHaveLength(3);
+    // The seeded admin leads the only led Ministry: one N2, not two.
+    expect(await queuedCount()).toBe(1);
   });
 
   it('rolls back every staffing row and the Cycle and Event states when a staffing write fails', async () => {
@@ -757,6 +790,7 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
       state: 'draft',
       events: ['draft'],
     });
+    expect(await queuedCount()).toBe(0);
   });
 
   it('refuses a Draft that already holds staffing with 409 DRAFT_STAFFING_RECONCILIATION_REQUIRED and writes nothing', async () => {
@@ -852,5 +886,6 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
       state: 'draft',
       events: ['draft'],
     });
+    expect(await queuedCount()).toBe(0);
   });
 });

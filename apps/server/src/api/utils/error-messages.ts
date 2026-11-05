@@ -8,6 +8,7 @@ import {
   EventOutsideCycleError,
   type OutsideEventReference,
 } from '@/domain/errors/event-outside-cycle';
+import { InvalidCycleEventsError } from '@/domain/errors/invalid-cycle-events';
 import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
 import {
   type ConflictingCycleReference,
@@ -100,6 +101,15 @@ export function outsideEvents(
 ): OutsideEventReference[] | undefined {
   return error instanceof EventOutsideCycleError
     ? error.outsideEvents
+    : undefined;
+}
+
+/** The Cycle's Events whose saved graph Send refuses, also sent to the client. */
+export function invalidEvents(
+  error: DomainError,
+): OutsideEventReference[] | undefined {
+  return error instanceof InvalidCycleEventsError
+    ? error.invalidEvents
     : undefined;
 }
 

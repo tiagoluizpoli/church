@@ -16,6 +16,7 @@ import type { RoleRepository } from '../domain/contracts/infrastructure/role.rep
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type {
   AvailabilityDeliveryFacts,
+  CycleReadyToPrepareDeliveryFacts,
   NotificationRequestDataOf,
   SchedulePublishedDeliveryFacts,
 } from '../domain/notification-kinds';
@@ -38,6 +39,11 @@ interface SchedulingNotificationFactsDependencies {
 interface ResolveAvailabilityInput {
   churchId: ChurchRecipient['churchId'];
   data: NotificationRequestDataOf<'availability_opened'>;
+}
+
+interface ResolveCycleReadyToPrepareInput {
+  churchId: ChurchRecipient['churchId'];
+  data: NotificationRequestDataOf<'cycle_ready_to_prepare'>;
 }
 
 interface ResolveSchedulePublishedInput {
@@ -116,6 +122,55 @@ export class SchedulingNotificationFacts {
           baseUrl: this.webBaseUrl,
           path: '/dashboard?section=availability',
         }),
+      };
+    } catch (error) {
+      if (error instanceof NotFoundError) return null;
+      throw error;
+    }
+  }
+
+  /**
+   * N2's facts: the Cycle, its live Event count and the captured Ministries
+   * that still exist. One Ministry links to its Schedule; several link to the
+   * Cycle-preserving picker restricted to them.
+   */
+  async cycleReadyToPrepare({
+    churchId,
+    data,
+  }: ResolveCycleReadyToPrepareInput): Promise<CycleReadyToPrepareDeliveryFacts | null> {
+    try {
+      const cycleId = CycleId.from(data.cycleId);
+      const [church, cycle, ministries, events] = await Promise.all([
+        this.churchRepository.getById({ id: churchId }),
+        this.cycleRepository.getById({ churchId, cycleId }),
+        this.ministryRepository.listByChurch({
+          churchId,
+          ids: data.ministryIds.map((id) => MinistryId.from(id)),
+        }),
+        this.eventRepository.listCycleEvents({ churchId, cycleId }),
+      ]);
+      const [onlyMinistry, ...otherMinistries] = ministries;
+      if (!onlyMinistry) return null;
+      const ministryIds = ministries.map((ministry) => ministry.id).join(',');
+      const path =
+        otherMinistries.length === 0
+          ? `/schedules/${onlyMinistry.id}/${cycle.id}`
+          : `/schedules?cycleId=${cycle.id}&ministryIds=${ministryIds}`;
+      return {
+        cycleId: cycle.id,
+        cycleName: cycle.name,
+        cycleStartDate: cycle.startDate,
+        cycleEndDate: cycle.endDate,
+        eventCount: events.filter(
+          (eventGroup) => eventGroup.event.status !== 'cancelled',
+        ).length,
+        ministries: ministries.map((ministry) => ({
+          id: ministry.id,
+          name: ministry.name,
+        })),
+        churchName: church.name,
+        churchTimezone: church.timezone,
+        actionUrl: webLink({ baseUrl: this.webBaseUrl, path }),
       };
     } catch (error) {
       if (error instanceof NotFoundError) return null;

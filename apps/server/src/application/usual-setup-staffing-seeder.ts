@@ -12,8 +12,10 @@ import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.r
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { DefaultDirection } from '../domain/entities/ministry';
+import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import { Shift } from '../domain/entities/shift';
 import {
+  type ParticipationSeedPlan,
   ProfileSeeder,
   type ProfileSeederEntry,
 } from '../domain/services/profile-seeder';
@@ -47,6 +49,12 @@ export interface SeedStaffingInput {
   eventTimeBlocks: StaffingSeedEventTimeBlock[];
   setup: UsualSetupSeedContext;
   tx: TransactionContext;
+}
+
+interface IncludedPlan {
+  block: StaffingSeedEventTimeBlock;
+  participation: MinistryParticipation;
+  plan: ParticipationSeedPlan;
 }
 
 interface UsualSetupStaffingSeederDependencies {
@@ -117,12 +125,71 @@ export class UsualSetupStaffingSeeder {
     };
   }
 
-  async seed({
+  /**
+   * The distinct active Ministries `seed` would include in at least one block,
+   * planned from the same policy without writing anything.
+   */
+  async plannedMinistryIds(input: SeedStaffingInput): Promise<Set<MinistryId>> {
+    const ministryIds = new Set<MinistryId>();
+    for await (const { participation } of this.includedPlans(input)) {
+      ministryIds.add(participation.ministryId);
+    }
+    return ministryIds;
+  }
+
+  async seed(input: SeedStaffingInput): Promise<void> {
+    const { churchId, tx } = input;
+    for await (const { block, participation, plan } of this.includedPlans(
+      input,
+    )) {
+      await this.participationRepository.addInclusion({
+        churchId,
+        participationId: participation.id,
+        eventTimeBlockId: block.eventTimeBlockId,
+        tx,
+      });
+
+      const shifts = plan.shifts.map(
+        (shiftPlan) =>
+          new Shift({
+            props: {
+              churchId,
+              participationId: participation.id,
+              eventTimeBlockId: block.eventTimeBlockId,
+              startTime: shiftPlan.startTime,
+              endTime: shiftPlan.endTime,
+              label: shiftPlan.label,
+            },
+            eventTimeBlockBounds: block,
+          }),
+      );
+      await this.shiftRepository.createMany({ churchId, shifts, tx });
+
+      for (const [index, shiftPlan] of plan.shifts.entries()) {
+        const shift = shifts[index];
+        if (!shift) continue;
+        for (const headcount of shiftPlan.headcounts) {
+          await this.shiftRepository.upsertRequirement({
+            churchId,
+            shiftId: shift.id,
+            participationId: participation.id,
+            sectorId: headcount.sectorId,
+            roleId: headcount.roleId,
+            peopleNeeded: headcount.peopleNeeded,
+            tx,
+          });
+        }
+      }
+    }
+  }
+
+  /** Each (block, active Ministry participation) the setup policy includes. */
+  private async *includedPlans({
     churchId,
     eventTimeBlocks,
     setup,
     tx,
-  }: SeedStaffingInput): Promise<void> {
+  }: SeedStaffingInput): AsyncGenerator<IncludedPlan> {
     const blocksByEvent = new Map<EventId, StaffingSeedEventTimeBlock[]>();
     for (const block of eventTimeBlocks) {
       const blocks = blocksByEvent.get(block.eventId) ?? [];
@@ -141,57 +208,20 @@ export class UsualSetupStaffingSeeder {
 
       for (const block of blocks) {
         for (const participation of participations) {
-          const ministryId = participation.ministryId;
-          const direction = setup.directionByMinistry.get(ministryId);
+          const direction = setup.directionByMinistry.get(
+            participation.ministryId,
+          );
           if (!direction) continue;
 
           const plan = this.profileSeeder.plan({
             eventTimeBlock: block,
-            profileEntries: setup.entriesByMinistry.get(ministryId) ?? [],
+            profileEntries:
+              setup.entriesByMinistry.get(participation.ministryId) ?? [],
             ministryDefaultDirection: direction,
             globalDefaultAllIn: setup.globalDefaultAllIn,
             timeZone: setup.timeZone,
           });
-          if (!plan.include) continue;
-
-          await this.participationRepository.addInclusion({
-            churchId,
-            participationId: participation.id,
-            eventTimeBlockId: block.eventTimeBlockId,
-            tx,
-          });
-
-          const shifts = plan.shifts.map(
-            (shiftPlan) =>
-              new Shift({
-                props: {
-                  churchId,
-                  participationId: participation.id,
-                  eventTimeBlockId: block.eventTimeBlockId,
-                  startTime: shiftPlan.startTime,
-                  endTime: shiftPlan.endTime,
-                  label: shiftPlan.label,
-                },
-                eventTimeBlockBounds: block,
-              }),
-          );
-          await this.shiftRepository.createMany({ churchId, shifts, tx });
-
-          for (const [index, shiftPlan] of plan.shifts.entries()) {
-            const shift = shifts[index];
-            if (!shift) continue;
-            for (const headcount of shiftPlan.headcounts) {
-              await this.shiftRepository.upsertRequirement({
-                churchId,
-                shiftId: shift.id,
-                participationId: participation.id,
-                sectorId: headcount.sectorId,
-                roleId: headcount.roleId,
-                peopleNeeded: headcount.peopleNeeded,
-                tx,
-              });
-            }
-          }
+          if (plan.include) yield { block, participation, plan };
         }
       }
     }

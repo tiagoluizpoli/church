@@ -5,10 +5,11 @@ import {
 } from '@/domain/notification-kinds';
 
 describe('notification kinds', () => {
-  it('keeps the retained scheduling kinds and none of the dropped ones', () => {
+  it('keeps the retained scheduling kinds and N2, and none of the dropped ones', () => {
     expect([...NOTIFICATION_KIND_OPTIONS].sort()).toEqual([
       'availability_opened',
       'availability_reminder',
+      'cycle_ready_to_prepare',
       'ministry_invitation',
       'schedule_published',
     ]);
@@ -40,6 +41,19 @@ describe('notification kinds', () => {
     ).toThrow();
     expect(() =>
       notificationRequestDataSchemas.schedule_published.parse({}),
+    ).toThrow();
+    // N2 names at least one led Ministry, by id only.
+    expect(() =>
+      notificationRequestDataSchemas.cycle_ready_to_prepare.parse({
+        cycleId: ids.cycleId,
+        ministryIds: [],
+      }),
+    ).toThrow();
+    expect(() =>
+      notificationRequestDataSchemas.cycle_ready_to_prepare.parse({
+        cycleId: ids.cycleId,
+        ministryIds: ['Worship'],
+      }),
     ).toThrow();
   });
 });

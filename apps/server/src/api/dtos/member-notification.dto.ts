@@ -5,6 +5,7 @@ import type { Notification } from '../../domain/entities/notification';
 import { decodeNotificationCursor } from '../../domain/notification-cursor';
 import {
   availabilityNotificationDataSchema,
+  cycleReadyToPrepareNotificationDataSchema,
   ministryInvitationNotificationDataSchema,
   schedulePublishedNotificationDataSchema,
 } from '../../domain/notification-kinds';
@@ -36,6 +37,13 @@ export const memberNotificationResponseSchema = z.discriminatedUnion('kind', [
     id: z.uuid(),
     kind: z.literal('schedule_published'),
     data: schedulePublishedNotificationDataSchema,
+    createdAt: instantSchema,
+    readAt: instantSchema.optional(),
+  }),
+  z.object({
+    id: z.uuid(),
+    kind: z.literal('cycle_ready_to_prepare'),
+    data: cycleReadyToPrepareNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),

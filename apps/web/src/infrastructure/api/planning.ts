@@ -17,11 +17,13 @@ import type {
   CreatePlanningEventTimeBlockBody,
   DeletePlanningEventTimeBlock204,
   GetCycle200,
+  GetCycleSendSummary200,
   GetEventTemplate200,
   GetEventTemplateUsage200,
   ListCycles200,
   ListCyclesParams,
   ListEventTemplates200,
+  SendCycle204,
   SetMinistryDefaultDirection200,
   SetMinistryDefaultDirectionBody,
   UpdateCycle200,
@@ -107,13 +109,25 @@ const deleteCycle = (
       );
     }
   /**
- * Send a Cycle, transitioning its Events from draft to scheduled.
+ * Advisory confirmation facts for a Draft Cycle: its Event count and the distinct active Ministries the Usual setup would pre-fill. Send rechecks everything itself. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS) and Sent/Past Cycles.
+ * @summary Summarize a Draft Cycle before Send
+ */
+const getCycleSendSummary = (
+    cycleId: string,
+ ) => {
+      return apiClient<GetCycleSendSummary200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/send-summary`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Send a Draft Cycle to its Ministries in one transaction: schedule its Events, pre-fill staffing from the Usual setup and enqueue one Cycle-ready Notification per User leading an active Ministry. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS), a Draft already holding staffing (DRAFT_STAFFING_RECONCILIATION_REQUIRED) and Sent/Past Cycles (ILLEGAL_STATE_TRANSITION).
  * @summary Send a Cycle
  */
 const sendCycle = (
     cycleId: string,
  ) => {
-      return apiClient<void>(
+      return apiClient<SendCycle204>(
       {url: `/api/v1/admin/cycles/${cycleId}/send`, method: 'POST'
     },
       );
@@ -329,12 +343,13 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
 export type UpdateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updateCycle']>>>
 export type DeleteCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deleteCycle']>>>
+export type GetCycleSendSummaryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycleSendSummary']>>>
 export type SendCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['sendCycle']>>>
 export type ReopenPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['reopenPlanningEvent']>>>
 export type CreateEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createEventTemplate']>>>

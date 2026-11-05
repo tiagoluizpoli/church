@@ -5,6 +5,7 @@ import type {
   ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
   ChurchOfferMinistryFacts,
+  CycleReadyToPrepareEmail,
   EmailLocale,
   EmailPayload,
   MinistryInvitationEmail,
@@ -75,6 +76,13 @@ export function prepareEmail({
         locale,
         from: sender(payload.churchName),
         content: memberNotificationContent({ payload, locale }),
+      });
+    case 'cycle.ready-to-prepare':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: cycleReadyToPrepareContent({ payload, locale }),
       });
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
@@ -234,6 +242,65 @@ function memberNotificationContent({
       label: m.email_availability_action({}, options),
       url: payload.actionUrl,
     },
+  };
+}
+
+interface CycleReadyToPrepareContentInput {
+  payload: CycleReadyToPrepareEmail;
+  locale: EmailLocale;
+}
+
+/** N2 on the bell's catalog keys: Cycle, its dates and Events, the Ministries. */
+function cycleReadyToPrepareContent({
+  payload,
+  locale,
+}: CycleReadyToPrepareContentInput): EmailContent {
+  const options = { locale };
+  const { churchName, cycleName, eventCount, ministryNames } = payload;
+  const firstName = payload.recipientFirstName.trim();
+  const title = m.notification_cycle_ready_to_prepare_title(
+    { cycleName },
+    options,
+  );
+  const events =
+    eventCount === 1
+      ? m.notification_cycle_ready_to_prepare_events_one({}, options)
+      : m.notification_cycle_ready_to_prepare_events_other(
+          { count: eventCount },
+          options,
+        );
+  const ministryList = { ministryNames: ministryNames.join(', ') };
+  return {
+    subject: title,
+    greeting: firstName
+      ? m.email_greeting_notification({ firstName }, options)
+      : m.email_greeting_transactional({}, options),
+    heading: title,
+    facts: [
+      m.notification_cycle_ready_to_prepare_body(
+        {
+          cycleName,
+          startDate: formatCalendarDay({ day: payload.cycleStartDate }),
+          endDate: formatCalendarDay({ day: payload.cycleEndDate }),
+          events,
+        },
+        options,
+      ),
+      ministryNames.length === 1
+        ? m.notification_cycle_ready_to_prepare_ministries_one(
+            ministryList,
+            options,
+          )
+        : m.notification_cycle_ready_to_prepare_ministries_other(
+            ministryList,
+            options,
+          ),
+    ],
+    action: {
+      label: m.notification_cycle_ready_to_prepare_action({}, options),
+      url: payload.actionUrl,
+    },
+    footer: m.email_footer_membership({ churchName }, options),
   };
 }
 

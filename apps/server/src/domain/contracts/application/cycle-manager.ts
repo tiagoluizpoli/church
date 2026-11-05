@@ -24,6 +24,18 @@ export interface SendCycleManagerInput {
   cycleId: CycleId;
 }
 
+export interface GetSendSummaryManagerInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+}
+
+/** Advisory Send confirmation facts; Send rechecks everything itself. */
+export interface CycleSendSummary {
+  eventCount: number;
+  /** Distinct active Ministries the Usual setup would pre-fill. */
+  prefilledMinistryCount: number;
+}
+
 export interface UpdateCycleManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
@@ -52,6 +64,7 @@ export interface ICycleManager {
   createCycle(input: CreateCycleManagerInput): Promise<Cycle>;
   listCycles(input: ListCyclesManagerInput): Promise<Cycle[]>;
   getCycle(input: GetCycleManagerInput): Promise<CycleDetails>;
+  getSendSummary(input: GetSendSummaryManagerInput): Promise<CycleSendSummary>;
   sendCycle(input: SendCycleManagerInput): Promise<void>;
   updateCycle(input: UpdateCycleManagerInput): Promise<Cycle>;
   deleteCycle(input: DeleteCycleManagerInput): Promise<void>;

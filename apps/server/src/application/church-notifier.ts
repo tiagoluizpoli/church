@@ -16,6 +16,7 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import {
   type AvailabilityDeliveryFacts,
   availabilityNotificationDataSchema,
+  cycleReadyToPrepareNotificationDataSchema,
   ministryInvitationNotificationDataSchema,
   type NotificationDeliveryData,
   type NotificationDeliveryDataByKind,
@@ -175,6 +176,19 @@ export function buildChurchNotifier({
         actionUrl: data.actionUrl,
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      cycle_ready_to_prepare: ({ data, address }) => ({
+        kind: 'cycle.ready-to-prepare',
+        to: address.email,
+        churchName: data.churchName,
+        recipientFirstName: address.firstName,
+        cycleName: data.cycleName,
+        cycleStartDate: data.cycleStartDate,
+        cycleEndDate: data.cycleEndDate,
+        eventCount: data.eventCount,
+        ministryNames: data.ministries.map((ministry) => ministry.name),
+        actionUrl: data.actionUrl,
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       transfer_ministry_digest: ({ data, address }) =>
         transferDigestEmail({
           kind: 'transfer.ministry-digest',
@@ -234,6 +248,11 @@ export function buildChurchNotifier({
       schedule_published: ({ data }) => ({
         kind: 'schedule_published',
         data: schedulePublishedNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      cycle_ready_to_prepare: ({ data }) => ({
+        kind: 'cycle_ready_to_prepare',
+        data: cycleReadyToPrepareNotificationDataSchema.parse(data),
       }),
     }),
     sink: new InboxNotificationSink({ notificationRepository }),

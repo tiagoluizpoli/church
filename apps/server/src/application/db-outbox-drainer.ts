@@ -334,6 +334,11 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           churchId,
           data: request.data,
         });
+      case 'cycle_ready_to_prepare':
+        return this.schedulingFacts.cycleReadyToPrepare({
+          churchId,
+          data: request.data,
+        });
       case 'schedule_published':
         return this.schedulingFacts.schedulePublished({
           churchId,

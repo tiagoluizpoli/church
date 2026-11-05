@@ -1,10 +1,19 @@
 import { NotFoundError } from '@church/core';
 import { compareCalendarDays, fromDateColumn, now, today } from '@church/time';
 import type {
+  ChurchId,
+  CycleId,
+  MinistryId,
+  UserId,
+} from '../domain/branded-ids';
+import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
+import type {
   CreateCycleManagerInput,
   CycleDetails,
+  CycleSendSummary,
   DeleteCycleManagerInput,
   GetCycleManagerInput,
+  GetSendSummaryManagerInput,
   ICycleManager,
   ListCyclesManagerInput,
   ReopenPlanningEventManagerInput,
@@ -15,19 +24,46 @@ import type { ChurchRepository } from '../domain/contracts/infrastructure/church
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import { Cycle } from '../domain/entities/cycle';
+import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import {
   DraftStaffingReconciliationRequiredError,
+  EmptyCycleError,
   EventOutsideCycleError,
   IllegalStateTransitionError,
+  InvalidCycleEventsError,
   OverlappingCycleError,
 } from '../domain/errors';
-import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
+import { assertEventGraph } from '../domain/services/event-graph';
+import type {
+  StaffingSeedEventTimeBlock,
+  UsualSetupStaffingSeeder,
+} from './usual-setup-staffing-seeder';
 
 interface EnsureResolvedCycleInput {
   cycle: Cycle;
   churchTimeZone: string;
+}
+
+interface LoadSendableCycleInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  timeZone: string;
+  tx: TransactionContext;
+}
+
+interface SendableCycle {
+  cycle: Cycle;
+  draftEvents: EventWithEventTimeBlocks[];
+}
+
+interface EnqueueCycleReadyInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  tx: TransactionContext;
 }
 
 interface DbCycleManagerDependencies {
@@ -37,6 +73,23 @@ interface DbCycleManagerDependencies {
   unitOfWork: UnitOfWork;
   participationRepository: MinistryParticipationRepository;
   staffingSeeder: UsualSetupStaffingSeeder;
+  volunteerRepository: VolunteerRepository;
+  notifications: IChurchNotifications;
+}
+
+/** The pre-fill input for every block of the Events Send schedules. */
+function seedBlocksOf(
+  draftEvents: EventWithEventTimeBlocks[],
+): StaffingSeedEventTimeBlock[] {
+  return draftEvents.flatMap((eventGroup) =>
+    eventGroup.eventTimeBlocks.map((eventTimeBlock) => ({
+      eventId: eventGroup.event.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
+      startTime: eventTimeBlock.startTime,
+      endTime: eventTimeBlock.endTime,
+    })),
+  );
 }
 
 export class DbCycleManager implements ICycleManager {
@@ -46,6 +99,8 @@ export class DbCycleManager implements ICycleManager {
   private readonly unitOfWork: UnitOfWork;
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly staffingSeeder: UsualSetupStaffingSeeder;
+  private readonly volunteerRepository: VolunteerRepository;
+  private readonly notifications: IChurchNotifications;
 
   constructor({
     cycleRepository,
@@ -54,6 +109,8 @@ export class DbCycleManager implements ICycleManager {
     unitOfWork,
     participationRepository,
     staffingSeeder,
+    volunteerRepository,
+    notifications,
   }: DbCycleManagerDependencies) {
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
@@ -61,6 +118,8 @@ export class DbCycleManager implements ICycleManager {
     this.unitOfWork = unitOfWork;
     this.participationRepository = participationRepository;
     this.staffingSeeder = staffingSeeder;
+    this.volunteerRepository = volunteerRepository;
+    this.notifications = notifications;
   }
 
   async createCycle(input: CreateCycleManagerInput): Promise<Cycle> {
@@ -133,32 +192,52 @@ export class DbCycleManager implements ICycleManager {
     return { cycle, events };
   }
 
+  async getSendSummary(
+    input: GetSendSummaryManagerInput,
+  ): Promise<CycleSendSummary> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+
+    // Read-only and unlocked: advisory facts that Send recomputes under the lock.
+    return this.unitOfWork.run(async (tx) => {
+      const { draftEvents } = await this.loadSendableCycle({
+        ...input,
+        timeZone: church.timezone,
+        tx,
+      });
+      const prefilled = await this.staffingSeeder.plannedMinistryIds({
+        churchId: input.churchId,
+        eventTimeBlocks: seedBlocksOf(draftEvents),
+        setup: await this.staffingSeeder.loadSetup({
+          churchId: input.churchId,
+          timeZone: church.timezone,
+          tx,
+        }),
+        tx,
+      });
+      return {
+        eventCount: draftEvents.length,
+        prefilledMinistryCount: prefilled.size,
+      };
+    });
+  }
+
   async sendCycle(input: SendCycleManagerInput): Promise<void> {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
-      // Serializes concurrent lock attempts on this church's cycles so two
-      // simultaneous requests can't both read `draft` and both transition —
-      // the second waits for the first's commit, then observes `locked` and
-      // rejects (DL4-X3).
+      // Serializes Send with every Cycle and Event writer of this Church, so
+      // two simultaneous Sends can't both read `draft`: the second waits for
+      // the first's commit, then observes `sent` and is refused.
       await this.cycleRepository.acquireChurchLock({
         churchId: input.churchId,
         tx,
       });
 
-      const cycle = await this.ensureResolvedCycle({
-        cycle: await this.cycleRepository.getById({ ...input, tx }),
-        churchTimeZone: church.timezone,
+      const { cycle, draftEvents } = await this.loadSendableCycle({
+        ...input,
+        timeZone: church.timezone,
+        tx,
       });
-
-      if (cycle.state === 'past') {
-        throw new IllegalStateTransitionError({
-          from: cycle.state,
-          to: 'sent',
-        });
-      }
-
-      cycle.send();
 
       // No staffing row records its origin, so none can be proven provisional:
       // a Draft that already holds any is refused untouched, never replaced.
@@ -174,20 +253,13 @@ export class DbCycleManager implements ICycleManager {
         });
       }
 
+      cycle.send();
       await this.cycleRepository.updateState({
         churchId: input.churchId,
         cycleId: input.cycleId,
         state: cycle.state,
         tx,
       });
-
-      const draftEvents = (
-        await this.eventRepository.listCycleEvents({
-          churchId: input.churchId,
-          cycleId: input.cycleId,
-          tx,
-        })
-      ).filter((eventGroup) => eventGroup.event.status === 'draft');
 
       // Sequential: concurrent queries on one transaction connection warn in pg.
       for (const eventGroup of draftEvents) {
@@ -201,15 +273,7 @@ export class DbCycleManager implements ICycleManager {
 
       await this.staffingSeeder.seed({
         churchId: input.churchId,
-        eventTimeBlocks: draftEvents.flatMap((eventGroup) =>
-          eventGroup.eventTimeBlocks.map((eventTimeBlock) => ({
-            eventId: eventGroup.event.id,
-            eventTimeBlockId: eventTimeBlock.id,
-            sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
-            startTime: eventTimeBlock.startTime,
-            endTime: eventTimeBlock.endTime,
-          })),
-        ),
+        eventTimeBlocks: seedBlocksOf(draftEvents),
         setup: await this.staffingSeeder.loadSetup({
           churchId: input.churchId,
           timeZone: church.timezone,
@@ -217,6 +281,8 @@ export class DbCycleManager implements ICycleManager {
         }),
         tx,
       });
+
+      await this.enqueueCycleReady({ ...input, tx });
     });
   }
 
@@ -347,6 +413,88 @@ export class DbCycleManager implements ICycleManager {
         tx,
       });
     });
+  }
+
+  /**
+   * A Draft Cycle with at least one Event, every saved graph passing the
+   * shared final-graph rules; refused otherwise, before anything is written.
+   */
+  private async loadSendableCycle({
+    churchId,
+    cycleId,
+    timeZone,
+    tx,
+  }: LoadSendableCycleInput): Promise<SendableCycle> {
+    const cycle = await this.ensureResolvedCycle({
+      cycle: await this.cycleRepository.getById({ churchId, cycleId, tx }),
+      churchTimeZone: timeZone,
+    });
+    if (cycle.state !== 'draft') {
+      throw new IllegalStateTransitionError({ from: cycle.state, to: 'sent' });
+    }
+
+    const draftEvents = (
+      await this.eventRepository.listCycleEvents({ churchId, cycleId, tx })
+    ).filter((eventGroup) => eventGroup.event.status === 'draft');
+    if (draftEvents.length === 0) {
+      throw new EmptyCycleError();
+    }
+
+    const invalidEvents = draftEvents.filter((eventGroup) => {
+      try {
+        assertEventGraph({
+          graph: {
+            start: eventGroup.event.start,
+            end: eventGroup.event.end,
+            eventTimeBlocks: eventGroup.eventTimeBlocks,
+          },
+          cycle,
+          timeZone,
+        });
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    if (invalidEvents.length > 0) {
+      throw new InvalidCycleEventsError({
+        invalidEvents: invalidEvents.map((eventGroup) => eventGroup.event),
+      });
+    }
+
+    return { cycle, draftEvents };
+  }
+
+  /**
+   * N2 for each User actively leading an active Ministry now, listing those
+   * Ministries; whether they were pre-filled does not matter. No admin
+   * fallback: a Church without leaders still sends.
+   */
+  private async enqueueCycleReady({
+    churchId,
+    cycleId,
+    tx,
+  }: EnqueueCycleReadyInput): Promise<void> {
+    const leaderships =
+      await this.volunteerRepository.listActiveMinistryLeaderships({
+        churchId,
+        tx,
+      });
+    const ministryIdsByUser = new Map<UserId, MinistryId[]>();
+    for (const { userId, ministryId } of leaderships) {
+      const ministryIds = ministryIdsByUser.get(userId) ?? [];
+      if (!ministryIds.includes(ministryId)) ministryIds.push(ministryId);
+      ministryIdsByUser.set(userId, ministryIds);
+    }
+
+    for (const [userId, ministryIds] of ministryIdsByUser) {
+      await this.notifications.enqueue({
+        tx,
+        kind: 'cycle_ready_to_prepare',
+        to: [{ userId, churchId }],
+        data: { cycleId, ministryIds },
+      });
+    }
   }
 
   private async ensureResolvedCycle({

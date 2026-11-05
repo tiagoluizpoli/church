@@ -20,6 +20,7 @@ import {
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
+import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -37,10 +38,12 @@ import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/dr
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildEventTemplate } from '@/seeds/builders/planning';
@@ -95,6 +98,10 @@ beforeAll(async () => {
       unitOfWork,
       participationRepository,
       staffingSeeder,
+      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -606,8 +613,17 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
 
   it('serializes with Send: a Draft applied first is sent whole, otherwise Apply is refused', async () => {
     const seed = await signIn();
+    const saturday = await seedTemplate({
+      churchId: seed.churchAId,
+      name: 'Saturday',
+      weekday: 6,
+    });
     const sunday = await seedTemplate({ churchId: seed.churchAId });
     const cycle = await seedCycle({ churchId: seed.churchAId, ...FORTNIGHT });
+    // Send refuses an empty Draft, so the Cycle already holds Events.
+    expect((await apply(cycle.id, [saturday.template.id])).statusCode).toBe(
+      201,
+    );
 
     const [applied, sent] = await Promise.all([
       apply(cycle.id, [sunday.template.id]),
@@ -621,13 +637,14 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
       .select()
       .from(event)
       .where(eq(event.cycleId, cycle.id));
+    expect(sent.statusCode).toBe(204);
+    expect(rows.every((row) => row.status === 'scheduled')).toBe(true);
     if (applied.statusCode === 201) {
-      expect(rows.every((row) => row.status === 'scheduled')).toBe(true);
+      expect(rows).toHaveLength(4);
     } else {
       expect(applied.statusCode).toBe(409);
-      expect(rows).toEqual([]);
+      expect(rows.map((row) => row.title)).toEqual(['Saturday', 'Saturday']);
     }
-    expect(sent.statusCode).toBeLessThan(500);
   });
 });
 

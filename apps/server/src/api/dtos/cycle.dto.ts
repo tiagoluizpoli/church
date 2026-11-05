@@ -56,6 +56,32 @@ export const updateCycleConflictResponseSchema = z.object({
     .optional(),
 });
 
+/** Advisory Send confirmation facts for a Draft Cycle. */
+export const cycleSendSummaryResponseSchema = z.object({
+  eventCount: z.number().int().nonnegative(),
+  prefilledMinistryCount: z.number().int().nonnegative(),
+});
+
+/**
+ * A 409 to Send: `EMPTY_CYCLE`, `DRAFT_STAFFING_RECONCILIATION_REQUIRED`,
+ * `ILLEGAL_STATE_TRANSITION`, or `INVALID_CYCLE_EVENTS` naming every Event
+ * of this Cycle to repair.
+ */
+export const sendCycleConflictResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  invalidEvents: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        start: instantSchema,
+        end: instantSchema,
+      }),
+    )
+    .optional(),
+});
+
 export const listCyclesQuerySchema = z.object({
   state: z.enum(['draft', 'sent', 'past']).optional(),
 });

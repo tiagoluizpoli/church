@@ -66,36 +66,14 @@ export function usePlanningStep(): PlanningStep {
   return 'template-and-review';
 }
 
-export type CreateCycleCardModel = Pick<
-  UsePlanningAdminResult,
-  | 'cycleForm'
-  | 'cycleErrorMessage'
-  | 'canCreateCycle'
-  | 'createCyclePending'
-  | 'handleCycleNameChange'
-  | 'handleCycleStartDateChange'
-  | 'handleCycleEndDateChange'
-  | 'handleCreateCycle'
->;
-
-export function useCreateCycleCard(): CreateCycleCardModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    cycleForm: context.cycleForm,
-    cycleErrorMessage: context.cycleErrorMessage,
-    canCreateCycle: context.canCreateCycle,
-    createCyclePending: context.createCyclePending,
-    handleCycleNameChange: context.handleCycleNameChange,
-    handleCycleStartDateChange: context.handleCycleStartDateChange,
-    handleCycleEndDateChange: context.handleCycleEndDateChange,
-    handleCreateCycle: context.handleCreateCycle,
-  };
-}
-
 export type CycleListCardModel = Pick<
   UsePlanningAdminResult,
-  'cycles' | 'cyclesLoading' | 'selectedCycleId' | 'handleSelectCycle'
+  | 'cycles'
+  | 'cyclesLoading'
+  | 'cyclesError'
+  | 'refetchCycles'
+  | 'selectedCycleId'
+  | 'handleSelectCycle'
 >;
 
 export function useCycleListCard(): CycleListCardModel {
@@ -104,6 +82,8 @@ export function useCycleListCard(): CycleListCardModel {
   return {
     cycles: context.cycles,
     cyclesLoading: context.cyclesLoading,
+    cyclesError: context.cyclesError,
+    refetchCycles: context.refetchCycles,
     selectedCycleId: context.selectedCycleId,
     handleSelectCycle: context.handleSelectCycle,
   };

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -337,9 +338,7 @@ describe('CycleReviewCard table view (US2)', () => {
     await selectTheOnlyCycle();
 
     expect(
-      await screen.findByText(
-        'No events in this cycle yet. Apply templates or add a manual event.',
-      ),
+      await screen.findByText(m.cycles_detail_empty()),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('grid', { name: 'Calendar review' }),

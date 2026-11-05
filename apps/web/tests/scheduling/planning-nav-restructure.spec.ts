@@ -4,7 +4,7 @@ import { planningMonth } from './planning-month.helpers';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadPlanningAdminJourney } from '@/tests/fixtures/journeys/planning-admin';
 
-test('cycles, new, and $cycleId are distinct addressable URLs with working back/forward (FR-015, FR-016, SC-007)', async ({
+test('New cycle is a plain dialog over /cycles, and the new Cycle gets its own URL with working back/forward (FR-015, FR-016, SC-007)', async ({
   page,
 }, testInfo) => {
   const journey = loadPlanningAdminJourney({ testInfo });
@@ -14,11 +14,11 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
 
   await page.goto('/cycles');
   await expect(page).toHaveURL(/\/cycles\/?$/);
-  await expect(page.getByText('Existing cycles')).toBeVisible();
+  await expect(page.getByText('Ciclos existentes')).toBeVisible();
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  await expect(page).toHaveURL('/cycles/new');
-  const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
+  await expect(page).toHaveURL(/\/cycles\/?$/);
+  const createCycleDialog = page.getByRole('dialog', { name: 'Novo ciclo' });
   await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
   await fillDatePickerField({
     page,
@@ -33,7 +33,7 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
   await createCycleDialog.getByTestId('create-cycle-button').click();
 
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
-  await expect(page).toHaveURL(/\/cycles\/(?!new$)[^/]+$/);
+  await expect(page).toHaveURL(/\/cycles\/[^/]+$/);
   const cycleReviewUrl = page.url();
 
   // Opening the template library from a selected cycle changes the URL too
@@ -42,19 +42,13 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
   await expect(page).toHaveURL(/\/event-templates$/);
   await expect(page.getByText('Modelos salvos')).toBeVisible();
 
-  // Back/forward retrace: templates -> cycle review -> new -> index.
+  // Back/forward retrace: templates -> cycle review -> index.
   await page.goBack();
   await expect(page).toHaveURL(cycleReviewUrl);
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
   await page.goBack();
-  await expect(page).toHaveURL('/cycles/new');
-
-  await page.goBack();
   await expect(page).toHaveURL(/\/cycles\/?$/);
-
-  await page.goForward();
-  await expect(page).toHaveURL('/cycles/new');
 
   await page.goForward();
   await expect(page).toHaveURL(cycleReviewUrl);

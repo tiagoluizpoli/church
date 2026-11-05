@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseInstant, parseTimeOfDay, today, toInstant } from '@church/time';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { QuickCreateEventModal } from '../quick-create-event-modal';
@@ -613,14 +614,13 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
               </>
             ) : (
               <p className="text-muted-foreground text-sm">
-                No events in this cycle yet. Apply templates or add a manual
-                event.
+                {m.cycles_detail_empty()}
               </p>
             )}
           </div>
         ) : (
           <p className="text-muted-foreground text-sm">
-            Pick a cycle to review its generated calendar.
+            {m.cycles_detail_pick()}
           </p>
         )}
       </CardContent>

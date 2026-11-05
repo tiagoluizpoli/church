@@ -2,15 +2,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   CycleEventGroup,
-  CycleFormState,
   CycleSummary,
   PlanningTemplateSummary,
   SelectedCycle,
 } from './planning-admin.types';
 import {
   calculateTotalEventTimeBlocks,
-  canCreateCycle,
-  createEmptyCycleForm,
   getSelectedCycleIdOrThrow,
   isForbiddenError,
 } from './planning-admin.utils';
@@ -30,14 +27,6 @@ export interface SelectCycleInput {
   cycleId: string;
 }
 
-interface CycleNameChangeInput {
-  name: string;
-}
-
-interface CycleDateChangeInput {
-  date: string;
-}
-
 interface ToggleTemplateSelectionInput {
   templateId: string;
   checked: boolean;
@@ -51,13 +40,12 @@ export interface UsePlanningAdminResult {
   selectedCycle: SelectedCycle | null;
   cycleEvents: CycleEventGroup[];
   totalEventTimeBlocks: number;
-  cycleForm: CycleFormState;
-  cycleErrorMessage: string | null;
   cyclesLoading: boolean;
+  /** The list read failed for a reason other than missing access. */
+  cyclesError: boolean;
+  refetchCycles: () => void;
   templatesLoading: boolean;
   cycleDetailsLoading: boolean;
-  canCreateCycle: boolean;
-  createCyclePending: boolean;
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
   sendCyclePending: boolean;
@@ -68,12 +56,8 @@ export interface UsePlanningAdminResult {
   deleteEventTimeBlockPending: boolean;
   selectedTemplateIds: string[];
   resetApplyTemplates: () => void;
-  handleCycleNameChange: (input: CycleNameChangeInput) => void;
-  handleCycleStartDateChange: (input: CycleDateChangeInput) => void;
-  handleCycleEndDateChange: (input: CycleDateChangeInput) => void;
   handleSelectCycle: (input: SelectCycleInput) => void;
   handleToggleTemplateSelection: (input: ToggleTemplateSelectionInput) => void;
-  handleCreateCycle: () => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
@@ -88,11 +72,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const queryClient = useQueryClient();
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  const [cycleForm, setCycleForm] =
-    useState<CycleFormState>(createEmptyCycleForm);
-  const [cycleErrorMessage, setCycleErrorMessage] = useState<string | null>(
-    null,
-  );
 
   const cyclesQuery = useQuery({
     queryKey: ['cycles'],
@@ -157,10 +136,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     selectedCycleId,
     selectedCycle,
     selectedTemplateIds,
-    cycleForm,
-    setCycleErrorMessage,
-    setCycleForm,
-    setSelectedCycleId,
   });
 
   return {
@@ -171,13 +146,11 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     selectedCycle,
     cycleEvents,
     totalEventTimeBlocks,
-    cycleForm,
-    cycleErrorMessage,
     cyclesLoading: cyclesQuery.isLoading,
+    cyclesError: cyclesQuery.isError && !isAccessDenied,
+    refetchCycles: () => void cyclesQuery.refetch(),
     templatesLoading: templatesQuery.isLoading,
     cycleDetailsLoading: cycleDetailsQuery.isLoading,
-    canCreateCycle: canCreateCycle({ cycleForm }),
-    createCyclePending: mutationHandlers.createCyclePending,
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,
     applyTemplatesError: mutationHandlers.applyTemplatesError,
     sendCyclePending: mutationHandlers.sendCyclePending,
@@ -188,12 +161,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
     selectedTemplateIds,
     resetApplyTemplates: mutationHandlers.resetApplyTemplates,
-    handleCycleNameChange: ({ name }: CycleNameChangeInput) =>
-      setCycleForm((currentForm) => ({ ...currentForm, name })),
-    handleCycleStartDateChange: ({ date }: CycleDateChangeInput) =>
-      setCycleForm((currentForm) => ({ ...currentForm, startDate: date })),
-    handleCycleEndDateChange: ({ date }: CycleDateChangeInput) =>
-      setCycleForm((currentForm) => ({ ...currentForm, endDate: date })),
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
     handleToggleTemplateSelection: ({
@@ -207,7 +174,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
               (currentTemplateId) => currentTemplateId !== templateId,
             ),
       ),
-    handleCreateCycle: mutationHandlers.handleCreateCycle,
     handleApplyTemplates: mutationHandlers.handleApplyTemplates,
     handleSendCycle: mutationHandlers.handleSendCycle,
     handleUpdateEvent: mutationHandlers.handleUpdateEvent,

@@ -85,16 +85,16 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
 
     await page.goto('/cycles');
-    const cyclesTable = page.getByRole('grid', { name: 'Existing cycles' });
+    const cyclesTable = page.getByRole('grid', { name: 'Atuais e futuros' });
     await expect(cyclesTable).toBeVisible();
     await expect(
-      cyclesTable.getByRole('columnheader', { name: 'Name' }),
+      cyclesTable.getByRole('columnheader', { name: 'Nome' }),
     ).toBeVisible();
     await expect(
-      cyclesTable.getByRole('columnheader', { name: 'Window' }),
+      cyclesTable.getByRole('columnheader', { name: 'Datas' }),
     ).toBeVisible();
     await expect(
-      cyclesTable.getByRole('columnheader', { name: 'Status' }),
+      cyclesTable.getByRole('columnheader', { name: 'Situação' }),
     ).toBeVisible();
 
     const cycleRow = cyclesTable.getByRole('row', {
@@ -244,7 +244,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await page.goto('/cycles');
     await page.getByTestId('open-create-cycle-dialog-button').click();
     const createCycleDialog = page.getByRole('dialog', {
-      name: 'Create cycle',
+      name: 'Novo ciclo',
     });
     await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
     await fillDatePickerField({

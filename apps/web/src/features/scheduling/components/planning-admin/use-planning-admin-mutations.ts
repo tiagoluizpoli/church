@@ -1,10 +1,9 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
-import { type Dispatch, type SetStateAction, useCallback } from 'react';
+import { useCallback } from 'react';
 import { toast } from 'sonner';
-import type { CycleFormState, SelectedCycle } from './planning-admin.types';
+import type { SelectedCycle } from './planning-admin.types';
 import {
-  createEmptyCycleForm,
   getErrorMessage,
   getSelectedCycleIdOrThrow,
 } from './planning-admin.utils';
@@ -15,10 +14,6 @@ export interface UsePlanningAdminMutationsProps {
   selectedCycleId: string | null;
   selectedCycle: SelectedCycle | null;
   selectedTemplateIds: string[];
-  cycleForm: CycleFormState;
-  setCycleErrorMessage: Dispatch<SetStateAction<string | null>>;
-  setCycleForm: Dispatch<SetStateAction<CycleFormState>>;
-  setSelectedCycleId: Dispatch<SetStateAction<string | null>>;
 }
 
 export interface ApplyTemplatesOptions {
@@ -57,8 +52,6 @@ export interface DeleteEventTimeBlockInput {
   eventId: string;
   eventTimeBlockId: string;
 }
-
-type CreateCycleBody = Parameters<typeof adminApi.createCycle>[0];
 
 interface CreatePlanningMutationInput<TVariables, TResult> {
   mutationFn: (variables: TVariables) => Promise<TResult>;
@@ -111,7 +104,6 @@ function usePlanningMutation<TVariables, TResult>({
 }
 
 export interface UsePlanningAdminMutationsResult {
-  createCyclePending: boolean;
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
   sendCyclePending: boolean;
@@ -121,7 +113,6 @@ export interface UsePlanningAdminMutationsResult {
   updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
   resetApplyTemplates: () => void;
-  handleCreateCycle: () => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleSendCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
@@ -136,28 +127,7 @@ export function usePlanningAdminMutations({
   selectedCycleId,
   selectedCycle,
   selectedTemplateIds,
-  cycleForm,
-  setCycleErrorMessage,
-  setCycleForm,
-  setSelectedCycleId,
 }: UsePlanningAdminMutationsProps): UsePlanningAdminMutationsResult {
-  const createCycle = usePlanningMutation({
-    mutationFn: (body: CreateCycleBody) => adminApi.createCycle(body),
-    invalidateQueryKeys: (cycle) => [['cycles'], ['cycle-details', cycle.id]],
-    successMessage: 'Cycle created',
-    onSuccess: async (cycle) => {
-      setCycleErrorMessage(null);
-      setCycleForm(createEmptyCycleForm());
-      setSelectedCycleId(cycle.id);
-    },
-    onError: (error) => {
-      const message = getErrorMessage({ error });
-      setCycleErrorMessage(message);
-      toast.error(message);
-    },
-    queryClient,
-  });
-
   const applyTemplates = usePlanningMutation({
     mutationFn: (cycleId: string) =>
       adminApi.applyPlanningTemplates(cycleId, {
@@ -240,14 +210,6 @@ export function usePlanningAdminMutations({
     queryClient,
   });
 
-  function handleCreateCycle() {
-    createCycle.mutate({
-      name: cycleForm.name.trim(),
-      startDate: cycleForm.startDate,
-      endDate: cycleForm.endDate,
-    });
-  }
-
   function handleApplyTemplates(options?: ApplyTemplatesOptions) {
     if (selectedCycleId) {
       applyTemplates.mutate(selectedCycleId, {
@@ -289,7 +251,6 @@ export function usePlanningAdminMutations({
   }, [applyTemplates]);
 
   return {
-    createCyclePending: createCycle.isPending,
     applyTemplatesPending: applyTemplates.isPending,
     applyTemplatesError: applyTemplates.error
       ? getErrorMessage({ error: applyTemplates.error })
@@ -301,7 +262,6 @@ export function usePlanningAdminMutations({
     updateEventTimeBlockPending: updateEventTimeBlock.isPending,
     deleteEventTimeBlockPending: deleteEventTimeBlock.isPending,
     resetApplyTemplates,
-    handleCreateCycle,
     handleApplyTemplates,
     handleSendCycle,
     handleUpdateEvent,

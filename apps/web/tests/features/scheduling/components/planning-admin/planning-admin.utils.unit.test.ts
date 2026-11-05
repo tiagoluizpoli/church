@@ -13,14 +13,17 @@ import {
   calculateTotalEventTimeBlocks,
   canCreateCycle,
   canSaveTemplate,
+  conflictingCyclesOf,
   cycleIsSent,
   describeTemplateTimeBlockSpan,
   eventSpanLabel,
   eventStatusBadgeVariant,
   getErrorMessage,
+  groupCyclesForList,
   isMultiDayEvent,
   shiftedEnd,
   stateBadgeVariant,
+  suggestCycleName,
   templateBlockErrors,
   toTemplateRequestBlocks,
 } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
@@ -141,6 +144,82 @@ describe('canCreateCycle', () => {
         }),
       }),
     ).toBe(true);
+  });
+});
+
+describe('canCreateCycle name rules', () => {
+  it('accepts 255 characters after trimming and refuses 256', () => {
+    expect(
+      canCreateCycle({
+        cycleForm: makeCycleForm({ name: `  ${'a'.repeat(255)}  ` }),
+      }),
+    ).toBe(true);
+    expect(
+      canCreateCycle({ cycleForm: makeCycleForm({ name: 'a'.repeat(256) }) }),
+    ).toBe(false);
+  });
+});
+
+describe('suggestCycleName', () => {
+  it('names the start month and year in the locale', () => {
+    expect(suggestCycleName({ startDate: '2026-10-12', locale: 'en' })).toBe(
+      'October 2026',
+    );
+    expect(suggestCycleName({ startDate: '2026-10-12', locale: 'pt-BR' })).toBe(
+      'Outubro 2026',
+    );
+  });
+
+  it('suggests nothing until a start date is chosen', () => {
+    expect(suggestCycleName({ startDate: '', locale: 'en' })).toBe('');
+  });
+});
+
+function makeListedCycle(
+  id: string,
+  startDate: string,
+  state: 'draft' | 'sent' | 'past' = 'draft',
+) {
+  return makeCycle({ id, startDate, endDate: startDate, state });
+}
+
+describe('groupCyclesForList', () => {
+  it('splits Past from current and orders each newest start first, ties by end then id', () => {
+    const groups = groupCyclesForList({
+      cycles: [
+        makeListedCycle('a', '2026-09-01', 'past'),
+        makeListedCycle('b', '2026-10-01'),
+        makeListedCycle('c', '2026-11-01', 'sent'),
+        makeListedCycle('d', '2026-08-01', 'past'),
+        { ...makeListedCycle('e', '2026-10-01'), endDate: '2026-10-20' },
+      ],
+    });
+
+    expect(groups.current.map((cycle) => cycle.id)).toEqual(['c', 'e', 'b']);
+    expect(groups.past.map((cycle) => cycle.id)).toEqual(['a', 'd']);
+  });
+});
+
+describe('conflictingCyclesOf', () => {
+  const conflict = {
+    id: 'cycle-2',
+    name: 'October',
+    startDate: '2026-10-01',
+    endDate: '2026-10-31',
+  };
+
+  it('reads the Cycles named by a 409 envelope', () => {
+    const error = new AxiosError('conflict');
+    error.response = {
+      status: 409,
+      data: { error: 'OVERLAPPING_CYCLE', conflictingCycles: [conflict] },
+    } as AxiosResponse;
+
+    expect(conflictingCyclesOf({ error })).toEqual([conflict]);
+  });
+
+  it('finds none in any other failure', () => {
+    expect(conflictingCyclesOf({ error: new Error('boom') })).toEqual([]);
   });
 });
 

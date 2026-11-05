@@ -1,11 +1,13 @@
 import { m } from '@church/i18n/messages';
 import {
   addMilliseconds,
+  formatMonthYear,
   formatWeekdayOfIndex,
   type Instant,
   instantSpan,
   type Locale,
   millisecondsBetween,
+  parseCalendarDay,
   parseInstant,
   parseTimeOfDay,
   type TimeOfDay,
@@ -100,14 +102,6 @@ interface TemplateLibraryTableRowInput {
 
 interface CycleCalendarTableRowInput {
   eventGroup: CycleEventGroup;
-}
-
-export function createEmptyCycleForm(): CycleFormState {
-  return {
-    name: '',
-    startDate: '',
-    endDate: '',
-  };
 }
 
 export function createEmptyTemplateTimeBlock(): TemplateTimeBlockDraft {
@@ -358,13 +352,94 @@ export function calculateTotalEventTimeBlocks({
   );
 }
 
+/** Matches the server's `cycle.name` bound. */
+export const CYCLE_NAME_MAX_LENGTH = 255;
+
+export function isCycleNameTooLong({
+  cycleForm,
+}: CycleFormValidityInput): boolean {
+  return cycleForm.name.trim().length > CYCLE_NAME_MAX_LENGTH;
+}
+
+/** Both dates chosen and the end day before the start day. */
+export function isCycleRangeReversed({
+  cycleForm,
+}: CycleFormValidityInput): boolean {
+  return (
+    cycleForm.startDate !== '' &&
+    cycleForm.endDate !== '' &&
+    cycleForm.startDate > cycleForm.endDate
+  );
+}
+
 export function canCreateCycle({ cycleForm }: CycleFormValidityInput): boolean {
   return (
     cycleForm.name.trim() !== '' &&
+    !isCycleNameTooLong({ cycleForm }) &&
     cycleForm.startDate !== '' &&
     cycleForm.endDate !== '' &&
-    cycleForm.startDate <= cycleForm.endDate
+    !isCycleRangeReversed({ cycleForm })
   );
+}
+
+interface SuggestCycleNameInput {
+  startDate: string;
+  locale: Locale;
+}
+
+/** `October 2026` / `Outubro 2026` for the start month; empty until chosen. */
+export function suggestCycleName({
+  startDate,
+  locale,
+}: SuggestCycleNameInput): string {
+  return startDate === ''
+    ? ''
+    : formatMonthYear({ day: parseCalendarDay({ value: startDate }), locale });
+}
+
+interface GroupCyclesInput {
+  cycles: CycleSummary[];
+}
+
+interface GroupedCycles {
+  current: CycleSummary[];
+  past: CycleSummary[];
+}
+
+/** Current (Draft/Sent) and Past Cycles, each newest start first. */
+export function groupCyclesForList({
+  cycles,
+}: GroupCyclesInput): GroupedCycles {
+  const sorted = [...cycles].sort(
+    (left, right) =>
+      right.startDate.localeCompare(left.startDate) ||
+      right.endDate.localeCompare(left.endDate) ||
+      left.id.localeCompare(right.id),
+  );
+  return {
+    current: sorted.filter((cycle) => cycle.state !== 'past'),
+    past: sorted.filter((cycle) => cycle.state === 'past'),
+  };
+}
+
+export interface ConflictingCycle {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+/** The Cycles a 409 `OVERLAPPING_CYCLE` response names; none for any other failure. */
+export function conflictingCyclesOf({
+  error,
+}: ErrorMessageInput): ConflictingCycle[] {
+  const data = isAxiosError(error) ? error.response?.data : undefined;
+  return data &&
+    typeof data === 'object' &&
+    'conflictingCycles' in data &&
+    Array.isArray(data.conflictingCycles)
+    ? data.conflictingCycles
+    : [];
 }
 
 export function canSaveTemplate({
@@ -439,7 +514,7 @@ export function toCyclesTableRow({
   return {
     id: cycle.id,
     name: cycle.name,
-    window: `${formatCalendarDateOnly({ value: cycle.startDate })} → ${formatCalendarDateOnly({ value: cycle.endDate })}`,
+    window: `${formatCalendarDateOnly({ value: cycle.startDate })} – ${formatCalendarDateOnly({ value: cycle.endDate })}`,
     state: cycle.state,
   };
 }

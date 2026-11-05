@@ -15,7 +15,7 @@ export const Route = createFileRoute(
 
 function CycleReviewRoute() {
   const { cycleId } = Route.useParams();
-  const { handleSelectCycle } = useCycleSelection();
+  const { selectedCycleId, handleSelectCycle } = useCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
 
   useEffect(() => {
@@ -23,6 +23,11 @@ function CycleReviewRoute() {
   }, [cycleId, handleSelectCycle]);
 
   const isReadOnly = cycleIsSent({ cycle: selectedCycle });
+
+  // Until the selection follows the URL it still points at the previous Cycle.
+  if (selectedCycleId !== cycleId) {
+    return null;
+  }
 
   return <CycleReviewCard isReadOnly={isReadOnly} />;
 }

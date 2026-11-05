@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -55,7 +56,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 
     renderCycles();
 
-    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
     expect(screen.getByTestId('open-create-cycle-dialog-button')).toBeVisible();
@@ -87,7 +88,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
 
     const cycleOption = await screen.findByTestId('cycle-option');
@@ -140,22 +141,24 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the "Cycles" page title behind the create-cycle dialog instead of swapping it to "Create cycle"', async () => {
+  it('opens New cycle over the list without leaving /cycles, keeping the page title', async () => {
     listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-    renderCycles();
+    const { router } = renderCycles();
 
-    await screen.findByText('Existing cycles');
+    await screen.findByText(m.cycles_list_title());
     await user.click(screen.getByTestId('open-create-cycle-dialog-button'));
 
     expect(
-      await screen.findByRole('dialog', { name: 'Create cycle' }),
+      await screen.findByRole('dialog', { name: m.cycles_form_title_new() }),
     ).toBeVisible();
+    expect(router.state.location.pathname).toBe('/cycles');
+    expect(router.state.location.searchStr).toBe('');
     // The h1 lives in the (now aria-hidden, inert) page behind the dialog,
     // so query it directly instead of screen.getByRole('heading', ...),
     // which excludes aria-hidden content from the accessibility tree.
-    expect(document.querySelector('h1')).toHaveTextContent('Cycles');
+    expect(document.querySelector('h1')).toHaveTextContent(m.cycles_title());
   });
 
   it('keeps the template library as a saved-list view and opens creation on a nested page without loading a cycle', async () => {
@@ -164,7 +167,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    await screen.findByText('Existing cycles');
+    await screen.findByText(m.cycles_list_title());
     await user.click(screen.getByTestId('open-template-library-button'));
 
     expect(await screen.findByText('Modelos salvos')).toBeVisible();
@@ -203,7 +206,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    await screen.findByText('Existing cycles');
+    await screen.findByText(m.cycles_list_title());
     await user.click(screen.getByTestId('open-template-library-button'));
     await user.click(await screen.findByTestId('edit-template-button'));
 
@@ -479,7 +482,7 @@ describe('Cycle header visibility (chip-leak fix)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    await screen.findByText('Existing cycles');
+    await screen.findByText(m.cycles_list_title());
     await user.click(screen.getByTestId('open-template-library-button'));
 
     expect(
@@ -517,7 +520,8 @@ describe('CycleListCard selection state', () => {
     );
 
     const options = await screen.findAllByTestId('cycle-option');
-    expect(options[0]).toHaveAttribute('aria-selected', 'true');
-    expect(options[1]).toHaveAttribute('aria-selected', 'false');
+    // Newest start first: September, then the selected August.
+    expect(options[0]).toHaveAttribute('aria-selected', 'false');
+    expect(options[1]).toHaveAttribute('aria-selected', 'true');
   });
 });

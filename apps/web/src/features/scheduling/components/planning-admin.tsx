@@ -41,7 +41,6 @@ function isReviewingCyclePath({ pathname }: PathnameInput): boolean {
   return (
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&
-    !pathname.endsWith('/new') &&
     !isTemplatesPath({ pathname })
   );
 }
@@ -80,9 +79,8 @@ function describePlanningIntro({
   }
 
   return {
-    title: 'Cycles',
-    description:
-      'Start from the cycle list, open the one you want to review, and only bring template work or cycle creation into view when you need it.',
+    title: m.cycles_title(),
+    description: m.cycles_description(),
   };
 }
 
@@ -195,15 +193,6 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
             Add event
           </Button>
         ) : null}
-        {isReviewingCycle ? null : (
-          <Link
-            to="/cycles/new"
-            data-testid="open-create-cycle-dialog-button"
-            className={buttonVariants({ variant: 'default' })}
-          >
-            Create cycle
-          </Link>
-        )}
       </div>
 
       {isReviewingCycle && selectedCycle ? (

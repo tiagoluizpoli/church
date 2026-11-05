@@ -177,7 +177,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.goto('/cycles');
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
+  const createCycleDialog = page.getByRole('dialog', { name: 'Novo ciclo' });
   await createCycleDialog.getByTestId('cycle-name-input').fill(month.cycleName);
   await fillDatePickerField({
     page,
@@ -304,7 +304,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.goto('/cycles');
   await expect(page).toHaveURL(/\/cycles\/?$/);
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  const overlapDialog = page.getByRole('dialog', { name: 'Create cycle' });
+  const overlapDialog = page.getByRole('dialog', { name: 'Novo ciclo' });
   await overlapDialog
     .getByTestId('cycle-name-input')
     .fill(`${month.cycleName} overlap`);

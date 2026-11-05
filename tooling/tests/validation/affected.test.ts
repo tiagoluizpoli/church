@@ -336,7 +336,7 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects the leader-prepare journey for a prepare route change', () => {
+  it('selects the planning handoff and leader-prepare journeys for the N2 Prepare destination', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
@@ -345,6 +345,7 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-prepare.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
@@ -648,16 +649,20 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects only the a11y-planning-nav journey for the breadcrumb hooks', () => {
+  it('selects breadcrumb accessibility and the Cycle leader handoff for their owning hooks', () => {
     for (const changedPath of [
       'apps/web/src/features/scheduling/hooks/use-ministry-breadcrumb.ts',
       'apps/web/src/features/scheduling/hooks/use-cycle-breadcrumb.ts',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
-      expect(plan.e2eSpecPaths).toEqual([
-        'tests/scheduling/a11y-planning-nav.spec.ts',
-      ]);
+      const expectedJourneys = changedPath.endsWith('/use-cycle-breadcrumb.ts')
+        ? [
+            'tests/scheduling/a11y-planning-nav.spec.ts',
+            'tests/scheduling/us1-admin-plan.spec.ts',
+          ]
+        : ['tests/scheduling/a11y-planning-nav.spec.ts'];
+      expect(plan.e2eSpecPaths).toEqual(expectedJourneys);
       expect(plan.missingJourneyMappings).toEqual([]);
     }
   });
@@ -672,6 +677,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
+      'tests/scheduling/us1-admin-plan.spec.ts',
     ]);
 
     const assignPlan = classifyChanges({

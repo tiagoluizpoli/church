@@ -395,6 +395,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: CYCLE_HANDOFF_SPEC_PATHS,
   },
   {
+    // Schedule breadcrumbs use leader-scoped metadata on the N2 destination.
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/hooks/use-cycle-breadcrumb.ts',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  },
+  {
     // #289 — added smoke.spec.ts and us4-schedule-publish.spec.ts, verified
     // via their page.goto to a prepare route, which renders this
     // directory's components; matches PREPARE_SPEC_PATHS used above.

@@ -1,6 +1,14 @@
+import { m } from '@church/i18n/messages';
 import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { CycleCalendarTableRow } from './planning-admin.types';
-import { eventStatusBadgeVariant } from './planning-admin.utils';
+import type {
+  CycleCalendarTableRow,
+  CycleCalendarWeek,
+} from './planning-admin.types';
+import {
+  eventStatusBadgeVariant,
+  eventStatusLabel,
+  timeBlockCountLabel,
+} from './planning-admin.utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,17 +23,24 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { DataTableColumn } from '@/components/ui/data-table';
-import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
+import {
+  formatCalendarDateOnly,
+  formatInstantRangeOf,
+} from '@/shared/utils/church-time';
 
-export const CALENDAR_TABLE_COLUMNS: DataTableColumn[] = [
-  { id: 'event', name: 'Event', isRowHeader: true },
-  { id: 'window', name: 'Date / Time' },
-  { id: 'eventTimeBlocks', name: 'Time blocks' },
-  { id: 'status', name: 'Status' },
-  { id: 'actions', name: 'Actions' },
-];
+/** Built per render so the headers follow the active locale. */
+export function calendarTableColumns(): DataTableColumn[] {
+  return [
+    { id: 'event', name: m.cycle_review_column_event(), isRowHeader: true },
+    { id: 'window', name: m.cycle_review_column_when() },
+    { id: 'eventTimeBlocks', name: m.cycle_review_column_time_blocks() },
+    { id: 'status', name: m.cycle_review_column_status() },
+    { id: 'actions', name: m.cycle_review_column_actions() },
+  ];
+}
 
 export type CalendarVisibleRow =
+  | { kind: 'week'; weekStart: string; weekEnd: string }
   | { kind: 'parent'; row: CycleCalendarTableRow }
   | {
       kind: 'event-time-block';
@@ -38,37 +53,40 @@ export type CalendarVisibleRow =
     };
 
 export interface BuildVisibleCalendarRowsInput {
-  rows: CycleCalendarTableRow[];
+  weeks: CycleCalendarWeek[];
   expandedEventIds: ReadonlySet<string>;
 }
 
 export function buildVisibleCalendarRows({
-  rows,
+  weeks,
   expandedEventIds,
 }: BuildVisibleCalendarRowsInput): CalendarVisibleRow[] {
-  return rows.flatMap((row): CalendarVisibleRow[] => {
-    const parentRow: CalendarVisibleRow = { kind: 'parent', row };
+  return weeks.flatMap(({ weekStart, weekEnd, rows }): CalendarVisibleRow[] => [
+    { kind: 'week', weekStart, weekEnd },
+    ...rows.flatMap((row): CalendarVisibleRow[] => {
+      const parentRow: CalendarVisibleRow = { kind: 'parent', row };
 
-    if (!expandedEventIds.has(row.eventId)) {
-      return [parentRow];
-    }
+      if (!expandedEventIds.has(row.eventId)) {
+        return [parentRow];
+      }
 
-    return [
-      parentRow,
-      ...row.eventTimeBlocks.map(
-        (eventTimeBlock): CalendarVisibleRow => ({
-          kind: 'event-time-block',
-          parentId: row.eventId,
-          eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
-          label: eventTimeBlock.label,
-          startTime: eventTimeBlock.startTime,
-          endTime: eventTimeBlock.endTime,
-          isOnlyEventTimeBlockInEvent:
-            eventTimeBlock.isOnlyEventTimeBlockInEvent,
-        }),
-      ),
-    ];
-  });
+      return [
+        parentRow,
+        ...row.eventTimeBlocks.map(
+          (eventTimeBlock): CalendarVisibleRow => ({
+            kind: 'event-time-block',
+            parentId: row.eventId,
+            eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
+            label: eventTimeBlock.label,
+            startTime: eventTimeBlock.startTime,
+            endTime: eventTimeBlock.endTime,
+            isOnlyEventTimeBlockInEvent:
+              eventTimeBlock.isOnlyEventTimeBlockInEvent,
+          }),
+        ),
+      ];
+    }),
+  ]);
 }
 
 export interface VisibleRowIdInput {
@@ -76,6 +94,8 @@ export interface VisibleRowIdInput {
 }
 
 export function visibleRowId({ visibleRow }: VisibleRowIdInput): string {
+  if (visibleRow.kind === 'week') return `week-${visibleRow.weekStart}`;
+
   return visibleRow.kind === 'parent'
     ? `event-${visibleRow.row.eventId}`
     : `event-time-block-${visibleRow.parentId}-${visibleRow.eventTimeBlockId}`;
@@ -88,6 +108,8 @@ export interface CalendarRowEventIdInput {
 export function calendarRowEventId({
   visibleRow,
 }: CalendarRowEventIdInput): string {
+  if (visibleRow.kind === 'week') return `week-${visibleRow.weekStart}`;
+
   return visibleRow.kind === 'parent'
     ? visibleRow.row.eventId
     : visibleRow.parentId;
@@ -120,9 +142,11 @@ export function calendarRowKey({
 }: CalendarRowKeyInput): string {
   const id = visibleRowId({ visibleRow });
   const dataFingerprint =
-    visibleRow.kind === 'parent'
-      ? `${visibleRow.row.title}-${visibleRow.row.start}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
-      : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
+    visibleRow.kind === 'week'
+      ? visibleRow.weekEnd
+      : visibleRow.kind === 'parent'
+        ? `${visibleRow.row.title}-${visibleRow.row.location ?? ''}-${visibleRow.row.start}-${visibleRow.row.end}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
+        : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
 
   return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
 }
@@ -160,6 +184,19 @@ function ConfirmDeleteDialogContent({
       </AlertDialogFooter>
     </AlertDialogContent>
   );
+}
+
+interface WeekLabelInput {
+  weekStart: string;
+  weekEnd: string;
+}
+
+/** `Week of 04/01/2027 – 10/01/2027` */
+export function weekLabel({ weekStart, weekEnd }: WeekLabelInput): string {
+  return m.cycle_review_week({
+    start: formatCalendarDateOnly({ value: weekStart }),
+    end: formatCalendarDateOnly({ value: weekEnd }),
+  });
 }
 
 export interface ToggleEventExpandedInput {
@@ -248,6 +285,12 @@ export function renderCalendarCell({
   onDeleteEventTimeBlockOpenChange,
   onDeleteEventTimeBlockConfirm,
 }: RenderCalendarCellInput) {
+  if (item.kind === 'week') {
+    return column.id === 'event' ? (
+      <span className="font-semibold">{weekLabel(item)}</span>
+    ) : null;
+  }
+
   return item.kind === 'parent' ? (
     <ParentRowCell
       column={column}
@@ -322,18 +365,25 @@ function ParentRowCell({
           >
             {isExpanded ? <ChevronDown /> : <ChevronRight />}
           </Button>
-          {row.title}
+          <span className="flex flex-col">
+            {row.title}
+            {row.location ? (
+              <span className="font-normal text-muted-foreground text-xs">
+                {m.cycle_review_location({ location: row.location })}
+              </span>
+            ) : null}
+          </span>
         </span>
       ) : null}
       {column.id === 'window'
-        ? formatDayOf({ value: row.start, timeZone })
+        ? formatInstantRangeOf({ start: row.start, end: row.end, timeZone })
         : null}
       {column.id === 'eventTimeBlocks'
-        ? `${row.eventTimeBlocks.length} time block${row.eventTimeBlocks.length === 1 ? '' : 's'}`
+        ? timeBlockCountLabel({ count: row.eventTimeBlocks.length })
         : null}
       {column.id === 'status' ? (
         <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
-          {row.status}
+          {eventStatusLabel({ status: row.status })}
         </Badge>
       ) : null}
       {column.id === 'actions' && !isReadOnly ? (

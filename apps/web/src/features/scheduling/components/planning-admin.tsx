@@ -7,7 +7,7 @@ import {
   CycleListStats,
   PlanningTemplateLibraryStats,
 } from './planning-admin/cycle-header';
-import { cycleIsSent } from './planning-admin/planning-admin.utils';
+import { cycleIsReadOnly } from './planning-admin/planning-admin.utils';
 import {
   PlanningAdminProvider,
   useCycleHeader,
@@ -166,7 +166,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
   const canMutateCalendar =
     isReviewingCycle &&
     Boolean(selectedCycle) &&
-    !cycleIsSent({ cycle: selectedCycle });
+    !cycleIsReadOnly({ cycle: selectedCycle });
 
   return (
     <>

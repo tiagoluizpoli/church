@@ -163,6 +163,11 @@ export class CycleEventGenerator {
   }
 }
 
+export interface EventTimeBlockEnvelope {
+  start: Instant;
+  end: Instant;
+}
+
 interface EventTimeBlockEnvelopeInput {
   eventTimeBlocks: EventTimeBlockBounds[];
 }
@@ -170,7 +175,7 @@ interface EventTimeBlockEnvelopeInput {
 /** Earliest start and latest end: an overnight block may end after a later one. */
 export function eventTimeBlockEnvelope({
   eventTimeBlocks,
-}: EventTimeBlockEnvelopeInput): { start: Instant; end: Instant } {
+}: EventTimeBlockEnvelopeInput): EventTimeBlockEnvelope {
   const [first, ...rest] = eventTimeBlocks;
   if (!first) {
     throw new Error('An envelope needs at least one time block.');

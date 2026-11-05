@@ -567,6 +567,29 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.delete(
+      '/cycles/:cycleId/events/:eventId',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'deletePlanningEvent',
+          summary: 'Delete a Draft Event',
+          description:
+            'Hard-delete an unsent Draft Event of a Draft Cycle with its draft calendar and participation data. No Notification is created.',
+          response: { 204: z.null() },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        await this.planningEventManager.deleteEvent({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+        });
+        return reply.status(204).send();
+      },
+    );
+
     app.post(
       '/cycles/:cycleId/events/:eventId/cancel',
       {

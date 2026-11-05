@@ -635,7 +635,7 @@ describe('DbPlanningEventManager', () => {
       }),
     ).rejects.toThrow('Event not found');
     await expect(
-      manager.cancelEvent({ churchId, cycleId, eventId }),
+      manager.deleteEvent({ churchId, cycleId, eventId }),
     ).rejects.toThrow('Event not found');
     await expect(
       manager.createEventTimeBlock({
@@ -649,9 +649,12 @@ describe('DbPlanningEventManager', () => {
     expect(eventRepository.updateEvent).not.toHaveBeenCalled();
     expect(eventRepository.deleteEvent).not.toHaveBeenCalled();
   });
-  it('deletes draft events and soft-cancels scheduled events', async () => {
+  it('deletes draft events, refuses to cancel them, and soft-cancels scheduled events', async () => {
     const { manager, eventRepository } = createPlanningEventHarness();
-    await manager.cancelEvent({ churchId, cycleId, eventId });
+    await expect(
+      manager.cancelEvent({ churchId, cycleId, eventId }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+    await manager.deleteEvent({ churchId, cycleId, eventId });
     expect(eventRepository.deleteEvent).toHaveBeenCalledWith({
       churchId,
       eventId,
@@ -690,6 +693,9 @@ describe('DbPlanningEventManager', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
     await expect(
       manager.cancelEvent({ churchId, cycleId, eventId }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+    await expect(
+      manager.deleteEvent({ churchId, cycleId, eventId }),
     ).rejects.toThrow(IllegalStateTransitionError);
     vi.mocked(eventRepository.getEvent).mockResolvedValue(makeEvent());
     await expect(

@@ -1828,6 +1828,34 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+    delete:
+      operationId: deletePlanningEvent
+      summary: Delete a Draft Event
+      tags:
+        - planning
+      description: Hard-delete an unsent Draft Event of a Draft Cycle with its draft
+        calendar and participation data. No Notification is created.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
   /api/v1/admin/cycles/{cycleId}/events/{eventId}/cancel:
     post:
       operationId: cancelPlanningEvent

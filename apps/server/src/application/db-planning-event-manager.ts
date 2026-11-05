@@ -16,6 +16,7 @@ import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
   CreatePlanningEventTimeBlockManagerInput,
+  DeletePlanningEventManagerInput,
   DeletePlanningEventTimeBlockManagerInput,
   GeneratedPlanningCounts,
   GeneratePlanningTemplatesInput,
@@ -76,7 +77,8 @@ interface GetCycleEventInput {
   input:
     | EnsureWritableEventInput['input']
     | UpdatePlanningEventManagerInput
-    | CancelPlanningEventManagerInput;
+    | CancelPlanningEventManagerInput
+    | DeletePlanningEventManagerInput;
   tx: TransactionContext;
 }
 
@@ -612,6 +614,38 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     return eventTimeBlock;
   }
 
+  async deleteEvent(input: DeletePlanningEventManagerInput): Promise<void> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+
+    await this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
+      const cycle = await this.ensureCycleWritable({
+        cycle: await this.cycleRepository.getById({ ...input, tx }),
+        churchTimeZone: church.timezone,
+      });
+      const currentEvent = await this.getCycleEvent({ input, tx });
+
+      // Draft-only: a reopened Event of a Sent Cycle is no back door.
+      if (cycle.state !== 'draft' || currentEvent.status !== 'draft') {
+        throw new IllegalStateTransitionError({
+          from: cycle.state === 'draft' ? currentEvent.status : cycle.state,
+          to: 'delete',
+        });
+      }
+
+      // Time blocks, shifts, draft assignments and audits cascade.
+      await this.eventRepository.deleteEvent({
+        churchId: input.churchId,
+        eventId: input.eventId,
+        tx,
+      });
+    });
+  }
+
   async cancelEvent(input: CancelPlanningEventManagerInput): Promise<void> {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
@@ -634,20 +668,12 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         });
       }
 
-      // Delete and cancel are distinct operations, split on the event's
-      // lifecycle status (BL-020 / issue #12). A `draft` event has never
-      // reached `scheduled`: its assignments are still `draft` and no
-      // volunteer has seen it, so removing it destroys nothing anyone saw —
-      // hard-delete it (event time blocks/shifts/draft assignments/audits cascade). Any
-      // later status is a silent soft cancel, byte-for-byte the prior
-      // behaviour.
+      // A Draft Event is deleted (deleteEvent), never cancelled.
       if (currentEvent.status === 'draft') {
-        await this.eventRepository.deleteEvent({
-          churchId: input.churchId,
-          eventId: input.eventId,
-          tx,
+        throw new IllegalStateTransitionError({
+          from: currentEvent.status,
+          to: 'cancel',
         });
-        return;
       }
 
       await this.eventRepository.updateEvent({

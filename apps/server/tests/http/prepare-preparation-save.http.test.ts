@@ -826,6 +826,33 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
     });
 
+    it.each([
+      ['a zero then a positive count', [0, 2], 0],
+      ['a positive then a zero count', [2, 0], 0],
+      ['two zero counts beside another pair', [0, 0], 1],
+    ])('refuses a duplicate pair of %s', async (_label, counts, otherShiftCount) => {
+      const base = await seedPreparation();
+      const repeated = counts.map((peopleNeeded) =>
+        headcountOf(base, { peopleNeeded }),
+      );
+      const other = Array.from({ length: otherShiftCount }, () =>
+        headcountOf(base, { shiftIndex: 1 }),
+      );
+
+      const response = await savePreparation({
+        ...base,
+        payload: {
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 2 },
+          headcounts: [...repeated, ...other],
+        },
+      });
+
+      expect(response.statusCode).toBe(422);
+      expect(response.json()).toMatchObject({ reason: 'DUPLICATE_HEADCOUNT' });
+      expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
+    });
+
     it('refuses a headcount on a Shift the split does not generate', async () => {
       const base = await seedPreparation();
 

@@ -146,17 +146,25 @@ export interface AssertValidHeadcountsInput {
   headcounts: UsualSetupHeadcount[];
 }
 
-export function assertValidHeadcounts({
+/** Each (Shift, Sector, Role) place appears once, whatever its count. */
+export function assertUniqueHeadcounts({
   headcounts,
 }: AssertValidHeadcountsInput): void {
   const places = new Set<string>();
-  for (const headcount of headcounts) {
-    const place = `${headcount.shiftIndex}:${headcount.sectorId}:${headcount.roleId}`;
+  for (const { shiftIndex, sectorId, roleId } of headcounts) {
+    const place = `${shiftIndex}:${sectorId}:${roleId}`;
     if (places.has(place)) {
       throw new DuplicateHeadcountError();
     }
     places.add(place);
+  }
+}
 
+export function assertValidHeadcounts({
+  headcounts,
+}: AssertValidHeadcountsInput): void {
+  assertUniqueHeadcounts({ headcounts });
+  for (const headcount of headcounts) {
     if (
       !Number.isInteger(headcount.peopleNeeded) ||
       headcount.peopleNeeded < 1

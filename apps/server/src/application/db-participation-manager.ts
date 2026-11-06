@@ -84,6 +84,7 @@ import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
 import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import {
   assertManualSplitFitsBlock,
+  assertUniqueHeadcounts,
   assertValidHeadcounts,
   assertValidUsualSetupProps,
   toSaveableUsualSetupEntry,
@@ -992,6 +993,8 @@ export class DbParticipationManager implements IParticipationManager {
     ...target
   }: ApplyPreparationGraphInput): Promise<void> {
     const { churchId, participation, eventTimeBlock, tx } = target;
+    // A zero row is an omission, but it still may not repeat a place.
+    assertUniqueHeadcounts({ headcounts });
     const positive = headcounts.filter(({ peopleNeeded }) => peopleNeeded > 0);
     if (!shiftSplit || positive.length === 0) {
       throw new PreparationEmptyError();

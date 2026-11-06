@@ -13,14 +13,31 @@ export interface BreadcrumbSegmentOverride {
  * `useCycleBreadcrumb`'s pattern for `$cycleId`.
  */
 export function useMinistryBreadcrumb(): BreadcrumbSegmentOverride | null {
-  const { ministryId, timeSlotId } = useParams({ strict: false });
+  const { ministryId, cycleId, timeSlotId } = useParams({ strict: false });
   const ministriesQuery = useQuery({
     queryKey: ['breadcrumb-ministries'],
     queryFn: () => adminApi.listMinistries(),
-    enabled: ministryId !== undefined && timeSlotId === undefined,
+    enabled: ministryId !== undefined && cycleId === undefined,
     retry: false,
   });
 
+  const schedules = useQuery({
+    queryKey: ['prepare-schedules'],
+    queryFn: () => adminApi.listSchedules(),
+    enabled:
+      ministryId !== undefined &&
+      cycleId !== undefined &&
+      timeSlotId === undefined,
+    retry: false,
+  });
+  if (cycleId !== undefined) {
+    const schedule = schedules.data?.schedules.find(
+      (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
+    );
+    return ministryId && schedule
+      ? { segment: ministryId, label: schedule.ministry.name }
+      : null;
+  }
   if (ministryId === undefined || !ministriesQuery.data) {
     return null;
   }

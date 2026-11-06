@@ -20,9 +20,9 @@ export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
     enabled: cycleId !== undefined && ministryId === undefined,
     retry: false,
   });
-  const scheduleSummariesQuery = useQuery({
-    queryKey: ['prepare-cycle-summaries', ministryId],
-    queryFn: () => adminApi.listScheduleSummaries(ministryId ?? ''),
+  const schedules = useQuery({
+    queryKey: ['prepare-schedules'],
+    queryFn: () => adminApi.listSchedules(),
     enabled:
       cycleId !== undefined &&
       ministryId !== undefined &&
@@ -30,9 +30,9 @@ export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
     retry: false,
   });
   const cycleName = ministryId
-    ? scheduleSummariesQuery.data?.cycles.find(
-        (cycle) => cycle.cycleId === cycleId,
-      )?.name
+    ? schedules.data?.schedules.find(
+        (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
+      )?.cycle.name
     : cycleDetailsQuery.data?.cycle.name;
 
   if (cycleId === undefined || !cycleName) {

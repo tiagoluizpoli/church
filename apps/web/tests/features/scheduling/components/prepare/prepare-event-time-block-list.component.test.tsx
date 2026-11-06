@@ -1,1098 +1,218 @@
 import { m } from '@church/i18n/messages';
-import { focusManager } from '@tanstack/react-query';
-import { act, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
+import {
+  createMemoryHistory,
+  createRouter,
+  RouterContextProvider,
+} from '@tanstack/react-router';
+import { render, screen, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { expect, it } from 'vitest';
+import {
+  BLOCK,
+  CYCLE_ID,
+  EVENT,
+  MINISTRY_ID,
+  REQUIREMENT,
+  SHIFT,
+} from './preparation-block.fixtures';
 import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prepare/prepare-event-time-block-list';
-import type {
-  GetCycleParticipation200EventsItem,
-  GetCycleParticipation200EventsItemEventTimeBlocksItem,
-} from '@/infrastructure/api/churchAPI.schemas';
-import { renderWithProviders } from '@/tests/setup/render';
+import { routeTree } from '@/routeTree.gen';
+import { TimezoneProvider } from '@/shared/components/timezone-provider';
 
-const getScheduleBuilderData = vi.fn();
-
-vi.mock('@/utils/api-instances', () => ({
-  adminApi: {
-    getScheduleBuilderData: (...args: unknown[]) =>
-      getScheduleBuilderData(...args),
-  },
-}));
-
-function makeEventTimeBlockView(
-  overrides: Partial<GetCycleParticipation200EventsItemEventTimeBlocksItem> = {},
-): GetCycleParticipation200EventsItemEventTimeBlocksItem {
-  return {
-    eventTimeBlock: {
-      id: 'event-time-block-1',
-      churchId: 'church-1',
-      eventId: 'event-1',
-      startTime: '2026-07-12T09:00:00.000Z',
-      endTime: '2026-07-12T11:00:00.000Z',
-      label: 'Greeter',
-      status: 'active',
-      requirements: [],
-    },
-    included: false,
-    shifts: [],
-    requirements: [],
-    shiftsChangedAfterAsk: false,
-    ...overrides,
-  };
+function renderList(ui: ReactElement) {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    context: { queryClient: new QueryClient() },
+  });
+  return render(
+    <RouterContextProvider router={router}>
+      <TimezoneProvider churchTimezone="America/Sao_Paulo">
+        {ui}
+      </TimezoneProvider>
+    </RouterContextProvider>,
+  );
 }
 
-function makeEventView(
-  overrides: Partial<GetCycleParticipation200EventsItem> = {},
-  eventTimeBlockOverrides: Partial<GetCycleParticipation200EventsItemEventTimeBlocksItem>[] = [
-    {},
-  ],
-): GetCycleParticipation200EventsItem {
-  return {
-    participation: {
-      id: 'participation-1',
-      churchId: 'church-1',
-      ministryId: 'ministry-1',
-      eventId: 'event-1',
-      state: 'preparing',
-    },
-    event: {
-      id: 'event-1',
-      churchId: 'church-1',
-      cycleId: 'cycle-1',
-      title: 'Sunday Service',
-      start: '2026-07-12T09:00:00',
-      end: '2026-07-12T11:00:00',
-      status: 'scheduled',
-      createdAt: '2026-07-01T00:00:00',
-      updatedAt: '2026-07-01T00:00:00',
-    },
-    generatedFromTemplate: false,
-    eventTimeBlocks: eventTimeBlockOverrides.map((eventTimeBlockOverride) =>
-      makeEventTimeBlockView(eventTimeBlockOverride),
+it('summarizes people needed across Shifts and requirements, tags one-off Events and notes uncovered answers', () => {
+  renderList(
+    <PrepareEventTimeBlockList
+      ministryId={MINISTRY_ID}
+      cycleId={CYCLE_ID}
+      events={[
+        {
+          ...EVENT,
+          eventTimeBlocks: [
+            {
+              ...BLOCK,
+              shiftsChangedAfterAsk: true,
+              shifts: [
+                SHIFT,
+                {
+                  ...SHIFT,
+                  id: 'second-shift',
+                  requirements: [
+                    {
+                      ...REQUIREMENT,
+                      id: 'second-requirement',
+                      peopleNeeded: 7,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]}
+    />,
+  );
+  const row = screen.getByTestId(
+    `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
+  );
+  expect(row).toHaveTextContent(
+    m.prepare_row_summary({
+      shifts: m.usual_setup_shift_count_other({ count: 2 }),
+      people: m.prepare_people_count_other({ count: 9 }),
+    }),
+  );
+  expect(within(row).getByText(m.prepare_one_off())).toBeVisible();
+  expect(
+    within(row).getByText(m.prepare_answers_coverage_note()),
+  ).toBeVisible();
+  expect(row).toHaveTextContent('03/01/2027 22:00 – 04/01/2027 02:00');
+});
+
+it('distinguishes Not served and flagged Shifts without rendering preparation controls', () => {
+  renderList(
+    <PrepareEventTimeBlockList
+      ministryId={MINISTRY_ID}
+      cycleId={CYCLE_ID}
+      events={[
+        {
+          ...EVENT,
+          generatedFromTemplate: true,
+          eventTimeBlocks: [
+            {
+              ...BLOCK,
+              included: false,
+              shifts: [],
+              eventTimeBlock: { ...BLOCK.eventTimeBlock, id: 'not-served' },
+            },
+            {
+              ...BLOCK,
+              shifts: [
+                SHIFT,
+                { ...SHIFT, id: 'flagged', requirements: [], flagged: true },
+              ],
+            },
+          ],
+        },
+      ]}
+    />,
+  );
+  expect(
+    screen.getByTestId('prepare-event-time-block-row-not-served'),
+  ).toHaveTextContent(m.prepare_not_served());
+  expect(
+    screen.getByTestId(
+      `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
     ),
-    ...overrides,
-  };
-}
-
-const NO_OP_PROPS = {
-  ministryId: 'ministry-1',
-  splitForms: {},
-  headcountDrafts: {},
-  savedHeadcountDrafts: {},
-  splitDirtyEventTimeBlockIds: new Set<string>(),
-  headcountDirtyEventTimeBlockIds: new Set<string>(),
-  pendingHeadcountEventTimeBlockId: null,
-  pendingSplitEventTimeBlockId: null,
-  pendingInclusionEventTimeBlockId: null,
-  onToggleInclusion: vi.fn(),
-  onSplitFormChange: vi.fn(),
-  onSplitShifts: vi.fn(),
-  onHeadcountChange: vi.fn(),
-  onSaveHeadcounts: vi.fn(),
-};
-
-describe('PrepareEventTimeBlockList day-grouping (US3/T026)', () => {
-  it('groups time blocks under a day header, flat — no card-in-card', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList {...NO_OP_PROPS} events={[makeEventView()]} />,
-    );
-
-    expect(
-      await screen.findByTestId('prepare-day-header-2026-07-12'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('prepare-event-time-block-row-event-time-block-1'),
-    ).toBeInTheDocument();
-  });
-
-  it('renders an empty-state message when there are zero time blocks', () => {
-    renderWithProviders(
-      <PrepareEventTimeBlockList {...NO_OP_PROPS} events={[]} />,
-    );
-
-    expect(
-      screen.getByTestId('prepare-event-time-block-list-empty-state'),
-    ).toBeInTheDocument();
-  });
+  ).toHaveTextContent(m.prepare_needs_headcount());
+  expect(screen.queryByText(m.prepare_one_off())).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(m.prepare_answers_coverage_note()),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
 });
 
-describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
-  it('hides shift/headcount controls for an unincluded time block', () => {
-    renderWithProviders(
-      <PrepareEventTimeBlockList {...NO_OP_PROPS} events={[makeEventView()]} />,
-    );
-
-    expect(screen.queryByText('People needed')).not.toBeInTheDocument();
-  });
-
-  it('calls onToggleInclusion immediately when Serving is selected (T043)', async () => {
-    const onToggleInclusion = vi.fn();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        onToggleInclusion={onToggleInclusion}
-        events={[makeEventView()]}
-      />,
-    );
-
-    await user.click(screen.getByTestId('serving-toggle-event-time-block-1'));
-
-    expect(onToggleInclusion).toHaveBeenCalledWith({
-      participationId: 'participation-1',
-      eventTimeBlockId: 'event-time-block-1',
-      checked: true,
-    });
-  });
-
-  it('keeps split and headcount edits local until their save actions are clicked (T043)', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const onSplitShifts = vi.fn();
-    const onSaveHeadcounts = vi.fn();
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        onSplitShifts={onSplitShifts}
-        onSaveHeadcounts={onSaveHeadcounts}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={[
-          makeEventView({}, [
-            {
-              included: true,
-              shifts: [
-                {
-                  id: 'shift-1',
-                  participationId: 'participation-1',
-                  eventTimeBlockId: 'event-time-block-1',
-                  startTime: '2026-07-12T09:00:00.000Z',
-                  endTime: '2026-07-12T11:00:00.000Z',
-                  requirements: [],
-                  unavailableMarkCount: 0,
-                  assignmentCount: 0,
-                  flagged: true,
-                },
-              ],
-            },
-          ]),
-        ]}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    await user.click(screen.getByTestId('shift-mode-select-0'));
-    await user.click(await screen.findByText('Equal split'));
-    await user.type(
-      await screen.findByTestId('headcount-input-shift-1:sector-1:role-1'),
-      '2',
-    );
-
-    expect(onSplitShifts).not.toHaveBeenCalled();
-    expect(onSaveHeadcounts).not.toHaveBeenCalled();
-  });
-
-  it('shows shift/headcount controls once a time block is included and expanded', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={[
-          makeEventView({}, [
-            {
-              included: true,
-              shifts: [
-                {
-                  id: 'shift-1',
-                  participationId: 'participation-1',
-                  eventTimeBlockId: 'event-time-block-1',
-                  startTime: '2026-07-12T09:00:00.000Z',
-                  endTime: '2026-07-12T11:00:00.000Z',
-                  requirements: [],
-                  unavailableMarkCount: 0,
-                  assignmentCount: 0,
-                  flagged: true,
-                },
-              ],
-            },
-          ]),
-        ]}
-      />,
-    );
-
-    expect(screen.queryByText('People needed')).not.toBeInTheDocument();
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-
-    expect(await screen.findByText('People needed')).toBeInTheDocument();
-  });
-});
-
-describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a/FR-013)', () => {
-  it('renders exactly one shift row spanning the time block full duration when just-included with 0 prior splits', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={[
-          makeEventView({}, [
-            {
-              included: true,
-              shifts: [
-                {
-                  id: 'shift-1',
-                  participationId: 'participation-1',
-                  eventTimeBlockId: 'event-time-block-1',
-                  startTime: '2026-07-12T09:00:00.000Z',
-                  endTime: '2026-07-12T11:00:00.000Z',
-                  requirements: [],
-                  unavailableMarkCount: 0,
-                  assignmentCount: 0,
-                  flagged: true,
-                },
-              ],
-            },
-          ]),
-        ]}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-
-    await screen.findByTestId('participation-shift-row-shift-1');
-    expect(
-      screen.queryByTestId('participation-shift-row-shift-2'),
-    ).not.toBeInTheDocument();
-  });
-
-  it('persists a headcount value through the existing upsert mutation', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const onSaveHeadcounts = vi.fn();
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        onSaveHeadcounts={onSaveHeadcounts}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        headcountDrafts={{ 'shift-1:sector-1:role-1': '3' }}
-        savedHeadcountDrafts={{ 'shift-1:sector-1:role-1': '2' }}
-        headcountDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
-        events={[
-          makeEventView({}, [
-            {
-              included: true,
-              shifts: [
-                {
-                  id: 'shift-1',
-                  participationId: 'participation-1',
-                  eventTimeBlockId: 'event-time-block-1',
-                  startTime: '2026-07-12T09:00:00.000Z',
-                  endTime: '2026-07-12T11:00:00.000Z',
-                  requirements: [],
-                  unavailableMarkCount: 0,
-                  assignmentCount: 0,
-                  flagged: true,
-                },
-              ],
-            },
-          ]),
-        ]}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    await screen.findByText('Stage · Greeter');
-    await user.click(
-      screen.getByTestId('save-headcounts-button-event-time-block-1'),
-    );
-
-    expect(onSaveHeadcounts).toHaveBeenCalledWith({
-      participationId: 'participation-1',
-      eventTimeBlockId: 'event-time-block-1',
-      headcountSavesByShift: [
+it('groups chronological Time blocks into Sunday-first weeks in the Church Timezone', () => {
+  renderList(
+    <PrepareEventTimeBlockList
+      ministryId={MINISTRY_ID}
+      cycleId={CYCLE_ID}
+      events={[
         {
-          shiftId: 'shift-1',
-          validHeadcounts: [
-            { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 3 },
+          ...EVENT,
+          eventTimeBlocks: [
+            {
+              ...BLOCK,
+              eventTimeBlock: {
+                ...BLOCK.eventTimeBlock,
+                id: 'later',
+                startTime: '2027-01-10T04:00:00.000Z',
+                endTime: '2027-01-10T05:00:00.000Z',
+              },
+            },
+            BLOCK,
+            {
+              ...BLOCK,
+              eventTimeBlock: {
+                ...BLOCK.eventTimeBlock,
+                id: 'saturday',
+                startTime: '2027-01-10T01:00:00.000Z',
+                endTime: '2027-01-10T02:00:00.000Z',
+              },
+            },
           ],
         },
-      ],
-    });
+      ]}
+    />,
+  );
+  const firstWeek = screen.getByRole('region', {
+    name: m.cycle_review_week({ start: '03/01/2027', end: '09/01/2027' }),
   });
+  const nextWeek = screen.getByRole('region', {
+    name: m.cycle_review_week({ start: '10/01/2027', end: '16/01/2027' }),
+  });
+  expect(
+    within(firstWeek)
+      .getAllByRole('link')
+      .map((link) => link.id),
+  ).toEqual([
+    `event-time-block-${BLOCK.eventTimeBlock.id}`,
+    'event-time-block-saturday',
+  ]);
+  expect(
+    within(nextWeek)
+      .getAllByRole('link')
+      .map((link) => link.id),
+  ).toEqual(['event-time-block-later']);
+});
 
-  it('saves changed headcounts for every shift through one time block action (T045)', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const onSaveHeadcounts = vi.fn();
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        onSaveHeadcounts={onSaveHeadcounts}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '2',
-            manualSpans: [],
-          },
-        }}
-        headcountDrafts={{
-          'shift-1:sector-1:role-1': '3',
-          'shift-2:sector-1:role-1': '2',
-        }}
-        savedHeadcountDrafts={{
-          'shift-1:sector-1:role-1': '1',
-          'shift-2:sector-1:role-1': '1',
-        }}
-        headcountDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
-        events={[
-          makeEventView({}, [
+it('uses singular Shift and person summaries', () => {
+  renderList(
+    <PrepareEventTimeBlockList
+      ministryId={MINISTRY_ID}
+      cycleId={CYCLE_ID}
+      events={[
+        {
+          ...EVENT,
+          eventTimeBlocks: [
             {
-              included: true,
+              ...BLOCK,
               shifts: [
                 {
-                  id: 'shift-1',
-                  participationId: 'participation-1',
-                  eventTimeBlockId: 'event-time-block-1',
-                  startTime: '2026-07-12T09:00:00.000Z',
-                  endTime: '2026-07-12T10:00:00.000Z',
-                  requirements: [],
-                  unavailableMarkCount: 0,
-                  assignmentCount: 0,
-                  flagged: true,
-                },
-                {
-                  id: 'shift-2',
-                  participationId: 'participation-1',
-                  eventTimeBlockId: 'event-time-block-1',
-                  startTime: '2026-07-12T10:00:00.000Z',
-                  endTime: '2026-07-12T11:00:00.000Z',
-                  requirements: [],
-                  unavailableMarkCount: 0,
-                  assignmentCount: 0,
-                  flagged: true,
+                  ...SHIFT,
+                  requirements: [{ ...REQUIREMENT, peopleNeeded: 1 }],
                 },
               ],
             },
-          ]),
-        ]}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(screen.getAllByText('Save people needed')).toHaveLength(1);
-    await user.click(
-      screen.getByTestId('save-headcounts-button-event-time-block-1'),
-    );
-
-    expect(onSaveHeadcounts).toHaveBeenCalledWith({
-      participationId: 'participation-1',
-      eventTimeBlockId: 'event-time-block-1',
-      headcountSavesByShift: [
-        {
-          shiftId: 'shift-1',
-          validHeadcounts: [
-            { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 3 },
           ],
         },
-        {
-          shiftId: 'shift-2',
-          validHeadcounts: [
-            { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 2 },
-          ],
-        },
-      ],
-    });
-  });
-});
-
-describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', () => {
-  const baseEvents = [
-    makeEventView({}, [
-      {
-        included: true,
-        shifts: [
-          {
-            id: 'shift-1',
-            participationId: 'participation-1',
-            eventTimeBlockId: 'event-time-block-1',
-            startTime: '2026-07-12T09:00:00.000Z',
-            endTime: '2026-07-12T11:00:00.000Z',
-            requirements: [],
-            unavailableMarkCount: 0,
-            assignmentCount: 0,
-            flagged: true,
-          },
-        ],
-      },
-    ]),
-  ];
-
-  it.each([
-    ['0', '0'],
-    ['-1', 'negative'],
-    ['1.5', 'non-integer'],
-    ['abc', 'non-numeric'],
-    ['', 'empty'],
-  ])('disables Save and never calls onSaveHeadcounts with a %s (%s) draft value', async (draftValue) => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const onSaveHeadcounts = vi.fn();
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        onSaveHeadcounts={onSaveHeadcounts}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        headcountDrafts={{ 'shift-1:sector-1:role-1': draftValue }}
-        events={baseEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    const saveButton = await screen.findByTestId(
-      'save-headcounts-button-event-time-block-1',
-    );
-    expect(saveButton).toBeDisabled();
-    expect(
-      screen.getByTestId('headcount-save-explanation-event-time-block-1'),
-    ).toBeInTheDocument();
-  });
-
-  it('blocks the time block save when one role is invalid, even if another is valid (T045a)', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [
-        { id: 'role-1', name: 'Greeter' },
-        { id: 'role-2', name: 'Usher' },
-      ],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const onSaveHeadcounts = vi.fn();
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        onSaveHeadcounts={onSaveHeadcounts}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        headcountDrafts={{
-          'shift-1:sector-1:role-1': '2',
-          'shift-1:sector-1:role-2': '0',
-        }}
-        events={baseEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    await screen.findByText('Stage · Greeter');
-    const saveButton = screen.getByTestId(
-      'save-headcounts-button-event-time-block-1',
-    );
-    expect(saveButton).toBeDisabled();
-    expect(
-      screen.getByTestId('headcount-save-explanation-event-time-block-1'),
-    ).toBeInTheDocument();
-    expect(onSaveHeadcounts).not.toHaveBeenCalled();
-  });
-});
-
-describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the leader (bugfix)', () => {
-  const includedEvents = [
-    makeEventView({}, [
-      {
-        included: true,
-        shifts: [
-          {
-            id: 'shift-1',
-            participationId: 'participation-1',
-            eventTimeBlockId: 'event-time-block-1',
-            startTime: '2026-07-12T09:00:00.000Z',
-            endTime: '2026-07-12T11:00:00.000Z',
-            requirements: [],
-            unavailableMarkCount: 0,
-            assignmentCount: 0,
-            flagged: true,
-          },
-        ],
-      },
-    ]),
-  ];
-
-  it('shows a loading message instead of a silent blank while the role catalog is in flight', async () => {
-    let resolveRoles: (() => void) | undefined;
-    getScheduleBuilderData.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveRoles = () =>
-            resolve({
-              roles: [],
-              events: [],
-              availability: [],
-              volunteers: [],
-              sectors: [{ id: 'sector-1', name: 'Stage' }],
-            });
-        }),
-    );
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(
-      await screen.findByTestId('role-catalog-loading-shift-1'),
-    ).toBeInTheDocument();
-    resolveRoles?.();
-  });
-
-  it('shows a retryable error instead of silently rendering zero headcount inputs when the role fetch fails (e.g. a 403)', async () => {
-    getScheduleBuilderData.mockRejectedValue({
-      isAxiosError: true,
-      response: { status: 403 },
-      message: 'Forbidden',
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(
-      await screen.findByTestId('role-catalog-error-shift-1'),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('headcount-input-shift-1:sector-1:role-1'),
-    ).not.toBeInTheDocument();
-  });
-
-  it('retries the role-catalog fetch when Retry is clicked', async () => {
-    getScheduleBuilderData
-      .mockRejectedValueOnce({ isAxiosError: true, message: 'Network Error' })
-      .mockResolvedValue({
-        roles: [{ id: 'role-1', name: 'Greeter' }],
-        events: [],
-        availability: [],
-        volunteers: [],
-        sectors: [{ id: 'sector-1', name: 'Stage' }],
-      });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    await screen.findByTestId('role-catalog-error-shift-1');
-    await user.click(screen.getByRole('button', { name: 'Retry' }));
-
-    expect(await screen.findByText('Stage · Greeter')).toBeInTheDocument();
-  });
-
-  it('shows a distinct empty-state (not a silent blank) when the ministry genuinely has zero roles configured', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(
-      await screen.findByTestId('role-catalog-empty-shift-1'),
-    ).toBeInTheDocument();
-  });
-});
-
-describe('PrepareEventTimeBlockList independent per-time-block unsaved indicators (Iteration 2/T047/FR-023)', () => {
-  const includedEvents = [
-    makeEventView({}, [
-      {
-        included: true,
-        shifts: [
-          {
-            id: 'shift-1',
-            participationId: 'participation-1',
-            eventTimeBlockId: 'event-time-block-1',
-            startTime: '2026-07-12T09:00:00.000Z',
-            endTime: '2026-07-12T11:00:00.000Z',
-            requirements: [],
-            unavailableMarkCount: 0,
-            assignmentCount: 0,
-            flagged: true,
-          },
-        ],
-      },
-    ]),
-  ];
-
-  it('shows the split and headcount unsaved indicators independently — one dirty flag never implies the other', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
-        headcountDirtyEventTimeBlockIds={new Set<string>()}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(
-      screen.getByTestId('split-unsaved-indicator-event-time-block-1'),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('headcount-unsaved-indicator-event-time-block-1'),
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows both indicators together when both are dirty, and both survive a collapse/expand cycle of the same row', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
-        headcountDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(
-      screen.getByTestId('split-unsaved-indicator-event-time-block-1'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('headcount-unsaved-indicator-event-time-block-1'),
-    ).toBeInTheDocument();
-
-    // Collapse then re-expand the row — both indicators must still be
-    // there; they're driven by props from the parent, not row-local state
-    // that a collapse could reset.
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-
-    expect(
-      screen.getByTestId('split-unsaved-indicator-event-time-block-1'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('headcount-unsaved-indicator-event-time-block-1'),
-    ).toBeInTheDocument();
-  });
-
-  it('shows neither indicator when neither is dirty', () => {
-    renderWithProviders(
-      <PrepareEventTimeBlockList {...NO_OP_PROPS} events={includedEvents} />,
-    );
-
-    expect(
-      screen.queryByTestId('split-unsaved-indicator-event-time-block-1'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('headcount-unsaved-indicator-event-time-block-1'),
-    ).not.toBeInTheDocument();
-  });
-});
-
-describe('PrepareEventTimeBlockList exact-string display under a non-UTC ambient TZ (#159)', () => {
-  const ORIGINAL_TZ = process.env.TZ;
-
-  beforeAll(() => {
-    process.env.TZ = 'Pacific/Auckland';
-  });
-
-  afterAll(() => {
-    process.env.TZ = ORIGINAL_TZ;
-  });
-
-  it('renders the EventTimeBlock day header and a Shift time range as exact dd/MM/yyyy / HH:mm strings, driven by the Church Timezone param rather than the ambient TZ', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Greeter' }],
-      events: [],
-      availability: [],
-      volunteers: [],
-      sectors: [{ id: 'sector-1', name: 'Stage' }],
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={{
-          'event-time-block-1': {
-            mode: 'equal',
-            equalCount: '1',
-            manualSpans: [],
-          },
-        }}
-        events={[
-          makeEventView({}, [
-            {
-              included: true,
-              shifts: [
-                {
-                  id: 'shift-1',
-                  participationId: 'participation-1',
-                  eventTimeBlockId: 'event-time-block-1',
-                  // A sub-range of the time block's own 09:00–11:00Z window, so the
-                  // shift's rendered range is distinct from the time block's own.
-                  startTime: '2026-07-12T09:00:00.000Z',
-                  endTime: '2026-07-12T10:00:00.000Z',
-                  requirements: [],
-                  unavailableMarkCount: 0,
-                  assignmentCount: 0,
-                  flagged: true,
-                },
-              ],
-            },
-          ]),
-        ]}
-      />,
-      { churchTimezone: 'America/Sao_Paulo' },
-    );
-
-    expect(
-      await screen.findByTestId('prepare-day-header-2026-07-12'),
-    ).toHaveTextContent('12/07/2026');
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-
-    expect(
-      await screen.findByText('12/07/2026 06:00 – 07:00'),
-    ).toBeInTheDocument();
-  });
-});
-
-describe('PrepareEventTimeBlockList Sector × Role grid (Spec 05a #494)', () => {
-  const includedEvents = [
-    makeEventView({}, [
-      {
-        included: true,
-        shifts: [
-          {
-            id: 'shift-1',
-            participationId: 'participation-1',
-            eventTimeBlockId: 'event-time-block-1',
-            startTime: '2026-07-12T09:00:00.000Z',
-            endTime: '2026-07-12T11:00:00.000Z',
-            requirements: [],
-            unavailableMarkCount: 0,
-            assignmentCount: 0,
-            flagged: true,
-          },
-        ],
-      },
-    ]),
-  ];
-  const splitForms = {
-    'event-time-block-1': {
-      mode: 'equal' as const,
-      equalCount: '1',
-      manualSpans: [],
-    },
-  };
-
-  it('renders one row per Sector and Role and saves each with its Sector', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Teacher' }],
-      sectors: [
-        { id: 'sector-babies', name: 'Babies Room' },
-        { id: 'sector-kids', name: 'Kids Room' },
-      ],
-      events: [],
-      volunteers: [],
-    });
-    const onSaveHeadcounts = vi.fn();
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        onSaveHeadcounts={onSaveHeadcounts}
-        splitForms={splitForms}
-        headcountDrafts={{
-          'shift-1:sector-babies:role-1': '1',
-          'shift-1:sector-kids:role-1': '2',
-        }}
-        headcountDirtyEventTimeBlockIds={new Set(['event-time-block-1'])}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(
-      await screen.findByText('Babies Room · Teacher'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Kids Room · Teacher')).toBeInTheDocument();
-    await user.click(
-      screen.getByTestId('save-headcounts-button-event-time-block-1'),
-    );
-
-    expect(onSaveHeadcounts).toHaveBeenCalledWith({
-      participationId: 'participation-1',
-      eventTimeBlockId: 'event-time-block-1',
-      headcountSavesByShift: [
-        {
-          shiftId: 'shift-1',
-          validHeadcounts: [
-            { sectorId: 'sector-babies', roleId: 'role-1', peopleNeeded: 1 },
-            { sectorId: 'sector-kids', roleId: 'role-1', peopleNeeded: 2 },
-          ],
-        },
-      ],
-    });
-  });
-
-  it('shows the no-Sector empty state and no inputs when the Ministry has no Sector', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Teacher' }],
-      sectors: [],
-      events: [],
-      volunteers: [],
-    });
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={splitForms}
-        events={includedEvents}
-      />,
-    );
-
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    expect(await screen.findByText(m.prepare_no_sectors())).toBeInTheDocument();
-    expect(screen.queryByTestId(/^headcount-input-/)).not.toBeInTheDocument();
-    const shortcut = screen.getByRole('link', {
-      name: new RegExp(m.prepare_set_up_sectors()),
-    });
-    expect(shortcut).toHaveAttribute('href', '/ministries/ministry-1/sectors');
-    expect(shortcut).toHaveAttribute('target', '_blank');
-  });
-
-  it('refetches the Sector choices when the page regains focus after setup in another tab', async () => {
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Teacher' }],
-      sectors: [],
-      events: [],
-      volunteers: [],
-    });
-    const user = userEvent.setup();
-    renderWithProviders(
-      <PrepareEventTimeBlockList
-        {...NO_OP_PROPS}
-        splitForms={splitForms}
-        events={includedEvents}
-      />,
-    );
-    await user.click(
-      screen.getByTestId('toggle-event-time-block-expand-event-time-block-1'),
-    );
-    await screen.findByText(m.prepare_no_sectors());
-    getScheduleBuilderData.mockResolvedValue({
-      roles: [{ id: 'role-1', name: 'Teacher' }],
-      sectors: [{ id: 'sector-babies', name: 'Babies Room' }],
-      events: [],
-      volunteers: [],
-    });
-
-    act(() => {
-      focusManager.setFocused(false);
-      focusManager.setFocused(true);
-    });
-
-    await waitFor(() =>
-      expect(
-        screen.queryByText(m.prepare_no_sectors()),
-      ).not.toBeInTheDocument(),
-    );
-    focusManager.setFocused(undefined);
-  });
+      ]}
+    />,
+  );
+  expect(
+    screen.getByTestId(
+      `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
+    ),
+  ).toHaveTextContent(
+    m.prepare_row_summary({
+      shifts: m.usual_setup_shift_count_one(),
+      people: m.prepare_people_count_one(),
+    }),
+  );
 });

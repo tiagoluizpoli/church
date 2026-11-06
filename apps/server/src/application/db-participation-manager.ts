@@ -149,6 +149,7 @@ interface ApplyPreparationGraphInput extends PreparationTarget {
 }
 
 interface ApplyShiftChangeInput extends PreparationTarget {
+  updateLabels: boolean;
   desiredShifts: Shift[];
   change: ShiftChange;
 }
@@ -1085,7 +1086,12 @@ export class DbParticipationManager implements IParticipationManager {
       tx,
     });
 
-    await this.applyShiftChange({ ...target, desiredShifts, change });
+    await this.applyShiftChange({
+      ...target,
+      desiredShifts,
+      change,
+      updateLabels: shiftSplit.kind === 'manual',
+    });
     await this.participationRepository.addInclusion({
       churchId,
       participationId: participation.id,
@@ -1112,6 +1118,7 @@ export class DbParticipationManager implements IParticipationManager {
   private async applyShiftChange({
     churchId,
     desiredShifts,
+    updateLabels,
     change: { shifts, added, removed },
     tx,
   }: ApplyShiftChangeInput): Promise<void> {
@@ -1119,6 +1126,8 @@ export class DbParticipationManager implements IParticipationManager {
       await this.shiftRepository.deleteById({ churchId, shiftId, tx });
     }
     await this.shiftRepository.createMany({ churchId, shifts: added, tx });
+    // Equal splits cannot express labels; only the manual editor can change them.
+    if (!updateLabels) return;
     for (const [index, shift] of shifts.entries()) {
       const label = desiredShifts[index]?.label;
       if (added.includes(shift) || shift.label === label) continue;

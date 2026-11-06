@@ -494,7 +494,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       expect(await blockInclusions(other.id)).toHaveLength(1);
     });
 
-    it('keeps Shift and requirement ids and notes when only headcounts change', async () => {
+    it('keeps Shift labels, ids and requirement notes when only headcounts change', async () => {
       const base = await seedPreparation();
       const { shift: kept, requirement } = await seedBlockShift({ base });
       await db
@@ -509,7 +509,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
       expect(response.statusCode).toBe(200);
       expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
-        { id: kept.id },
+        { id: kept.id, label: 'Whole block' },
       ]);
       expect(await shiftRequirements(kept.id)).toEqual([
         expect.objectContaining({
@@ -551,7 +551,10 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       expect(requirements[0]?.id).not.toBe(requirement.id);
     });
 
-    it('updates a label without replacing the Shift', async () => {
+    it.each([
+      ['Renamed', 'Renamed'],
+      [undefined, null],
+    ])('sets manual label %s without replacing the Shift', async (label, expectedLabel) => {
       const base = await seedPreparation();
       const { shift: kept } = await seedBlockShift({ base });
 
@@ -561,9 +564,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
           serves: true,
           shiftSplit: {
             kind: 'manual',
-            spans: [
-              { startTime: BLOCK_START, endTime: BLOCK_END, label: 'Renamed' },
-            ],
+            spans: [{ startTime: BLOCK_START, endTime: BLOCK_END, label }],
           },
           headcounts: [headcountOf(base)],
         },
@@ -571,7 +572,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
       expect(response.statusCode).toBe(200);
       expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
-        { id: kept.id, label: 'Renamed' },
+        { id: kept.id, label: expectedLabel },
       ]);
     });
 

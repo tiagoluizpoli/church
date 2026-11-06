@@ -21,6 +21,7 @@ import {
 } from '../../domain/entities/ministry-participation';
 import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
+import { VALIDATION_REASONS } from '../../domain/errors/validation-rule-error';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -163,6 +164,14 @@ export const savePreparationBodySchema = z.object({
   headcounts: z.array(preparationHeadcountSchema).optional(),
 });
 export type SavePreparationBody = z.infer<typeof savePreparationBodySchema>;
+
+/** A 422: a named rule's `reason`, or the body schema's field-aware `issues`. */
+export const preparationValidationErrorResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  reason: z.enum(VALIDATION_REASONS).optional(),
+  issues: z.array(z.unknown()).optional(),
+});
 
 export const shiftListResponseSchema = z.object({
   shifts: z.array(shiftResponseSchema),

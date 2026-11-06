@@ -5975,6 +5975,21 @@ paths:
                   - requirements
                   - shiftsChangedAfterAsk
                 additionalProperties: false
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "401":
           description: Default Response
           content:
@@ -6016,6 +6031,54 @@ paths:
                     type: string
                   message:
                     type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                  issues:
+                    type: array
+                    items: {}
                 required:
                   - error
                   - message

@@ -803,7 +803,10 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       const response = await savePreparation({ ...base, payload });
 
       expect(response.statusCode).toBe(422);
-      expect(response.json()).toMatchObject({ error: 'VALIDATION_ERROR' });
+      expect(response.json()).toMatchObject({
+        error: 'VALIDATION_ERROR',
+        issues: expect.any(Array),
+      });
     });
 
     it('refuses a duplicate (Shift, Sector, Role) pair', async () => {

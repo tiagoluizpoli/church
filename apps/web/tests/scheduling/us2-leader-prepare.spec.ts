@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
@@ -23,7 +24,6 @@ interface TemplateResponse extends IdResponse {
 
 interface ParticipationSummaryResponse {
   id: string;
-  state: string;
 }
 
 interface EventTimeBlockSummaryResponse {
@@ -44,7 +44,7 @@ interface ParticipationResponse {
   events: ParticipationEventResponse[];
 }
 
-test('leader prepares participation, splits shifts, sets headcounts, and requests availability', async ({
+test('leader prepares one Time block and sees its saved Schedule summary', async ({
   page,
 }, testInfo) => {
   // The journey owns its Church, Ministry and usual setup: no other
@@ -127,12 +127,18 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
   );
   expect(sendResponse.ok()).toBeTruthy();
 
-  await page.goto(assignPreparePath({ ministryId, cycleId: cycleBody.id }));
+  await page.goto('/schedules');
+  await expect(
+    page.getByRole('heading', {
+      name: m.schedules_title({}, { locale: 'pt-BR' }),
+    }),
+  ).toBeVisible();
+  const schedulePath = assignPreparePath({ ministryId, cycleId: cycleBody.id });
+  await page.locator(`a[href="${schedulePath}"]`).click();
+  await expect(page).toHaveURL(schedulePath);
 
-  // The workspace groups time blocks by day and keys every control off real
-  // time block/participation ids, not event/shift array positions — fetch the
-  // same data the page renders from so locators match real ids instead of
-  // guessing at row order or display text.
+  // Discover the generated Time block ids through the same participation
+  // read the page uses, without depending on calendar row order.
   const participationResponse = await page.request.get(
     `${SERVER_URL}/api/v1/prepare/cycles/${cycleBody.id}/participation`,
     { params: { ministryId } },
@@ -159,85 +165,101 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
     throw new Error('Expected Welcome/Message/Prayer time blocks not found');
   }
 
-  const welcomeRow = page.getByTestId(
-    `prepare-event-time-block-row-${welcomeEventTimeBlock.eventTimeBlock.id}`,
+  // Rows have stable DOM ids, also used by the Save return anchor.
+  const welcomeId = welcomeEventTimeBlock.eventTimeBlock.id;
+  const welcomeRow = page.locator(`#event-time-block-${welcomeId}`);
+  const messageRow = page.locator(
+    `#event-time-block-${messageEventTimeBlock.eventTimeBlock.id}`,
   );
-  const messageRow = page.getByTestId(
-    `prepare-event-time-block-row-${messageEventTimeBlock.eventTimeBlock.id}`,
+  const prayerRow = page.locator(
+    `#event-time-block-${prayerEventTimeBlock.eventTimeBlock.id}`,
   );
-  const prayerRow = page.getByTestId(
-    `prepare-event-time-block-row-${prayerEventTimeBlock.eventTimeBlock.id}`,
+  await expect(welcomeRow).toBeVisible();
+  const initialSummary = m.prepare_row_summary(
+    {
+      shifts: m.usual_setup_shift_count_one({}, { locale: 'pt-BR' }),
+      people: m.prepare_people_count_one({}, { locale: 'pt-BR' }),
+    },
+    { locale: 'pt-BR' },
+  );
+  await expect(welcomeRow).toContainText(initialSummary);
+  await expect(messageRow).toContainText(initialSummary);
+  await expect(prayerRow).toContainText(
+    m.prepare_not_served({}, { locale: 'pt-BR' }),
   );
 
+  await welcomeRow.click();
+  const blockPath = `${schedulePath}/slots/${welcomeId}`;
+  await expect(page).toHaveURL(blockPath);
+  // Direct navigation must load the same saved block without list-page state.
+  await page.reload();
   await expect(
-    welcomeRow.getByTestId(
-      `serving-toggle-${welcomeEventTimeBlock.eventTimeBlock.id}`,
-    ),
+    page.getByRole('checkbox', {
+      name: m.usual_setup_serves_label({}, { locale: 'pt-BR' }),
+    }),
   ).toBeChecked();
-  await expect(
-    messageRow.getByTestId(
-      `serving-toggle-${messageEventTimeBlock.eventTimeBlock.id}`,
+  await page
+    .getByRole('radio', {
+      name: m.shift_split_mode_equal({}, { locale: 'pt-BR' }),
+    })
+    .check();
+  await page
+    .getByLabel(m.shift_split_equal_count({}, { locale: 'pt-BR' }))
+    .fill('2');
+
+  const { roles, sectors } = journey.ministries.worship;
+  const firstHeadcount = page.getByRole('spinbutton', {
+    name: m.headcount_grid_cell_label(
+      {
+        role: roles.usher.name,
+        sector: sectors.stage.name,
+        shift: m.usual_setup_shift_label({ number: 1 }, { locale: 'pt-BR' }),
+      },
+      { locale: 'pt-BR' },
     ),
-  ).toBeChecked();
-  await expect(
-    prayerRow.getByTestId(
-      `serving-toggle-${prayerEventTimeBlock.eventTimeBlock.id}`,
+    exact: true,
+  });
+  const secondHeadcount = page.getByRole('spinbutton', {
+    name: m.headcount_grid_cell_label(
+      {
+        role: roles.usher.name,
+        sector: sectors.stage.name,
+        shift: m.usual_setup_shift_label({ number: 2 }, { locale: 'pt-BR' }),
+      },
+      { locale: 'pt-BR' },
     ),
-  ).not.toBeChecked();
-
-  await welcomeRow
-    .getByTestId(
-      `toggle-event-time-block-expand-${welcomeEventTimeBlock.eventTimeBlock.id}`,
-    )
-    .click();
-  const welcomeEditor = welcomeRow.getByTestId(
-    `prepare-event-time-block-editor-${welcomeEventTimeBlock.eventTimeBlock.id}`,
-  );
-  // `equal-split-count`/`shift-mode-select` are keyed by a constant local
-  // index (one editor per row, always index 0), not the time block id — scoping
-  // to `welcomeEditor` disambiguates them from every other expanded row's
-  // editor on the page. A time block starts in "single shift" mode regardless of
-  // the usual setup's suggested split — the leader must explicitly
-  // switch to "Equal split" before the count field appears.
-  await welcomeEditor.getByTestId('shift-mode-select-0').click();
-  await page.getByRole('option', { name: 'Equal split' }).click();
-  await welcomeEditor.getByTestId('equal-split-count-0').fill('2');
-  await welcomeRow
-    .getByTestId(`save-split-button-${welcomeEventTimeBlock.eventTimeBlock.id}`)
+    exact: true,
+  });
+  await firstHeadcount.fill('2');
+  await secondHeadcount.fill('1');
+  await page
+    .getByRole('button', {
+      name: m.usual_setup_save({}, { locale: 'pt-BR' }),
+      exact: true,
+    })
     .click();
 
-  const shiftRows = welcomeEditor.locator(
-    '[data-testid^="participation-shift-row-"]',
+  await expect(page).toHaveURL(`${schedulePath}#event-time-block-${welcomeId}`);
+  const savedSummary = m.prepare_row_summary(
+    {
+      shifts: m.usual_setup_shift_count_other(
+        { count: 2 },
+        { locale: 'pt-BR' },
+      ),
+      people: m.prepare_people_count_other({ count: 3 }, { locale: 'pt-BR' }),
+    },
+    { locale: 'pt-BR' },
   );
-  await expect(shiftRows).toHaveCount(2);
-
-  // The role catalog can list more roles than the usual setup set a
-  // headcount for — the editor requires a value for every listed role
-  // before "Save people needed" enables, so fill all of them per shift.
-  const firstShiftInputs = shiftRows
-    .nth(0)
-    .locator('[data-testid^="headcount-input-"]');
-  const secondShiftInputs = shiftRows
-    .nth(1)
-    .locator('[data-testid^="headcount-input-"]');
-  const firstShiftInputCount = await firstShiftInputs.count();
-  for (let i = 0; i < firstShiftInputCount; i++) {
-    await firstShiftInputs.nth(i).fill('2');
-  }
-  const secondShiftInputCount = await secondShiftInputs.count();
-  for (let i = 0; i < secondShiftInputCount; i++) {
-    await secondShiftInputs.nth(i).fill('1');
-  }
-  await welcomeRow
-    .getByTestId(
-      `save-headcounts-button-${welcomeEventTimeBlock.eventTimeBlock.id}`,
-    )
-    .click();
-
-  await page.getByTestId('save-and-ask-availability-button').click();
-  await page.getByTestId('prepare-send-confirm').click();
-
-  await expect(welcomeRow.getByTestId('participation-state-badge')).toHaveText(
-    'Availability requested',
+  await expect(welcomeRow).toContainText(savedSummary);
+  await expect(welcomeRow).toBeInViewport();
+  // A reload proves the summary comes from the persisted slot save.
+  await page.reload();
+  await expect(welcomeRow).toContainText(savedSummary);
+  await expect(messageRow).toContainText(initialSummary);
+  await expect(prayerRow).toContainText(
+    m.prepare_not_served({}, { locale: 'pt-BR' }),
   );
+  await welcomeRow.click();
+  await expect(firstHeadcount).toHaveValue('2');
+  await expect(secondHeadcount).toHaveValue('1');
 });

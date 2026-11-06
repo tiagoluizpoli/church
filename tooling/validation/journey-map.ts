@@ -174,8 +174,6 @@ const AVAILABILITY_STATUS_SPEC_PATHS = [
 const PREPARE_ROUTE_FILES = [
   'schedules.tsx',
   'schedules/index.tsx',
-  'schedules/$ministryId.tsx',
-  'schedules/$ministryId/index.tsx',
   'schedules/$ministryId/$cycleId/index.tsx',
 ].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
 
@@ -376,10 +374,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // Listed per file so the sibling `$cycleId/assign.tsx` board is not swept in
   // by a bare `schedules` prefix.
   ...PREPARE_ROUTE_FILES.map((sourcePathPrefix) => ({
-    // Leader-prepare journey (#215): prepare participation, split
-    // shifts, headcounts, and firing Availability — proven end to end by
-    // us2-leader-prepare.spec.ts, the only spec that drives the prepare
-    // routes, feature components, and its dedicated API client.
+    // #729: us2 drives the scoped Schedules list and Schedule page before
+    // opening a nested Time block editor; asking belongs to Spec 22.
     sourcePathPrefix,
     specPaths: [
       'tests/scheduling/us2-leader-prepare.spec.ts',
@@ -387,6 +383,17 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       // positive control both load this bare index route directly.
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
+  })),
+  ...[
+    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId.tsx',
+    'apps/web/src/features/scheduling/hooks/use-preparation-block-breadcrumbs.ts',
+    'apps/web/src/features/scheduling/components/headcount-grid/',
+    'apps/web/src/features/scheduling/components/shift-split-editor/',
+  ].map((sourcePathPrefix) => ({
+    // #729: nested-page load, shared split/grid controls, transactional Save
+    // and the refreshed row summary are exercised against the real API/DB.
+    sourcePathPrefix,
+    specPaths: ['tests/scheduling/us2-leader-prepare.spec.ts'],
   })),
   {
     // J5 reaches this one-Ministry Prepare route from the N2 bell action.

@@ -462,10 +462,21 @@ export function AppShell({
   const breadcrumbs: BreadcrumbItemModel[] = [
     { label: m.nav_home(), to: '/', isLast: pathSegments.length === 0 },
     ...pathSegments.flatMap((segment, index) => {
-      const label = resolveBreadcrumbLabel({
+      // A Schedule is Ministry × Cycle; the Ministry has no intermediate page.
+      const isSchedulePath = pathSegments[0] === 'schedules';
+      if (isSchedulePath && index === 1) return [];
+      const segmentLabel = resolveBreadcrumbLabel({
         segment,
         overridesBySegment,
       });
+      const ministrySegment = pathSegments[1];
+      const ministryLabel = ministrySegment
+        ? overridesBySegment.get(ministrySegment)
+        : null;
+      const label =
+        isSchedulePath && index === 2 && ministryLabel && segmentLabel
+          ? `${ministryLabel} · ${segmentLabel}`
+          : segmentLabel;
 
       if (label === null) {
         return [];

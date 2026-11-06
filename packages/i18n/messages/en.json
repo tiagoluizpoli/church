@@ -893,5 +893,21 @@
   "date_picker_placeholder": "Pick a date",
   "date_picker_clear": "Clear date",
   "time_of_day_pick_common": "Pick a common time",
-  "time_of_day_common_times": "Common times"
+  "time_of_day_common_times": "Common times",
+  "schedules_title": "Schedules",
+  "schedules_description": "Prepare your Ministries’ sent Cycles.",
+  "schedules_empty": "No cycles sent to your Ministries yet.",
+  "schedules_filter": "Ministry",
+  "schedules_all_ministries": "All Ministries",
+  "schedules_loading": "Loading Schedules…",
+  "schedules_error": "Could not load Schedules. Try again.",
+  "schedules_retry": "Retry",
+  "schedules_past": "Past",
+  "schedules_to_prepare": "To prepare",
+  "schedules_asking": "Asking ({confirmed}/{asked} confirmed)",
+  "schedules_assigning": "Assigning",
+  "schedules_published": "Published",
+  "schedules_not_serving": "Not serving this cycle",
+  "schedules_back": "All Schedules",
+  "schedules_asking_stage": "Asking"
 }

@@ -893,5 +893,21 @@
   "date_picker_placeholder": "Escolha uma data",
   "date_picker_clear": "Limpar data",
   "time_of_day_pick_common": "Escolher um horário comum",
-  "time_of_day_common_times": "Horários comuns"
+  "time_of_day_common_times": "Horários comuns",
+  "schedules_title": "Escalas dos ministérios",
+  "schedules_description": "Prepare os Ciclos enviados aos seus Ministérios.",
+  "schedules_empty": "Nenhum Ciclo enviado aos seus Ministérios ainda.",
+  "schedules_filter": "Ministério",
+  "schedules_all_ministries": "Todos os Ministérios",
+  "schedules_loading": "Carregando Escalas dos ministérios…",
+  "schedules_error": "Não foi possível carregar as Escalas dos ministérios. Tente novamente.",
+  "schedules_retry": "Tentar novamente",
+  "schedules_past": "Passados",
+  "schedules_to_prepare": "A preparar",
+  "schedules_asking": "Consultando ({confirmed}/{asked} confirmados)",
+  "schedules_assigning": "Escalando",
+  "schedules_published": "Publicada",
+  "schedules_not_serving": "Não serve neste Ciclo",
+  "schedules_back": "Todas as Escalas dos ministérios",
+  "schedules_asking_stage": "Consultando"
 }

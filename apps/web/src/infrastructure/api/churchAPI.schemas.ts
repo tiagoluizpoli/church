@@ -2492,6 +2492,11 @@ export type SaveEventTimeBlockPreparation200 = {
   shiftsChangedAfterAsk: boolean;
 };
 
+export type SaveEventTimeBlockPreparation400 = {
+  error: string;
+  message: string;
+};
+
 export type SaveEventTimeBlockPreparation401 = {
   error: string;
   message: string;
@@ -2505,6 +2510,36 @@ export type SaveEventTimeBlockPreparation403 = {
 export type SaveEventTimeBlockPreparation404 = {
   error: string;
   message: string;
+};
+
+export type SaveEventTimeBlockPreparation409 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation422Reason = typeof SaveEventTimeBlockPreparation422Reason[keyof typeof SaveEventTimeBlockPreparation422Reason];
+
+
+export const SaveEventTimeBlockPreparation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+} as const;
+
+export type SaveEventTimeBlockPreparation422 = {
+  error: string;
+  message: string;
+  reason?: SaveEventTimeBlockPreparation422Reason;
+  issues?: unknown[];
 };
 
 export type SetParticipationInclusionsBody = {

@@ -9,7 +9,6 @@ import {
   MinistryParticipationId,
   RoleId,
   SectorId,
-  ShiftId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -32,17 +31,9 @@ import {
   savePreparationBodySchema,
   scheduleListResponseSchema,
   scheduleSummaryListResponseSchema,
-  setInclusionsBodySchema,
   shiftHasResponsesResponseSchema,
-  shiftListResponseSchema,
-  shiftRequirementBodySchema,
-  shiftRequirementResponseSchema,
-  shiftResponseSchema,
-  splitShiftsBodySchema,
-  updateShiftBodySchema,
 } from '../dtos/participation.dto';
 import { refuse } from '../utils/refuse';
-import { optionalDateFromInstantString } from '../utils/request-time';
 
 interface CycleParticipationRouteParams {
   cycleId: string;
@@ -65,20 +56,10 @@ interface ParticipationEventTimeBlockRouteParams {
   eventTimeBlockId: string;
 }
 
-interface ShiftRouteParams {
-  shiftId: string;
-}
-
 interface DenyParticipationScopeInput {
   request: FastifyRequest;
   reply: FastifyReply;
   participationId: string;
-}
-
-interface DenyShiftScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  shiftId: string;
 }
 
 interface DenyAuthorityDecisionInput {
@@ -86,11 +67,6 @@ interface DenyAuthorityDecisionInput {
   reply: FastifyReply;
   allowed: boolean;
 }
-
-type SplitShiftsBody = z.infer<typeof splitShiftsBodySchema>;
-type SetInclusionsBody = z.infer<typeof setInclusionsBodySchema>;
-type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
-type ShiftRequirementBody = z.infer<typeof shiftRequirementBodySchema>;
 
 const cycleParticipationQuerySchema = z.object({
   ministryId: z.string(),
@@ -324,180 +300,6 @@ export class PrepareController implements FastifyController {
       },
     );
 
-    app.put(
-      '/participations/:participationId/inclusions',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'setParticipationInclusions',
-          summary: "Set a MinistryParticipation's included EventTimeBlocks",
-          description:
-            'Replace the set of EventTimeBlocks a Ministry is opted into for a MinistryParticipation.',
-          body: setInclusionsBodySchema,
-          response: {
-            204: z.null(),
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const body = request.body as SetInclusionsBody;
-        await this.participationManager.setInclusions({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-          eventTimeBlockIds: body.eventTimeBlockIds.map(EventTimeBlockId.from),
-        });
-        return reply.status(204).send();
-      },
-    );
-
-    app.post(
-      '/participations/:participationId/event-time-blocks/:eventTimeBlockId/shifts',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'splitParticipationShifts',
-          summary: 'Split a EventTimeBlock into Shifts',
-          description:
-            "Split a MinistryParticipation's EventTimeBlock into Shifts, either into equal parts or by manually-set spans.",
-          body: splitShiftsBodySchema,
-          response: {
-            201: shiftListResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId, eventTimeBlockId } =
-          request.params as ParticipationEventTimeBlockRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const body = request.body as SplitShiftsBody;
-        const shifts = await this.participationManager.splitShifts({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-          eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-          strategy: toSplitStrategy({ body }),
-        });
-        return reply
-          .status(201)
-          .send(participationMapper.shiftListToResponse(shifts));
-      },
-    );
-
-    app.patch(
-      '/shifts/:shiftId',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'updateShift',
-          summary: 'Update a Shift',
-          description: "Update a Shift's bounds or label.",
-          body: updateShiftBodySchema,
-          response: {
-            200: shiftResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
-
-        const body = request.body as UpdateShiftBody;
-        const shift = await this.participationManager.updateShift({
-          churchId: ChurchId.from(request.churchId),
-          shiftId: ShiftId.from(shiftId),
-          startTime: optionalDateFromInstantString({ value: body.startTime }),
-          endTime: optionalDateFromInstantString({ value: body.endTime }),
-          label: body.label,
-        });
-        return reply.send(participationMapper.shiftToResponse(shift));
-      },
-    );
-
-    app.delete(
-      '/shifts/:shiftId',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'deleteShift',
-          summary: 'Delete a Shift',
-          description: 'Delete a Shift from its MinistryParticipation.',
-          response: {
-            204: z.null(),
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
-
-        await this.participationManager.deleteShift({
-          churchId: ChurchId.from(request.churchId),
-          shiftId: ShiftId.from(shiftId),
-        });
-        return reply.status(204).send();
-      },
-    );
-
-    app.put(
-      '/shifts/:shiftId/requirements',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'upsertShiftRequirement',
-          summary: 'Set a Shift staffing requirement',
-          description:
-            'Set the ShiftRequirement headcount for a Sector and Role within a Shift.',
-          body: shiftRequirementBodySchema,
-          response: {
-            200: shiftRequirementResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
-
-        const body = request.body as ShiftRequirementBody;
-        const requirement = await this.participationManager.upsertRequirement({
-          churchId: ChurchId.from(request.churchId),
-          shiftId: ShiftId.from(shiftId),
-          sectorId: SectorId.from(body.sectorId),
-          roleId: RoleId.from(body.roleId),
-          peopleNeeded: body.peopleNeeded,
-          notes: body.notes,
-        });
-        return reply.send(
-          participationMapper.requirementToResponse(requirement),
-        );
-      },
-    );
-
     app.post(
       '/participations/:participationId/ask-availability',
       {
@@ -683,24 +485,6 @@ export class PrepareController implements FastifyController {
     });
   }
 
-  private async denyShiftScope({
-    request,
-    reply,
-    shiftId,
-  }: DenyShiftScopeInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageShift({
-      churchId: ChurchId.from(request.churchId),
-      shiftId: ShiftId.from(shiftId),
-      userId: UserId.from(request.userId),
-    });
-
-    return this.denyAuthorityDecision({
-      request,
-      reply,
-      allowed: decision.allowed,
-    });
-  }
-
   private async denyAuthorityDecision({
     request,
     reply,
@@ -730,21 +514,9 @@ function toPreparationSplit({
   if (shiftSplit.kind === 'equal') {
     return { kind: 'equal-n', n: shiftSplit.count };
   }
-  return toSplitStrategy({ body: { strategy: shiftSplit } });
-}
-
-interface ToSplitStrategyInput {
-  body: SplitShiftsBody;
-}
-
-function toSplitStrategy({ body }: ToSplitStrategyInput): ShiftSplitStrategy {
-  if (body.strategy.kind === 'equal-n') {
-    return { kind: 'equal-n', n: body.strategy.n };
-  }
-
   return {
     kind: 'manual',
-    spans: body.strategy.spans.map((span) => ({
+    spans: shiftSplit.spans.map((span) => ({
       startTime: parseInstant({ value: span.startTime }),
       endTime: parseInstant({ value: span.endTime }),
       label: span.label,

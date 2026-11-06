@@ -6,7 +6,6 @@
  */
 import type {
   AskAvailability202,
-  DeleteShift204,
   GetAvailabilityStatus200,
   GetCycleAvailabilityStatus200,
   GetCycleAvailabilityStatusParams,
@@ -16,15 +15,7 @@ import type {
   ListSchedules200,
   ResendAvailabilityReminder202,
   SaveEventTimeBlockPreparation200,
-  SaveEventTimeBlockPreparationBody,
-  SetParticipationInclusions204,
-  SetParticipationInclusionsBody,
-  SplitParticipationShifts201,
-  SplitParticipationShiftsBody,
-  UpdateShift200,
-  UpdateShiftBody,
-  UpsertShiftRequirement200,
-  UpsertShiftRequirementBody
+  SaveEventTimeBlockPreparationBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -88,79 +79,6 @@ const saveEventTimeBlockPreparation = (
       );
     }
   /**
- * Replace the set of EventTimeBlocks a Ministry is opted into for a MinistryParticipation.
- * @summary Set a MinistryParticipation's included EventTimeBlocks
- */
-const setParticipationInclusions = (
-    participationId: string,
-    setParticipationInclusionsBody: SetParticipationInclusionsBody,
- ) => {
-      return apiClient<SetParticipationInclusions204>(
-      {url: `/api/v1/prepare/participations/${participationId}/inclusions`, method: 'PUT',
-      headers: {'Content-Type': 'application/json', },
-      data: setParticipationInclusionsBody
-    },
-      );
-    }
-  /**
- * Split a MinistryParticipation's EventTimeBlock into Shifts, either into equal parts or by manually-set spans.
- * @summary Split a EventTimeBlock into Shifts
- */
-const splitParticipationShifts = (
-    participationId: string,
-    eventTimeBlockId: string,
-    splitParticipationShiftsBody: SplitParticipationShiftsBody,
- ) => {
-      return apiClient<SplitParticipationShifts201>(
-      {url: `/api/v1/prepare/participations/${participationId}/event-time-blocks/${eventTimeBlockId}/shifts`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: splitParticipationShiftsBody
-    },
-      );
-    }
-  /**
- * Update a Shift's bounds or label.
- * @summary Update a Shift
- */
-const updateShift = (
-    shiftId: string,
-    updateShiftBody: UpdateShiftBody,
- ) => {
-      return apiClient<UpdateShift200>(
-      {url: `/api/v1/prepare/shifts/${shiftId}`, method: 'PATCH',
-      headers: {'Content-Type': 'application/json', },
-      data: updateShiftBody
-    },
-      );
-    }
-  /**
- * Delete a Shift from its MinistryParticipation.
- * @summary Delete a Shift
- */
-const deleteShift = (
-    shiftId: string,
- ) => {
-      return apiClient<DeleteShift204>(
-      {url: `/api/v1/prepare/shifts/${shiftId}`, method: 'DELETE'
-    },
-      );
-    }
-  /**
- * Set the ShiftRequirement headcount for a Sector and Role within a Shift.
- * @summary Set a Shift staffing requirement
- */
-const upsertShiftRequirement = (
-    shiftId: string,
-    upsertShiftRequirementBody: UpsertShiftRequirementBody,
- ) => {
-      return apiClient<UpsertShiftRequirement200>(
-      {url: `/api/v1/prepare/shifts/${shiftId}/requirements`, method: 'PUT',
-      headers: {'Content-Type': 'application/json', },
-      data: upsertShiftRequirementBody
-    },
-      );
-    }
-  /**
  * Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.
  * @summary Ask availability for a MinistryParticipation
  */
@@ -210,16 +128,11 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {listSchedules,getCycleParticipation,listScheduleSummaries,saveEventTimeBlockPreparation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,listScheduleSummaries,saveEventTimeBlockPreparation,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SaveEventTimeBlockPreparationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['saveEventTimeBlockPreparation']>>>
-export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['setParticipationInclusions']>>>
-export type SplitParticipationShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['splitParticipationShifts']>>>
-export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['updateShift']>>>
-export type DeleteShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['deleteShift']>>>
-export type UpsertShiftRequirementResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['upsertShiftRequirement']>>>
 export type AskAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askAvailability']>>>
 export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleAvailabilityStatus']>>>
 export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAvailabilityStatus']>>>

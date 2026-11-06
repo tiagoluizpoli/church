@@ -7,7 +7,6 @@ import type {
   MinistryId,
   MinistryParticipationId,
   RoleId,
-  SectorId,
   ShiftId,
   TemplateTimeBlockId,
   UserId,
@@ -138,41 +137,6 @@ export interface PublishCycleView {
   participations: PublishCycleParticipationOutcome[];
 }
 
-export interface SetInclusionsInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-  eventTimeBlockIds: EventTimeBlockId[];
-}
-
-export interface SplitShiftsManagerInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-  eventTimeBlockId: EventTimeBlockId;
-  strategy: ShiftSplitStrategy;
-}
-
-export interface UpdateShiftManagerInput {
-  churchId: ChurchId;
-  shiftId: ShiftId;
-  startTime?: Date;
-  endTime?: Date;
-  label?: string;
-}
-
-export interface DeleteShiftManagerInput {
-  churchId: ChurchId;
-  shiftId: ShiftId;
-}
-
-export interface UpsertRequirementManagerInput {
-  churchId: ChurchId;
-  shiftId: ShiftId;
-  sectorId: SectorId;
-  roleId: RoleId;
-  peopleNeeded: number;
-  notes?: string;
-}
-
 export interface ListUsualSetupBlocksInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -293,13 +257,6 @@ export interface IParticipationManager {
   getCycleBuilderData(
     input: GetCycleBuilderDataInput,
   ): Promise<CycleBuilderView>;
-  setInclusions(input: SetInclusionsInput): Promise<void>;
-  splitShifts(input: SplitShiftsManagerInput): Promise<Shift[]>;
-  updateShift(input: UpdateShiftManagerInput): Promise<Shift>;
-  deleteShift(input: DeleteShiftManagerInput): Promise<void>;
-  upsertRequirement(
-    input: UpsertRequirementManagerInput,
-  ): Promise<ShiftRequirement>;
   /** Applies one block's desired state atomically, leaving other blocks untouched. */
   savePreparation(
     input: SavePreparationInput,

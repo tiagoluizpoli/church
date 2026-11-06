@@ -18,7 +18,6 @@ import {
   isNull,
   min,
   ne,
-  notInArray,
   sql,
 } from 'drizzle-orm';
 import type {
@@ -37,7 +36,6 @@ import type {
   LockParticipationInput,
   MinistryParticipationRepository,
   RemoveInclusionInput,
-  ReplaceInclusionsInput,
   ScheduleCheckCountRow,
   ScheduleServingStateRow,
   ScheduleSummaryRow,
@@ -372,79 +370,6 @@ export class DrizzleMinistryParticipationRepository
       );
 
     return rows.map(mapParticipationEventTimeBlockInclusion);
-  }
-
-  async replaceInclusions(input: ReplaceInclusionsInput): Promise<void> {
-    const db = getClient({ db: this.db, tx: input.tx });
-
-    if (input.eventTimeBlockIds.length === 0) {
-      await db.delete(participationEventTimeBlockInclusion).where(
-        and(
-          eq(
-            participationEventTimeBlockInclusion.participationId,
-            input.participationId,
-          ),
-          withChurchIsolation({
-            table: participationEventTimeBlockInclusion,
-            churchId: input.churchId,
-          }),
-        ),
-      );
-      return;
-    }
-
-    await db.delete(participationEventTimeBlockInclusion).where(
-      and(
-        eq(
-          participationEventTimeBlockInclusion.participationId,
-          input.participationId,
-        ),
-        withChurchIsolation({
-          table: participationEventTimeBlockInclusion,
-          churchId: input.churchId,
-        }),
-        notInArray(
-          participationEventTimeBlockInclusion.eventTimeBlockId,
-          input.eventTimeBlockIds,
-        ),
-      ),
-    );
-
-    const existing = await db
-      .select({
-        eventTimeBlockId: participationEventTimeBlockInclusion.eventTimeBlockId,
-      })
-      .from(participationEventTimeBlockInclusion)
-      .where(
-        and(
-          eq(
-            participationEventTimeBlockInclusion.participationId,
-            input.participationId,
-          ),
-          withChurchIsolation({
-            table: participationEventTimeBlockInclusion,
-            churchId: input.churchId,
-          }),
-          inArray(
-            participationEventTimeBlockInclusion.eventTimeBlockId,
-            input.eventTimeBlockIds,
-          ),
-        ),
-      );
-    const existingIds = new Set(existing.map((row) => row.eventTimeBlockId));
-    const missing = input.eventTimeBlockIds.filter(
-      (eventTimeBlockId) => !existingIds.has(eventTimeBlockId),
-    );
-
-    if (missing.length > 0) {
-      await db.insert(participationEventTimeBlockInclusion).values(
-        missing.map((eventTimeBlockId) => ({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          eventTimeBlockId,
-        })),
-      );
-    }
   }
 
   async removeInclusion({

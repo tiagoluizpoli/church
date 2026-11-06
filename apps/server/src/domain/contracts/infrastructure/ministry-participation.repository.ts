@@ -77,13 +77,6 @@ export interface ListInclusionsInput {
   tx?: TransactionContext;
 }
 
-export interface ReplaceInclusionsInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-  eventTimeBlockIds: EventTimeBlockId[];
-  tx?: TransactionContext;
-}
-
 export interface AddInclusionInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -183,7 +176,6 @@ export interface MinistryParticipationRepository {
   listInclusions(
     input: ListInclusionsInput,
   ): Promise<ParticipationEventTimeBlockInclusion[]>;
-  replaceInclusions(input: ReplaceInclusionsInput): Promise<void>;
   addInclusion(input: AddInclusionInput): Promise<void>;
   removeInclusion(input: RemoveInclusionInput): Promise<void>;
   touch(input: TouchParticipationInput): Promise<void>;

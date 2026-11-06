@@ -171,30 +171,6 @@ describe('participationMapper', () => {
     });
   });
 
-  describe('shiftListToResponse', () => {
-    it('maps an empty list of shifts', () => {
-      expect(participationMapper.shiftListToResponse([])).toEqual({
-        shifts: [],
-      });
-    });
-
-    it('maps a non-empty list of shifts', () => {
-      const shift = buildShift('Only Shift');
-
-      const response = participationMapper.shiftListToResponse([shift]);
-
-      expect(response.shifts).toHaveLength(1);
-      expect(response.shifts[0]).toEqual({
-        id: 'shift-1',
-        participationId: 'participation-1',
-        eventTimeBlockId: 'event-time-block-1',
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        label: 'Only Shift',
-      });
-    });
-  });
-
   describe('cycleViewToResponse', () => {
     it('maps a full nested structure with populated event time blocks, shifts, and requirements', () => {
       const participation = buildParticipation();

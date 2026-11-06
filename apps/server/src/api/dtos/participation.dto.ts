@@ -127,44 +127,11 @@ export type CycleParticipationResponse = z.infer<
   typeof cycleParticipationResponseSchema
 >;
 
-export const setInclusionsBodySchema = z.object({
-  eventTimeBlockIds: z.array(z.string()),
-});
-
 const manualSplitSpanSchema = z.object({
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
   label: z.string().optional(),
 });
-
-export const splitShiftsBodySchema = z.object({
-  strategy: z.discriminatedUnion('kind', [
-    z.object({
-      kind: z.literal('equal-n'),
-      n: z.number().int().min(1),
-    }),
-    z.object({
-      kind: z.literal('manual'),
-      spans: z.array(manualSplitSpanSchema).min(1),
-    }),
-  ]),
-});
-export type SplitShiftsBody = z.infer<typeof splitShiftsBodySchema>;
-
-export const updateShiftBodySchema = z.object({
-  startTime: z.string().datetime().optional(),
-  endTime: z.string().datetime().optional(),
-  label: z.string().optional(),
-});
-export type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
-
-export const shiftRequirementBodySchema = z.object({
-  sectorId: z.string(),
-  roleId: z.string(),
-  peopleNeeded: z.number().int().min(1),
-  notes: z.string().optional(),
-});
-export type ShiftRequirementBody = z.infer<typeof shiftRequirementBodySchema>;
 
 const preparationHeadcountSchema = z.object({
   shiftIndex: z.number().int().min(0),
@@ -198,10 +165,6 @@ export const preparationValidationErrorResponseSchema = z.object({
   message: z.string(),
   reason: z.enum(VALIDATION_REASONS).optional(),
   issues: z.array(z.unknown()).optional(),
-});
-
-export const shiftListResponseSchema = z.object({
-  shifts: z.array(shiftResponseSchema),
 });
 
 export const askAvailabilityResponseSchema = z.object({
@@ -393,9 +356,6 @@ export const participationMapper = {
   toResponse: toParticipationResponse,
   shiftToResponse: toShiftResponse,
   requirementToResponse: toShiftRequirementResponse,
-  shiftListToResponse(shifts: Shift[]) {
-    return { shifts: shifts.map(toShiftResponse) };
-  },
   cycleViewToResponse(
     view: CycleParticipationView,
   ): CycleParticipationResponse {

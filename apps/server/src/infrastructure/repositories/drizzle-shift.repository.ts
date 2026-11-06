@@ -12,9 +12,9 @@ import type {
   ListRequirementsByParticipationInput,
   ListShiftsByEventTimeBlockInput,
   ListShiftsByParticipationInput,
+  SaveShiftRequirementInput,
   ShiftRepository,
   UpdateShiftInput,
-  UpsertShiftRequirementInput,
 } from '../../domain/contracts/infrastructure/shift.repository';
 import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
@@ -172,8 +172,8 @@ export class DrizzleShiftRepository implements ShiftRepository {
       );
   }
 
-  async upsertRequirement(
-    input: UpsertShiftRequirementInput,
+  async saveRequirement(
+    input: SaveShiftRequirementInput,
   ): Promise<ShiftRequirement> {
     const db = getClient({ db: this.db, tx: input.tx });
     const [existing] = await db

@@ -185,8 +185,6 @@ export function createMinistryParticipationRepositoryFake() {
     listByIds: vi.fn<MinistryParticipationRepository['listByIds']>(),
     updateState: vi.fn<MinistryParticipationRepository['updateState']>(),
     listInclusions: vi.fn<MinistryParticipationRepository['listInclusions']>(),
-    replaceInclusions:
-      vi.fn<MinistryParticipationRepository['replaceInclusions']>(),
     addInclusion: vi.fn<MinistryParticipationRepository['addInclusion']>(),
     removeInclusion:
       vi.fn<MinistryParticipationRepository['removeInclusion']>(),
@@ -261,7 +259,7 @@ export function createShiftRepositoryFake() {
     update: vi.fn<ShiftRepository['update']>(),
     deleteById: vi.fn<ShiftRepository['deleteById']>(),
     deleteByEventTimeBlock: vi.fn<ShiftRepository['deleteByEventTimeBlock']>(),
-    upsertRequirement: vi.fn<ShiftRepository['upsertRequirement']>(),
+    saveRequirement: vi.fn<ShiftRepository['saveRequirement']>(),
     deleteRequirements: vi.fn<ShiftRepository['deleteRequirements']>(),
     listRequirementsByParticipation:
       vi.fn<ShiftRepository['listRequirementsByParticipation']>(),

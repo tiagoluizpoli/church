@@ -33,6 +33,8 @@ export interface ListShiftsByEventTimeBlockInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
   eventTimeBlockId: EventTimeBlockId;
+  /** Holds the rows until commit: answers and Assignments referencing them wait. */
+  forUpdate?: boolean;
   tx?: TransactionContext;
 }
 

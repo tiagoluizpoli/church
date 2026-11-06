@@ -2507,6 +2507,40 @@ export type SaveEventTimeBlockPreparation404 = {
   message: string;
 };
 
+export type SaveEventTimeBlockPreparation409 = {
+  error: string;
+  message: string;
+  headcountFloors: {
+  shiftId: string;
+  sectorId: string;
+  roleId: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  assignedCount: number;
+}[];
+} | {
+  error: string;
+  message: string;
+  shiftResponses: {
+  shiftId: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  unavailableMarkCount: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  assignmentCount: number;
+}[];
+} | {
+  error: string;
+  message: string;
+};
+
 export type SetParticipationInclusionsBody = {
   eventTimeBlockIds: string[];
 };

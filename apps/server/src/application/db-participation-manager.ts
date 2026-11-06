@@ -555,7 +555,8 @@ export class DbParticipationManager implements IParticipationManager {
 
   async setInclusions(input: SetInclusionsInput): Promise<void> {
     await this.unitOfWork.run(async (tx) => {
-      const participation = await this.participationRepository.getById({
+      // Locked before its Shifts, the order saves and Assignments take.
+      const participation = await this.participationRepository.lockById({
         churchId: input.churchId,
         participationId: input.participationId,
         tx,
@@ -642,7 +643,8 @@ export class DbParticipationManager implements IParticipationManager {
 
   async splitShifts(input: SplitShiftsManagerInput): Promise<Shift[]> {
     return this.unitOfWork.run(async (tx) => {
-      const participation = await this.participationRepository.getById({
+      // Locked before its Shifts, the order saves and Assignments take.
+      const participation = await this.participationRepository.lockById({
         churchId: input.churchId,
         participationId: input.participationId,
         tx,
@@ -814,7 +816,8 @@ export class DbParticipationManager implements IParticipationManager {
         shiftId: input.shiftId,
         tx,
       });
-      const participation = await this.participationRepository.getById({
+      // Locked before its Shifts, the order saves and Assignments take.
+      const participation = await this.participationRepository.lockById({
         churchId: input.churchId,
         participationId: shift.participationId,
         tx,

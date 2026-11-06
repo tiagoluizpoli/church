@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { NotFoundError } from '@church/core';
 import {
+  assignment,
   cycle as cycleTable,
   eventTimeBlock,
   ministry,
@@ -14,6 +16,7 @@ import { parseTimeOfDay } from '@church/time';
 import { asc, eq, sql } from 'drizzle-orm';
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -25,10 +28,23 @@ import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { PrepareController } from '@/api/controllers/prepare-controller';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
-import { ChurchId, CycleId, MinistryId, UserId } from '@/domain/branded-ids';
+import {
+  ChurchId,
+  CycleId,
+  EventTimeBlockId,
+  MinistryId,
+  MinistryParticipationId,
+  RoleId,
+  SectorId,
+  ShiftId,
+  ShiftRequirementId,
+  UserId,
+  VolunteerId,
+} from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
@@ -73,7 +89,7 @@ const mockSetActiveOrganization = vi.mocked(mockAuth.api.setActiveOrganization);
 const db = schedulingTestDb;
 
 let app: FastifyTypedInstance;
-const { participationManager } = createSchedulingManagers();
+const { assignmentManager, participationManager } = createSchedulingManagers();
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -1255,7 +1271,14 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
     });
   });
 
-  describe('racing publication', () => {
+  describe('racing writers', () => {
+    const pausedCalls: Array<() => void> = [];
+
+    // A failed barrier must not strand its open transaction under the next test.
+    afterEach(() => {
+      for (const releaseCall of pausedCalls.splice(0)) releaseCall();
+    });
+
     /** Another transaction of this worker's database is waiting on a row lock. */
     async function waitForLockWaiter() {
       await vi.waitFor(
@@ -1288,9 +1311,11 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       return row?.state;
     }
 
-    /** Pauses a repository write inside its transaction until the test releases it. */
-    function pauseWrite(method: 'touch' | 'updateState') {
-      const prototype = DrizzleMinistryParticipationRepository.prototype;
+    /** Pauses the first call of a repository write inside its transaction until the test releases it. */
+    function pauseCall<Repository extends object>(
+      prototype: Repository,
+      method: keyof Repository,
+    ) {
       const original = prototype[method] as (input: never) => Promise<unknown>;
       let release = () => {};
       const released = new Promise<void>((resolve) => {
@@ -1300,18 +1325,30 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       const paused = new Promise<void>((resolve) => {
         reached = resolve;
       });
-      const pausedWrite = async function (
-        this: DrizzleMinistryParticipationRepository,
-        input: never,
-      ) {
-        reached();
-        await released;
+      let isFirstCall = true;
+      const pausedWrite = async function (this: Repository, input: never) {
+        if (isFirstCall) {
+          isFirstCall = false;
+          reached();
+          await released;
+        }
         return original.call(this, input);
       };
       const spy = vi
-        .spyOn(prototype, method)
+        .spyOn(prototype, method as never)
         .mockImplementation(pausedWrite as never);
-      return { paused, release, spy };
+      pausedCalls.push(() => {
+        release();
+        spy.mockRestore();
+      });
+      return { paused, release };
+    }
+
+    function pauseWrite(method: 'touch' | 'updateState') {
+      return pauseCall(
+        DrizzleMinistryParticipationRepository.prototype,
+        method,
+      );
     }
 
     /** The save is mid-transaction, holding its lock, while Publish starts and blocks. */
@@ -1319,14 +1356,13 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       base: Base,
       payload: Record<string, unknown>,
     ) {
-      const { paused, release, spy } = pauseWrite('touch');
+      const { paused, release } = pauseWrite('touch');
       const saving = savePreparation({ ...base, payload });
       await paused;
       const publishing = publish(base);
       await waitForLockWaiter();
       release();
       const [saved, published] = await Promise.all([saving, publishing]);
-      spy.mockRestore();
       return { saved, published };
     }
 
@@ -1381,7 +1417,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
     it('refuses a save that waited on a Publish, leaving the published graph alone', async () => {
       const base = await seedPreparation();
       await setParticipationState(base, 'availability_requested');
-      const { paused, release, spy } = pauseWrite('updateState');
+      const { paused, release } = pauseWrite('updateState');
 
       const publishing = publish(base);
       await paused;
@@ -1392,13 +1428,315 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       await waitForLockWaiter();
       release();
       const [published, saved] = await Promise.all([publishing, saving]);
-      spy.mockRestore();
 
       expect(published).toMatchObject({ published: true, belowFull: false });
       expect(saved.statusCode).toBe(409);
       expect(saved.json()).toMatchObject({ error: 'ILLEGAL_STATE_TRANSITION' });
       expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
       expect(await participationState(base)).toBe('published');
+    });
+
+    interface SeedAssignableInput {
+      base: Base;
+      state: 'preparing' | 'availability_requested' | 'assigning';
+    }
+
+    /** A requirement a Volunteer can be assigned to, on a Schedule in `state`. */
+    async function seedAssignable({ base, state }: SeedAssignableInput) {
+      const { shift: seeded, requirement } = await seedBlockShift({
+        base,
+        peopleNeeded: 1,
+      });
+      const { volunteer } = await seedVolunteerMembership({
+        churchId: base.churchId,
+        ministryId: base.ministryId,
+        name: 'Racing Volunteer',
+        email: `racing-${randomUUID()}@test.com`,
+      });
+      await db
+        .update(ministryParticipation)
+        .set({ state })
+        .where(eq(ministryParticipation.id, base.participationId));
+      return { shift: seeded, requirement, volunteer };
+    }
+
+    type Assignable = Awaited<ReturnType<typeof seedAssignable>>;
+
+    function assign(base: Base, target: Assignable) {
+      return assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(base.churchId),
+        shiftId: ShiftId.from(target.shift.id),
+        volunteerId: VolunteerId.from(target.volunteer.id),
+        actorId: UserId.from(base.adminUserId),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: target.requirement.id,
+        }),
+      });
+    }
+
+    function assignmentsOf(base: Base) {
+      return db
+        .select()
+        .from(assignment)
+        .where(eq(assignment.participationId, base.participationId));
+    }
+
+    function pauseAssignmentInsert() {
+      return pauseCall(DrizzleAssignmentRepository.prototype, 'create');
+    }
+
+    /** The assignment has inserted and is about to move the state when a save overlaps it. */
+    async function assignAheadOfSave(
+      base: Base,
+      target: Assignable,
+      payload: Record<string, unknown>,
+    ) {
+      const { paused, release } = pauseWrite('updateState');
+      const assigning = assign(base, target);
+      await paused;
+      const saving = savePreparation({ ...base, payload });
+      await waitForLockWaiterOr(saving);
+      release();
+      const [assigned, saved] = await Promise.allSettled([assigning, saving]);
+      return { assigned, saved };
+    }
+
+    /** Waits for the overlap, or for the rival to finish without ever blocking. */
+    async function waitForLockWaiterOr(rival: Promise<unknown>) {
+      await Promise.race([waitForLockWaiter(), rival.catch(() => {})]);
+    }
+
+    function statusOf(saved: PromiseSettledResult<{ statusCode: number }>) {
+      return saved.status === 'fulfilled' ? saved.value.statusCode : 'rejected';
+    }
+
+    it('commits an Assignment a same-spans save overlapped, with no deadlock', async () => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({
+        base,
+        state: 'availability_requested',
+      });
+
+      const { assigned, saved } = await assignAheadOfSave(
+        base,
+        target,
+        wholeBlockPayload(base, { peopleNeeded: 3 }),
+      );
+
+      expect(assigned).toMatchObject({ status: 'fulfilled' });
+      expect(statusOf(saved)).toBe(200);
+      expect(await assignmentsOf(base)).toHaveLength(1);
+      expect(await participationState(base)).toBe('assigning');
+    });
+
+    it('commits an Assignment a re-split overlapped, with no deadlock', async () => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({
+        base,
+        state: 'availability_requested',
+      });
+
+      const { assigned, saved } = await assignAheadOfSave(base, target, {
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 2 },
+        headcounts: [headcountOf(base)],
+      });
+
+      expect(assigned).toMatchObject({ status: 'fulfilled' });
+      // Refused once the response guards land; either way, never a deadlock's 500.
+      expect(statusOf(saved)).not.toBe(500);
+      expect(statusOf(saved)).not.toBe('rejected');
+      expect(await participationState(base)).toBe('assigning');
+    });
+
+    it('commits an Assignment an opt-out overlapped, with no deadlock', async () => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({
+        base,
+        state: 'availability_requested',
+      });
+
+      const { assigned, saved } = await assignAheadOfSave(base, target, {
+        serves: false,
+      });
+
+      expect(assigned).toMatchObject({ status: 'fulfilled' });
+      expect(statusOf(saved)).not.toBe(500);
+      expect(statusOf(saved)).not.toBe('rejected');
+      expect(await participationState(base)).toBe('assigning');
+    });
+
+    it('answers not found to an Assignment whose Shift a save it waited on replaced', async () => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({
+        base,
+        state: 'availability_requested',
+      });
+      const { paused, release } = pauseWrite('touch');
+
+      const saving = savePreparation({
+        ...base,
+        payload: {
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 2 },
+          headcounts: [headcountOf(base)],
+        },
+      });
+      await paused;
+      const assigning = assign(base, target);
+      await waitForLockWaiter();
+      release();
+      const [saved, assigned] = await Promise.allSettled([saving, assigning]);
+
+      expect(statusOf(saved)).toBe(200);
+      expect(assigned.status).toBe('rejected');
+      expect((assigned as PromiseRejectedResult).reason).toBeInstanceOf(
+        NotFoundError,
+      );
+      expect(await assignmentsOf(base)).toEqual([]);
+      expect(await participationState(base)).toBe('availability_requested');
+    });
+
+    it('keeps a Schedule published when an Assignment waited on the Publish', async () => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({
+        base,
+        state: 'availability_requested',
+      });
+      const { paused, release } = pauseWrite('updateState');
+
+      const publishing = participationManager.publishCycle({
+        churchId: ChurchId.from(base.churchId),
+        cycleId: CycleId.from(base.cycle.id),
+        ministryId: MinistryId.from(base.ministryId),
+        userId: UserId.from(base.adminUserId),
+        confirmBelowFull: true,
+      });
+      await paused;
+      const assigning = assign(base, target);
+      await waitForLockWaiter();
+      release();
+      const [published, assigned] = await Promise.allSettled([
+        publishing,
+        assigning,
+      ]);
+
+      expect(published).toMatchObject({ status: 'fulfilled' });
+      expect(assigned).toMatchObject({ status: 'fulfilled' });
+      expect(await participationState(base)).toBe('published');
+    });
+
+    it('publishes after an Assignment it overlapped, staying published', async () => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({
+        base,
+        state: 'availability_requested',
+      });
+      const { paused, release } = pauseAssignmentInsert();
+
+      const assigning = assign(base, target);
+      await paused;
+      const publishing = participationManager.publishCycle({
+        churchId: ChurchId.from(base.churchId),
+        cycleId: CycleId.from(base.cycle.id),
+        ministryId: MinistryId.from(base.ministryId),
+        userId: UserId.from(base.adminUserId),
+        confirmBelowFull: true,
+      });
+      await waitForLockWaiterOr(publishing);
+      release();
+      const [assigned, published] = await Promise.allSettled([
+        assigning,
+        publishing,
+      ]);
+
+      expect(assigned).toMatchObject({ status: 'fulfilled' });
+      expect(published).toMatchObject({ status: 'fulfilled' });
+      expect(await participationState(base)).toBe('published');
+    });
+
+    it('commits an Assignment that overlaps a granular split on a preparing Schedule', async () => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({ base, state: 'preparing' });
+      const { paused, release } = pauseWrite('touch');
+
+      const splitting = participationManager.splitShifts({
+        churchId: ChurchId.from(base.churchId),
+        participationId: MinistryParticipationId.from(base.participationId),
+        eventTimeBlockId: EventTimeBlockId.from(base.eventTimeBlockId),
+        strategy: { kind: 'equal-n', n: 2 },
+      });
+      await paused;
+      const assigning = assign(base, target);
+      await waitForLockWaiter();
+      release();
+      const [split, assigned] = await Promise.allSettled([
+        splitting,
+        assigning,
+      ]);
+
+      expect(split).toMatchObject({ status: 'fulfilled' });
+      expect(assigned.status).toBe('rejected');
+      expect((assigned as PromiseRejectedResult).reason).toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it.each([
+      {
+        writer: 'split',
+        run: (base: Base) =>
+          participationManager.splitShifts({
+            churchId: ChurchId.from(base.churchId),
+            participationId: MinistryParticipationId.from(base.participationId),
+            eventTimeBlockId: EventTimeBlockId.from(base.eventTimeBlockId),
+            strategy: { kind: 'equal-n', n: 2 },
+          }),
+      },
+      {
+        writer: 'inclusions',
+        run: (base: Base) =>
+          participationManager.setInclusions({
+            churchId: ChurchId.from(base.churchId),
+            participationId: MinistryParticipationId.from(base.participationId),
+            eventTimeBlockIds: [],
+          }),
+      },
+      {
+        writer: 'requirement',
+        run: (base: Base, target: Assignable) =>
+          participationManager.upsertRequirement({
+            churchId: ChurchId.from(base.churchId),
+            shiftId: ShiftId.from(target.shift.id),
+            sectorId: SectorId.from(base.sectorId),
+            roleId: RoleId.from(base.roleId),
+            peopleNeeded: 5,
+          }),
+      },
+    ])('settles a granular $writer write a re-split overlapped, with no deadlock', async ({
+      run,
+    }) => {
+      const base = await seedPreparation();
+      const target = await seedAssignable({ base, state: 'preparing' });
+      const { paused, release } = pauseWrite('touch');
+
+      const writing = run(base, target);
+      await paused;
+      const saving = savePreparation({
+        ...base,
+        payload: {
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 3 },
+          headcounts: [headcountOf(base)],
+        },
+      });
+      await waitForLockWaiter();
+      release();
+      const [written, saved] = await Promise.allSettled([writing, saving]);
+
+      expect(written).toMatchObject({ status: 'fulfilled' });
+      expect(statusOf(saved)).toBe(200);
+      expect(await blockShifts(base.eventTimeBlockId)).toHaveLength(3);
     });
   });
 

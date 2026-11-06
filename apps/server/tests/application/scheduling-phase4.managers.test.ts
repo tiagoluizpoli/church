@@ -130,6 +130,9 @@ function createParticipationHarness({
   repositories.ministryParticipationRepository.getById.mockResolvedValue(
     participation,
   );
+  repositories.ministryParticipationRepository.lockById.mockResolvedValue(
+    participation,
+  );
   repositories.ministryParticipationRepository.listInclusions.mockResolvedValue(
     [],
   );

@@ -70,6 +70,12 @@ export interface UpsertShiftRequirementInput {
   tx?: TransactionContext;
 }
 
+export interface DeleteShiftRequirementsInput {
+  churchId: ChurchId;
+  shiftRequirementIds: ShiftRequirementId[];
+  tx?: TransactionContext;
+}
+
 export interface ListRequirementsByParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -98,6 +104,7 @@ export interface ShiftRepository {
   upsertRequirement(
     input: UpsertShiftRequirementInput,
   ): Promise<ShiftRequirement>;
+  deleteRequirements(input: DeleteShiftRequirementsInput): Promise<void>;
   listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,
   ): Promise<ShiftRequirement[]>;

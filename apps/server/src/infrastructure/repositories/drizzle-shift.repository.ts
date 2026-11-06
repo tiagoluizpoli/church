@@ -1,10 +1,11 @@
 import { NotFoundError } from '@church/core';
 import { sector, shift, shiftRequirement } from '@church/db';
 import { toDate } from '@church/time';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type {
   CreateShiftsInput,
   DeleteShiftInput,
+  DeleteShiftRequirementsInput,
   DeleteShiftsByEventTimeBlockInput,
   GetRequirementForShiftInput,
   GetShiftInput,
@@ -226,6 +227,22 @@ export class DrizzleShiftRepository implements ShiftRepository {
     }
 
     return mapShiftRequirement({ row, sectorName: named.name });
+  }
+
+  async deleteRequirements({
+    churchId,
+    shiftRequirementIds,
+    tx,
+  }: DeleteShiftRequirementsInput): Promise<void> {
+    if (shiftRequirementIds.length === 0) return;
+    await getClient({ db: this.db, tx })
+      .delete(shiftRequirement)
+      .where(
+        and(
+          inArray(shiftRequirement.id, shiftRequirementIds),
+          withChurchIsolation({ table: shiftRequirement, churchId }),
+        ),
+      );
   }
 
   async listRequirementsByParticipation(

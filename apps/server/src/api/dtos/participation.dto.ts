@@ -138,6 +138,32 @@ export const shiftRequirementBodySchema = z.object({
 });
 export type ShiftRequirementBody = z.infer<typeof shiftRequirementBodySchema>;
 
+const preparationHeadcountSchema = z.object({
+  shiftIndex: z.number().int().min(0),
+  sectorId: z.string(),
+  roleId: z.string(),
+  peopleNeeded: z.number().int().min(0),
+});
+
+/** One block's complete desired state; a zero count or an omitted pair means no requirement. */
+export const savePreparationBodySchema = z.object({
+  serves: z.boolean(),
+  shiftSplit: z
+    .discriminatedUnion('kind', [
+      z.object({
+        kind: z.literal('equal'),
+        count: z.number().int().min(1),
+      }),
+      z.object({
+        kind: z.literal('manual'),
+        spans: z.array(manualSplitSpanSchema),
+      }),
+    ])
+    .optional(),
+  headcounts: z.array(preparationHeadcountSchema).optional(),
+});
+export type SavePreparationBody = z.infer<typeof savePreparationBodySchema>;
+
 export const shiftListResponseSchema = z.object({
   shifts: z.array(shiftResponseSchema),
 });
@@ -339,6 +365,7 @@ export const participationMapper = {
   ): CycleParticipationResponse {
     return { events: view.events.map(toEventView) };
   },
+  eventTimeBlockViewToResponse: toEventTimeBlockView,
   scheduleSummaryListToResponse(
     views: ScheduleSummaryView[],
   ): ScheduleSummaryListResponse {

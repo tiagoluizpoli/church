@@ -65,10 +65,30 @@ export interface SplitFitsBlockInput {
   timeZone: string;
 }
 
+export interface SpansFitBlockInput {
+  spans: UsualSetupBlockBounds[];
+  block: UsualSetupBlockBounds;
+}
+
+/** Positive, chronological, non-overlapping and inside the block; gaps and touching ends are ok. */
+export function spansFitBlock({ spans, block }: SpansFitBlockInput): boolean {
+  let previousEnd = block.startTime;
+  for (const span of spans) {
+    if (
+      compareInstants({ left: span.endTime, right: span.startTime }) <= 0 ||
+      compareInstants({ left: span.startTime, right: previousEnd }) < 0 ||
+      compareInstants({ left: span.endTime, right: block.endTime }) > 0
+    ) {
+      return false;
+    }
+    previousEnd = span.endTime;
+  }
+  return true;
+}
+
 /**
  * The one validity rule shared by the review flag, the save and Send: an
- * equal split must tile the block; a manual one must be positive,
- * chronological, non-overlapping and inside it. Gaps and touching ends are ok.
+ * equal split must tile the block; a manual one must satisfy `spansFitBlock`.
  */
 export function splitFitsBlock({
   shiftSplit,
@@ -83,22 +103,12 @@ export function splitFitsBlock({
       return false;
     }
   }
-  let previousEnd = block.startTime;
-  for (const span of resolveManualSpans({
+  const spans = resolveManualSpans({
     spans: shiftSplit.spans,
     block,
     timeZone,
-  })) {
-    if (
-      compareInstants({ left: span.endTime, right: span.startTime }) <= 0 ||
-      compareInstants({ left: span.startTime, right: previousEnd }) < 0 ||
-      compareInstants({ left: span.endTime, right: block.endTime }) > 0
-    ) {
-      return false;
-    }
-    previousEnd = span.endTime;
-  }
-  return true;
+  });
+  return spansFitBlock({ spans, block });
 }
 
 export interface WallClockUtcBoundsInput {

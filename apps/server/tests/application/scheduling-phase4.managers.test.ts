@@ -145,6 +145,8 @@ function createParticipationHarness({
     ...repositories,
     participationRepository: repositories.ministryParticipationRepository,
     eventRepository: repositories.planningEventRepository,
+    churchRepository: {} as never,
+    staffingSeeder: {} as never,
     unitOfWork,
     notifications,
   });

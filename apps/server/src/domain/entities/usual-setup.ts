@@ -142,11 +142,11 @@ function assertValidShiftSplit({
   }
 }
 
-interface AssertValidHeadcountsInput {
+export interface AssertValidHeadcountsInput {
   headcounts: UsualSetupHeadcount[];
 }
 
-function assertValidHeadcounts({
+export function assertValidHeadcounts({
   headcounts,
 }: AssertValidHeadcountsInput): void {
   const places = new Set<string>();

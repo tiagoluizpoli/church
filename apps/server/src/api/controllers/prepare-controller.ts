@@ -24,7 +24,10 @@ import {
   askAvailabilityResponseSchema,
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
+  participationEventTimeBlockViewSchema,
   participationMapper,
+  type SavePreparationBody,
+  savePreparationBodySchema,
   scheduleListResponseSchema,
   scheduleSummaryListResponseSchema,
   setInclusionsBodySchema,
@@ -259,6 +262,54 @@ export class PrepareController implements FastifyController {
         });
         return reply.send(
           participationMapper.scheduleSummaryListToResponse(views),
+        );
+      },
+    );
+
+    app.put(
+      '/participations/:participationId/event-time-blocks/:eventTimeBlockId/preparation',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'saveEventTimeBlockPreparation',
+          summary: "Save one EventTimeBlock's preparation",
+          description:
+            'Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup.',
+          body: savePreparationBodySchema,
+          response: {
+            200: participationEventTimeBlockViewSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { participationId, eventTimeBlockId } =
+          request.params as ParticipationEventTimeBlockRouteParams;
+        const denied = await this.denyParticipationScope({
+          request,
+          reply,
+          participationId,
+        });
+        if (denied) return;
+
+        const { serves, shiftSplit, headcounts } =
+          request.body as SavePreparationBody;
+        const view = await this.participationManager.savePreparation({
+          churchId: ChurchId.from(request.churchId),
+          participationId: MinistryParticipationId.from(participationId),
+          eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+          serves,
+          shiftSplit: shiftSplit && toPreparationSplit({ shiftSplit }),
+          headcounts: headcounts?.map((headcount) => ({
+            ...headcount,
+            sectorId: SectorId.from(headcount.sectorId),
+            roleId: RoleId.from(headcount.roleId),
+          })),
+        });
+        return reply.send(
+          participationMapper.eventTimeBlockViewToResponse(view),
         );
       },
     );
@@ -657,6 +708,19 @@ export class PrepareController implements FastifyController {
     refuse({ reply, request, code: 'NOT_FOUND' });
     return true;
   }
+}
+
+interface ToPreparationSplitInput {
+  shiftSplit: NonNullable<SavePreparationBody['shiftSplit']>;
+}
+
+function toPreparationSplit({
+  shiftSplit,
+}: ToPreparationSplitInput): ShiftSplitStrategy {
+  if (shiftSplit.kind === 'equal') {
+    return { kind: 'equal-n', n: shiftSplit.count };
+  }
+  return toSplitStrategy({ body: { strategy: shiftSplit } });
 }
 
 interface ToSplitStrategyInput {

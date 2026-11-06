@@ -183,6 +183,8 @@ function createHarness() {
     ministryRepository: ministryRepo,
     roleRepository: roleRepo,
     notifications,
+    churchRepository: {} as never,
+    staffingSeeder: {} as never,
     unitOfWork,
   });
   const volunteerManager = new DbVolunteerManager({

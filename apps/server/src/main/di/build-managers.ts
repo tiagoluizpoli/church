@@ -306,6 +306,8 @@ export function buildManagers({
       roleRepository,
       sectorRepository,
       notifications,
+      churchRepository,
+      staffingSeeder,
       unitOfWork,
     });
   const availabilityCheckManager =

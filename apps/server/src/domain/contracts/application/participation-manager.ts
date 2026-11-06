@@ -28,6 +28,7 @@ import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type {
   UsualSetup,
   UsualSetupEntryInput,
+  UsualSetupHeadcount,
 } from '../../entities/usual-setup';
 import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
@@ -273,6 +274,18 @@ export interface ScheduleView {
   asking?: ScheduleAskingView;
 }
 
+/** The complete desired state of one EventTimeBlock for one MinistryParticipation. */
+export interface SavePreparationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  eventTimeBlockId: EventTimeBlockId;
+  serves: boolean;
+  /** Serving with neither this nor `headcounts` opts a block with no Shifts in. */
+  shiftSplit?: ShiftSplitStrategy;
+  /** `shiftIndex` points into the submitted split; a zero count is an omission. */
+  headcounts?: UsualSetupHeadcount[];
+}
+
 export interface IParticipationManager {
   getCycleParticipation(
     input: GetCycleParticipationInput,
@@ -287,6 +300,10 @@ export interface IParticipationManager {
   upsertRequirement(
     input: UpsertRequirementManagerInput,
   ): Promise<ShiftRequirement>;
+  /** Applies one block's desired state atomically, leaving other blocks untouched. */
+  savePreparation(
+    input: SavePreparationInput,
+  ): Promise<ParticipationEventTimeBlockView>;
   /** Every current block by template name and block order, saved or not. */
   listUsualSetupBlocks(
     input: ListUsualSetupBlocksInput,

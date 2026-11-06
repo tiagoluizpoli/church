@@ -1,20 +1,9 @@
 import { m } from '@church/i18n/messages';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -23,703 +12,171 @@ import {
 } from '@/components/workspace-page';
 import {
   buildEventTimeBlockDayMarkers,
-  classifyPrepareFetchError,
-  countIncludedEventTimeBlocks,
-  countShifts,
-  createInitialHeadcountDrafts,
-  createInitialSplitForms,
   filterEventTimeBlocksByName,
   filterEventTimeBlocksByTimeOfDay,
-  type SplitFormState,
   type TimeWindowFilter,
-  toHeadcountKey,
-  validateManualSpans,
 } from '@/features/scheduling/components/participation-prepare.utils';
 import { PrepareCalendar } from '@/features/scheduling/components/prepare/prepare-calendar';
-import {
-  type HeadcountSave,
-  type HeadcountSavesForShift,
-  PrepareEventTimeBlockList,
-} from '@/features/scheduling/components/prepare/prepare-event-time-block-list';
+import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prepare/prepare-event-time-block-list';
 import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
-import type {
-  GetCycleParticipation200EventsItem,
-  GetCycleParticipation200EventsItemEventTimeBlocksItem,
-} from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/schedules/$ministryId/$cycleId/',
-)({
-  component: PrepareWorkspaceRoute,
-});
-
-interface StatChipProps {
-  label: string;
-  value: number;
-  testId: string;
-}
-
-function StatChip({ label, value, testId }: StatChipProps) {
-  return (
-    <div className="px-3 py-1.5">
-      <span className="text-muted-foreground text-xs">{label}</span>{' '}
-      <span className="font-medium" data-testid={testId}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : m.common_generic_error();
-}
-
-interface SaveInclusionsParams {
-  participationId: string;
-  eventTimeBlockId: string;
-  eventTimeBlockIds: string[];
-}
-
-interface SplitShiftsParams {
-  participationId: string;
-  eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
-}
-
-interface SaveHeadcountsParams {
-  participationId: string;
-  eventTimeBlockId: string;
-  headcountSavesByShift: HeadcountSavesForShift[];
-}
-
-interface HeadcountSaveAttempt {
-  shiftId: string;
-  headcount: HeadcountSave;
-}
-
-interface SplitDirtyEventTimeBlockIdsParams {
-  splitForms: Record<string, SplitFormState>;
-  savedSplitForms: Record<string, SplitFormState>;
-}
-
-interface HeadcountDirtyEventTimeBlockIdsParams {
-  events: GetCycleParticipation200EventsItem[];
-  headcountDrafts: Record<string, string>;
-  savedHeadcountDrafts: Record<string, string>;
-}
-
-function getSplitDirtyEventTimeBlockIds({
-  splitForms,
-  savedSplitForms,
-}: SplitDirtyEventTimeBlockIdsParams): Set<string> {
-  return new Set(
-    Object.keys(splitForms).filter(
-      (eventTimeBlockId) =>
-        JSON.stringify(splitForms[eventTimeBlockId]) !==
-        JSON.stringify(savedSplitForms[eventTimeBlockId]),
-    ),
-  );
-}
-
-function getHeadcountDirtyEventTimeBlockIds({
-  events,
-  headcountDrafts,
-  savedHeadcountDrafts,
-}: HeadcountDirtyEventTimeBlockIdsParams): Set<string> {
-  const dirtyEventTimeBlockIds = new Set<string>();
-
-  for (const eventView of events) {
-    for (const eventTimeBlockView of eventView.eventTimeBlocks) {
-      const shiftIds = new Set(
-        eventTimeBlockView.shifts.map((shift) => shift.id),
-      );
-      const keys = new Set([
-        ...Object.keys(headcountDrafts),
-        ...Object.keys(savedHeadcountDrafts),
-      ]);
-      const hasDirtyDraft = [...keys].some((key) => {
-        const [shiftId] = key.split(':');
-        return (
-          shiftIds.has(shiftId) &&
-          headcountDrafts[key] !== savedHeadcountDrafts[key]
-        );
-      });
-
-      if (hasDirtyDraft)
-        dirtyEventTimeBlockIds.add(eventTimeBlockView.eventTimeBlock.id);
-    }
-  }
-
-  return dirtyEventTimeBlockIds;
-}
-
-interface EditSessionState {
-  splitForms: Record<string, SplitFormState>;
-  savedSplitForms: Record<string, SplitFormState>;
-  headcountDrafts: Record<string, string>;
-  savedHeadcountDrafts: Record<string, string>;
-  /** Session-scoped, not persisted — every `MinistryParticipation` touched
-   * by a successful inclusion/split/headcount edit since the workspace was
-   * opened. Drives both the unsaved-changes navigation blocker (R8) and the
-   * batched "Save & request availability" action (R4). */
-  touchedParticipationIds: Set<string>;
-}
-
-const initialEditSessionState: EditSessionState = {
-  splitForms: {},
-  savedSplitForms: {},
-  headcountDrafts: {},
-  savedHeadcountDrafts: {},
-  touchedParticipationIds: new Set(),
-};
-
-interface SavedHeadcountEntry {
-  key: string;
-  value: string;
-}
-
-type EditSessionAction =
-  | {
-      type: 'initialized';
-      splitForms: Record<string, SplitFormState>;
-      headcountDrafts: Record<string, string>;
-    }
-  | {
-      type: 'split-form-changed';
-      eventTimeBlockId: string;
-      nextForm: SplitFormState;
-    }
-  | { type: 'headcount-draft-changed'; key: string; value: string }
-  | { type: 'inclusion-saved'; participationId: string }
-  | { type: 'split-saved'; participationId: string; eventTimeBlockId: string }
-  | {
-      type: 'headcounts-saved';
-      participationId: string;
-      savedHeadcounts: SavedHeadcountEntry[];
-    }
-  | { type: 'availability-sent' };
-
-/** These five pieces of state all change together across the same
- * save/dirty lifecycle (draft edits → per-time-block save → touched-for-batch),
- * so they're modeled as one reducer instead of five independent `useState`
- * calls whose updates would otherwise need to stay manually in sync across
- * every mutation's `onSuccess`. `selectedDate`/`nameQuery`/`timeWindowFilter`/
- * `confirmSendOpen` stay outside this reducer — they're genuinely
- * independent UI state, not part of the edit session. */
-// named-parameters-ignore: React useReducer calls reducers as (state, action)
-function editSessionReducer(
-  state: EditSessionState,
-  action: EditSessionAction,
-): EditSessionState {
-  switch (action.type) {
-    case 'initialized':
-      return {
-        ...state,
-        splitForms: action.splitForms,
-        savedSplitForms: action.splitForms,
-        headcountDrafts: action.headcountDrafts,
-        savedHeadcountDrafts: action.headcountDrafts,
-      };
-    case 'split-form-changed':
-      return {
-        ...state,
-        splitForms: {
-          ...state.splitForms,
-          [action.eventTimeBlockId]: action.nextForm,
-        },
-      };
-    case 'headcount-draft-changed':
-      return {
-        ...state,
-        headcountDrafts: {
-          ...state.headcountDrafts,
-          [action.key]: action.value,
-        },
-      };
-    case 'inclusion-saved':
-      return {
-        ...state,
-        touchedParticipationIds: new Set([
-          ...state.touchedParticipationIds,
-          action.participationId,
-        ]),
-      };
-    case 'split-saved':
-      return {
-        ...state,
-        savedSplitForms: {
-          ...state.savedSplitForms,
-          [action.eventTimeBlockId]: state.splitForms[action.eventTimeBlockId],
-        },
-        touchedParticipationIds: new Set([
-          ...state.touchedParticipationIds,
-          action.participationId,
-        ]),
-      };
-    case 'headcounts-saved':
-      if (action.savedHeadcounts.length === 0) return state;
-      return {
-        ...state,
-        savedHeadcountDrafts: {
-          ...state.savedHeadcountDrafts,
-          ...Object.fromEntries(
-            action.savedHeadcounts.map(({ key, value }) => [key, value]),
-          ),
-        },
-        touchedParticipationIds: new Set([
-          ...state.touchedParticipationIds,
-          action.participationId,
-        ]),
-      };
-    case 'availability-sent':
-      return { ...state, touchedParticipationIds: new Set() };
-    default:
-      return state;
-  }
-}
+)({ component: PrepareWorkspaceRoute });
 
 function PrepareWorkspaceRoute() {
   const { ministryId, cycleId } = Route.useParams();
-  const queryClient = useQueryClient();
   const { churchTimezone } = useTimezone();
-
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [confirmSendOpen, setConfirmSendOpen] = useState(false);
   const [nameQuery, setNameQuery] = useState('');
   const [timeWindowFilter, setTimeWindowFilter] = useState<TimeWindowFilter>({
     mode: 'starts',
   });
-  const [editSession, dispatchEditSession] = useReducer(
-    editSessionReducer,
-    initialEditSessionState,
-  );
-  const {
-    splitForms,
-    savedSplitForms,
-    headcountDrafts,
-    savedHeadcountDrafts,
-    touchedParticipationIds,
-  } = editSession;
-  const initializedWorkspaceKey = useRef<string | null>(null);
-
-  const cycleQuery = useQuery({
-    queryKey: ['prepare-cycle-summaries', ministryId],
-    queryFn: () => adminApi.listScheduleSummaries(ministryId),
-    select: (response) =>
-      response.cycles.find((cycle) => cycle.cycleId === cycleId),
+  const schedules = useQuery({
+    queryKey: ['prepare-schedules'],
+    queryFn: () => adminApi.listSchedules(),
     retry: false,
   });
-
-  const ministriesQuery = useQuery({
-    queryKey: ['prepare-ministries'],
-    queryFn: () => adminApi.listMinistries(),
-    retry: false,
-  });
-  const ministryName = ministriesQuery.data?.ministries.find(
-    (ministry) => ministry.id === ministryId,
-  )?.name;
-
-  const participationQuery = useQuery({
+  const participation = useQuery({
     queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () => adminApi.getCycleParticipation(cycleId, { ministryId }),
     retry: false,
   });
-  const events = participationQuery.data?.events ?? [];
-
-  useEffect(() => {
-    if (!participationQuery.data) return;
-    const workspaceKey = `${ministryId}:${cycleId}`;
-    if (initializedWorkspaceKey.current === workspaceKey) return;
-    initializedWorkspaceKey.current = workspaceKey;
-    const initialSplitForms = createInitialSplitForms(
-      participationQuery.data.events,
-    );
-    const initialHeadcountDrafts = createInitialHeadcountDrafts(
-      participationQuery.data.events,
-    );
-    dispatchEditSession({
-      type: 'initialized',
-      splitForms: initialSplitForms,
-      headcountDrafts: initialHeadcountDrafts,
-    });
-  }, [cycleId, ministryId, participationQuery.data]);
-
-  const splitDirtyEventTimeBlockIds = useMemo(
-    () => getSplitDirtyEventTimeBlockIds({ splitForms, savedSplitForms }),
-    [savedSplitForms, splitForms],
+  const schedule = schedules.data?.schedules.find(
+    (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
   );
-  const headcountDirtyEventTimeBlockIds = useMemo(
-    () =>
-      getHeadcountDirtyEventTimeBlockIds({
-        events,
-        headcountDrafts,
-        savedHeadcountDrafts,
-      }),
-    [events, headcountDrafts, savedHeadcountDrafts],
+  const reads = [schedules, participation];
+  const statuses = reads.map((read) =>
+    isAxiosError(read.error) ? read.error.response?.status : undefined,
   );
-
-  const refreshParticipation = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ['prepare-cycle-participation', ministryId, cycleId],
-    });
-  };
-
-  const saveInclusions = useMutation({
-    mutationFn: async ({
-      participationId,
-      eventTimeBlockIds,
-    }: SaveInclusionsParams) => {
-      await adminApi.setParticipationInclusions(participationId, {
-        eventTimeBlockIds,
-      });
-      return { participationId };
-    },
-    onSuccess: async ({ participationId }) => {
-      dispatchEditSession({ type: 'inclusion-saved', participationId });
-      await refreshParticipation();
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-
-  const splitShifts = useMutation({
-    mutationFn: async ({
-      participationId,
-      eventTimeBlockView,
-    }: SplitShiftsParams) => {
-      const form = splitForms[eventTimeBlockView.eventTimeBlock.id];
-      if (!form) throw new Error('Split form is missing.');
-
-      if (form.mode === 'equal') {
-        const count = Number.parseInt(form.equalCount, 10);
-        if (!Number.isInteger(count) || count < 1) {
-          throw new Error('Equal split count must be 1 or greater.');
-        }
-
-        await adminApi.splitParticipationShifts(
-          participationId,
-          eventTimeBlockView.eventTimeBlock.id,
-          { strategy: { kind: 'equal-n', n: count } },
-        );
-        return {
-          participationId,
-          eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
-        };
-      }
-
-      const error = validateManualSpans({
-        eventTimeBlockView,
-        spans: form.manualSpans,
-      });
-      if (error) throw new Error(error);
-
-      await adminApi.splitParticipationShifts(
-        participationId,
-        eventTimeBlockView.eventTimeBlock.id,
-        {
-          strategy: {
-            kind: 'manual',
-            spans: form.manualSpans.map((span) => ({
-              startTime: span.startTime,
-              endTime: span.endTime,
-              label: span.label || undefined,
-            })),
-          },
-        },
-      );
-      return {
-        participationId,
-        eventTimeBlockId: eventTimeBlockView.eventTimeBlock.id,
-      };
-    },
-    onSuccess: async ({ participationId, eventTimeBlockId }) => {
-      toast.success('Shifts updated.');
-      dispatchEditSession({
-        type: 'split-saved',
-        participationId,
-        eventTimeBlockId,
-      });
-      await refreshParticipation();
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-
-  const saveHeadcounts = useMutation({
-    mutationFn: async ({
-      participationId,
-      eventTimeBlockId,
-      headcountSavesByShift,
-    }: SaveHeadcountsParams) => {
-      const attempts: HeadcountSaveAttempt[] = headcountSavesByShift.flatMap(
-        ({ shiftId, validHeadcounts }) =>
-          validHeadcounts.map((headcount) => ({ shiftId, headcount })),
-      );
-      const results = await Promise.allSettled(
-        attempts.map(({ shiftId, headcount }) =>
-          adminApi.upsertShiftRequirement(shiftId, {
-            sectorId: headcount.sectorId,
-            roleId: headcount.roleId,
-            peopleNeeded: headcount.peopleNeeded,
-          }),
-        ),
-      );
-      const savedHeadcounts = attempts.filter(
-        (_attempt, index) => results[index]?.status === 'fulfilled',
-      );
-      return {
-        participationId,
-        eventTimeBlockId,
-        savedHeadcounts,
-        failedCount: attempts.length - savedHeadcounts.length,
-      };
-    },
-    onSuccess: async ({ participationId, savedHeadcounts, failedCount }) => {
-      dispatchEditSession({
-        type: 'headcounts-saved',
-        participationId,
-        savedHeadcounts: savedHeadcounts.map(({ shiftId, headcount }) => ({
-          key: toHeadcountKey({
-            shiftId,
-            sectorId: headcount.sectorId,
-            roleId: headcount.roleId,
-          }),
-          value: String(headcount.peopleNeeded),
-        })),
-      });
-      if (failedCount > 0) {
-        toast.error('Some people needed could not be saved. Try again.');
-      } else {
-        toast.success('People needed saved.');
-      }
-      await refreshParticipation();
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-
-  /** One explicit save/publish action per visit: calls `askAvailability`
-   * once per touched participation still in `prepare` state, reusing
-   * `resendAvailabilityReminder` for participations already past it (FR-017)
-   * — remains available and re-invocable after schedule release, and never
-   * blocks further edits. Server-side `AvailabilityCheck` dedup (R4) means a
-   * duplicate call from resaving after a mid-flight navigation is harmless. */
-  const saveAndAskAvailability = useMutation({
-    mutationFn: async () => {
-      const results = await Promise.all(
-        [...touchedParticipationIds].map((participationId) => {
-          const eventView = events.find(
-            (candidate) => candidate.participation.id === participationId,
-          );
-          return eventView?.participation.state === 'preparing'
-            ? adminApi.askAvailability(participationId)
-            : adminApi.resendAvailabilityReminder(participationId);
-        }),
-      );
-      return results;
-    },
-    onSuccess: async () => {
-      toast.success('Availability requests sent.');
-      dispatchEditSession({ type: 'availability-sent' });
-      await refreshParticipation();
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-
-  const hasUnsavedDraftEdits =
-    splitDirtyEventTimeBlockIds.size > 0 ||
-    headcountDirtyEventTimeBlockIds.size > 0;
-  const hasUnsentChanges = touchedParticipationIds.size > 0;
-  const isDirty = hasUnsentChanges || hasUnsavedDraftEdits;
-  const blocker = useBlocker({
-    shouldBlockFn: () => isDirty,
-    enableBeforeUnload: () => isDirty,
-    withResolver: true,
-  });
-
+  const notFound = statuses.includes(404) || (schedules.isSuccess && !schedule);
+  const forbidden = statuses.includes(403);
+  const failed = reads.some((read) => read.isError);
+  const loading = reads.some((read) => read.isLoading);
+  const events = participation.data?.events ?? [];
   const eventDayMarkers = buildEventTimeBlockDayMarkers({
     events,
     timeZone: churchTimezone,
   });
-
   const dayFiltered = selectedDate
     ? events
-        .map((eventView) => ({
-          ...eventView,
-          eventTimeBlocks: eventView.eventTimeBlocks.filter(
-            (eventTimeBlockView) =>
+        .map((event) => ({
+          ...event,
+          eventTimeBlocks: event.eventTimeBlocks.filter(
+            (block) =>
               dayOf({
-                value: eventTimeBlockView.eventTimeBlock.startTime,
+                value: block.eventTimeBlock.startTime,
                 timeZone: churchTimezone,
               }) === selectedDate,
           ),
         }))
-        .filter((eventView) => eventView.eventTimeBlocks.length > 0)
+        .filter((event) => event.eventTimeBlocks.length > 0)
     : events;
   const nameFiltered = filterEventTimeBlocksByName({
     events: dayFiltered,
     query: nameQuery,
   });
+  const hasTimeBlocks = events.some(
+    (event) => event.eventTimeBlocks.length > 0,
+  );
   const filteredEvents = filterEventTimeBlocksByTimeOfDay({
     events: nameFiltered,
     filter: timeWindowFilter,
     timeZone: churchTimezone,
   });
-
-  const isLoading =
-    cycleQuery.isLoading ||
-    ministriesQuery.isLoading ||
-    participationQuery.isLoading;
-
-  const failedQuery = [cycleQuery, ministriesQuery, participationQuery].find(
-    (query) => query.isError,
-  );
-  const missingCycle = cycleQuery.isSuccess && !cycleQuery.data;
-  const notFound =
-    missingCycle ||
-    [cycleQuery, ministriesQuery, participationQuery].some(
-      (query) =>
-        isAxiosError(query.error) && query.error.response?.status === 404,
-    );
-  const errorKind = notFound
-    ? 'not-found'
-    : failedQuery
-      ? classifyPrepareFetchError({ error: failedQuery.error })
-      : null;
-
-  const retryAll = () => {
-    cycleQuery.refetch();
-    ministriesQuery.refetch();
-    participationQuery.refetch();
-  };
-
-  const includedEventTimeBlockCount = countIncludedEventTimeBlocks(events);
-  const shiftCount = countShifts(events);
-  const eventCount = events.length;
-  const touchedEventTitles = events
-    .filter((eventView) =>
-      touchedParticipationIds.has(eventView.participation.id),
-    )
-    .map((eventView) => eventView.event.title);
-  const cycleDateSpan = cycleQuery.data
-    ? `${formatCalendarDateOnly({ value: cycleQuery.data.startDate })} – ${formatCalendarDateOnly({ value: cycleQuery.data.endDate })}`
-    : null;
+  const readOnly =
+    schedule?.cycle.state === 'past' || schedule?.stage === 'published';
+  const ready = !notFound && !forbidden && !failed && !loading && schedule;
+  const dateSpan = schedule
+    ? `${formatCalendarDateOnly({ value: schedule.cycle.startDate })} – ${formatCalendarDateOnly({ value: schedule.cycle.endDate })}`
+    : undefined;
 
   return (
     <WorkspacePage data-testid="prepare-workspace-page">
       <WorkspaceIntroPanel
         title={
-          ministryName && cycleQuery.data
-            ? `${ministryName} · ${cycleQuery.data.name}`
-            : 'Prepare workspace'
+          schedule
+            ? m.prepare_schedule_title({
+                ministry: schedule.ministry.name,
+                cycle: schedule.cycle.name,
+              })
+            : m.schedules_title()
         }
         description={
-          cycleDateSpan
-            ? `${cycleDateSpan} · Filter to a day, confirm time blocks, split shifts, and set people needed.`
-            : 'Filter to a day, confirm time blocks, split shifts, and set people needed.'
+          dateSpan
+            ? `${dateSpan} · ${m.prepare_schedule_description()}`
+            : m.prepare_schedule_description()
         }
         autoFocusTitle
         aside={
-          !isLoading && !errorKind ? (
-            <div className="flex w-full flex-wrap items-center gap-3 xl:w-auto xl:justify-end">
-              <div className="radius-surface flex divide-x divide-border/70 border border-border/70 bg-background/70 text-sm">
-                <StatChip
-                  label="Events"
-                  value={eventCount}
-                  testId="prepare-event-count"
-                />
-                <StatChip
-                  label="Time blocks"
-                  value={includedEventTimeBlockCount}
-                  testId="prepare-included-count"
-                />
-                <StatChip
-                  label="Shifts"
-                  value={shiftCount}
-                  testId="prepare-shift-count"
-                />
-                {hasUnsentChanges ? (
-                  <StatChip
-                    label="Unsent"
-                    value={touchedParticipationIds.size}
-                    testId="prepare-touched-count"
-                  />
-                ) : null}
-              </div>
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/schedules"
-                  data-testid="browse-all-cycles-link"
-                  className={buttonVariants({ variant: 'ghost' })}
-                >
-                  {m.schedules_back()}
-                </Link>
-                <Link
-                  to="/schedules/$ministryId/$cycleId/assign"
-                  params={{ ministryId, cycleId }}
-                  data-testid="open-assign-link"
-                  className={buttonVariants({ variant: 'outline' })}
-                >
-                  Open builder
-                </Link>
-                <Button
-                  type="button"
-                  className="disabled:opacity-40 dark:disabled:opacity-30"
-                  data-testid="save-and-ask-availability-button"
-                  disabled={
-                    !hasUnsentChanges || saveAndAskAvailability.isPending
-                  }
-                  onClick={() => {
-                    if (saveAndAskAvailability.isPending) return;
-                    setConfirmSendOpen(true);
-                  }}
-                >
-                  {saveAndAskAvailability.isPending
-                    ? 'Sending…'
-                    : 'Request availability'}
-                </Button>
-              </div>
+          ready ? (
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/schedules"
+                data-testid="browse-all-cycles-link"
+                className={buttonVariants({ variant: 'ghost' })}
+              >
+                {m.schedules_back()}
+              </Link>
+              <Link
+                to="/schedules/$ministryId/$cycleId/assign"
+                params={{ ministryId, cycleId }}
+                data-testid="open-assign-link"
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                {m.prepare_open_builder()}
+              </Link>
             </div>
           ) : null
         }
       />
-
-      {errorKind === 'not-found' ? (
+      {notFound ? (
         <Alert variant="destructive">
           <AlertDescription>{m.error_not_found()}</AlertDescription>
         </Alert>
-      ) : errorKind === 'forbidden' ? (
+      ) : forbidden ? (
         <Alert variant="destructive" data-testid="prepare-forbidden-state">
           <AlertDescription>{m.shell_no_access()}</AlertDescription>
         </Alert>
-      ) : errorKind === 'retryable' ? (
+      ) : failed ? (
         <Alert
           variant="destructive"
           data-testid="prepare-retryable-error-state"
         >
-          <AlertTitle>Couldn't load this workspace</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>Check your connection and try again.</span>
+            {m.prepare_schedule_error()}
             <Button
-              type="button"
-              size="sm"
               variant="outline"
-              onClick={retryAll}
+              onClick={() => {
+                schedules.refetch();
+                participation.refetch();
+              }}
             >
-              Retry
+              {m.schedules_retry()}
             </Button>
           </AlertDescription>
         </Alert>
-      ) : isLoading || !cycleQuery.data ? (
-        <div className="grid gap-3">
-          <Skeleton className="h-64 w-full" />
+      ) : !ready ? (
+        <div role="status" aria-label={m.schedules_loading()}>
           <Skeleton className="h-64 w-full" />
         </div>
       ) : (
-        <div data-testid="prepare-workspace-stack" className="space-y-4">
-          <div className="sticky top-4 z-10 space-y-4 bg-background pb-4">
+        <div
+          data-testid="prepare-workspace-stack"
+          className="flex flex-col gap-4"
+        >
+          {readOnly ? (
+            <Alert>
+              <AlertDescription>{m.prepare_block_read_only()}</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="sticky top-4 z-10 flex flex-col gap-4 bg-background pb-4">
             <PrepareCalendar
-              cycleStartDate={cycleQuery.data.startDate}
-              cycleEndDate={cycleQuery.data.endDate}
+              cycleStartDate={schedule.cycle.startDate}
+              cycleEndDate={schedule.cycle.endDate}
               eventDayMarkers={eventDayMarkers}
               selectedDate={selectedDate}
               onSelectedDateChange={setSelectedDate}
@@ -731,159 +188,23 @@ function PrepareWorkspaceRoute() {
               onTimeWindowFilterChange={setTimeWindowFilter}
             />
           </div>
-
-          <PrepareEventTimeBlockList
-            events={filteredEvents}
-            ministryId={ministryId}
-            splitForms={splitForms}
-            headcountDrafts={headcountDrafts}
-            savedHeadcountDrafts={savedHeadcountDrafts}
-            splitDirtyEventTimeBlockIds={splitDirtyEventTimeBlockIds}
-            headcountDirtyEventTimeBlockIds={headcountDirtyEventTimeBlockIds}
-            pendingHeadcountEventTimeBlockId={
-              saveHeadcounts.isPending
-                ? (saveHeadcounts.variables?.eventTimeBlockId ?? null)
-                : null
-            }
-            pendingSplitEventTimeBlockId={
-              splitShifts.isPending
-                ? (splitShifts.variables?.eventTimeBlockView.eventTimeBlock
-                    .id ?? null)
-                : null
-            }
-            pendingInclusionEventTimeBlockId={
-              saveInclusions.isPending
-                ? (saveInclusions.variables?.eventTimeBlockId ?? null)
-                : null
-            }
-            onToggleInclusion={({
-              participationId,
-              eventTimeBlockId,
-              checked,
-            }) => {
-              const participationEvents = events.find(
-                (eventView) => eventView.participation.id === participationId,
-              );
-              const currentIncluded = (
-                participationEvents?.eventTimeBlocks ?? []
-              )
-                .filter((eventTimeBlockView) => eventTimeBlockView.included)
-                .map(
-                  (eventTimeBlockView) => eventTimeBlockView.eventTimeBlock.id,
-                );
-              const nextIncluded = checked
-                ? [...new Set([...currentIncluded, eventTimeBlockId])]
-                : currentIncluded.filter((id) => id !== eventTimeBlockId);
-
-              saveInclusions.mutate({
-                participationId,
-                eventTimeBlockId,
-                eventTimeBlockIds: nextIncluded,
-              });
-            }}
-            onSplitFormChange={({ eventTimeBlockId, nextForm }) =>
-              dispatchEditSession({
-                type: 'split-form-changed',
-                eventTimeBlockId,
-                nextForm,
-              })
-            }
-            onSplitShifts={({ participationId, eventTimeBlockView }) =>
-              splitShifts.mutate({ participationId, eventTimeBlockView })
-            }
-            onHeadcountChange={({ shiftId, sectorId, roleId, value }) =>
-              dispatchEditSession({
-                type: 'headcount-draft-changed',
-                key: toHeadcountKey({ shiftId, sectorId, roleId }),
-                value,
-              })
-            }
-            onSaveHeadcounts={({
-              participationId,
-              eventTimeBlockId,
-              headcountSavesByShift,
-            }) =>
-              saveHeadcounts.mutate({
-                participationId,
-                eventTimeBlockId,
-                headcountSavesByShift,
-              })
-            }
-          />
+          {filteredEvents.some((event) => event.eventTimeBlocks.length > 0) ? (
+            <PrepareEventTimeBlockList
+              events={filteredEvents}
+              ministryId={ministryId}
+              cycleId={cycleId}
+            />
+          ) : (
+            <p
+              role="status"
+              data-testid="prepare-event-time-block-list-empty-state"
+              className="py-8 text-center text-muted-foreground"
+            >
+              {hasTimeBlocks ? m.prepare_filter_empty() : m.prepare_empty()}
+            </p>
+          )}
         </div>
       )}
-
-      <AlertDialog open={blocker.status === 'blocked'}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {hasUnsavedDraftEdits
-                ? 'You have unsaved shift-split or people needed changes. Leaving now will discard them.'
-                : "You've touched time blocks or shifts in this session but haven't sent availability requests yet. Leaving now won't notify volunteers of these changes."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              data-testid="prepare-leave-cancel"
-              onClick={() => blocker.reset?.()}
-            >
-              Stay
-            </AlertDialogCancel>
-            <AlertDialogAction
-              data-testid="prepare-leave-confirm"
-              variant="destructive"
-              onClick={() => blocker.proceed?.()}
-            >
-              Leave anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={confirmSendOpen}>
-        <AlertDialogContent data-testid="prepare-send-confirm-dialog">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Send {touchedEventTitles.length}{' '}
-              {touchedEventTitles.length === 1
-                ? 'availability request'
-                : 'availability requests'}
-              ?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Volunteers for the following{' '}
-              {touchedEventTitles.length === 1 ? 'event' : 'events'} will be
-              notified. This can't be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <ul className="max-h-40 list-inside list-disc overflow-y-auto text-foreground text-sm">
-            {touchedEventTitles.map((title, index) => (
-              <li key={`${title}-${index}`} className="wrap-break-word">
-                {title}
-              </li>
-            ))}
-          </ul>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              data-testid="prepare-send-cancel"
-              onClick={() => setConfirmSendOpen(false)}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              data-testid="prepare-send-confirm"
-              onClick={() => {
-                setConfirmSendOpen(false);
-                saveAndAskAvailability.mutate();
-              }}
-            >
-              Send {touchedEventTitles.length}{' '}
-              {touchedEventTitles.length === 1 ? 'request' : 'requests'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </WorkspacePage>
   );
 }

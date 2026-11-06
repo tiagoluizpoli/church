@@ -14,10 +14,15 @@ import type {
   VolunteerId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
+import type { Cycle } from '../../entities/cycle';
 import type { Event } from '../../entities/event';
 import type { EventTimeBlock } from '../../entities/event-time-block';
+import type { Ministry } from '../../entities/ministry';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
-import type { MinistryParticipation } from '../../entities/ministry-participation';
+import type {
+  MinistryParticipation,
+  ScheduleStage,
+} from '../../entities/ministry-participation';
 import type { Shift } from '../../entities/shift';
 import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type {
@@ -228,6 +233,25 @@ export interface ScheduleSummaryView {
   availabilityRequestedForAny: boolean;
 }
 
+export interface ListSchedulesInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+}
+
+export interface ScheduleAskingView {
+  confirmed: number;
+  asked: number;
+}
+
+/** One Ministry's part of one Sent or Past Cycle. `asking` is set only in that stage. */
+export interface ScheduleView {
+  ministry: Ministry;
+  cycle: Cycle;
+  stage: ScheduleStage;
+  asking?: ScheduleAskingView;
+}
+
 export interface IParticipationManager {
   getCycleParticipation(
     input: GetCycleParticipationInput,
@@ -260,4 +284,6 @@ export interface IParticipationManager {
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryView[]>;
+  /** Newest Cycle first, then Ministries alphabetically. */
+  listSchedules(input: ListSchedulesInput): Promise<ScheduleView[]>;
 }

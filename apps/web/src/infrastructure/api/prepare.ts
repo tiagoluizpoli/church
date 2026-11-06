@@ -13,6 +13,7 @@ import type {
   GetCycleParticipation200,
   GetCycleParticipationParams,
   ListScheduleSummaries200,
+  ListSchedules200,
   ResendAvailabilityReminder202,
   SetParticipationInclusions204,
   SetParticipationInclusionsBody,
@@ -31,6 +32,18 @@ import { apiClient } from '../../utils/api-client';
 
   export const getPrepare = () => {
 /**
+ * List one row per Ministry and Sent or Past Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader.
+ * @summary List the caller's Schedules
+ */
+const listSchedules = (
+
+ ) => {
+      return apiClient<ListSchedules200>(
+      {url: `/api/v1/prepare/schedules`, method: 'GET'
+    },
+      );
+    }
+  /**
  * Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle.
  * @summary Get a Ministry's prepare view of a cycle
  */
@@ -179,7 +192,8 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {getCycleParticipation,listScheduleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,listScheduleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['setParticipationInclusions']>>>

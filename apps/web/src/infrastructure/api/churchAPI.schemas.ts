@@ -2123,6 +2123,67 @@ export type SaveUsualSetupBlock404 = {
   message: string;
 };
 
+export type ListSchedules200SchedulesItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type ListSchedules200SchedulesItemCycleState = typeof ListSchedules200SchedulesItemCycleState[keyof typeof ListSchedules200SchedulesItemCycleState];
+
+
+export const ListSchedules200SchedulesItemCycleState = {
+  draft: 'draft',
+  sent: 'sent',
+  past: 'past',
+} as const;
+
+export type ListSchedules200SchedulesItemCycle = {
+  id: string;
+  name: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+  state: ListSchedules200SchedulesItemCycleState;
+};
+
+export type ListSchedules200SchedulesItemStage = typeof ListSchedules200SchedulesItemStage[keyof typeof ListSchedules200SchedulesItemStage];
+
+
+export const ListSchedules200SchedulesItemStage = {
+  to_prepare: 'to_prepare',
+  asking: 'asking',
+  assigning: 'assigning',
+  published: 'published',
+  not_serving: 'not_serving',
+} as const;
+
+export type ListSchedules200SchedulesItemAsking = {
+  confirmed: number;
+  asked: number;
+};
+
+export type ListSchedules200SchedulesItem = {
+  ministry: ListSchedules200SchedulesItemMinistry;
+  cycle: ListSchedules200SchedulesItemCycle;
+  stage: ListSchedules200SchedulesItemStage;
+  asking?: ListSchedules200SchedulesItemAsking;
+};
+
+export type ListSchedules200 = {
+  schedules: ListSchedules200SchedulesItem[];
+};
+
+export type ListSchedules401 = {
+  error: string;
+  message: string;
+};
+
+export type ListSchedules403 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleParticipationParams = {
 ministryId: string;
 };

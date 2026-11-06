@@ -190,6 +190,10 @@ export function createMinistryParticipationRepositoryFake() {
     touch: vi.fn<MinistryParticipationRepository['touch']>(),
     listScheduleSummaries:
       vi.fn<MinistryParticipationRepository['listScheduleSummaries']>(),
+    listScheduleServingStates:
+      vi.fn<MinistryParticipationRepository['listScheduleServingStates']>(),
+    countScheduleChecks:
+      vi.fn<MinistryParticipationRepository['countScheduleChecks']>(),
   } satisfies MinistryParticipationRepository;
 }
 

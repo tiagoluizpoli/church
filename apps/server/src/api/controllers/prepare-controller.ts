@@ -25,6 +25,7 @@ import {
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
   participationMapper,
+  scheduleListResponseSchema,
   scheduleSummaryListResponseSchema,
   setInclusionsBodySchema,
   shiftListResponseSchema,
@@ -133,6 +134,46 @@ export class PrepareController implements FastifyController {
     app.addHook(
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+    );
+
+    app.get(
+      '/schedules',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'listSchedules',
+          summary: "List the caller's Schedules",
+          description:
+            'List one row per Ministry and Sent or Past Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader.',
+          response: {
+            200: scheduleListResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const { isChurchAdmin, ledMinistries } =
+          await this.authorityGuard.resolveCallerCapabilities({
+            churchId,
+            userId: UserId.from(request.userId),
+          });
+        if (!isChurchAdmin && ledMinistries.length === 0) {
+          refuse({ reply, request, code: 'FORBIDDEN' });
+          return;
+        }
+
+        const schedules = await this.participationManager.listSchedules({
+          churchId,
+          ministryIds: isChurchAdmin
+            ? undefined
+            : ledMinistries.map(({ ministryId }) => ministryId),
+        });
+        return reply.send(
+          participationMapper.scheduleListToResponse(schedules),
+        );
+      },
     );
 
     app.get(

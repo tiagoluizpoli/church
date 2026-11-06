@@ -112,6 +112,39 @@ export function aggregateCyclePrepareStatus({
   };
 }
 
+export const SCHEDULE_STAGE_OPTIONS = [
+  'to_prepare',
+  'asking',
+  'assigning',
+  'published',
+  'not_serving',
+] as const;
+export type ScheduleStage = (typeof SCHEDULE_STAGE_OPTIONS)[number];
+
+type ScheduleStageOfState = readonly [ParticipationState, ScheduleStage];
+
+const SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST: readonly ScheduleStageOfState[] = [
+  ['preparing', 'to_prepare'],
+  ['availability_requested', 'asking'],
+  ['assigning', 'assigning'],
+  ['published', 'published'],
+];
+
+export interface DeriveScheduleStageInput {
+  /** States of the Schedule's MinistryParticipations that serve a block. */
+  servingStates: ParticipationState[];
+}
+
+/** The furthest-behind state wins, so a legacy mixed-state Schedule is not an error. */
+export function deriveScheduleStage({
+  servingStates,
+}: DeriveScheduleStageInput): ScheduleStage {
+  const furthestBehind = SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST.find(([state]) =>
+    servingStates.includes(state),
+  );
+  return furthestBehind ? furthestBehind[1] : 'not_serving';
+}
+
 export class MinistryParticipation extends Entity<
   MinistryParticipationProps,
   MinistryParticipationId

@@ -113,6 +113,28 @@ export interface ScheduleSummaryRow {
   availabilityRequestedForAny: boolean;
 }
 
+export interface ListSchedulesFactsInput {
+  churchId: ChurchId;
+  ministryIds: MinistryId[];
+  cycleIds: CycleId[];
+  tx?: TransactionContext;
+}
+
+/** One distinct MinistryParticipation state serving a block of a Schedule. */
+export interface ScheduleServingStateRow {
+  ministryId: string;
+  cycleId: string;
+  state: ParticipationState;
+}
+
+/** A Schedule's AvailabilityChecks still held by active Ministry Memberships. */
+export interface ScheduleCheckCountRow {
+  ministryId: string;
+  cycleId: string;
+  confirmed: number;
+  asked: number;
+}
+
 export interface MinistryParticipationRepository {
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
   findByMinistryEvent(
@@ -145,4 +167,11 @@ export interface MinistryParticipationRepository {
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryRow[]>;
+  /** Leaves out opted-out MinistryParticipations and cancelled Events. */
+  listScheduleServingStates(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleServingStateRow[]>;
+  countScheduleChecks(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleCheckCountRow[]>;
 }

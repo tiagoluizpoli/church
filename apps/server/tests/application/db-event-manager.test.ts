@@ -230,6 +230,8 @@ function createRepos(): Repos {
     addInclusion: vi.fn(),
     touch: vi.fn(),
     listScheduleSummaries: vi.fn(),
+    listScheduleServingStates: vi.fn(),
+    countScheduleChecks: vi.fn(),
   };
 
   const authorityManager = {

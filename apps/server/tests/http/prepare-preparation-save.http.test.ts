@@ -11,7 +11,7 @@ import {
   shiftRequirement,
 } from '@church/db';
 import { parseTimeOfDay } from '@church/time';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -25,11 +25,13 @@ import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { PrepareController } from '@/api/controllers/prepare-controller';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { ChurchId, CycleId, MinistryId, UserId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -38,6 +40,7 @@ import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import { buildUsualSetup } from '@/seeds/builders/planning';
+import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
   buildVolunteer,
@@ -47,6 +50,7 @@ import {
   seedRequirement,
   seedRole,
   seedShift,
+  seedVolunteerMembership,
 } from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
@@ -69,6 +73,7 @@ const mockSetActiveOrganization = vi.mocked(mockAuth.api.setActiveOrganization);
 const db = schedulingTestDb;
 
 let app: FastifyTypedInstance;
+const { participationManager } = createSchedulingManagers();
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -76,7 +81,7 @@ beforeAll(async () => {
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
-    participationManager: createSchedulingManagers().participationManager,
+    participationManager,
     availabilityCheckManager: {} as never,
     activeChurchResolver: new DbActiveChurchResolver({
       actorRepository,
@@ -118,6 +123,8 @@ beforeEach(async () => {
 const BLOCK_START = '2099-03-01T09:00:00.000Z';
 const BLOCK_MIDDLE = '2099-03-01T10:00:00.000Z';
 const BLOCK_END = '2099-03-01T11:00:00.000Z';
+const LOCK_WAIT_TIMEOUT_MS = 5_000;
+const LOCK_WAIT_POLL_MS = 20;
 
 interface SignInInput {
   userId: string;
@@ -1195,6 +1202,149 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       });
 
       expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe('racing publication', () => {
+    /** Another transaction of this worker's database is waiting on a row lock. */
+    async function waitForLockWaiter() {
+      await vi.waitFor(
+        async () => {
+          const { rows } = await db.execute(sql`
+            SELECT count(*)::int AS waiting
+            FROM pg_stat_activity
+            WHERE datname = current_database() AND wait_event_type = 'Lock'
+          `);
+          expect(rows[0]?.waiting).toBeGreaterThan(0);
+        },
+        { timeout: LOCK_WAIT_TIMEOUT_MS, interval: LOCK_WAIT_POLL_MS },
+      );
+    }
+
+    function publish(base: Base) {
+      return participationManager.publishCycle({
+        churchId: ChurchId.from(base.churchId),
+        cycleId: CycleId.from(base.cycle.id),
+        ministryId: MinistryId.from(base.ministryId),
+        userId: UserId.from(base.adminUserId),
+      });
+    }
+
+    async function participationState(base: Base) {
+      const [row] = await db
+        .select({ state: ministryParticipation.state })
+        .from(ministryParticipation)
+        .where(eq(ministryParticipation.id, base.participationId));
+      return row?.state;
+    }
+
+    /** Pauses a repository write inside its transaction until the test releases it. */
+    function pauseWrite(method: 'touch' | 'updateState') {
+      const prototype = DrizzleMinistryParticipationRepository.prototype;
+      const original = prototype[method] as (input: never) => Promise<unknown>;
+      let release = () => {};
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reached = () => {};
+      const paused = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
+      const spy = vi
+        .spyOn(prototype, method)
+        .mockImplementation(async function (
+          this: DrizzleMinistryParticipationRepository,
+          input: never,
+        ) {
+          reached();
+          await released;
+          return original.call(this, input) as never;
+        });
+      return { paused, release, spy };
+    }
+
+    /** The save is mid-transaction, holding its lock, while Publish starts and blocks. */
+    async function saveAheadOfPublish(base: Base, payload: object) {
+      const { paused, release, spy } = pauseWrite('touch');
+      const saving = savePreparation({ ...base, payload });
+      await paused;
+      const publishing = publish(base);
+      await waitForLockWaiter();
+      release();
+      const [saved, published] = await Promise.all([saving, publishing]);
+      spy.mockRestore();
+      return { saved, published };
+    }
+
+    it('makes Publish see a clean opt-in it overlapped and ask for confirmation', async () => {
+      const base = await seedPreparation();
+      await setParticipationState(base, 'availability_requested');
+
+      const { saved, published } = await saveAheadOfPublish(
+        base,
+        wholeBlockPayload(base, { peopleNeeded: 3 }),
+      );
+
+      expect(saved.statusCode).toBe(200);
+      expect(published).toMatchObject({ published: false, belowFull: true });
+      expect(await participationState(base)).toBe('availability_requested');
+    });
+
+    it('makes Publish see a headcount increase it overlapped on a full Schedule', async () => {
+      const base = await seedPreparation();
+      const { shift: staffed, requirement } = await seedBlockShift({
+        base,
+        peopleNeeded: 1,
+      });
+      const { volunteer } = await seedVolunteerMembership({
+        churchId: base.churchId,
+        ministryId: base.ministryId,
+        name: 'Assigned',
+        email: `assigned-${randomUUID()}@test.com`,
+      });
+      await buildAssignment({
+        db,
+        churchId: base.churchId,
+        participationId: base.participationId,
+        shiftId: staffed.id,
+        volunteerId: volunteer.id,
+        roleId: base.roleId,
+        shiftRequirementId: requirement.id,
+        status: 'confirmed',
+      });
+      await setParticipationState(base, 'assigning');
+
+      const { saved, published } = await saveAheadOfPublish(
+        base,
+        wholeBlockPayload(base, { peopleNeeded: 2 }),
+      );
+
+      expect(saved.statusCode).toBe(200);
+      expect(published).toMatchObject({ published: false, belowFull: true });
+      expect(await participationState(base)).toBe('assigning');
+    });
+
+    it('refuses a save that waited on a Publish, leaving the published graph alone', async () => {
+      const base = await seedPreparation();
+      await setParticipationState(base, 'availability_requested');
+      const { paused, release, spy } = pauseWrite('updateState');
+
+      const publishing = publish(base);
+      await paused;
+      const saving = savePreparation({
+        ...base,
+        payload: wholeBlockPayload(base),
+      });
+      await waitForLockWaiter();
+      release();
+      const [published, saved] = await Promise.all([publishing, saving]);
+      spy.mockRestore();
+
+      expect(published).toMatchObject({ published: true, belowFull: false });
+      expect(saved.statusCode).toBe(409);
+      expect(saved.json()).toMatchObject({ error: 'ILLEGAL_STATE_TRANSITION' });
+      expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
+      expect(await participationState(base)).toBe('published');
     });
   });
 

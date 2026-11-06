@@ -804,6 +804,9 @@ it.each([
     repositories.ministryParticipationRepository.findByMinistryEvent,
   ).mockResolvedValue(participation);
   vi.mocked(
+    repositories.ministryParticipationRepository.lockById,
+  ).mockResolvedValue(participation);
+  vi.mocked(
     repositories.shiftRepository.listRequirementsByParticipation,
   ).mockResolvedValue([]);
   vi.mocked(

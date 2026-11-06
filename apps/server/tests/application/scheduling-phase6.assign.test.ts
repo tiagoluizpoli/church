@@ -149,6 +149,7 @@ function createHarness() {
     requirement,
   ]);
   ministryParticipationRepository.getById.mockResolvedValue(participation);
+  ministryParticipationRepository.lockById.mockResolvedValue(participation);
   ministryParticipationRepository.findByMinistryEvent.mockResolvedValue(
     participation,
   );

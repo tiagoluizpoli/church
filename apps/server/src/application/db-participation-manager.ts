@@ -1373,11 +1373,18 @@ export class DbParticipationManager implements IParticipationManager {
       const alreadyPublished: PublishCandidate[] = [];
 
       for (const eventGroup of eventGroups) {
-        const participation = await this.getOrCreateParticipation({
+        const { id: participationId } = await this.getOrCreateParticipation({
           churchId: input.churchId,
           cycleId: input.cycleId,
           ministryId: input.ministryId,
           eventId: eventGroup.event.id,
+          tx,
+        });
+        // Locked before completion is read, in the stable Event order: a racing
+        // preparation save is seen here, or sees this publish and is refused.
+        const participation = await this.participationRepository.lockById({
+          churchId: input.churchId,
+          participationId,
           tx,
         });
         const completion = await this.getCompletionInternal({

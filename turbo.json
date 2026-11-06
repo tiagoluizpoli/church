@@ -70,7 +70,11 @@
       ],
       "cache": false
     },
+    "@church/i18n#compile": {
+      "cache": false
+    },
     "dev": {
+      "dependsOn": ["@church/i18n#compile"],
       "cache": false,
       "persistent": true
     },

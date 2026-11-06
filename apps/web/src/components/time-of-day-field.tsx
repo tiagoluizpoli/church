@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseTimeOfDay, type TimeOfDay } from '@church/time';
 import { parseTime } from '@internationalized/date';
 import { ChevronDown } from 'lucide-react';
@@ -161,6 +162,8 @@ export interface TimeOfDayFieldProps {
   disabled?: boolean;
   'aria-label'?: string;
   'aria-labelledby'?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   'data-testid'?: string;
 }
 
@@ -182,6 +185,8 @@ export function TimeOfDayField({
   disabled,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledby,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedby,
   'data-testid': dataTestId,
 }: TimeOfDayFieldProps) {
   const [open, setOpen] = useState(false);
@@ -330,6 +335,9 @@ export function TimeOfDayField({
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledby}
         id={id}
+        isInvalid={ariaInvalid}
+        validationBehavior="aria"
+        aria-describedby={ariaDescribedby}
         hourCycle={24}
         shouldForceLeadingZeros
         granularity="minute"
@@ -355,7 +363,7 @@ export function TimeOfDayField({
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Pick a common time"
+              aria-label={m.time_of_day_pick_common()}
               aria-expanded={open}
               // Out of the tab order on purpose: it is a mouse affordance, and
               // everything it offers is already reachable by typing. Leaving it
@@ -385,7 +393,7 @@ export function TimeOfDayField({
         <div
           ref={listRef}
           role="listbox"
-          aria-label="Common times"
+          aria-label={m.time_of_day_common_times()}
           className="radius-control absolute top-full right-0 left-0 z-50 mt-1 max-h-56 overflow-auto border border-border bg-popover p-1 shadow-md"
         >
           {options.map((option, index) => (

@@ -15,6 +15,8 @@ const getCycle = vi.fn();
 const getEventTemplate = vi.fn();
 const applyPlanningTemplates = vi.fn();
 const deleteCycle = vi.fn();
+const getCycleSendSummary = vi.fn();
+const sendCycle = vi.fn();
 const updateCycle = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
@@ -28,6 +30,8 @@ vi.mock('@/utils/api-instances', async () => ({
       applyPlanningTemplates(...args),
     deleteCycle: (...args: unknown[]) => deleteCycle(...args),
     updateCycle: (...args: unknown[]) => updateCycle(...args),
+    getCycleSendSummary: (...args: unknown[]) => getCycleSendSummary(...args),
+    sendCycle: (...args: unknown[]) => sendCycle(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -317,7 +321,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 });
 
 describe('CyclesActions (US4)', () => {
-  it('renders "Add event" beside "Apply template" in the top action row for a draft cycle, and opens the create-event modal', async () => {
+  it('renders "Add event" beside "Apply template" for a draft cycle, linking to its nested New Event page', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -349,19 +353,13 @@ describe('CyclesActions (US4)', () => {
     const applyTemplateButton = within(actionsRow).getByTestId(
       'open-apply-templates-dialog-button',
     );
-    const addManualEventButton = within(actionsRow).getByRole('button', {
+    const addEventLink = within(actionsRow).getByRole('link', {
       name: m.cycles_add_event_button(),
     });
     expect(applyTemplateButton).toBeVisible();
     expect(applyTemplateButton).toHaveTextContent('Aplicar modelo');
-    expect(addManualEventButton).toHaveTextContent('Adicionar evento');
-    expect(addManualEventButton).toBeVisible();
-
-    await user.click(addManualEventButton);
-
-    expect(
-      await screen.findByRole('dialog', { name: 'New Event' }),
-    ).toBeVisible();
+    expect(addEventLink).toHaveTextContent('Adicionar evento');
+    expect(addEventLink).toHaveAttribute('href', '/cycles/cycle-1/events/new');
   });
 
   it('does not render a "Manual exceptions" panel in the review body', async () => {
@@ -828,6 +826,39 @@ describe('Direct Cycle review route', () => {
     expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^(Edit|Delete|Add)/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refetches the Cycle after Send and removes its Draft controls', async () => {
+    listCycles.mockResolvedValue({ cycles: [] });
+    getCycle.mockResolvedValue(
+      details({ id: 'cycle-1', name: 'October', state: 'draft' }),
+    );
+    getCycleSendSummary.mockResolvedValue({
+      eventCount: 1,
+      prefilledMinistryCount: 0,
+    });
+    sendCycle.mockImplementation(async () => {
+      getCycle.mockResolvedValue(
+        details({ id: 'cycle-1', name: 'October', state: 'sent' }),
+      );
+    });
+    const user = userEvent.setup();
+    renderCycles('/cycles/cycle-1');
+
+    await user.click(await screen.findByTestId('send-cycle-button'));
+    expect(await screen.findByText(m.cycle_send_prefill_zero())).toBeVisible();
+    await user.click(screen.getByTestId('confirm-cycle-send-button'));
+
+    expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
+      m.cycle_state_sent(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument(),
+    );
+    expect(sendCycle).toHaveBeenCalledWith('cycle-1');
+    expect(
+      screen.queryByTestId('open-apply-templates-dialog-button'),
     ).not.toBeInTheDocument();
   });
 

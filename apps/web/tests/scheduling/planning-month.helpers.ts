@@ -14,7 +14,7 @@ export interface AnchorInput {
 export interface PlanningMonthWindow {
   /** First day of the month after the anchor's. */
   startDate: string;
-  /** First day of the month after `startDate`'s. */
+  /** Last day of `startDate`'s month, included in the Cycle. */
   endDate: string;
 }
 

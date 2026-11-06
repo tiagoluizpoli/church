@@ -50,6 +50,7 @@ const planningEventManager = {
   generateFromTemplates: vi.fn(),
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
+  deleteEvent: vi.fn(),
   cancelEvent: vi.fn(),
   createEventTimeBlock: vi.fn(),
   updateEventTimeBlock: vi.fn(),
@@ -242,15 +243,16 @@ describe('Church admin planning routes', () => {
   });
 
   it('POST /api/v1/admin/cycles/:id/events stores the client-computed church-local Instants as given (#149)', async () => {
-    // Quick-create sends already church-local bounds; the controller no
+    // The Event editor sends already church-local bounds; the controller no
     // longer reinterprets them (no datesRepresentChurchCalendarDays flag).
     // The church-timezone day-placement proof itself (a real church, a real
     // DB) lives at the manager layer in
     // tests/application/planning-phase3.managers.test.ts — this test's job
     // is only to confirm the HTTP layer doesn't reintroduce reinterpretation
     // between the wire and the manager call.
-    planningEventManager.createEvent.mockResolvedValue(
-      new Event({
+    planningEventManager.createEvent.mockResolvedValue({
+      eventTimeBlocks: [],
+      event: new Event({
         props: {
           churchId: '11111111-1111-1111-1111-111111111111',
           cycleId: '22222222-2222-2222-2222-222222222222',
@@ -262,7 +264,7 @@ describe('Church admin planning routes', () => {
         createdAt: new Date('2026-06-01T00:00:00.000Z'),
         updatedAt: new Date('2026-06-01T00:00:00.000Z'),
       }),
-    );
+    });
 
     const response = await app.inject({
       method: 'POST',
@@ -271,6 +273,13 @@ describe('Church admin planning routes', () => {
         title: 'Domingo',
         start: '2026-06-28T03:00:00.000Z',
         end: '2026-06-29T02:59:59.999Z',
+        eventTimeBlocks: [
+          {
+            label: 'Domingo',
+            startTime: '2026-06-28T03:00:00.000Z',
+            endTime: '2026-06-29T02:59:59.999Z',
+          },
+        ],
       },
     });
 
@@ -279,6 +288,13 @@ describe('Church admin planning routes', () => {
       expect.objectContaining({
         start: new Date('2026-06-28T03:00:00.000Z'),
         end: new Date('2026-06-29T02:59:59.999Z'),
+        eventTimeBlocks: [
+          {
+            label: 'Domingo',
+            startTime: new Date('2026-06-28T03:00:00.000Z'),
+            endTime: new Date('2026-06-29T02:59:59.999Z'),
+          },
+        ],
       }),
     );
     expect(planningEventManager.createEvent).not.toHaveBeenCalledWith(

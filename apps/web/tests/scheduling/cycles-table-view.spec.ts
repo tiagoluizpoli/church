@@ -6,13 +6,13 @@ import {
   createEventTemplateViaApi,
 } from './cycle-api.helpers';
 import { fillDatePickerField } from './date-picker.helpers';
+import { addEventOnNestedPage } from './event-create.helpers';
 import {
   dayOfMonth,
   nonSundayDay,
   planningMonth,
 } from './planning-month.helpers';
 import { createTemplateOnNestedPage } from './template-create.helpers';
-import { fillTimeOfDayField } from './time-field.helpers';
 import {
   newPersonaContext,
   signInPersonaPage,
@@ -221,6 +221,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     await page.getByTestId('send-cycle-button').click();
+    await page.getByTestId('confirm-cycle-send-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
@@ -230,7 +231,9 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await expect(calendarTable).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Adicionar evento', exact: true }),
+      page.getByRole('link', {
+        name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
+      }),
     ).not.toBeAttached();
     await expect(page.getByTestId('send-cycle-button')).not.toBeAttached();
   });
@@ -263,7 +266,7 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
 });
 
 test.describe('Cycles day/time block edit and delete (US3)', () => {
-  test('draft cycle supports day/time block edit and delete with time block cascade; sent cycle shows no controls', async ({
+  test('draft cycle edits an Event on its nested page, keeps time block delete, and a sent cycle shows no controls', async ({
     page,
   }, testInfo) => {
     const journey = loadPlanningAdminJourney({ testInfo });
@@ -346,87 +349,63 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
       table.getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeDisabled();
 
-    // Edit the day's start date (+1 day); FR-007a's cascade shifts the
-    // remaining time block's underlying time by the same delta in the same
-    // transaction (verified precisely at the integration level in
-    // planning-phase3.managers.test.ts) — here we confirm the edit persists
-    // and is visible end-to-end via the day row's own date text changing.
-    const dayRowTextBefore = await dayRow.textContent();
-
-    await dayRow.getByRole('button', { name: /^Editar dia/ }).click();
-    const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
-    // `InstantField` (src/components/instant-field.tsx) pairs a
-    // `DatePickerField` with a `TimeOfDayField`, not a single labelled
-    // input — read the date picker trigger's displayed `dd/MM/yyyy`
-    // (`formatCalendarDay`) and shift it a day; the time field is left
-    // untouched.
-    const startDateTrigger = editDayDialog.getByTestId('edit-event-start-date');
-    const currentStartDate = await startDateTrigger.textContent();
-    const [currentDay, currentMonth, currentYear] = (currentStartDate ?? '')
-      .trim()
-      .split('/')
-      .map(Number);
-    const shiftedStart = new Date(
-      Date.UTC(currentYear ?? 0, (currentMonth ?? 1) - 1, currentDay ?? 1),
-    );
-    shiftedStart.setUTCDate(shiftedStart.getUTCDate() + 1);
-    const pad = (value: number) => String(value).padStart(2, '0');
-    const shiftedStartValue = `${shiftedStart.getUTCFullYear()}-${pad(shiftedStart.getUTCMonth() + 1)}-${pad(shiftedStart.getUTCDate())}`;
-    await fillDatePickerField({
-      page,
-      trigger: startDateTrigger,
-      date: shiftedStartValue,
-    });
-    await editDayDialog.getByRole('button', { name: 'Save' }).click();
-    await expect(editDayDialog).not.toBeAttached();
-
-    await expect.poll(() => dayRow.textContent()).not.toBe(dayRowTextBefore);
-
-    // Edit the time block itself.
-    await table.getByRole('button', { name: 'Editar horário Worship' }).click();
-    const editEventTimeBlockDialog = page.getByRole('dialog', {
-      name: 'Edit time block',
-    });
-    await editEventTimeBlockDialog.getByLabel('Label').fill('Worship (edited)');
-    await editEventTimeBlockDialog
-      .getByRole('button', { name: 'Save' })
+    // Edit the Event on its nested page: the retained Worship block is
+    // relabelled in place and the review returns with the Event revealed.
+    await dayRow.getByRole('link', { name: /^Editar dia/ }).click();
+    await expect(page).toHaveURL(/\/cycles\/[^/]+\/events\/[^/?]+$/);
+    await page
+      .getByTestId('event-time-block-row')
+      .getByLabel(m.event_editor_block_label({}, { locale: 'pt-BR' }))
+      .fill('Worship (edited)');
+    await page
+      .getByRole('button', {
+        name: m.event_editor_create_submit({}, { locale: 'pt-BR' }),
+      })
       .click();
-    await expect(editEventTimeBlockDialog).not.toBeAttached();
+    await expect(page).toHaveURL(/\/cycles\/[^/]+\?eventId=/);
     await expect(table.getByText('Worship (edited)')).toBeVisible();
+    // Row ids are regenerated per page load; the review marks the saved Event.
+    const editedRow = table.getByTestId('revealed-event-row');
 
-    // Delete the whole day. cancelPlanningEvent soft-deletes at the data
-    // layer, but per FR-006 the row and its time blocks must disappear from the
-    // table and the header's event/time block counts must decrease.
+    // Delete the whole day from its nested page: the row and its time
+    // blocks must disappear from the table and the header's event/time block counts must decrease.
     const eventCountChipBefore = await page
       .getByTestId('cycle-event-count-chip')
       .textContent();
 
-    await dayRow.getByRole('button', { name: /^Excluir dia/ }).click();
-    await page.getByRole('button', { name: 'Excluir evento' }).click();
+    await editedRow.getByRole('link', { name: /^Editar dia/ }).click();
+    await page.getByTestId('event-delete-open').click();
+    await page
+      .getByRole('button', {
+        name: m.event_editor_delete_confirm({}, { locale: 'pt-BR' }),
+      })
+      .click();
 
-    await expect(dayRow).not.toBeAttached();
+    await expect(page).toHaveURL(/\/cycles\/[^/?]+$/);
+    await expect(table.getByText('Worship (edited)')).not.toBeAttached();
     await expect
       .poll(() => page.getByTestId('cycle-event-count-chip').textContent())
       .not.toBe(eventCountChipBefore);
 
     // Send the cycle: no edit/delete controls should render anywhere.
     await page.getByTestId('send-cycle-button').click();
+    await page.getByTestId('confirm-cycle-send-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
     await expect(
       table.getByRole('button', { name: /^Excluir dia/ }),
     ).toHaveCount(0);
-    await expect(
-      table.getByRole('button', { name: /^Editar dia/ }),
-    ).toHaveCount(0);
+    await expect(table.getByRole('link', { name: /^Editar dia/ })).toHaveCount(
+      0,
+    );
   });
 });
 
 test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test('draft cycle supports mobile add/edit/delete for day-events and time blocks; sent cycle shows no controls', async ({
+  test('draft cycle supports mobile add, nested edit and delete for Events and time blocks; sent cycle shows no controls', async ({
     page,
   }, testInfo) => {
     const { templateName, monthStart } =
@@ -435,88 +414,77 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     const mobileList = page.getByTestId('planning-events-list');
     await expect(mobileList).toBeVisible();
 
-    // Add a day-event from the mobile surface — opens as a bottom drawer.
-    await mobileList
-      .getByRole('button', { name: 'Adicionar evento do dia' })
-      .click();
-    const addDialog = page.getByRole('dialog', { name: 'New Event' });
-    await expect(addDialog).toBeVisible();
+    // Add an Event through the one nested New Event page. It must land
+    // inside the seeded cycle's own window (derived from the journey anchor,
+    // see createCycleWithSundayTemplateApplied) and off any templated Sunday.
     const newEventTitle = 'Mobile Added';
-    await addDialog.getByLabel('Title').fill(newEventTitle);
-    // Must land inside the seeded cycle's own window (derived from the
-    // journey anchor, see createCycleWithSundayTemplateApplied)
-    // and off any templated Sunday, or the create is rejected as out of
-    // range / colliding with an existing day.
-    await fillDatePickerField({
+    await addEventOnNestedPage({
       page,
-      trigger: addDialog.getByLabel('Start date'),
-      date: nonSundayDay({ day: dayOfMonth({ monthStart, dayOfMonth: 15 }) }),
+      title: newEventTitle,
+      startDate: nonSundayDay({
+        day: dayOfMonth({ monthStart, dayOfMonth: 15 }),
+      }),
     });
-    await addDialog.getByRole('button', { name: 'Create' }).click();
-    await expect(addDialog).not.toBeAttached();
-    await expect(mobileList.getByText(newEventTitle)).toBeVisible();
+    // Its card is revealed, with the whole-Event Time block that shares its title.
+    await expect(
+      mobileList
+        .getByTestId('planning-event-card')
+        .filter({ hasText: newEventTitle }),
+    ).toBeVisible();
 
     // Edit and delete that new day-event.
     const newCard = mobileList
       .getByTestId('planning-event-card')
       .filter({ hasText: newEventTitle });
-    await newCard.getByRole('button', { name: /^Editar dia/ }).click();
-    const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
-    await editDayDialog.getByLabel('Title').fill(`${newEventTitle} (edited)`);
-    await editDayDialog.getByRole('button', { name: 'Save' }).click();
-    await expect(editDayDialog).not.toBeAttached();
+    await newCard.getByRole('link', { name: /^Editar dia/ }).click();
+    await page
+      .getByLabel(m.event_editor_title_label({}, { locale: 'pt-BR' }))
+      .fill(`${newEventTitle} (edited)`);
+    await page
+      .getByRole('button', {
+        name: m.event_editor_create_submit({}, { locale: 'pt-BR' }),
+      })
+      .click();
+    await expect(page).toHaveURL(/\/cycles\/[^/]+\?eventId=/);
     await expect(
       mobileList.getByText(`${newEventTitle} (edited)`),
     ).toBeVisible();
 
-    await newCard.getByRole('button', { name: /^Excluir dia/ }).click();
-    await page.getByRole('button', { name: 'Excluir evento' }).click();
+    await newCard.getByRole('link', { name: /^Editar dia/ }).click();
+    await page.getByTestId('event-delete-open').click();
+    await page
+      .getByRole('button', {
+        name: m.event_editor_delete_confirm({}, { locale: 'pt-BR' }),
+      })
+      .click();
+    await expect(page).toHaveURL(/\/cycles\/[^/?]+$/);
     await expect(
       mobileList.getByText(`${newEventTitle} (edited)`),
     ).not.toBeAttached();
 
-    // Expand the templated Sunday card, add a time block, edit it, then confirm
-    // its delete becomes disabled once it is the day's only remaining time block.
+    // Add a time block to the templated Sunday on its nested page, then
+    // confirm its delete becomes disabled once it is the only one left.
     const templatedCard = mobileList
       .getByTestId('planning-event-card')
       .filter({ hasText: templateName })
       .first();
-    await templatedCard
-      .getByRole('button', { name: /^Adicionar horário a/ })
+    await templatedCard.getByRole('link', { name: /^Editar dia/ }).click();
+    await page
+      .getByRole('button', {
+        name: m.event_editor_block_add({}, { locale: 'pt-BR' }),
+      })
       .click();
-    const addEventTimeBlockDialog = page.getByRole('dialog', {
-      name: 'Add time block',
-    });
-    await addEventTimeBlockDialog.getByLabel('Label').fill('Prayer');
-    await fillTimeOfDayField({
-      field: addEventTimeBlockDialog.getByTestId(
-        'create-event-time-block-start-time-field',
-      ),
-      time: '08:00',
-    });
-    await fillTimeOfDayField({
-      field: addEventTimeBlockDialog.getByTestId(
-        'create-event-time-block-end-time-field',
-      ),
-      time: '08:30',
-    });
-    await addEventTimeBlockDialog
-      .getByRole('button', { name: 'Add time block' })
+    await page
+      .getByTestId('event-time-block-row')
+      .nth(1)
+      .getByLabel(m.event_editor_block_label({}, { locale: 'pt-BR' }))
+      .fill('Prayer (edited)');
+    await page
+      .getByRole('button', {
+        name: m.event_editor_create_submit({}, { locale: 'pt-BR' }),
+      })
       .click();
-    await expect(addEventTimeBlockDialog).not.toBeAttached();
-    await expect(templatedCard.getByText('Prayer')).toBeVisible();
-
-    await templatedCard
-      .getByRole('button', { name: 'Editar horário Prayer' })
-      .click();
-    const editEventTimeBlockDialog = page.getByRole('dialog', {
-      name: 'Edit time block',
-    });
-    await editEventTimeBlockDialog.getByLabel('Label').fill('Prayer (edited)');
-    await editEventTimeBlockDialog
-      .getByRole('button', { name: 'Save' })
-      .click();
-    await expect(editEventTimeBlockDialog).not.toBeAttached();
+    await expect(page).toHaveURL(/\/cycles\/[^/]+\?eventId=/);
     await expect(templatedCard.getByText('Prayer (edited)')).toBeVisible();
 
     // Delete the added time block; the day's original templated time block must remain
@@ -536,27 +504,27 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
 
     // Send the cycle: no mobile add/edit/delete affordance may remain.
     await page.getByTestId('send-cycle-button').click();
+    await page.getByTestId('confirm-cycle-send-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
     await expect(
-      mobileList.getByRole('button', { name: 'Adicionar evento do dia' }),
+      page.getByRole('link', {
+        name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
+      }),
     ).not.toBeAttached();
     await expect(
-      mobileList.getByRole('button', { name: /^Editar dia/ }),
+      mobileList.getByRole('link', { name: /^Editar dia/ }),
     ).toHaveCount(0);
     await expect(
       mobileList.getByRole('button', { name: /^Excluir dia/ }),
-    ).toHaveCount(0);
-    await expect(
-      mobileList.getByRole('button', { name: /^Editar horário/ }),
     ).toHaveCount(0);
     await expect(
       mobileList.getByRole('button', { name: /^Excluir horário/ }),
     ).toHaveCount(0);
   });
 
-  test('a send that races a mobile edit fails the save with a visible error and applies no change (FR-010)', async ({
+  test('a send that races a mobile edit refuses the save, reloads the Sent Cycle and applies no change (FR-010)', async ({
     page,
     browser,
   }, testInfo) => {
@@ -570,15 +538,14 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       .filter({ hasText: templateName })
       .first();
 
-    await templatedCard.getByRole('button', { name: /^Editar dia/ }).click();
-    const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
-    await expect(editDayDialog).toBeVisible();
-    await editDayDialog.getByLabel('Title').fill('Raced edit');
+    await templatedCard.getByRole('link', { name: /^Editar dia/ }).click();
+    await page
+      .getByLabel(m.event_editor_title_label({}, { locale: 'pt-BR' }))
+      .fill('Raced edit');
 
     // A second session sends the cycle while the first session's mobile
-    // drawer is still open — the "send that occurs between page load and
-    // the action" race from spec 020's FR-013, verified here specifically
-    // on the mobile ResponsiveFormSurface.
+    // Event page is still open — the "send that occurs between page load
+    // and the action" race from spec 020's FR-013.
     const secondContext = await newPersonaContext({
       browser,
       persona: journey.personas.admin,
@@ -586,23 +553,21 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     const secondPage = await secondContext.newPage();
     await secondPage.goto(cycleUrl);
     await secondPage.getByTestId('send-cycle-button').click();
+    await secondPage.getByTestId('confirm-cycle-send-button').click();
     await expect(secondPage.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
     await secondContext.close();
 
-    await editDayDialog.getByRole('button', { name: 'Save' }).click();
+    await page
+      .getByRole('button', {
+        name: m.event_editor_create_submit({}, { locale: 'pt-BR' }),
+      })
+      .click();
 
-    // Assert on the sonner error-toast's `data-type`, not its message text
-    // (matches the convention already used in cross-cutting.spec.ts) — the
-    // backend's rejection message is an IllegalStateTransitionError whose
-    // wording ("Cannot transition from scheduled to update") is a domain
-    // detail that shouldn't need to contain the word "error"/"fail" for
-    // FR-013's "fails with a visible error" contract to hold.
-    await expect(
-      page.locator('[data-sonner-toast][data-type="error"]'),
-    ).toBeVisible();
-    await page.reload();
+    // The refusal reloads the authoritative Sent Cycle: no draft form remains.
+    await expect(page.getByTestId('event-edit-not-draft')).toBeVisible();
+    await page.goto(cycleUrl);
     await expect(page.getByText('Raced edit')).toHaveCount(0);
     // Every week the Sunday template generated shares this exact title, so
     // this locator legitimately matches all of them (not just the one that

@@ -1,5 +1,6 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { z } from 'zod';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +13,7 @@ import {
   classifyPrepareFetchError,
   toScheduleKey,
 } from '@/features/scheduling/components/participation-prepare.utils';
+import { CyclePreparePicker } from '@/features/scheduling/components/prepare/cycle-prepare-picker';
 import { MinistryPrepareList } from '@/features/scheduling/components/prepare/ministry-prepare-list';
 import { StatPill } from '@/features/scheduling/components/prepare/stat-pill';
 import { adminApi } from '@/utils/api-instances';
@@ -20,11 +22,30 @@ interface CycleIdRef {
   cycleId: string;
 }
 
+/** N2's multiple-Ministry entry keeps its Cycle and the Ministries it named. */
+const schedulesSearchSchema = z.object({
+  cycleId: z.string().optional(),
+  ministryIds: z.string().optional(),
+});
+
 export const Route = createFileRoute(
   '/_authenticated/_active-church/schedules/',
 )({
-  component: PrepareMinistryListRoute,
+  validateSearch: (search) => schedulesSearchSchema.parse(search),
+  component: SchedulesEntryRoute,
 });
+
+function SchedulesEntryRoute() {
+  const { cycleId, ministryIds } = Route.useSearch();
+  return cycleId ? (
+    <CyclePreparePicker
+      cycleId={cycleId}
+      ministryIds={ministryIds?.split(',') ?? []}
+    />
+  ) : (
+    <PrepareMinistryListRoute />
+  );
+}
 
 function PrepareMinistryListRoute() {
   const navigate = Route.useNavigate();

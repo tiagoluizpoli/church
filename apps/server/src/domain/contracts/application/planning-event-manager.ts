@@ -19,25 +19,49 @@ export interface GeneratedPlanningCounts {
   generatedEventTimeBlockCount: number;
 }
 
+/** One Time block of a complete Event create. */
+export interface PlanningEventTimeBlockDraft {
+  label: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+/** A Draft Event with every one of its Time blocks, saved together. */
 export interface CreatePlanningEventManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   title: string;
-  description?: string;
   location?: string;
   start: Date;
   end: Date;
+  eventTimeBlocks: PlanningEventTimeBlockDraft[];
 }
 
+/** An Event with its EventTimeBlocks, as a create or edit returns them. */
+export interface PlanningEventGraph {
+  event: Event;
+  eventTimeBlocks: EventTimeBlock[];
+}
+
+/** One Time block of a complete Event edit; `id` names a retained block. */
+export interface PlanningEventTimeBlockEdit
+  extends PlanningEventTimeBlockDraft {
+  id?: EventTimeBlockId;
+}
+
+/**
+ * The complete desired Draft Event: retained ids update in place, blocks
+ * without an id are created and omitted persisted blocks are deleted.
+ */
 export interface UpdatePlanningEventManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   eventId: EventId;
-  title?: string;
-  description?: string;
+  title: string;
   location?: string;
-  start?: Date;
-  end?: Date;
+  start: Date;
+  end: Date;
+  eventTimeBlocks: PlanningEventTimeBlockEdit[];
 }
 
 export interface CancelPlanningEventManagerInput {
@@ -45,6 +69,8 @@ export interface CancelPlanningEventManagerInput {
   cycleId: CycleId;
   eventId: EventId;
 }
+
+export type DeletePlanningEventManagerInput = CancelPlanningEventManagerInput;
 
 export interface CreatePlanningEventTimeBlockManagerInput {
   churchId: ChurchId;
@@ -76,8 +102,13 @@ export interface IPlanningEventManager {
   generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
   ): Promise<GeneratedPlanningCounts>;
-  createEvent(input: CreatePlanningEventManagerInput): Promise<Event>;
-  updateEvent(input: UpdatePlanningEventManagerInput): Promise<Event>;
+  createEvent(
+    input: CreatePlanningEventManagerInput,
+  ): Promise<PlanningEventGraph>;
+  updateEvent(
+    input: UpdatePlanningEventManagerInput,
+  ): Promise<PlanningEventGraph>;
+  deleteEvent(input: DeletePlanningEventManagerInput): Promise<void>;
   cancelEvent(input: CancelPlanningEventManagerInput): Promise<void>;
   createEventTimeBlock(
     input: CreatePlanningEventTimeBlockManagerInput,

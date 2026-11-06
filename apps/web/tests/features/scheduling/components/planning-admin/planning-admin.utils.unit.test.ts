@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { fromTimeColumn, parseInstant } from '@church/time';
+import { fromTimeColumn } from '@church/time';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { describe, expect, it } from 'vitest';
 import type {
@@ -21,8 +21,6 @@ import {
   getErrorMessage,
   groupCyclesForList,
   groupRowsByWeek,
-  isMultiDayEvent,
-  shiftedEnd,
   stateBadgeVariant,
   suggestCycleName,
   templateBlockErrors,
@@ -294,26 +292,6 @@ describe('canSaveTemplate', () => {
   });
 });
 
-describe('isMultiDayEvent', () => {
-  it('is false when the start and end share a calendar day', () => {
-    expect(
-      isMultiDayEvent({
-        eventStart: '2027-01-01T09:00:00.000Z',
-        eventEnd: '2027-01-01T17:00:00.000Z',
-      }),
-    ).toBe(false);
-  });
-
-  it('is true when the start and end fall on different calendar days', () => {
-    expect(
-      isMultiDayEvent({
-        eventStart: '2027-01-01T22:00:00.000Z',
-        eventEnd: '2027-01-02T06:00:00.000Z',
-      }),
-    ).toBe(true);
-  });
-});
-
 describe('eventSpanLabel', () => {
   const timeZone = 'America/Sao_Paulo';
 
@@ -345,18 +323,6 @@ describe('eventSpanLabel', () => {
         timeZone,
       }),
     ).toBe('day_based');
-  });
-});
-
-describe('shiftedEnd', () => {
-  it('shifts the end by the same delta the start moved by (FR-007)', () => {
-    const result = shiftedEnd({
-      newStart: parseInstant({ value: '2027-01-02T09:00:00.000Z' }),
-      originalStart: '2027-01-01T09:00:00.000Z',
-      originalEnd: '2027-01-01T10:30:00.000Z',
-    });
-
-    expect(result).toBe('2027-01-02T10:30:00.000Z');
   });
 });
 

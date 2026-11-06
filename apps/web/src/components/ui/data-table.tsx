@@ -61,7 +61,7 @@ export interface DataTableProps<T extends object> {
   /** Column id that `rowActions` renders into on desktop. Defaults to
    * `'actions'`; ignored if `rowActions` is omitted. */
   actionsColumnId?: string;
-  rowTestId?: (input: DataTableItemInput<T>) => string;
+  rowTestId?: (input: DataTableItemInput<T>) => string | undefined;
   /** `data-testid` of the mobile list container. Defaults to
    * `'data-table-mobile-list'`. */
   mobileListTestId?: string;

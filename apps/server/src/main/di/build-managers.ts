@@ -260,6 +260,8 @@ export function buildManagers({
       unitOfWork,
       participationRepository: ministryParticipationRepository,
       staffingSeeder,
+      volunteerRepository,
+      notifications,
     });
   const planningEventManager =
     overrides.planningEventManager ??

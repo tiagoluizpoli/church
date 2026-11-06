@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import {
   formatCalendarDay,
@@ -56,6 +57,9 @@ export interface DatePickerFieldProps {
    * fact. Either bound may be omitted to leave that side open-ended. */
   minDate?: string;
   maxDate?: string;
+  'aria-labelledby'?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   'data-testid'?: string;
 }
 
@@ -67,11 +71,14 @@ export function DatePickerField({
   id,
   value,
   onChange,
-  placeholder = 'Pick a date',
+  placeholder = m.date_picker_placeholder(),
   disabled = false,
   onClear,
   minDate,
   maxDate,
+  'aria-labelledby': ariaLabelledby,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedby,
   'data-testid': dataTestId,
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
@@ -116,6 +123,9 @@ export function DatePickerField({
             render={
               <Button
                 id={id}
+                aria-labelledby={ariaLabelledby}
+                aria-invalid={ariaInvalid}
+                aria-describedby={ariaDescribedby}
                 type="button"
                 variant="outline"
                 disabled={disabled}
@@ -137,7 +147,7 @@ export function DatePickerField({
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Clear date"
+              aria-label={m.date_picker_clear()}
               data-testid={dataTestId ? `${dataTestId}-clear` : undefined}
               className="absolute top-1/2 right-1 -translate-y-1/2"
               onClick={(event) => {

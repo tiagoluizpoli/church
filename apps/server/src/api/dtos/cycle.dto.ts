@@ -2,11 +2,10 @@ import { calendarDaySchema, fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { CycleDetails } from '../../domain/contracts/application/cycle-manager';
 import type { Cycle } from '../../domain/entities/cycle';
-import { eventMapper, eventResponseSchema } from './event.dto';
 import {
-  eventTimeBlockMapper,
-  eventTimeBlockResponseSchema,
-} from './event-time-block.dto';
+  eventGraphMapper,
+  eventGraphResponseSchema,
+} from './planning-event.dto';
 
 /** Matches the `cycle.name` column length. */
 const CYCLE_NAME_MAX_LENGTH = 255;
@@ -57,6 +56,32 @@ export const updateCycleConflictResponseSchema = z.object({
     .optional(),
 });
 
+/** Advisory Send confirmation facts for a Draft Cycle. */
+export const cycleSendSummaryResponseSchema = z.object({
+  eventCount: z.number().int().nonnegative(),
+  prefilledMinistryCount: z.number().int().nonnegative(),
+});
+
+/**
+ * A 409 to Send: `EMPTY_CYCLE`, `DRAFT_STAFFING_RECONCILIATION_REQUIRED`,
+ * `ILLEGAL_STATE_TRANSITION`, or `INVALID_CYCLE_EVENTS` naming every Event
+ * of this Cycle to repair.
+ */
+export const sendCycleConflictResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  invalidEvents: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        start: instantSchema,
+        end: instantSchema,
+      }),
+    )
+    .optional(),
+});
+
 export const listCyclesQuerySchema = z.object({
   state: z.enum(['draft', 'sent', 'past']).optional(),
 });
@@ -78,12 +103,7 @@ export const cycleListResponseSchema = z.object({
 
 export const cycleDetailsResponseSchema = z.object({
   cycle: cycleResponseSchema,
-  events: z.array(
-    z.object({
-      event: eventResponseSchema,
-      eventTimeBlocks: z.array(eventTimeBlockResponseSchema),
-    }),
-  ),
+  events: z.array(eventGraphResponseSchema),
 });
 
 export type CycleResponse = z.infer<typeof cycleResponseSchema>;
@@ -109,12 +129,7 @@ export const cycleMapper = {
   detailsToResponse(details: CycleDetails) {
     return {
       cycle: toCycleResponse(details.cycle),
-      events: details.events.map((eventGroup) => ({
-        event: eventMapper.toResponse(eventGroup.event),
-        eventTimeBlocks: eventGroup.eventTimeBlocks.map(
-          eventTimeBlockMapper.toResponse,
-        ),
-      })),
+      events: details.events.map(eventGraphMapper.toResponse),
     };
   },
 };

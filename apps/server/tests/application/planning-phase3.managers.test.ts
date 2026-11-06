@@ -36,6 +36,7 @@ import {
   createTransactionContextFake,
   createUnitOfWorkFake,
   createUsualSetupRepositoryFake,
+  createVolunteerRepositoryFake,
 } from '@/tests/test-support/repository-contract-fakes';
 
 const churchId = ChurchId.from('church-1');
@@ -71,6 +72,8 @@ function createPlanningDependencies() {
     usualSetupRepository,
     ministryRepository,
   });
+  const volunteerRepository = createVolunteerRepositoryFake();
+  volunteerRepository.listActiveMinistryLeaderships.mockResolvedValue([]);
   return {
     cycleRepository,
     eventRepository,
@@ -81,6 +84,8 @@ function createPlanningDependencies() {
     ministryRepository,
     unitOfWork,
     staffingSeeder,
+    volunteerRepository,
+    notifications: { enqueue: vi.fn(async () => undefined) },
   };
 }
 
@@ -218,7 +223,29 @@ describe('DbCycleManager', () => {
     vi.mocked(participationRepository.hasCycleStaffing).mockResolvedValue(
       false,
     );
-    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([]);
+    const event = new Event({
+      id: EventId.from('event-1'),
+      props: {
+        churchId,
+        cycleId,
+        title: 'Service',
+        start: fromDate({ date: new Date('2099-01-02T09:00:00Z') }),
+        end: fromDate({ date: new Date('2099-01-02T10:00:00Z') }),
+      },
+    });
+    const block = new EventTimeBlock({
+      id: 'block-1',
+      props: {
+        churchId,
+        eventId: event.id,
+        label: 'Service',
+        startTime: event.start,
+        endTime: event.end,
+      },
+    });
+    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([
+      { event, eventTimeBlocks: [block] },
+    ]);
     const setup = {
       entriesByMinistry: new Map(),
       directionByMinistry: new Map(),
@@ -236,7 +263,15 @@ describe('DbCycleManager', () => {
     });
     expect(seed).toHaveBeenCalledWith({
       churchId,
-      eventTimeBlocks: [],
+      eventTimeBlocks: [
+        {
+          eventId: event.id,
+          eventTimeBlockId: block.id,
+          sourceTemplateTimeBlockId: undefined,
+          startTime: block.startTime,
+          endTime: block.endTime,
+        },
+      ],
       setup,
       tx,
     });
@@ -267,7 +302,20 @@ describe('DbCycleManager', () => {
       false,
     );
     vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([
-      { event, eventTimeBlocks: [] },
+      {
+        event,
+        eventTimeBlocks: [
+          new EventTimeBlock({
+            props: {
+              churchId,
+              eventId,
+              label: 'Service',
+              startTime: event.start,
+              endTime: event.end,
+            },
+          }),
+        ],
+      },
     ]);
     vi.spyOn(staffingSeeder, 'loadSetup').mockResolvedValue({
       entriesByMinistry: new Map(),
@@ -304,9 +352,30 @@ describe('DbCycleManager', () => {
     });
   });
   it('refuses to send a draft with existing staffing', async () => {
-    const { manager, cycle, cycleRepository, participationRepository } =
-      createCycleHarness();
+    const {
+      manager,
+      cycle,
+      cycleRepository,
+      eventRepository,
+      participationRepository,
+    } = createCycleHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(cycle);
+    vi.mocked(eventRepository.listCycleEvents).mockResolvedValue([
+      {
+        event: makeEvent(),
+        eventTimeBlocks: [
+          new EventTimeBlock({
+            props: {
+              churchId,
+              eventId,
+              label: 'Service',
+              startTime: instant(start),
+              endTime: instant(end),
+            },
+          }),
+        ],
+      },
+    ]);
     vi.mocked(participationRepository.hasCycleStaffing).mockResolvedValue(true);
     await expect(manager.sendCycle({ churchId, cycleId })).rejects.toThrow(
       DraftStaffingReconciliationRequiredError,
@@ -512,8 +581,9 @@ describe('DbPlanningEventManager', () => {
       title: 'Service',
       start,
       end,
+      eventTimeBlocks: [{ label: 'Whole', startTime: start, endTime: end }],
     });
-    expect(result.title).toBe('Service');
+    expect(result.event.title).toBe('Service');
     expect(eventRepository.createEvent).toHaveBeenCalledWith(
       expect.objectContaining({ churchId, cycleId, status: 'draft', tx }),
     );
@@ -558,26 +628,30 @@ describe('DbPlanningEventManager', () => {
       title: 'Local day',
       start: localStart,
       end: localEnd,
+      eventTimeBlocks: [
+        { label: 'Local day', startTime: localStart, endTime: localEnd },
+      ],
     });
-    expect(result.start).toBe('2099-01-02T03:00:00.000Z');
-    expect(result.end).toBe('2099-01-03T02:59:59.999Z');
+    expect(result.event.start).toBe('2099-01-02T03:00:00.000Z');
+    expect(result.event.end).toBe('2099-01-03T02:59:59.999Z');
   });
-  it('creates scheduled events on a sent cycle', async () => {
+  it('refuses a Draft-only create on a sent cycle without writing', async () => {
     const { manager, cycleRepository, eventRepository } =
       createPlanningEventHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(
       makeCycle({ state: 'sent' }),
     );
-    await manager.createEvent({
-      churchId,
-      cycleId,
-      title: 'Service',
-      start,
-      end,
-    });
-    expect(eventRepository.createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'scheduled', tx }),
-    );
+    await expect(
+      manager.createEvent({
+        churchId,
+        cycleId,
+        title: 'Service',
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Whole', startTime: start, endTime: end }],
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+    expect(eventRepository.createEvent).not.toHaveBeenCalled();
   });
   it('rejects events outside the cycle or in a past cycle without writing', async () => {
     const { manager, cycleRepository, eventRepository } =
@@ -589,13 +663,27 @@ describe('DbPlanningEventManager', () => {
         title: 'Outside',
         start: new Date('2099-03-01T09:00:00Z'),
         end: new Date('2099-03-01T10:00:00Z'),
+        eventTimeBlocks: [
+          {
+            label: 'Outside',
+            startTime: new Date('2099-03-01T09:00:00Z'),
+            endTime: new Date('2099-03-01T10:00:00Z'),
+          },
+        ],
       }),
     ).rejects.toThrow(EventOutsideCycleError);
     vi.mocked(cycleRepository.getById).mockResolvedValue(
       makeCycle({ state: 'past' }),
     );
     await expect(
-      manager.createEvent({ churchId, cycleId, title: 'Past', start, end }),
+      manager.createEvent({
+        churchId,
+        cycleId,
+        title: 'Past',
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Past', startTime: start, endTime: end }],
+      }),
     ).rejects.toThrow(IllegalStateTransitionError);
     expect(eventRepository.createEvent).not.toHaveBeenCalled();
   });
@@ -605,10 +693,18 @@ describe('DbPlanningEventManager', () => {
       makeEvent({ owner: CycleId.from('other') }),
     );
     await expect(
-      manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' }),
+      manager.updateEvent({
+        churchId,
+        cycleId,
+        eventId,
+        title: 'Changed',
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Changed', startTime: start, endTime: end }],
+      }),
     ).rejects.toThrow('Event not found');
     await expect(
-      manager.cancelEvent({ churchId, cycleId, eventId }),
+      manager.deleteEvent({ churchId, cycleId, eventId }),
     ).rejects.toThrow('Event not found');
     await expect(
       manager.createEventTimeBlock({
@@ -622,9 +718,12 @@ describe('DbPlanningEventManager', () => {
     expect(eventRepository.updateEvent).not.toHaveBeenCalled();
     expect(eventRepository.deleteEvent).not.toHaveBeenCalled();
   });
-  it('deletes draft events and soft-cancels scheduled events', async () => {
+  it('deletes draft events, refuses to cancel them, and soft-cancels scheduled events', async () => {
     const { manager, eventRepository } = createPlanningEventHarness();
-    await manager.cancelEvent({ churchId, cycleId, eventId });
+    await expect(
+      manager.cancelEvent({ churchId, cycleId, eventId }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+    await manager.deleteEvent({ churchId, cycleId, eventId });
     expect(eventRepository.deleteEvent).toHaveBeenCalledWith({
       churchId,
       eventId,
@@ -641,7 +740,7 @@ describe('DbPlanningEventManager', () => {
       tx,
     });
   });
-  it('requires a sent cycle event to be reopened before editing or cancellation', async () => {
+  it('refuses editing or cancelling a sent Cycle event, even one reopened to draft', async () => {
     const { manager, cycleRepository, eventRepository } =
       createPlanningEventHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(
@@ -651,20 +750,35 @@ describe('DbPlanningEventManager', () => {
       makeEvent({ status: 'scheduled' }),
     );
     await expect(
-      manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' }),
+      manager.updateEvent({
+        churchId,
+        cycleId,
+        eventId,
+        title: 'Changed',
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Changed', startTime: start, endTime: end }],
+      }),
     ).rejects.toThrow(IllegalStateTransitionError);
     await expect(
       manager.cancelEvent({ churchId, cycleId, eventId }),
     ).rejects.toThrow(IllegalStateTransitionError);
+    await expect(
+      manager.deleteEvent({ churchId, cycleId, eventId }),
+    ).rejects.toThrow(IllegalStateTransitionError);
     vi.mocked(eventRepository.getEvent).mockResolvedValue(makeEvent());
-    await manager.updateEvent({ churchId, cycleId, eventId, title: 'Changed' });
-    expect(eventRepository.updateEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
+    await expect(
+      manager.updateEvent({
+        churchId,
+        cycleId,
+        eventId,
         title: 'Changed',
-        status: 'scheduled',
-        tx,
+        start,
+        end,
+        eventTimeBlocks: [{ label: 'Changed', startTime: start, endTime: end }],
       }),
-    );
+    ).rejects.toThrow(IllegalStateTransitionError);
+    expect(eventRepository.updateEvent).not.toHaveBeenCalled();
   });
   it('creates, updates and deletes event time blocks within the transaction', async () => {
     const { manager, eventTimeBlockRepository } = createPlanningEventHarness();
@@ -749,47 +863,5 @@ describe('DbPlanningEventManager', () => {
       IllegalStateTransitionError,
     );
     expect(eventTimeBlockRepository.update).not.toHaveBeenCalled();
-  });
-  it('rejects moving an event outside its cycle and leaves blocks alone for a title edit', async () => {
-    const { manager, eventRepository, eventTimeBlockRepository } =
-      createPlanningEventHarness();
-    await expect(
-      manager.updateEvent({
-        churchId,
-        cycleId,
-        eventId,
-        start: new Date('2099-03-01T09:00:00Z'),
-      }),
-    ).rejects.toThrow(EventOutsideCycleError);
-    expect(eventRepository.updateEvent).not.toHaveBeenCalled();
-    await manager.updateEvent({
-      churchId,
-      cycleId,
-      eventId,
-      title: 'Retitled',
-    });
-    expect(eventTimeBlockRepository.listByEvent).not.toHaveBeenCalled();
-    expect(eventTimeBlockRepository.update).not.toHaveBeenCalled();
-  });
-  it('shifts child blocks with the event start in the same transaction', async () => {
-    const { manager, eventTimeBlockRepository } = createPlanningEventHarness();
-    vi.mocked(eventTimeBlockRepository.listByEvent).mockResolvedValue([
-      makeBlock(),
-    ]);
-    await manager.updateEvent({
-      churchId,
-      cycleId,
-      eventId,
-      start: new Date('2099-01-04T12:00:00Z'),
-    });
-    expect(eventTimeBlockRepository.update).toHaveBeenCalledWith({
-      churchId,
-      eventTimeBlockId,
-      input: {
-        startTime: new Date('2099-01-04T12:00:00Z'),
-        endTime: new Date('2099-01-04T13:00:00Z'),
-      },
-      tx,
-    });
   });
 });

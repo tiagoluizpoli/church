@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@/components/app-shell';
+import { useCycleEventBreadcrumbs } from '@/features/scheduling/hooks/use-cycle-event-breadcrumbs';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { activeChurchApiMock } from '@/tests/setup/active-church';
@@ -37,6 +38,7 @@ vi.mock('@tanstack/react-router', () => ({
   ),
   useLocation: () => ({ pathname: mockPathname, href: mockHref }),
   useNavigate: () => mockNavigate,
+  useParams: () => mockParams,
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -54,8 +56,14 @@ vi.mock('@/shared/hooks/use-caller-capabilities', async (importOriginal) => ({
 
 vi.mock('@/utils/api-instances', async () => {
   const { activeChurchApiMock } = await import('@/tests/setup/active-church');
-  return { activeChurchApi: activeChurchApiMock };
+  return {
+    activeChurchApi: activeChurchApiMock,
+    adminApi: { getCycle: (...args: unknown[]) => mockGetCycle(...args) },
+  };
 });
+
+const mockGetCycle = vi.fn();
+let mockParams: Record<string, string> = {};
 
 const mockedUseCallerCapabilities = vi.mocked(useCallerCapabilities);
 
@@ -361,6 +369,66 @@ describe('AppShell flat nav per persona (F7)', () => {
     expect(within(breadcrumbs).getByText(HOME)).toBeVisible();
     expect(within(breadcrumbs).getByText(m.nav_cycles())).toBeVisible();
     expect(within(breadcrumbs).getByText('August 2026')).toBeVisible();
+  });
+
+  it("reads Home › Cycles › name › New Event on a Cycle's nested New Event page", () => {
+    asPersona({ isChurchAdmin: true });
+    mockPathname = '/cycles/cycle-1/events/new';
+
+    function NewEventShell() {
+      const overrides = [
+        { segment: 'cycle-1', label: 'October' },
+        ...useCycleEventBreadcrumbs(),
+      ];
+      return (
+        <AppShell notificationBell={null} breadcrumbOverrides={overrides}>
+          content
+        </AppShell>
+      );
+    }
+    renderWithProviders(<NewEventShell />);
+
+    const crumbs = within(screen.getByTestId('breadcrumbs'))
+      .getAllByRole('listitem')
+      .map((item) => item.textContent);
+    expect(crumbs).toEqual([
+      HOME,
+      m.nav_cycles(),
+      'October',
+      m.breadcrumb_new_event(),
+    ]);
+  });
+
+  it("reads Home › Cycles › name › Event name on a Cycle's nested Event page", async () => {
+    asPersona({ isChurchAdmin: true });
+    mockPathname = '/cycles/cycle-1/events/event-1';
+    mockParams = { cycleId: 'cycle-1', eventId: 'event-1' };
+    mockGetCycle.mockResolvedValue({
+      cycle: { id: 'cycle-1', name: 'October' },
+      events: [{ event: { id: 'event-1', title: 'Youth retreat' } }],
+    });
+
+    function EventShell() {
+      const overrides = [
+        { segment: 'cycle-1', label: 'October' },
+        ...useCycleEventBreadcrumbs(),
+      ];
+      return (
+        <AppShell notificationBell={null} breadcrumbOverrides={overrides}>
+          content
+        </AppShell>
+      );
+    }
+    renderWithProviders(<EventShell />);
+
+    const breadcrumbs = screen.getByTestId('breadcrumbs');
+    expect(await within(breadcrumbs).findByText('Youth retreat')).toBeVisible();
+    expect(
+      within(breadcrumbs)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([HOME, m.nav_cycles(), 'October', 'Youth retreat']);
+    mockParams = {};
   });
 
   it.each([

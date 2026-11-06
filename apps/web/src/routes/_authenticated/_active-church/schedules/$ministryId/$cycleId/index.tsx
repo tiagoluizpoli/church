@@ -304,8 +304,10 @@ function PrepareWorkspaceRoute() {
   const initializedWorkspaceKey = useRef<string | null>(null);
 
   const cycleQuery = useQuery({
-    queryKey: ['prepare-cycle', cycleId],
-    queryFn: () => adminApi.getCycle(cycleId),
+    queryKey: ['prepare-cycle-summaries', ministryId],
+    queryFn: () => adminApi.listScheduleSummaries(ministryId),
+    select: (response) =>
+      response.cycles.find((cycle) => cycle.cycleId === cycleId),
     retry: false,
   });
 
@@ -570,9 +572,12 @@ function PrepareWorkspaceRoute() {
   const failedQuery = [cycleQuery, ministriesQuery, participationQuery].find(
     (query) => query.isError,
   );
-  const errorKind = failedQuery
-    ? classifyPrepareFetchError({ error: failedQuery.error })
-    : null;
+  const missingCycle = cycleQuery.isSuccess && !cycleQuery.data;
+  const errorKind = missingCycle
+    ? 'forbidden'
+    : failedQuery
+      ? classifyPrepareFetchError({ error: failedQuery.error })
+      : null;
 
   const retryAll = () => {
     cycleQuery.refetch();
@@ -589,7 +594,7 @@ function PrepareWorkspaceRoute() {
     )
     .map((eventView) => eventView.event.title);
   const cycleDateSpan = cycleQuery.data
-    ? `${formatCalendarDateOnly({ value: cycleQuery.data.cycle.startDate })} – ${formatCalendarDateOnly({ value: cycleQuery.data.cycle.endDate })}`
+    ? `${formatCalendarDateOnly({ value: cycleQuery.data.startDate })} – ${formatCalendarDateOnly({ value: cycleQuery.data.endDate })}`
     : null;
 
   return (
@@ -597,7 +602,7 @@ function PrepareWorkspaceRoute() {
       <WorkspaceIntroPanel
         title={
           ministryName && cycleQuery.data
-            ? `${ministryName} · ${cycleQuery.data.cycle.name}`
+            ? `${ministryName} · ${cycleQuery.data.name}`
             : 'Prepare workspace'
         }
         description={
@@ -707,8 +712,8 @@ function PrepareWorkspaceRoute() {
         <div data-testid="prepare-workspace-stack" className="space-y-4">
           <div className="sticky top-4 z-10 space-y-4 bg-background pb-4">
             <PrepareCalendar
-              cycleStartDate={cycleQuery.data.cycle.startDate}
-              cycleEndDate={cycleQuery.data.cycle.endDate}
+              cycleStartDate={cycleQuery.data.startDate}
+              cycleEndDate={cycleQuery.data.endDate}
               eventDayMarkers={eventDayMarkers}
               selectedDate={selectedDate}
               onSelectedDateChange={setSelectedDate}

@@ -110,7 +110,7 @@ export function TimeInput({
         className={cn(
           'radius-control relative inline-flex w-full items-center border border-input bg-transparent px-2.5 py-1 tabular-nums transition-colors',
           'focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50',
-          'aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20',
+          'data-invalid:border-destructive data-invalid:ring-1 data-invalid:ring-destructive/20 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40',
           'disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50',
           size === 'touch' ? 'h-11 px-3 text-base' : 'h-8 text-sm',
           trailing && 'pe-8',

@@ -300,5 +300,7 @@ export function createVolunteerRepositoryFake() {
       vi.fn<VolunteerRepository['listMinistryMemberships']>(),
     listActiveLeaderUserIds:
       vi.fn<VolunteerRepository['listActiveLeaderUserIds']>(),
+    listActiveMinistryLeaderships:
+      vi.fn<VolunteerRepository['listActiveMinistryLeaderships']>(),
   } satisfies VolunteerRepository;
 }

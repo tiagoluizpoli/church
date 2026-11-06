@@ -1,13 +1,8 @@
 import { m } from '@church/i18n/messages';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type {
-  ConfirmDeleteEventInput,
-  ConfirmDeleteEventTimeBlockInput,
-  StartCreateEventTimeBlockInput,
-  StartEditEventInput,
-  StartEditEventTimeBlockInput,
-} from './calendar-row';
+import type { ConfirmDeleteEventTimeBlockInput } from './calendar-row';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
   eventStatusBadgeVariant,
@@ -26,19 +21,16 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface PlanningEventCardProps {
   row: CycleCalendarTableRow;
+  /** The reviewed Cycle, for the nested Edit Event link. */
+  cycleId: string;
   isReadOnly: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
-  onAddEventTimeBlockRequest: (input: StartCreateEventTimeBlockInput) => void;
-  onEditEventRequest: (input: StartEditEventInput) => void;
-  onDeleteEventConfirm: (input: ConfirmDeleteEventInput) => void;
-  onEditEventTimeBlockRequest: (input: StartEditEventTimeBlockInput) => void;
   onDeleteEventTimeBlockConfirm: (
     input: ConfirmDeleteEventTimeBlockInput,
   ) => void;
@@ -50,18 +42,13 @@ export interface PlanningEventCardProps {
  * shared boolean would pop both surfaces' confirm dialogs open at once. */
 type ConfirmState =
   | { kind: 'none' }
-  | { kind: 'event' }
   | { kind: 'event-time-block'; eventTimeBlockId: string };
 
 export function PlanningEventCard({
   row,
+  cycleId,
   isReadOnly,
-  deleteEventPending,
   deleteEventTimeBlockPending,
-  onAddEventTimeBlockRequest,
-  onEditEventRequest,
-  onDeleteEventConfirm,
-  onEditEventTimeBlockRequest,
   onDeleteEventTimeBlockConfirm,
 }: PlanningEventCardProps) {
   const [confirmState, setConfirmState] = useState<ConfirmState>({
@@ -71,18 +58,8 @@ export function PlanningEventCard({
 
   /** Auto-close the confirm dialog on the falling edge of pending (mutation
    * settled) instead of synchronously in the click handler — otherwise the
-   * dialog disappears before `deleteEventPending`/`deleteEventTimeBlockPending` ever
+   * dialog disappears before `deleteEventTimeBlockPending` ever
    * gets a chance to render, leaving no visible feedback during the delete. */
-  const prevDeleteEventPendingRef = useRef(deleteEventPending);
-  useEffect(() => {
-    if (prevDeleteEventPendingRef.current && !deleteEventPending) {
-      setConfirmState((current) =>
-        current.kind === 'event' ? { kind: 'none' } : current,
-      );
-    }
-    prevDeleteEventPendingRef.current = deleteEventPending;
-  }, [deleteEventPending]);
-
   const prevDeleteEventTimeBlockPendingRef = useRef(
     deleteEventTimeBlockPending,
   );
@@ -129,67 +106,14 @@ export function PlanningEventCard({
 
       {!isReadOnly ? (
         <div className="mt-3 flex items-center gap-1">
-          <Button
-            type="button"
-            size="touch"
-            variant="ghost"
-            aria-label={m.cycle_review_add_time_block_to({ title: row.title })}
-            onClick={() => onAddEventTimeBlockRequest({ row })}
-          >
-            <Plus className="size-3.5" /> {m.cycle_review_add_time_block()}
-          </Button>
-          <Button
-            type="button"
-            size="touch"
-            variant="ghost"
+          <Link
+            to="/cycles/$cycleId/events/$eventId"
+            params={{ cycleId, eventId: row.eventId }}
+            className={buttonVariants({ size: 'touch', variant: 'ghost' })}
             aria-label={m.cycle_review_edit_day({ title: row.title })}
-            onClick={() => onEditEventRequest({ row })}
           >
             <Pencil className="size-3.5" /> {m.cycle_review_edit()}
-          </Button>
-          <AlertDialog
-            open={confirmState.kind === 'event'}
-            onOpenChange={(open) =>
-              setConfirmState(open ? { kind: 'event' } : { kind: 'none' })
-            }
-          >
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  size="touch"
-                  variant="destructive"
-                  aria-label={m.cycle_review_delete_day({ title: row.title })}
-                >
-                  <Trash2 className="size-3.5" /> {m.cycle_review_delete()}
-                </Button>
-              }
-            />
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {m.cycle_review_delete_day_title()}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {m.cycle_review_delete_day_description({ title: row.title })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleteEventPending}>
-                  {m.cycle_review_cancel()}
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  disabled={deleteEventPending}
-                  onClick={() => onDeleteEventConfirm({ eventId: row.eventId })}
-                >
-                  {deleteEventPending
-                    ? m.cycle_review_deleting()
-                    : m.cycle_review_delete_event_confirm()}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          </Link>
         </div>
       ) : null}
 
@@ -213,25 +137,6 @@ export function PlanningEventCard({
               </span>
               {!isReadOnly ? (
                 <span className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    size="icon-touch"
-                    variant="ghost"
-                    aria-label={m.cycle_review_edit_time_block({
-                      label: eventTimeBlock.label,
-                    })}
-                    onClick={() =>
-                      onEditEventTimeBlockRequest({
-                        parentId: row.eventId,
-                        eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
-                        label: eventTimeBlock.label,
-                        startTime: eventTimeBlock.startTime,
-                        endTime: eventTimeBlock.endTime,
-                      })
-                    }
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
                   {eventTimeBlock.isOnlyEventTimeBlockInEvent ? (
                     <Button
                       type="button"

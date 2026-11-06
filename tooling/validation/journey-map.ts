@@ -75,6 +75,12 @@ const NOTIFICATION_BELL_SPEC_PATHS = [
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
 ];
 
+// J5 (#717): the planning journey owns the actual ChurchAdmin-to-leader
+// handoff: Event graph work in the browser, Send through the outbox, then N2
+// from a distinct leader's bell to Prepare. Other permutations stay at their
+// HTTP, component and outbox seams.
+const CYCLE_HANDOFF_SPEC_PATHS = ['tests/scheduling/us1-admin-plan.spec.ts'];
+
 // Specs whose starting graph comes from a server E2E recipe (#327): their
 // own journey recipe, or the shared personas global setup loads (#330).
 const JOURNEY_RECIPE_SPEC_PATHS = [
@@ -275,11 +281,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: PLANNING_ADMIN_SPEC_PATHS,
   },
   {
-    sourcePathPrefix:
-      'apps/web/src/features/scheduling/components/quick-create-event-modal.tsx',
-    specPaths: PLANNING_ADMIN_SPEC_PATHS,
-  },
-  {
     // Shared by every prepare component and route (manual-split-editor,
     // ministry-prepare-list, prepare-event-time-block-list, prepare-filters,
     // prepare-calendar, cycle-list.utils).
@@ -387,6 +388,18 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
   })),
+  {
+    // J5 reaches this one-Ministry Prepare route from the N2 bell action.
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  },
+  {
+    // Schedule breadcrumbs use leader-scoped metadata on the N2 destination.
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/hooks/use-cycle-breadcrumb.ts',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  },
   {
     // #289 — added smoke.spec.ts and us4-schedule-publish.spec.ts, verified
     // via their page.goto to a prepare route, which renders this
@@ -615,6 +628,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'apps/web/src/features/volunteers/lib/notification-navigation.ts',
     specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
+  {
+    // J5 observes a live N2 from Send, complementing the bell history seam.
+    sourcePathPrefix: 'apps/web/src/features/notifications/',
+    specPaths: [...NOTIFICATION_BELL_SPEC_PATHS, ...CYCLE_HANDOFF_SPEC_PATHS],
+  },
   // #216 — the assign (assignment/publish) generated API client backs the
   // cycle-builder used at the assign route; already the exact spec pair
   // the critical-smoke fallback would run, made explicit rather than
@@ -659,7 +677,32 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix:
       'apps/server/src/api/controllers/church-admin-controller.ts',
-    specPaths: CYCLE_EDGE_SPEC_PATHS,
+    specPaths: [...CYCLE_EDGE_SPEC_PATHS, ...CYCLE_HANDOFF_SPEC_PATHS],
+  },
+  {
+    // J5 follows the actual Send transaction: graph validation, staffing
+    // pre-fill and N2 enqueue all occur in this manager.
+    sourcePathPrefix: 'apps/server/src/application/db-cycle-manager.ts',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  },
+  {
+    // J5 edits retained Event blocks and removes a Draft Event before Send.
+    sourcePathPrefix:
+      'apps/server/src/application/db-planning-event-manager.ts',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/server/src/application/usual-setup-staffing-seeder.ts',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/server/src/application/church-notifications.ts',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/server/src/application/db-outbox-drainer.ts',
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
   },
   // #217 — the assign controller owns shift assignment, unassignment, and
   // reassignment: qualification's team-boundary 403, builder-event-time-block-focus's

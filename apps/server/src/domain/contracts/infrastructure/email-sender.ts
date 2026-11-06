@@ -149,8 +149,23 @@ export interface SchedulePublishedEmail {
   actionUrl: string;
 }
 
+/** N2: a sent Cycle the recipient's Ministries now prepare. */
+export interface CycleReadyToPrepareEmail {
+  kind: 'cycle.ready-to-prepare';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  cycleName: string;
+  cycleStartDate: CalendarDay;
+  cycleEndDate: CalendarDay;
+  eventCount: number;
+  ministryNames: string[];
+  actionUrl: string;
+}
+
 export type EmailPayload =
   | AvailabilityEmail
+  | CycleReadyToPrepareEmail
   | SchedulePublishedEmail
   | ChainedInvitationEmail
   | MinistryInvitationEmail

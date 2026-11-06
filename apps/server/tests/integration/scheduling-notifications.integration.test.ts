@@ -2,11 +2,13 @@ import { appConfig } from '@church/app-config';
 import {
   availabilityCheck,
   cycle,
+  member,
   ministryParticipation,
   notification,
   outboxMessage,
 } from '@church/db';
-import { eq } from 'drizzle-orm';
+import { m } from '@church/i18n/messages';
+import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
@@ -29,6 +31,7 @@ import {
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
+import { buildMinistry } from '@/seeds/builders/ministry';
 import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   createSchedulingManagers,
@@ -497,5 +500,218 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     expect(inbox.map((row) => row.userId)).not.toContain(
       outsider.volunteer.userId,
     );
+  });
+});
+
+describe('N2 cycle_ready_to_prepare through the outbox', () => {
+  const pt = { locale: 'pt-BR' } as const;
+
+  interface EnqueueReadyInput {
+    userId: string;
+    ministryIds: string[];
+  }
+
+  function enqueueReady({ userId, ministryIds }: EnqueueReadyInput) {
+    return unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'cycle_ready_to_prepare',
+        to: [
+          {
+            userId: UserId.from(userId),
+            churchId: ChurchId.from(ids.churchId),
+          },
+        ],
+        data: { cycleId, ministryIds },
+      }),
+    );
+  }
+
+  async function seedKids() {
+    return buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Kids <b>& Co</b>',
+    });
+  }
+
+  it('delivers one pt-BR email and one bell row listing both led Ministries, linking to the Cycle-preserving picker', async () => {
+    const kids = await seedKids();
+    await enqueueReady({
+      userId: ids.adminUserId,
+      ministryIds: [ids.ministryId, kids.id],
+    });
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(1);
+    const [email] = emailSender.delivered;
+    const text = email?.request.text ?? '';
+    const html = email?.request.html ?? '';
+    const pickerUrl = `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${kids.id},${ids.ministryId}`;
+    expect(email?.request.to).toBe('sched-admin@test.com');
+    expect(email?.request.subject).toBe(
+      m.notification_cycle_ready_to_prepare_title(
+        { cycleName: 'December 2026' },
+        pt,
+      ),
+    );
+    expect(email?.request.from).toContain('Scheduling Church A');
+    expect(text).toContain(
+      m.email_greeting_notification({ firstName: 'Scheduling' }, pt),
+    );
+    expect(text).toContain(
+      m.notification_cycle_ready_to_prepare_body(
+        {
+          cycleName: 'December 2026',
+          startDate: '01/12/2026',
+          endDate: '01/01/2027',
+          events: m.notification_cycle_ready_to_prepare_events_one({}, pt),
+        },
+        pt,
+      ),
+    );
+    expect(text).toContain(
+      m.notification_cycle_ready_to_prepare_ministries_other(
+        { ministryNames: 'Kids <b>& Co</b>, Scheduling Ministry A' },
+        pt,
+      ),
+    );
+    expect(text).toContain(
+      m.notification_cycle_ready_to_prepare_action({}, pt),
+    );
+    expect(text).toContain(pickerUrl);
+    expect(text).toContain(
+      m.email_footer_membership({ churchName: 'Scheduling Church A' }, pt),
+    );
+    expect(html).not.toContain('<b>&');
+    expect(html).toContain('Kids &lt;b&gt;&amp; Co&lt;/b&gt;');
+    expect(html).toContain(pickerUrl.replace('&', '&amp;'));
+
+    const inbox = await schedulingTestDb.select().from(notification);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      userId: ids.adminUserId,
+      kind: 'cycle_ready_to_prepare',
+      data: {
+        cycleId,
+        cycleName: 'December 2026',
+        cycleStartDate: '2026-12-01',
+        cycleEndDate: '2027-01-01',
+        eventCount: 1,
+        ministries: [
+          { id: kids.id, name: 'Kids <b>& Co</b>' },
+          { id: ids.ministryId, name: 'Scheduling Ministry A' },
+        ],
+      },
+    });
+  });
+
+  it('links a single-Ministry leader straight to that Schedule for the Cycle', async () => {
+    await enqueueReady({
+      userId: ids.adminUserId,
+      ministryIds: [ids.ministryId],
+    });
+    const emailSender = new CaptureEmailSender('Church');
+
+    await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    const text = emailSender.delivered[0]?.request.text ?? '';
+    expect(text).toContain(
+      m.notification_cycle_ready_to_prepare_ministries_one(
+        { ministryNames: 'Scheduling Ministry A' },
+        pt,
+      ),
+    );
+    expect(text).toContain(
+      `https://app.test/schedules/${ids.ministryId}/${cycleId}`,
+    );
+  });
+
+  it('delivers nothing on either channel to a leader no longer in the Church at delivery', async () => {
+    await enqueueReady({
+      userId: ids.adminUserId,
+      ministryIds: [ids.ministryId],
+    });
+    await schedulingTestDb
+      .delete(member)
+      .where(
+        and(
+          eq(member.userId, ids.adminUserId),
+          eq(member.organizationId, ids.churchId),
+        ),
+      );
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(0);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
+  });
+
+  it('skips and logs a row whose frozen facts predate the Ministry list instead of rendering undefined', async () => {
+    await enqueueReady({
+      userId: ids.adminUserId,
+      ministryIds: [ids.ministryId],
+    });
+    const oldFacts = {
+      cycleId,
+      cycleName: 'December 2026',
+      cycleStartDate: '2026-12-01',
+      cycleEndDate: '2027-01-01',
+      churchName: 'Scheduling Church A',
+      actionUrl: 'https://app.test/schedules',
+    };
+    for (const row of await outboxRows()) {
+      await schedulingTestDb
+        .update(outboxMessage)
+        .set({ payload: { ...(row.payload as object), facts: oldFacts } })
+        .where(eq(outboxMessage.id, row.id));
+    }
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(0);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
+    expect(await outboxRows()).toEqual([
+      expect.objectContaining({
+        status: 'sent',
+        channelOutcomes: { email: 'skipped', inbox: 'skipped' },
+      }),
+    ]);
+  });
+
+  it('retries only the failed sink: the bell row lands later and the email is never sent twice', async () => {
+    await enqueueReady({
+      userId: ids.adminUserId,
+      ministryIds: [ids.ministryId],
+    });
+    const emailSender = new CaptureEmailSender('Church');
+    const inbox = new FlakyInboxRepository({ db: schedulingTestDb });
+    inbox.failuresLeft = 1;
+    const drainer = buildDrainer(emailSender, inbox);
+
+    await drainer.drainOnce({ limit: 10 });
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
+
+    await schedulingTestDb
+      .update(outboxMessage)
+      .set({ scheduledFor: new Date(0) });
+    await drainer.drainOnce({ limit: 10 });
+
+    expect(emailSender.delivered).toHaveLength(1);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(1);
+    expect(await outboxRows()).toEqual([
+      expect.objectContaining({
+        status: 'sent',
+        channelOutcomes: { email: 'delivered', inbox: 'delivered' },
+      }),
+    ]);
   });
 });

@@ -23,8 +23,10 @@ import {
   conflictingCycles,
   domainErrorMessage,
   existingInvitation,
+  invalidEvents,
   outsideEvents,
   upcomingAssignments,
+  validationField,
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
@@ -167,20 +169,24 @@ export async function createFastify({
         request.log.warn({ code: error.code }, 'No catalog message for code');
       }
       const reason = validationReason(error);
+      const field = validationField(error);
       const blockers = archiveBlockers(error);
       const existing = existingInvitation(error);
       const assignments = upcomingAssignments(error);
       const cycles = conflictingCycles(error);
       const outside = outsideEvents(error);
+      const invalid = invalidEvents(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
         ...(reason && { reason }),
+        ...(field && { field }),
         ...(blockers && { blockers }),
         ...(existing && { existingInvitation: existing }),
         ...(assignments && { assignments }),
         ...(cycles && { conflictingCycles: cycles }),
         ...(outside && { outsideEvents: outside }),
+        ...(invalid && { invalidEvents: invalid }),
       });
     }
 

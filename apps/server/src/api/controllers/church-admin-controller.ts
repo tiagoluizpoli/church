@@ -25,16 +25,13 @@ import {
   cycleListResponseSchema,
   cycleMapper,
   cycleResponseSchema,
+  cycleSendSummaryResponseSchema,
   listCyclesQuerySchema,
   overlappingCycleResponseSchema,
+  sendCycleConflictResponseSchema,
   updateCycleBodySchema,
   updateCycleConflictResponseSchema,
 } from '../dtos/cycle.dto';
-import {
-  createEventBodySchema,
-  eventMapper,
-  eventResponseSchema,
-} from '../dtos/event.dto';
 import {
   applyTemplatesBodySchema,
   createEventTemplateBodySchema,
@@ -52,6 +49,14 @@ import {
   updateEventTimeBlockBodySchema,
 } from '../dtos/event-time-block.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
+import {
+  type CreatePlanningEventBody,
+  createPlanningEventBodySchema,
+  eventGraphMapper,
+  eventGraphResponseSchema,
+  type UpdatePlanningEventBody,
+  updatePlanningEventBodySchema,
+} from '../dtos/planning-event.dto';
 import {
   type SetDefaultDirectionBody,
   setDefaultDirectionBodySchema,
@@ -87,19 +92,10 @@ interface MinistryRouteParams {
   ministryId: string;
 }
 
-const manualPlanningEventBodySchema = createEventBodySchema.omit({
-  ministryId: true,
-});
-
-const updatePlanningEventBodySchema = manualPlanningEventBodySchema.partial();
-
 const notFoundResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-type ManualPlanningEventBody = z.infer<typeof manualPlanningEventBodySchema>;
-type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
 
 interface ChurchAdminControllerDependencies {
   cycleManager: ICycleManager;
@@ -233,6 +229,31 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.get(
+      '/cycles/:cycleId/send-summary',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'getCycleSendSummary',
+          summary: 'Summarize a Draft Cycle before Send',
+          description:
+            'Advisory confirmation facts for a Draft Cycle: its Event count and the distinct active Ministries the Usual setup would pre-fill. Send rechecks everything itself. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS) and Sent/Past Cycles.',
+          response: {
+            200: cycleSendSummaryResponseSchema,
+            409: sendCycleConflictResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const summary = await this.cycleManager.getSendSummary({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.send(summary);
+      },
+    );
+
     app.post(
       '/cycles/:cycleId/send',
       {
@@ -241,7 +262,8 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'sendCycle',
           summary: 'Send a Cycle',
           description:
-            'Send a Cycle, transitioning its Events from draft to scheduled.',
+            'Send a Draft Cycle to its Ministries in one transaction: schedule its Events, pre-fill staffing from the Usual setup and enqueue one Cycle-ready Notification per User leading an active Ministry. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS), a Draft already holding staffing (DRAFT_STAFFING_RECONCILIATION_REQUIRED) and Sent/Past Cycles (ILLEGAL_STATE_TRANSITION).',
+          response: { 204: z.null(), 409: sendCycleConflictResponseSchema },
         },
       },
       async (request, reply) => {
@@ -503,26 +525,34 @@ export class ChurchAdminController implements FastifyController {
         schema: {
           tags: ['planning'],
           operationId: 'createPlanningEvent',
-          summary: 'Create a manual Event',
+          summary: 'Create a Draft Event with its Time blocks',
           description:
-            'Create a one-off Event within a Cycle without using an EventTemplate.',
-          body: manualPlanningEventBodySchema,
-          response: { 201: eventResponseSchema },
+            'Create a one-off or multi-day Draft Event and every one of its EventTimeBlocks together, with its participation scaffold and no staffing. Its Church-local start day must fall within the inclusive Cycle; its end may spill past it.',
+          body: createPlanningEventBodySchema,
+          response: {
+            201: eventGraphResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleRouteParams;
-        const body = request.body as ManualPlanningEventBody;
-        const event = await this.planningEventManager.createEvent({
+        const body = request.body as CreatePlanningEventBody;
+        const location = body.location?.trim();
+        const graph = await this.planningEventManager.createEvent({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           title: body.title,
-          description: body.description,
-          location: body.location,
+          location: location ? location : undefined,
           start: dateFromInstantString({ value: body.start }),
           end: dateFromInstantString({ value: body.end }),
+          eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
+            label: block.label,
+            startTime: dateFromInstantString({ value: block.startTime }),
+            endTime: dateFromInstantString({ value: block.endTime }),
+          })),
         });
-        return reply.status(201).send(eventMapper.toResponse(event));
+        return reply.status(201).send(eventGraphMapper.toResponse(graph));
       },
     );
 
@@ -532,27 +562,59 @@ export class ChurchAdminController implements FastifyController {
         schema: {
           tags: ['planning'],
           operationId: 'updatePlanningEvent',
-          summary: 'Update an Event',
+          summary: 'Edit a Draft Event with its Time blocks',
           description:
-            "Update an Event's title, description, location, or scheduled Instants.",
+            'Replace a Draft Event in a Draft Cycle with its complete desired fields and EventTimeBlocks, validated as a final graph before any write. A block with an id is updated in place and keeps its source-template link; a block without one is created as a manual block; an omitted persisted block is deleted. Submitted bounds are saved exactly. The stored description and source-template ids are kept.',
           body: updatePlanningEventBodySchema,
-          response: { 200: eventResponseSchema },
+          response: {
+            200: eventGraphResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         const body = request.body as UpdatePlanningEventBody;
-        const event = await this.planningEventManager.updateEvent({
+        const location = body.location?.trim();
+        const graph = await this.planningEventManager.updateEvent({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           title: body.title,
-          description: body.description,
-          location: body.location,
-          start: optionalDateFromInstantString({ value: body.start }),
-          end: optionalDateFromInstantString({ value: body.end }),
+          location: location ? location : undefined,
+          start: dateFromInstantString({ value: body.start }),
+          end: dateFromInstantString({ value: body.end }),
+          eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
+            id: block.id ? EventTimeBlockId.from(block.id) : undefined,
+            label: block.label,
+            startTime: dateFromInstantString({ value: block.startTime }),
+            endTime: dateFromInstantString({ value: block.endTime }),
+          })),
         });
-        return reply.send(eventMapper.toResponse(event));
+        return reply.send(eventGraphMapper.toResponse(graph));
+      },
+    );
+
+    app.delete(
+      '/cycles/:cycleId/events/:eventId',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'deletePlanningEvent',
+          summary: 'Delete a Draft Event',
+          description:
+            'Hard-delete an unsent Draft Event of a Draft Cycle with its draft calendar and participation data. No Notification is created.',
+          response: { 204: z.null() },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        await this.planningEventManager.deleteEvent({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+        });
+        return reply.status(204).send();
       },
     );
 

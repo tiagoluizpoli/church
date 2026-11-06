@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
-import { useLayoutEffect } from 'react';
+import { type ReactNode, useLayoutEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { CycleReviewCard } from '@/features/scheduling/components/planning-admin/cycle-review-card';
@@ -10,18 +10,11 @@ import {
   PlanningAdminProvider,
   useCycleSelection,
 } from '@/features/scheduling/components/planning-admin/planning-admin-context';
-import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
-import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getCycle = vi.fn();
-const createPlanningEvent = vi.fn().mockResolvedValue({ id: 'event-new' });
-const updatePlanningEvent = vi.fn().mockResolvedValue({});
-const cancelPlanningEvent = vi.fn().mockResolvedValue(undefined);
-const createPlanningEventTimeBlock = vi.fn().mockResolvedValue({});
-const updatePlanningEventTimeBlock = vi.fn().mockResolvedValue({});
 const deletePlanningEventTimeBlock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/utils/api-instances', () => ({
@@ -29,31 +22,50 @@ vi.mock('@/utils/api-instances', () => ({
     listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
     getCycle: (...args: unknown[]) => getCycle(...args),
-    createPlanningEvent: (...args: unknown[]) => createPlanningEvent(...args),
-    updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
-    cancelPlanningEvent: (...args: unknown[]) => cancelPlanningEvent(...args),
-    createPlanningEventTimeBlock: (...args: unknown[]) =>
-      createPlanningEventTimeBlock(...args),
-    updatePlanningEventTimeBlock: (...args: unknown[]) =>
-      updatePlanningEventTimeBlock(...args),
     deletePlanningEventTimeBlock: (...args: unknown[]) =>
       deletePlanningEventTimeBlock(...args),
   },
 }));
 
+interface MockLinkProps {
+  children: ReactNode;
+  params?: Record<string, string>;
+  className?: string;
+  'aria-label'?: string;
+}
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    params,
+    className,
+    'aria-label': label,
+  }: MockLinkProps) => (
+    <a
+      aria-label={label}
+      className={className}
+      href={`/cycles/${params?.cycleId}/events/${params?.eventId}`}
+    >
+      {children}
+    </a>
+  ),
+}));
+
 interface RenderCycleReviewCardInput {
   isReadOnly?: boolean;
   churchTimezone?: string;
+  revealEventId?: string;
 }
 
 function render({
   isReadOnly = false,
   churchTimezone,
+  revealEventId,
 }: RenderCycleReviewCardInput = {}) {
   return renderWithProviders(
     <PlanningAdminProvider>
       <CycleListCard />
-      <CycleReviewCard isReadOnly={isReadOnly} />
+      <CycleReviewCard isReadOnly={isReadOnly} revealEventId={revealEventId} />
     </PlanningAdminProvider>,
     { churchTimezone },
   );
@@ -387,7 +399,7 @@ describe('CycleReviewCard table view (US2)', () => {
 });
 
 describe('CycleReviewCard day/time block edit and delete (US3)', () => {
-  it("draft cycle shows day and time block edit/delete controls, disabling delete for a day's only time block", async () => {
+  it("draft cycle links Edit to the nested Event page and keeps only time block delete controls, disabling delete for a day's only time block", async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -408,11 +420,11 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     });
 
     expect(
-      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    ).toBeInTheDocument();
+      within(table).queryByRole('button', { name: /^Excluir dia/ }),
+    ).not.toBeInTheDocument();
     expect(
-      within(table).getByRole('button', { name: 'Editar dia Sunday Service' }),
-    ).toBeInTheDocument();
+      within(table).getByRole('link', { name: 'Editar dia Sunday Service' }),
+    ).toHaveAttribute('href', '/cycles/cycle-1/events/event-1');
 
     const user = userEvent.setup();
     await user.click(
@@ -422,8 +434,8 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
       within(table).getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeEnabled();
     expect(
-      within(table).getByRole('button', { name: 'Editar horário Worship' }),
-    ).toBeInTheDocument();
+      within(table).queryByRole('button', { name: 'Editar horário Worship' }),
+    ).not.toBeInTheDocument();
 
     await user.click(
       within(table).getByRole('button', { name: 'Expandir Wednesday Service' }),
@@ -433,39 +445,6 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
         name: `Excluir horário ${m.cycle_review_time_block_fallback()}`,
       }),
     ).toBeDisabled();
-  });
-
-  it('deleting a day, after confirming, calls the cancel-event handler', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'draft',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    );
-    await user.click(
-      await screen.findByRole('button', { name: 'Excluir evento' }),
-    );
-
-    await waitFor(() =>
-      expect(cancelPlanningEvent).toHaveBeenCalledWith('cycle-1', 'event-1'),
-    );
   });
 
   it('deleting a non-last time block, after confirming, calls the delete-event-time-block handler', async () => {
@@ -505,55 +484,6 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
         'event-1',
         'event-time-block-1',
       ),
-    );
-  });
-
-  it('keeps the desktop delete-day confirm dialog open with a "Deleting…" label until the mutation settles', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'draft',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
-    let resolveDelete: () => void = () => undefined;
-    cancelPlanningEvent.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveDelete = resolve;
-        }),
-    );
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    );
-    await user.click(
-      await screen.findByRole('button', { name: 'Excluir evento' }),
-    );
-
-    const dialog = await screen.findByRole('alertdialog');
-    expect(
-      await within(dialog).findByRole('button', { name: 'Excluindo…' }),
-    ).toBeDisabled();
-    expect(
-      within(dialog).getByRole('button', { name: 'Cancelar' }),
-    ).toBeDisabled();
-
-    resolveDelete();
-    await waitFor(() =>
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
     );
   });
 
@@ -609,7 +539,7 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     );
   });
 
-  it('renders Delete day/time block actions and the confirm-delete action with destructive styling, distinct from Edit', async () => {
+  it('renders the Delete time block action with destructive styling, distinct from Edit', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -630,10 +560,7 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     });
 
     expect(
-      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    ).toHaveClass('text-destructive');
-    expect(
-      within(table).getByRole('button', { name: 'Editar dia Sunday Service' }),
+      within(table).getByRole('link', { name: 'Editar dia Sunday Service' }),
     ).not.toHaveClass('text-destructive');
 
     const user = userEvent.setup();
@@ -643,170 +570,6 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     expect(
       within(table).getByRole('button', { name: 'Excluir horário Worship' }),
     ).toHaveClass('text-destructive');
-
-    await user.click(
-      within(table).getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    );
-    expect(
-      await screen.findByRole('button', { name: 'Excluir evento' }),
-    ).toHaveClass('text-destructive');
-  });
-
-  it('adding a time block to a day, after filling the dialog, calls the create-event-time-block handler', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'draft',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', {
-        name: 'Adicionar horário a Sunday Service',
-      }),
-    );
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Add time block',
-    });
-    await user.type(within(dialog).getByLabelText('Label'), 'Prayer');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Add time block' }),
-    );
-
-    await waitFor(() =>
-      expect(createPlanningEventTimeBlock).toHaveBeenCalledWith(
-        'cycle-1',
-        'event-1',
-        expect.objectContaining({ label: 'Prayer' }),
-      ),
-    );
-  });
-
-  it('editing a day, after changing title/description/location, calls the update-event handler', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'draft',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', { name: 'Editar dia Sunday Service' }),
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: 'Edit day' });
-    const titleInput = within(dialog).getByLabelText('Title');
-    await user.clear(titleInput);
-    await user.type(titleInput, 'Sunday Gathering');
-    await user.type(
-      within(dialog).getByLabelText('Description'),
-      'Combined worship service',
-    );
-    await user.type(
-      within(dialog).getByLabelText('Location'),
-      'Main Auditorium',
-    );
-    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
-
-    await waitFor(() =>
-      expect(updatePlanningEvent).toHaveBeenCalledWith(
-        'cycle-1',
-        'event-1',
-        expect.objectContaining({
-          title: 'Sunday Gathering',
-          description: 'Combined worship service',
-          location: 'Main Auditorium',
-          start: expect.any(String),
-          end: expect.any(String),
-        }),
-      ),
-    );
-  });
-
-  it('editing a time block, after changing start/end time, calls the update-event-time-block handler', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'draft',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
-    );
-    await user.click(
-      within(table).getByRole('button', { name: 'Editar horário Worship' }),
-    );
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Edit time block',
-    });
-    await fillTimeOfDayField({
-      user,
-      field: within(dialog).getByTestId(
-        'edit-event-time-block-start-time-field',
-      ),
-      time: '08:30',
-    });
-    await fillTimeOfDayField({
-      user,
-      field: within(dialog).getByTestId('edit-event-time-block-end-time-field'),
-      time: '09:30',
-    });
-    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
-
-    await waitFor(() =>
-      expect(updatePlanningEventTimeBlock).toHaveBeenCalledWith(
-        'cycle-1',
-        'event-1',
-        'event-time-block-1',
-        expect.objectContaining({
-          label: 'Worship',
-          startTime: expect.any(String),
-          endTime: expect.any(String),
-        }),
-      ),
-    );
   });
 
   it('sent cycle shows no edit/delete controls anywhere in the table', async () => {
@@ -838,7 +601,7 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
       within(table).queryByRole('button', { name: /^Excluir dia/ }),
     ).not.toBeInTheDocument();
     expect(
-      within(table).queryByRole('button', { name: /^Editar dia/ }),
+      within(table).queryByRole('link', { name: /^Editar dia/ }),
     ).not.toBeInTheDocument();
     expect(
       within(table).queryByRole('button', { name: /^Delete eventTimeBlock/ }),
@@ -849,58 +612,8 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
   });
 });
 
-describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', () => {
-  function singleAndMultiDayEventCycleResponse({
-    state,
-  }: TwoEventCycleResponseInput) {
-    return {
-      cycle: {
-        id: 'cycle-1',
-        name: 'August 2026',
-        startDate: '2026-08-01',
-        endDate: '2026-08-31',
-        state,
-      },
-      events: [
-        {
-          event: {
-            id: 'event-1',
-            title: 'Sunday Service',
-            start: '2026-08-02T09:00:00Z',
-            end: '2026-08-02T11:00:00Z',
-            status: 'scheduled',
-          },
-          eventTimeBlocks: [
-            {
-              id: 'event-time-block-1',
-              label: 'Worship',
-              startTime: '2026-08-02T09:00:00Z',
-              endTime: '2026-08-02T10:00:00Z',
-            },
-          ],
-        },
-        {
-          event: {
-            id: 'event-2',
-            title: 'Retreat Weekend',
-            start: '2026-08-08T00:00:00Z',
-            end: '2026-08-09T23:59:59Z',
-            status: 'scheduled',
-          },
-          eventTimeBlocks: [
-            {
-              id: 'event-time-block-2',
-              label: 'Check-in',
-              startTime: '2026-08-08T09:00:00Z',
-              endTime: '2026-08-08T10:00:00Z',
-            },
-          ],
-        },
-      ],
-    };
-  }
-
-  function mockSingleAndMultiDayCycle() {
+describe('CycleReviewCard reveal of a saved Event', () => {
+  it('expands and marks the Event named by the route, leaving others collapsed', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -912,142 +625,23 @@ describe('CycleReviewCard time block dialog date/time fields (post-spec fix)', (
         },
       ],
     });
-    getCycle.mockResolvedValue(
-      singleAndMultiDayEventCycleResponse({ state: 'draft' }),
-    );
-  }
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
-  it('shows time-only fields (no date field) in the Add time block dialog for a single-day event', async () => {
-    mockSingleAndMultiDayCycle();
-
-    render();
+    render({ revealEventId: 'event-1' });
     await selectTheOnlyCycle();
     const table = await screen.findByRole('grid', {
       name: m.cycle_review_title(),
     });
 
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', {
-        name: 'Adicionar horário a Sunday Service',
-      }),
+    expect(await within(table).findByText('Worship')).toBeInTheDocument();
+    const revealed = within(table).getByTestId('revealed-event-row');
+    expect(revealed).toHaveTextContent('Sunday Service');
+    expect(within(table).queryAllByTestId('revealed-event-row')).toHaveLength(
+      1,
     );
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Add time block',
-    });
-    expect(
-      within(dialog).getByTestId('create-event-time-block-start-time-field'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('create-event-time-block-end-time-field'),
-    ).toBeInTheDocument();
   });
 
-  it('shows date+time inputs in the Add time block dialog for a multi-day event', async () => {
-    mockSingleAndMultiDayCycle();
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', {
-        name: 'Adicionar horário a Retreat Weekend',
-      }),
-    );
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Add time block',
-    });
-    expect(
-      within(dialog).getByTestId('create-event-time-block-start-date'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('create-event-time-block-start-time'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('create-event-time-block-end-date'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('create-event-time-block-end-time'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).queryByTestId('create-event-time-block-start-time-field'),
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows time-only fields in the Edit time block dialog for a single-day event time block', async () => {
-    mockSingleAndMultiDayCycle();
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', { name: 'Expandir Sunday Service' }),
-    );
-    await user.click(
-      within(table).getByRole('button', { name: 'Editar horário Worship' }),
-    );
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Edit time block',
-    });
-    expect(
-      within(dialog).getByTestId('edit-event-time-block-start-time-field'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('edit-event-time-block-end-time-field'),
-    ).toBeInTheDocument();
-  });
-
-  it('shows date+time inputs in the Edit time block dialog for a multi-day event time block', async () => {
-    mockSingleAndMultiDayCycle();
-
-    render();
-    await selectTheOnlyCycle();
-    const table = await screen.findByRole('grid', {
-      name: m.cycle_review_title(),
-    });
-
-    const user = userEvent.setup();
-    await user.click(
-      within(table).getByRole('button', { name: 'Expandir Retreat Weekend' }),
-    );
-    await user.click(
-      within(table).getByRole('button', { name: 'Editar horário Check-in' }),
-    );
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Edit time block',
-    });
-    expect(
-      within(dialog).getByTestId('edit-event-time-block-start-date'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('edit-event-time-block-start-time'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('edit-event-time-block-end-date'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByTestId('edit-event-time-block-end-time'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).queryByTestId('edit-event-time-block-start-time-field'),
-    ).not.toBeInTheDocument();
-  });
-});
-
-describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
-  it('opens QuickCreateEventModal, through its ResponsiveFormSurface shell, from the mobile list', async () => {
+  it('offers no add-Event trigger inside the review list', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -1065,51 +659,9 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
     await selectTheOnlyCycle();
     const mobileList = await screen.findByTestId('planning-events-list');
 
-    const user = userEvent.setup();
-    await user.click(
-      within(mobileList).getByRole('button', {
-        name: m.cycle_review_add_day_event(),
-      }),
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: 'New Event' });
-    await user.type(within(dialog).getByLabelText('Title'), 'Youth Night');
-    await pickCalendarDate({
-      user,
-      trigger: within(dialog).getByLabelText('Start date'),
-      date: '2026-08-09',
-    });
-    await user.click(within(dialog).getByRole('button', { name: 'Create' }));
-
-    await waitFor(() =>
-      expect(createPlanningEvent).toHaveBeenCalledWith(
-        'cycle-1',
-        expect.objectContaining({ title: 'Youth Night' }),
-      ),
-    );
-  });
-
-  it('does not render the mobile add day-event trigger when read-only', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'sent',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'sent' }));
-
-    render({ isReadOnly: true });
-    await selectTheOnlyCycle();
-    const mobileList = await screen.findByTestId('planning-events-list');
-
     expect(
       within(mobileList).queryByRole('button', {
-        name: m.cycle_review_add_day_event(),
+        name: m.cycles_add_event_button(),
       }),
     ).not.toBeInTheDocument();
   });
@@ -1192,7 +744,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
     expect(
       within(mobileList).getAllByTestId('planning-event-card'),
     ).toHaveLength(2);
-    expect(mobileList.children).toHaveLength(4); // "Add day-event" button + week heading + 2 cards
+    expect(mobileList.children).toHaveLength(3); // week heading + 2 cards
   });
 
   it('is one-shot, not a synced toggle: re-collapsing one row after "Expand all" still lets "Collapse all" collapse everything', async () => {

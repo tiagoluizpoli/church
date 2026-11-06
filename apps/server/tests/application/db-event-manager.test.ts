@@ -196,6 +196,7 @@ function createRepos(): Repos {
     listMemberMinistryIds: vi.fn(),
     listMinistryMemberships: vi.fn(async () => []),
     listActiveLeaderUserIds: vi.fn(),
+    listActiveMinistryLeaderships: vi.fn(),
   };
 
   const roleRepo = {

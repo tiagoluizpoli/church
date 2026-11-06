@@ -1,11 +1,28 @@
 import { m } from '@church/i18n/messages';
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { CycleCalendarTableRow } from '@/features/scheduling/components/planning-admin/planning-admin.types';
 import { PlanningEventCard } from '@/features/scheduling/components/planning-admin/planning-event-card';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
+
+interface MockLinkProps {
+  children: ReactNode;
+  params?: Record<string, string>;
+  'aria-label'?: string;
+}
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, params, 'aria-label': label }: MockLinkProps) => (
+    <a
+      aria-label={label}
+      href={`/cycles/${params?.cycleId}/events/${params?.eventId}`}
+    >
+      {children}
+    </a>
+  ),
+}));
 
 interface RenderInput {
   churchTimezone?: string;
@@ -67,18 +84,14 @@ function oneEventTimeBlockRow(): CycleCalendarTableRow {
 
 function baseProps() {
   return {
-    deleteEventPending: false,
     deleteEventTimeBlockPending: false,
-    onAddEventTimeBlockRequest: vi.fn(),
-    onEditEventRequest: vi.fn(),
-    onDeleteEventConfirm: vi.fn(),
-    onEditEventTimeBlockRequest: vi.fn(),
+    cycleId: 'cycle-1',
     onDeleteEventTimeBlockConfirm: vi.fn(),
   };
 }
 
 describe('PlanningEventCard affordances (US1)', () => {
-  it('renders add/edit/delete affordances for a day-event and its time blocks when not read-only', () => {
+  it('links Edit to the nested Event page and keeps only the time block delete affordance when not read-only', () => {
     render(
       <PlanningEventCard
         row={rowWithTwoEventTimeBlocks()}
@@ -88,19 +101,17 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.getByRole('button', {
-        name: 'Adicionar horário a Sunday Service',
-      }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: 'Editar dia Sunday Service' }),
+    ).toHaveAttribute('href', '/cycles/cycle-1/events/event-1');
     expect(
-      screen.getByRole('button', { name: 'Editar dia Sunday Service' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: /^Adicionar horário/ }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: 'Editar horário Worship' }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Editar horário Worship' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: /^Excluir dia/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Excluir horário Worship' }),
     ).toBeEnabled();
@@ -130,23 +141,17 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     expect(
-      screen.queryByRole('button', { name: /^Add eventTimeBlock/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /^Editar dia/ }),
+      screen.queryByRole('link', { name: /^Editar dia/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Excluir dia/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /^Edit eventTimeBlock/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Delete eventTimeBlock/ }),
     ).not.toBeInTheDocument();
   });
 
-  it('words the visible controls and both confirmations in pt-BR', async () => {
+  it('words the visible controls and the time block confirmation in pt-BR', async () => {
     render(
       <PlanningEventCard
         row={rowWithTwoEventTimeBlocks()}
@@ -156,52 +161,15 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
     const user = userEvent.setup();
 
-    expect(screen.getByText('Adicionar horário')).toBeVisible();
     expect(screen.getByText('Editar')).toBeVisible();
-    await user.click(
-      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    );
-    let dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByText('Excluir este dia?')).toBeVisible();
-    expect(
-      within(dialog).getByText(
-        'Isso remove "Sunday Service" e os horários dele do ciclo.',
-      ),
-    ).toBeVisible();
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
-
     await user.click(
       screen.getByRole('button', { name: 'Excluir horário Worship' }),
     );
-    dialog = await screen.findByRole('alertdialog');
+    const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText('Excluir este horário?')).toBeVisible();
     expect(
       within(dialog).getByText('Isso remove "Worship" do dia.'),
     ).toBeVisible();
-  });
-
-  it('calls onDeleteEventConfirm after confirming the delete-day dialog', async () => {
-    const props = baseProps();
-    render(
-      <PlanningEventCard
-        row={rowWithTwoEventTimeBlocks()}
-        isReadOnly={false}
-        {...props}
-      />,
-    );
-
-    const user = userEvent.setup();
-    await user.click(
-      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    );
-    const dialog = await screen.findByRole('alertdialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Excluir evento' }),
-    );
-
-    expect(props.onDeleteEventConfirm).toHaveBeenCalledWith({
-      eventId: 'event-1',
-    });
   });
 
   it('calls onDeleteEventTimeBlockConfirm after confirming the delete-event-time-block dialog', async () => {
@@ -227,76 +195,6 @@ describe('PlanningEventCard affordances (US1)', () => {
       eventId: 'event-1',
       eventTimeBlockId: 'event-time-block-1',
     });
-  });
-
-  it('gives the day-delete trigger the same destructive visual weight as its time-block-level sibling', () => {
-    render(
-      <PlanningEventCard
-        row={rowWithTwoEventTimeBlocks()}
-        isReadOnly={false}
-        {...baseProps()}
-      />,
-    );
-
-    const dayDelete = screen.getByRole('button', {
-      name: 'Excluir dia Sunday Service',
-    });
-    const eventTimeBlockDelete = screen.getByRole('button', {
-      name: 'Excluir horário Worship',
-    });
-
-    expect(dayDelete.className).toContain('bg-destructive/10');
-    expect(eventTimeBlockDelete.className).toContain('bg-destructive');
-  });
-
-  it('keeps the delete-day confirm dialog open with a "Deleting…" label while the mutation is pending', async () => {
-    const props = baseProps();
-    const { rerender } = render(
-      <PlanningEventCard
-        row={rowWithTwoEventTimeBlocks()}
-        isReadOnly={false}
-        {...props}
-      />,
-    );
-
-    const user = userEvent.setup();
-    await user.click(
-      screen.getByRole('button', { name: 'Excluir dia Sunday Service' }),
-    );
-    const dialog = await screen.findByRole('alertdialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Excluir evento' }),
-    );
-
-    // Simulate the mutation going pending: dialog must stay open, not close
-    // synchronously in the click handler.
-    rerender(
-      <TimezoneProvider churchTimezone="UTC">
-        <PlanningEventCard
-          row={rowWithTwoEventTimeBlocks()}
-          isReadOnly={false}
-          {...props}
-          deleteEventPending
-        />
-      </TimezoneProvider>,
-    );
-
-    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Excluindo…' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
-
-    // Mutation settles: dialog auto-closes.
-    rerender(
-      <TimezoneProvider churchTimezone="UTC">
-        <PlanningEventCard
-          row={rowWithTwoEventTimeBlocks()}
-          isReadOnly={false}
-          {...props}
-        />
-      </TimezoneProvider>,
-    );
-
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
   it('keeps the delete-event-time-block confirm dialog open with a "Deleting…" label while the mutation is pending', async () => {

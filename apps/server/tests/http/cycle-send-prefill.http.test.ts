@@ -5,6 +5,7 @@ import {
   eventTimeBlock,
   ministry,
   ministryParticipation,
+  outboxMessage,
   participationEventTimeBlockInclusion,
   sector,
   shift,
@@ -27,6 +28,7 @@ import {
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { UsualSetupController } from '@/api/controllers/usual-setup-controller';
+import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -40,6 +42,7 @@ import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/dr
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
@@ -111,6 +114,10 @@ function createManagers() {
       unitOfWork,
       participationRepository,
       staffingSeeder,
+      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -336,6 +343,19 @@ function send(fixture: Seed, locale?: string) {
   return post(`/admin/cycles/${fixture.cycleId}/send`, undefined, locale);
 }
 
+async function summary(fixture: Seed) {
+  const response = await app.inject({
+    method: 'GET',
+    url: `/api/v1/admin/cycles/${fixture.cycleId}/send-summary`,
+  });
+  expect(response.statusCode).toBe(200);
+  return response.json();
+}
+
+async function queuedCount() {
+  return (await schedulingTestDb.select().from(outboxMessage)).length;
+}
+
 function saveSetup(ministryId: string, blockId: string, entry: object) {
   return app.inject({
     method: 'PUT',
@@ -426,6 +446,66 @@ async function cycleState(cycleId: string) {
   };
 }
 
+/** The applied Sunday Event and its Welcome and Service copies. */
+async function appliedSunday(fixture: Seed) {
+  const db = schedulingTestDb;
+  const [sunday] = await db
+    .select({ id: event.id })
+    .from(event)
+    .where(and(eq(event.cycleId, fixture.cycleId), eq(event.title, 'Sunday')));
+  if (!sunday) throw new Error('Sunday event');
+  const blocks = await db
+    .select({ id: eventTimeBlock.id, label: eventTimeBlock.label })
+    .from(eventTimeBlock)
+    .where(eq(eventTimeBlock.eventId, sunday.id));
+  const byLabel = new Map(blocks.map(({ id, label }) => [label, id]));
+  return {
+    eventId: sunday.id,
+    welcomeId: byLabel.get('Welcome'),
+    serviceId: byLabel.get('Service'),
+  };
+}
+
+interface EditSundayInput {
+  fixture: Seed;
+  sunday: Awaited<ReturnType<typeof appliedSunday>>;
+}
+
+/**
+ * The complete Sunday edit: Welcome retimed to 08:30–09:30 and relabelled
+ * Arrival, Service kept, and a manual Lunch row added.
+ */
+function editSunday({ fixture, sunday }: EditSundayInput) {
+  return app.inject({
+    method: 'PATCH',
+    url: `/api/v1/admin/cycles/${fixture.cycleId}/events/${sunday.eventId}`,
+    payload: {
+      title: 'Edited Sunday',
+      start: '2027-01-03T11:30:00.000Z',
+      end: '2027-01-03T16:00:00.000Z',
+      eventTimeBlocks: [
+        {
+          id: sunday.welcomeId,
+          label: 'Arrival',
+          startTime: '2027-01-03T11:30:00.000Z',
+          endTime: '2027-01-03T12:30:00.000Z',
+        },
+        {
+          id: sunday.serviceId,
+          label: 'Service',
+          startTime: '2027-01-03T13:00:00.000Z',
+          endTime: '2027-01-03T15:00:00.000Z',
+        },
+        {
+          label: 'Lunch',
+          startTime: '2027-01-03T15:00:00.000Z',
+          endTime: '2027-01-03T16:00:00.000Z',
+        },
+      ],
+    },
+  });
+}
+
 const SERVING_WELCOME = (fixture: Seed) => ({
   serves: true,
   shiftSplit: {
@@ -492,6 +572,12 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
         })
       ).statusCode,
     ).toBe(200);
+    // The confirmation counts what this same policy will pre-fill: All in and
+    // Worship, each once however many blocks they get.
+    expect(await summary(fixture)).toEqual({
+      eventCount: 2,
+      prefilledMinistryCount: 2,
+    });
 
     expect((await send(fixture)).statusCode).toBe(204);
 
@@ -575,6 +661,11 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
         and(eq(event.cycleId, fixture.cycleId), eq(event.title, 'Sunday')),
       );
     if (!sunday) throw new Error('Sunday event');
+    // A later one-off block on the same day, inside the widened Event.
+    await db
+      .update(event)
+      .set({ end: new Date('2027-01-03T19:00:00Z') })
+      .where(eq(event.id, sunday.id));
     await buildEventTimeBlock({
       db,
       churchId: fixture.churchId,
@@ -733,6 +824,77 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
     const { inclusions, shifts } = await staffing(fixture.cycleId);
     expect(inclusions).toHaveLength(3);
     expect(shifts).toHaveLength(3);
+    // The seeded admin leads the only led Ministry: one N2, not two.
+    expect(await queuedCount()).toBe(1);
+  });
+
+  it('seeds a generated block retimed and relabelled through the Event edit from its source, and leaves a manual row unseeded', async () => {
+    const fixture = await seed();
+    expect((await applyTemplates(fixture)).statusCode).toBe(201);
+    const sunday = await appliedSunday(fixture);
+    expect((await editSunday({ fixture, sunday })).statusCode).toBe(200);
+
+    expect((await send(fixture)).statusCode).toBe(204);
+
+    const { shifts } = await staffing(fixture.cycleId);
+    expect(
+      shifts.filter(
+        (row) => row.ministry === 'All in' && row.block !== 'Night',
+      ),
+    ).toEqual([
+      {
+        ministry: 'All in',
+        block: 'Arrival',
+        start: '2027-01-03T11:30:00.000Z',
+        end: '2027-01-03T12:30:00.000Z',
+        requirements: [],
+      },
+      {
+        ministry: 'All in',
+        block: 'Service',
+        start: '2027-01-03T13:00:00.000Z',
+        end: '2027-01-03T15:00:00.000Z',
+        requirements: [],
+      },
+    ]);
+    expect(shifts.filter((row) => row.block === 'Lunch')).toEqual([]);
+  });
+
+  it('serializes a concurrent Event edit and Send into one valid order that never edits the Sent calendar', async () => {
+    const fixture = await seed();
+    await applyTemplates(fixture);
+    const sunday = await appliedSunday(fixture);
+
+    const [edit, sent] = await Promise.all([
+      editSunday({ fixture, sunday }),
+      send(fixture),
+    ]);
+
+    expect(sent.statusCode).toBe(204);
+    const [stored] = await schedulingTestDb
+      .select({ title: event.title, status: event.status })
+      .from(event)
+      .where(eq(event.id, sunday.eventId));
+    const blocks = await schedulingTestDb
+      .select({ label: eventTimeBlock.label })
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.eventId, sunday.eventId))
+      .orderBy(asc(eventTimeBlock.startTime));
+    if (edit.statusCode === 200) {
+      // Edit first: Send scheduled the edited graph.
+      expect(stored).toEqual({ title: 'Edited Sunday', status: 'scheduled' });
+      expect(blocks.map(({ label }) => label)).toEqual([
+        'Arrival',
+        'Service',
+        'Lunch',
+      ]);
+    } else {
+      // Send first: the stale edit is refused and the Sent calendar stays.
+      expect(edit.statusCode).toBe(409);
+      expect(edit.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+      expect(stored).toEqual({ title: 'Sunday', status: 'scheduled' });
+      expect(blocks.map(({ label }) => label)).toEqual(['Welcome', 'Service']);
+    }
   });
 
   it('rolls back every staffing row and the Cycle and Event states when a staffing write fails', async () => {
@@ -757,6 +919,7 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
       state: 'draft',
       events: ['draft'],
     });
+    expect(await queuedCount()).toBe(0);
   });
 
   it('refuses a Draft that already holds staffing with 409 DRAFT_STAFFING_RECONCILIATION_REQUIRED and writes nothing', async () => {
@@ -852,5 +1015,6 @@ describe('POST /admin/cycles/:cycleId/send pre-fills staffing from the latest Us
       state: 'draft',
       events: ['draft'],
     });
+    expect(await queuedCount()).toBe(0);
   });
 });

@@ -121,6 +121,84 @@ describe('retained scheduling Notifications', () => {
   });
 });
 
+describe('Cycle ready to prepare Notification (N2)', () => {
+  const MINISTRY_A = '33333333-3333-4333-8333-333333333331';
+  const MINISTRY_B = '33333333-3333-4333-8333-333333333332';
+  const ready = (ministries: { id: string; name: string }[], eventCount = 3) =>
+    ({
+      ...base,
+      kind: 'cycle_ready_to_prepare',
+      data: {
+        cycleId: ID,
+        cycleName: 'Dezembro 2026',
+        cycleStartDate: '2026-12-01',
+        cycleEndDate: '2026-12-31',
+        eventCount,
+        ministries,
+      },
+    }) as GetNotifications200ItemsItem;
+
+  it('renders the Cycle, its inclusive days, Event count and the recipient Ministries in pt-BR', () => {
+    overwriteGetLocale(() => 'pt-BR');
+
+    expect(
+      renderNotification(
+        ready([
+          { id: MINISTRY_A, name: 'Louvor' },
+          { id: MINISTRY_B, name: 'Kids' },
+        ]),
+      ),
+    ).toEqual({
+      title: 'Hora de preparar Dezembro 2026',
+      body: 'Dezembro 2026 (01/12/2026 – 31/12/2026) foi enviado com 3 eventos para preparar.\nSeus ministérios: Louvor, Kids',
+      kindLabel: 'Ciclo pronto para preparar',
+      actionLabel: 'Preparar',
+    });
+  });
+
+  it('uses the singular for one Event and one Ministry', () => {
+    overwriteGetLocale(() => 'en');
+    const { body } = renderNotification(
+      ready([{ id: MINISTRY_A, name: 'Louvor' }], 1),
+    );
+
+    expect(body).toBe(
+      'Dezembro 2026 (01/12/2026 – 31/12/2026) was sent with 1 Event to prepare.\nYour Ministry: Louvor',
+    );
+  });
+
+  it("opens a single Ministry's Schedule for the Cycle", () => {
+    expect(
+      resolveNotificationDestination(
+        ready([{ id: MINISTRY_A, name: 'Louvor' }]),
+      ),
+    ).toEqual({
+      target: {
+        to: '/schedules/$ministryId/$cycleId',
+        params: { ministryId: MINISTRY_A, cycleId: ID },
+      },
+      isFallback: false,
+    });
+  });
+
+  it('opens the Cycle-preserving picker for several Ministries', () => {
+    expect(
+      resolveNotificationDestination(
+        ready([
+          { id: MINISTRY_A, name: 'Louvor' },
+          { id: MINISTRY_B, name: 'Kids' },
+        ]),
+      ),
+    ).toEqual({
+      target: {
+        to: '/schedules',
+        search: { cycleId: ID, ministryIds: `${MINISTRY_A},${MINISTRY_B}` },
+      },
+      isFallback: false,
+    });
+  });
+});
+
 describe('Ministry invitation Notification (N1)', () => {
   const pt = { locale: 'pt-BR' } as const;
   const legacy = {

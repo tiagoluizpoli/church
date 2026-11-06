@@ -13,11 +13,7 @@ import {
 } from './planning-admin.utils';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import {
-  type CreateEventTimeBlockInput,
-  type DeleteEventInput,
   type DeleteEventTimeBlockInput,
-  type UpdateEventInput,
-  type UpdateEventTimeBlockInput,
   usePlanningAdminMutations,
 } from './use-planning-admin-mutations';
 import { adminApi } from '@/utils/api-instances';
@@ -44,19 +40,9 @@ export interface UsePlanningAdminResult {
   cycleDetailsLoading: boolean;
   cycleDetailsError: unknown;
   refetchCycleDetails: () => void;
-  sendCyclePending: boolean;
-  updateEventPending: boolean;
-  deleteEventPending: boolean;
-  createEventTimeBlockPending: boolean;
-  updateEventTimeBlockPending: boolean;
   deleteEventTimeBlockPending: boolean;
   handleSelectCycle: (input: SelectCycleInput) => void;
-  handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
-  handleUpdateEvent: (input: UpdateEventInput) => void;
-  handleDeleteEvent: (input: DeleteEventInput) => void;
-  handleCreateEventTimeBlock: (input: CreateEventTimeBlockInput) => void;
-  handleUpdateEventTimeBlock: (input: UpdateEventTimeBlockInput) => void;
   handleDeleteEventTimeBlock: (input: DeleteEventTimeBlockInput) => void;
 }
 
@@ -110,7 +96,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const mutationHandlers = usePlanningAdminMutations({
     queryClient,
     selectedCycleId,
-    selectedCycle,
   });
 
   return {
@@ -131,19 +116,9 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     refetchCycleDetails: () => {
       void cycleDetailsQuery.refetch();
     },
-    sendCyclePending: mutationHandlers.sendCyclePending,
-    updateEventPending: mutationHandlers.updateEventPending,
-    deleteEventPending: mutationHandlers.deleteEventPending,
-    createEventTimeBlockPending: mutationHandlers.createEventTimeBlockPending,
-    updateEventTimeBlockPending: mutationHandlers.updateEventTimeBlockPending,
     deleteEventTimeBlockPending: mutationHandlers.deleteEventTimeBlockPending,
     handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
-    handleSendCycle: mutationHandlers.handleSendCycle,
-    handleUpdateEvent: mutationHandlers.handleUpdateEvent,
-    handleDeleteEvent: mutationHandlers.handleDeleteEvent,
-    handleCreateEventTimeBlock: mutationHandlers.handleCreateEventTimeBlock,
-    handleUpdateEventTimeBlock: mutationHandlers.handleUpdateEventTimeBlock,
     handleDeleteEventTimeBlock: mutationHandlers.handleDeleteEventTimeBlock,
   };
 }

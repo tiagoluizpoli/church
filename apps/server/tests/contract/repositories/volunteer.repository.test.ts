@@ -209,6 +209,10 @@ class MockVolunteerRepository implements VolunteerRepository {
     return false;
   }
 
+  async listActiveMinistryLeaderships(): Promise<never[]> {
+    return [];
+  }
+
   async listActiveLeaderUserIds(): Promise<never[]> {
     return [];
   }

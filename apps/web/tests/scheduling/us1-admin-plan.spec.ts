@@ -1,6 +1,14 @@
 import { m } from '@church/i18n/messages';
+import {
+  addCalendarDays,
+  enumerateCalendarDays,
+  formatCalendarDay,
+  parseCalendarDay,
+  weekdayIndex,
+} from '@church/time';
 import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
+import { addEventOnNestedPage } from './event-create.helpers';
 import { planningMonth } from './planning-month.helpers';
 import { createTemplateOnNestedPage } from './template-create.helpers';
 import {
@@ -11,6 +19,8 @@ import {
   loadPlanningAdminJourney,
   type PlanningAdminJourney,
 } from '@/tests/fixtures/journeys/planning-admin';
+
+const OUTBOX_NOTIFICATION_TIMEOUT_MS = 15_000;
 
 interface PlanningMonth {
   cycleName: string;
@@ -23,6 +33,7 @@ interface PlanningMonth {
   lastSunday: string;
   expectedEvents: number;
   expectedEventTimeBlocks: number;
+  expectedPrefilledBlocks: number;
   dynamicStartDate: string;
   dynamicEndDate: string;
 }
@@ -57,45 +68,8 @@ function getLastRequiredDate({
   return date;
 }
 
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-/** Mirrors `useTimezone().format(date, 'PP')` — the mobile card list (021
- * US2) renders every day-row date through that call instead of a raw ISO
- * string, so assertions against `planning-events-list` must match its
- * human-readable output, not the `YYYY-MM-DD` the cycle was seeded with. */
-/** Mirrors `formatDayOf` (apps/web/src/shared/utils/church-time.ts), which
- * every event display renders through — assertions against
- * `planning-events-list` must match its fixed `dd/MM/yyyy` output, not the
- * `YYYY-MM-DD` the day was picked with. */
 function toDisplayDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(day)}/${pad(month)}/${year}`;
-}
-
-function countMatchingWeekdays({
-  start,
-  end,
-  weekday,
-}: {
-  start: Date;
-  end: Date;
-  weekday: number;
-}): string[] {
-  const dates: string[] = [];
-  const cursor = new Date(start);
-
-  while (cursor <= end) {
-    if (cursor.getUTCDay() === weekday) {
-      dates.push(toDateString(cursor));
-    }
-
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-
-  return dates;
+  return formatCalendarDay({ day: parseCalendarDay({ value: isoDate }) });
 }
 
 interface CreatePlanningMonthParams {
@@ -107,48 +81,19 @@ function createPlanningMonth({
   journey,
 }: CreatePlanningMonthParams): PlanningMonth {
   const window = planningMonth({ anchor: journey.anchor });
-  const start = new Date(`${window.startDate}T00:00:00Z`);
-  const end = new Date(`${window.endDate}T00:00:00Z`);
-  const year = start.getUTCFullYear();
-  const month = start.getUTCMonth();
-  const overlapStart = new Date(Date.UTC(year, month, 15));
-  const overlapEnd = new Date(Date.UTC(year, month + 1, 15));
-  const sundayDates = countMatchingWeekdays({
-    start,
-    end,
-    weekday: 0,
-  });
-  const wednesdayDates = countMatchingWeekdays({
-    start,
-    end,
-    weekday: 3,
-  });
-  const lastDayInsideCycle = new Date(end);
-  const dynamicStart = new Date(
-    Date.UTC(
-      lastDayInsideCycle.getUTCFullYear(),
-      lastDayInsideCycle.getUTCMonth(),
-      lastDayInsideCycle.getUTCDate(),
-      9,
-      0,
-    ),
-  );
-  const dynamicEnd = new Date(
-    Date.UTC(
-      lastDayInsideCycle.getUTCFullYear(),
-      lastDayInsideCycle.getUTCMonth(),
-      lastDayInsideCycle.getUTCDate() + 2,
-      17,
-      0,
-    ),
-  );
+  const start = parseCalendarDay({ value: window.startDate });
+  const end = parseCalendarDay({ value: window.endDate });
+  const days = enumerateCalendarDays({ start, end });
+  const sundayDates = days.filter((day) => weekdayIndex({ day }) === 0);
+  const wednesdayDates = days.filter((day) => weekdayIndex({ day }) === 3);
+  const nextMonth = addCalendarDays({ day: end, days: 1 }).slice(0, 7);
 
   return {
-    cycleName: `US1 Admin Plan ${year}-${String(month + 1).padStart(2, '0')}`,
-    startDate: toDateString(start),
-    endDate: toDateString(end),
-    overlapStartDate: toDateString(overlapStart),
-    overlapEndDate: toDateString(overlapEnd),
+    cycleName: `US1 Admin Plan ${start.slice(0, 7)}`,
+    startDate: start,
+    endDate: end,
+    overlapStartDate: `${start.slice(0, 7)}-15`,
+    overlapEndDate: `${nextMonth}-15`,
     firstSunday: getRequiredDate({ dates: sundayDates, label: 'Sunday' }),
     firstWednesday: getRequiredDate({
       dates: wednesdayDates,
@@ -157,8 +102,9 @@ function createPlanningMonth({
     lastSunday: getLastRequiredDate({ dates: sundayDates, label: 'Sunday' }),
     expectedEvents: sundayDates.length + wednesdayDates.length,
     expectedEventTimeBlocks: sundayDates.length * 3 + wednesdayDates.length,
-    dynamicStartDate: toDateString(dynamicStart),
-    dynamicEndDate: toDateString(dynamicEnd),
+    expectedPrefilledBlocks: sundayDates.length,
+    dynamicStartDate: end,
+    dynamicEndDate: addCalendarDays({ day: end, days: 2 }),
   };
 }
 
@@ -171,14 +117,16 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   const journey = loadPlanningAdminJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.admin });
   const month = createPlanningMonth({ journey });
-  const sundayTemplateName = `Sunday Service ${month.cycleName}`;
+  const sundayTemplateName = journey.sundayTemplate.name;
   const wednesdayTemplateName = `Wednesday Service ${month.cycleName}`;
   const sundayGatheringName = `Sunday Gathering ${month.cycleName}`;
 
   await page.goto('/cycles');
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  const createCycleDialog = page.getByRole('dialog', { name: 'Novo ciclo' });
+  const createCycleDialog = page.getByRole('dialog', {
+    name: m.cycles_form_title_new({}, { locale: 'pt-BR' }),
+  });
   await createCycleDialog.getByTestId('cycle-name-input').fill(month.cycleName);
   await fillDatePickerField({
     page,
@@ -202,16 +150,8 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   const cycleReviewUrl = page.url();
   await page.goto('/event-templates');
 
-  await createTemplateOnNestedPage({
-    page,
-    name: sundayTemplateName,
-    weekday: 0,
-    blocks: [
-      { label: 'Welcome', startTime: '09:00', endTime: '09:30' },
-      { label: 'Message', startTime: '09:30', endTime: '10:30' },
-      { label: 'Prayer', startTime: '10:30', endTime: '11:00' },
-    ],
-  });
+  // The recipe owns Sunday's source-bound Usual setup; create a second
+  // template through the UI and retain the library edit/apply outcomes.
   await createTemplateOnNestedPage({
     page,
     name: wednesdayTemplateName,
@@ -239,7 +179,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.getByTestId('open-apply-templates-dialog-button').click();
 
   const applyTemplatesDialog = page.getByRole('dialog', {
-    name: 'Aplicar modelos',
+    name: m.cycle_apply_title({}, { locale: 'pt-BR' }),
   });
   const applyTemplateOptions = applyTemplatesDialog.getByTestId(
     'apply-template-option',
@@ -273,30 +213,76 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     sundayGatheringName,
   );
 
-  // FR-012: the one canonical create-event UI, reused here for a
-  // cycle manual event (same form as the ministry "New Event" modal).
-  await page
-    .getByRole('button', { name: 'Adicionar evento', exact: true })
-    .click();
-  const createEventDialog = page.getByRole('dialog');
-  await createEventDialog.getByLabel('Title').fill('Three-day retreat');
-  await fillDatePickerField({
+  // F6: a timed multi-day Event, saved with its Time block on the nested
+  // New Event page; Save returns to the review revealing it.
+  await addEventOnNestedPage({
     page,
-    trigger: createEventDialog.getByLabel('Start date'),
-    date: month.dynamicStartDate,
+    title: 'Three-day retreat',
+    startDate: month.dynamicStartDate,
+    endDate: month.dynamicEndDate,
+    endTime: '12:00',
   });
-  await fillDatePickerField({
-    page,
-    trigger: createEventDialog.getByLabel('End date'),
-    date: month.dynamicEndDate,
-  });
-  await createEventDialog.getByRole('button', { name: 'Create' }).click();
+  await expect(
+    page.getByTestId('planning-events-list').getByTestId('revealed-event-row'),
+  ).toContainText('Three-day retreat');
 
   await expect(page.getByTestId('planning-event-card')).toHaveCount(
     month.expectedEvents + 1,
   );
   await expect(page.getByTestId('planning-events-list')).toContainText(
     'Three-day retreat',
+  );
+
+  // F7: editing the retained whole-Event block keeps this multi-day Event in
+  // the review before the handoff.
+  await page
+    .getByTestId('planning-events-list')
+    .getByTestId('revealed-event-row')
+    .getByRole('link', {
+      name: m.cycle_review_edit_day(
+        { title: 'Three-day retreat' },
+        { locale: 'pt-BR' },
+      ),
+    })
+    .click();
+  await page
+    .getByTestId('event-time-block-row')
+    .getByLabel(m.event_editor_block_label({}, { locale: 'pt-BR' }))
+    .fill('Retreat welcome');
+  await page
+    .getByRole('button', {
+      name: m.event_editor_create_submit({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(
+    page.getByTestId('planning-events-list').getByTestId('revealed-event-row'),
+  ).toContainText('Retreat welcome');
+
+  // F8: discard a separate Draft Event through the nested editor. Its
+  // deletion must not disturb the retained retreat or the generated Events.
+  await addEventOnNestedPage({
+    page,
+    title: 'Discarded draft',
+    startDate: month.dynamicStartDate,
+  });
+  await page
+    .getByTestId('planning-events-list')
+    .getByTestId('revealed-event-row')
+    .getByRole('link', {
+      name: m.cycle_review_edit_day(
+        { title: 'Discarded draft' },
+        { locale: 'pt-BR' },
+      ),
+    })
+    .click();
+  await page.getByTestId('event-delete-open').click();
+  await page
+    .getByRole('button', {
+      name: m.event_editor_delete_confirm({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(page.getByText('Discarded draft', { exact: true })).toHaveCount(
+    0,
   );
 
   // Phase 8: "Create cycle" only lives on the cycles list view now (not on a
@@ -309,7 +295,9 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await page.goto('/cycles');
   await expect(page).toHaveURL(/\/cycles\/?$/);
   await page.getByTestId('open-create-cycle-dialog-button').click();
-  const overlapDialog = page.getByRole('dialog', { name: 'Novo ciclo' });
+  const overlapDialog = page.getByRole('dialog', {
+    name: m.cycles_form_title_new({}, { locale: 'pt-BR' }),
+  });
   await overlapDialog
     .getByTestId('cycle-name-input')
     .fill(`${month.cycleName} overlap`);
@@ -326,7 +314,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await overlapDialog.getByTestId('create-cycle-button').click();
 
   await expect(overlapDialog.getByTestId('cycle-create-error')).toContainText(
-    'Este ciclo se sobrepõe a um ciclo existente.',
+    m.error_overlapping_cycle({}, { locale: 'pt-BR' }),
   );
   await overlapDialog.getByRole('button', { name: 'Close' }).click();
 
@@ -342,6 +330,21 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   );
 
   await page.getByTestId('send-cycle-button').click();
+  const sendDialog = page.getByTestId('cycle-send-dialog');
+  await expect(sendDialog).toContainText(
+    m.cycle_send_irreversible({}, { locale: 'pt-BR' }),
+  );
+  await expect(sendDialog.getByTestId('cycle-send-summary')).toBeVisible();
+  await expect(sendDialog.getByTestId('cycle-send-summary')).toContainText(
+    m.cycle_send_events_other(
+      { count: month.expectedEvents + 1 },
+      { locale: 'pt-BR' },
+    ),
+  );
+  await expect(sendDialog.getByTestId('cycle-send-summary')).toContainText(
+    m.cycle_send_prefill_one({}, { locale: 'pt-BR' }),
+  );
+  await sendDialog.getByTestId('confirm-cycle-send-button').click();
   await expect(page.getByTestId('selected-cycle-state')).toHaveText(
     m.cycle_state_sent({}, { locale: 'pt-BR' }),
   );
@@ -352,25 +355,82 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     page.getByTestId('open-apply-templates-dialog-button'),
   ).toHaveCount(0);
   await expect(
-    page.getByRole('button', { name: 'Adicionar evento', exact: true }),
+    page.getByRole('link', {
+      name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
+    }),
   ).toHaveCount(0);
   await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
+  await expect(
+    page.getByRole('link', {
+      name: m.cycle_review_edit_day(
+        { title: 'Three-day retreat' },
+        { locale: 'pt-BR' },
+      ),
+    }),
+  ).toHaveCount(0);
 
-  // A second session of the ChurchAdmin, who leads Worship: it sees the
-  // sent cycle too.
+  // J5: the distinct Ministry leader receives N2 through the actual Send
+  // transaction and outbox, then its localized bell detail opens the one
+  // Ministry's exact Prepare destination.
+  const cycleId = cycleReviewUrl.split('/').at(-1);
+  if (!cycleId) throw new Error('Expected the review URL to contain a Cycle');
   const leaderContext = await newPersonaContext({
     browser,
-    persona: journey.personas.admin,
+    persona: journey.personas.leader,
   });
   const leaderPage = await leaderContext.newPage();
-  await leaderPage.goto('/cycles');
-  await leaderPage
-    .getByTestId('cycle-option')
-    .filter({ hasText: month.cycleName })
-    .click();
-  await expect(leaderPage.getByTestId('selected-cycle-name')).toHaveText(
-    month.cycleName,
+  await leaderPage.goto('/');
+  const bell = leaderPage.getByRole('button', {
+    name: m.notification_bell_label({}, { locale: 'pt-BR' }),
+  });
+  const notificationTitle = m.notification_cycle_ready_to_prepare_title(
+    { cycleName: month.cycleName },
+    { locale: 'pt-BR' },
   );
+  const notificationItem = leaderPage.getByText(notificationTitle, {
+    exact: true,
+  });
+  // The inbox polls much less frequently than the server's outbox drainer.
+  // Reload through the browser until a real inbox response includes N2; no
+  // Notification is inserted or mutated outside the Send transaction.
+  await expect
+    .poll(
+      async () => {
+        const inboxResponse = leaderPage.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/notifications') &&
+            response.request().method() === 'GET',
+        );
+        await leaderPage.reload();
+        await inboxResponse;
+        await bell.click();
+        return await notificationItem.count();
+      },
+      { timeout: OUTBOX_NOTIFICATION_TIMEOUT_MS },
+    )
+    .toBe(1);
+  await notificationItem.click();
+  const notificationSheet = leaderPage.getByRole('dialog');
+  await notificationSheet
+    .getByRole('button', {
+      name: m.notification_cycle_ready_to_prepare_action(
+        {},
+        { locale: 'pt-BR' },
+      ),
+    })
+    .click();
+  await expect(leaderPage).toHaveURL(
+    `/schedules/${journey.ministries.worship.id}/${cycleId}`,
+  );
+  const preparedWelcomeRows = leaderPage
+    .locator('[data-testid^="prepare-event-time-block-row-"]')
+    .filter({
+      has: leaderPage.getByText(`${sundayGatheringName} · Welcome`, {
+        exact: true,
+      }),
+    });
+  await expect(preparedWelcomeRows).toHaveCount(month.expectedPrefilledBlocks);
+  await expect(preparedWelcomeRows.first().getByRole('checkbox')).toBeChecked();
   await leaderContext.close();
 
   const volunteerContext = await newPersonaContext({

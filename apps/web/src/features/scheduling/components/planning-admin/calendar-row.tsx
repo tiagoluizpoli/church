@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import type {
   CycleCalendarTableRow,
   CycleCalendarWeek,
@@ -21,7 +22,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import type { DataTableColumn } from '@/components/ui/data-table';
 import {
   formatCalendarDateOnly,
@@ -118,9 +119,7 @@ export function calendarRowEventId({
 export interface CalendarRowKeyInput {
   visibleRow: CalendarVisibleRow;
   isExpanded: boolean;
-  isConfirmingDeleteEvent: boolean;
   isConfirmingDeleteEventTimeBlock: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
 }
 
@@ -135,9 +134,7 @@ export interface CalendarRowKeyInput {
 export function calendarRowKey({
   visibleRow,
   isExpanded,
-  isConfirmingDeleteEvent,
   isConfirmingDeleteEventTimeBlock,
-  deleteEventPending,
   deleteEventTimeBlockPending,
 }: CalendarRowKeyInput): string {
   const id = visibleRowId({ visibleRow });
@@ -148,7 +145,7 @@ export function calendarRowKey({
         ? `${visibleRow.row.title}-${visibleRow.row.location ?? ''}-${visibleRow.row.start}-${visibleRow.row.end}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
         : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
 
-  return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
+  return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
 }
 
 interface ConfirmDeleteDialogContentProps {
@@ -205,31 +202,6 @@ export interface ToggleEventExpandedInput {
   eventId: string;
 }
 
-export interface StartEditEventInput {
-  row: CycleCalendarTableRow;
-}
-
-export interface StartCreateEventTimeBlockInput {
-  row: CycleCalendarTableRow;
-}
-
-export interface StartEditEventTimeBlockInput {
-  parentId: string;
-  eventTimeBlockId: string;
-  label: string;
-  startTime: string;
-  endTime: string;
-}
-
-export interface ConfirmDeleteEventOpenChangeInput {
-  eventId: string;
-  open: boolean;
-}
-
-export interface ConfirmDeleteEventInput {
-  eventId: string;
-}
-
 export interface ConfirmDeleteEventTimeBlockOpenChangeInput {
   eventTimeBlockId: string;
   open: boolean;
@@ -243,19 +215,14 @@ export interface ConfirmDeleteEventTimeBlockInput {
 export interface RenderCalendarCellInput {
   item: CalendarVisibleRow;
   column: DataTableColumn;
+  /** The reviewed Cycle, for the nested Edit Event link. */
+  cycleId: string;
   isExpanded: boolean;
   isReadOnly: boolean;
-  isConfirmingDeleteEvent: boolean;
   isConfirmingDeleteEventTimeBlock: boolean;
-  deleteEventPending: boolean;
   deleteEventTimeBlockPending: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
-  onAddEventTimeBlockRequest: (input: StartCreateEventTimeBlockInput) => void;
-  onEditEventRequest: (input: StartEditEventInput) => void;
-  onDeleteEventOpenChange: (input: ConfirmDeleteEventOpenChangeInput) => void;
-  onDeleteEventConfirm: (input: ConfirmDeleteEventInput) => void;
-  onEditEventTimeBlockRequest: (input: StartEditEventTimeBlockInput) => void;
   onDeleteEventTimeBlockOpenChange: (
     input: ConfirmDeleteEventTimeBlockOpenChangeInput,
   ) => void;
@@ -271,19 +238,13 @@ export interface RenderCalendarCellInput {
 export function renderCalendarCell({
   item,
   column,
+  cycleId,
   isExpanded,
   isReadOnly,
-  isConfirmingDeleteEvent,
   isConfirmingDeleteEventTimeBlock,
-  deleteEventPending,
   deleteEventTimeBlockPending,
   timeZone,
   onToggleExpand,
-  onAddEventTimeBlockRequest,
-  onEditEventRequest,
-  onDeleteEventOpenChange,
-  onDeleteEventConfirm,
-  onEditEventTimeBlockRequest,
   onDeleteEventTimeBlockOpenChange,
   onDeleteEventTimeBlockConfirm,
 }: RenderCalendarCellInput) {
@@ -297,16 +258,11 @@ export function renderCalendarCell({
     <ParentRowCell
       column={column}
       row={item.row}
+      cycleId={cycleId}
       isExpanded={isExpanded}
       isReadOnly={isReadOnly}
-      isConfirmingDelete={isConfirmingDeleteEvent}
-      deletePending={deleteEventPending}
       timeZone={timeZone}
       onToggleExpand={onToggleExpand}
-      onAddEventTimeBlockRequest={onAddEventTimeBlockRequest}
-      onEditEventRequest={onEditEventRequest}
-      onDeleteOpenChange={onDeleteEventOpenChange}
-      onDeleteConfirm={onDeleteEventConfirm}
     />
   ) : (
     <EventTimeBlockRowCell
@@ -316,7 +272,6 @@ export function renderCalendarCell({
       isConfirmingDelete={isConfirmingDeleteEventTimeBlock}
       deletePending={deleteEventTimeBlockPending}
       timeZone={timeZone}
-      onEditEventTimeBlockRequest={onEditEventTimeBlockRequest}
       onDeleteOpenChange={onDeleteEventTimeBlockOpenChange}
       onDeleteConfirm={onDeleteEventTimeBlockConfirm}
     />
@@ -326,31 +281,21 @@ export function renderCalendarCell({
 interface ParentRowCellProps {
   column: DataTableColumn;
   row: CycleCalendarTableRow;
+  cycleId: string;
   isExpanded: boolean;
   isReadOnly: boolean;
-  isConfirmingDelete: boolean;
-  deletePending: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
-  onAddEventTimeBlockRequest: (input: StartCreateEventTimeBlockInput) => void;
-  onEditEventRequest: (input: StartEditEventInput) => void;
-  onDeleteOpenChange: (input: ConfirmDeleteEventOpenChangeInput) => void;
-  onDeleteConfirm: (input: ConfirmDeleteEventInput) => void;
 }
 
 function ParentRowCell({
   column,
   row,
+  cycleId,
   isExpanded,
   isReadOnly,
-  isConfirmingDelete,
-  deletePending,
   timeZone,
   onToggleExpand,
-  onAddEventTimeBlockRequest,
-  onEditEventRequest,
-  onDeleteOpenChange,
-  onDeleteConfirm,
 }: ParentRowCellProps) {
   return (
     <>
@@ -392,56 +337,14 @@ function ParentRowCell({
       ) : null}
       {column.id === 'actions' && !isReadOnly ? (
         <span className="flex items-center gap-1">
-          <Button
-            type="button"
-            size="icon-xs"
-            variant="ghost"
-            aria-label={m.cycle_review_add_time_block_to({ title: row.title })}
-            onClick={() => onAddEventTimeBlockRequest({ row })}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            size="icon-xs"
-            variant="ghost"
+          <Link
+            to="/cycles/$cycleId/events/$eventId"
+            params={{ cycleId, eventId: row.eventId }}
+            className={buttonVariants({ size: 'icon-xs', variant: 'ghost' })}
             aria-label={m.cycle_review_edit_day({ title: row.title })}
-            onClick={() => onEditEventRequest({ row })}
           >
             <Pencil className="size-3.5" />
-          </Button>
-          <AlertDialog
-            open={isConfirmingDelete}
-            onOpenChange={(open) =>
-              onDeleteOpenChange({ eventId: row.eventId, open })
-            }
-          >
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  size="icon-xs"
-                  variant="destructive"
-                  aria-label={m.cycle_review_delete_day({ title: row.title })}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              }
-            />
-            <ConfirmDeleteDialogContent
-              title={m.cycle_review_delete_day_title()}
-              description={m.cycle_review_delete_day_description({
-                title: row.title,
-              })}
-              actionLabel={
-                deletePending
-                  ? m.cycle_review_deleting()
-                  : m.cycle_review_delete_event_confirm()
-              }
-              disabled={deletePending}
-              onConfirm={() => onDeleteConfirm({ eventId: row.eventId })}
-            />
-          </AlertDialog>
+          </Link>
         </span>
       ) : null}
     </>
@@ -455,7 +358,6 @@ interface EventTimeBlockRowCellProps {
   isConfirmingDelete: boolean;
   deletePending: boolean;
   timeZone: string;
-  onEditEventTimeBlockRequest: (input: StartEditEventTimeBlockInput) => void;
   onDeleteOpenChange: (
     input: ConfirmDeleteEventTimeBlockOpenChangeInput,
   ) => void;
@@ -469,7 +371,6 @@ function EventTimeBlockRowCell({
   isConfirmingDelete,
   deletePending,
   timeZone,
-  onEditEventTimeBlockRequest,
   onDeleteOpenChange,
   onDeleteConfirm,
 }: EventTimeBlockRowCellProps) {
@@ -489,25 +390,6 @@ function EventTimeBlockRowCell({
       ) : null}
       {column.id === 'actions' && !isReadOnly ? (
         <span className="flex items-center gap-1">
-          <Button
-            type="button"
-            size="icon-xs"
-            variant="ghost"
-            aria-label={m.cycle_review_edit_time_block({
-              label: visibleRow.label,
-            })}
-            onClick={() =>
-              onEditEventTimeBlockRequest({
-                parentId: visibleRow.parentId,
-                eventTimeBlockId: visibleRow.eventTimeBlockId,
-                label: visibleRow.label,
-                startTime: visibleRow.startTime,
-                endTime: visibleRow.endTime,
-              })
-            }
-          >
-            <Pencil className="size-3.5" />
-          </Button>
           {visibleRow.isOnlyEventTimeBlockInEvent ? (
             <Button
               type="button"

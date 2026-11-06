@@ -32,6 +32,7 @@ import {
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
+import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -51,10 +52,12 @@ import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/dr
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildEventTemplate } from '@/seeds/builders/planning';
@@ -115,6 +118,10 @@ beforeAll(async () => {
       unitOfWork,
       participationRepository,
       staffingSeeder,
+      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
@@ -801,7 +808,12 @@ describe('Cycle last day', () => {
       return app.inject({
         method: 'POST',
         url: `/api/v1/admin/cycles/${cycleId}/events`,
-        payload: { title: 'Vigil', start, end },
+        payload: {
+          title: 'Vigil',
+          start,
+          end,
+          eventTimeBlocks: [{ label: 'Vigil', startTime: start, endTime: end }],
+        },
       });
     }
 
@@ -1780,6 +1792,13 @@ describe('PATCH /admin/cycles/:cycleId', () => {
               title: 'Late',
               start: '2026-10-25T22:00:00.000Z',
               end: '2026-10-26T00:00:00.000Z',
+              eventTimeBlocks: [
+                {
+                  label: 'Late',
+                  startTime: '2026-10-25T22:00:00.000Z',
+                  endTime: '2026-10-26T00:00:00.000Z',
+                },
+              ],
             },
           })
           .then((response) => response);

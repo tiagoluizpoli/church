@@ -1,4 +1,11 @@
-import { cycle, eventTemplate, member } from '@church/db';
+import {
+  cycle,
+  eventTemplate,
+  member,
+  ministryMembership,
+  templateTimeBlock,
+  usualSetup,
+} from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -45,7 +52,7 @@ describe('planning journey recipes (#329 planning cluster)', () => {
     });
   });
 
-  it('planning-admin holds an admin and a Volunteer but no cycle, with a window after the anchor', async () => {
+  it('planning-admin holds a non-leading admin, distinct Worship leader and Volunteer but no cycle, with a window after the anchor', async () => {
     const journey = await runE2eJourneyRecipe({
       db: testDb,
       recipe: createPlanningAdminRecipe({
@@ -58,11 +65,88 @@ describe('planning journey recipes (#329 planning cluster)', () => {
     expect(await accessLevelsOf({ churchId: journey.church.id })).toEqual([
       'admin',
       'member',
+      'member',
     ]);
+    expect(journey.personas.admin.userId).not.toBe(
+      journey.personas.leader.userId,
+    );
+    expect(journey.personas.leader.userId).not.toBe(
+      journey.personas.volunteer.userId,
+    );
+    expect(journey.ministries.worship.id).toBeDefined();
+    const memberships = await testDb
+      .select({
+        volunteerId: ministryMembership.volunteerId,
+        ministryId: ministryMembership.ministryId,
+        accessLevel: ministryMembership.ministryAccessLevel,
+      })
+      .from(ministryMembership)
+      .where(eq(ministryMembership.churchId, journey.church.id));
+    expect(memberships).toEqual(
+      expect.arrayContaining([
+        {
+          volunteerId: journey.personas.leader.volunteerId,
+          ministryId: journey.ministries.worship.id,
+          accessLevel: 'leader',
+        },
+      ]),
+    );
+    expect(
+      memberships.some(
+        (membership) =>
+          membership.volunteerId === journey.personas.admin.volunteerId,
+      ),
+    ).toBe(false);
     expect(journey.cycleWindow).toEqual({
       startDate: '2027-01-02',
       endDate: '2027-01-29',
     });
+  });
+
+  it('planning-admin composes a source-bound Usual setup for the leader handoff', async () => {
+    const journey = await runE2eJourneyRecipe({
+      db: testDb,
+      recipe: createPlanningAdminRecipe({
+        journeyKey: 'alpha',
+        anchor: ANCHOR,
+      }),
+    });
+    const setups = await testDb
+      .select({
+        template: eventTemplate.name,
+        label: templateTimeBlock.label,
+        ministryId: usualSetup.ministryId,
+        serves: usualSetup.serves,
+        shiftSplit: usualSetup.shiftSplit,
+        headcounts: usualSetup.headcounts,
+      })
+      .from(usualSetup)
+      .innerJoin(
+        templateTimeBlock,
+        eq(templateTimeBlock.id, usualSetup.sourceTemplateTimeBlockId),
+      )
+      .innerJoin(
+        eventTemplate,
+        eq(eventTemplate.id, templateTimeBlock.templateId),
+      )
+      .where(eq(usualSetup.churchId, journey.church.id));
+    expect(setups).toEqual([
+      {
+        template: 'J5 Worship',
+        label: 'Welcome',
+        ministryId: journey.ministries.worship.id,
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 1 },
+        headcounts: [
+          {
+            shiftIndex: 0,
+            sectorId: journey.ministries.worship.sectors.main.id,
+            roleId: journey.ministries.worship.roles.usher.id,
+            peopleNeeded: 1,
+          },
+        ],
+      },
+    ]);
   });
 
   it('event-templates holds an admin and two templates, with no cycle', async () => {

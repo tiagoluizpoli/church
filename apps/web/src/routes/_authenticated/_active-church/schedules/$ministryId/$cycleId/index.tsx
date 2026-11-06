@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
+import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -573,8 +574,14 @@ function PrepareWorkspaceRoute() {
     (query) => query.isError,
   );
   const missingCycle = cycleQuery.isSuccess && !cycleQuery.data;
-  const errorKind = missingCycle
-    ? 'forbidden'
+  const notFound =
+    missingCycle ||
+    [cycleQuery, ministriesQuery, participationQuery].some(
+      (query) =>
+        isAxiosError(query.error) && query.error.response?.status === 404,
+    );
+  const errorKind = notFound
+    ? 'not-found'
     : failedQuery
       ? classifyPrepareFetchError({ error: failedQuery.error })
       : null;
@@ -640,13 +647,11 @@ function PrepareWorkspaceRoute() {
               </div>
               <div className="flex items-center gap-2">
                 <Link
-                  to="/schedules/$ministryId"
-                  params={{ ministryId }}
-                  search={{ browse: true }}
+                  to="/schedules"
                   data-testid="browse-all-cycles-link"
                   className={buttonVariants({ variant: 'ghost' })}
                 >
-                  Browse cycles
+                  {m.schedules_back()}
                 </Link>
                 <Link
                   to="/schedules/$ministryId/$cycleId/assign"
@@ -678,12 +683,13 @@ function PrepareWorkspaceRoute() {
         }
       />
 
-      {errorKind === 'forbidden' ? (
+      {errorKind === 'not-found' ? (
+        <Alert variant="destructive">
+          <AlertDescription>{m.error_not_found()}</AlertDescription>
+        </Alert>
+      ) : errorKind === 'forbidden' ? (
         <Alert variant="destructive" data-testid="prepare-forbidden-state">
-          <AlertTitle>You don't have access to this workspace</AlertTitle>
-          <AlertDescription>
-            Ask a church admin to grant you leader or sub-leader access.
-          </AlertDescription>
+          <AlertDescription>{m.shell_no_access()}</AlertDescription>
         </Alert>
       ) : errorKind === 'retryable' ? (
         <Alert

@@ -1297,21 +1297,25 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       const paused = new Promise<void>((resolve) => {
         reached = resolve;
       });
+      const pausedWrite = async function (
+        this: DrizzleMinistryParticipationRepository,
+        input: never,
+      ) {
+        reached();
+        await released;
+        return original.call(this, input);
+      };
       const spy = vi
         .spyOn(prototype, method)
-        .mockImplementation(async function (
-          this: DrizzleMinistryParticipationRepository,
-          input: never,
-        ) {
-          reached();
-          await released;
-          return original.call(this, input) as never;
-        });
+        .mockImplementation(pausedWrite as never);
       return { paused, release, spy };
     }
 
     /** The save is mid-transaction, holding its lock, while Publish starts and blocks. */
-    async function saveAheadOfPublish(base: Base, payload: object) {
+    async function saveAheadOfPublish(
+      base: Base,
+      payload: Record<string, unknown>,
+    ) {
       const { paused, release, spy } = pauseWrite('touch');
       const saving = savePreparation({ ...base, payload });
       await paused;

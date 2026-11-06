@@ -211,7 +211,7 @@ export class UsualSetupStaffingSeeder {
       const shift = shifts[index];
       if (!shift) continue;
       for (const headcount of shiftPlan.headcounts) {
-        await this.shiftRepository.upsertRequirement({
+        await this.shiftRepository.saveRequirement({
           churchId,
           shiftId: shift.id,
           participationId: participation.id,

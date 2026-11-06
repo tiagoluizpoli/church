@@ -228,7 +228,6 @@ function createRepos(): Repos {
     listByIds: vi.fn(),
     updateState: vi.fn(),
     listInclusions: vi.fn(),
-    replaceInclusions: vi.fn(),
     addInclusion: vi.fn(),
     removeInclusion: vi.fn(),
     touch: vi.fn(),

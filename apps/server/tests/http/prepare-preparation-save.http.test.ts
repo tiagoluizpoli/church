@@ -33,11 +33,7 @@ import { DbAuthorityManager } from '@/application/db-authority-manager';
 import {
   ChurchId,
   CycleId,
-  EventTimeBlockId,
   MinistryId,
-  MinistryParticipationId,
-  RoleId,
-  SectorId,
   ShiftId,
   ShiftRequirementId,
   UserId,
@@ -1666,90 +1662,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       expect(published).toMatchObject({ status: 'fulfilled' });
       expect(await participationState(base)).toBe('published');
     });
-
-    it('commits an Assignment that overlaps a granular split on a preparing Schedule', async () => {
-      const base = await seedPreparation();
-      const target = await seedAssignable({ base, state: 'preparing' });
-      const { paused, release } = pauseWrite('touch');
-
-      const splitting = participationManager.splitShifts({
-        churchId: ChurchId.from(base.churchId),
-        participationId: MinistryParticipationId.from(base.participationId),
-        eventTimeBlockId: EventTimeBlockId.from(base.eventTimeBlockId),
-        strategy: { kind: 'equal-n', n: 2 },
-      });
-      await paused;
-      const assigning = assign(base, target);
-      await waitForLockWaiter();
-      release();
-      const [split, assigned] = await Promise.allSettled([
-        splitting,
-        assigning,
-      ]);
-
-      expect(split).toMatchObject({ status: 'fulfilled' });
-      expect(assigned.status).toBe('rejected');
-      expect((assigned as PromiseRejectedResult).reason).toBeInstanceOf(
-        NotFoundError,
-      );
-    });
-
-    it.each([
-      {
-        writer: 'split',
-        run: (base: Base) =>
-          participationManager.splitShifts({
-            churchId: ChurchId.from(base.churchId),
-            participationId: MinistryParticipationId.from(base.participationId),
-            eventTimeBlockId: EventTimeBlockId.from(base.eventTimeBlockId),
-            strategy: { kind: 'equal-n', n: 2 },
-          }),
-      },
-      {
-        writer: 'inclusions',
-        run: (base: Base) =>
-          participationManager.setInclusions({
-            churchId: ChurchId.from(base.churchId),
-            participationId: MinistryParticipationId.from(base.participationId),
-            eventTimeBlockIds: [],
-          }),
-      },
-      {
-        writer: 'requirement',
-        run: (base: Base, target: Assignable) =>
-          participationManager.upsertRequirement({
-            churchId: ChurchId.from(base.churchId),
-            shiftId: ShiftId.from(target.shift.id),
-            sectorId: SectorId.from(base.sectorId),
-            roleId: RoleId.from(base.roleId),
-            peopleNeeded: 5,
-          }),
-      },
-    ])('settles a granular $writer write a re-split overlapped, with no deadlock', async ({
-      run,
-    }) => {
-      const base = await seedPreparation();
-      const target = await seedAssignable({ base, state: 'preparing' });
-      const { paused, release } = pauseWrite('touch');
-
-      const writing = run(base, target);
-      await paused;
-      const saving = savePreparation({
-        ...base,
-        payload: {
-          serves: true,
-          shiftSplit: { kind: 'equal', count: 3 },
-          headcounts: [headcountOf(base)],
-        },
-      });
-      await waitForLockWaiter();
-      release();
-      const [written, saved] = await Promise.allSettled([writing, saving]);
-
-      expect(written).toMatchObject({ status: 'fulfilled' });
-      expect(statusOf(saved)).toBe(200);
-      expect(await blockShifts(base.eventTimeBlockId)).toHaveLength(3);
-    });
   });
 
   describe('atomicity', () => {
@@ -1757,7 +1669,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       const base = await seedPreparation();
       const { shift: previous, requirement } = await seedBlockShift({ base });
       const failure = vi
-        .spyOn(DrizzleShiftRepository.prototype, 'upsertRequirement')
+        .spyOn(DrizzleShiftRepository.prototype, 'saveRequirement')
         .mockRejectedValueOnce(new Error('injected write failure'));
 
       const response = await savePreparation({

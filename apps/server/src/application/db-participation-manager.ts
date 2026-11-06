@@ -2,14 +2,13 @@ import { NotFoundError } from '@church/core';
 import {
   compareCalendarDays,
   compareInstants,
-  fromDate,
   type Instant,
   now,
-  toDate,
   today,
 } from '@church/time';
 import type {
   ChurchId,
+  EventTimeBlockId,
   MinistryId,
   RoleId,
   SectorId,
@@ -24,7 +23,6 @@ import type {
   CycleBuilderShiftView,
   CycleBuilderView,
   CycleParticipationView,
-  DeleteShiftManagerInput,
   EligibleVolunteerView,
   GetCycleBuilderDataInput,
   GetCycleParticipationInput,
@@ -45,10 +43,6 @@ import type {
   SaveUsualSetupBlockInput,
   ScheduleSummaryView,
   ScheduleView,
-  SetInclusionsInput,
-  SplitShiftsManagerInput,
-  UpdateShiftManagerInput,
-  UpsertRequirementManagerInput,
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
@@ -78,7 +72,7 @@ import {
   deriveScheduleStage,
   type MinistryParticipation,
 } from '../domain/entities/ministry-participation';
-import { Shift } from '../domain/entities/shift';
+import type { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
 import type { UnavailableShift } from '../domain/entities/unavailable-shift';
@@ -91,10 +85,7 @@ import {
   type UsualSetup,
   type UsualSetupHeadcount,
 } from '../domain/entities/usual-setup';
-import {
-  IllegalStateTransitionError,
-  InvalidRequiredCountError,
-} from '../domain/errors';
+import { IllegalStateTransitionError } from '../domain/errors';
 import { HeadcountBelowAssignedError } from '../domain/errors/headcount-below-assigned';
 import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
@@ -114,11 +105,6 @@ import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
   tx: TransactionContext;
-}
-
-interface EnsurePrepareInput {
-  participation: MinistryParticipation;
-  action: string;
 }
 
 interface EnsurePreparationEditableInput {
@@ -191,7 +177,7 @@ interface LoadPreparationViewInput extends PreparationTarget {
 interface ResolveParticipationEventTimeBlockInput {
   churchId: GetCycleParticipationInput['churchId'];
   participation: MinistryParticipation;
-  eventTimeBlockId: SetInclusionsInput['eventTimeBlockIds'][number];
+  eventTimeBlockId: EventTimeBlockId;
   tx?: TransactionContext;
 }
 
@@ -571,217 +557,6 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  async setInclusions(input: SetInclusionsInput): Promise<void> {
-    await this.unitOfWork.run(async (tx) => {
-      // Locked before its Shifts, the order saves and Assignments take.
-      const participation = await this.participationRepository.lockById({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'set_inclusions' });
-
-      const previousInclusions =
-        await this.participationRepository.listInclusions({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          tx,
-        });
-      const nextEventTimeBlockIds = new Set(
-        input.eventTimeBlockIds as string[],
-      );
-      const removedEventTimeBlockIds = previousInclusions
-        .map((inclusion) => inclusion.eventTimeBlockId)
-        .filter(
-          (eventTimeBlockId) =>
-            !nextEventTimeBlockIds.has(eventTimeBlockId as string),
-        );
-
-      await this.participationRepository.replaceInclusions({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlockIds: input.eventTimeBlockIds,
-        tx,
-      });
-
-      for (const eventTimeBlockId of removedEventTimeBlockIds) {
-        await this.shiftRepository.deleteByEventTimeBlock({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          eventTimeBlockId,
-          tx,
-        });
-      }
-
-      for (const eventTimeBlockId of input.eventTimeBlockIds) {
-        const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
-          churchId: input.churchId,
-          participation,
-          eventTimeBlockId,
-          tx,
-        });
-        const existingShifts = await this.shiftRepository.listByEventTimeBlock({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          eventTimeBlockId,
-          tx,
-        });
-
-        if (existingShifts.length === 0) {
-          await this.shiftRepository.createMany({
-            churchId: input.churchId,
-            shifts: [
-              new Shift({
-                props: {
-                  churchId: input.churchId,
-                  participationId: input.participationId,
-                  eventTimeBlockId,
-                  startTime: eventTimeBlock.startTime,
-                  endTime: eventTimeBlock.endTime,
-                },
-                eventTimeBlockBounds: {
-                  startTime: eventTimeBlock.startTime,
-                  endTime: eventTimeBlock.endTime,
-                },
-              }),
-            ],
-            tx,
-          });
-        }
-      }
-
-      participation.touch();
-      await this.participationRepository.touch({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-    });
-  }
-
-  async splitShifts(input: SplitShiftsManagerInput): Promise<Shift[]> {
-    return this.unitOfWork.run(async (tx) => {
-      // Locked before its Shifts, the order saves and Assignments take.
-      const participation = await this.participationRepository.lockById({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'split_shifts' });
-
-      const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
-        churchId: input.churchId,
-        participation,
-        eventTimeBlockId: input.eventTimeBlockId,
-        tx,
-      });
-
-      const shifts = this.splitter.split({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlock: {
-          id: eventTimeBlock.id,
-          startTime: eventTimeBlock.startTime,
-          endTime: eventTimeBlock.endTime,
-        },
-        strategy: input.strategy,
-      });
-
-      await this.shiftRepository.deleteByEventTimeBlock({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlockId: input.eventTimeBlockId,
-        tx,
-      });
-      const created = await this.shiftRepository.createMany({
-        churchId: input.churchId,
-        shifts,
-        tx,
-      });
-      await this.participationRepository.addInclusion({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlockId: input.eventTimeBlockId,
-        tx,
-      });
-
-      participation.touch();
-      await this.participationRepository.touch({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-
-      return created;
-    });
-  }
-
-  async updateShift(input: UpdateShiftManagerInput): Promise<Shift> {
-    return this.unitOfWork.run(async (tx) => {
-      const shift = await this.shiftRepository.getById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        tx,
-      });
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: shift.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'update_shift' });
-
-      const eventTimeBlock = await this.eventTimeBlockRepository.getById({
-        churchId: input.churchId,
-        eventTimeBlockId: shift.eventTimeBlockId,
-        tx,
-      });
-
-      shift.updateBounds({
-        startTime: input.startTime
-          ? fromDate({ date: input.startTime })
-          : shift.startTime,
-        endTime: input.endTime
-          ? fromDate({ date: input.endTime })
-          : shift.endTime,
-        eventTimeBlockBounds: {
-          startTime: eventTimeBlock.startTime,
-          endTime: eventTimeBlock.endTime,
-        },
-      });
-
-      return this.shiftRepository.update({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        startTime: toDate({ instant: shift.startTime }),
-        endTime: toDate({ instant: shift.endTime }),
-        ...(input.label !== undefined ? { label: input.label } : {}),
-        tx,
-      });
-    });
-  }
-
-  async deleteShift(input: DeleteShiftManagerInput): Promise<void> {
-    await this.unitOfWork.run(async (tx) => {
-      const shift = await this.shiftRepository.getById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        tx,
-      });
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: shift.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'delete_shift' });
-
-      await this.shiftRepository.deleteById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        tx,
-      });
-    });
-  }
-
   /**
    * A Sector or Role outside the Ministry (or Church) is not found (#385),
    * and so is an archived Role. The active Roles stay share-locked until `tx`
@@ -819,55 +594,6 @@ export class DbParticipationManager implements IParticipationManager {
         throw new NotFoundError(`Role not found: ${roleId}`);
       }
     }
-  }
-
-  async upsertRequirement(
-    input: UpsertRequirementManagerInput,
-  ): Promise<ShiftRequirement> {
-    if (input.peopleNeeded < 1) {
-      throw new InvalidRequiredCountError();
-    }
-
-    return this.unitOfWork.run(async (tx) => {
-      const shift = await this.shiftRepository.getById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        tx,
-      });
-      // Locked before its Shifts, the order saves and Assignments take.
-      const participation = await this.participationRepository.lockById({
-        churchId: input.churchId,
-        participationId: shift.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'upsert_requirement' });
-      await this.assertMinistryHeadcounts({
-        churchId: input.churchId,
-        ministryId: participation.ministryId,
-        headcounts: [{ sectorId: input.sectorId, roleId: input.roleId }],
-        tx,
-      });
-
-      const requirement = await this.shiftRepository.upsertRequirement({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        participationId: shift.participationId,
-        sectorId: input.sectorId,
-        roleId: input.roleId,
-        peopleNeeded: input.peopleNeeded,
-        notes: input.notes,
-        tx,
-      });
-
-      participation.touch();
-      await this.participationRepository.touch({
-        churchId: input.churchId,
-        participationId: participation.id,
-        tx,
-      });
-
-      return requirement;
-    });
   }
 
   async savePreparation({
@@ -1163,7 +889,7 @@ export class DbParticipationManager implements IParticipationManager {
       current.map((requirement) => [placeOf(requirement), requirement.notes]),
     );
     for (const place of desired) {
-      await this.shiftRepository.upsertRequirement({
+      await this.shiftRepository.saveRequirement({
         ...place,
         churchId,
         participationId,
@@ -2069,15 +1795,6 @@ function sortEligibleVolunteers(
 
     return left.volunteerName.localeCompare(right.volunteerName);
   });
-}
-
-function ensurePrepare({ participation, action }: EnsurePrepareInput): void {
-  if (participation.state !== 'preparing') {
-    throw new IllegalStateTransitionError({
-      from: participation.state,
-      to: action,
-    });
-  }
 }
 
 /** Preparing through assigning accept edits; published and elapsed or unsent Cycles refuse. */

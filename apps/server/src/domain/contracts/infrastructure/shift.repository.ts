@@ -60,7 +60,7 @@ export interface DeleteShiftsByEventTimeBlockInput {
   tx?: TransactionContext;
 }
 
-export interface UpsertShiftRequirementInput {
+export interface SaveShiftRequirementInput {
   churchId: ChurchId;
   shiftId: ShiftId;
   participationId: MinistryParticipationId;
@@ -103,9 +103,7 @@ export interface ShiftRepository {
   deleteByEventTimeBlock(
     input: DeleteShiftsByEventTimeBlockInput,
   ): Promise<void>;
-  upsertRequirement(
-    input: UpsertShiftRequirementInput,
-  ): Promise<ShiftRequirement>;
+  saveRequirement(input: SaveShiftRequirementInput): Promise<ShiftRequirement>;
   deleteRequirements(input: DeleteShiftRequirementsInput): Promise<void>;
   listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,

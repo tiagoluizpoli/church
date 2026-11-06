@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { assignment, ministry, ministryMembershipRole, role } from '@church/db';
+import {
+  assignment,
+  cycle,
+  ministry,
+  ministryMembershipRole,
+  role,
+} from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
   parseCalendarDay,
@@ -627,6 +633,11 @@ async function seedPlanning() {
   ).id;
 }
 
+async function seedSentPlanning() {
+  await seedPlanning();
+  await db.update(cycle).set({ state: 'sent' }).where(eq(cycle.id, cycleId));
+}
+
 async function isArchived(roleId: string) {
   const [row] = await db
     .select({ archivedAt: role.archivedAt })
@@ -788,7 +799,7 @@ describe('POST /ministries/:ministryId/roles/:roleId/archive', () => {
 });
 
 describe('archived Roles in fresh use', () => {
-  beforeEach(seedPlanning);
+  beforeEach(seedSentPlanning);
 
   it('refuses an archived Role for a new requirement or UsualSetup headcount as not found', async () => {
     const upcoming = await planEvent({
@@ -799,12 +810,20 @@ describe('archived Roles in fresh use', () => {
     const { participationManager } = createSchedulingManagers();
 
     await expect(
-      participationManager.upsertRequirement({
+      participationManager.savePreparation({
         churchId: CHURCH_A as never,
-        shiftId: upcoming.shiftId as never,
-        sectorId: sectorId as never,
-        roleId: fixture.archivedRoleId as never,
-        peopleNeeded: 1,
+        participationId: upcoming.participationId as never,
+        eventTimeBlockId: upcoming.eventTimeBlockId as never,
+        serves: true,
+        shiftSplit: { kind: 'equal-n', n: 1 },
+        headcounts: [
+          {
+            shiftIndex: 0,
+            sectorId: sectorId as never,
+            roleId: fixture.archivedRoleId as never,
+            peopleNeeded: 1,
+          },
+        ],
       }),
     ).rejects.toMatchObject({ name: 'NotFoundError' });
     await expect(
@@ -855,7 +874,7 @@ async function untilLockWait() {
 }
 
 describe('archive racing fresh use', () => {
-  beforeEach(seedPlanning);
+  beforeEach(seedSentPlanning);
 
   async function upcomingEvent() {
     return planEvent({
@@ -880,12 +899,20 @@ describe('archive racing fresh use', () => {
     const { participationManager } = createSchedulingManagers({
       roleRepository: pausingRepository,
     });
-    const write = participationManager.upsertRequirement({
+    const write = participationManager.savePreparation({
       churchId: CHURCH_A as never,
-      shiftId: upcoming.shiftId as never,
-      sectorId: sectorId as never,
-      roleId: fixture.singerId as never,
-      peopleNeeded: 1,
+      participationId: upcoming.participationId as never,
+      eventTimeBlockId: upcoming.eventTimeBlockId as never,
+      serves: true,
+      shiftSplit: { kind: 'equal-n', n: 1 },
+      headcounts: [
+        {
+          shiftIndex: 0,
+          sectorId: sectorId as never,
+          roleId: fixture.singerId as never,
+          peopleNeeded: 1,
+        },
+      ],
     });
     await writerLocked.wait;
     signIn('admin');
@@ -926,12 +953,20 @@ describe('archive racing fresh use', () => {
     await archiveLocked.wait;
     const { participationManager } = createSchedulingManagers();
 
-    const write = participationManager.upsertRequirement({
+    const write = participationManager.savePreparation({
       churchId: CHURCH_A as never,
-      shiftId: upcoming.shiftId as never,
-      sectorId: sectorId as never,
-      roleId: fixture.singerId as never,
-      peopleNeeded: 1,
+      participationId: upcoming.participationId as never,
+      eventTimeBlockId: upcoming.eventTimeBlockId as never,
+      serves: true,
+      shiftSplit: { kind: 'equal-n', n: 1 },
+      headcounts: [
+        {
+          shiftIndex: 0,
+          sectorId: sectorId as never,
+          roleId: fixture.singerId as never,
+          peopleNeeded: 1,
+        },
+      ],
     });
     const settled = write.then(
       () => 'written',

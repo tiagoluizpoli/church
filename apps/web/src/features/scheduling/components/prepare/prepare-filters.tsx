@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { XIcon } from 'lucide-react';
 import type {
   TimeWindowFilter,
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -46,18 +48,20 @@ export function PrepareFilters({
     <FormControlSizeProvider size={isMobile ? 'touch' : 'default'}>
       <div className="flex flex-col gap-3 md:flex-row md:items-end">
         <div className="min-w-0 flex-1 space-y-1">
-          <Label htmlFor="prepare-name-filter">Filter by name</Label>
+          <Label htmlFor="prepare-name-filter">{m.prepare_filter_name()}</Label>
           <Input
             id="prepare-name-filter"
             data-testid="prepare-name-filter"
-            placeholder="Time block or event name"
+            placeholder={m.prepare_filter_name_placeholder()}
             value={nameQuery}
             onChange={(event) => onNameQueryChange(event.target.value)}
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="prepare-time-mode-filter">Filter by time</Label>
+          <Label htmlFor="prepare-time-mode-filter">
+            {m.prepare_filter_time()}
+          </Label>
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={timeWindowFilter.mode}
@@ -79,15 +83,23 @@ export function PrepareFilters({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="starts">Starts</SelectItem>
-                <SelectItem value="ends">Ends</SelectItem>
-                <SelectItem value="within">Between</SelectItem>
+                <SelectGroup>
+                  <SelectItem value="starts">
+                    {m.prepare_filter_starts()}
+                  </SelectItem>
+                  <SelectItem value="ends">
+                    {m.prepare_filter_ends()}
+                  </SelectItem>
+                  <SelectItem value="within">
+                    {m.prepare_filter_between()}
+                  </SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <div className="min-w-0 flex-1">
                 <TimeOfDayField
-                  aria-label="From"
+                  aria-label={m.prepare_filter_from()}
                   data-testid="prepare-time-start-filter"
                   value={timeWindowFilter.start ?? null}
                   onChange={(value) =>
@@ -103,7 +115,7 @@ export function PrepareFilters({
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  aria-label="Clear from time"
+                  aria-label={m.prepare_filter_clear_from()}
                   data-testid="prepare-time-start-filter-clear"
                   onClick={() =>
                     onTimeWindowFilterChange({
@@ -116,11 +128,11 @@ export function PrepareFilters({
                 </Button>
               ) : null}
               <span className="shrink-0 text-muted-foreground text-xs">
-                and
+                {m.prepare_filter_and()}
               </span>
               <div className="min-w-0 flex-1">
                 <TimeOfDayField
-                  aria-label="To"
+                  aria-label={m.prepare_filter_to()}
                   data-testid="prepare-time-end-filter"
                   value={timeWindowFilter.end ?? null}
                   onChange={(value) =>
@@ -136,7 +148,7 @@ export function PrepareFilters({
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  aria-label="Clear to time"
+                  aria-label={m.prepare_filter_clear_to()}
                   data-testid="prepare-time-end-filter-clear"
                   onClick={() =>
                     onTimeWindowFilterChange({

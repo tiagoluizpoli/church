@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -41,7 +42,7 @@ describe('PrepareFilters (US3/T020, mode select + single start/end pair)', () =>
     );
 
     await user.click(screen.getByTestId('prepare-time-mode-filter'));
-    await user.click(await screen.findByText('Between'));
+    await user.click(await screen.findByText(m.prepare_filter_between()));
 
     expect(onTimeWindowFilterChange).toHaveBeenCalledWith({
       mode: 'within',
@@ -159,4 +160,17 @@ describe('PrepareFilters (US3/T020, mode select + single start/end pair)', () =>
       ),
     ).toHaveLength(2);
   });
+});
+
+it('localizes the name and time filter labels', () => {
+  renderWithProviders(
+    <PrepareFilters
+      nameQuery=""
+      onNameQueryChange={vi.fn()}
+      timeWindowFilter={{ mode: 'starts' }}
+      onTimeWindowFilterChange={vi.fn()}
+    />,
+  );
+  expect(screen.getByLabelText(m.prepare_filter_name())).toBeVisible();
+  expect(screen.getByText(m.prepare_filter_time())).toBeVisible();
 });

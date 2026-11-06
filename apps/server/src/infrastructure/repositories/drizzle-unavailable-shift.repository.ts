@@ -10,6 +10,7 @@ import type { ChurchId } from '../../domain/branded-ids';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   ListUnavailableShiftsByCheckInput,
+  ListUnavailableShiftsByParticipationInput,
   ListUnavailableShiftsByVolunteerForEventInput,
   ListUnavailableShiftsByVolunteersInput,
   ReplaceUnavailableShiftsForCheckInput,
@@ -122,6 +123,18 @@ export class DrizzleUnavailableShiftRepository
     return this.rows({
       churchId,
       conditions: [inArray(ministryMembership.volunteerId, volunteerIds)],
+      tx,
+    });
+  }
+
+  async listByParticipation({
+    churchId,
+    participationId,
+    tx,
+  }: ListUnavailableShiftsByParticipationInput): Promise<UnavailableShift[]> {
+    return this.rows({
+      churchId,
+      conditions: [eq(shift.participationId, participationId)],
       tx,
     });
   }

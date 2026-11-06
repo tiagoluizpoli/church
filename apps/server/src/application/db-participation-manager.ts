@@ -28,6 +28,7 @@ import type {
   ParticipationCompletionView,
   ParticipationEventTimeBlockView,
   ParticipationEventView,
+  ParticipationShiftView,
   PublishCycleInput,
   PublishCycleParticipationOutcome,
   PublishCycleView,
@@ -66,6 +67,7 @@ import {
 import { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
+import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import {
   assertManualSplitFitsBlock,
   assertValidUsualSetupProps,
@@ -105,6 +107,9 @@ interface BuildEventViewInput {
   includedEventTimeBlockIds: Set<string>;
   shifts: Shift[];
   requirements: ShiftRequirement[];
+  marks: UnavailableShift[];
+  assignments: Assignment[];
+  availabilityRequestedAt: Date | null;
 }
 
 interface GetParticipationCompletionInternalInput {
@@ -291,6 +296,13 @@ export class DbParticipationManager implements IParticipationManager {
         cycleId: input.cycleId,
         tx,
       });
+      const availabilityRequestedAt =
+        await this.participationRepository.findAvailabilityRequestedAt({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          ministryId: input.ministryId,
+          tx,
+        });
       const events: ParticipationEventView[] = [];
 
       for (const eventGroup of eventGroups) {
@@ -299,23 +311,34 @@ export class DbParticipationManager implements IParticipationManager {
           eventId: eventGroup.event.id,
           tx,
         });
-        const [inclusions, shifts, requirements] = await Promise.all([
-          this.participationRepository.listInclusions({
-            churchId: input.churchId,
-            participationId: participation.id,
-            tx,
-          }),
-          this.shiftRepository.listByParticipation({
-            churchId: input.churchId,
-            participationId: participation.id,
-            tx,
-          }),
-          this.shiftRepository.listRequirementsByParticipation({
-            churchId: input.churchId,
-            participationId: participation.id,
-            tx,
-          }),
-        ]);
+        const [inclusions, shifts, requirements, marks, assignments] =
+          await Promise.all([
+            this.participationRepository.listInclusions({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.shiftRepository.listByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.shiftRepository.listRequirementsByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.unavailableShiftRepository.listByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.assignmentRepository.listByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+          ]);
 
         events.push(
           buildEventView({
@@ -328,6 +351,9 @@ export class DbParticipationManager implements IParticipationManager {
             ),
             shifts,
             requirements,
+            marks,
+            assignments,
+            availabilityRequestedAt,
           }),
         );
       }
@@ -1567,47 +1593,107 @@ function buildEventView({
   includedEventTimeBlockIds,
   shifts,
   requirements,
+  marks,
+  assignments,
+  availabilityRequestedAt,
 }: BuildEventViewInput): ParticipationEventView {
-  const shiftsByEventTimeBlock = new Map<string, Shift[]>();
-  for (const shift of shifts) {
-    const eventTimeBlockShifts =
-      shiftsByEventTimeBlock.get(shift.eventTimeBlockId as string) ?? [];
-    eventTimeBlockShifts.push(shift);
-    shiftsByEventTimeBlock.set(
-      shift.eventTimeBlockId as string,
-      eventTimeBlockShifts,
-    );
-  }
+  const markCountByShift = countBy({
+    keys: marks.map((mark) => mark.shiftId as string),
+  });
+  const activeAssignments = assignments.filter((assignment) =>
+    isActiveAssignmentStatus(assignment.status),
+  );
+  const assignedCountByRequirement = countBy({
+    keys: activeAssignments.map(
+      (assignment) => assignment.shiftRequirementId as string,
+    ),
+  });
+  const assignmentCountByShift = countBy({
+    keys: activeAssignments.map((assignment) => assignment.shiftId as string),
+  });
 
-  const requirementsByShift = new Map<string, ShiftRequirement[]>();
-  for (const requirement of requirements) {
-    const key = (requirement.shiftId ?? '') as string;
-    const shiftRequirements = requirementsByShift.get(key) ?? [];
-    shiftRequirements.push(requirement);
-    requirementsByShift.set(key, shiftRequirements);
-  }
+  const shiftsByEventTimeBlock = groupBy({
+    items: shifts,
+    keyOf: (shift) => shift.eventTimeBlockId as string,
+  });
+  const requirementsByShift = groupBy({
+    items: requirements,
+    keyOf: (requirement) => (requirement.shiftId ?? '') as string,
+  });
 
   const eventTimeBlocks: ParticipationEventTimeBlockView[] =
     eventGroup.eventTimeBlocks.map((eventTimeBlock) => {
       const eventTimeBlockShifts =
         shiftsByEventTimeBlock.get(eventTimeBlock.id as string) ?? [];
-      const shiftRequirements = eventTimeBlockShifts.flatMap(
-        (shift) => requirementsByShift.get(shift.id as string) ?? [],
+      const shiftViews: ParticipationShiftView[] = eventTimeBlockShifts.map(
+        (shift) => {
+          const shiftRequirements = (
+            requirementsByShift.get(shift.id as string) ?? []
+          ).map((requirement) => ({
+            requirement,
+            assignedCount:
+              assignedCountByRequirement.get(requirement.id as string) ?? 0,
+          }));
+
+          return {
+            shift,
+            requirements: shiftRequirements,
+            unavailableMarkCount: markCountByShift.get(shift.id as string) ?? 0,
+            assignmentCount:
+              assignmentCountByShift.get(shift.id as string) ?? 0,
+            flagged: shiftRequirements.length === 0,
+          };
+        },
       );
 
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
-        shifts: eventTimeBlockShifts,
-        requirements: shiftRequirements,
+        shifts: shiftViews,
+        requirements: shiftViews.flatMap((view) => view.requirements),
+        shiftsChangedAfterAsk:
+          availabilityRequestedAt !== null &&
+          eventTimeBlockShifts.some(
+            (shift) => shift.createdAt > availabilityRequestedAt,
+          ),
       };
     });
 
   return {
     participation,
     event: eventGroup.event,
+    generatedFromTemplate: eventGroup.event.sourceTemplateId !== undefined,
     eventTimeBlocks,
   };
+}
+
+interface CountByInput {
+  keys: string[];
+}
+
+function countBy({ keys }: CountByInput): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const key of keys) {
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+interface GroupByInput<Item> {
+  items: Item[];
+  keyOf: (item: Item) => string;
+}
+
+function groupBy<Item>({
+  items,
+  keyOf,
+}: GroupByInput<Item>): Map<string, Item[]> {
+  const groups = new Map<string, Item[]>();
+  for (const item of items) {
+    const key = keyOf(item);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+  return groups;
 }
 
 interface RangesOverlapInput {

@@ -32,16 +32,37 @@ export interface GetCycleParticipationInput {
   ministryId: MinistryId;
 }
 
+export interface ParticipationRequirementView {
+  requirement: ShiftRequirement;
+  /** Active Assignments on this requirement; cancelled and declined are excluded. */
+  assignedCount: number;
+}
+
+/** What the prepare guards and flags read, always per Shift. */
+export interface ParticipationShiftView {
+  shift: Shift;
+  requirements: ParticipationRequirementView[];
+  unavailableMarkCount: number;
+  /** Active Assignments on the Shift; cancelled and declined are excluded. */
+  assignmentCount: number;
+  /** The Shift has no ShiftRequirement. */
+  flagged: boolean;
+}
+
 export interface ParticipationEventTimeBlockView {
   eventTimeBlock: EventTimeBlock;
   included: boolean;
-  shifts: Shift[];
-  requirements: ShiftRequirement[];
+  shifts: ParticipationShiftView[];
+  requirements: ParticipationRequirementView[];
+  /** A Shift was created after availability was requested, so earlier answers do not cover it. */
+  shiftsChangedAfterAsk: boolean;
 }
 
 export interface ParticipationEventView {
   participation: MinistryParticipation;
   event: Event;
+  /** Generated from an EventTemplate; false for a one-off Event. */
+  generatedFromTemplate: boolean;
   eventTimeBlocks: ParticipationEventTimeBlockView[];
 }
 

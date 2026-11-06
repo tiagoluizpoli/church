@@ -85,6 +85,13 @@ export interface AddInclusionInput {
   tx?: TransactionContext;
 }
 
+export interface FindAvailabilityRequestedAtInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
+}
+
 export interface TouchParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -142,6 +149,10 @@ export interface MinistryParticipationRepository {
   replaceInclusions(input: ReplaceInclusionsInput): Promise<void>;
   addInclusion(input: AddInclusionInput): Promise<void>;
   touch(input: TouchParticipationInput): Promise<void>;
+  /** When the Ministry first asked for availability in the Cycle: its earliest Availability Check. Null before any ask. */
+  findAvailabilityRequestedAt(
+    input: FindAvailabilityRequestedAtInput,
+  ): Promise<Date | null>;
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryRow[]>;

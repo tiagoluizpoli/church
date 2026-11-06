@@ -9,6 +9,8 @@ import type {
   CycleParticipationView,
   ParticipationEventTimeBlockView,
   ParticipationEventView,
+  ParticipationRequirementView,
+  ParticipationShiftView,
   ScheduleSummaryView,
 } from '../../domain/contracts/application/participation-manager';
 import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
@@ -58,16 +60,30 @@ export type ShiftRequirementResponse = z.infer<
   typeof shiftRequirementResponseSchema
 >;
 
+export const participationRequirementViewSchema =
+  shiftRequirementResponseSchema.extend({
+    assignedCount: z.number(),
+  });
+
+export const participationShiftViewSchema = shiftResponseSchema.extend({
+  requirements: z.array(participationRequirementViewSchema),
+  unavailableMarkCount: z.number(),
+  assignmentCount: z.number(),
+  flagged: z.boolean(),
+});
+
 export const participationEventTimeBlockViewSchema = z.object({
   eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
-  shifts: z.array(shiftResponseSchema),
-  requirements: z.array(shiftRequirementResponseSchema),
+  shifts: z.array(participationShiftViewSchema),
+  requirements: z.array(participationRequirementViewSchema),
+  shiftsChangedAfterAsk: z.boolean(),
 });
 
 export const participationEventViewSchema = z.object({
   participation: participationResponseSchema,
   event: eventResponseSchema,
+  generatedFromTemplate: z.boolean(),
   eventTimeBlocks: z.array(participationEventTimeBlockViewSchema),
 });
 
@@ -198,12 +214,31 @@ function toShiftRequirementResponse(
   };
 }
 
+function toRequirementView({
+  requirement,
+  assignedCount,
+}: ParticipationRequirementView) {
+  return { ...toShiftRequirementResponse(requirement), assignedCount };
+}
+
+function toShiftView(view: ParticipationShiftView) {
+  const { shift, requirements, unavailableMarkCount, assignmentCount } = view;
+  return {
+    ...toShiftResponse(shift),
+    requirements: requirements.map(toRequirementView),
+    unavailableMarkCount,
+    assignmentCount,
+    flagged: view.flagged,
+  };
+}
+
 function toEventTimeBlockView(view: ParticipationEventTimeBlockView) {
   return {
     eventTimeBlock: eventTimeBlockMapper.toResponse(view.eventTimeBlock),
     included: view.included,
-    shifts: view.shifts.map(toShiftResponse),
-    requirements: view.requirements.map(toShiftRequirementResponse),
+    shifts: view.shifts.map(toShiftView),
+    requirements: view.requirements.map(toRequirementView),
+    shiftsChangedAfterAsk: view.shiftsChangedAfterAsk,
   };
 }
 
@@ -243,6 +278,7 @@ function toEventView(view: ParticipationEventView) {
   return {
     participation: toParticipationResponse(view.participation),
     event: eventMapper.toResponse(view.event),
+    generatedFromTemplate: view.generatedFromTemplate,
     eventTimeBlocks: view.eventTimeBlocks.map(toEventTimeBlockView),
   };
 }

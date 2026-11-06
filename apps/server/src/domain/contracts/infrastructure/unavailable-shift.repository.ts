@@ -2,6 +2,7 @@ import type {
   AvailabilityCheckId,
   ChurchId,
   EventId,
+  MinistryParticipationId,
   ShiftId,
   VolunteerId,
 } from '../../branded-ids';
@@ -11,6 +12,12 @@ import type { TransactionContext } from './transaction-context';
 export interface ListUnavailableShiftsByCheckInput {
   churchId: ChurchId;
   availabilityCheckId: AvailabilityCheckId;
+  tx?: TransactionContext;
+}
+
+export interface ListUnavailableShiftsByParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
   tx?: TransactionContext;
 }
 
@@ -43,6 +50,11 @@ export interface UnavailableShiftRepository {
   /** Bulk-fetch unavailable shifts for a set of volunteers. */
   listByVolunteers(
     input: ListUnavailableShiftsByVolunteersInput,
+  ): Promise<UnavailableShift[]>;
+
+  /** The actionable marks on every Shift of the Participation. */
+  listByParticipation(
+    input: ListUnavailableShiftsByParticipationInput,
   ): Promise<UnavailableShift[]>;
 
   listUnavailableShiftsByCheck(

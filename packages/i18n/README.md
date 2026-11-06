@@ -2,7 +2,7 @@
 
 The UI and server message catalog (Paraglide JS). Locales `en` (base) and `pt-BR`. Import `m` from `@church/i18n/messages` and `getLocale`, `setLocale`, `locales`, `isLocale`, `overwriteGetLocale` from `@church/i18n/runtime`. Never import it in `packages/core` or `apps/server/src/domain`: localize in the HTTP layer only.
 
-`messages/*.json` compile into the git-ignored `src/paraglide/` on `bun install` (`postinstall`) and before `typecheck`, `test:unit` and `build`. Run `bun run compile` here after editing a catalog. A wrong key or param name fails `tsc`.
+`messages/*.json` compile into the git-ignored `src/paraglide/` on `bun install` (`postinstall`) and before `dev`, `typecheck`, `test:unit` and `build`. Dev startup compiles the current catalog before launching the servers, including after a pull that adds message keys. Run `bun run compile` here after editing a catalog. A wrong key or param name fails `tsc`.
 
 ## Add a key
 

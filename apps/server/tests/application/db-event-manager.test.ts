@@ -177,6 +177,7 @@ function createRepos(): Repos {
   const unavailableShiftRepo: UnavailableShiftRepository = {
     listByVolunteerForEvent: vi.fn(),
     listByVolunteers: vi.fn(async () => []),
+    listByParticipation: vi.fn(),
     listUnavailableShiftsByCheck: vi.fn(),
     replaceUnavailableShiftsForCheck: vi.fn(),
   };
@@ -229,6 +230,7 @@ function createRepos(): Repos {
     replaceInclusions: vi.fn(),
     addInclusion: vi.fn(),
     touch: vi.fn(),
+    findAvailabilityRequestedAt: vi.fn(),
     listScheduleSummaries: vi.fn(),
     listScheduleServingStates: vi.fn(),
     countScheduleChecks: vi.fn(),

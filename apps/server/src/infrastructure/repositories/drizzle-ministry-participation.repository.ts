@@ -16,6 +16,7 @@ import {
   eq,
   inArray,
   isNull,
+  min,
   ne,
   notInArray,
   sql,
@@ -23,6 +24,7 @@ import {
 import type {
   AddInclusionInput,
   CreateParticipationInput,
+  FindAvailabilityRequestedAtInput,
   FindParticipationByMinistryEventInput,
   GetParticipationInput,
   HasCycleStaffingInput,
@@ -295,6 +297,29 @@ export class DrizzleMinistryParticipationRepository
       if ((await check()).length > 0) return true;
     }
     return false;
+  }
+
+  async findAvailabilityRequestedAt({
+    churchId,
+    cycleId,
+    ministryId,
+    tx,
+  }: FindAvailabilityRequestedAtInput): Promise<Date | null> {
+    const [row] = await getClient({ db: this.db, tx })
+      .select({ requestedAt: min(availabilityCheck.createdAt) })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .where(
+        and(
+          eq(availabilityCheck.cycleId, cycleId),
+          eq(ministryMembership.ministryId, ministryId),
+          withChurchIsolation({ table: availabilityCheck, churchId }),
+        ),
+      );
+    return row?.requestedAt ?? null;
   }
 
   async listInclusions(

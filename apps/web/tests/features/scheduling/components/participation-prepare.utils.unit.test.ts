@@ -30,6 +30,7 @@ const EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['eventTimeBlocks
     included: true,
     shifts: [],
     requirements: [],
+    shiftsChangedAfterAsk: false,
   };
 
 type EventTimeBlockViewOverride = {
@@ -49,6 +50,7 @@ function makeEventView(
   const { eventTimeBlockOverrides, ...eventOverrides } = overrides;
 
   return {
+    generatedFromTemplate: false,
     participation: {
       id: 'participation-1',
       churchId: 'church-1',
@@ -83,6 +85,7 @@ function makeEventView(
           included: true,
           shifts: [],
           requirements: [],
+          shiftsChangedAfterAsk: false,
         },
       ]
     ).map((eventTimeBlockOverride) => ({
@@ -100,6 +103,7 @@ function makeEventView(
       included: eventTimeBlockOverride.included ?? true,
       shifts: eventTimeBlockOverride.shifts ?? [],
       requirements: eventTimeBlockOverride.requirements ?? [],
+      shiftsChangedAfterAsk: false,
     })),
     ...eventOverrides,
   };
@@ -892,6 +896,10 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
                 eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
+                requirements: [],
+                unavailableMarkCount: 0,
+                assignmentCount: 0,
+                flagged: true,
               },
             ],
           },
@@ -931,6 +939,10 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
                 eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+                requirements: [],
+                unavailableMarkCount: 0,
+                assignmentCount: 0,
+                flagged: true,
               },
               {
                 id: 'shift-2',
@@ -938,6 +950,10 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
                 eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
+                requirements: [],
+                unavailableMarkCount: 0,
+                assignmentCount: 0,
+                flagged: true,
               },
               {
                 id: 'shift-3',
@@ -945,6 +961,10 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
                 eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T12:00:00Z' }),
+                requirements: [],
+                unavailableMarkCount: 0,
+                assignmentCount: 0,
+                flagged: true,
               },
             ],
           },

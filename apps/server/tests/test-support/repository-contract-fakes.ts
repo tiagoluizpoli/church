@@ -188,6 +188,8 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['replaceInclusions']>(),
     addInclusion: vi.fn<MinistryParticipationRepository['addInclusion']>(),
     touch: vi.fn<MinistryParticipationRepository['touch']>(),
+    findAvailabilityRequestedAt:
+      vi.fn<MinistryParticipationRepository['findAvailabilityRequestedAt']>(),
     listScheduleSummaries:
       vi.fn<MinistryParticipationRepository['listScheduleSummaries']>(),
     listScheduleServingStates:
@@ -268,6 +270,8 @@ export function createUnavailableShiftRepositoryFake() {
     listByVolunteerForEvent:
       vi.fn<UnavailableShiftRepository['listByVolunteerForEvent']>(),
     listByVolunteers: vi.fn<UnavailableShiftRepository['listByVolunteers']>(),
+    listByParticipation:
+      vi.fn<UnavailableShiftRepository['listByParticipation']>(),
     listUnavailableShiftsByCheck:
       vi.fn<UnavailableShiftRepository['listUnavailableShiftsByCheck']>(),
     replaceUnavailableShiftsForCheck:

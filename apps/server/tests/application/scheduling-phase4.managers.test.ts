@@ -641,6 +641,15 @@ it('creates a missing participation and returns its unincluded event block', asy
   vi.mocked(
     repositories.shiftRepository.listRequirementsByParticipation,
   ).mockResolvedValue([]);
+  vi.mocked(
+    repositories.unavailableShiftRepository.listByParticipation,
+  ).mockResolvedValue([]);
+  vi.mocked(
+    repositories.assignmentRepository.listByParticipation,
+  ).mockResolvedValue([]);
+  vi.mocked(
+    repositories.ministryParticipationRepository.findAvailabilityRequestedAt,
+  ).mockResolvedValue(null);
   const view = await manager.getCycleParticipation({
     churchId,
     ministryId,
@@ -652,8 +661,13 @@ it('creates a missing participation and returns its unincluded event block', asy
     state: 'preparing',
   });
   expect(view.events[0]?.eventTimeBlocks).toEqual([
-    expect.objectContaining({ eventTimeBlock: block, included: false }),
+    expect.objectContaining({
+      eventTimeBlock: block,
+      included: false,
+      shiftsChangedAfterAsk: false,
+    }),
   ]);
+  expect(view.events[0]?.generatedFromTemplate).toBe(false);
   expect(
     repositories.ministryParticipationRepository.create,
   ).toHaveBeenCalledWith({ churchId, ministryId, eventId, tx });

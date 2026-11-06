@@ -853,6 +853,26 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
     });
 
+    it.each([
+      ['en', 'Each Sector and Role can appear only once per Shift.'],
+      ['pt-BR', 'Cada setor e função pode aparecer só uma vez por turno.'],
+    ])('words a duplicate pair without naming Usual setup in %s', async (locale, rule) => {
+      const base = await seedPreparation();
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/api/v1/prepare/participations/${base.participationId}/event-time-blocks/${base.eventTimeBlockId}/preparation`,
+        cookies: { [testLocale.localeCookieName]: locale },
+        payload: {
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 1 },
+          headcounts: [headcountOf(base), headcountOf(base)],
+        },
+      });
+
+      expect(response.json().message).toContain(rule);
+    });
+
     it('refuses a headcount on a Shift the split does not generate', async () => {
       const base = await seedPreparation();
 

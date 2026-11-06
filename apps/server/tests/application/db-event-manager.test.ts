@@ -232,6 +232,8 @@ function createRepos(): Repos {
     touch: vi.fn(),
     findAvailabilityRequestedAt: vi.fn(),
     listScheduleSummaries: vi.fn(),
+    listScheduleServingStates: vi.fn(),
+    countScheduleChecks: vi.fn(),
   };
 
   const authorityManager = {

@@ -192,6 +192,10 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['findAvailabilityRequestedAt']>(),
     listScheduleSummaries:
       vi.fn<MinistryParticipationRepository['listScheduleSummaries']>(),
+    listScheduleServingStates:
+      vi.fn<MinistryParticipationRepository['listScheduleServingStates']>(),
+    countScheduleChecks:
+      vi.fn<MinistryParticipationRepository['countScheduleChecks']>(),
   } satisfies MinistryParticipationRepository;
 }
 

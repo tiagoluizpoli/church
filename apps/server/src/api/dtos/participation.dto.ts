@@ -12,8 +12,13 @@ import type {
   ParticipationRequirementView,
   ParticipationShiftView,
   ScheduleSummaryView,
+  ScheduleView,
 } from '../../domain/contracts/application/participation-manager';
-import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
+import { CYCLE_STATE_OPTIONS } from '../../domain/entities/cycle';
+import {
+  type MinistryParticipation,
+  SCHEDULE_STAGE_OPTIONS,
+} from '../../domain/entities/ministry-participation';
 import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
 import { eventMapper, eventResponseSchema } from './event.dto';
@@ -165,6 +170,25 @@ export type ScheduleSummaryListResponse = z.infer<
   typeof scheduleSummaryListResponseSchema
 >;
 
+export const scheduleResponseSchema = z.object({
+  ministry: z.object({ id: z.string(), name: z.string() }),
+  cycle: z.object({
+    id: z.string(),
+    name: z.string(),
+    startDate: calendarDaySchema,
+    endDate: calendarDaySchema,
+    state: z.enum(CYCLE_STATE_OPTIONS),
+  }),
+  stage: z.enum(SCHEDULE_STAGE_OPTIONS),
+  asking: z.object({ confirmed: z.number(), asked: z.number() }).optional(),
+});
+export type ScheduleResponse = z.infer<typeof scheduleResponseSchema>;
+
+export const scheduleListResponseSchema = z.object({
+  schedules: z.array(scheduleResponseSchema),
+});
+export type ScheduleListResponse = z.infer<typeof scheduleListResponseSchema>;
+
 export const availabilityStatusResponseSchema = z.object({
   statuses: z.array(
     z.object({
@@ -274,6 +298,26 @@ function toScheduleSummaryResponse(
   };
 }
 
+function toScheduleResponse({
+  ministry,
+  cycle,
+  stage,
+  asking,
+}: ScheduleView): ScheduleResponse {
+  return {
+    ministry: { id: ministry.id as string, name: ministry.name },
+    cycle: {
+      id: cycle.id as string,
+      name: cycle.name,
+      startDate: cycle.startDate,
+      endDate: cycle.endDate,
+      state: cycle.state,
+    },
+    stage,
+    asking,
+  };
+}
+
 function toEventView(view: ParticipationEventView) {
   return {
     participation: toParticipationResponse(view.participation),
@@ -299,5 +343,8 @@ export const participationMapper = {
     views: ScheduleSummaryView[],
   ): ScheduleSummaryListResponse {
     return { cycles: views.map(toScheduleSummaryResponse) };
+  },
+  scheduleListToResponse(views: ScheduleView[]): ScheduleListResponse {
+    return { schedules: views.map(toScheduleResponse) };
   },
 };

@@ -5149,6 +5149,124 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/prepare/schedules:
+    get:
+      operationId: listSchedules
+      summary: List the caller's Schedules
+      tags:
+        - prepare
+      description: "List one row per Ministry and Sent or Past Cycle with its derived
+        stage: every active Ministry for a ChurchAdmin, the led ones for a
+        leader."
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schedules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ministry:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                        cycle:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            startDate:
+                              type: string
+                              format: date
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                            endDate:
+                              type: string
+                              format: date
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                            state:
+                              type: string
+                              enum:
+                                - draft
+                                - sent
+                                - past
+                          required:
+                            - id
+                            - name
+                            - startDate
+                            - endDate
+                            - state
+                          additionalProperties: false
+                        stage:
+                          type: string
+                          enum:
+                            - to_prepare
+                            - asking
+                            - assigning
+                            - published
+                            - not_serving
+                        asking:
+                          type: object
+                          properties:
+                            confirmed:
+                              type: number
+                            asked:
+                              type: number
+                          required:
+                            - confirmed
+                            - asked
+                          additionalProperties: false
+                      required:
+                        - ministry
+                        - cycle
+                        - stage
+                      additionalProperties: false
+                required:
+                  - schedules
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/participation:
     get:
       operationId: getCycleParticipation

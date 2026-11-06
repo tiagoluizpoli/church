@@ -24,6 +24,7 @@ import type {
   IParticipationManager,
   ListEligibleVolunteersInput,
   ListScheduleSummariesInput,
+  ListSchedulesInput,
   ListUsualSetupBlocksInput,
   ParticipationCompletionView,
   ParticipationEventTimeBlockView,
@@ -34,6 +35,7 @@ import type {
   PublishCycleView,
   SaveUsualSetupBlockInput,
   ScheduleSummaryView,
+  ScheduleView,
   SetInclusionsInput,
   SplitShiftsManagerInput,
   UpdateShiftManagerInput,
@@ -62,6 +64,7 @@ import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import {
   calculateCompletionPercent,
+  deriveScheduleStage,
   type MinistryParticipation,
 } from '../domain/entities/ministry-participation';
 import { Shift } from '../domain/entities/shift';
@@ -193,6 +196,15 @@ interface NotifyParticipationPublishedInput {
   churchId: ChurchId;
   participation: MinistryParticipation;
   tx: TransactionContext;
+}
+
+interface ScheduleKeyInput {
+  ministryId: string;
+  cycleId: string;
+}
+
+function scheduleKey({ ministryId, cycleId }: ScheduleKeyInput): string {
+  return `${ministryId}:${cycleId}`;
 }
 
 interface DbParticipationManagerDependencies {
@@ -1106,6 +1118,52 @@ export class DbParticipationManager implements IParticipationManager {
       availabilityRequestedForAll: row.availabilityRequestedForAll,
       availabilityRequestedForAny: row.availabilityRequestedForAny,
     }));
+  }
+
+  async listSchedules({
+    churchId,
+    ministryIds: scopedMinistryIds,
+  }: ListSchedulesInput): Promise<ScheduleView[]> {
+    const [ministries, cycles] = await Promise.all([
+      this.ministryRepository.listByChurch({
+        churchId,
+        ids: scopedMinistryIds,
+      }),
+      this.cycleRepository.list({ churchId }),
+    ]);
+    const sentCycles = cycles.filter((cycle) => cycle.state !== 'draft');
+    if (ministries.length === 0 || sentCycles.length === 0) return [];
+
+    const scope = {
+      churchId,
+      ministryIds: ministries.map((ministry) => ministry.id),
+      cycleIds: sentCycles.map((cycle) => cycle.id),
+    };
+    const [servingStates, checkCounts] = await Promise.all([
+      this.participationRepository.listScheduleServingStates(scope),
+      this.participationRepository.countScheduleChecks(scope),
+    ]);
+
+    const statesBySchedule = Map.groupBy(servingStates, scheduleKey);
+    const countsBySchedule = new Map(
+      checkCounts.map((row) => [scheduleKey(row), row]),
+    );
+
+    return sentCycles.flatMap((cycle) =>
+      ministries.map((ministry) => {
+        const key = scheduleKey({
+          ministryId: ministry.id,
+          cycleId: cycle.id,
+        });
+        const rows = statesBySchedule.get(key) ?? [];
+        const stage = deriveScheduleStage({
+          servingStates: rows.map((row) => row.state),
+        });
+        if (stage !== 'asking') return { ministry, cycle, stage };
+        const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
+        return { ministry, cycle, stage, asking: { confirmed, asked } };
+      }),
+    );
   }
 
   private async getOrCreateParticipation(

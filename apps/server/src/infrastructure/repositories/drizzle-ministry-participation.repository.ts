@@ -19,6 +19,7 @@ import {
   min,
   ne,
   notInArray,
+  sql,
 } from 'drizzle-orm';
 import type {
   AddInclusionInput,
@@ -32,8 +33,11 @@ import type {
   ListParticipationsByIdsInput,
   ListParticipationsByMinistryInput,
   ListScheduleSummariesInput,
+  ListSchedulesFactsInput,
   MinistryParticipationRepository,
   ReplaceInclusionsInput,
+  ScheduleCheckCountRow,
+  ScheduleServingStateRow,
   ScheduleSummaryRow,
   TouchParticipationInput,
   UpdateParticipationStateInput,
@@ -585,5 +589,75 @@ export class DrizzleMinistryParticipationRepository
         availabilityRequestedForAny,
       };
     });
+  }
+
+  async listScheduleServingStates({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleServingStateRow[]> {
+    return getClient({ db: this.db, tx })
+      .selectDistinct({
+        ministryId: ministryParticipation.ministryId,
+        cycleId: event.cycleId,
+        state: ministryParticipation.state,
+      })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(
+        participationEventTimeBlockInclusion,
+        eq(
+          participationEventTimeBlockInclusion.participationId,
+          ministryParticipation.id,
+        ),
+      )
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          withChurchIsolation({ table: event, churchId }),
+          withChurchIsolation({
+            table: participationEventTimeBlockInclusion,
+            churchId,
+          }),
+          inArray(ministryParticipation.ministryId, ministryIds),
+          inArray(event.cycleId, cycleIds),
+          ne(event.status, 'cancelled'),
+        ),
+      );
+  }
+
+  async countScheduleChecks({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleCheckCountRow[]> {
+    return getClient({ db: this.db, tx })
+      .select({
+        ministryId: ministryMembership.ministryId,
+        cycleId: availabilityCheck.cycleId,
+        confirmed:
+          sql<number>`count(*) filter (where ${availabilityCheck.state} = 'confirmed')`.mapWith(
+            Number,
+          ),
+        asked: count(),
+      })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .where(
+        and(
+          withChurchIsolation({ table: availabilityCheck, churchId }),
+          withChurchIsolation({ table: ministryMembership, churchId }),
+          inArray(ministryMembership.ministryId, ministryIds),
+          inArray(availabilityCheck.cycleId, cycleIds),
+          eq(ministryMembership.status, 'active'),
+          isNull(availabilityCheck.withdrawnAt),
+        ),
+      )
+      .groupBy(ministryMembership.ministryId, availabilityCheck.cycleId);
   }
 }

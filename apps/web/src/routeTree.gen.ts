@@ -46,6 +46,7 @@ import { Route as AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupIndexRo
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesCycleIdIndexRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/$cycleId/index'
 import { Route as AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRouteImport } from './routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign'
 import { Route as AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRouteImport } from './routes/_authenticated/_active-church/ministries/$ministryId/usual-setup/$blockId'
+import { Route as AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRouteImport } from './routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId'
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsNewRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/new'
 import { Route as AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsEventIdRouteImport } from './routes/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/$eventId'
 
@@ -269,6 +270,14 @@ const AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute =
       getParentRoute: () => AuthenticatedActiveChurchMinistriesMinistryIdRoute,
     } as any,
   )
+const AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute =
+  AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRouteImport.update(
+    {
+      id: '/$ministryId/$cycleId/slots/$timeSlotId',
+      path: '/$ministryId/$cycleId/slots/$timeSlotId',
+      getParentRoute: () => AuthenticatedActiveChurchSchedulesRoute,
+    } as any,
+  )
 const AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsNewRoute =
   AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsNewRouteImport.update(
     {
@@ -323,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/schedules/$ministryId/$cycleId/': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute
   '/cycles/$cycleId/events/$eventId': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsEventIdRoute
   '/cycles/$cycleId/events/new': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsNewRoute
+  '/schedules/$ministryId/$cycleId/slots/$timeSlotId': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedActiveChurchIndexRoute
@@ -359,6 +369,7 @@ export interface FileRoutesByTo {
   '/schedules/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute
   '/cycles/$cycleId/events/$eventId': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsEventIdRoute
   '/cycles/$cycleId/events/new': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsNewRoute
+  '/schedules/$ministryId/$cycleId/slots/$timeSlotId': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -401,6 +412,7 @@ export interface FileRoutesById {
   '/_authenticated/_active-church/schedules/$ministryId/$cycleId/': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute
   '/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/$eventId': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsEventIdRoute
   '/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/new': typeof AuthenticatedActiveChurchPlanningAdminCyclesCycleIdEventsNewRoute
+  '/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId': typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -441,6 +453,7 @@ export interface FileRouteTypes {
     | '/schedules/$ministryId/$cycleId/'
     | '/cycles/$cycleId/events/$eventId'
     | '/cycles/$cycleId/events/new'
+    | '/schedules/$ministryId/$cycleId/slots/$timeSlotId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -477,6 +490,7 @@ export interface FileRouteTypes {
     | '/schedules/$ministryId/$cycleId'
     | '/cycles/$cycleId/events/$eventId'
     | '/cycles/$cycleId/events/new'
+    | '/schedules/$ministryId/$cycleId/slots/$timeSlotId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -518,6 +532,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_active-church/schedules/$ministryId/$cycleId/'
     | '/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/$eventId'
     | '/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/new'
+    | '/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -789,6 +804,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdUsualSetupBlockIdRouteImport
       parentRoute: typeof AuthenticatedActiveChurchMinistriesMinistryIdRoute
     }
+    '/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId': {
+      id: '/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId'
+      path: '/$ministryId/$cycleId/slots/$timeSlotId'
+      fullPath: '/schedules/$ministryId/$cycleId/slots/$timeSlotId'
+      preLoaderRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRouteImport
+      parentRoute: typeof AuthenticatedActiveChurchSchedulesRoute
+    }
     '/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/new': {
       id: '/_authenticated/_active-church/_planning-admin/cycles/$cycleId/events/new'
       path: '/cycles/$cycleId/events/new'
@@ -843,6 +865,7 @@ interface AuthenticatedActiveChurchSchedulesRouteChildren {
   AuthenticatedActiveChurchSchedulesIndexRoute: typeof AuthenticatedActiveChurchSchedulesIndexRoute
   AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute
   AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute
+  AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute: typeof AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute
 }
 
 const AuthenticatedActiveChurchSchedulesRouteChildren: AuthenticatedActiveChurchSchedulesRouteChildren =
@@ -853,6 +876,8 @@ const AuthenticatedActiveChurchSchedulesRouteChildren: AuthenticatedActiveChurch
       AuthenticatedActiveChurchSchedulesMinistryIdCycleIdAssignRoute,
     AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute:
       AuthenticatedActiveChurchSchedulesMinistryIdCycleIdIndexRoute,
+    AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute:
+      AuthenticatedActiveChurchSchedulesMinistryIdCycleIdSlotsTimeSlotIdRoute,
   }
 
 const AuthenticatedActiveChurchSchedulesRouteWithChildren =

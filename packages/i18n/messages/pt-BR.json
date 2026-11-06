@@ -912,5 +912,22 @@
   "schedules_published": "Publicada",
   "schedules_not_serving": "Não serve neste Ciclo",
   "schedules_back": "Todas as Escalas dos ministérios",
-  "schedules_asking_stage": "Consultando"
+  "schedules_asking_stage": "Consultando",
+  "prepare_block_saved": "Preparação do horário salva.",
+  "prepare_block_load_failed": "Não foi possível carregar este horário. Tente novamente.",
+  "prepare_block_read_only": "Esta escala está publicada ou seu ciclo está encerrado. A preparação é somente para leitura.",
+  "prepare_block_confirm_title": "Deixar de servir neste horário?",
+  "prepare_block_confirm_counts": "Descarta {shifts} e {people}.",
+  "prepare_block_confirm_action": "Deixar de servir",
+  "prepare_block_leave_title": "Sair sem salvar?",
+  "prepare_block_leave_description": "Suas alterações não salvas nos turnos e nas pessoas necessárias serão descartadas.",
+  "prepare_block_stay": "Continuar editando",
+  "prepare_block_leave": "Descartar alterações e sair",
+  "prepare_block_answers_one": "1 voluntário já respondeu para este turno.",
+  "prepare_block_answers_other": "{count} voluntários já responderam para este turno.",
+  "prepare_block_assignments_one": "1 voluntário já está escalado para este turno.",
+  "prepare_block_assignments_other": "{count} voluntários já estão escalados para este turno.",
+  "prepare_block_saved_shifts": "Turnos salvos afetados",
+  "prepare_block_initial_opt_in": "Salve para começar com a configuração padrão atual ou defina os turnos e as pessoas necessárias aqui.",
+  "prepare_block_pending_navigation": "Salvando este horário. Aguarde o resultado antes de sair."
 }

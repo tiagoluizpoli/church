@@ -13,11 +13,11 @@ export interface BreadcrumbSegmentOverride {
  * `useCycleBreadcrumb`'s pattern for `$cycleId`.
  */
 export function useMinistryBreadcrumb(): BreadcrumbSegmentOverride | null {
-  const { ministryId } = useParams({ strict: false });
+  const { ministryId, timeSlotId } = useParams({ strict: false });
   const ministriesQuery = useQuery({
     queryKey: ['breadcrumb-ministries'],
     queryFn: () => adminApi.listMinistries(),
-    enabled: ministryId !== undefined,
+    enabled: ministryId !== undefined && timeSlotId === undefined,
     retry: false,
   });
 

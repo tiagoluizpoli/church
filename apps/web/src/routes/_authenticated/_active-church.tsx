@@ -6,6 +6,10 @@ import { usePersonBreadcrumb } from '@/features/people/people-queries';
 import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
 import { useCycleEventBreadcrumbs } from '@/features/scheduling/hooks/use-cycle-event-breadcrumbs';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
+import {
+  type PreparationBreadcrumbOverride,
+  usePreparationBlockBreadcrumbs,
+} from '@/features/scheduling/hooks/use-preparation-block-breadcrumbs';
 import { useTemplateBreadcrumb } from '@/features/scheduling/hooks/use-template-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
@@ -168,13 +172,26 @@ function ActiveChurchLayout() {
       userId={session?.data?.user.id ?? null}
     >
       <TimezoneProvider churchTimezone={churchTimezone}>
-        <AppShell
-          breadcrumbOverrides={breadcrumbOverrides}
-          notificationBell={<NotificationBell />}
-        >
-          <Outlet />
-        </AppShell>
+        <ActiveChurchContents breadcrumbOverrides={breadcrumbOverrides} />
       </TimezoneProvider>
     </CallerCapabilitiesScopeProvider>
+  );
+}
+
+interface ActiveChurchContentsProps {
+  breadcrumbOverrides?: PreparationBreadcrumbOverride[];
+}
+
+function ActiveChurchContents({
+  breadcrumbOverrides = [],
+}: ActiveChurchContentsProps) {
+  const preparationBreadcrumbs = usePreparationBlockBreadcrumbs();
+  return (
+    <AppShell
+      breadcrumbOverrides={[...breadcrumbOverrides, ...preparationBreadcrumbs]}
+      notificationBell={<NotificationBell />}
+    >
+      <Outlet />
+    </AppShell>
   );
 }

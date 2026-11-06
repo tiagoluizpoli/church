@@ -912,5 +912,22 @@
   "schedules_published": "Published",
   "schedules_not_serving": "Not serving this cycle",
   "schedules_back": "All Schedules",
-  "schedules_asking_stage": "Asking"
+  "schedules_asking_stage": "Asking",
+  "prepare_block_saved": "Time block preparation saved.",
+  "prepare_block_load_failed": "Could not load this Time block. Try again.",
+  "prepare_block_read_only": "This Schedule is published or its Cycle is Past. Preparation is read-only.",
+  "prepare_block_confirm_title": "Stop serving this Time block?",
+  "prepare_block_confirm_counts": "Discards {shifts} and {people}.",
+  "prepare_block_confirm_action": "Stop serving",
+  "prepare_block_leave_title": "Leave without saving?",
+  "prepare_block_leave_description": "Your unsaved Shift and people needed changes will be discarded.",
+  "prepare_block_stay": "Keep editing",
+  "prepare_block_leave": "Discard changes and leave",
+  "prepare_block_answers_one": "1 Volunteer already answered for this Shift.",
+  "prepare_block_answers_other": "{count} Volunteers already answered for this Shift.",
+  "prepare_block_assignments_one": "1 Volunteer is already assigned to this Shift.",
+  "prepare_block_assignments_other": "{count} Volunteers are already assigned to this Shift.",
+  "prepare_block_saved_shifts": "Affected saved Shifts",
+  "prepare_block_initial_opt_in": "Save to start from the current Usual setup, or set the Shifts and people needed here.",
+  "prepare_block_pending_navigation": "Saving this Time block. Wait for the result before leaving."
 }

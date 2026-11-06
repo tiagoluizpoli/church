@@ -210,6 +210,7 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
       included: true,
       shifts: [],
       requirements: [],
+      shiftsChangedAfterAsk: false,
     };
 
   function parseManual(spans: SplitFormState['manualSpans']) {

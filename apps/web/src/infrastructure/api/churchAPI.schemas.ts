@@ -2204,6 +2204,18 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock 
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };
 
+export type GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItemRequirementsItem = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  sectorId: string;
+  sectorName: string;
+  peopleNeeded: number;
+  notes?: string;
+  assignedCount: number;
+};
+
 export type GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem = {
   id: string;
   participationId: string;
@@ -2213,6 +2225,10 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItemRequirementsItem[];
+  unavailableMarkCount: number;
+  assignmentCount: number;
+  flagged: boolean;
 };
 
 export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsItem = {
@@ -2224,6 +2240,7 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsIte
   sectorName: string;
   peopleNeeded: number;
   notes?: string;
+  assignedCount: number;
 };
 
 export type GetCycleParticipation200EventsItemEventTimeBlocksItem = {
@@ -2231,11 +2248,13 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItem = {
   included: boolean;
   shifts: GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem[];
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsItem[];
+  shiftsChangedAfterAsk: boolean;
 };
 
 export type GetCycleParticipation200EventsItem = {
   participation: GetCycleParticipation200EventsItemParticipation;
   event: GetCycleParticipation200EventsItemEvent;
+  generatedFromTemplate: boolean;
   eventTimeBlocks: GetCycleParticipation200EventsItemEventTimeBlocksItem[];
 };
 

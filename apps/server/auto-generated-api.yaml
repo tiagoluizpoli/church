@@ -5257,6 +5257,8 @@ paths:
                             - createdAt
                             - updatedAt
                           additionalProperties: false
+                        generatedFromTemplate:
+                          type: boolean
                         eventTimeBlocks:
                           type: array
                           items:
@@ -5342,12 +5344,55 @@ paths:
                                       pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                     label:
                                       type: string
+                                    requirements:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: string
+                                          shiftId:
+                                            type: string
+                                          participationId:
+                                            type: string
+                                          roleId:
+                                            type: string
+                                          sectorId:
+                                            type: string
+                                          sectorName:
+                                            type: string
+                                          peopleNeeded:
+                                            type: number
+                                          notes:
+                                            type: string
+                                          assignedCount:
+                                            type: number
+                                        required:
+                                          - id
+                                          - shiftId
+                                          - participationId
+                                          - roleId
+                                          - sectorId
+                                          - sectorName
+                                          - peopleNeeded
+                                          - assignedCount
+                                        additionalProperties: false
+                                    unavailableMarkCount:
+                                      type: number
+                                    assignmentCount:
+                                      type: number
+                                    flagged:
+                                      type: boolean
                                   required:
                                     - id
                                     - participationId
                                     - eventTimeBlockId
                                     - startTime
                                     - endTime
+                                    - requirements
+                                    - unavailableMarkCount
+                                    - assignmentCount
+                                    - flagged
                                   additionalProperties: false
                               requirements:
                                 type: array
@@ -5370,6 +5415,8 @@ paths:
                                       type: number
                                     notes:
                                       type: string
+                                    assignedCount:
+                                      type: number
                                   required:
                                     - id
                                     - shiftId
@@ -5378,16 +5425,21 @@ paths:
                                     - sectorId
                                     - sectorName
                                     - peopleNeeded
+                                    - assignedCount
                                   additionalProperties: false
+                              shiftsChangedAfterAsk:
+                                type: boolean
                             required:
                               - eventTimeBlock
                               - included
                               - shifts
                               - requirements
+                              - shiftsChangedAfterAsk
                             additionalProperties: false
                       required:
                         - participation
                         - event
+                        - generatedFromTemplate
                         - eventTimeBlocks
                       additionalProperties: false
                 required:

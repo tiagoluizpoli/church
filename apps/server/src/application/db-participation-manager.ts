@@ -95,9 +95,11 @@ import {
   IllegalStateTransitionError,
   InvalidRequiredCountError,
 } from '../domain/errors';
+import { HeadcountBelowAssignedError } from '../domain/errors/headcount-below-assigned';
 import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
 import { PreparationEmptyError } from '../domain/errors/preparation-empty';
+import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
 import {
   type ShiftSplitStrategy,
   ShiftSplitter,
@@ -136,26 +138,41 @@ interface OptInPreparationInput extends PreparationTarget {
   timeZone: string;
 }
 
+interface DiscardPreparationInput extends PreparationTarget {
+  existingShifts: Shift[];
+}
+
 interface ApplyPreparationGraphInput extends PreparationTarget {
   existingShifts: Shift[];
   shiftSplit?: ShiftSplitStrategy;
   headcounts: UsualSetupHeadcount[];
 }
 
-interface KeepOrReplaceShiftsInput extends PreparationTarget {
-  existingShifts: Shift[];
+interface ApplyShiftChangeInput extends PreparationTarget {
   desiredShifts: Shift[];
+  change: ShiftChange;
 }
 
 interface ReconcileRequirementsInput extends PreparationTarget {
-  shifts: Shift[];
-  headcounts: UsualSetupHeadcount[];
+  current: ShiftRequirement[];
+  desired: DesiredRequirement[];
+}
+
+interface LoadShiftResponsesInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipation['id'];
+  tx?: TransactionContext;
 }
 
 interface RequirementPlace {
   shiftId: Shift['id'] | undefined;
   sectorId: SectorId;
   roleId: RoleId;
+}
+
+interface DesiredRequirement extends RequirementPlace {
+  shiftId: Shift['id'];
+  peopleNeeded: number;
 }
 
 interface LoadEventViewInput {
@@ -897,15 +914,17 @@ export class DbParticipationManager implements IParticipationManager {
       ensurePreparationEditable({ participation, cycle, timeZone });
 
       const target = { churchId, participation, eventTimeBlock, tx };
+      // Locked so a racing answer or Assignment is counted below, never cascaded away.
       const existingShifts = await this.shiftRepository.listByEventTimeBlock({
         churchId,
         participationId,
         eventTimeBlockId,
+        forUpdate: true,
         tx,
       });
 
       if (!serves) {
-        await this.discardPreparation(target);
+        await this.discardPreparation({ ...target, existingShifts });
       } else if (
         existingShifts.length === 0 &&
         !shiftSplit &&
@@ -935,14 +954,19 @@ export class DbParticipationManager implements IParticipationManager {
     churchId,
     participation,
     eventTimeBlock,
+    existingShifts,
     tx,
-  }: PreparationTarget): Promise<void> {
+  }: DiscardPreparationInput): Promise<void> {
     const block = {
       churchId,
       participationId: participation.id,
       eventTimeBlockId: eventTimeBlock.id,
       tx,
     };
+    assertNoShiftResponses({
+      shifts: existingShifts,
+      responses: await this.loadShiftResponses(block),
+    });
     await this.shiftRepository.deleteByEventTimeBlock(block);
     await this.participationRepository.removeInclusion(block);
   }
@@ -998,10 +1022,10 @@ export class DbParticipationManager implements IParticipationManager {
     const { churchId, participation, eventTimeBlock, tx } = target;
     // A zero row is an omission, but it still may not repeat a place.
     assertUniqueHeadcounts({ headcounts });
-    const positive = headcounts.filter(({ peopleNeeded }) => peopleNeeded > 0);
-    if (!shiftSplit || positive.length === 0) {
+    if (!shiftSplit) {
       throw new PreparationEmptyError();
     }
+    const positive = headcounts.filter(({ peopleNeeded }) => peopleNeeded > 0);
     assertValidHeadcounts({ headcounts: positive });
     if (
       shiftSplit.kind === 'manual' &&
@@ -1020,86 +1044,22 @@ export class DbParticipationManager implements IParticipationManager {
     if (positive.some(({ shiftIndex }) => shiftIndex >= desiredShifts.length)) {
       throw new InvalidShiftIndexError();
     }
-    await this.assertMinistryHeadcounts({
-      churchId,
-      ministryId: participation.ministryId,
-      headcounts: positive,
-      tx,
-    });
 
-    const shifts = await this.keepOrReplaceShifts({
-      ...target,
-      existingShifts,
-      desiredShifts,
-    });
-    await this.participationRepository.addInclusion({
-      churchId,
-      participationId: participation.id,
-      eventTimeBlockId: eventTimeBlock.id,
-      tx,
-    });
-    await this.reconcileRequirements({
-      ...target,
-      shifts,
-      headcounts: positive,
-    });
-  }
-
-  /** The same spans keep their Shifts, so answers and Assignments stay attached. */
-  private async keepOrReplaceShifts({
-    churchId,
-    participation,
-    eventTimeBlock,
-    existingShifts,
-    desiredShifts,
-    tx,
-  }: KeepOrReplaceShiftsInput): Promise<Shift[]> {
-    if (sameSpans({ existingShifts, desiredShifts })) {
-      for (const [index, existing] of existingShifts.entries()) {
-        const label = desiredShifts[index]?.label;
-        if (existing.label === label) continue;
-        await this.shiftRepository.update({
-          churchId,
-          shiftId: existing.id,
-          label: label ?? null,
-          tx,
-        });
-      }
-      return existingShifts;
-    }
-
-    await this.shiftRepository.deleteByEventTimeBlock({
-      churchId,
-      participationId: participation.id,
-      eventTimeBlockId: eventTimeBlock.id,
-      tx,
-    });
-    await this.shiftRepository.createMany({
-      churchId,
-      shifts: desiredShifts,
-      tx,
-    });
-    return desiredShifts;
-  }
-
-  /** Omission removes a requirement; a kept pair keeps its id and notes. */
-  private async reconcileRequirements({
-    churchId,
-    participation,
-    shifts,
-    headcounts,
-    tx,
-  }: ReconcileRequirementsInput): Promise<void> {
+    const change = diffShifts({ existingShifts, desiredShifts });
     const participationId = participation.id;
-    const placeOf = ({ shiftId, sectorId, roleId }: RequirementPlace) =>
-      `${shiftId}:${sectorId}:${roleId}`;
-    const desired = headcounts.flatMap(({ shiftIndex, ...headcount }) => {
-      const shift = shifts[shiftIndex];
-      return shift ? [{ ...headcount, shiftId: shift.id }] : [];
+    const responses = await this.loadShiftResponses({
+      churchId,
+      participationId,
+      tx,
     });
-    const desiredPlaces = new Set(desired.map(placeOf));
+    assertNoShiftResponses({
+      // Flow 6: adding beside an answered Shift is a re-split whatever its shape;
+      // a pure delete affects only the Shifts it removes.
+      shifts: change.added.length > 0 ? existingShifts : change.removed,
+      responses,
+    });
     const shiftIds = new Set<string | undefined>(
-      shifts.map((shift) => shift.id),
+      change.shifts.map((shift) => shift.id),
     );
     const allRequirements =
       await this.shiftRepository.listRequirementsByParticipation({
@@ -1110,6 +1070,77 @@ export class DbParticipationManager implements IParticipationManager {
     const current = allRequirements.filter((requirement) =>
       shiftIds.has(requirement.shiftId),
     );
+    const desired = positive.flatMap(({ shiftIndex, ...headcount }) => {
+      const shift = change.shifts[shiftIndex];
+      return shift ? [{ ...headcount, shiftId: shift.id }] : [];
+    });
+    assertHeadcountFloors({ current, desired, responses });
+    if (positive.length === 0) {
+      throw new PreparationEmptyError();
+    }
+    await this.assertMinistryHeadcounts({
+      churchId,
+      ministryId: participation.ministryId,
+      headcounts: positive,
+      tx,
+    });
+
+    await this.applyShiftChange({ ...target, desiredShifts, change });
+    await this.participationRepository.addInclusion({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    });
+    await this.reconcileRequirements({ ...target, current, desired });
+  }
+
+  private async loadShiftResponses({
+    churchId,
+    participationId,
+    tx,
+  }: LoadShiftResponsesInput): Promise<ShiftResponses> {
+    const scope = { churchId, participationId, tx };
+    const [marks, assignments] = await Promise.all([
+      this.unavailableShiftRepository.listByParticipation(scope),
+      this.assignmentRepository.listByParticipation(scope),
+    ]);
+    return countShiftResponses({ marks, assignments });
+  }
+
+  /** The same spans keep their Shifts, so answers and Assignments stay attached. */
+  private async applyShiftChange({
+    churchId,
+    desiredShifts,
+    change: { shifts, added, removed },
+    tx,
+  }: ApplyShiftChangeInput): Promise<void> {
+    for (const { id: shiftId } of removed) {
+      await this.shiftRepository.deleteById({ churchId, shiftId, tx });
+    }
+    await this.shiftRepository.createMany({ churchId, shifts: added, tx });
+    for (const [index, shift] of shifts.entries()) {
+      const label = desiredShifts[index]?.label;
+      if (added.includes(shift) || shift.label === label) continue;
+      await this.shiftRepository.update({
+        churchId,
+        shiftId: shift.id,
+        label: label ?? null,
+        tx,
+      });
+    }
+  }
+
+  /** Omission removes a requirement; a kept pair keeps its id and notes. */
+  private async reconcileRequirements({
+    churchId,
+    participation,
+    current,
+    desired,
+    tx,
+  }: ReconcileRequirementsInput): Promise<void> {
+    const participationId = participation.id;
+    const desiredPlaces = new Set(desired.map(placeOf));
 
     await this.shiftRepository.deleteRequirements({
       churchId,
@@ -2060,27 +2091,130 @@ function ensurePreparationEditable({
   }
 }
 
-interface SameSpansInput {
+interface DiffShiftsInput {
   existingShifts: Shift[];
   desiredShifts: Shift[];
 }
 
-function sameSpans({ existingShifts, desiredShifts }: SameSpansInput): boolean {
-  return (
-    existingShifts.length === desiredShifts.length &&
-    existingShifts.every((existing, index) => {
-      const desired = desiredShifts[index];
-      return (
-        desired !== undefined &&
-        compareInstants({
-          left: existing.startTime,
-          right: desired.startTime,
-        }) === 0 &&
-        compareInstants({ left: existing.endTime, right: desired.endTime }) ===
-          0
-      );
-    })
+interface ShiftChange {
+  /** The desired Shifts in order, an existing Shift wherever its span survives. */
+  shifts: Shift[];
+  added: Shift[];
+  removed: Shift[];
+}
+
+function diffShifts({
+  existingShifts,
+  desiredShifts,
+}: DiffShiftsInput): ShiftChange {
+  const shifts = desiredShifts.map(
+    (desired) =>
+      existingShifts.find(
+        (existing) =>
+          compareInstants({
+            left: existing.startTime,
+            right: desired.startTime,
+          }) === 0 &&
+          compareInstants({
+            left: existing.endTime,
+            right: desired.endTime,
+          }) === 0,
+      ) ?? desired,
   );
+  return {
+    shifts,
+    added: shifts.filter((shift) => !existingShifts.includes(shift)),
+    removed: existingShifts.filter((shift) => !shifts.includes(shift)),
+  };
+}
+
+interface ShiftResponses {
+  markCountByShift: Map<string, number>;
+  assignmentCountByShift: Map<string, number>;
+  assignedCountByRequirement: Map<string, number>;
+}
+
+interface CountShiftResponsesInput {
+  marks: UnavailableShift[];
+  assignments: Assignment[];
+}
+
+function countShiftResponses({
+  marks,
+  assignments,
+}: CountShiftResponsesInput): ShiftResponses {
+  const activeAssignments = assignments.filter((assignment) =>
+    isActiveAssignmentStatus(assignment.status),
+  );
+  return {
+    markCountByShift: countBy({
+      keys: marks.map((mark) => mark.shiftId as string),
+    }),
+    assignmentCountByShift: countBy({
+      keys: activeAssignments.map((assignment) => assignment.shiftId as string),
+    }),
+    assignedCountByRequirement: countBy({
+      keys: activeAssignments.map(
+        (assignment) => assignment.shiftRequirementId as string,
+      ),
+    }),
+  };
+}
+
+interface AssertNoShiftResponsesInput {
+  shifts: Shift[];
+  responses: ShiftResponses;
+}
+
+function assertNoShiftResponses({
+  shifts,
+  responses: { markCountByShift, assignmentCountByShift },
+}: AssertNoShiftResponsesInput): void {
+  const shiftResponses = shifts
+    .map(({ id: shiftId }) => ({
+      shiftId,
+      unavailableMarkCount: markCountByShift.get(shiftId as string) ?? 0,
+      assignmentCount: assignmentCountByShift.get(shiftId as string) ?? 0,
+    }))
+    .filter(
+      ({ unavailableMarkCount, assignmentCount }) =>
+        unavailableMarkCount > 0 || assignmentCount > 0,
+    );
+  if (shiftResponses.length > 0) {
+    throw new ShiftHasResponsesError({ shiftResponses });
+  }
+}
+
+interface AssertHeadcountFloorsInput {
+  current: ShiftRequirement[];
+  desired: DesiredRequirement[];
+  responses: ShiftResponses;
+}
+
+function assertHeadcountFloors({
+  current,
+  desired,
+  responses: { assignedCountByRequirement },
+}: AssertHeadcountFloorsInput): void {
+  const neededByPlace = new Map(
+    desired.map((place) => [placeOf(place), place.peopleNeeded]),
+  );
+  const headcountFloors = current.flatMap((requirement) => {
+    const { shiftId, sectorId, roleId } = requirement;
+    const assignedCount =
+      assignedCountByRequirement.get(requirement.id as string) ?? 0;
+    const needed = neededByPlace.get(placeOf(requirement)) ?? 0;
+    return shiftId && needed < assignedCount
+      ? [{ shiftId, sectorId, roleId, assignedCount }]
+      : [];
+  });
+  if (headcountFloors.length > 0) {
+    throw new HeadcountBelowAssignedError({ headcountFloors });
+  }
+}
+
+function placeOf({ shiftId, sectorId, roleId }: RequirementPlace): string {
+  return `${shiftId}:${sectorId}:${roleId}`;
 }
 
 function buildEventView({
@@ -2093,20 +2227,11 @@ function buildEventView({
   assignments,
   availabilityRequestedAt,
 }: BuildEventViewInput): ParticipationEventView {
-  const markCountByShift = countBy({
-    keys: marks.map((mark) => mark.shiftId as string),
-  });
-  const activeAssignments = assignments.filter((assignment) =>
-    isActiveAssignmentStatus(assignment.status),
-  );
-  const assignedCountByRequirement = countBy({
-    keys: activeAssignments.map(
-      (assignment) => assignment.shiftRequirementId as string,
-    ),
-  });
-  const assignmentCountByShift = countBy({
-    keys: activeAssignments.map((assignment) => assignment.shiftId as string),
-  });
+  const {
+    markCountByShift,
+    assignmentCountByShift,
+    assignedCountByRequirement,
+  } = countShiftResponses({ marks, assignments });
 
   const shiftsByEventTimeBlock = groupBy({
     items: shifts,

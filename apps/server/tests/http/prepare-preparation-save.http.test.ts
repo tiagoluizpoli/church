@@ -11,7 +11,9 @@ import {
   sector as sectorTable,
   shift,
   shiftRequirement,
+  unavailableShift,
 } from '@church/db';
+import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
 import { asc, eq, sql } from 'drizzle-orm';
 import {
@@ -57,6 +59,10 @@ import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import { buildUsualSetup } from '@/seeds/builders/planning';
 import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
   buildVolunteer,
@@ -208,6 +214,11 @@ async function seedPreparation() {
     sectorId: sector.id,
     roleId: role.id,
   };
+}
+
+interface BlockSignal {
+  eventTimeBlock: { id: string };
+  shiftsChangedAfterAsk: boolean;
 }
 
 interface SavePreparationInput {
@@ -1781,6 +1792,576 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
       expect(response.statusCode).toBe(500);
       expect(await blockInclusions(base.eventTimeBlockId)).toEqual([]);
+    });
+  });
+
+  describe('flow-6 response guards', () => {
+    function manualPayload(base: Base, spans: [string, string][]) {
+      return {
+        serves: true,
+        shiftSplit: {
+          kind: 'manual',
+          spans: spans.map(([startTime, endTime]) => ({ startTime, endTime })),
+        },
+        headcounts: spans.map((_, shiftIndex) =>
+          headcountOf(base, { shiftIndex }),
+        ),
+      };
+    }
+
+    async function seedVolunteerOf(base: Base) {
+      const id = randomUUID();
+      return seedVolunteerMembership({
+        churchId: base.churchId,
+        ministryId: base.ministryId,
+        name: `Volunteer ${id}`,
+        email: `${id}@test.com`,
+      });
+    }
+
+    async function seedCheck(base: Base) {
+      const { membership } = await seedVolunteerOf(base);
+      return buildAvailabilityCheck({
+        db,
+        churchId: base.churchId,
+        cycleId: base.cycle.id,
+        ministryMembershipId: membership.id,
+      });
+    }
+
+    /** One Volunteer's answer that they cannot serve the Shift. */
+    async function markShift(base: Base, shiftId: string) {
+      const check = await seedCheck(base);
+      await buildUnavailableShift({
+        db,
+        churchId: base.churchId,
+        availabilityCheckId: check.id,
+        shiftId,
+      });
+    }
+
+    interface SeedAssignedInput {
+      base: Base;
+      shiftId: string;
+      shiftRequirementId: string;
+      status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
+    }
+
+    async function assign({
+      base,
+      shiftId,
+      shiftRequirementId,
+      status = 'pending',
+    }: SeedAssignedInput) {
+      const { volunteer } = await seedVolunteerOf(base);
+      await buildAssignment({
+        db,
+        churchId: base.churchId,
+        participationId: base.participationId,
+        shiftId,
+        volunteerId: volunteer.id,
+        roleId: base.roleId,
+        shiftRequirementId,
+        status,
+      });
+    }
+
+    function marksOf(shiftId: string) {
+      return db
+        .select()
+        .from(unavailableShift)
+        .where(eq(unavailableShift.shiftId, shiftId));
+    }
+
+    function assignmentsOf(shiftId: string) {
+      return db
+        .select()
+        .from(assignment)
+        .where(eq(assignment.shiftId, shiftId));
+    }
+
+    /** Two halves of the block, the first answered for unless a test says otherwise. */
+    async function seedHalves(base: Base) {
+      const first = await seedBlockShift({ base, endTime: BLOCK_MIDDLE });
+      const secondShift = await seedShift({
+        churchId: base.churchId,
+        participationId: base.participationId,
+        eventTimeBlockId: base.eventTimeBlockId,
+        startTime: new Date(BLOCK_MIDDLE),
+        endTime: new Date(BLOCK_END),
+        label: 'Second half',
+      });
+      await seedRequirement({
+        churchId: base.churchId,
+        participationId: base.participationId,
+        shiftId: secondShift.id,
+        roleId: base.roleId,
+        sectorId: base.sectorId,
+        peopleNeeded: 2,
+      });
+      return { first: first.shift, second: secondShift };
+    }
+
+    const ANSWER_RACE_WINDOW_MS = 300;
+    const SPLIT_SECOND_HALF: [string, string][] = [
+      [BLOCK_START, BLOCK_MIDDLE],
+      [BLOCK_MIDDLE, '2099-03-01T10:30:00.000Z'],
+      ['2099-03-01T10:30:00.000Z', BLOCK_END],
+    ];
+    const FIRST_HALF: [string, string][] = [[BLOCK_START, BLOCK_MIDDLE]];
+    const SECOND_HALF: [string, string][] = [[BLOCK_MIDDLE, BLOCK_END]];
+    const BOTH_HALVES: [string, string][] = [...FIRST_HALF, ...SECOND_HALF];
+
+    describe('headcounts', () => {
+      it.each([
+        'availability_requested',
+        'assigning',
+      ] as const)('moves freely in %s until the assigned floor, then refuses naming the count', async (state) => {
+        const base = await seedPreparation();
+        const { shift: kept, requirement } = await seedBlockShift({
+          base,
+          peopleNeeded: 3,
+        });
+        await markShift(base, kept.id);
+        const assigned = {
+          base,
+          shiftId: kept.id,
+          shiftRequirementId: requirement.id,
+        };
+        await assign(assigned);
+        await assign({ ...assigned, status: 'confirmed' });
+        await setParticipationState(base, state);
+
+        for (const peopleNeeded of [5, 2]) {
+          const free = await savePreparation({
+            ...base,
+            payload: wholeBlockPayload(base, { peopleNeeded }),
+          });
+
+          expect(free.statusCode).toBe(200);
+          expect(await shiftRequirements(kept.id)).toMatchObject([
+            { id: requirement.id, peopleNeeded },
+          ]);
+        }
+
+        const refused = await savePreparation({
+          ...base,
+          payload: wholeBlockPayload(base, { peopleNeeded: 1 }),
+        });
+
+        expect(refused.statusCode).toBe(409);
+        expect(refused.json()).toMatchObject({
+          error: 'HEADCOUNT_BELOW_ASSIGNED',
+          headcountFloors: [
+            {
+              shiftId: kept.id,
+              sectorId: base.sectorId,
+              roleId: base.roleId,
+              assignedCount: 2,
+            },
+          ],
+        });
+        expect(refused.json().message).toContain('2');
+        expect(await shiftRequirements(kept.id)).toMatchObject([
+          { peopleNeeded: 2 },
+        ]);
+      });
+
+      it('refuses removing an assigned requirement, by zero or by omission', async () => {
+        const base = await seedPreparation();
+        const { first } = await seedHalves(base);
+        const [requirement] = await shiftRequirements(first.id);
+        await assign({
+          base,
+          shiftId: first.id,
+          shiftRequirementId: requirement?.id ?? '',
+        });
+        const keepSecond = headcountOf(base, { shiftIndex: 1 });
+        const split = {
+          kind: 'manual',
+          spans: BOTH_HALVES.map(([startTime, endTime]) => ({
+            startTime,
+            endTime,
+          })),
+        };
+
+        for (const headcounts of [
+          [keepSecond],
+          [headcountOf(base, { shiftIndex: 0, peopleNeeded: 0 }), keepSecond],
+          [headcountOf(base, { shiftIndex: 0, peopleNeeded: 0 })],
+        ]) {
+          const response = await savePreparation({
+            ...base,
+            payload: { serves: true, shiftSplit: split, headcounts },
+          });
+
+          expect(response.statusCode).toBe(409);
+          expect(response.json()).toMatchObject({
+            error: 'HEADCOUNT_BELOW_ASSIGNED',
+            headcountFloors: [{ shiftId: first.id, assignedCount: 1 }],
+          });
+        }
+        expect(await shiftRequirements(first.id)).toHaveLength(1);
+        expect(await assignmentsOf(first.id)).toHaveLength(1);
+      });
+
+      it('names the count in the request locale', async () => {
+        const base = await seedPreparation();
+        const { shift: kept, requirement } = await seedBlockShift({ base });
+        await assign({
+          base,
+          shiftId: kept.id,
+          shiftRequirementId: requirement.id,
+        });
+
+        const refused = await app.inject({
+          method: 'PUT',
+          url: `/api/v1/prepare/participations/${base.participationId}/event-time-blocks/${base.eventTimeBlockId}/preparation`,
+          headers: { cookie: `${testLocale.localeCookieName}=pt-BR` },
+          payload: wholeBlockPayload(base, { peopleNeeded: 0 }),
+        });
+
+        expect(refused.statusCode).toBe(409);
+        expect(refused.json().message).toBe(
+          m.error_headcount_below_assigned_count(
+            { count: 1 },
+            { locale: 'pt-BR' },
+          ),
+        );
+        expect(refused.json().message).toContain('Já escalados: 1');
+      });
+    });
+
+    describe('Shifts with responses', () => {
+      it.each([
+        ['splitting its neighbor', SPLIT_SECOND_HALF],
+        ['adding beside it', BOTH_HALVES],
+      ])('refuses a re-split %s over a marked Shift that keeps its identity', async (_shape, spans) => {
+        const base = await seedPreparation();
+        const { shift: marked } = await seedBlockShift({
+          base,
+          endTime: BLOCK_MIDDLE,
+        });
+        await markShift(base, marked.id);
+        await markShift(base, marked.id);
+        await setParticipationState(base, 'availability_requested');
+
+        const response = await savePreparation({
+          ...base,
+          payload: manualPayload(base, spans),
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json()).toMatchObject({
+          error: 'SHIFT_HAS_RESPONSES',
+          shiftResponses: [
+            {
+              shiftId: marked.id,
+              unavailableMarkCount: 2,
+              assignmentCount: 0,
+            },
+          ],
+        });
+        expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
+          { id: marked.id },
+        ]);
+        expect(await marksOf(marked.id)).toHaveLength(2);
+      });
+
+      it('refuses a re-split over an assigned Shift and reports every affected Shift', async () => {
+        const base = await seedPreparation();
+        const { first, second } = await seedHalves(base);
+        const [requirement] = await shiftRequirements(second.id);
+        await assign({
+          base,
+          shiftId: second.id,
+          shiftRequirementId: requirement?.id ?? '',
+        });
+        await markShift(base, first.id);
+
+        const response = await savePreparation({
+          ...base,
+          payload: wholeBlockPayload(base),
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().shiftResponses).toEqual([
+          { shiftId: first.id, unavailableMarkCount: 1, assignmentCount: 0 },
+          { shiftId: second.id, unavailableMarkCount: 0, assignmentCount: 1 },
+        ]);
+        expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
+          { id: first.id },
+          { id: second.id },
+        ]);
+      });
+
+      it('refuses deleting a marked Shift but deletes its clean neighbor, keeping the answers', async () => {
+        const base = await seedPreparation();
+        const { first } = await seedHalves(base);
+        await markShift(base, first.id);
+
+        const refused = await savePreparation({
+          ...base,
+          payload: manualPayload(base, SECOND_HALF),
+        });
+
+        expect(refused.statusCode).toBe(409);
+        expect(refused.json().shiftResponses).toEqual([
+          { shiftId: first.id, unavailableMarkCount: 1, assignmentCount: 0 },
+        ]);
+        expect(await blockShifts(base.eventTimeBlockId)).toHaveLength(2);
+
+        const deleted = await savePreparation({
+          ...base,
+          payload: manualPayload(base, FIRST_HALF),
+        });
+
+        expect(deleted.statusCode).toBe(200);
+        expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
+          { id: first.id },
+        ]);
+        expect(await marksOf(first.id)).toHaveLength(1);
+      });
+
+      it('refuses opting out with per-Shift counts and writes nothing', async () => {
+        const base = await seedPreparation();
+        const { first, second } = await seedHalves(base);
+        const [requirement] = await shiftRequirements(first.id);
+        await markShift(base, first.id);
+        await assign({
+          base,
+          shiftId: first.id,
+          shiftRequirementId: requirement?.id ?? '',
+        });
+
+        const response = await savePreparation({
+          ...base,
+          payload: { serves: false },
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json()).toMatchObject({
+          error: 'SHIFT_HAS_RESPONSES',
+          shiftResponses: [
+            { shiftId: first.id, unavailableMarkCount: 1, assignmentCount: 1 },
+          ],
+        });
+        expect(response.json().shiftResponses).toHaveLength(1);
+        expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
+          { id: first.id },
+          { id: second.id },
+        ]);
+        expect(await blockInclusions(base.eventTimeBlockId)).toHaveLength(1);
+        expect(await assignmentsOf(first.id)).toHaveLength(1);
+      });
+
+      it('keeps a marked Shift when only its label or headcount changes', async () => {
+        const base = await seedPreparation();
+        const { shift: marked, requirement } = await seedBlockShift({ base });
+        await markShift(base, marked.id);
+
+        const response = await savePreparation({
+          ...base,
+          payload: {
+            serves: true,
+            shiftSplit: {
+              kind: 'manual',
+              spans: [
+                {
+                  startTime: BLOCK_START,
+                  endTime: BLOCK_END,
+                  label: 'Renamed',
+                },
+              ],
+            },
+            headcounts: [headcountOf(base, { peopleNeeded: 7 })],
+          },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
+          { id: marked.id, label: 'Renamed' },
+        ]);
+        expect(await shiftRequirements(marked.id)).toMatchObject([
+          { id: requirement.id, peopleNeeded: 7 },
+        ]);
+        expect(await marksOf(marked.id)).toHaveLength(1);
+      });
+
+      it('reads a racing answer before deciding, so it is never discarded', async () => {
+        const base = await seedPreparation();
+        const { shift: answered } = await seedBlockShift({ base });
+        const check = await seedCheck(base);
+        let save: ReturnType<typeof savePreparation> | undefined;
+
+        await db.transaction(async (tx) => {
+          await tx.insert(unavailableShift).values({
+            churchId: base.churchId,
+            availabilityCheckId: check.id,
+            shiftId: answered.id,
+          });
+          save = savePreparation({ ...base, payload: { serves: false } });
+          // The save must reach the Shift rows while this answer is uncommitted.
+          await new Promise((resolve) =>
+            setTimeout(resolve, ANSWER_RACE_WINDOW_MS),
+          );
+        });
+        const outcome = await save;
+
+        expect(outcome?.statusCode).toBe(409);
+        expect(await marksOf(answered.id)).toHaveLength(1);
+      });
+    });
+
+    describe('free edits', () => {
+      it('re-splits, deletes and opts out clean Shifts silently', async () => {
+        const base = await seedPreparation();
+        const { first, second } = await seedHalves(base);
+        await setParticipationState(base, 'availability_requested');
+
+        const resplit = await savePreparation({
+          ...base,
+          payload: manualPayload(base, SPLIT_SECOND_HALF),
+        });
+
+        expect(resplit.statusCode).toBe(200);
+        const resplitShifts = await blockShifts(base.eventTimeBlockId);
+        expect(resplitShifts).toHaveLength(3);
+        expect(resplitShifts.map(({ id }) => id)).not.toContain(second.id);
+
+        const deleted = await savePreparation({
+          ...base,
+          payload: manualPayload(base, FIRST_HALF),
+        });
+
+        expect(deleted.statusCode).toBe(200);
+        expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
+          { id: first.id },
+        ]);
+
+        const optedOut = await savePreparation({
+          ...base,
+          payload: { serves: false },
+        });
+
+        expect(optedOut.statusCode).toBe(200);
+        expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
+      });
+
+      it('adds a Shift beside a clean one, keeping its id', async () => {
+        const base = await seedPreparation();
+        const { shift: clean, requirement } = await seedBlockShift({
+          base,
+          startTime: BLOCK_MIDDLE,
+        });
+        await setParticipationState(base, 'assigning');
+
+        const response = await savePreparation({
+          ...base,
+          payload: {
+            serves: true,
+            shiftSplit: {
+              kind: 'manual',
+              spans: BOTH_HALVES.map(([startTime, endTime]) => ({
+                startTime,
+                endTime,
+              })),
+            },
+            headcounts: [headcountOf(base, { shiftIndex: 1 })],
+          },
+        });
+
+        expect(response.statusCode).toBe(200);
+        const [added, kept] = await blockShifts(base.eventTimeBlockId);
+        expect(added?.id).not.toBe(clean.id);
+        expect(kept?.id).toBe(clean.id);
+        expect(await shiftRequirements(clean.id)).toMatchObject([
+          { id: requirement.id },
+        ]);
+      });
+
+      it('opts a skipped block in after asking and the read says earlier answers do not cover it', async () => {
+        const base = await seedPreparation();
+        const { shift: answered } = await seedBlockShift({ base });
+        await markShift(base, answered.id);
+        await setParticipationState(base, 'availability_requested');
+        const skipped = await seedSecondBlock(base);
+
+        const response = await savePreparation({
+          ...base,
+          eventTimeBlockId: skipped.id,
+          payload: { serves: true },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toMatchObject({
+          included: true,
+          shiftsChangedAfterAsk: true,
+          shifts: [{ flagged: true }],
+        });
+        const read = await app.inject({
+          method: 'GET',
+          url: `/api/v1/prepare/cycles/${base.cycle.id}/participation?ministryId=${base.ministryId}`,
+        });
+        expect(read.statusCode).toBe(200);
+        const blocks = read
+          .json()
+          .events.flatMap(
+            (event: { eventTimeBlocks: BlockSignal[] }) =>
+              event.eventTimeBlocks,
+          );
+        const signal = ({ eventTimeBlock: block }: BlockSignal) =>
+          block.id === skipped.id;
+        expect(blocks.find(signal)?.shiftsChangedAfterAsk).toBe(true);
+        expect(
+          blocks.find((candidate: BlockSignal) => !signal(candidate))
+            ?.shiftsChangedAfterAsk,
+        ).toBe(false);
+      });
+    });
+
+    describe('cancelled and declined Assignments', () => {
+      it.each([
+        'cancelled',
+        'declined',
+      ] as const)('%s never blocks a lower headcount, a re-split or an opt-out', async (status) => {
+        const base = await seedPreparation();
+        const { shift: seeded, requirement } = await seedBlockShift({ base });
+        await assign({
+          base,
+          shiftId: seeded.id,
+          shiftRequirementId: requirement.id,
+          status,
+        });
+
+        const removed = await savePreparation({
+          ...base,
+          payload: wholeBlockPayload(base, {
+            peopleNeeded: 1,
+            roleId: (await seedRole({ ...base, name: 'Helper' })).id,
+          }),
+        });
+
+        expect(removed.statusCode).toBe(200);
+        expect(await shiftRequirements(seeded.id)).toMatchObject([
+          { peopleNeeded: 1 },
+        ]);
+
+        const resplit = await savePreparation({
+          ...base,
+          payload: manualPayload(base, BOTH_HALVES),
+        });
+
+        expect(resplit.statusCode).toBe(200);
+
+        const optedOut = await savePreparation({
+          ...base,
+          payload: { serves: false },
+        });
+
+        expect(optedOut.statusCode).toBe(200);
+        expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
+      });
     });
   });
 });

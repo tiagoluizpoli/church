@@ -103,7 +103,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
     input: ListShiftsByEventTimeBlockInput,
   ): Promise<Shift[]> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const rows = await db
+    const query = db
       .select()
       .from(shift)
       .where(
@@ -114,6 +114,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
         ),
       )
       .orderBy(asc(shift.startTime));
+    const rows = await (input.forUpdate ? query.for('update') : query);
 
     return rows.map(mapShift);
   }

@@ -24,6 +24,7 @@ import {
   askAvailabilityResponseSchema,
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
+  headcountBelowAssignedResponseSchema,
   participationEventTimeBlockViewSchema,
   participationMapper,
   preparationValidationErrorResponseSchema,
@@ -32,6 +33,7 @@ import {
   scheduleListResponseSchema,
   scheduleSummaryListResponseSchema,
   setInclusionsBodySchema,
+  shiftHasResponsesResponseSchema,
   shiftListResponseSchema,
   shiftRequirementBodySchema,
   shiftRequirementResponseSchema,
@@ -275,7 +277,7 @@ export class PrepareController implements FastifyController {
           operationId: 'saveEventTimeBlockPreparation',
           summary: "Save one EventTimeBlock's preparation",
           description:
-            'Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup.',
+            'Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup. A headcount cannot drop below its active Assignments. Re-splitting, deleting a Shift or opting out is refused while an affected Shift carries UnavailableShift marks or active Assignments.',
           body: savePreparationBodySchema,
           response: {
             200: participationEventTimeBlockViewSchema,
@@ -283,7 +285,11 @@ export class PrepareController implements FastifyController {
             401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
-            409: errorResponseSchema,
+            409: z.union([
+              headcountBelowAssignedResponseSchema,
+              shiftHasResponsesResponseSchema,
+              errorResponseSchema,
+            ]),
             422: preparationValidationErrorResponseSchema,
           },
         },

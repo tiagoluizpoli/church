@@ -23,8 +23,10 @@ import {
   conflictingCycles,
   domainErrorMessage,
   existingInvitation,
+  headcountFloors,
   invalidEvents,
   outsideEvents,
+  shiftResponses,
   upcomingAssignments,
   validationField,
   validationReason,
@@ -176,6 +178,8 @@ export async function createFastify({
       const cycles = conflictingCycles(error);
       const outside = outsideEvents(error);
       const invalid = invalidEvents(error);
+      const floors = headcountFloors(error);
+      const responses = shiftResponses(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
@@ -187,6 +191,8 @@ export async function createFastify({
         ...(cycles && { conflictingCycles: cycles }),
         ...(outside && { outsideEvents: outside }),
         ...(invalid && { invalidEvents: invalid }),
+        ...(floors && { headcountFloors: floors }),
+        ...(responses && { shiftResponses: responses }),
       });
     }
 

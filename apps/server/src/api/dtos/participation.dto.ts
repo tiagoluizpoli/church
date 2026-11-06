@@ -93,6 +93,33 @@ export const participationEventViewSchema = z.object({
   eventTimeBlocks: z.array(participationEventTimeBlockViewSchema),
 });
 
+/** A 409 `HEADCOUNT_BELOW_ASSIGNED`: the localized envelope plus every refused floor. */
+export const headcountBelowAssignedResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  headcountFloors: z.array(
+    z.object({
+      shiftId: z.string(),
+      sectorId: z.string(),
+      roleId: z.string(),
+      assignedCount: z.number().int(),
+    }),
+  ),
+});
+
+/** A 409 `SHIFT_HAS_RESPONSES`: the localized envelope plus per-Shift counts. */
+export const shiftHasResponsesResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  shiftResponses: z.array(
+    z.object({
+      shiftId: z.string(),
+      unavailableMarkCount: z.number().int(),
+      assignmentCount: z.number().int(),
+    }),
+  ),
+});
+
 export const cycleParticipationResponseSchema = z.object({
   events: z.array(participationEventViewSchema),
 });

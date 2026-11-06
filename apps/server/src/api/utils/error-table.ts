@@ -69,6 +69,8 @@ export type MappedDomainCode =
   | 'MINISTRY_ROLE_REQUIRED'
   | 'MINISTRY_MEMBERSHIP_INACTIVE'
   | 'UPCOMING_ASSIGNMENTS'
+  | 'HEADCOUNT_BELOW_ASSIGNED'
+  | 'SHIFT_HAS_RESPONSES'
   | 'VALIDATION_ERROR';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
@@ -191,6 +193,14 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   UPCOMING_ASSIGNMENTS: {
     status: 409,
     message: m.error_upcoming_assignments,
+  },
+  HEADCOUNT_BELOW_ASSIGNED: {
+    status: 409,
+    message: m.error_headcount_below_assigned,
+  },
+  SHIFT_HAS_RESPONSES: {
+    status: 409,
+    message: m.error_shift_has_responses,
   },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
 };

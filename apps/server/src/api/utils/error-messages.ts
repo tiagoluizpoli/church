@@ -8,6 +8,10 @@ import {
   EventOutsideCycleError,
   type OutsideEventReference,
 } from '@/domain/errors/event-outside-cycle';
+import {
+  HeadcountBelowAssignedError,
+  type HeadcountFloor,
+} from '@/domain/errors/headcount-below-assigned';
 import { InvalidCycleEventsError } from '@/domain/errors/invalid-cycle-events';
 import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
 import {
@@ -20,6 +24,10 @@ import {
 } from '@/domain/errors/pending-ministry-invitation-exists';
 import { RoleInUseError } from '@/domain/errors/role-in-use';
 import { SectorInUseError } from '@/domain/errors/sector-in-use';
+import {
+  ShiftHasResponsesError,
+  type ShiftResponseCount,
+} from '@/domain/errors/shift-has-responses';
 import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import {
   type ValidationReason,
@@ -123,11 +131,34 @@ export function existingInvitation(
     : undefined;
 }
 
+/** The requirements a refused headcount would leave below their assigned count, also sent to the client. */
+export function headcountFloors(
+  error: DomainError,
+): HeadcountFloor[] | undefined {
+  return error instanceof HeadcountBelowAssignedError
+    ? error.headcountFloors
+    : undefined;
+}
+
+/** The per-Shift answers a destructive edit would discard, also sent to the client. */
+export function shiftResponses(
+  error: DomainError,
+): ShiftResponseCount[] | undefined {
+  return error instanceof ShiftHasResponsesError
+    ? error.shiftResponses
+    : undefined;
+}
+
 /** The catalog text for a domain error, or undefined when its code has no entry. */
 export function domainErrorMessage({
   error,
   locale,
 }: DomainErrorMessageInput): string | undefined {
+  const [floor] = headcountFloors(error) ?? [];
+  if (floor) {
+    const { assignedCount: count } = floor;
+    return m.error_headcount_below_assigned_count({ count }, { locale });
+  }
   const reason = validationReason(error);
   if (error.code === 'VALIDATION_ERROR' && reason) {
     return VALIDATION_REASON_MESSAGES[reason]({}, { locale });

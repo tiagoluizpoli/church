@@ -450,6 +450,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -587,6 +588,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -724,6 +726,7 @@ export const CreatePlanningEvent422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -842,6 +845,7 @@ export const UpdatePlanningEvent422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -1540,6 +1544,7 @@ export const MintMinistryInvitation422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -2369,6 +2374,172 @@ export type ListScheduleSummaries403 = {
 export type ListScheduleSummaries404 = {
   error: string;
   message: string;
+};
+
+export type SaveEventTimeBlockPreparationBodyShiftSplit = {
+  kind: 'equal';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+} | {
+  kind: 'manual';
+  spans: ({
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+})[];
+};
+
+export type SaveEventTimeBlockPreparationBodyHeadcountsItem = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftIndex: number;
+  sectorId: string;
+  roleId: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  peopleNeeded: number;
+};
+
+export type SaveEventTimeBlockPreparationBody = {
+  serves: boolean;
+  shiftSplit?: SaveEventTimeBlockPreparationBodyShiftSplit;
+  headcounts?: SaveEventTimeBlockPreparationBodyHeadcountsItem[];
+};
+
+export type SaveEventTimeBlockPreparation200EventTimeBlockStatus = typeof SaveEventTimeBlockPreparation200EventTimeBlockStatus[keyof typeof SaveEventTimeBlockPreparation200EventTimeBlockStatus];
+
+
+export const SaveEventTimeBlockPreparation200EventTimeBlockStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  notes?: string;
+};
+
+export type SaveEventTimeBlockPreparation200EventTimeBlock = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  status: SaveEventTimeBlockPreparation200EventTimeBlockStatus;
+  requirements: SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem[];
+};
+
+export type SaveEventTimeBlockPreparation200ShiftsItemRequirementsItem = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  sectorId: string;
+  sectorName: string;
+  peopleNeeded: number;
+  notes?: string;
+  assignedCount: number;
+};
+
+export type SaveEventTimeBlockPreparation200ShiftsItem = {
+  id: string;
+  participationId: string;
+  eventTimeBlockId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  requirements: SaveEventTimeBlockPreparation200ShiftsItemRequirementsItem[];
+  unavailableMarkCount: number;
+  assignmentCount: number;
+  flagged: boolean;
+};
+
+export type SaveEventTimeBlockPreparation200RequirementsItem = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  sectorId: string;
+  sectorName: string;
+  peopleNeeded: number;
+  notes?: string;
+  assignedCount: number;
+};
+
+export type SaveEventTimeBlockPreparation200 = {
+  eventTimeBlock: SaveEventTimeBlockPreparation200EventTimeBlock;
+  included: boolean;
+  shifts: SaveEventTimeBlockPreparation200ShiftsItem[];
+  requirements: SaveEventTimeBlockPreparation200RequirementsItem[];
+  shiftsChangedAfterAsk: boolean;
+};
+
+export type SaveEventTimeBlockPreparation400 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation401 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation403 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation404 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation409 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation422Reason = typeof SaveEventTimeBlockPreparation422Reason[keyof typeof SaveEventTimeBlockPreparation422Reason];
+
+
+export const SaveEventTimeBlockPreparation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+} as const;
+
+export type SaveEventTimeBlockPreparation422 = {
+  error: string;
+  message: string;
+  reason?: SaveEventTimeBlockPreparation422Reason;
+  issues?: unknown[];
 };
 
 export type SetParticipationInclusionsBody = {

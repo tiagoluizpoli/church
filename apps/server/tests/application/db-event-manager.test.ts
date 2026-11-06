@@ -219,6 +219,7 @@ function createRepos(): Repos {
 
   const ministryParticipationRepo: MinistryParticipationRepository = {
     getById: vi.fn(),
+    lockById: vi.fn(),
     findByMinistryEvent: vi.fn(async () => buildParticipation()),
     create: vi.fn(),
     listByEvent: vi.fn(async () => [buildParticipation()]),
@@ -229,6 +230,7 @@ function createRepos(): Repos {
     listInclusions: vi.fn(),
     replaceInclusions: vi.fn(),
     addInclusion: vi.fn(),
+    removeInclusion: vi.fn(),
     touch: vi.fn(),
     findAvailabilityRequestedAt: vi.fn(),
     listScheduleSummaries: vi.fn(),

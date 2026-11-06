@@ -19,6 +19,12 @@ export interface GetParticipationInput {
   tx?: TransactionContext;
 }
 
+export interface LockParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  tx: TransactionContext;
+}
+
 export interface FindParticipationByMinistryEventInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -85,6 +91,13 @@ export interface AddInclusionInput {
   tx?: TransactionContext;
 }
 
+export interface RemoveInclusionInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  eventTimeBlockId: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
 export interface FindAvailabilityRequestedAtInput {
   churchId: ChurchId;
   cycleId: CycleId;
@@ -144,6 +157,8 @@ export interface ScheduleCheckCountRow {
 
 export interface MinistryParticipationRepository {
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
+  /** Holds the row until `tx` ends, so its state cannot change under the caller. */
+  lockById(input: LockParticipationInput): Promise<MinistryParticipation>;
   findByMinistryEvent(
     input: FindParticipationByMinistryEventInput,
   ): Promise<MinistryParticipation | null>;
@@ -170,6 +185,7 @@ export interface MinistryParticipationRepository {
   ): Promise<ParticipationEventTimeBlockInclusion[]>;
   replaceInclusions(input: ReplaceInclusionsInput): Promise<void>;
   addInclusion(input: AddInclusionInput): Promise<void>;
+  removeInclusion(input: RemoveInclusionInput): Promise<void>;
   touch(input: TouchParticipationInput): Promise<void>;
   /** When the Ministry first asked for availability in the Cycle: its earliest Availability Check. Null before any ask. */
   findAvailabilityRequestedAt(

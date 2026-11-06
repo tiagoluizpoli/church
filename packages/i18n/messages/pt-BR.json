@@ -77,7 +77,7 @@
   "error_ministry_role_required": "Um voluntário deste ministério precisa manter pelo menos uma função.",
   "error_upcoming_assignments": "Escalas futuras ainda dependem disso. Altere-as primeiro na montagem da escala.",
   "error_validation_error": "Algumas informações são inválidas.",
-  "error_validation_duplicate_headcount": "Cada setor e função pode aparecer só uma vez por turno na configuração padrão. Remova a entrada repetida.",
+  "error_validation_duplicate_headcount": "Cada setor e função pode aparecer só uma vez por turno. Remova a entrada repetida.",
   "error_validation_usual_setup_empty": "Informe pelo menos uma pessoa necessária ou desative Serve.",
   "error_validation_invitation_role_required": "Escolha pelo menos uma função para um convite de voluntário.",
   "error_validation_invalid_shift_index": "Uma contagem de pessoas necessárias aponta para um turno que esta divisão não tem.",

@@ -34,7 +34,9 @@ import type {
   ListParticipationsByMinistryInput,
   ListScheduleSummariesInput,
   ListSchedulesFactsInput,
+  LockParticipationInput,
   MinistryParticipationRepository,
+  RemoveInclusionInput,
   ReplaceInclusionsInput,
   ScheduleCheckCountRow,
   ScheduleServingStateRow,
@@ -90,6 +92,33 @@ export class DrizzleMinistryParticipationRepository
       throw new NotFoundError(
         `Participation not found: ${input.participationId}`,
       );
+    }
+
+    return mapMinistryParticipation(row);
+  }
+
+  async lockById({
+    churchId,
+    participationId,
+    tx,
+  }: LockParticipationInput): Promise<MinistryParticipation> {
+    if (!isValidUuid(participationId)) {
+      throw new NotFoundError(`Participation not found: ${participationId}`);
+    }
+
+    const [row] = await getClient({ db: this.db, tx })
+      .select()
+      .from(ministryParticipation)
+      .where(
+        and(
+          eq(ministryParticipation.id, participationId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+        ),
+      )
+      .for('no key update');
+
+    if (!row) {
+      throw new NotFoundError(`Participation not found: ${participationId}`);
     }
 
     return mapMinistryParticipation(row);
@@ -416,6 +445,32 @@ export class DrizzleMinistryParticipationRepository
         })),
       );
     }
+  }
+
+  async removeInclusion({
+    churchId,
+    participationId,
+    eventTimeBlockId,
+    tx,
+  }: RemoveInclusionInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .delete(participationEventTimeBlockInclusion)
+      .where(
+        and(
+          eq(
+            participationEventTimeBlockInclusion.participationId,
+            participationId,
+          ),
+          eq(
+            participationEventTimeBlockInclusion.eventTimeBlockId,
+            eventTimeBlockId,
+          ),
+          withChurchIsolation({
+            table: participationEventTimeBlockInclusion,
+            churchId,
+          }),
+        ),
+      );
   }
 
   async addInclusion(input: AddInclusionInput): Promise<void> {

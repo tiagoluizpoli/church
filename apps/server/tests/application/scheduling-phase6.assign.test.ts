@@ -149,6 +149,7 @@ function createHarness() {
     requirement,
   ]);
   ministryParticipationRepository.getById.mockResolvedValue(participation);
+  ministryParticipationRepository.lockById.mockResolvedValue(participation);
   ministryParticipationRepository.findByMinistryEvent.mockResolvedValue(
     participation,
   );
@@ -182,6 +183,8 @@ function createHarness() {
     roleRepository,
     sectorRepository,
     notifications,
+    churchRepository: {} as never,
+    staffingSeeder: {} as never,
     unitOfWork,
   });
   const assignmentManager = new DbAssignmentManager({

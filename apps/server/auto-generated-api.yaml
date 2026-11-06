@@ -1074,6 +1074,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -1386,6 +1387,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -1708,6 +1710,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -1938,6 +1941,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -3546,6 +3550,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -5689,6 +5694,391 @@ paths:
                     type: string
                   message:
                     type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/preparation:
+    put:
+      operationId: saveEventTimeBlockPreparation
+      summary: Save one EventTimeBlock's preparation
+      tags:
+        - prepare
+      description: Apply the complete desired Serves, Shift split and headcounts of
+        one EventTimeBlock in one transaction. Omitted or zero headcounts remove
+        their ShiftRequirement; other blocks are untouched. Serving with neither
+        split nor headcounts opts a block with no Shifts in from the Usual
+        setup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                serves:
+                  type: boolean
+                shiftSplit:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - equal
+                        count:
+                          type: integer
+                          minimum: 1
+                          maximum: 9007199254740991
+                      required:
+                        - kind
+                        - count
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - manual
+                        spans:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              startTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              endTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              label:
+                                type: string
+                            required:
+                              - startTime
+                              - endTime
+                      required:
+                        - kind
+                        - spans
+                headcounts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      shiftIndex:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                      sectorId:
+                        type: string
+                      roleId:
+                        type: string
+                      peopleNeeded:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - shiftIndex
+                      - sectorId
+                      - roleId
+                      - peopleNeeded
+              required:
+                - serves
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventTimeBlockId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eventTimeBlock:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      churchId:
+                        type: string
+                      eventId:
+                        type: string
+                      startTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      endTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      label:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - active
+                          - cancelled
+                      requirements:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                            roleId:
+                              type: string
+                            sectorId:
+                              type: string
+                            peopleNeeded:
+                              type: number
+                            notes:
+                              type: string
+                          required:
+                            - id
+                            - eventTimeBlockId
+                            - roleId
+                            - sectorId
+                            - peopleNeeded
+                          additionalProperties: false
+                    required:
+                      - id
+                      - churchId
+                      - eventId
+                      - startTime
+                      - endTime
+                      - status
+                      - requirements
+                    additionalProperties: false
+                  included:
+                    type: boolean
+                  shifts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        participationId:
+                          type: string
+                        eventTimeBlockId:
+                          type: string
+                        startTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        endTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        label:
+                          type: string
+                        requirements:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              shiftId:
+                                type: string
+                              participationId:
+                                type: string
+                              roleId:
+                                type: string
+                              sectorId:
+                                type: string
+                              sectorName:
+                                type: string
+                              peopleNeeded:
+                                type: number
+                              notes:
+                                type: string
+                              assignedCount:
+                                type: number
+                            required:
+                              - id
+                              - shiftId
+                              - participationId
+                              - roleId
+                              - sectorId
+                              - sectorName
+                              - peopleNeeded
+                              - assignedCount
+                            additionalProperties: false
+                        unavailableMarkCount:
+                          type: number
+                        assignmentCount:
+                          type: number
+                        flagged:
+                          type: boolean
+                      required:
+                        - id
+                        - participationId
+                        - eventTimeBlockId
+                        - startTime
+                        - endTime
+                        - requirements
+                        - unavailableMarkCount
+                        - assignmentCount
+                        - flagged
+                      additionalProperties: false
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        shiftId:
+                          type: string
+                        participationId:
+                          type: string
+                        roleId:
+                          type: string
+                        sectorId:
+                          type: string
+                        sectorName:
+                          type: string
+                        peopleNeeded:
+                          type: number
+                        notes:
+                          type: string
+                        assignedCount:
+                          type: number
+                      required:
+                        - id
+                        - shiftId
+                        - participationId
+                        - roleId
+                        - sectorId
+                        - sectorName
+                        - peopleNeeded
+                        - assignedCount
+                      additionalProperties: false
+                  shiftsChangedAfterAsk:
+                    type: boolean
+                required:
+                  - eventTimeBlock
+                  - included
+                  - shifts
+                  - requirements
+                  - shiftsChangedAfterAsk
+                additionalProperties: false
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                  issues:
+                    type: array
+                    items: {}
                 required:
                   - error
                   - message

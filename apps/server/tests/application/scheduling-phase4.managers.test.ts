@@ -130,6 +130,9 @@ function createParticipationHarness({
   repositories.ministryParticipationRepository.getById.mockResolvedValue(
     participation,
   );
+  repositories.ministryParticipationRepository.lockById.mockResolvedValue(
+    participation,
+  );
   repositories.ministryParticipationRepository.listInclusions.mockResolvedValue(
     [],
   );
@@ -145,6 +148,8 @@ function createParticipationHarness({
     ...repositories,
     participationRepository: repositories.ministryParticipationRepository,
     eventRepository: repositories.planningEventRepository,
+    churchRepository: {} as never,
+    staffingSeeder: {} as never,
     unitOfWork,
     notifications,
   });
@@ -800,6 +805,9 @@ it.each([
   ).mockResolvedValue([{ event, eventTimeBlocks: [block] }]);
   vi.mocked(
     repositories.ministryParticipationRepository.findByMinistryEvent,
+  ).mockResolvedValue(participation);
+  vi.mocked(
+    repositories.ministryParticipationRepository.lockById,
   ).mockResolvedValue(participation);
   vi.mocked(
     repositories.shiftRepository.listRequirementsByParticipation,

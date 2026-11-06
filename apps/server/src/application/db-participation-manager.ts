@@ -1,5 +1,13 @@
 import { NotFoundError } from '@church/core';
-import { compareInstants, fromDate, type Instant, toDate } from '@church/time';
+import {
+  compareCalendarDays,
+  compareInstants,
+  fromDate,
+  type Instant,
+  now,
+  toDate,
+  today,
+} from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -33,6 +41,7 @@ import type {
   PublishCycleInput,
   PublishCycleParticipationOutcome,
   PublishCycleView,
+  SavePreparationInput,
   SaveUsualSetupBlockInput,
   ScheduleSummaryView,
   ScheduleView,
@@ -43,6 +52,7 @@ import type {
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
@@ -58,7 +68,8 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
-import type { EventWithEventTimeBlocks } from '../domain/entities/event';
+import type { Cycle } from '../domain/entities/cycle';
+import type { Event, EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { EventTemplate } from '../domain/entities/event-template';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
@@ -73,19 +84,30 @@ import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
 import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import {
   assertManualSplitFitsBlock,
+  assertUniqueHeadcounts,
+  assertValidHeadcounts,
   assertValidUsualSetupProps,
   toSaveableUsualSetupEntry,
   type UsualSetup,
+  type UsualSetupHeadcount,
 } from '../domain/entities/usual-setup';
 import {
   IllegalStateTransitionError,
   InvalidRequiredCountError,
 } from '../domain/errors';
-import { ShiftSplitter } from '../domain/services/shift-splitter';
+import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
+import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
+import { PreparationEmptyError } from '../domain/errors/preparation-empty';
 import {
+  type ShiftSplitStrategy,
+  ShiftSplitter,
+} from '../domain/services/shift-splitter';
+import {
+  spansFitBlock,
   splitFitsBlock,
   wallClockUtcBounds,
 } from '../domain/services/usual-setup-planner';
+import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
@@ -95,6 +117,57 @@ interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
 interface EnsurePrepareInput {
   participation: MinistryParticipation;
   action: string;
+}
+
+interface EnsurePreparationEditableInput {
+  participation: MinistryParticipation;
+  cycle: Cycle;
+  timeZone: string;
+}
+
+interface PreparationTarget {
+  churchId: ChurchId;
+  participation: MinistryParticipation;
+  eventTimeBlock: EventTimeBlock;
+  tx: TransactionContext;
+}
+
+interface OptInPreparationInput extends PreparationTarget {
+  timeZone: string;
+}
+
+interface ApplyPreparationGraphInput extends PreparationTarget {
+  existingShifts: Shift[];
+  shiftSplit?: ShiftSplitStrategy;
+  headcounts: UsualSetupHeadcount[];
+}
+
+interface KeepOrReplaceShiftsInput extends PreparationTarget {
+  existingShifts: Shift[];
+  desiredShifts: Shift[];
+}
+
+interface ReconcileRequirementsInput extends PreparationTarget {
+  shifts: Shift[];
+  headcounts: UsualSetupHeadcount[];
+}
+
+interface RequirementPlace {
+  shiftId: Shift['id'] | undefined;
+  sectorId: SectorId;
+  roleId: RoleId;
+}
+
+interface LoadEventViewInput {
+  churchId: ChurchId;
+  eventGroup: EventWithEventTimeBlocks;
+  participation: MinistryParticipation;
+  availabilityRequestedAt: Date | null;
+  tx: TransactionContext;
+}
+
+interface LoadPreparationViewInput extends PreparationTarget {
+  event: Event;
 }
 
 interface ResolveParticipationEventTimeBlockInput {
@@ -221,6 +294,8 @@ interface DbParticipationManagerDependencies {
   cycleRepository: CycleRepository;
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
+  churchRepository: ChurchRepository;
+  staffingSeeder: UsualSetupStaffingSeeder;
   notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
 }
@@ -253,6 +328,8 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly cycleRepository: CycleRepository;
   private readonly roleRepository: RoleRepository;
   private readonly sectorRepository: SectorRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly staffingSeeder: UsualSetupStaffingSeeder;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
 
@@ -270,6 +347,8 @@ export class DbParticipationManager implements IParticipationManager {
     cycleRepository,
     roleRepository,
     sectorRepository,
+    churchRepository,
+    staffingSeeder,
     notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
@@ -286,6 +365,8 @@ export class DbParticipationManager implements IParticipationManager {
     this.cycleRepository = cycleRepository;
     this.roleRepository = roleRepository;
     this.sectorRepository = sectorRepository;
+    this.churchRepository = churchRepository;
+    this.staffingSeeder = staffingSeeder;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
   }
@@ -323,54 +404,49 @@ export class DbParticipationManager implements IParticipationManager {
           eventId: eventGroup.event.id,
           tx,
         });
-        const [inclusions, shifts, requirements, marks, assignments] =
-          await Promise.all([
-            this.participationRepository.listInclusions({
-              churchId: input.churchId,
-              participationId: participation.id,
-              tx,
-            }),
-            this.shiftRepository.listByParticipation({
-              churchId: input.churchId,
-              participationId: participation.id,
-              tx,
-            }),
-            this.shiftRepository.listRequirementsByParticipation({
-              churchId: input.churchId,
-              participationId: participation.id,
-              tx,
-            }),
-            this.unavailableShiftRepository.listByParticipation({
-              churchId: input.churchId,
-              participationId: participation.id,
-              tx,
-            }),
-            this.assignmentRepository.listByParticipation({
-              churchId: input.churchId,
-              participationId: participation.id,
-              tx,
-            }),
-          ]);
-
         events.push(
-          buildEventView({
+          await this.loadEventView({
+            churchId: input.churchId,
             eventGroup,
             participation,
-            includedEventTimeBlockIds: new Set(
-              inclusions.map(
-                (inclusion) => inclusion.eventTimeBlockId as string,
-              ),
-            ),
-            shifts,
-            requirements,
-            marks,
-            assignments,
             availabilityRequestedAt,
+            tx,
           }),
         );
       }
 
       return { events };
+    });
+  }
+
+  private async loadEventView({
+    churchId,
+    eventGroup,
+    participation,
+    availabilityRequestedAt,
+    tx,
+  }: LoadEventViewInput): Promise<ParticipationEventView> {
+    const scope = { churchId, participationId: participation.id, tx };
+    const [inclusions, shifts, requirements, marks, assignments] =
+      await Promise.all([
+        this.participationRepository.listInclusions(scope),
+        this.shiftRepository.listByParticipation(scope),
+        this.shiftRepository.listRequirementsByParticipation(scope),
+        this.unavailableShiftRepository.listByParticipation(scope),
+        this.assignmentRepository.listByParticipation(scope),
+      ]);
+
+    return buildEventView({
+      eventGroup,
+      participation,
+      includedEventTimeBlockIds: new Set(
+        inclusions.map((inclusion) => inclusion.eventTimeBlockId as string),
+      ),
+      shifts,
+      requirements,
+      marks,
+      assignments,
+      availabilityRequestedAt,
     });
   }
 
@@ -479,7 +555,8 @@ export class DbParticipationManager implements IParticipationManager {
 
   async setInclusions(input: SetInclusionsInput): Promise<void> {
     await this.unitOfWork.run(async (tx) => {
-      const participation = await this.participationRepository.getById({
+      // Locked before its Shifts, the order saves and Assignments take.
+      const participation = await this.participationRepository.lockById({
         churchId: input.churchId,
         participationId: input.participationId,
         tx,
@@ -566,7 +643,8 @@ export class DbParticipationManager implements IParticipationManager {
 
   async splitShifts(input: SplitShiftsManagerInput): Promise<Shift[]> {
     return this.unitOfWork.run(async (tx) => {
-      const participation = await this.participationRepository.getById({
+      // Locked before its Shifts, the order saves and Assignments take.
+      const participation = await this.participationRepository.lockById({
         churchId: input.churchId,
         participationId: input.participationId,
         tx,
@@ -738,7 +816,8 @@ export class DbParticipationManager implements IParticipationManager {
         shiftId: input.shiftId,
         tx,
       });
-      const participation = await this.participationRepository.getById({
+      // Locked before its Shifts, the order saves and Assignments take.
+      const participation = await this.participationRepository.lockById({
         churchId: input.churchId,
         participationId: shift.participationId,
         tx,
@@ -771,6 +850,315 @@ export class DbParticipationManager implements IParticipationManager {
 
       return requirement;
     });
+  }
+
+  async savePreparation({
+    churchId,
+    participationId,
+    eventTimeBlockId,
+    serves,
+    shiftSplit,
+    headcounts,
+  }: SavePreparationInput): Promise<ParticipationEventTimeBlockView> {
+    const { timezone: timeZone } = await this.churchRepository.getById({
+      id: churchId,
+    });
+
+    return this.unitOfWork.run(async (tx) => {
+      // Serializes saves of this participation and holds its state until commit.
+      const participation = await this.participationRepository.lockById({
+        churchId,
+        participationId,
+        tx,
+      });
+      // An archived Ministry is not found for new use.
+      await this.ministryRepository.lockActive({
+        churchId,
+        ministryId: participation.ministryId,
+        strength: 'share',
+        tx,
+      });
+      const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
+        churchId,
+        participation,
+        eventTimeBlockId,
+        tx,
+      });
+      const event = await this.eventRepository.getEvent({
+        churchId,
+        eventId: participation.eventId,
+        tx,
+      });
+      const cycle = await this.cycleRepository.getById({
+        churchId,
+        cycleId: event.cycleId,
+        tx,
+      });
+      ensurePreparationEditable({ participation, cycle, timeZone });
+
+      const target = { churchId, participation, eventTimeBlock, tx };
+      const existingShifts = await this.shiftRepository.listByEventTimeBlock({
+        churchId,
+        participationId,
+        eventTimeBlockId,
+        tx,
+      });
+
+      if (!serves) {
+        await this.discardPreparation(target);
+      } else if (
+        existingShifts.length === 0 &&
+        !shiftSplit &&
+        headcounts === undefined
+      ) {
+        await this.optInPreparation({ ...target, timeZone });
+      } else {
+        await this.applyPreparationGraph({
+          ...target,
+          existingShifts,
+          shiftSplit,
+          headcounts: headcounts ?? [],
+        });
+      }
+
+      await this.participationRepository.touch({
+        churchId,
+        participationId,
+        tx,
+      });
+
+      return this.loadPreparationView({ ...target, event });
+    });
+  }
+
+  private async discardPreparation({
+    churchId,
+    participation,
+    eventTimeBlock,
+    tx,
+  }: PreparationTarget): Promise<void> {
+    const block = {
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    };
+    await this.shiftRepository.deleteByEventTimeBlock(block);
+    await this.participationRepository.removeInclusion(block);
+  }
+
+  /** Re-seeds from a serving Usual setup entry, else one whole-block Shift that reads flagged. */
+  private async optInPreparation({
+    churchId,
+    participation,
+    eventTimeBlock,
+    timeZone,
+    tx,
+  }: OptInPreparationInput): Promise<void> {
+    const seeded = await this.staffingSeeder.seedParticipationBlock({
+      churchId,
+      participation,
+      block: {
+        eventId: eventTimeBlock.eventId,
+        eventTimeBlockId: eventTimeBlock.id,
+        sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
+        startTime: eventTimeBlock.startTime,
+        endTime: eventTimeBlock.endTime,
+      },
+      setup: await this.staffingSeeder.loadSetup({ churchId, timeZone, tx }),
+      tx,
+    });
+    if (seeded) return;
+
+    await this.participationRepository.addInclusion({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    });
+    await this.shiftRepository.createMany({
+      churchId,
+      shifts: this.splitter.split({
+        churchId,
+        participationId: participation.id,
+        eventTimeBlock,
+        strategy: { kind: 'equal-n', n: 1 },
+      }),
+      tx,
+    });
+  }
+
+  /** Validates the submitted graph completely, then writes it over the block. */
+  private async applyPreparationGraph({
+    existingShifts,
+    shiftSplit,
+    headcounts,
+    ...target
+  }: ApplyPreparationGraphInput): Promise<void> {
+    const { churchId, participation, eventTimeBlock, tx } = target;
+    // A zero row is an omission, but it still may not repeat a place.
+    assertUniqueHeadcounts({ headcounts });
+    const positive = headcounts.filter(({ peopleNeeded }) => peopleNeeded > 0);
+    if (!shiftSplit || positive.length === 0) {
+      throw new PreparationEmptyError();
+    }
+    assertValidHeadcounts({ headcounts: positive });
+    if (
+      shiftSplit.kind === 'manual' &&
+      !spansFitBlock({ spans: shiftSplit.spans, block: eventTimeBlock })
+    ) {
+      throw new InvalidShiftSplitError(
+        'manual spans must be chronological, must not overlap and must lie within the block',
+      );
+    }
+    const desiredShifts = this.splitter.split({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlock,
+      strategy: shiftSplit,
+    });
+    if (positive.some(({ shiftIndex }) => shiftIndex >= desiredShifts.length)) {
+      throw new InvalidShiftIndexError();
+    }
+    await this.assertMinistryHeadcounts({
+      churchId,
+      ministryId: participation.ministryId,
+      headcounts: positive,
+      tx,
+    });
+
+    const shifts = await this.keepOrReplaceShifts({
+      ...target,
+      existingShifts,
+      desiredShifts,
+    });
+    await this.participationRepository.addInclusion({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    });
+    await this.reconcileRequirements({
+      ...target,
+      shifts,
+      headcounts: positive,
+    });
+  }
+
+  /** The same spans keep their Shifts, so answers and Assignments stay attached. */
+  private async keepOrReplaceShifts({
+    churchId,
+    participation,
+    eventTimeBlock,
+    existingShifts,
+    desiredShifts,
+    tx,
+  }: KeepOrReplaceShiftsInput): Promise<Shift[]> {
+    if (sameSpans({ existingShifts, desiredShifts })) {
+      for (const [index, existing] of existingShifts.entries()) {
+        const label = desiredShifts[index]?.label;
+        if (existing.label === label) continue;
+        await this.shiftRepository.update({
+          churchId,
+          shiftId: existing.id,
+          label: label ?? null,
+          tx,
+        });
+      }
+      return existingShifts;
+    }
+
+    await this.shiftRepository.deleteByEventTimeBlock({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    });
+    await this.shiftRepository.createMany({
+      churchId,
+      shifts: desiredShifts,
+      tx,
+    });
+    return desiredShifts;
+  }
+
+  /** Omission removes a requirement; a kept pair keeps its id and notes. */
+  private async reconcileRequirements({
+    churchId,
+    participation,
+    shifts,
+    headcounts,
+    tx,
+  }: ReconcileRequirementsInput): Promise<void> {
+    const participationId = participation.id;
+    const placeOf = ({ shiftId, sectorId, roleId }: RequirementPlace) =>
+      `${shiftId}:${sectorId}:${roleId}`;
+    const desired = headcounts.flatMap(({ shiftIndex, ...headcount }) => {
+      const shift = shifts[shiftIndex];
+      return shift ? [{ ...headcount, shiftId: shift.id }] : [];
+    });
+    const desiredPlaces = new Set(desired.map(placeOf));
+    const shiftIds = new Set<string | undefined>(
+      shifts.map((shift) => shift.id),
+    );
+    const allRequirements =
+      await this.shiftRepository.listRequirementsByParticipation({
+        churchId,
+        participationId,
+        tx,
+      });
+    const current = allRequirements.filter((requirement) =>
+      shiftIds.has(requirement.shiftId),
+    );
+
+    await this.shiftRepository.deleteRequirements({
+      churchId,
+      shiftRequirementIds: current
+        .filter((requirement) => !desiredPlaces.has(placeOf(requirement)))
+        .map((requirement) => requirement.id),
+      tx,
+    });
+
+    const notesByPlace = new Map(
+      current.map((requirement) => [placeOf(requirement), requirement.notes]),
+    );
+    for (const place of desired) {
+      await this.shiftRepository.upsertRequirement({
+        ...place,
+        churchId,
+        participationId,
+        notes: notesByPlace.get(placeOf(place)),
+        tx,
+      });
+    }
+  }
+
+  private async loadPreparationView({
+    churchId,
+    participation,
+    eventTimeBlock,
+    event,
+    tx,
+  }: LoadPreparationViewInput): Promise<ParticipationEventTimeBlockView> {
+    const availabilityRequestedAt =
+      await this.participationRepository.findAvailabilityRequestedAt({
+        churchId,
+        cycleId: event.cycleId,
+        ministryId: participation.ministryId,
+        tx,
+      });
+    const { eventTimeBlocks } = await this.loadEventView({
+      churchId,
+      eventGroup: { event, eventTimeBlocks: [eventTimeBlock] },
+      participation,
+      availabilityRequestedAt,
+      tx,
+    });
+    const [view] = eventTimeBlocks;
+    if (!view) {
+      throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlock.id}`);
+    }
+    return view;
   }
 
   async listUsualSetupBlocks({
@@ -991,11 +1379,18 @@ export class DbParticipationManager implements IParticipationManager {
       const alreadyPublished: PublishCandidate[] = [];
 
       for (const eventGroup of eventGroups) {
-        const participation = await this.getOrCreateParticipation({
+        const { id: participationId } = await this.getOrCreateParticipation({
           churchId: input.churchId,
           cycleId: input.cycleId,
           ministryId: input.ministryId,
           eventId: eventGroup.event.id,
+          tx,
+        });
+        // Locked before completion is read, in the stable Event order: a racing
+        // preparation save is seen here, or sees this publish and is refused.
+        const participation = await this.participationRepository.lockById({
+          churchId: input.churchId,
+          participationId,
           tx,
         });
         const completion = await this.getCompletionInternal({
@@ -1643,6 +2038,49 @@ function ensurePrepare({ participation, action }: EnsurePrepareInput): void {
       to: action,
     });
   }
+}
+
+/** Preparing through assigning accept edits; published and elapsed or unsent Cycles refuse. */
+function ensurePreparationEditable({
+  participation,
+  cycle,
+  timeZone,
+}: EnsurePreparationEditableInput): void {
+  const to = 'save_preparation';
+  if (participation.state === 'published') {
+    throw new IllegalStateTransitionError({ from: participation.state, to });
+  }
+  const churchToday = today({ instant: now(), timeZone });
+  // endDate is the Cycle's last day: edits stay open through it.
+  if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
+    throw new IllegalStateTransitionError({ from: 'past', to });
+  }
+  if (cycle.state !== 'sent') {
+    throw new IllegalStateTransitionError({ from: cycle.state, to });
+  }
+}
+
+interface SameSpansInput {
+  existingShifts: Shift[];
+  desiredShifts: Shift[];
+}
+
+function sameSpans({ existingShifts, desiredShifts }: SameSpansInput): boolean {
+  return (
+    existingShifts.length === desiredShifts.length &&
+    existingShifts.every((existing, index) => {
+      const desired = desiredShifts[index];
+      return (
+        desired !== undefined &&
+        compareInstants({
+          left: existing.startTime,
+          right: desired.startTime,
+        }) === 0 &&
+        compareInstants({ left: existing.endTime, right: desired.endTime }) ===
+          0
+      );
+    })
+  );
 }
 
 function buildEventView({

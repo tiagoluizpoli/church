@@ -77,7 +77,7 @@
   "error_ministry_role_required": "A Volunteer in this Ministry must keep at least one Role.",
   "error_upcoming_assignments": "Upcoming Assignments still depend on this. Change them in the Assign board first.",
   "error_validation_error": "Some of the information is invalid.",
-  "error_validation_duplicate_headcount": "Each Sector and Role can appear only once per Shift in the Usual setup. Remove the repeated entry.",
+  "error_validation_duplicate_headcount": "Each Sector and Role can appear only once per Shift. Remove the repeated entry.",
   "error_validation_usual_setup_empty": "Enter at least one person needed, or turn off Serves.",
   "error_validation_invitation_role_required": "Choose at least one Role for a Volunteer invitation.",
   "error_validation_invalid_shift_index": "A people-needed count points at a Shift this split does not have.",

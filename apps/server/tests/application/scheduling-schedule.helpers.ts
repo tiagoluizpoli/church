@@ -5,11 +5,13 @@ import { and, eq } from 'drizzle-orm';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
+import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -93,6 +95,9 @@ export function createSchedulingManagers({
   const availabilityCheckRepo = new DrizzleAvailabilityCheckRepository({
     db: schedulingTestDb,
   });
+  const usualSetupRepository = new DrizzleUsualSetupRepository({
+    db: schedulingTestDb,
+  });
 
   return {
     assignmentManager: new DbAssignmentManager({
@@ -114,8 +119,13 @@ export function createSchedulingManagers({
       eventTimeBlockRepository: eventTimeBlockRepo,
       volunteerRepository: volunteerRepo,
       ministryRepository: ministryRepo,
-      usualSetupRepository: new DrizzleUsualSetupRepository({
-        db: schedulingTestDb,
+      usualSetupRepository,
+      churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+      staffingSeeder: new UsualSetupStaffingSeeder({
+        participationRepository: participationRepo,
+        shiftRepository: shiftRepo,
+        usualSetupRepository,
+        ministryRepository: ministryRepo,
       }),
       cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
       eventTemplateRepository: new DrizzleEventTemplateRepository({

@@ -15,6 +15,8 @@ import type {
   ListScheduleSummaries200,
   ListSchedules200,
   ResendAvailabilityReminder202,
+  SaveEventTimeBlockPreparation200,
+  SaveEventTimeBlockPreparationBody,
   SetParticipationInclusions204,
   SetParticipationInclusionsBody,
   SplitParticipationShifts201,
@@ -66,6 +68,22 @@ const listScheduleSummaries = (
  ) => {
       return apiClient<ListScheduleSummaries200>(
       {url: `/api/v1/prepare/ministries/${ministryId}/cycles-summary`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup.
+ * @summary Save one EventTimeBlock's preparation
+ */
+const saveEventTimeBlockPreparation = (
+    participationId: string,
+    eventTimeBlockId: string,
+    saveEventTimeBlockPreparationBody: SaveEventTimeBlockPreparationBody,
+ ) => {
+      return apiClient<SaveEventTimeBlockPreparation200>(
+      {url: `/api/v1/prepare/participations/${participationId}/event-time-blocks/${eventTimeBlockId}/preparation`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: saveEventTimeBlockPreparationBody
     },
       );
     }
@@ -192,10 +210,11 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {listSchedules,getCycleParticipation,listScheduleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,listScheduleSummaries,saveEventTimeBlockPreparation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
+export type SaveEventTimeBlockPreparationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['saveEventTimeBlockPreparation']>>>
 export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['setParticipationInclusions']>>>
 export type SplitParticipationShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['splitParticipationShifts']>>>
 export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['updateShift']>>>

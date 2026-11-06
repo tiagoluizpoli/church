@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -324,15 +325,8 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       screen.getByTestId('prepare-event-time-block-row-event-time-block-1'),
     ).toBeInTheDocument();
 
-    const browseLink = screen.getByTestId('browse-all-cycles-link');
-    expect(browseLink).toHaveAttribute(
-      'href',
-      expect.stringContaining('/schedules/ministry-1'),
-    );
-    expect(browseLink).toHaveAttribute(
-      'href',
-      expect.stringContaining('browse=true'),
-    );
+    const browseLink = screen.getByRole('link', { name: m.schedules_back() });
+    expect(browseLink).toHaveAttribute('href', '/schedules');
   });
 
   it('operates fully at a mobile viewport width — calendar, filters, and time block list all reachable (T023a)', async () => {
@@ -594,6 +588,25 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
         screen.getByTestId('headcount-input-shift-1:sector-1:role-1'),
       ).toHaveValue(5);
     });
+  });
+});
+
+describe('Schedule scoped refusal', () => {
+  it('shows not-found when the participation read refuses a foreign Ministry', async () => {
+    listScheduleSummaries.mockResolvedValue(SCHEDULE_SUMMARIES_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 404 },
+    });
+    renderWorkspace();
+    expect(await screen.findByText(m.error_not_found())).toBeVisible();
+    expect(
+      screen.queryByTestId('prepare-forbidden-state'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('prepare-retryable-error-state'),
+    ).not.toBeInTheDocument();
   });
 });
 

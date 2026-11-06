@@ -1,10 +1,14 @@
 import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ListSchedules200SchedulesItem } from '@/infrastructure/api/churchAPI.schemas';
+import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
+const listSchedules = vi.fn();
+const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
 const listCycles = vi.fn();
 const listEvents = vi.fn();
@@ -13,11 +17,36 @@ const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
+    listSchedules: () => listSchedules(),
+    listScheduleSummaries: () =>
+      Promise.resolve({
+        cycles: [
+          {
+            cycleId: 'cycle-1',
+            name: 'Outubro 2026',
+            startDate: '2026-10-01',
+            endDate: '2026-10-31',
+            state: 'sent',
+            eventCount: 0,
+            eventTimeBlockCount: 0,
+            includedEventTimeBlockCount: 0,
+            shiftCount: 0,
+            requirementCount: 0,
+            preparingCount: 0,
+            availabilityRequestedCount: 0,
+            assigningCount: 0,
+            publishedCount: 0,
+          },
+        ],
+      }),
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     listCycles: (...args: unknown[]) => listCycles(...args),
     listEvents: (...args: unknown[]) => listEvents(...args),
     getCycleParticipation: (...args: unknown[]) =>
       getCycleParticipation(...args),
+  },
+  callerCapabilitiesApi: {
+    getCallerCapabilities: () => getCallerCapabilities(),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -48,133 +77,247 @@ function renderPrepareIndex() {
   });
 }
 
-describe('Prepare ministry list route (US1/T013)', () => {
-  it('fetches ministries + sent-cycle scoping and renders aggregated counts', async () => {
-    listMinistries.mockResolvedValue({
-      ministries: [
-        { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
-      ],
-    });
-    listCycles.mockResolvedValue({
-      cycles: [{ id: 'cycle-1', name: 'August', state: 'sent' }],
-    });
-    listEvents.mockResolvedValue({
-      events: [{ id: 'event-1', cycleId: 'cycle-1' }],
-    });
-    getCycleParticipation.mockResolvedValue({
-      events: [{ eventTimeBlocks: [{}, {}] }],
-    });
+function schedule(
+  overrides: Partial<ListSchedules200SchedulesItem> = {},
+): ListSchedules200SchedulesItem {
+  return {
+    ministry: { id: 'ministry-1', name: 'Kids' },
+    cycle: {
+      id: 'cycle-1',
+      name: 'Outubro 2026',
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+      state: 'sent',
+    },
+    stage: 'to_prepare',
+    ...overrides,
+  };
+}
 
+beforeEach(() => {
+  listSchedules.mockReset();
+  getCallerCapabilities.mockResolvedValue(
+    callerCapabilitiesFixture({ isChurchAdmin: true }),
+  );
+});
+
+describe('Schedules list', () => {
+  it.each([
+    { isChurchAdmin: true, ledMinistries: 0, ministries: 1, filter: true },
+    { isChurchAdmin: false, ledMinistries: 1, ministries: 1, filter: false },
+    { isChurchAdmin: false, ledMinistries: 2, ministries: 2, filter: true },
+  ])('shows only the scoped rows with filter=$filter for admin=$isChurchAdmin and $ledMinistries led Ministries', async ({
+    isChurchAdmin,
+    ledMinistries,
+    ministries,
+    filter,
+  }) => {
+    getCallerCapabilities.mockResolvedValue(
+      callerCapabilitiesFixture({ isChurchAdmin, ledMinistries }),
+    );
+    listSchedules.mockResolvedValue({
+      schedules:
+        ministries === 1
+          ? [schedule()]
+          : [
+              schedule(),
+              schedule({ ministry: { id: 'ministry-2', name: 'Worship' } }),
+            ],
+    });
     renderPrepareIndex();
-
-    const table = await screen.findByRole('grid', { name: 'Ministries' });
-    expect(table).toHaveTextContent('Greeters');
-    expect(table).toHaveTextContent('2');
+    await screen.findByRole('link', { name: /Kids · Outubro/ });
+    expect(screen.getAllByRole('link')).toHaveLength(ministries);
+    if (filter)
+      expect(
+        await screen.findByRole('combobox', { name: m.schedules_filter() }),
+      ).toBeVisible();
+    else expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
-  it('renders header stat pills for ministry/event/time block totals', async () => {
+  it('opens the selected Schedule directly on row activation', async () => {
+    listSchedules.mockResolvedValue({ schedules: [schedule()] });
     listMinistries.mockResolvedValue({
       ministries: [
-        { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
+        { id: 'ministry-1', name: 'Kids', defaultDirection: 'all_out' },
       ],
     });
-    listCycles.mockResolvedValue({
-      cycles: [{ id: 'cycle-1', name: 'August', state: 'sent' }],
-    });
-    listEvents.mockResolvedValue({
-      events: [{ id: 'event-1', cycleId: 'cycle-1' }],
-    });
-    getCycleParticipation.mockResolvedValue({
-      events: [{ eventTimeBlocks: [{}, {}] }],
-    });
-
-    renderPrepareIndex();
-
-    await screen.findByRole('grid', { name: 'Ministries' });
-    expect(screen.getByTestId('prepare-ministry-count')).toHaveTextContent('1');
-    expect(
-      screen.getByTestId('prepare-ministry-event-total'),
-    ).toHaveTextContent('1');
-    expect(
-      screen.getByTestId('prepare-ministry-event-time-block-total'),
-    ).toHaveTextContent('2');
-  });
-
-  it('navigates to the ministry route when the Prepare button is activated', async () => {
-    listMinistries.mockResolvedValue({
-      ministries: [
-        { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
-      ],
-    });
-    listCycles.mockResolvedValue({ cycles: [] });
-    listEvents.mockResolvedValue({ events: [] });
-
+    getCycleParticipation.mockResolvedValue({ events: [] });
     const user = userEvent.setup();
     const { router } = renderPrepareIndex();
-
-    await screen.findByRole('grid', { name: 'Ministries' });
-    const buttons = screen.getAllByTestId('ministry-prepare-button-ministry-1');
-    await user.click(buttons[0]);
-
+    await user.click(
+      await screen.findByRole('link', { name: /Kids · Outubro/ }),
+    );
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/schedules/ministry-1'),
+      expect(router.state.location.pathname).toBe(
+        '/schedules/ministry-1/cycle-1',
+      ),
     );
   });
-});
 
-describe('Prepare ministry list route — permission failure (US1/T013a)', () => {
-  it('renders a permission-denied state instead of crashing on a 403', async () => {
-    listMinistries.mockRejectedValue({
+  it.each([
+    { status: 403, message: () => m.shell_no_access() },
+    { status: 404, message: () => m.error_not_found() },
+  ])('shows a distinct translated refusal for HTTP $status instead of an empty list', async ({
+    status,
+    message,
+  }) => {
+    listSchedules.mockRejectedValue({
       isAxiosError: true,
-      response: { status: 403 },
-      message: 'Forbidden',
+      response: { status },
     });
-    listCycles.mockResolvedValue({ cycles: [] });
-
     renderPrepareIndex();
-
+    expect(await screen.findByText(message())).toBeVisible();
+    expect(screen.queryByText(m.schedules_empty())).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(
-      await screen.findByTestId('prepare-forbidden-state'),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('grid')).not.toBeInTheDocument();
-  });
-});
-
-describe('Prepare ministry list route — network/server failure (US1/T013b)', () => {
-  it('renders a retryable error state, not an infinite spinner, on a network error', async () => {
-    listMinistries.mockRejectedValue({
-      isAxiosError: true,
-      message: 'Network Error',
-    });
-    listCycles.mockResolvedValue({ cycles: [] });
-
-    renderPrepareIndex();
-
-    expect(
-      await screen.findByTestId('prepare-retryable-error-state'),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: m.schedules_retry() }),
+    ).not.toBeInTheDocument();
   });
 
-  it('retries the failed fetch when the Retry button is clicked', async () => {
-    listMinistries
-      .mockRejectedValueOnce({ isAxiosError: true, message: 'Network Error' })
-      .mockResolvedValue({ ministries: [] });
-    listCycles.mockResolvedValue({ cycles: [] });
-
+  it('keeps a failed read distinct from empty and retries into the real list', async () => {
+    listSchedules
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValue({ schedules: [schedule()] });
     const user = userEvent.setup();
     renderPrepareIndex();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.schedules_error(),
+    );
+    expect(screen.queryByText(m.schedules_empty())).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: m.schedules_retry() }));
+    expect(
+      await screen.findByRole('link', { name: /Kids · Outubro/ }),
+    ).toBeVisible();
+  });
 
-    await screen.findByTestId('prepare-retryable-error-state');
-    await user.click(screen.getByRole('button', { name: 'Retry' }));
+  it('keeps loading distinct from an empty scoped result', async () => {
+    let resolve!: (value: {
+      schedules: ListSchedules200SchedulesItem[];
+    }) => void;
+    listSchedules.mockReturnValue(
+      new Promise((result) => {
+        resolve = result;
+      }),
+    );
+    renderPrepareIndex();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      m.schedules_loading(),
+    );
+    expect(screen.queryByText(m.schedules_empty())).not.toBeInTheDocument();
+    resolve({ schedules: [] });
+    expect(await screen.findByText(m.schedules_empty())).toBeVisible();
+  });
 
-    await waitFor(() =>
-      expect(
-        screen.queryByTestId('prepare-retryable-error-state'),
-      ).not.toBeInTheDocument(),
+  it('lets a ChurchAdmin filter the scoped rows by Ministry and restore all rows', async () => {
+    listSchedules.mockResolvedValue({
+      schedules: [
+        schedule(),
+        schedule({ ministry: { id: 'ministry-2', name: 'Worship' } }),
+      ],
+    });
+    const user = userEvent.setup();
+    renderPrepareIndex();
+    await screen.findByRole('link', { name: /Kids · Outubro/ });
+    await user.click(
+      screen.getByRole('combobox', { name: m.schedules_filter() }),
+    );
+    await user.click(await screen.findByRole('option', { name: 'Worship' }));
+    expect(
+      screen.queryByRole('link', { name: /Kids · Outubro/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Worship · Outubro/ }),
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole('combobox', { name: m.schedules_filter() }),
+    );
+    await user.click(
+      await screen.findByRole('option', { name: m.schedules_all_ministries() }),
+    );
+    expect(screen.getByRole('link', { name: /Kids · Outubro/ })).toBeVisible();
+  });
+
+  it('puts actionable Schedules before published and not-serving rows, with Past collapsed', async () => {
+    listSchedules.mockResolvedValue({
+      schedules: [
+        schedule({
+          ministry: { id: 'published', name: 'Published' },
+          stage: 'published',
+        }),
+        schedule({
+          ministry: { id: 'off', name: 'Off' },
+          stage: 'not_serving',
+        }),
+        schedule({
+          ministry: { id: 'assigning', name: 'Assign' },
+          stage: 'assigning',
+        }),
+        schedule({
+          ministry: { id: 'asking', name: 'Ask' },
+          stage: 'asking',
+          asking: { confirmed: 32, asked: 40 },
+        }),
+        schedule(),
+        schedule({
+          cycle: {
+            id: 'past',
+            name: 'Setembro 2026',
+            startDate: '2026-09-01',
+            endDate: '2026-09-30',
+            state: 'past',
+          },
+          stage: 'published',
+        }),
+      ],
+    });
+    const user = userEvent.setup();
+    renderPrepareIndex();
+    await screen.findByRole('link', { name: /Kids · Outubro/ });
+    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(
+      [
+        expect.stringContaining(m.schedules_to_prepare()),
+        expect.stringContaining(
+          m.schedules_asking({ confirmed: 32, asked: 40 }),
+        ),
+        expect.stringContaining(m.schedules_assigning()),
+        expect.stringContaining(m.schedules_published()),
+        expect.stringContaining(m.schedules_not_serving()),
+      ],
     );
     expect(
-      await screen.findByTestId('ministry-prepare-empty-state'),
-    ).toBeInTheDocument();
+      screen.queryByRole('link', { name: /Setembro/ }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: m.schedules_past() }));
+    expect(
+      await screen.findByRole('link', { name: /Kids · Setembro/ }),
+    ).toBeVisible();
+  });
+
+  it('shows the scoped Schedule and its asking count without ChurchAdmin reads', async () => {
+    listSchedules.mockResolvedValue({
+      schedules: [
+        {
+          ministry: { id: 'ministry-1', name: 'Kids' },
+          cycle: {
+            id: 'cycle-1',
+            name: 'Outubro 2026',
+            startDate: '2026-10-01',
+            endDate: '2026-10-31',
+            state: 'sent',
+          },
+          stage: 'asking',
+          asking: { confirmed: 32, asked: 40 },
+        },
+      ],
+    });
+    renderPrepareIndex();
+    const row = await screen.findByRole('link', {
+      name: /Kids · Outubro 2026/,
+    });
+    expect(row).toHaveTextContent('32/40');
+    expect(row).toHaveAttribute('href', '/schedules/ministry-1/cycle-1');
+    expect(listCycles).not.toHaveBeenCalled();
+    expect(listEvents).not.toHaveBeenCalled();
   });
 });
 

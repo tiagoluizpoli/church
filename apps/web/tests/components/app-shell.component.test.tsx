@@ -490,6 +490,41 @@ describe('AppShell flat nav per persona (F7)', () => {
     ]);
   });
 
+  it('links Home then Schedules then the qualified Schedule, without a Ministry intermediate link', () => {
+    asPersona({ leadsMinistries: true });
+    const ministryId = '33333333-3333-4333-8333-333333333331';
+    const cycleId = '44444444-4444-4444-8444-444444444441';
+    mockPathname = `/schedules/${ministryId}/${cycleId}/assign`;
+    renderWithProviders(
+      <AppShell
+        notificationBell={null}
+        breadcrumbOverrides={[
+          { segment: ministryId, label: 'Kids' },
+          { segment: cycleId, label: 'Outubro 2026' },
+        ]}
+      >
+        content
+      </AppShell>,
+    );
+    const breadcrumbs = screen.getByTestId('breadcrumbs');
+    expect(
+      within(breadcrumbs)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      HOME,
+      m.nav_schedules(),
+      'Kids · Outubro 2026',
+      m.breadcrumb_assign(),
+    ]);
+    expect(
+      within(breadcrumbs).getByRole('link', { name: 'Kids · Outubro 2026' }),
+    ).toHaveAttribute('href', `/schedules/${ministryId}/${cycleId}`);
+    expect(
+      within(breadcrumbs).queryByRole('link', { name: 'Kids' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('hides an opaque id segment from breadcrumbs when no override is supplied', () => {
     asPersona({ isChurchAdmin: true });
     mockPathname = '/cycles/cycle-1';

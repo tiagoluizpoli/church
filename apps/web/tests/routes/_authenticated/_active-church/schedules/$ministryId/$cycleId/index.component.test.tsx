@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -278,4 +278,44 @@ it('shows translated loading feedback until the prepare read resolves', async ()
       `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
     ),
   ).toBeVisible();
+});
+
+it.each([
+  'schedules',
+  'participation',
+] as const)('scrolls to the hash row after the delayed %s read resolves', async (read) => {
+  let resolveRead: () => void = () => {};
+  const pendingRead = new Promise<void>((resolve) => {
+    resolveRead = resolve;
+  });
+  const query =
+    read === 'schedules' ? api.listSchedules : api.getCycleParticipation;
+  const response =
+    read === 'schedules' ? { schedules: [SCHEDULE] } : { events: [EVENT] };
+  query.mockReturnValue(pendingRead.then(() => response));
+  const scroll = vi.fn();
+  const previous = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  const lookup = vi.spyOn(document, 'getElementById');
+  try {
+    const { router } = renderRoute({
+      initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}#event-time-block-${BLOCK.eventTimeBlock.id}`,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    await screen.findByRole('status', { name: m.schedules_loading() });
+    await waitFor(() => expect(router.state.status).toBe('idle'));
+    await waitFor(() =>
+      expect(lookup).toHaveBeenCalledWith(
+        `event-time-block-${BLOCK.eventTimeBlock.id}`,
+      ),
+    );
+    await act(async () => resolveRead());
+    const row = await screen.findByTestId(
+      `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
+    );
+    await waitFor(() => expect(scroll.mock.contexts).toContain(row));
+  } finally {
+    lookup.mockRestore();
+    HTMLElement.prototype.scrollIntoView = previous;
+  }
 });

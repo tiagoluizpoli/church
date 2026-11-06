@@ -1,8 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useLocation } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,6 +29,7 @@ export const Route = createFileRoute(
 
 function PrepareWorkspaceRoute() {
   const { ministryId, cycleId } = Route.useParams();
+  const hash = useLocation({ select: (location) => location.hash });
   const { churchTimezone } = useTimezone();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [nameQuery, setNameQuery] = useState('');
@@ -90,6 +91,12 @@ function PrepareWorkspaceRoute() {
   const readOnly =
     schedule?.cycle.state === 'past' || schedule?.stage === 'published';
   const ready = !notFound && !forbidden && !failed && !loading && schedule;
+  const rowsReady = Boolean(ready);
+  useEffect(() => {
+    if (!rowsReady || !hash) return;
+    // Router hash scrolling runs before query-loaded rows are mounted.
+    document.getElementById(hash)?.scrollIntoView?.({ block: 'center' });
+  }, [hash, rowsReady]);
   const dateSpan = schedule
     ? `${formatCalendarDateOnly({ value: schedule.cycle.startDate })} – ${formatCalendarDateOnly({ value: schedule.cycle.endDate })}`
     : undefined;

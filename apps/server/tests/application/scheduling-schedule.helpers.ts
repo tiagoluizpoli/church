@@ -1,9 +1,5 @@
 import { appConfig } from '@church/app-config';
-import {
-  ministryParticipation,
-  participationEventTimeBlockInclusion,
-  sector,
-} from '@church/db';
+import { ministryParticipation, sector } from '@church/db';
 import { fromDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
@@ -32,7 +28,11 @@ import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { buildRole, buildSector } from '@/seeds/builders/ministry';
-import { buildShift, buildShiftRequirement } from '@/seeds/builders/scheduling';
+import {
+  buildParticipationInclusions,
+  buildShift,
+  buildShiftRequirement,
+} from '@/seeds/builders/scheduling';
 import {
   buildRoleQualification,
   buildVolunteerWithMembership,
@@ -231,10 +231,15 @@ export interface SeedInclusionInput {
 }
 
 /** Makes the Participation serve the block, as preparation does before creating its Shifts. */
-export async function seedInclusion(input: SeedInclusionInput) {
-  await schedulingTestDb
-    .insert(participationEventTimeBlockInclusion)
-    .values(input);
+export async function seedInclusion({
+  eventTimeBlockId,
+  ...input
+}: SeedInclusionInput) {
+  await buildParticipationInclusions({
+    db: schedulingTestDb,
+    ...input,
+    eventTimeBlockIds: [eventTimeBlockId],
+  });
 }
 
 export interface SeedRequirementInput {

@@ -198,21 +198,43 @@ export async function buildMinistryParticipation({
     description: `Ministry Participation ${id}`,
   });
 
-  if (eventTimeBlockIds.length > 0) {
-    await db.insert(participationEventTimeBlockInclusion).values(
-      eventTimeBlockIds.map((eventTimeBlockId) => ({
-        id: deriveSeedId({
-          kind: 'participation-event-time-block-inclusion',
-          parentIds: [participation.id, eventTimeBlockId],
-        }),
-        churchId,
-        participationId: participation.id,
-        eventTimeBlockId,
-      })),
-    );
-  }
+  await buildParticipationInclusions({
+    db,
+    churchId,
+    participationId: participation.id,
+    eventTimeBlockIds,
+  });
 
   return participation;
+}
+
+export interface BuildParticipationInclusionsInput {
+  db: SeedWriter;
+  churchId: string;
+  participationId: string;
+  eventTimeBlockIds: string[];
+}
+
+/** Makes a Participation serve the given Event Time Blocks. */
+export async function buildParticipationInclusions({
+  db,
+  churchId,
+  participationId,
+  eventTimeBlockIds,
+}: BuildParticipationInclusionsInput): Promise<void> {
+  if (eventTimeBlockIds.length === 0) return;
+
+  await db.insert(participationEventTimeBlockInclusion).values(
+    eventTimeBlockIds.map((eventTimeBlockId) => ({
+      id: deriveSeedId({
+        kind: 'participation-event-time-block-inclusion',
+        parentIds: [participationId, eventTimeBlockId],
+      }),
+      churchId,
+      participationId,
+      eventTimeBlockId,
+    })),
+  );
 }
 
 export interface BuildShiftInput {

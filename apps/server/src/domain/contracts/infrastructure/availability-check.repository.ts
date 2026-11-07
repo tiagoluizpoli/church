@@ -1,10 +1,12 @@
-import type { Instant } from '@church/time';
+import type { CalendarDay, Instant } from '@church/time';
 import type {
   AvailabilityCheckId,
   ChurchId,
   CycleId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
+  RoleId,
   ShiftId,
   UserId,
   VolunteerId,
@@ -100,17 +102,76 @@ export interface ConfirmCheckInput {
   tx?: TransactionContext;
 }
 
+/** One Schedule: a Ministry's part of a Cycle. */
+export interface ScheduleScopeInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: CycleId;
+  tx?: TransactionContext;
+}
+
+export interface CreateAskRecordInput extends ScheduleScopeInput {
+  askedAt: Date;
+}
+
+export interface CheckMarkCountRow {
+  availabilityCheckId: AvailabilityCheckId;
+  unavailableShiftCount: number;
+}
+
+export interface RelevantShiftTotalRow {
+  ministryMembershipId: string;
+  shiftCount: number;
+}
+
+export interface ServedShiftRow {
+  eventId: EventId;
+  eventTimeBlockId: EventTimeBlockId;
+  eventTimeBlockStartsAt: Instant;
+  flagged: boolean;
+}
+
+export interface RoleWithoutHolderRow {
+  roleId: RoleId;
+  roleName: string;
+  shiftCount: number;
+}
+
 /**
  * The actionable reads (`getCheckContext`, `listByVolunteer`, `listByCycle`,
  * `confirm`) see only checks that are not withdrawn, and the first two only
  * on an active Ministry Membership. Inside a transaction,
- * `listActiveMemberships` and `getCheckContext` share-lock the memberships
- * they return, serializing with Remove from Ministry.
+ * `listActiveMemberships`, `listEligibleMemberships` and `getCheckContext`
+ * share-lock the memberships they return, serializing with Remove from
+ * Ministry.
+ *
+ * The Schedule reads count a Shift when the Ministry serves it in the Cycle (a
+ * non-cancelled Event) and a ShiftRequirement of it names a Role the
+ * membership holds, however many requirements match.
  */
 export interface AvailabilityCheckRepository {
   listActiveMemberships(
     input: ListActiveMembershipsInput,
   ): Promise<ActiveMinistryMembership[]>;
+  /** Active memberships holding a Role that a served Shift needs. */
+  listEligibleMemberships(
+    input: ScheduleScopeInput,
+  ): Promise<ActiveMinistryMembership[]>;
+  createAskRecord(input: CreateAskRecordInput): Promise<void>;
+  /** Per non-withdrawn check of the Schedule, including zero counts. */
+  listCheckMarkCounts(input: ScheduleScopeInput): Promise<CheckMarkCountRow[]>;
+  /** Per active membership of the Ministry, including zero totals. */
+  listRelevantShiftTotals(
+    input: ScheduleScopeInput,
+  ): Promise<RelevantShiftTotalRow[]>;
+  /** The Schedule's Deadline; `null` without one or before the Ask. */
+  findAnswerBy(input: ScheduleScopeInput): Promise<CalendarDay | null>;
+  /** One row per served Shift, earliest block first; flagged when it names no Role. */
+  listServedShifts(input: ScheduleScopeInput): Promise<ServedShiftRow[]>;
+  /** Roles a served Shift needs and no active membership holds, by name. */
+  listRolesWithoutHolders(
+    input: ScheduleScopeInput,
+  ): Promise<RoleWithoutHolderRow[]>;
   listByCycle(input: ListChecksByCycleInput): Promise<AvailabilityCheck[]>;
   createMany(input: CreateChecksInput): Promise<AvailabilityCheck[]>;
   /** Throws `NotFoundError` unless the check is actionable. */

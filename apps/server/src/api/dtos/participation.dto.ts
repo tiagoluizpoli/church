@@ -172,6 +172,40 @@ export const askAvailabilityResponseSchema = z.object({
   notifiedVolunteerCount: z.number(),
 });
 
+const flaggedBlockResponseSchema = z.object({
+  eventTimeBlockId: z.string(),
+  startsAt: instantSchema,
+});
+
+const roleWithoutHoldersResponseSchema = z.object({
+  roleId: z.string(),
+  roleName: z.string(),
+  shiftCount: z.number(),
+});
+
+export const askPreviewResponseSchema = z.object({
+  eligibleVolunteerCount: z.number(),
+  shiftCount: z.number(),
+  eventCount: z.number(),
+  flaggedBlocks: z.array(flaggedBlockResponseSchema),
+  rolesWithoutHolders: z.array(roleWithoutHoldersResponseSchema),
+});
+
+export const askScheduleBodySchema = z.object({
+  ministryId: z.string(),
+});
+
+export const askScheduleResponseSchema = askAvailabilityResponseSchema.extend({
+  rolesWithoutHolders: z.array(roleWithoutHoldersResponseSchema),
+});
+
+/** A 409 `ASK_BLOCKED_FLAGGED_SHIFTS`: the localized envelope plus every flagged block. */
+export const askBlockedFlaggedShiftsResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  flaggedBlocks: z.array(flaggedBlockResponseSchema),
+});
+
 export const scheduleSummaryResponseSchema = z.object({
   cycleId: z.string(),
   name: z.string(),

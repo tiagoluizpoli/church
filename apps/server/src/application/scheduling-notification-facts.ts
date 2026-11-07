@@ -1,4 +1,5 @@
 import { NotFoundError } from '@church/core';
+import { compareCalendarDays, now, today } from '@church/time';
 import {
   CycleId,
   MinistryId,
@@ -6,6 +7,7 @@ import {
 } from '../domain/branded-ids';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { AvailabilityCheckRepository } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
@@ -30,6 +32,7 @@ interface SchedulingNotificationFactsDependencies {
   eventRepository: PlanningEventRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   assignmentRepository: AssignmentRepository;
+  availabilityCheckRepository: AvailabilityCheckRepository;
   roleRepository: RoleRepository;
   volunteerRepository: VolunteerRepository;
   /** Base URL of the web app, for deep links. */
@@ -38,6 +41,7 @@ interface SchedulingNotificationFactsDependencies {
 
 interface ResolveAvailabilityInput {
   churchId: ChurchRecipient['churchId'];
+  userId: ChurchRecipient['userId'];
   data: NotificationRequestDataOf<'availability_opened'>;
 }
 
@@ -66,6 +70,7 @@ export class SchedulingNotificationFacts {
   private readonly eventRepository: PlanningEventRepository;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
   private readonly assignmentRepository: AssignmentRepository;
+  private readonly availabilityCheckRepository: AvailabilityCheckRepository;
   private readonly roleRepository: RoleRepository;
   private readonly volunteerRepository: VolunteerRepository;
   private readonly webBaseUrl: string;
@@ -78,6 +83,7 @@ export class SchedulingNotificationFacts {
     eventRepository,
     eventTimeBlockRepository,
     assignmentRepository,
+    availabilityCheckRepository,
     roleRepository,
     volunteerRepository,
     webBaseUrl,
@@ -89,27 +95,53 @@ export class SchedulingNotificationFacts {
     this.eventRepository = eventRepository;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
     this.assignmentRepository = assignmentRepository;
+    this.availabilityCheckRepository = availabilityCheckRepository;
     this.roleRepository = roleRepository;
     this.volunteerRepository = volunteerRepository;
     this.webBaseUrl = webBaseUrl;
   }
 
+  /**
+   * N3/N4's facts for one recipient: their own relevant Shift count and the
+   * ask record's current Deadline. A recipient no longer in the Ministry has
+   * no count, and the words fall back to the Cycle span.
+   */
   async availability({
     churchId,
+    userId,
     data,
   }: ResolveAvailabilityInput): Promise<AvailabilityDeliveryFacts | null> {
     try {
-      const [church, ministry, cycle] = await Promise.all([
-        this.churchRepository.getById({ id: churchId }),
-        this.ministryRepository.getById({
-          churchId,
-          id: MinistryId.from(data.ministryId),
-        }),
-        this.cycleRepository.getById({
-          churchId,
-          cycleId: CycleId.from(data.cycleId),
-        }),
-      ]);
+      const schedule = {
+        churchId,
+        ministryId: MinistryId.from(data.ministryId),
+        cycleId: CycleId.from(data.cycleId),
+      };
+      const [church, ministry, cycle, memberships, shiftTotals, answerBy] =
+        await Promise.all([
+          this.churchRepository.getById({ id: churchId }),
+          this.ministryRepository.getById({
+            churchId,
+            id: schedule.ministryId,
+          }),
+          this.cycleRepository.getById({
+            churchId,
+            cycleId: schedule.cycleId,
+          }),
+          this.availabilityCheckRepository.listActiveMemberships(schedule),
+          this.availabilityCheckRepository.listRelevantShiftTotals(schedule),
+          this.availabilityCheckRepository.findAnswerBy(schedule),
+        ]);
+      const membership = memberships.find((row) => row.userId === userId);
+      const shiftTotal = shiftTotals.find(
+        (row) => row.ministryMembershipId === membership?.ministryMembershipId,
+      );
+      const churchToday = today({ instant: now(), timeZone: church.timezone });
+      const deadline = answerBy && {
+        answerBy,
+        deadlinePassed:
+          compareCalendarDays({ left: answerBy, right: churchToday }) < 0,
+      };
       return {
         cycleId: cycle.id,
         ministryId: ministry.id,
@@ -122,6 +154,8 @@ export class SchedulingNotificationFacts {
           baseUrl: this.webBaseUrl,
           path: '/dashboard?section=availability',
         }),
+        shiftCount: shiftTotal?.shiftCount,
+        ...deadline,
       };
     } catch (error) {
       if (error instanceof NotFoundError) return null;

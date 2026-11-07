@@ -133,6 +133,10 @@ export interface AvailabilityEmail {
   cycleStartDate: CalendarDay;
   cycleEndDate: CalendarDay;
   actionUrl: string;
+  /** Absent only on rows frozen before these facts existed. */
+  shiftCount?: number;
+  answerBy?: CalendarDay;
+  deadlinePassed?: boolean;
 }
 
 export interface SchedulePublishedEmail {

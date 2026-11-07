@@ -16,6 +16,15 @@ describe('invitation lifetime policy', () => {
   });
 });
 
+describe('availability reminder policy', () => {
+  it('lets a Schedule remind once per 24 hours', () => {
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+    expect(appConfig.availability.reminderCooldownMs).toBe(
+      TWENTY_FOUR_HOURS_MS,
+    );
+  });
+});
+
 describe('withAllParkedOn', () => {
   it('turns every parked switch on and leaves other values untouched', () => {
     const result = withAllParkedOn(appConfig);

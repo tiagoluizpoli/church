@@ -1,8 +1,14 @@
+import { NotFoundError } from '@church/core';
+import { compareCalendarDays, now, toDate, today } from '@church/time';
 import type { CycleId } from '../domain/branded-ids';
 import type {
   AskAvailabilityInput,
   AskAvailabilityResult,
+  AskPreview,
+  AskScheduleInput,
+  AskScheduleResult,
   CheckStatusRow,
+  GetAskPreviewInput,
   IAvailabilityCheckManager,
   ListCheckStatusesInput,
   ListCycleCheckStatusesInput,
@@ -12,14 +18,23 @@ import type { IChurchNotifications } from '../domain/contracts/application/churc
 import type {
   ActiveMinistryMembership,
   AvailabilityCheckRepository,
+  ServedShiftRow,
 } from '../domain/contracts/infrastructure/availability-check.repository';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
+import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { Cycle } from '../domain/entities/cycle';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import { IllegalStateTransitionError } from '../domain/errors';
+import {
+  AskBlockedFlaggedShiftsError,
+  type FlaggedBlock,
+} from '../domain/errors/ask-blocked-flagged-shifts';
+import { AskNoEligibleVolunteersError } from '../domain/errors/ask-no-eligible-volunteers';
 
 interface NotifyMembershipsInput {
   tx: TransactionContext;
@@ -35,8 +50,52 @@ interface DbAvailabilityCheckManagerDependencies {
   eventRepository: PlanningEventRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
   cycleRepository: CycleRepository;
+  ministryRepository: MinistryRepository;
+  churchRepository: ChurchRepository;
   notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
+}
+
+interface EnsureCycleAskableInput {
+  cycle: Cycle;
+  timeZone: string;
+}
+
+const ASK_TRANSITION = 'ask_availability';
+
+interface FlaggedBlocksOfInput {
+  servedShifts: ServedShiftRow[];
+}
+
+function flaggedBlocksOf({
+  servedShifts,
+}: FlaggedBlocksOfInput): FlaggedBlock[] {
+  const startByBlock = new Map(
+    servedShifts
+      .filter((shift) => shift.flagged)
+      .map((shift) => [shift.eventTimeBlockId, shift.eventTimeBlockStartsAt]),
+  );
+  return Array.from(startByBlock, ([eventTimeBlockId, startsAt]) => ({
+    eventTimeBlockId,
+    startsAt,
+  }));
+}
+
+/** Only a Sent Cycle that has not ended can be asked about. */
+function ensureCycleAskable({
+  cycle,
+  timeZone,
+}: EnsureCycleAskableInput): void {
+  const churchToday = today({ instant: now(), timeZone });
+  if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
+    throw new IllegalStateTransitionError({ from: 'past', to: ASK_TRANSITION });
+  }
+  if (cycle.state !== 'sent') {
+    throw new IllegalStateTransitionError({
+      from: cycle.state,
+      to: ASK_TRANSITION,
+    });
+  }
 }
 
 export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
@@ -44,6 +103,8 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
   private readonly eventRepository: PlanningEventRepository;
   private readonly availabilityCheckRepository: AvailabilityCheckRepository;
   private readonly cycleRepository: CycleRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly churchRepository: ChurchRepository;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
 
@@ -52,6 +113,8 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     eventRepository,
     availabilityCheckRepository,
     cycleRepository,
+    ministryRepository,
+    churchRepository,
     notifications,
     unitOfWork,
   }: DbAvailabilityCheckManagerDependencies) {
@@ -59,8 +122,35 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     this.eventRepository = eventRepository;
     this.availabilityCheckRepository = availabilityCheckRepository;
     this.cycleRepository = cycleRepository;
+    this.ministryRepository = ministryRepository;
+    this.churchRepository = churchRepository;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
+  }
+
+  async getAskPreview(input: GetAskPreviewInput): Promise<AskPreview> {
+    const { churchId, cycleId, ministryId } = input;
+    const ministry = await this.ministryRepository.getById({
+      churchId,
+      id: ministryId,
+    });
+    if (ministry.deletedAt)
+      throw new NotFoundError(`Ministry not found: ${ministryId}`);
+    await this.cycleRepository.getById({ churchId, cycleId });
+
+    const [eligibleMemberships, servedShifts, rolesWithoutHolders] =
+      await Promise.all([
+        this.availabilityCheckRepository.listEligibleMemberships(input),
+        this.availabilityCheckRepository.listServedShifts(input),
+        this.availabilityCheckRepository.listRolesWithoutHolders(input),
+      ]);
+    return {
+      eligibleVolunteerCount: eligibleMemberships.length,
+      shiftCount: servedShifts.length,
+      eventCount: new Set(servedShifts.map((shift) => shift.eventId)).size,
+      flaggedBlocks: flaggedBlocksOf({ servedShifts }),
+      rolesWithoutHolders,
+    };
   }
 
   async askAvailability(
@@ -143,6 +233,95 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       createdCheckCount: requested.createdCheckCount,
       notifiedVolunteerCount: requested.newMemberships.length,
     };
+  }
+
+  async askSchedule({
+    churchId,
+    ministryId,
+    cycleId,
+  }: AskScheduleInput): Promise<AskScheduleResult> {
+    const { timezone: timeZone } = await this.churchRepository.getById({
+      id: churchId,
+    });
+
+    return this.unitOfWork.run(async (tx) => {
+      const scope = { churchId, ministryId, cycleId, tx };
+      // An archived Ministry is not found for new use.
+      await this.ministryRepository.lockActive({
+        churchId,
+        ministryId,
+        strength: 'share',
+        tx,
+      });
+      const cycle = await this.cycleRepository.getById({
+        churchId,
+        cycleId,
+        tx,
+      });
+      ensureCycleAskable({ cycle, timeZone });
+
+      // Locked so a concurrent repeat Ask sees the moved state and refuses.
+      const participations =
+        await this.participationRepository.lockSchedule(scope);
+      for (const participation of participations) {
+        participation.askAvailability();
+      }
+
+      const servedShifts =
+        await this.availabilityCheckRepository.listServedShifts(scope);
+      const flaggedBlocks = flaggedBlocksOf({ servedShifts });
+      if (flaggedBlocks.length > 0) {
+        throw new AskBlockedFlaggedShiftsError({ flaggedBlocks });
+      }
+
+      const eligible =
+        await this.availabilityCheckRepository.listEligibleMemberships(scope);
+      if (eligible.length === 0) {
+        throw new AskNoEligibleVolunteersError();
+      }
+
+      for (const participation of participations) {
+        await this.participationRepository.updateState({
+          churchId,
+          participationId: participation.id,
+          state: participation.state,
+          tx,
+        });
+      }
+      await this.availabilityCheckRepository.createAskRecord({
+        ...scope,
+        askedAt: toDate({ instant: now() }),
+      });
+      // A membership that once held a withdrawn check keeps it: no new check, no notice.
+      const created = await this.availabilityCheckRepository.createMany({
+        churchId,
+        checks: eligible.map(({ ministryMembershipId }) => ({
+          cycleId,
+          ministryMembershipId,
+        })),
+        tx,
+      });
+      const createdMembershipIds = new Set(
+        created.map((check) => check.ministryMembershipId),
+      );
+      const asked = eligible.filter(({ ministryMembershipId }) =>
+        createdMembershipIds.has(ministryMembershipId),
+      );
+      await this.notifications.enqueue({
+        tx,
+        kind: 'availability_opened',
+        to: asked.map(({ userId }) => ({ userId, churchId })),
+        data: { cycleId: cycleId as string, ministryId: ministryId as string },
+      });
+      const rolesWithoutHolders =
+        await this.availabilityCheckRepository.listRolesWithoutHolders(scope);
+
+      return {
+        createdCheckCount: created.length,
+        notifiedVolunteerCount: asked.length,
+        rolesWithoutHolders,
+      };
+    });
   }
 
   async listCheckStatuses(

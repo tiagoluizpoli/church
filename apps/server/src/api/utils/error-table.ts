@@ -71,6 +71,7 @@ export type MappedDomainCode =
   | 'UPCOMING_ASSIGNMENTS'
   | 'HEADCOUNT_BELOW_ASSIGNED'
   | 'SHIFT_HAS_RESPONSES'
+  | 'ASK_BLOCKED_FLAGGED_SHIFTS'
   | 'VALIDATION_ERROR';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
@@ -201,6 +202,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   SHIFT_HAS_RESPONSES: {
     status: 409,
     message: m.error_shift_has_responses,
+  },
+  ASK_BLOCKED_FLAGGED_SHIFTS: {
+    status: 409,
+    message: m.error_ask_blocked_flagged_shifts,
   },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
 };

@@ -6,6 +6,10 @@
  */
 import type {
   AskAvailability202,
+  AskScheduleAvailability200,
+  AskScheduleAvailabilityBody,
+  GetAskPreview200,
+  GetAskPreviewParams,
   GetAvailabilityStatus200,
   GetCycleAvailabilityStatus200,
   GetCycleAvailabilityStatusParams,
@@ -51,6 +55,20 @@ const getCycleParticipation = (
       );
     }
   /**
+ * Read the eligible Volunteer count, served Shift and Event counts, flagged blocks and needed Roles nobody holds for one Ministry in one Cycle. Writes nothing; a Ministry serving nothing answers zeroes.
+ * @summary Preview what an Ask for availability would cover
+ */
+const getAskPreview = (
+    cycleId: string,
+    params: GetAskPreviewParams,
+ ) => {
+      return apiClient<GetAskPreview200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/ask-preview`, method: 'GET',
+        params
+    },
+      );
+    }
+  /**
  * List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.
  * @summary List a Ministry's cycle prepare summaries
  */
@@ -75,6 +93,21 @@ const saveEventTimeBlockPreparation = (
       {url: `/api/v1/prepare/participations/${participationId}/event-time-blocks/${eventTimeBlockId}/preparation`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: saveEventTimeBlockPreparationBody
+    },
+      );
+    }
+  /**
+ * Move every MinistryParticipation of a Ministry's Schedule to availability_requested, write the ask record, spawn one AvailabilityCheck per Volunteer holding a needed Role and notify each, in one transaction. Refused while a served Shift is flagged, with zero eligible Volunteers, and on a repeat Ask.
+ * @summary Ask availability for a Schedule
+ */
+const askScheduleAvailability = (
+    cycleId: string,
+    askScheduleAvailabilityBody: AskScheduleAvailabilityBody,
+ ) => {
+      return apiClient<AskScheduleAvailability200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/ask-availability`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: askScheduleAvailabilityBody
     },
       );
     }
@@ -128,11 +161,13 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {listSchedules,getCycleParticipation,listScheduleSummaries,saveEventTimeBlockPreparation,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
+export type GetAskPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAskPreview']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SaveEventTimeBlockPreparationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['saveEventTimeBlockPreparation']>>>
+export type AskScheduleAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askScheduleAvailability']>>>
 export type AskAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askAvailability']>>>
 export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleAvailabilityStatus']>>>
 export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAvailabilityStatus']>>>

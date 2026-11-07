@@ -195,22 +195,13 @@ export class DrizzleAvailabilityCheckRepository
   }
 
   async setAnswerBy({
-    churchId,
-    ministryId,
-    cycleId,
     answerBy,
-    tx,
+    ...scope
   }: SetAnswerByInput): Promise<boolean> {
-    const updated = await getClient({ db: this.db, tx })
+    const updated = await getClient({ db: this.db, tx: scope.tx })
       .update(availabilityAsk)
       .set({ answerBy })
-      .where(
-        and(
-          withChurchIsolation({ table: availabilityAsk, churchId }),
-          eq(availabilityAsk.ministryId, ministryId),
-          eq(availabilityAsk.cycleId, cycleId),
-        ),
-      )
+      .where(this.askRecordOf(scope))
       .returning({ id: availabilityAsk.id });
     return updated.length > 0;
   }
@@ -309,22 +300,11 @@ export class DrizzleAvailabilityCheckRepository
       .groupBy(ministryMembership.id);
   }
 
-  async findAnswerBy({
-    churchId,
-    ministryId,
-    cycleId,
-    tx,
-  }: ScheduleScopeInput): Promise<CalendarDay | null> {
-    const [ask] = await getClient({ db: this.db, tx })
+  async findAnswerBy(input: ScheduleScopeInput): Promise<CalendarDay | null> {
+    const [ask] = await getClient({ db: this.db, tx: input.tx })
       .select({ answerBy: availabilityAsk.answerBy })
       .from(availabilityAsk)
-      .where(
-        and(
-          withChurchIsolation({ table: availabilityAsk, churchId }),
-          eq(availabilityAsk.ministryId, ministryId),
-          eq(availabilityAsk.cycleId, cycleId),
-        ),
-      );
+      .where(this.askRecordOf(input));
     return ask?.answerBy ? parseCalendarDay({ value: ask.answerBy }) : null;
   }
 

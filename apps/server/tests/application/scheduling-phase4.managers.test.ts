@@ -26,6 +26,7 @@ import { AvailabilityCheck } from '@/domain/entities/availability-check';
 import { Event } from '@/domain/entities/event';
 import { EventTemplate } from '@/domain/entities/event-template';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
+import { Ministry } from '@/domain/entities/ministry';
 import {
   MinistryParticipation,
   type ParticipationState,
@@ -404,6 +405,9 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
 it('creates a missing participation and returns its unincluded event block', async () => {
   const { manager, repositories, participation, block } =
     createParticipationHarness();
+  vi.mocked(repositories.ministryRepository.getById).mockResolvedValue(
+    new Ministry({ id: ministryId, props: { churchId, name: 'Worship' } }),
+  );
   const cycleId = CycleId.from('cycle');
   const event = new Event({
     id: eventId,

@@ -64,20 +64,20 @@ export function PrepareEventTimeBlockList({
   const rows = events.flatMap((event) =>
     event.eventTimeBlocks.map((block) => ({ event, block })),
   );
-  rows.sort(
-    (left, right) =>
-      left.block.eventTimeBlock.startTime.localeCompare(
-        right.block.eventTimeBlock.startTime,
-      ) ||
-      left.block.eventTimeBlock.id.localeCompare(right.block.eventTimeBlock.id),
-  );
+  rows.sort((left, right) => {
+    const { startTime: leftStart, id: leftId } = left.block.eventTimeBlock;
+    const { startTime: rightStart, id: rightId } = right.block.eventTimeBlock;
+    return leftStart.localeCompare(rightStart) || leftId.localeCompare(rightId);
+  });
   const weeks = new Map<CalendarDay, typeof rows>();
   for (const row of rows) {
+    const { startTime } = row.block.eventTimeBlock;
     const day = dayOf({
-      value: row.block.eventTimeBlock.startTime,
+      value: startTime,
       timeZone: churchTimezone,
     });
-    const weekStart = addCalendarDays({ day, days: -weekdayIndex({ day }) });
+    const weekday = weekdayIndex({ day });
+    const weekStart = addCalendarDays({ day, days: -weekday });
     const weekRows = weeks.get(weekStart) ?? [];
     weekRows.push(row);
     weeks.set(weekStart, weekRows);

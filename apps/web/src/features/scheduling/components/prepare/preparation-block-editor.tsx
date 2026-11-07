@@ -9,6 +9,7 @@ import {
   preparationBounds,
   preparationGridShifts,
   preparationMinimums,
+  preparationSplitProblems,
   toPreparationSplit,
 } from './preparation-block.utils';
 import {
@@ -40,10 +41,7 @@ import {
   headcountGridKey,
   normalizeHeadcountGrid,
 } from '@/features/scheduling/components/headcount-grid/headcount-grid';
-import {
-  isShiftSplitValid,
-  shiftSplitProblems,
-} from '@/features/scheduling/components/shift-split-editor/shift-split.utils';
+import { isShiftSplitValid } from '@/features/scheduling/components/shift-split-editor/shift-split.utils';
 import { ShiftSplitEditor } from '@/features/scheduling/components/shift-split-editor/shift-split-editor';
 import type {
   GetCycleParticipation200EventsItemEventTimeBlocksItem,
@@ -195,7 +193,11 @@ function PreparationBlockForm({
   const [draft, setDraft] = useState(() =>
     initialPreparationDraft({ block, timeZone: churchTimezone }),
   );
-  const problems = shiftSplitProblems({ draft, block: bounds });
+  const problems = preparationSplitProblems({
+    draft,
+    block,
+    timeZone: churchTimezone,
+  });
   const splitValid = isShiftSplitValid({ problems });
   const shifts = splitValid
     ? preparationGridShifts({ draft, block, timeZone: churchTimezone })

@@ -979,3 +979,163 @@ it.each([
     expect(api.saveEventTimeBlockPreparation).toHaveBeenCalledTimes(2),
   );
 });
+
+it('saves headcounts for existing multi-day manual Shifts without losing their days', async () => {
+  const block = structuredClone(BLOCK);
+  block.eventTimeBlock.startTime = '2027-01-08T11:00:00.000Z';
+  block.eventTimeBlock.endTime = '2027-01-09T23:00:00.000Z';
+  block.shifts = [
+    {
+      ...SHIFT,
+      label: 'Friday',
+      startTime: '2027-01-08T11:00:00.000Z',
+      endTime: '2027-01-08T23:00:00.000Z',
+    },
+    {
+      ...SHIFT,
+      id: 'shift-2',
+      label: 'Overnight',
+      startTime: '2027-01-08T23:00:00.000Z',
+      endTime: '2027-01-09T23:00:00.000Z',
+      requirements: [],
+    },
+  ];
+  api.getCycleParticipation.mockResolvedValue({
+    events: [
+      {
+        ...EVENT,
+        event: {
+          ...EVENT.event,
+          start: block.eventTimeBlock.startTime,
+          end: block.eventTimeBlock.endTime,
+        },
+        eventTimeBlocks: [block],
+      },
+    ],
+  });
+  api.saveEventTimeBlockPreparation.mockResolvedValue(block);
+  const user = userEvent.setup();
+  renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByRole('checkbox');
+  expect(
+    screen.getByRole('radio', { name: m.shift_split_mode_manual() }),
+  ).toBeChecked();
+  const stage = screen.getByRole('spinbutton', {
+    name: /Singer.*Stage.*Friday|Friday.*Singer.*Stage/,
+  });
+  expect(stage).toHaveValue(2);
+  await user.clear(stage);
+  await user.type(stage, '4');
+  const save = screen.getByRole('button', { name: m.usual_setup_save() });
+  expect(save).toBeEnabled();
+  await user.click(save);
+  expect(api.saveEventTimeBlockPreparation).toHaveBeenCalledWith(
+    PARTICIPATION_ID,
+    BLOCK_ID,
+    {
+      serves: true,
+      shiftSplit: {
+        kind: 'manual',
+        spans: [
+          {
+            label: 'Friday',
+            startTime: '2027-01-08T11:00:00.000Z',
+            endTime: '2027-01-08T23:00:00.000Z',
+          },
+          {
+            label: 'Overnight',
+            startTime: '2027-01-08T23:00:00.000Z',
+            endTime: '2027-01-09T23:00:00.000Z',
+          },
+        ],
+      },
+      headcounts: [
+        {
+          shiftIndex: 0,
+          sectorId: 'sector-stage',
+          roleId: 'role-singer',
+          peopleNeeded: 4,
+        },
+      ],
+    },
+  );
+});
+
+it('keeps a saved manual Shift on its CalendarDays when its shared time controls change', async () => {
+  const block = structuredClone(BLOCK);
+  block.eventTimeBlock.startTime = '2027-01-08T11:00:00.000Z';
+  block.eventTimeBlock.endTime = '2027-01-10T23:00:00.000Z';
+  block.shifts = [
+    {
+      ...SHIFT,
+      label: 'Friday',
+      startTime: '2027-01-08T11:00:00.000Z',
+      endTime: '2027-01-08T23:00:00.000Z',
+    },
+    {
+      ...SHIFT,
+      id: 'shift-2',
+      label: 'Weekend',
+      startTime: '2027-01-09T11:00:00.000Z',
+      endTime: '2027-01-10T11:00:00.000Z',
+      requirements: [],
+    },
+  ];
+  api.getCycleParticipation.mockResolvedValue({
+    events: [
+      {
+        ...EVENT,
+        event: {
+          ...EVENT.event,
+          start: block.eventTimeBlock.startTime,
+          end: block.eventTimeBlock.endTime,
+        },
+        eventTimeBlocks: [block],
+      },
+    ],
+  });
+  api.saveEventTimeBlockPreparation.mockResolvedValue(block);
+  const user = userEvent.setup();
+  renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByRole('checkbox');
+  await fillTimeOfDayField({
+    user,
+    field: screen.getByTestId('shift-split-start-2'),
+    time: '09:00',
+  });
+  await fillTimeOfDayField({
+    user,
+    field: screen.getByTestId('shift-split-end-2'),
+    time: '07:00',
+  });
+  const save = screen.getByRole('button', { name: m.usual_setup_save() });
+  expect(save).toBeEnabled();
+  await user.click(save);
+  expect(api.saveEventTimeBlockPreparation).toHaveBeenCalledWith(
+    PARTICIPATION_ID,
+    BLOCK_ID,
+    expect.objectContaining({
+      shiftSplit: {
+        kind: 'manual',
+        spans: [
+          {
+            label: 'Friday',
+            startTime: '2027-01-08T11:00:00.000Z',
+            endTime: '2027-01-08T23:00:00.000Z',
+          },
+          {
+            label: 'Weekend',
+            startTime: '2027-01-09T12:00:00.000Z',
+            endTime: '2027-01-10T10:00:00.000Z',
+          },
+        ],
+      },
+    }),
+  );
+});

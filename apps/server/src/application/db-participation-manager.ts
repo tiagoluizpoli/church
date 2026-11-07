@@ -378,10 +378,13 @@ export class DbParticipationManager implements IParticipationManager {
   async getCycleParticipation(
     input: GetCycleParticipationInput,
   ): Promise<CycleParticipationView> {
-    await this.ministryRepository.getById({
+    const ministry = await this.ministryRepository.getById({
       churchId: input.churchId,
       id: input.ministryId,
     });
+    // Prepare excludes archived Ministries even when participation already exists.
+    if (ministry.deletedAt)
+      throw new NotFoundError(`Ministry not found: ${input.ministryId}`);
     await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
@@ -727,16 +730,13 @@ export class DbParticipationManager implements IParticipationManager {
       eventTimeBlockId: eventTimeBlock.id,
       tx,
     });
-    await this.shiftRepository.createMany({
+    const shifts = this.splitter.split({
       churchId,
-      shifts: this.splitter.split({
-        churchId,
-        participationId: participation.id,
-        eventTimeBlock,
-        strategy: { kind: 'equal-n', n: 1 },
-      }),
-      tx,
+      participationId: participation.id,
+      eventTimeBlock,
+      strategy: { kind: 'equal-n', n: 1 },
     });
+    await this.shiftRepository.createMany({ churchId, shifts, tx });
   }
 
   /** Validates the submitted graph completely, then writes it over the block. */
@@ -1807,7 +1807,8 @@ function ensurePreparationEditable({
   if (participation.state === 'published') {
     throw new IllegalStateTransitionError({ from: participation.state, to });
   }
-  const churchToday = today({ instant: now(), timeZone });
+  const currentInstant = now();
+  const churchToday = today({ instant: currentInstant, timeZone });
   // endDate is the Cycle's last day: edits stay open through it.
   if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
     throw new IllegalStateTransitionError({ from: 'past', to });

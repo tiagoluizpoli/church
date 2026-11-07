@@ -3,6 +3,7 @@ import { NotFoundError } from '@church/core';
 import {
   assignment,
   cycle as cycleTable,
+  event as eventTable,
   eventTimeBlock,
   ministry,
   ministryParticipation,
@@ -2276,5 +2277,59 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
       });
     });
+  });
+});
+
+describe('GET /prepare/cycles/:cycleId/participation', () => {
+  it('returns 404 to a ChurchAdmin for an archived Ministry with existing Past-Cycle preparation', async () => {
+    const base = await seedPreparation();
+    const pastStart = new Date('2020-03-01T09:00:00.000Z');
+    const pastEnd = new Date('2020-03-01T11:00:00.000Z');
+    await db
+      .update(eventTable)
+      .set({ start: pastStart, end: pastEnd })
+      .where(eq(eventTable.id, base.eventId));
+    await db
+      .update(eventTimeBlock)
+      .set({ startTime: pastStart, endTime: pastEnd })
+      .where(eq(eventTimeBlock.id, base.eventTimeBlockId));
+    await seedBlockShift({
+      base,
+      startTime: '2020-03-01T09:00:00.000Z',
+      endTime: '2020-03-01T11:00:00.000Z',
+    });
+    await db
+      .update(cycleTable)
+      .set({
+        state: 'past',
+        startDate: new Date('2020-03-01T00:00:00.000Z'),
+        endDate: new Date('2020-03-31T00:00:00.000Z'),
+      })
+      .where(eq(cycleTable.id, base.cycle.id));
+    const url = `/api/v1/prepare/cycles/${base.cycle.id}/participation?ministryId=${base.ministryId}`;
+    const active = await app.inject({ method: 'GET', url });
+    expect(active.statusCode).toBe(200);
+    expect(active.json()).toMatchObject({
+      events: [
+        {
+          participation: { id: base.participationId },
+          eventTimeBlocks: [
+            {
+              included: true,
+              shifts: [{ requirements: [{ peopleNeeded: 2 }] }],
+            },
+          ],
+        },
+      ],
+    });
+    await db
+      .update(ministry)
+      .set({ deletedAt: new Date() })
+      .where(eq(ministry.id, base.ministryId));
+
+    const archived = await app.inject({ method: 'GET', url });
+
+    expect(archived.statusCode).toBe(404);
+    expect(archived.json()).toMatchObject({ error: 'NOT_FOUND' });
   });
 });

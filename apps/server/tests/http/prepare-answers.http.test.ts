@@ -62,7 +62,7 @@ const mockGetSession = vi.mocked(mockAuth.api.getSession);
 const mockSetActiveOrganization = vi.mocked(mockAuth.api.setActiveOrganization);
 
 const HOUR_MS = 60 * 60 * 1000;
-const COOLDOWN_MS = 24 * HOUR_MS;
+const { reminderCooldownMs } = appConfig.availability;
 const CONFIRMED_AT = '2026-08-01T12:00:00.000Z';
 
 let app: FastifyTypedInstance;
@@ -570,7 +570,7 @@ describe('GET /prepare/cycles/:cycleId/availability-status', () => {
 
     const expected = addMilliseconds({
       instant: fromDate({ date: lastRemindedAt }),
-      milliseconds: COOLDOWN_MS,
+      milliseconds: reminderCooldownMs,
     });
     expect(response.json().remindAvailableAt).toBe(expected);
   });
@@ -579,7 +579,7 @@ describe('GET /prepare/cycles/:cycleId/availability-status', () => {
     const { churchId, adminUserId, cycleId, ministryId } = await seedAsked();
     await setLastReminded({
       ministryId,
-      lastRemindedAt: new Date(Date.now() - COOLDOWN_MS - HOUR_MS),
+      lastRemindedAt: new Date(Date.now() - reminderCooldownMs - HOUR_MS),
     });
     signIn({ userId: adminUserId, churchId });
 

@@ -193,6 +193,16 @@ export const askPreviewResponseSchema = z.object({
 
 export const askScheduleBodySchema = z.object({
   ministryId: z.string(),
+  answerBy: calendarDaySchema.optional(),
+});
+
+export const setAvailabilityDeadlineBodySchema = z.object({
+  ministryId: z.string(),
+  answerBy: calendarDaySchema.nullable(),
+});
+
+export const availabilityDeadlineResponseSchema = z.object({
+  answerBy: calendarDaySchema.nullable(),
 });
 
 export const askScheduleResponseSchema = askAvailabilityResponseSchema.extend({

@@ -13,6 +13,7 @@ import type {
   ListCheckStatusesInput,
   ListCycleCheckStatusesInput,
   ResendReminderInput,
+  SetDeadlineInput,
 } from '../domain/contracts/application/availability-check-manager';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
@@ -28,7 +29,10 @@ import type { PlanningEventRepository } from '../domain/contracts/infrastructure
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Cycle } from '../domain/entities/cycle';
-import type { MinistryParticipation } from '../domain/entities/ministry-participation';
+import {
+  deriveScheduleStage,
+  type MinistryParticipation,
+} from '../domain/entities/ministry-participation';
 import { IllegalStateTransitionError } from '../domain/errors';
 import {
   AskBlockedFlaggedShiftsError,
@@ -59,9 +63,11 @@ interface DbAvailabilityCheckManagerDependencies {
 interface EnsureCycleAskableInput {
   cycle: Cycle;
   timeZone: string;
+  transition?: string;
 }
 
 const ASK_TRANSITION = 'ask_availability';
+const DEADLINE_TRANSITION = 'set_deadline';
 
 interface FlaggedBlocksOfInput {
   servedShifts: ServedShiftRow[];
@@ -85,15 +91,16 @@ function flaggedBlocksOf({
 function ensureCycleAskable({
   cycle,
   timeZone,
+  transition = ASK_TRANSITION,
 }: EnsureCycleAskableInput): void {
   const churchToday = today({ instant: now(), timeZone });
   if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
-    throw new IllegalStateTransitionError({ from: 'past', to: ASK_TRANSITION });
+    throw new IllegalStateTransitionError({ from: 'past', to: transition });
   }
   if (cycle.state !== 'sent') {
     throw new IllegalStateTransitionError({
       from: cycle.state,
-      to: ASK_TRANSITION,
+      to: transition,
     });
   }
 }
@@ -239,6 +246,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     churchId,
     ministryId,
     cycleId,
+    answerBy,
   }: AskScheduleInput): Promise<AskScheduleResult> {
     const { timezone: timeZone } = await this.churchRepository.getById({
       id: churchId,
@@ -291,6 +299,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       await this.availabilityCheckRepository.createAskRecord({
         ...scope,
         askedAt: toDate({ instant: now() }),
+        answerBy,
       });
       // A membership that once held a withdrawn check keeps it: no new check, no notice.
       const created = await this.availabilityCheckRepository.createMany({
@@ -321,6 +330,59 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         notifiedVolunteerCount: asked.length,
         rolesWithoutHolders,
       };
+    });
+  }
+
+  async setDeadline({
+    churchId,
+    ministryId,
+    cycleId,
+    answerBy,
+  }: SetDeadlineInput): Promise<void> {
+    const { timezone: timeZone } = await this.churchRepository.getById({
+      id: churchId,
+    });
+
+    await this.unitOfWork.run(async (tx) => {
+      const scope = { churchId, ministryId, cycleId, tx };
+      await this.ministryRepository.lockActive({
+        churchId,
+        ministryId,
+        strength: 'share',
+        tx,
+      });
+      const cycle = await this.cycleRepository.getById({
+        churchId,
+        cycleId,
+        tx,
+      });
+      ensureCycleAskable({
+        cycle,
+        timeZone,
+        transition: DEADLINE_TRANSITION,
+      });
+
+      // Locked so a concurrent publish cannot slip past this check.
+      const participations =
+        await this.participationRepository.lockSchedule(scope);
+      const servingStates = participations.map(({ state }) => state);
+      if (deriveScheduleStage({ servingStates }) === 'published') {
+        throw new IllegalStateTransitionError({
+          from: 'published',
+          to: DEADLINE_TRANSITION,
+        });
+      }
+
+      const asked = await this.availabilityCheckRepository.setAnswerBy({
+        ...scope,
+        answerBy,
+      });
+      if (!asked) {
+        throw new IllegalStateTransitionError({
+          from: 'not_asked',
+          to: DEADLINE_TRANSITION,
+        });
+      }
     });
   }
 

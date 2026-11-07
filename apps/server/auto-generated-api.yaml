@@ -6600,7 +6600,7 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/prepare/cycles/{cycleId}/remind:
+  /api/v1/prepare/cycles/{cycleId}/remind-availability:
     post:
       operationId: remindSchedule
       summary: Remind a Schedule

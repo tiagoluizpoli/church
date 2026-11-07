@@ -461,7 +461,7 @@ export class PrepareController implements FastifyController {
     );
 
     app.post(
-      '/cycles/:cycleId/remind',
+      '/cycles/:cycleId/remind-availability',
       {
         schema: {
           tags: ['prepare'],

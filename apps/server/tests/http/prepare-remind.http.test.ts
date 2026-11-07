@@ -293,7 +293,7 @@ function ask({ cycleId, ministryId }: ScheduleKey) {
 function remind({ cycleId, ministryId }: ScheduleKey) {
   return app.inject({
     method: 'POST',
-    url: `/api/v1/prepare/cycles/${cycleId}/remind`,
+    url: `/api/v1/prepare/cycles/${cycleId}/remind-availability`,
     payload: { ministryId },
   });
 }
@@ -318,7 +318,7 @@ async function listQueued() {
   return rows.map((row) => row.payload as QueuedPayload);
 }
 
-describe('POST /prepare/cycles/:cycleId/remind', () => {
+describe('POST /prepare/cycles/:cycleId/remind-availability', () => {
   it('reminds the not-confirmed, opens checks for the newly eligible and leaves the confirmed and ended alone', async () => {
     const { churchId, ministryId, cycleId, teacher, holder } =
       await seedAsked();
@@ -617,12 +617,26 @@ describe('POST /prepare/cycles/:cycleId/remind', () => {
       expect(await lastRemindedAt()).toBeNull();
     });
 
+    it('has no route at the short /remind path', async () => {
+      const { ministryId, cycleId } = await seedAsked();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/prepare/cycles/${cycleId}/remind`,
+        payload: { ministryId },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(await listQueued()).toEqual([]);
+      expect(await lastRemindedAt()).toBeNull();
+    });
+
     it('answers 422 for a malformed payload', async () => {
       const { cycleId } = await seedAsked();
 
       const response = await app.inject({
         method: 'POST',
-        url: `/api/v1/prepare/cycles/${cycleId}/remind`,
+        url: `/api/v1/prepare/cycles/${cycleId}/remind-availability`,
         payload: {},
       });
 

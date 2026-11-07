@@ -139,7 +139,7 @@ const remindSchedule = (
     remindScheduleBody: RemindScheduleBody,
  ) => {
       return apiClient<RemindSchedule200>(
-      {url: `/api/v1/prepare/cycles/${cycleId}/remind`, method: 'POST',
+      {url: `/api/v1/prepare/cycles/${cycleId}/remind-availability`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: remindScheduleBody
     },

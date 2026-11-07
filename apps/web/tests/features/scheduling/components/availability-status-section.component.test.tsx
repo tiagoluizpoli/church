@@ -1,8 +1,9 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { parseInstant, setTestClock } from '@church/time';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailabilityStatusSection } from '@/features/scheduling/components/availability-status-section';
 import type { GetCycleAvailabilityStatus200 } from '@/infrastructure/api/churchAPI.schemas';
@@ -12,6 +13,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const api = vi.hoisted(() => ({
   getCycleAvailabilityStatus: vi.fn(),
   setAvailabilityDeadline: vi.fn(),
+  remindSchedule: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', () => ({ adminApi: api }));
 
@@ -48,9 +50,187 @@ beforeEach(() => {
   vi.resetAllMocks();
   api.getCycleAvailabilityStatus.mockResolvedValue(ANSWERS);
 });
-afterEach(() => overwriteGetLocale(() => 'pt-BR'));
+afterEach(() => {
+  vi.useRealTimers();
+  overwriteGetLocale(() => 'pt-BR');
+});
 
 describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
+  it('reminds the not-confirmed count and refreshes newly eligible Volunteers', async () => {
+    overwriteGetLocale(() => locale);
+    api.remindSchedule.mockImplementation(async () => {
+      api.getCycleAvailabilityStatus.mockResolvedValue({
+        ...ANSWERS,
+        asked: 4,
+        remindAvailableAt: '2027-01-04T17:00:00Z',
+        statuses: [
+          ...ANSWERS.statuses,
+          { ...ANSWERS.statuses[2], volunteerId: 'new', volunteerName: 'Davi' },
+        ],
+      });
+      return {
+        remindedCount: 1,
+        newCheckCount: 1,
+        remindAvailableAt: '2027-01-04T17:00:00Z',
+      };
+    });
+    setTestClock({ instant: parseInstant({ value: '2027-01-03T17:00:00Z' }) });
+    renderWithProviders(
+      <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+      { churchTimezone: 'America/Sao_Paulo' },
+    );
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: m.answers_remind({ count: 1 }),
+      }),
+    );
+    expect(api.remindSchedule).toHaveBeenCalledWith('cycle', {
+      ministryId: 'ministry',
+    });
+    expect(await screen.findByText('Davi')).toBeVisible();
+    expect(
+      screen.getByText(m.answers_count({ confirmed: 2, asked: 4 })),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', {
+        name: m.answers_remind_cooldown({ time: '14:00' }),
+      }),
+    ).toBeDisabled();
+  });
+
+  it('surfaces an early cooldown refusal time and refreshes the authoritative Answers', async () => {
+    overwriteGetLocale(() => locale);
+    setTestClock({ instant: parseInstant({ value: '2027-01-03T17:00:00Z' }) });
+    api.remindSchedule.mockImplementation(async () => {
+      api.getCycleAvailabilityStatus.mockResolvedValue({
+        ...ANSWERS,
+        confirmed: 3,
+      });
+      throw new AxiosError('refused', '409', undefined, undefined, {
+        status: 409,
+        data: {
+          error: 'REMIND_ON_COOLDOWN',
+          message: m.error_remind_on_cooldown(),
+          remindAvailableAt: '2027-01-04T17:00:00Z',
+        },
+      } as AxiosResponse);
+    });
+    renderWithProviders(
+      <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+      { churchTimezone: 'America/Sao_Paulo' },
+    );
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: m.answers_remind({ count: 1 }),
+      }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.answers_remind_cooldown({ time: '14:00' }),
+    );
+    expect(
+      screen.getByRole('button', {
+        name: m.answers_remind_cooldown({ time: '14:00' }),
+      }),
+    ).toBeDisabled();
+    expect(
+      await screen.findByText(m.answers_count({ confirmed: 3, asked: 3 })),
+    ).toBeVisible();
+  });
+
+  it('re-enables Remind when the Church-Timezone cooldown expires without navigation', async () => {
+    overwriteGetLocale(() => locale);
+    setTestClock({ instant: parseInstant({ value: '2027-01-04T16:59:59Z' }) });
+    api.getCycleAvailabilityStatus.mockResolvedValue({
+      ...ANSWERS,
+      remindAvailableAt: '2027-01-04T17:00:00Z',
+    });
+    vi.useFakeTimers();
+    await act(async () => {
+      renderWithProviders(
+        <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+        { churchTimezone: 'America/Sao_Paulo' },
+      );
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(
+      screen.getByRole('button', {
+        name: m.answers_remind_cooldown({ time: '14:00' }),
+      }),
+    ).toBeDisabled();
+    setTestClock({ instant: parseInstant({ value: '2027-01-04T17:00:00Z' }) });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(
+      screen.getByRole('button', { name: m.answers_remind({ count: 1 }) }),
+    ).toBeEnabled();
+  });
+
+  it.each([
+    0, 8,
+  ])('shows %i not-confirmed Volunteers and permits a zero-recipient sweep', async (count) => {
+    overwriteGetLocale(() => locale);
+    api.getCycleAvailabilityStatus.mockResolvedValue({
+      ...ANSWERS,
+      asked: 2 + count,
+    });
+    renderWithProviders(
+      <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+    );
+    expect(
+      await screen.findByRole('button', { name: m.answers_remind({ count }) }),
+    ).toBeEnabled();
+  });
+
+  it('prevents duplicate sends while pending and allows retry after a failed send', async () => {
+    overwriteGetLocale(() => locale);
+    let rejectSend: (error: Error) => void = () => {};
+    api.remindSchedule.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectSend = reject;
+      }),
+    );
+    renderWithProviders(
+      <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.answers_remind({ count: 1 }),
+      }),
+    );
+    expect(
+      screen.getByRole('button', { name: m.answers_remind_pending() }),
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', { name: m.answers_remind_pending() }),
+    );
+    expect(api.remindSchedule).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      rejectSend(new Error('offline'));
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.answers_remind_error(),
+    );
+    expect(screen.getByText('Caio')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: m.answers_remind({ count: 1 }) }),
+    ).toBeEnabled();
+    api.remindSchedule.mockResolvedValue({
+      remindedCount: 1,
+      newCheckCount: 0,
+      remindAvailableAt: '2027-01-04T17:00:00Z',
+    });
+    await user.click(
+      screen.getByRole('button', { name: m.answers_remind({ count: 1 }) }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+    );
+  });
+
   it('uses singular counts for one confirmed Volunteer and one Shift', async () => {
     overwriteGetLocale(() => locale);
     api.getCycleAvailabilityStatus.mockResolvedValue({
@@ -122,6 +302,32 @@ describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
     ).toBeVisible();
     expect(within(groups[0]).queryByText(/1.*4/)).not.toBeInTheDocument();
   });
+});
+
+it('keeps a successful Remind cooldown scoped to its Schedule when navigating', async () => {
+  setTestClock({ instant: parseInstant({ value: '2027-01-03T17:00:00Z' }) });
+  api.remindSchedule.mockResolvedValue({
+    remindedCount: 1,
+    newCheckCount: 0,
+    remindAvailableAt: '2027-01-04T17:00:00Z',
+  });
+  const view = renderWithProviders(
+    <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+  );
+  await userEvent.click(
+    await screen.findByRole('button', { name: m.answers_remind({ count: 1 }) }),
+  );
+  expect(
+    await screen.findByRole('button', {
+      name: m.answers_remind_cooldown({ time: '17:00' }),
+    }),
+  ).toBeDisabled();
+  view.rerender(
+    <AvailabilityStatusSection cycleId="other-cycle" ministryId="ministry" />,
+  );
+  expect(
+    await screen.findByRole('button', { name: m.answers_remind({ count: 1 }) }),
+  ).toBeEnabled();
 });
 
 it('sets, moves and clears the Deadline through the silent endpoint without any notification action', async () => {
@@ -199,6 +405,10 @@ it('keeps Answers visible but removes Deadline editing when read-only', async ()
     screen.queryByRole('button', { name: m.date_picker_clear() }),
   ).not.toBeInTheDocument();
   expect(api.setAvailabilityDeadline).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole('button', { name: m.answers_remind({ count: 1 }) }),
+  ).not.toBeInTheDocument();
+  expect(api.remindSchedule).not.toHaveBeenCalled();
 });
 
 it('shows loading and failed reads distinctly from an empty Answers list and allows retry', async () => {

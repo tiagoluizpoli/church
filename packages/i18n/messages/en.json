@@ -999,5 +999,9 @@
   "prepare_ask_pending": "Asking…",
   "prepare_ask_sent": "Availability requested.",
   "prepare_ask_loading": "Loading Ask preview…",
-  "prepare_ask_preview_error": "Could not load the Ask preview. Try again."
+  "prepare_ask_preview_error": "Could not load the Ask preview. Try again.",
+  "answers_remind": "Remind those who haven't confirmed ({count})",
+  "answers_remind_pending": "Sending reminders…",
+  "answers_remind_cooldown": "Available again at {time}",
+  "answers_remind_error": "Could not send reminders. Try again."
 }

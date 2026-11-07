@@ -1,19 +1,42 @@
 import { m } from '@church/i18n/messages';
-import { now, today } from '@church/time';
+import {
+  compareInstants,
+  formatTimeOfDay,
+  millisecondsBetween,
+  now,
+  parseInstant,
+  today,
+} from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId } from 'react';
+import { isAxiosError } from 'axios';
+import { useEffect, useId, useState } from 'react';
+import { z } from 'zod';
 import { DatePickerField } from '@/components/date-picker-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetCycleAvailabilityStatus200StatusesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatCalendarDateOnly } from '@/shared/utils/church-time';
+import {
+  churchTimeOfDay,
+  formatCalendarDateOnly,
+} from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
-export interface AvailabilityStatusSectionProps {
+const COOLDOWN_CLOCK_REFRESH_MS = 60_000;
+
+const remindRefusalSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  remindAvailableAt: z.iso.datetime().optional(),
+});
+
+interface ScheduleScope {
   cycleId: string;
   ministryId: string;
+}
+
+export interface AvailabilityStatusSectionProps extends ScheduleScope {
   readOnly?: boolean;
 }
 
@@ -35,6 +58,17 @@ export function AvailabilityStatusSection({
       adminApi.setAvailabilityDeadline(cycleId, { ministryId, answerBy }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
+  function refreshAnswers({ cycleId, ministryId }: ScheduleScope) {
+    return queryClient.invalidateQueries({
+      queryKey: ['availability-status', cycleId, ministryId],
+    });
+  }
+  const remindMutation = useMutation({
+    mutationFn: ({ cycleId, ministryId }: ScheduleScope) =>
+      adminApi.remindSchedule(cycleId, { ministryId }),
+    onSuccess: (_data, scope) => refreshAnswers(scope),
+    onError: (_error, scope) => refreshAnswers(scope),
+  });
   const statusQuery = useQuery({
     queryKey,
     queryFn: () => adminApi.getCycleAvailabilityStatus(cycleId, { ministryId }),
@@ -42,6 +76,58 @@ export function AvailabilityStatusSection({
   });
   const { churchTimezone } = useTimezone();
   const { data } = statusQuery;
+  const currentRemind =
+    remindMutation.variables?.cycleId === cycleId &&
+    remindMutation.variables.ministryId === ministryId;
+  const remindPending = currentRemind && remindMutation.isPending;
+  const remindError = currentRemind && remindMutation.isError;
+  const errorData: unknown =
+    currentRemind && isAxiosError<unknown>(remindMutation.error)
+      ? remindMutation.error.response?.data
+      : undefined;
+  const parsedRefusal = remindRefusalSchema.safeParse(errorData);
+  const refusal = parsedRefusal.success ? parsedRefusal.data : undefined;
+  const refusedUntil =
+    refusal?.error === 'REMIND_ON_COOLDOWN'
+      ? refusal.remindAvailableAt
+      : undefined;
+  const cooldownInstants = [
+    data?.remindAvailableAt,
+    currentRemind ? remindMutation.data?.remindAvailableAt : undefined,
+    refusedUntil,
+  ]
+    .filter((value) => value != null)
+    .map((value) => parseInstant({ value }));
+  const remindAvailableAt = cooldownInstants.sort().at(-1);
+  const [currentInstant, setCurrentInstant] = useState(now);
+  useEffect(() => {
+    if (!remindAvailableAt) return;
+    const availableAt = remindAvailableAt;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function refreshClock() {
+      const current = now();
+      setCurrentInstant(current);
+      const remaining = millisecondsBetween({
+        start: current,
+        end: availableAt,
+      });
+      if (remaining > 0) {
+        const delay = Math.min(remaining, COOLDOWN_CLOCK_REFRESH_MS);
+        timer = setTimeout(refreshClock, delay);
+      }
+    }
+    refreshClock();
+    return () => clearTimeout(timer);
+  }, [remindAvailableAt]);
+  const coolingDown = remindAvailableAt
+    ? compareInstants({ left: currentInstant, right: remindAvailableAt }) < 0
+    : false;
+  const cooldownWallTime = remindAvailableAt
+    ? churchTimeOfDay({ value: remindAvailableAt, timeZone: churchTimezone })
+    : undefined;
+  const cooldownTime = cooldownWallTime
+    ? formatTimeOfDay({ time: cooldownWallTime })
+    : '';
   const churchDay = today({ instant: now(), timeZone: churchTimezone });
   const overdue = data?.answerBy && data.answerBy < churchDay;
   const statuses = data?.statuses ?? [];
@@ -99,6 +185,27 @@ export function AvailabilityStatusSection({
                     asked: data.asked,
                   })}
             </p>
+            {!readOnly ? (
+              <Button
+                variant="outline"
+                className="h-auto min-h-11 whitespace-normal"
+                disabled={remindPending || coolingDown}
+                onClick={() => remindMutation.mutate({ cycleId, ministryId })}
+              >
+                {remindPending
+                  ? m.answers_remind_pending()
+                  : coolingDown
+                    ? m.answers_remind_cooldown({ time: cooldownTime })
+                    : m.answers_remind({ count: data.asked - data.confirmed })}
+              </Button>
+            ) : null}
+            {!readOnly && remindError ? (
+              <p role="alert" className="text-destructive text-sm">
+                {refusedUntil && coolingDown
+                  ? m.answers_remind_cooldown({ time: cooldownTime })
+                  : (refusal?.message ?? m.answers_remind_error())}
+              </p>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span>
                 <span id={deadlineLabelId}>{m.answers_deadline()}</span>:{' '}

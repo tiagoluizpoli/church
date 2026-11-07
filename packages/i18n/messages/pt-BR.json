@@ -999,5 +999,9 @@
   "prepare_ask_pending": "Pedindo…",
   "prepare_ask_sent": "Disponibilidade solicitada.",
   "prepare_ask_loading": "Carregando a prévia do pedido…",
-  "prepare_ask_preview_error": "Não foi possível carregar a prévia do pedido. Tente novamente."
+  "prepare_ask_preview_error": "Não foi possível carregar a prévia do pedido. Tente novamente.",
+  "answers_remind": "Lembrar quem não confirmou ({count})",
+  "answers_remind_pending": "Enviando lembretes…",
+  "answers_remind_cooldown": "Disponível novamente às {time}",
+  "answers_remind_error": "Não foi possível enviar os lembretes. Tente novamente."
 }

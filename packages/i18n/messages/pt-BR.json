@@ -964,5 +964,21 @@
   "prepare_filter_clear_to": "Limpar horário final",
   "prepare_calendar_earlier": "Ver dias anteriores",
   "prepare_calendar_later": "Ver próximos dias",
-  "prepare_calendar_has_events": "{day}, tem Eventos"
+  "prepare_calendar_has_events": "{day}, tem Eventos",
+  "answers_title": "Respostas",
+  "answers_count": "{confirmed} de {asked} confirmados",
+  "answers_pending": "Ainda não confirmados",
+  "answers_available": "Confirmados disponíveis para todos os turnos",
+  "answers_unavailable": "Confirmados com turnos indisponíveis",
+  "answers_unavailable_count": "Indisponível em {unavailable} de {total} turnos",
+  "answers_deadline": "Prazo",
+  "answers_no_deadline": "Sem prazo",
+  "answers_overdue": "Prazo vencido",
+  "answers_loading": "Carregando respostas…",
+  "answers_error": "Não foi possível carregar as respostas. Tente novamente.",
+  "answers_deadline_error": "Não foi possível salvar o prazo. Tente novamente.",
+  "answers_deadline_silent": "Alterar o prazo não envia notificações.",
+  "answers_empty": "Nenhum voluntário foi consultado ainda.",
+  "answers_unavailable_count_one": "Indisponível em {unavailable} de {total} turno",
+  "answers_count_one": "{confirmed} de {asked} confirmado"
 }

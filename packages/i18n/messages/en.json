@@ -964,5 +964,21 @@
   "prepare_filter_clear_to": "Clear to time",
   "prepare_calendar_earlier": "Scroll to earlier days",
   "prepare_calendar_later": "Scroll to later days",
-  "prepare_calendar_has_events": "{day}, has Events"
+  "prepare_calendar_has_events": "{day}, has Events",
+  "answers_title": "Answers",
+  "answers_count": "{confirmed} of {asked} confirmed",
+  "answers_pending": "Not confirmed yet",
+  "answers_available": "Confirmed available for everything",
+  "answers_unavailable": "Confirmed with unavailable Shifts",
+  "answers_unavailable_count": "Unavailable for {unavailable} of {total} Shifts",
+  "answers_deadline": "Deadline",
+  "answers_no_deadline": "No deadline",
+  "answers_overdue": "Past deadline",
+  "answers_loading": "Loading answers…",
+  "answers_error": "Could not load answers. Try again.",
+  "answers_deadline_error": "Could not save the deadline. Try again.",
+  "answers_deadline_silent": "Changing the deadline sends no notifications.",
+  "answers_empty": "No Volunteers have been asked yet.",
+  "answers_unavailable_count_one": "Unavailable for {unavailable} of {total} Shift",
+  "answers_count_one": "{confirmed} of {asked} confirmed"
 }

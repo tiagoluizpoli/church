@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@/components/app-shell';
 import { useCycleEventBreadcrumbs } from '@/features/scheduling/hooks/use-cycle-event-breadcrumbs';
+import { AvailabilityDetailPage } from '@/features/volunteers/components/availability-detail-page';
+import { useAvailabilityCheckBreadcrumb } from '@/features/volunteers/hooks/use-availability-check-breadcrumb';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { activeChurchApiMock } from '@/tests/setup/active-church';
@@ -59,10 +61,14 @@ vi.mock('@/utils/api-instances', async () => {
   return {
     activeChurchApi: activeChurchApiMock,
     adminApi: { getCycle: (...args: unknown[]) => mockGetCycle(...args) },
+    volunteerApi: {
+      getAvailabilityCheck: (...args: unknown[]) => mockGetCheck(...args),
+    },
   };
 });
 
 const mockGetCycle = vi.fn();
+const mockGetCheck = vi.fn();
 let mockParams: Record<string, string> = {};
 
 const mockedUseCallerCapabilities = vi.mocked(useCallerCapabilities);
@@ -350,6 +356,41 @@ describe('AppShell flat nav per persona (F7)', () => {
     expect(
       screen.getByRole('button', { name: m.nav_open_menu() }),
     ).toBeInTheDocument();
+  });
+
+  it('follows the direct Availability URL with the loaded Ministry and Cycle names', async () => {
+    asPersona({ hasVolunteerMembership: true });
+    mockPathname = '/availability/check-1';
+    mockParams = { checkId: 'check-1' };
+    mockGetCheck.mockResolvedValue({
+      id: 'check-1',
+      ministryName: 'Kids',
+      cycleName: 'Outubro 2026',
+      ministryId: 'kids',
+      cycleId: 'october',
+      state: 'pending',
+      answerBy: null,
+      readOnly: false,
+      shifts: [],
+    });
+    function CheckPageWithShell() {
+      const checkBreadcrumb = useAvailabilityCheckBreadcrumb();
+      return (
+        <AppShell
+          notificationBell={null}
+          breadcrumbOverrides={checkBreadcrumb ? [checkBreadcrumb] : []}
+        >
+          <AvailabilityDetailPage checkId="check-1" onAnswered={vi.fn()} />
+        </AppShell>
+      );
+    }
+    renderWithProviders(<CheckPageWithShell />);
+    const crumbs = within(screen.getByTestId('breadcrumbs'));
+    expect(await crumbs.findByText('Kids · Outubro 2026')).toBeVisible();
+    expect(crumbs.getByText(HOME)).toBeVisible();
+    expect(
+      crumbs.getByRole('link', { name: m.nav_availability() }),
+    ).toHaveAttribute('href', '/availability');
   });
 
   it('shows a caller-supplied breadcrumb override in place of the raw id segment', () => {

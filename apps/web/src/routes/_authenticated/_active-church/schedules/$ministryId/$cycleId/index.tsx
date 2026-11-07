@@ -11,6 +11,7 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
+import { AvailabilityStatusSection } from '@/features/scheduling/components/availability-status-section';
 import {
   buildEventTimeBlockDayMarkers,
   filterEventTimeBlocksByName,
@@ -183,6 +184,15 @@ function PrepareWorkspaceRoute() {
           data-testid="prepare-workspace-stack"
           className="flex flex-col gap-4"
         >
+          {schedule.stage === 'asking' ||
+          schedule.stage === 'assigning' ||
+          schedule.stage === 'published' ? (
+            <AvailabilityStatusSection
+              cycleId={cycleId}
+              ministryId={ministryId}
+              readOnly={readOnly}
+            />
+          ) : null}
           {readOnly ? (
             <Alert>
               <AlertDescription>{m.prepare_block_read_only()}</AlertDescription>

@@ -1,23 +1,7 @@
 import type { CalendarDay, Instant } from '@church/time';
-import type {
-  ChurchId,
-  CycleId,
-  MinistryId,
-  MinistryParticipationId,
-  RoleId,
-} from '../../branded-ids';
+import type { ChurchId, CycleId, MinistryId, RoleId } from '../../branded-ids';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { FlaggedBlock } from '../../errors/ask-blocked-flagged-shifts';
-
-export interface AskAvailabilityInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-}
-
-export interface AskAvailabilityResult {
-  createdCheckCount: number;
-  notifiedVolunteerCount: number;
-}
 
 export interface AskScheduleInput {
   churchId: ChurchId;
@@ -33,7 +17,9 @@ export interface SetDeadlineInput {
   answerBy: CalendarDay | null;
 }
 
-export interface AskScheduleResult extends AskAvailabilityResult {
+export interface AskScheduleResult {
+  createdCheckCount: number;
+  notifiedVolunteerCount: number;
   rolesWithoutHolders: AskPreviewRoleWithoutHolders[];
 }
 
@@ -47,16 +33,6 @@ export interface RemindScheduleResult {
   remindedCount: number;
   newCheckCount: number;
   remindAvailableAt: Instant;
-}
-
-export interface ResendReminderInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-}
-
-export interface ListCheckStatusesInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
 }
 
 export interface ListCycleCheckStatusesInput {
@@ -108,13 +84,10 @@ export interface AskPreview {
 
 export interface IAvailabilityCheckManager {
   getAskPreview(input: GetAskPreviewInput): Promise<AskPreview>;
-  askAvailability(input: AskAvailabilityInput): Promise<AskAvailabilityResult>;
   askSchedule(input: AskScheduleInput): Promise<AskScheduleResult>;
   remindSchedule(input: RemindScheduleInput): Promise<RemindScheduleResult>;
   /** Set, move or clear the Deadline silently: no Notification is enqueued. */
   setDeadline(input: SetDeadlineInput): Promise<void>;
-  resendReminder(input: ResendReminderInput): Promise<void>;
-  listCheckStatuses(input: ListCheckStatusesInput): Promise<CheckStatusRow[]>;
   listCycleCheckStatuses(
     input: ListCycleCheckStatusesInput,
   ): Promise<CycleCheckStatuses>;

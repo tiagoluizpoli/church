@@ -2795,21 +2795,6 @@ export type RemindSchedule409 = {
   message: string;
 };
 
-export type AskAvailability202 = {
-  createdCheckCount: number;
-  notifiedVolunteerCount: number;
-};
-
-export type AskAvailability403 = {
-  error: string;
-  message: string;
-};
-
-export type AskAvailability404 = {
-  error: string;
-  message: string;
-};
-
 export type GetCycleAvailabilityStatusParams = {
 ministryId: string;
 };
@@ -2854,50 +2839,6 @@ export type GetCycleAvailabilityStatus403 = {
 };
 
 export type GetCycleAvailabilityStatus404 = {
-  error: string;
-  message: string;
-};
-
-export type GetAvailabilityStatus200StatusesItemState = typeof GetAvailabilityStatus200StatusesItemState[keyof typeof GetAvailabilityStatus200StatusesItemState];
-
-
-export const GetAvailabilityStatus200StatusesItemState = {
-  pending: 'pending',
-  confirmed: 'confirmed',
-} as const;
-
-export type GetAvailabilityStatus200StatusesItem = {
-  volunteerId: string;
-  volunteerName: string;
-  state?: GetAvailabilityStatus200StatusesItemState;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  confirmedAt?: string;
-};
-
-export type GetAvailabilityStatus200 = {
-  statuses: GetAvailabilityStatus200StatusesItem[];
-};
-
-export type GetAvailabilityStatus403 = {
-  error: string;
-  message: string;
-};
-
-export type GetAvailabilityStatus404 = {
-  error: string;
-  message: string;
-};
-
-export type ResendAvailabilityReminder202 = {
-  resent: boolean;
-};
-
-export type ResendAvailabilityReminder403 = {
-  error: string;
-  message: string;
-};
-
-export type ResendAvailabilityReminder404 = {
   error: string;
   message: string;
 };

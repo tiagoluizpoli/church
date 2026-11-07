@@ -20,13 +20,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
-import {
-  ChurchId,
-  CycleId,
-  MinistryId,
-  MinistryParticipationId,
-  UserId,
-} from '@/domain/branded-ids';
+import { ChurchId, CycleId, MinistryId, UserId } from '@/domain/branded-ids';
 import type { AvailabilityEmail } from '@/domain/contracts/infrastructure/email-sender';
 import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/notification.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
@@ -37,7 +31,6 @@ import {
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
   DrizzleNotificationRepository,
-  DrizzlePlanningEventRepository,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
@@ -106,9 +99,6 @@ function buildAvailabilityManager({
 }: BuildAvailabilityManagerInput = {}): DbAvailabilityCheckManager {
   return new DbAvailabilityCheckManager({
     participationRepository: new DrizzleMinistryParticipationRepository({
-      db: schedulingTestDb,
-    }),
-    eventRepository: new DrizzlePlanningEventRepository({
       db: schedulingTestDb,
     }),
     availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({
@@ -187,6 +177,58 @@ beforeEach(async () => {
   eventTimeBlockId = graph.eventTimeBlock.id;
 });
 
+async function seedNeededShift(roleIds: string[]) {
+  const shift = await seedShift({
+    churchId: ids.churchId,
+    participationId,
+    eventTimeBlockId,
+    startTime: new Date('2026-12-25T02:30:00.000Z'),
+    endTime: new Date('2026-12-25T04:00:00.000Z'),
+    label: 'Needed',
+  });
+  for (const roleId of roleIds) {
+    await seedRequirement({
+      churchId: ids.churchId,
+      participationId,
+      shiftId: shift.id,
+      roleId,
+      peopleNeeded: 1,
+    });
+  }
+}
+
+async function seedRoleHolder(name: string, roleId: string) {
+  const seeded = await seedMember({ name, email: `${name}@test.com` });
+  await seedRoleQualification({
+    churchId: ids.churchId,
+    membershipId: seeded.membership.id,
+    roleId,
+  });
+  return seeded.volunteer.userId;
+}
+
+/** Asks the Schedule, a needed Role held by each named Volunteer; returns their user ids. */
+async function askHolders(...names: string[]) {
+  const needed = await seedRole({
+    churchId: ids.churchId,
+    ministryId: ids.ministryId,
+    name: 'Host',
+  });
+  await seedNeededShift([needed.id]);
+  const userIds: string[] = [];
+  for (const name of names) {
+    userIds.push(await seedRoleHolder(name, needed.id));
+  }
+  await buildAvailabilityManager().askSchedule(scheduleKey());
+  return userIds;
+}
+
+const scheduleKey = () => ({
+  churchId: ChurchId.from(ids.churchId),
+  ministryId: MinistryId.from(ids.ministryId),
+  cycleId: CycleId.from(cycleId),
+});
+
 async function outboxRows() {
   return schedulingTestDb
     .select()
@@ -195,13 +237,13 @@ async function outboxRows() {
 }
 
 describe('scheduling Notifications through enqueue and the drainer', () => {
-  async function askOneMember() {
-    await seedMember({ name: 'Ana', email: 'ana@test.com' });
-    await buildAvailabilityManager().askAvailability({
-      churchId: ChurchId.from(ids.churchId),
-      participationId: MinistryParticipationId.from(participationId),
-    });
-  }
+  // Inside the December Cycle's askable window, whatever day the suite runs.
+  beforeEach(() => {
+    setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
+  });
+  afterEach(() => resetClock());
+
+  const askOneMember = () => askHolders('ana');
 
   async function dropCycle() {
     await schedulingTestDb.execute('SET session_replication_role = replica');
@@ -242,11 +284,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   });
 
   it('carries the Church name and a single-word first name to the email', async () => {
-    await seedMember({ name: 'Ana', email: 'ana@test.com' });
-    await buildAvailabilityManager().askAvailability({
-      churchId: ChurchId.from(ids.churchId),
-      participationId: MinistryParticipationId.from(participationId),
-    });
+    await askOneMember();
     const emailSender = new CaptureEmailSender('Church');
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
@@ -278,14 +316,8 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
   });
 
-  it('Ask enqueues availability_opened per active member and delivers one email and one inbox entry each', async () => {
-    const first = await seedMember({ name: 'Ana', email: 'ana@test.com' });
-    const second = await seedMember({ name: 'Bia', email: 'bia@test.com' });
-
-    await buildAvailabilityManager().askAvailability({
-      churchId: ChurchId.from(ids.churchId),
-      participationId: MinistryParticipationId.from(participationId),
-    });
+  it('Ask enqueues availability_opened per needed-Role holder and delivers one email and one inbox entry each', async () => {
+    const [first, second] = await askHolders('ana', 'bia');
 
     const storedParticipation = await schedulingTestDb
       .select()
@@ -296,13 +328,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .select()
       .from(availabilityCheck)
       .where(eq(availabilityCheck.cycleId, cycleId));
-    expect(storedChecks).toHaveLength(3);
+    expect(storedChecks).toHaveLength(2);
     const queued = await outboxRows();
-    expect(queued).toHaveLength(3);
+    expect(queued).toHaveLength(2);
     expect(queued.map((row) => row.payload)).toContainEqual(
       expect.objectContaining({
         kind: 'availability_opened',
-        to: { userId: first.volunteer.userId, churchId: ids.churchId },
+        to: { userId: first, churchId: ids.churchId },
         data: { cycleId, ministryId: ids.ministryId },
       }),
     );
@@ -310,8 +342,8 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     const emailSender = new CaptureEmailSender('Church');
     const drainer = buildDrainer(emailSender);
     expect(await drainer.drainOnce({ limit: 10 })).toEqual({
-      claimed: 3,
-      sent: 3,
+      claimed: 2,
+      sent: 2,
       failed: 0,
     });
     // A replay finds nothing left: no duplicate email or inbox row.
@@ -324,16 +356,14 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     expect(emailSender.sent.map((email) => email.kind)).toEqual([
       'availability.opened',
       'availability.opened',
-      'availability.opened',
     ]);
     expect(emailSender.sent.map((email) => email.to).sort()).toEqual([
       'ana@test.com',
       'bia@test.com',
-      'sched-admin@test.com',
     ]);
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox.map((row) => row.userId).sort()).toEqual(
-      [first.volunteer.userId, second.volunteer.userId, ids.adminUserId].sort(),
+      [first, second].sort(),
     );
     expect(inbox[0]).toMatchObject({
       kind: 'availability_opened',
@@ -348,7 +378,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   });
 
   it('rolls the Notification rows back with the change', async () => {
-    await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const needed = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    await seedNeededShift([needed.id]);
+    await seedRoleHolder('ana', needed.id);
     const failingUnitOfWork = {
       run: (fn: Parameters<typeof unitOfWork.run>[0]) =>
         unitOfWork.run(async (tx) => {
@@ -360,10 +396,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     await expect(
       buildAvailabilityManager({
         unitOfWork: failingUnitOfWork,
-      }).askAvailability({
-        churchId: ChurchId.from(ids.churchId),
-        participationId: MinistryParticipationId.from(participationId),
-      }),
+      }).askSchedule(scheduleKey()),
     ).rejects.toThrow('boom');
 
     expect(await outboxRows()).toHaveLength(0);
@@ -380,14 +413,10 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   });
 
   it('Remind enqueues availability_reminder for the still-pending members', async () => {
-    await seedMember({ name: 'Ana', email: 'ana@test.com' });
-    const manager = buildAvailabilityManager();
-    const churchId = ChurchId.from(ids.churchId);
-    const participation = MinistryParticipationId.from(participationId);
-    await manager.askAvailability({ churchId, participationId: participation });
+    await askHolders('ana', 'bia');
     await schedulingTestDb.delete(outboxMessage);
 
-    await manager.resendReminder({ churchId, participationId: participation });
+    await buildAvailabilityManager().remindSchedule(scheduleKey());
 
     const queued = await outboxRows();
     expect(queued).toHaveLength(2);
@@ -493,23 +522,30 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   });
 
   it('a Volunteer without Church Membership receives nothing on either channel', async () => {
+    const needed = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    await seedNeededShift([needed.id]);
+    await seedRoleHolder('ana', needed.id);
     const outsider = await seedMember({
       name: 'Gone',
       email: 'gone@test.com',
       withChurchMembership: false,
     });
-
-    await buildAvailabilityManager().askAvailability({
-      churchId: ChurchId.from(ids.churchId),
-      participationId: MinistryParticipationId.from(participationId),
+    await seedRoleQualification({
+      churchId: ids.churchId,
+      membershipId: outsider.membership.id,
+      roleId: needed.id,
     });
+
+    await buildAvailabilityManager().askSchedule(scheduleKey());
 
     const emailSender = new CaptureEmailSender('Church');
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
-    expect(emailSender.sent.map((email) => email.to)).toEqual([
-      'sched-admin@test.com',
-    ]);
+    expect(emailSender.sent.map((email) => email.to)).toEqual(['ana@test.com']);
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox.map((row) => row.userId)).not.toContain(
       outsider.volunteer.userId,
@@ -739,36 +775,6 @@ describe('availability delivery facts resolved per recipient', () => {
 
   afterEach(() => resetClock());
 
-  async function seedNeededShift(roleIds: string[]) {
-    const shift = await seedShift({
-      churchId: ids.churchId,
-      participationId,
-      eventTimeBlockId,
-      startTime: new Date('2026-12-25T02:30:00.000Z'),
-      endTime: new Date('2026-12-25T04:00:00.000Z'),
-      label: 'Needed',
-    });
-    for (const roleId of roleIds) {
-      await seedRequirement({
-        churchId: ids.churchId,
-        participationId,
-        shiftId: shift.id,
-        roleId,
-        peopleNeeded: 1,
-      });
-    }
-  }
-
-  async function seedRoleHolder(name: string, roleId: string) {
-    const seeded = await seedMember({ name, email: `${name}@test.com` });
-    await seedRoleQualification({
-      churchId: ids.churchId,
-      membershipId: seeded.membership.id,
-      roleId,
-    });
-    return seeded.volunteer.userId;
-  }
-
   async function seedAsk(answerBy: string | null) {
     await schedulingTestDb.insert(availabilityAsk).values({
       churchId: ids.churchId,
@@ -872,28 +878,23 @@ describe('availability delivery facts resolved per recipient', () => {
     });
     await seedNeededShift([guitar.id]);
     await seedRoleHolder('ana', guitar.id);
-    const scheduleKey = {
-      churchId: ChurchId.from(ids.churchId),
-      ministryId: MinistryId.from(ids.ministryId),
-      cycleId: CycleId.from(cycleId),
-    };
     const manager = buildAvailabilityManager();
     setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
     await manager.askSchedule({
-      ...scheduleKey,
+      ...scheduleKey(),
       answerBy: parseCalendarDay({ value: '2026-11-10' }),
     });
     const emailSender = new CaptureEmailSender('Church');
     const drainer = buildDrainer(emailSender);
     await drainer.drainOnce({ limit: 10 });
     await manager.setDeadline({
-      ...scheduleKey,
+      ...scheduleKey(),
       answerBy: parseCalendarDay({ value: '2026-11-20' }),
     });
     await seedRoleHolder('bia', guitar.id);
 
     setTestClock({ instant: '2026-11-25T12:00:00.000Z' as Instant });
-    await manager.remindSchedule(scheduleKey);
+    await manager.remindSchedule(scheduleKey());
     await drainer.drainOnce({ limit: 10 });
 
     const [opening, ...afterRemind] = emailSender.sent;

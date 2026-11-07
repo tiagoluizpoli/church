@@ -28,7 +28,6 @@ import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-c
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -81,7 +80,6 @@ beforeAll(async () => {
       participationRepository: new DrizzleMinistryParticipationRepository({
         db,
       }),
-      eventRepository: new DrizzlePlanningEventRepository({ db }),
       availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({
         db,
       }),

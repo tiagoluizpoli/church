@@ -33,9 +33,8 @@ const participationManager = {
 };
 
 const availabilityCheckManager = {
-  askAvailability: vi.fn(),
+  askSchedule: vi.fn(),
   listCycleCheckStatuses: vi.fn(),
-  resendReminder: vi.fn(),
 };
 
 const activeChurchResolver = {
@@ -135,23 +134,20 @@ const scopedPrepareRoutes: ScopedPrepareRoute[] = [
   },
   {
     method: 'POST',
-    url: `/api/v1/prepare/participations/${PARTICIPATION}/ask-availability`,
+    url: `/api/v1/prepare/cycles/${CYCLE}/ask-availability`,
+    decision: 'decideManageMinistry',
+    payload: { ministryId: MINISTRY },
+  },
+  {
+    method: 'PUT',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/event-time-blocks/${BLOCK}/preparation`,
     decision: 'decideManageParticipation',
+    payload: { serves: false },
   },
   {
     method: 'GET',
     url: `/api/v1/prepare/cycles/${CYCLE}/availability-status?ministryId=${MINISTRY}`,
     decision: 'decideManageMinistry',
-  },
-  {
-    method: 'GET',
-    url: `/api/v1/prepare/participations/${PARTICIPATION}/availability-status`,
-    decision: 'decideManageParticipation',
-  },
-  {
-    method: 'POST',
-    url: `/api/v1/prepare/participations/${PARTICIPATION}/resend-availability`,
-    decision: 'decideManageParticipation',
   },
 ];
 
@@ -165,6 +161,21 @@ function expectNoPrepareWork(): void {
 }
 
 const retiredPrepareRoutes: ScopedPrepareRoute[] = [
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/ask-availability`,
+    decision: 'decideManageParticipation',
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/resend-availability`,
+    decision: 'decideManageParticipation',
+  },
+  {
+    method: 'GET',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/availability-status`,
+    decision: 'decideManageParticipation',
+  },
   {
     method: 'PUT',
     url: `/api/v1/prepare/participations/${PARTICIPATION}/inclusions`,
@@ -285,15 +296,8 @@ describe('Prepare participation routes', () => {
     const scopeProtectedOperations = [
       paths['/api/v1/prepare/cycles/{cycleId}/participation']?.get,
       paths['/api/v1/prepare/ministries/{ministryId}/cycles-summary']?.get,
-      paths['/api/v1/prepare/participations/{participationId}/ask-availability']
-        ?.post,
+      paths['/api/v1/prepare/cycles/{cycleId}/ask-availability']?.post,
       paths['/api/v1/prepare/cycles/{cycleId}/availability-status']?.get,
-      paths[
-        '/api/v1/prepare/participations/{participationId}/availability-status'
-      ]?.get,
-      paths[
-        '/api/v1/prepare/participations/{participationId}/resend-availability'
-      ]?.post,
     ];
 
     for (const operation of scopeProtectedOperations) {
@@ -301,70 +305,39 @@ describe('Prepare participation routes', () => {
     }
   });
 
-  it('returns the same generic 404 for a missing or inaccessible participation after admission', async () => {
-    authorityGuard.decideManageParticipation.mockResolvedValueOnce({
-      allowed: false,
-      reason: 'RESOURCE_NOT_FOUND',
-    });
-    const missing = await app.inject({
-      method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/ask-availability',
-    });
-
-    authorityGuard.decideManageParticipation.mockResolvedValueOnce({
-      allowed: false,
-      reason: 'INSUFFICIENT_ACCESS_LEVEL',
-    });
-    const hidden = await app.inject({
-      method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/ask-availability',
-    });
-
-    expect(missing.statusCode).toBe(404);
-    expect(hidden).toMatchObject({ statusCode: 404, body: missing.body });
-    expect(availabilityCheckManager.askAvailability).not.toHaveBeenCalled();
-  });
   it('returns 401 for any route when there is no session', async () => {
     mockGetSession.mockResolvedValueOnce(null as never);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/ask-availability',
+      url: `/api/v1/prepare/cycles/${CYCLE}/ask-availability`,
+      payload: { ministryId: MINISTRY },
     });
 
     expect(response.statusCode).toBe(401);
-    expect(availabilityCheckManager.askAvailability).not.toHaveBeenCalled();
+    expect(availabilityCheckManager.askSchedule).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/prepare/participations/:id/ask-availability returns 202', async () => {
-    availabilityCheckManager.askAvailability.mockResolvedValue({
+  it('POST /api/v1/prepare/cycles/:id/ask-availability returns 200', async () => {
+    const result = {
       createdCheckCount: 4,
       notifiedVolunteerCount: 4,
-    });
+      rolesWithoutHolders: [],
+    };
+    availabilityCheckManager.askSchedule.mockResolvedValue(result);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/ask-availability',
+      url: `/api/v1/prepare/cycles/${CYCLE}/ask-availability`,
+      payload: { ministryId: MINISTRY },
     });
 
-    expect(response.statusCode).toBe(202);
-    expect(response.json()).toEqual({
-      createdCheckCount: 4,
-      notifiedVolunteerCount: 4,
-    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(result);
   });
 
-  it('keeps the per-participation reminder callable', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: `/api/v1/prepare/participations/${PARTICIPATION}/resend-availability`,
-    });
-    expect(response.statusCode).toBe(202);
-    expect(response.json()).toEqual({ resent: true });
-  });
-
-  it('POST /api/v1/prepare/participations/:id/ask-availability returns 409 for wrong state', async () => {
-    availabilityCheckManager.askAvailability.mockRejectedValue(
+  it('POST /api/v1/prepare/cycles/:id/ask-availability returns 409 for wrong state', async () => {
+    availabilityCheckManager.askSchedule.mockRejectedValue(
       new IllegalStateTransitionError({
         from: 'availability_requested',
         to: 'ask',
@@ -373,7 +346,8 @@ describe('Prepare participation routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/ask-availability',
+      url: `/api/v1/prepare/cycles/${CYCLE}/ask-availability`,
+      payload: { ministryId: MINISTRY },
     });
 
     expect(response.statusCode).toBe(409);

@@ -14,6 +14,9 @@ import {
 } from '@/features/scheduling/components/headcount-grid/headcount-grid';
 import {
   type ShiftSplitDraft,
+  type ShiftSplitProblems,
+  type SpanProblem,
+  shiftSplitProblems,
   splitShifts,
   toShiftSplit,
   toShiftSplitDraft,
@@ -39,6 +42,7 @@ interface ResolveTimeInput {
   timeZone: string;
   end?: boolean;
   startTime?: TimeOfDay;
+  savedInstant?: string;
 }
 
 function resolveTime({
@@ -47,7 +51,13 @@ function resolveTime({
   timeZone,
   end,
   startTime,
+  savedInstant,
 }: ResolveTimeInput): string {
+  // A saved boundary keeps its CalendarDay when its clock time is edited.
+  if (savedInstant) {
+    const day = dayOf({ value: savedInstant, timeZone });
+    return toInstant({ day, time, timeZone });
+  }
   const { startTime: blockStart, endTime: blockEnd } = block.eventTimeBlock;
   const start = churchTimeOfDay({ value: blockStart, timeZone });
   const finish = churchTimeOfDay({ value: blockEnd, timeZone });
@@ -69,39 +79,51 @@ export function toPreparationSplit({
 }: PreparationSplitInput): SaveEventTimeBlockPreparationBodyShiftSplit {
   const split = toShiftSplit({ draft });
   if (split.kind === 'equal') return split;
-  return {
-    kind: 'manual',
-    spans: draft.spans.flatMap((span) => {
-      const { startTime, endTime, label } = span;
-      if (!startTime || !endTime) return [];
-      const saved = block.shifts.find((shift) => shift.id === span.key);
-      const savedStart =
-        saved && churchTimeOfDay({ value: saved.startTime, timeZone });
-      const savedEnd =
-        saved && churchTimeOfDay({ value: saved.endTime, timeZone });
-      const start =
-        saved && savedStart === startTime
-          ? saved.startTime
-          : resolveTime({ time: startTime, block, timeZone });
-      const end =
-        saved && savedEnd === endTime
-          ? saved.endTime
-          : resolveTime({
-              time: endTime,
-              startTime,
-              block,
-              timeZone,
-              end: true,
-            });
-      return [
-        {
-          startTime: parseInstant({ value: start }),
-          endTime: parseInstant({ value: end }),
-          ...(label.trim() ? { label: label.trim() } : {}),
-        },
-      ];
-    }),
-  };
+  const spans = preparationManualSpans({ draft, block, timeZone });
+  return { kind: 'manual', spans };
+}
+
+function preparationManualSpans({
+  draft,
+  block,
+  timeZone,
+}: PreparationSplitInput) {
+  return draft.spans.flatMap((span) => {
+    const { startTime, endTime, label } = span;
+    if (!startTime || !endTime) return [];
+    const saved = block.shifts.find((shift) => shift.id === span.key);
+    const savedStart =
+      saved && churchTimeOfDay({ value: saved.startTime, timeZone });
+    const savedEnd =
+      saved && churchTimeOfDay({ value: saved.endTime, timeZone });
+    const start =
+      saved && savedStart === startTime
+        ? saved.startTime
+        : resolveTime({
+            time: startTime,
+            block,
+            timeZone,
+            savedInstant: saved?.startTime,
+          });
+    const end =
+      saved && savedEnd === endTime
+        ? saved.endTime
+        : resolveTime({
+            time: endTime,
+            startTime,
+            block,
+            timeZone,
+            end: true,
+            savedInstant: saved?.endTime,
+          });
+    return [
+      {
+        startTime: parseInstant({ value: start }),
+        endTime: parseInstant({ value: end }),
+        ...(label.trim() ? { label: label.trim() } : {}),
+      },
+    ];
+  });
 }
 
 interface PreparationBlockInput {
@@ -146,6 +168,47 @@ function sameSpan({ left, right }: SameSpanInput): boolean {
   const starts = compareInstants({ left: leftStart, right: rightStart });
   const ends = compareInstants({ left: leftEnd, right: rightEnd });
   return starts === 0 && ends === 0;
+}
+
+/** Prepare spans live on the absolute timeline, including spans over 24 hours. */
+export function preparationSplitProblems({
+  draft,
+  block,
+  timeZone,
+}: PreparationSplitInput): ShiftSplitProblems {
+  if (draft.mode !== 'manual') {
+    const bounds = preparationBounds({ block, timeZone });
+    return shiftSplitProblems({ draft, block: bounds });
+  }
+  const incomplete = draft.spans.map((span): SpanProblem | null =>
+    !span.startTime || !span.endTime ? 'incomplete' : null,
+  );
+  if (incomplete.some(Boolean))
+    return { count: false, noSpans: false, spans: incomplete };
+  const spans = preparationManualSpans({ draft, block, timeZone });
+  const { startTime, endTime } = block.eventTimeBlock;
+  const blockStart = parseInstant({ value: startTime });
+  const blockEnd = parseInstant({ value: endTime });
+  let previousEnd = blockStart;
+  return {
+    count: false,
+    noSpans: spans.length === 0,
+    spans: spans.map((span): SpanProblem | null => {
+      const start = parseInstant({ value: span.startTime });
+      const end = parseInstant({ value: span.endTime });
+      if (compareInstants({ left: start, right: end }) >= 0)
+        return 'zeroDuration';
+      if (
+        compareInstants({ left: start, right: blockStart }) < 0 ||
+        compareInstants({ left: end, right: blockEnd }) > 0
+      )
+        return 'outsideBlock';
+      if (compareInstants({ left: start, right: previousEnd }) < 0)
+        return 'overlap';
+      previousEnd = end;
+      return null;
+    }),
+  };
 }
 
 export function preparationBounds({ block, timeZone }: PreparationBlockInput) {

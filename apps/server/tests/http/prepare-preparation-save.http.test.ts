@@ -2278,3 +2278,39 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
     });
   });
 });
+
+describe('GET /prepare/cycles/:cycleId/participation', () => {
+  it('returns 404 to a ChurchAdmin for an archived Ministry with existing Past-Cycle preparation', async () => {
+    const base = await seedPreparation();
+    await seedBlockShift({ base });
+    await db
+      .update(cycleTable)
+      .set({ state: 'past' })
+      .where(eq(cycleTable.id, base.cycle.id));
+    const url = `/api/v1/prepare/cycles/${base.cycle.id}/participation?ministryId=${base.ministryId}`;
+    const active = await app.inject({ method: 'GET', url });
+    expect(active.statusCode).toBe(200);
+    expect(active.json()).toMatchObject({
+      events: [
+        {
+          participation: { id: base.participationId },
+          eventTimeBlocks: [
+            {
+              included: true,
+              shifts: [{ requirements: [{ peopleNeeded: 2 }] }],
+            },
+          ],
+        },
+      ],
+    });
+    await db
+      .update(ministry)
+      .set({ deletedAt: new Date() })
+      .where(eq(ministry.id, base.ministryId));
+
+    const archived = await app.inject({ method: 'GET', url });
+
+    expect(archived.statusCode).toBe(404);
+    expect(archived.json()).toMatchObject({ error: 'NOT_FOUND' });
+  });
+});

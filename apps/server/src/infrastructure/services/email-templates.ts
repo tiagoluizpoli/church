@@ -219,30 +219,74 @@ function memberNotificationContent({
       },
     };
   }
-  const isReminder = payload.kind === 'availability.reminder';
-  const input = {
-    ministryName,
-    cycleName: payload.cycleName,
-    startDate: formatCalendarDay({ day: payload.cycleStartDate }),
-    endDate: formatCalendarDay({ day: payload.cycleEndDate }),
-  };
-  const title = isReminder
-    ? m.notification_availability_reminder_title({ ministryName }, options)
-    : m.notification_availability_opened_title({ ministryName }, options);
+  const { cycleName } = payload;
+  const title =
+    payload.kind === 'availability.reminder'
+      ? m.notification_availability_reminder_title(
+          { ministryName, cycleName },
+          options,
+        )
+      : m.notification_availability_opened_title(
+          { ministryName, cycleName },
+          options,
+        );
   return {
     ...base,
     subject: title,
     heading: title,
-    facts: [
-      isReminder
-        ? m.notification_availability_reminder_body(input, options)
-        : m.notification_availability_opened_body(input, options),
-    ],
+    facts: availabilityFactLines({ payload, locale }),
     action: {
       label: m.email_availability_action({}, options),
       url: payload.actionUrl,
     },
   };
+}
+
+interface AvailabilityFactLinesInput {
+  payload: AvailabilityEmail;
+  locale: EmailLocale;
+}
+
+/**
+ * The Shift count and span, the Deadline when set, then what to do. Only N4
+ * says the Deadline was missed; N3 is a first ask, so it always says Answer by.
+ */
+function availabilityFactLines({
+  payload,
+  locale,
+}: AvailabilityFactLinesInput): EmailContent['facts'] {
+  const options = { locale };
+  const { shiftCount, answerBy, deadlinePassed } = payload;
+  const isReminder = payload.kind === 'availability.reminder';
+  const days = {
+    startDate: formatCalendarDay({ day: payload.cycleStartDate }),
+    endDate: formatCalendarDay({ day: payload.cycleEndDate }),
+  };
+  const body = (shifts: string) =>
+    isReminder
+      ? m.notification_availability_reminder_body({ shifts, ...days }, options)
+      : m.notification_availability_opened_body({ shifts, ...days }, options);
+  const shifts =
+    shiftCount === undefined
+      ? m.notification_availability_span(days, options)
+      : body(
+          shiftCount === 1
+            ? m.notification_availability_shifts_one({}, options)
+            : m.notification_availability_shifts_other(
+                { count: shiftCount },
+                options,
+              ),
+        );
+  const markOnly = m.notification_availability_mark_only({}, options);
+  if (answerBy === undefined) return [shifts, markOnly];
+  const deadline = formatCalendarDay({ day: answerBy });
+  return [
+    shifts,
+    isReminder && deadlinePassed
+      ? m.notification_availability_deadline_passed({ deadline }, options)
+      : m.notification_availability_answer_by({ deadline }, options),
+    markOnly,
+  ];
 }
 
 interface CycleReadyToPrepareContentInput {

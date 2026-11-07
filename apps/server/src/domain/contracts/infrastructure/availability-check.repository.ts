@@ -1,4 +1,4 @@
-import type { Instant } from '@church/time';
+import type { CalendarDay, Instant } from '@church/time';
 import type {
   AvailabilityCheckId,
   ChurchId,
@@ -175,6 +175,8 @@ export interface AvailabilityCheckRepository {
   listRelevantShiftTotals(
     input: ScheduleScopeInput,
   ): Promise<RelevantShiftTotalRow[]>;
+  /** The Schedule's Deadline; `null` without one or before the Ask. */
+  findAnswerBy(input: ScheduleScopeInput): Promise<CalendarDay | null>;
   /** One row per served Shift, earliest block first; flagged when it names no Role. */
   listServedShifts(input: ScheduleScopeInput): Promise<ServedShiftRow[]>;
   /** Roles a served Shift needs and no active membership holds, by name. */

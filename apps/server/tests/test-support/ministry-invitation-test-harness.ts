@@ -13,6 +13,7 @@ import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-aut
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
   DrizzleAssignmentRepository,
+  DrizzleAvailabilityCheckRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
   DrizzleEventRepository,
@@ -82,6 +83,7 @@ export function createMinistryInvitationTestHarness({
     eventRepository: new DrizzlePlanningEventRepository({ db }),
     eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
     assignmentRepository: new DrizzleAssignmentRepository({ db }),
+    availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({ db }),
     roleRepository,
     volunteerRepository,
     webBaseUrl: 'https://app.test',

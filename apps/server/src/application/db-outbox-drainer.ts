@@ -332,6 +332,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       case 'availability_reminder':
         return this.schedulingFacts.availability({
           churchId,
+          userId: to.userId,
           data: request.data,
         });
       case 'cycle_ready_to_prepare':

@@ -116,7 +116,7 @@ describe('usual-setup journey recipes (#329 cluster B)', () => {
     });
   });
 
-  it('leader-prepare gives the leader its own Ministry and roles, nothing dated', async () => {
+  it('leader-prepare gives the leader its own Ministry and needed-Role holders, nothing dated', async () => {
     const journey = await loadLeaderPrepare({
       journeyKey: 'alpha',
       anchor: ANCHOR,
@@ -131,6 +131,23 @@ describe('usual-setup journey recipes (#329 cluster B)', () => {
       }),
     ).toEqual({ [journey.ministries.worship.id]: 'leader' });
     expect(Object.keys(journey.ministries.worship.roles)).toEqual(['usher']);
+    expect(Object.values(journey.pool).map(({ name }) => name)).toEqual([
+      'Ana Ramos',
+      'Bruno Lima',
+    ]);
+    for (const { volunteerId } of Object.values(journey.pool)) {
+      expect(await ministryAccessLevels({ volunteerId })).toEqual({
+        [journey.ministries.worship.id]: 'volunteer',
+      });
+      expect(await qualifiedRoleIds({ volunteerId })).toEqual([
+        journey.ministries.worship.roles.usher.id,
+      ]);
+    }
+    expect(
+      await qualifiedRoleIds({
+        volunteerId: journey.personas.leader.volunteerId,
+      }),
+    ).toEqual([]);
     expect(await datedRowCounts({ churchId: journey.church.id })).toEqual([
       0, 0,
     ]);

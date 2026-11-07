@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   ASSIGN_JOURNEY_BASE_SCHEMA,
   ASSIGN_PERSONA_SCHEMA,
+  ASSIGN_POOL_VOLUNTEER_SCHEMA,
   assignMinistrySchema,
   CYCLE_WINDOW_SCHEMA,
   type LoadAssignJourneyInput,
@@ -21,6 +22,10 @@ export const LEADER_PREPARE_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     }),
   }),
   personas: z.object({ leader: ASSIGN_PERSONA_SCHEMA }),
+  pool: z.object({
+    ana: ASSIGN_POOL_VOLUNTEER_SCHEMA,
+    bruno: ASSIGN_POOL_VOLUNTEER_SCHEMA,
+  }),
 });
 
 export type LeaderPrepareJourney = z.infer<

@@ -81,6 +81,12 @@ const NOTIFICATION_BELL_SPEC_PATHS = [
 // HTTP, component and outbox seams.
 const CYCLE_HANDOFF_SPEC_PATHS = ['tests/scheduling/us1-admin-plan.spec.ts'];
 
+// J6 (#744): Prepare a Time block, Ask with a Deadline, inspect pending
+// Answers and Remind into the persisted cooldown through the real API/DB.
+const LEADER_AVAILABILITY_SPEC_PATHS = [
+  'tests/scheduling/j6-leader-availability.spec.ts',
+];
+
 // Specs whose starting graph comes from a server E2E recipe (#327): their
 // own journey recipe, or the shared personas global setup loads (#330).
 const JOURNEY_RECIPE_SPEC_PATHS = [
@@ -109,6 +115,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/smoke.spec.ts',
   'tests/scheduling/us1-admin-plan.spec.ts',
   'tests/scheduling/us2-leader-prepare.spec.ts',
+  ...LEADER_AVAILABILITY_SPEC_PATHS,
   'tests/scheduling/us3-volunteer-availability.spec.ts',
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
@@ -178,6 +185,20 @@ const PREPARE_ROUTE_FILES = [
 ].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
 
 export const JOURNEY_MAP: JourneyMapping[] = [
+  ...[
+    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
+    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId.tsx',
+    'apps/web/src/features/scheduling/components/prepare/schedule-ask.tsx',
+    'apps/web/src/features/scheduling/components/availability-status-section.tsx',
+    'apps/web/src/infrastructure/api/prepare.ts',
+    'apps/server/src/api/controllers/prepare-controller.ts',
+    'apps/server/src/api/dtos/participation.dto.ts',
+    'apps/server/src/application/db-availability-check-manager.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-availability-check.repository.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: LEADER_AVAILABILITY_SPEC_PATHS,
+  })),
   ...[
     'apps/web/src/features/people/',
     'apps/web/src/routes/_authenticated/_active-church/people',

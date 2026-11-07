@@ -4,7 +4,9 @@ import type {
   ChurchId,
   CycleId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
+  RoleId,
   ShiftId,
   UserId,
   VolunteerId,
@@ -118,6 +120,19 @@ export interface RelevantShiftTotalRow {
   shiftCount: number;
 }
 
+export interface ServedShiftRow {
+  eventId: EventId;
+  eventTimeBlockId: EventTimeBlockId;
+  eventTimeBlockStartsAt: Instant;
+  flagged: boolean;
+}
+
+export interface RoleWithoutHolderRow {
+  roleId: RoleId;
+  roleName: string;
+  shiftCount: number;
+}
+
 /**
  * The actionable reads (`getCheckContext`, `listByVolunteer`, `listByCycle`,
  * `confirm`) see only checks that are not withdrawn, and the first two only
@@ -144,6 +159,12 @@ export interface AvailabilityCheckRepository {
   listRelevantShiftTotals(
     input: ScheduleScopeInput,
   ): Promise<RelevantShiftTotalRow[]>;
+  /** One row per served Shift, earliest block first; flagged when it names no Role. */
+  listServedShifts(input: ScheduleScopeInput): Promise<ServedShiftRow[]>;
+  /** Roles a served Shift needs and no active membership holds, by name. */
+  listRolesWithoutHolders(
+    input: ScheduleScopeInput,
+  ): Promise<RoleWithoutHolderRow[]>;
   listByCycle(input: ListChecksByCycleInput): Promise<AvailabilityCheck[]>;
   createMany(input: CreateChecksInput): Promise<AvailabilityCheck[]>;
   /** Throws `NotFoundError` unless the check is actionable. */

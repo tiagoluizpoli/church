@@ -172,6 +172,25 @@ export const askAvailabilityResponseSchema = z.object({
   notifiedVolunteerCount: z.number(),
 });
 
+export const askPreviewResponseSchema = z.object({
+  eligibleVolunteerCount: z.number(),
+  shiftCount: z.number(),
+  eventCount: z.number(),
+  flaggedBlocks: z.array(
+    z.object({
+      eventTimeBlockId: z.string(),
+      startsAt: instantSchema,
+    }),
+  ),
+  rolesWithoutHolders: z.array(
+    z.object({
+      roleId: z.string(),
+      roleName: z.string(),
+      shiftCount: z.number(),
+    }),
+  ),
+});
+
 export const scheduleSummaryResponseSchema = z.object({
   cycleId: z.string(),
   name: z.string(),

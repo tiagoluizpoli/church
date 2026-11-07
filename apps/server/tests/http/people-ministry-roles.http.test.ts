@@ -174,6 +174,7 @@ beforeAll(async () => {
         db,
       }),
       cycleRepository: new DrizzleCycleRepository({ db }),
+      ministryRepository: new DrizzleMinistryRepository({ db }),
       notifications,
       unitOfWork,
     }),

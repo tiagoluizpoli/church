@@ -2,8 +2,10 @@ import type { Instant } from '@church/time';
 import type {
   ChurchId,
   CycleId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
+  RoleId,
 } from '../../branded-ids';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 
@@ -41,7 +43,34 @@ export interface CheckStatusRow {
   confirmedAt?: Instant;
 }
 
+export interface GetAskPreviewInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
+}
+
+export interface AskPreviewFlaggedBlock {
+  eventTimeBlockId: EventTimeBlockId;
+  startsAt: Instant;
+}
+
+export interface AskPreviewRoleWithoutHolders {
+  roleId: RoleId;
+  roleName: string;
+  shiftCount: number;
+}
+
+/** What an Ask would cover; the Ministry serving nothing reads as zeroes. */
+export interface AskPreview {
+  eligibleVolunteerCount: number;
+  shiftCount: number;
+  eventCount: number;
+  flaggedBlocks: AskPreviewFlaggedBlock[];
+  rolesWithoutHolders: AskPreviewRoleWithoutHolders[];
+}
+
 export interface IAvailabilityCheckManager {
+  getAskPreview(input: GetAskPreviewInput): Promise<AskPreview>;
   askAvailability(input: AskAvailabilityInput): Promise<AskAvailabilityResult>;
   resendReminder(input: ResendReminderInput): Promise<void>;
   listCheckStatuses(input: ListCheckStatusesInput): Promise<CheckStatusRow[]>;

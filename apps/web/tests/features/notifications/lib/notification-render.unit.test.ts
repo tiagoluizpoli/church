@@ -62,7 +62,17 @@ describe('retained scheduling Notifications', () => {
     const lines = (...parts: string[]) => parts.join('\n');
     const markOnly = () => m.notification_availability_mark_only({}, ptBR);
     const shifts = () =>
-      m.notification_availability_shifts_other({ count: 12, ...days }, ptBR);
+      m.notification_availability_shifts_other({ count: 12 }, ptBR);
+    const openedBody = () =>
+      m.notification_availability_opened_body(
+        { shifts: shifts(), ...days },
+        ptBR,
+      );
+    const reminderBody = () =>
+      m.notification_availability_reminder_body(
+        { shifts: shifts(), ...days },
+        ptBR,
+      );
     const deadline = { deadline: '20/11/2026' };
     const answerBy = '2026-11-20';
 
@@ -73,8 +83,25 @@ describe('retained scheduling Notifications', () => {
       expect(rendered.title).toBe(
         m.notification_availability_opened_title(names, ptBR),
       );
-      expect(rendered.body).toBe(lines(shifts(), markOnly()));
+      expect(rendered.body).toBe(lines(openedBody(), markOnly()));
       expect(rendered.actionLabel).toBe(m.email_availability_action({}, ptBR));
+    });
+
+    it('opened: always says Answer by, even past the Deadline', () => {
+      overwriteGetLocale(() => 'pt-BR');
+      const { body } = render('availability_opened', {
+        shiftCount: 12,
+        answerBy,
+        deadlinePassed: true,
+      });
+
+      expect(body).toBe(
+        lines(
+          openedBody(),
+          m.notification_availability_answer_by(deadline, ptBR),
+          markOnly(),
+        ),
+      );
     });
 
     it('reminder: words the Deadline before and after it passed', () => {
@@ -89,7 +116,7 @@ describe('retained scheduling Notifications', () => {
           .body,
       ).toBe(
         lines(
-          shifts(),
+          reminderBody(),
           m.notification_availability_answer_by(deadline, ptBR),
           markOnly(),
         ),
@@ -99,7 +126,7 @@ describe('retained scheduling Notifications', () => {
           .body,
       ).toBe(
         lines(
-          shifts(),
+          reminderBody(),
           m.notification_availability_deadline_passed(deadline, ptBR),
           markOnly(),
         ),
@@ -110,7 +137,16 @@ describe('retained scheduling Notifications', () => {
       overwriteGetLocale(() => 'pt-BR');
 
       expect(render('availability_opened', { shiftCount: 1 }).body).toBe(
-        lines(m.notification_availability_shifts_one(days, ptBR), markOnly()),
+        lines(
+          m.notification_availability_opened_body(
+            {
+              shifts: m.notification_availability_shifts_one({}, ptBR),
+              ...days,
+            },
+            ptBR,
+          ),
+          markOnly(),
+        ),
       );
     });
 

@@ -32,14 +32,14 @@ export function renderNotification(
     case 'availability_opened':
       return {
         title: m.notification_availability_opened_title(item.data),
-        body: availabilityBody(item.data),
+        body: availabilityBody({ data: item.data, isReminder: false }),
         kindLabel: m.notification_kind_availability_opened(),
         actionLabel: m.email_availability_action(),
       };
     case 'availability_reminder':
       return {
         title: m.notification_availability_reminder_title(item.data),
-        body: availabilityBody(item.data),
+        body: availabilityBody({ data: item.data, isReminder: true }),
         kindLabel: m.notification_kind_availability_reminder(),
         actionLabel: m.email_availability_action(),
       };
@@ -138,32 +138,44 @@ interface AvailabilityData {
   deadlinePassed?: boolean;
 }
 
-/** The email's fact lines; rows frozen before the count and Deadline lack
- * them. Cycle bounds and the Deadline name days, so no timezone applies. */
-function availabilityBody(data: AvailabilityData) {
+interface AvailabilityBodyInput {
+  data: AvailabilityData;
+  isReminder: boolean;
+}
+
+/**
+ * The email's fact lines; rows frozen before the count and Deadline lack them.
+ * Only N4 says the Deadline was missed; N3 always says Answer by. Cycle bounds
+ * and the Deadline name days, so no timezone applies.
+ */
+function availabilityBody({ data, isReminder }: AvailabilityBodyInput) {
   const { shiftCount, answerBy, deadlinePassed } = data;
   const days = {
     startDate: formatCalendarDateOnly({ value: data.cycleStartDate }),
     endDate: formatCalendarDateOnly({ value: data.cycleEndDate }),
   };
+  const body = (shifts: string) =>
+    isReminder
+      ? m.notification_availability_reminder_body({ shifts, ...days })
+      : m.notification_availability_opened_body({ shifts, ...days });
   const shifts =
     shiftCount === undefined
       ? m.notification_availability_span(days)
-      : pluralMessage({
-          count: shiftCount,
-          one: () => m.notification_availability_shifts_one(days),
-          other: () =>
-            m.notification_availability_shifts_other({
-              count: shiftCount,
-              ...days,
-            }),
-        });
+      : body(
+          pluralMessage({
+            count: shiftCount,
+            one: () => m.notification_availability_shifts_one(),
+            other: () =>
+              m.notification_availability_shifts_other({ count: shiftCount }),
+          }),
+        );
   const markOnly = m.notification_availability_mark_only();
   if (answerBy === undefined) return `${shifts}\n${markOnly}`;
   const deadline = formatCalendarDateOnly({ value: answerBy });
-  const answerLine = deadlinePassed
-    ? m.notification_availability_deadline_passed({ deadline })
-    : m.notification_availability_answer_by({ deadline });
+  const answerLine =
+    isReminder && deadlinePassed
+      ? m.notification_availability_deadline_passed({ deadline })
+      : m.notification_availability_answer_by({ deadline });
   return `${shifts}\n${answerLine}\n${markOnly}`;
 }
 

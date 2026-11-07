@@ -247,32 +247,42 @@ interface AvailabilityFactLinesInput {
   locale: EmailLocale;
 }
 
-/** The Shift count and span, the Deadline when set, then what to do. */
+/**
+ * The Shift count and span, the Deadline when set, then what to do. Only N4
+ * says the Deadline was missed; N3 is a first ask, so it always says Answer by.
+ */
 function availabilityFactLines({
   payload,
   locale,
 }: AvailabilityFactLinesInput): EmailContent['facts'] {
   const options = { locale };
   const { shiftCount, answerBy, deadlinePassed } = payload;
+  const isReminder = payload.kind === 'availability.reminder';
   const days = {
     startDate: formatCalendarDay({ day: payload.cycleStartDate }),
     endDate: formatCalendarDay({ day: payload.cycleEndDate }),
   };
+  const body = (shifts: string) =>
+    isReminder
+      ? m.notification_availability_reminder_body({ shifts, ...days }, options)
+      : m.notification_availability_opened_body({ shifts, ...days }, options);
   const shifts =
     shiftCount === undefined
       ? m.notification_availability_span(days, options)
-      : shiftCount === 1
-        ? m.notification_availability_shifts_one(days, options)
-        : m.notification_availability_shifts_other(
-            { count: shiftCount, ...days },
-            options,
-          );
+      : body(
+          shiftCount === 1
+            ? m.notification_availability_shifts_one({}, options)
+            : m.notification_availability_shifts_other(
+                { count: shiftCount },
+                options,
+              ),
+        );
   const markOnly = m.notification_availability_mark_only({}, options);
   if (answerBy === undefined) return [shifts, markOnly];
   const deadline = formatCalendarDay({ day: answerBy });
   return [
     shifts,
-    deadlinePassed
+    isReminder && deadlinePassed
       ? m.notification_availability_deadline_passed({ deadline }, options)
       : m.notification_availability_answer_by({ deadline }, options),
     markOnly,

@@ -434,8 +434,16 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
       }).request;
     }
 
-    const shifts = m.notification_availability_shifts_other(
-      { count: 12, ...days },
+    const shiftWords = m.notification_availability_shifts_other(
+      { count: 12 },
+      ptBR,
+    );
+    const openedBody = m.notification_availability_opened_body(
+      { shifts: shiftWords, ...days },
+      ptBR,
+    );
+    const reminderBody = m.notification_availability_reminder_body(
+      { shifts: shiftWords, ...days },
       ptBR,
     );
     const markOnly = m.notification_availability_mark_only({}, ptBR);
@@ -502,11 +510,24 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
           ptBR,
         ),
       );
-      expect(without.text).toContain(shifts);
+      expect(without.text).toContain(openedBody);
       expect(without.text).toContain(markOnly);
       expect(without.text).not.toContain(answerBy);
       expect(withDeadline.text).toContain(answerBy);
       expect(withDeadline.text).toContain(markOnly);
+    });
+
+    it('opened: always says Answer by, even past the Deadline for a newly eligible Volunteer', () => {
+      const { text } = render({
+        kind: 'availability.opened',
+        ...facts,
+        shiftCount: 12,
+        answerBy: '2026-11-20' as CalendarDay,
+        deadlinePassed: true,
+      });
+
+      expect(text).toContain(answerBy);
+      expect(text).not.toContain(deadlinePassed);
     });
 
     it('reminder: no Deadline, before it and after it', () => {
@@ -530,7 +551,7 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
           ptBR,
         ),
       );
-      expect(without.text).toContain(shifts);
+      expect(without.text).toContain(reminderBody);
       expect(without.text).not.toContain(answerBy);
       expect(without.text).not.toContain(deadlinePassed);
       expect(before.text).toContain(answerBy);
@@ -542,7 +563,15 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
     it('words one Shift in the singular', () => {
       expect(
         render({ kind: 'availability.opened', ...facts, shiftCount: 1 }).text,
-      ).toContain(m.notification_availability_shifts_one(days, ptBR));
+      ).toContain(
+        m.notification_availability_opened_body(
+          {
+            shifts: m.notification_availability_shifts_one({}, ptBR),
+            ...days,
+          },
+          ptBR,
+        ),
+      );
     });
 
     it('renders a row frozen before the Shift count from the Cycle span alone', () => {

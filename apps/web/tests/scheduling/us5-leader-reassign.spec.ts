@@ -77,6 +77,7 @@ interface ReassignedAssignmentResponse {
 
 interface LiveChangesFixture {
   cycleId: string;
+  laterRequirements: { id: string; shiftId: string }[];
   firstShiftId: string;
   secondShiftId: string;
   firstRequirementId: string;
@@ -182,7 +183,8 @@ async function setUpLiveChanges({
   }
 
   const requestResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/prepare/participations/${eventView.participation.id}/ask-availability`,
+    `${SERVER_URL}/api/v1/prepare/cycles/${cycle.id}/ask-availability`,
+    { data: { ministryId: worshipMinistryId } },
   );
   expect(requestResponse.ok()).toBeTruthy();
 
@@ -210,6 +212,11 @@ async function setUpLiveChanges({
 
   return {
     cycleId: cycle.id,
+    // The Ask covers every Event of the Cycle, so all of them must be staffed.
+    laterRequirements: participation.events
+      .slice(1)
+      .flatMap((view) => view.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.requirements),
     firstShiftId: firstShift.id,
     secondShiftId: secondShift.id,
     firstRequirementId: firstRequirement.id,
@@ -238,7 +245,7 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
     throw new Error('Expected the owner persona to be eligible.');
   }
 
-  // Both shifts are staffed so the publish is a full one.
+  // Every shift is staffed so the publish is a full one.
   const firstResponse = await page.request.post(
     `${SERVER_URL}/api/v1/assign/shifts/${fixture.firstShiftId}/assignments`,
     {
@@ -262,6 +269,19 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   expect(secondResponse.ok()).toBeTruthy();
   const secondAssignment = ((await secondResponse.json()) as AssignmentResponse)
     .assignment;
+
+  for (const requirement of fixture.laterRequirements) {
+    const laterResponse = await page.request.post(
+      `${SERVER_URL}/api/v1/assign/shifts/${requirement.shiftId}/assignments`,
+      {
+        data: {
+          volunteerId: owner.volunteerId,
+          shiftRequirementId: requirement.id,
+        },
+      },
+    );
+    expect(laterResponse.ok()).toBeTruthy();
+  }
 
   const publishResponse = await page.request.post(
     `${SERVER_URL}/api/v1/assign/cycles/${fixture.cycleId}/publish`,

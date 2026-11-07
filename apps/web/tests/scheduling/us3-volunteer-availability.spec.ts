@@ -68,12 +68,11 @@ async function askAvailabilityForMinistry({
   // sibling ministry's shifts on their shared dates.
   expect(participation.events.length).toBeGreaterThanOrEqual(2);
 
-  for (const eventView of participation.events) {
-    const requestResponse = await page.request.post(
-      `${SERVER_URL}/api/v1/prepare/participations/${eventView.participation.id}/ask-availability`,
-    );
-    expect(requestResponse.ok()).toBeTruthy();
-  }
+  const requestResponse = await page.request.post(
+    `${SERVER_URL}/api/v1/prepare/cycles/${cycleId}/ask-availability`,
+    { data: { ministryId } },
+  );
+  expect(requestResponse.ok()).toBeTruthy();
 }
 
 interface SetUpTwoMinistryOverlapCycleParams {

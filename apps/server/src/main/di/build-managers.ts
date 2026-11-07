@@ -315,7 +315,6 @@ export function buildManagers({
     overrides.availabilityCheckManager ??
     new DbAvailabilityCheckManager({
       participationRepository: ministryParticipationRepository,
-      eventRepository: planningEventRepository,
       availabilityCheckRepository,
       cycleRepository,
       ministryRepository,

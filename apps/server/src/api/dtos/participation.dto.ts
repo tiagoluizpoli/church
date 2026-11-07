@@ -167,11 +167,6 @@ export const preparationValidationErrorResponseSchema = z.object({
   issues: z.array(z.unknown()).optional(),
 });
 
-export const askAvailabilityResponseSchema = z.object({
-  createdCheckCount: z.number(),
-  notifiedVolunteerCount: z.number(),
-});
-
 const flaggedBlockResponseSchema = z.object({
   eventTimeBlockId: z.string(),
   startsAt: instantSchema,
@@ -205,7 +200,9 @@ export const availabilityDeadlineResponseSchema = z.object({
   answerBy: calendarDaySchema.nullable(),
 });
 
-export const askScheduleResponseSchema = askAvailabilityResponseSchema.extend({
+export const askScheduleResponseSchema = z.object({
+  createdCheckCount: z.number(),
+  notifiedVolunteerCount: z.number(),
   rolesWithoutHolders: z.array(roleWithoutHoldersResponseSchema),
 });
 
@@ -274,17 +271,6 @@ export const scheduleListResponseSchema = z.object({
   schedules: z.array(scheduleResponseSchema),
 });
 export type ScheduleListResponse = z.infer<typeof scheduleListResponseSchema>;
-
-export const availabilityStatusResponseSchema = z.object({
-  statuses: z.array(
-    z.object({
-      volunteerId: z.string(),
-      volunteerName: z.string(),
-      state: z.enum(['pending', 'confirmed']).optional(),
-      confirmedAt: instantSchema.optional(),
-    }),
-  ),
-});
 
 export const answersResponseSchema = z.object({
   asked: z.number(),

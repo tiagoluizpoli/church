@@ -21,13 +21,11 @@ import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   answersResponseSchema,
-  askAvailabilityResponseSchema,
   askBlockedFlaggedShiftsResponseSchema,
   askPreviewResponseSchema,
   askScheduleBodySchema,
   askScheduleResponseSchema,
   availabilityDeadlineResponseSchema,
-  availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
   headcountBelowAssignedResponseSchema,
   participationEventTimeBlockViewSchema,
@@ -63,10 +61,6 @@ type SetAvailabilityDeadlineBody = z.infer<
   typeof setAvailabilityDeadlineBodySchema
 >;
 
-interface ParticipationRouteParams {
-  participationId: string;
-}
-
 interface ParticipationEventTimeBlockRouteParams {
   participationId: string;
   eventTimeBlockId: string;
@@ -91,10 +85,6 @@ const cycleParticipationQuerySchema = z.object({
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
-});
-
-const resendAvailabilityResponseSchema = z.object({
-  resent: z.boolean(),
 });
 
 interface PrepareControllerDependencies {
@@ -507,39 +497,6 @@ export class PrepareController implements FastifyController {
       },
     );
 
-    app.post(
-      '/participations/:participationId/ask-availability',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'askAvailability',
-          summary: 'Ask availability for a MinistryParticipation',
-          description:
-            "Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.",
-          response: {
-            202: askAvailabilityResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const result = await this.availabilityCheckManager.askAvailability({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-        });
-        return reply.status(202).send(result);
-      },
-    );
-
     app.get(
       '/cycles/:cycleId/availability-status',
       {
@@ -582,79 +539,6 @@ export class PrepareController implements FastifyController {
             ministryId: MinistryId.from(ministryId),
           });
         return reply.send(answers);
-      },
-    );
-
-    app.get(
-      '/participations/:participationId/availability-status',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'getAvailabilityStatus',
-          summary: "Get a MinistryParticipation's AvailabilityCheck status",
-          description:
-            "List the AvailabilityCheck states of a MinistryParticipation's Volunteers.",
-          response: {
-            200: availabilityStatusResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const statuses = await this.availabilityCheckManager.listCheckStatuses({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-        });
-        return reply.send({
-          statuses: statuses.map((status) => ({
-            volunteerId: status.volunteerId,
-            volunteerName: status.volunteerName,
-            state: status.state,
-            confirmedAt: status.confirmedAt,
-          })),
-        });
-      },
-    );
-
-    app.post(
-      '/participations/:participationId/resend-availability',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'resendAvailabilityReminder',
-          summary: 'Resend an availability reminder',
-          description:
-            "Resend the availability reminder Notification to a MinistryParticipation's unconfirmed Volunteers.",
-          response: {
-            202: resendAvailabilityResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        await this.availabilityCheckManager.resendReminder({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-        });
-        return reply.status(202).send({ resent: true });
       },
     );
   }

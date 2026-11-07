@@ -1,8 +1,5 @@
-import { appConfig } from '@church/app-config';
-import { NotFoundError } from '@church/core';
 import { parseInstant, parseTimeOfDay } from '@church/time';
-import { describe, expect, it, vi } from 'vitest';
-import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
+import { expect, it, vi } from 'vitest';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   AssignmentId,
@@ -23,7 +20,6 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
-import { AvailabilityCheck } from '@/domain/entities/availability-check';
 import { Event } from '@/domain/entities/event';
 import { EventTemplate } from '@/domain/entities/event-template';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
@@ -39,15 +35,12 @@ import { TemplateTimeBlock } from '@/domain/entities/template-time-block';
 import { UsualSetup } from '@/domain/entities/usual-setup';
 import { Volunteer } from '@/domain/entities/volunteer';
 import {
-  IllegalStateTransitionError,
   InvalidRequiredCountError,
   InvalidShiftSplitError,
 } from '@/domain/errors';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import {
   createAssignmentRepositoryFake,
-  createAvailabilityCheckRepositoryFake,
-  createChurchRepositoryFake,
   createCycleRepositoryFake,
   createEventTemplateRepositoryFake,
   createEventTimeBlockRepositoryFake,
@@ -73,21 +66,6 @@ const shiftId = ShiftId.from('shift');
 const startTime = parseInstant({ value: '2026-08-02T12:00:00.000Z' });
 const endTime = parseInstant({ value: '2026-08-02T15:00:00.000Z' });
 const tx = createTransactionContextFake();
-const cycleId = CycleId.from('cycle');
-const members = [
-  {
-    ministryMembershipId: 'membership-1',
-    volunteerId: VolunteerId.from('volunteer-1'),
-    userId: UserId.from('user-1'),
-    volunteerName: 'One',
-  },
-  {
-    ministryMembershipId: 'membership-2',
-    volunteerId: VolunteerId.from('volunteer-2'),
-    userId: UserId.from('user-2'),
-    volunteerName: 'Two',
-  },
-];
 
 function createRepositories() {
   return {
@@ -154,61 +132,6 @@ function createParticipationHarness({
     notifications,
   });
   return { manager, repositories, participation, block, notifications };
-}
-
-function createAvailabilityCheckHarness() {
-  const participation = new MinistryParticipation({
-    id: participationId,
-    props: { churchId, ministryId, eventId },
-  });
-  const event = new Event({
-    id: eventId,
-    props: {
-      churchId,
-      cycleId,
-      title: 'Service',
-      start: parseInstant({ value: '2026-08-02T09:00:00Z' }),
-      end: parseInstant({ value: '2026-08-02T10:00:00Z' }),
-    },
-  });
-  const participationRepository = createMinistryParticipationRepositoryFake();
-  participationRepository.getById.mockResolvedValue(participation);
-  const eventRepository = createPlanningEventRepositoryFake();
-  eventRepository.getEvent.mockResolvedValue(event);
-  const availabilityCheckRepository = createAvailabilityCheckRepositoryFake();
-  availabilityCheckRepository.listActiveMemberships.mockResolvedValue(members);
-  availabilityCheckRepository.listByCycle.mockResolvedValue([]);
-  availabilityCheckRepository.createMany.mockImplementation(
-    async ({ checks }) =>
-      checks.map(
-        (check) => new AvailabilityCheck({ props: { churchId, ...check } }),
-      ),
-  );
-  const cycleRepository = createCycleRepositoryFake();
-  const unitOfWork = createUnitOfWorkFake({ tx });
-  const notifications = createChurchNotificationsSpy();
-  const manager = new DbAvailabilityCheckManager({
-    participationRepository,
-    eventRepository,
-    availabilityCheckRepository,
-    cycleRepository,
-    ministryRepository: createMinistryRepositoryFake(),
-    churchRepository: createChurchRepositoryFake(),
-    unitOfWork,
-    notifications,
-    config: appConfig,
-  });
-  return {
-    manager,
-    participation,
-    participationRepository,
-    eventRepository,
-    availabilityCheckRepository,
-    cycleRepository,
-    unitOfWork,
-    notifications,
-    tx,
-  };
 }
 
 it('reports full completion when no staffing places are required', async () => {
@@ -591,159 +514,4 @@ it.each([
     ).not.toHaveBeenCalled();
     expect(notifications.enqueue).not.toHaveBeenCalled();
   }
-});
-
-describe('availability requests', () => {
-  it('creates checks for active memberships and requests their notification', async () => {
-    const {
-      manager,
-      availabilityCheckRepository: checks,
-      participationRepository,
-      eventRepository,
-      notifications,
-      tx,
-    } = createAvailabilityCheckHarness();
-    await expect(
-      manager.askAvailability({ churchId, participationId }),
-    ).resolves.toEqual({ createdCheckCount: 2, notifiedVolunteerCount: 2 });
-    expect(checks.listActiveMemberships).toHaveBeenCalledWith({
-      churchId,
-      ministryId,
-      tx,
-    });
-    expect(checks.listByCycle).toHaveBeenCalledWith({
-      churchId,
-      cycleId,
-      ministryMembershipIds: ['membership-1', 'membership-2'],
-      tx,
-    });
-    expect(checks.createMany).toHaveBeenCalledWith({
-      churchId,
-      checks: [
-        { cycleId, ministryMembershipId: 'membership-1' },
-        { cycleId, ministryMembershipId: 'membership-2' },
-      ],
-      tx,
-    });
-    expect(participationRepository.getById).toHaveBeenCalledWith({
-      churchId,
-      participationId,
-      tx,
-    });
-    expect(eventRepository.getEvent).toHaveBeenCalledWith({
-      churchId,
-      eventId,
-      tx,
-    });
-    expect(participationRepository.updateState).toHaveBeenCalledWith({
-      churchId,
-      participationId,
-      state: 'availability_requested',
-      tx,
-    });
-    expect(notifications.enqueue).toHaveBeenCalledWith({
-      tx,
-      kind: 'availability_opened',
-      to: [
-        { userId: UserId.from('user-1'), churchId },
-        { userId: UserId.from('user-2'), churchId },
-      ],
-      data: { cycleId, ministryId },
-    });
-  });
-  it('reuses existing checks and notifies only newly requested members', async () => {
-    const {
-      manager,
-      availabilityCheckRepository: checks,
-      notifications,
-      tx,
-    } = createAvailabilityCheckHarness();
-    checks.listByCycle.mockResolvedValue([
-      new AvailabilityCheck({
-        props: { churchId, cycleId, ministryMembershipId: 'membership-1' },
-      }),
-    ]);
-    await expect(
-      manager.askAvailability({ churchId, participationId }),
-    ).resolves.toEqual({ createdCheckCount: 1, notifiedVolunteerCount: 1 });
-    expect(checks.createMany).toHaveBeenCalledWith({
-      churchId,
-      checks: [{ cycleId, ministryMembershipId: 'membership-2' }],
-      tx,
-    });
-    expect(notifications.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: [{ churchId, userId: UserId.from('user-2') }],
-      }),
-    );
-  });
-
-  it('rejects a repeated request and a reminder before requesting', async () => {
-    const {
-      manager,
-      participation,
-      availabilityCheckRepository: checks,
-    } = createAvailabilityCheckHarness();
-    await expect(
-      manager.resendReminder({ churchId, participationId }),
-    ).rejects.toThrow(IllegalStateTransitionError);
-    participation.askAvailability();
-    await expect(
-      manager.askAvailability({ churchId, participationId }),
-    ).rejects.toThrow(IllegalStateTransitionError);
-    expect(checks.createMany).not.toHaveBeenCalled();
-  });
-
-  it('reminds only pending members without creating checks', async () => {
-    const {
-      manager,
-      participation,
-      availabilityCheckRepository: checks,
-      notifications,
-      tx,
-    } = createAvailabilityCheckHarness();
-    participation.askAvailability();
-    checks.listByCycle.mockResolvedValue([
-      new AvailabilityCheck({
-        props: { churchId, cycleId, ministryMembershipId: 'membership-1' },
-      }),
-      new AvailabilityCheck({
-        props: {
-          churchId,
-          cycleId,
-          ministryMembershipId: 'membership-2',
-          state: 'confirmed',
-        },
-      }),
-    ]);
-    await manager.resendReminder({ churchId, participationId });
-    expect(checks.createMany).not.toHaveBeenCalled();
-    expect(notifications.enqueue).toHaveBeenCalledWith({
-      tx,
-      kind: 'availability_reminder',
-      to: [{ churchId, userId: UserId.from('user-1') }],
-      data: { cycleId, ministryId },
-    });
-  });
-
-  it('propagates a scoped participation lookup failure', async () => {
-    const {
-      manager,
-      participationRepository,
-      availabilityCheckRepository: checks,
-      tx,
-    } = createAvailabilityCheckHarness();
-    participationRepository.getById.mockRejectedValue(
-      new NotFoundError('participation'),
-    );
-    await expect(
-      manager.askAvailability({ churchId, participationId }),
-    ).rejects.toThrow(NotFoundError);
-    expect(participationRepository.getById).toHaveBeenCalledWith({
-      churchId,
-      participationId,
-      tx,
-    });
-    expect(checks.createMany).not.toHaveBeenCalled();
-  });
 });

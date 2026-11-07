@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { GetAvailabilityStatus200StatusesItem } from '@/infrastructure/api/churchAPI.schemas';
+import type { GetCycleAvailabilityStatus200StatusesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 
 export interface AvailabilityStatusSectionProps {
@@ -17,7 +17,7 @@ export interface AvailabilityStatusSectionProps {
 }
 
 interface DescribeAcknowledgementInput {
-  state: GetAvailabilityStatus200StatusesItem['state'];
+  state: GetCycleAvailabilityStatus200StatusesItem['state'];
 }
 
 function getErrorMessage(error: unknown): string {

@@ -21,7 +21,10 @@ import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   askAvailabilityResponseSchema,
+  askBlockedFlaggedShiftsResponseSchema,
   askPreviewResponseSchema,
+  askScheduleBodySchema,
+  askScheduleResponseSchema,
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
   headcountBelowAssignedResponseSchema,
@@ -47,6 +50,8 @@ interface ScheduleSummaryRouteParams {
 interface CycleMinistryQuery {
   ministryId: string;
 }
+
+type AskScheduleBody = z.infer<typeof askScheduleBodySchema>;
 
 interface ParticipationRouteParams {
   participationId: string;
@@ -343,6 +348,56 @@ export class PrepareController implements FastifyController {
         return reply.send(
           participationMapper.eventTimeBlockViewToResponse(view),
         );
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/ask-availability',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'askScheduleAvailability',
+          summary: 'Ask availability for a Schedule',
+          description:
+            "Move every MinistryParticipation of a Ministry's Schedule to availability_requested, write the ask record, spawn one AvailabilityCheck per Volunteer holding a needed Role and notify each, in one transaction. Refused while a served Shift is flagged, with zero eligible Volunteers, and on a repeat Ask.",
+          body: askScheduleBodySchema,
+          response: {
+            200: askScheduleResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([
+              askBlockedFlaggedShiftsResponseSchema,
+              errorResponseSchema,
+            ]),
+            422: preparationValidationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId } = request.body as AskScheduleBody;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const result = await this.availabilityCheckManager.askSchedule({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.send(result);
       },
     );
 

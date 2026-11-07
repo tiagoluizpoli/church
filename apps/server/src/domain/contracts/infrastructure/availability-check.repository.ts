@@ -110,6 +110,10 @@ export interface ScheduleScopeInput {
   tx?: TransactionContext;
 }
 
+export interface CreateAskRecordInput extends ScheduleScopeInput {
+  askedAt: Date;
+}
+
 export interface CheckMarkCountRow {
   availabilityCheckId: AvailabilityCheckId;
   unavailableShiftCount: number;
@@ -153,6 +157,7 @@ export interface AvailabilityCheckRepository {
   listEligibleMemberships(
     input: ScheduleScopeInput,
   ): Promise<ActiveMinistryMembership[]>;
+  createAskRecord(input: CreateAskRecordInput): Promise<void>;
   /** Per non-withdrawn check of the Schedule, including zero counts. */
   listCheckMarkCounts(input: ScheduleScopeInput): Promise<CheckMarkCountRow[]>;
   /** Per active membership of the Ministry, including zero totals. */

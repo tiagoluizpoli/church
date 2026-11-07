@@ -84,6 +84,7 @@ export function createAvailabilityCheckRepositoryFake() {
       vi.fn<AvailabilityCheckRepository['listActiveMemberships']>(),
     listEligibleMemberships:
       vi.fn<AvailabilityCheckRepository['listEligibleMemberships']>(),
+    createAskRecord: vi.fn<AvailabilityCheckRepository['createAskRecord']>(),
     listCheckMarkCounts:
       vi.fn<AvailabilityCheckRepository['listCheckMarkCounts']>(),
     listRelevantShiftTotals:
@@ -185,6 +186,7 @@ export function createMinistryParticipationRepositoryFake() {
   return {
     getById: vi.fn<MinistryParticipationRepository['getById']>(),
     lockById: vi.fn<MinistryParticipationRepository['lockById']>(),
+    lockSchedule: vi.fn<MinistryParticipationRepository['lockSchedule']>(),
     findByMinistryEvent:
       vi.fn<MinistryParticipationRepository['findByMinistryEvent']>(),
     create: vi.fn<MinistryParticipationRepository['create']>(),

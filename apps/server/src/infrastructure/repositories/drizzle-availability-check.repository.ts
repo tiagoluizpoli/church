@@ -49,6 +49,7 @@ import type {
   CheckMarkCountRow,
   CheckShiftRow,
   ConfirmCheckInput,
+  CreateAskRecordInput,
   CreateChecksInput,
   GetCheckContextInput,
   ListActiveMembershipsInput,
@@ -153,6 +154,18 @@ export class DrizzleAvailabilityCheckRepository
     );
 
     return this.selectActiveMemberships({ ...input, filter: holdsNeededRole });
+  }
+
+  async createAskRecord({
+    churchId,
+    ministryId,
+    cycleId,
+    askedAt,
+    tx,
+  }: CreateAskRecordInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .insert(availabilityAsk)
+      .values({ churchId, ministryId, cycleId, askedAt });
   }
 
   async listCheckMarkCounts({

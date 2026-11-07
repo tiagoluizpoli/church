@@ -86,6 +86,7 @@ beforeAll(async () => {
       }),
       cycleRepository: new DrizzleCycleRepository({ db }),
       ministryRepository,
+      churchRepository: new DrizzleChurchRepository({ db }),
       notifications: {} as never,
       unitOfWork,
     }),

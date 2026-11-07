@@ -319,6 +319,7 @@ export function buildManagers({
       availabilityCheckRepository,
       cycleRepository,
       ministryRepository,
+      churchRepository,
       notifications,
       unitOfWork,
     });

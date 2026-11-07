@@ -15,6 +15,7 @@ import { AssignController } from '@/api/controllers/assign-controller';
 import { PrepareController } from '@/api/controllers/prepare-controller';
 import { DbAvailabilityCheckManager } from '@/application';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
@@ -59,6 +60,7 @@ beforeAll(async () => {
     }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
     ministryRepository: new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
     notifications: createChurchNotificationsSpy(),
     unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
   });

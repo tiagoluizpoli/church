@@ -27,6 +27,7 @@ import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import {
   DrizzleAvailabilityCheckRepository,
+  DrizzleChurchRepository,
   DrizzleCycleRepository,
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
@@ -110,6 +111,7 @@ function buildAvailabilityManager({
     }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
     ministryRepository: new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
     notifications,
     unitOfWork: uow,
   });

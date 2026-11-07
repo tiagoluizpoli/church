@@ -47,6 +47,10 @@ export const appConfigSchema = z.object({
     emailIdempotencyRetentionMs: positiveInt,
   }),
   assignment: z.object({ cancelLeadTimeDays: positiveInt }),
+  availability: z.object({
+    /** How long a Schedule must wait between reminders. */
+    reminderCooldownMs: positiveInt,
+  }),
   notifications: z.object({
     /** Independent channel switches; a disabled sink is skipped for that processing. */
     email: z.object({ enabled: z.boolean() }),
@@ -102,6 +106,7 @@ export const appConfig = appConfigSchema.parse({
     emailIdempotencyRetentionMs: DAY_MS,
   },
   assignment: { cancelLeadTimeDays: 3 },
+  availability: { reminderCooldownMs: DAY_MS },
   notifications: {
     email: { enabled: true },
     inbox: { enabled: true },

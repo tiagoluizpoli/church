@@ -82,6 +82,12 @@ export function createAvailabilityCheckRepositoryFake() {
   return {
     listActiveMemberships:
       vi.fn<AvailabilityCheckRepository['listActiveMemberships']>(),
+    listEligibleMemberships:
+      vi.fn<AvailabilityCheckRepository['listEligibleMemberships']>(),
+    listCheckMarkCounts:
+      vi.fn<AvailabilityCheckRepository['listCheckMarkCounts']>(),
+    listRelevantShiftTotals:
+      vi.fn<AvailabilityCheckRepository['listRelevantShiftTotals']>(),
     listByCycle: vi.fn<AvailabilityCheckRepository['listByCycle']>(),
     createMany: vi.fn<AvailabilityCheckRepository['createMany']>(),
     getCheckContext: vi.fn<AvailabilityCheckRepository['getCheckContext']>(),

@@ -3,6 +3,7 @@ import {
   addChurchMember,
   assignment,
   assignmentAudit,
+  availabilityAsk,
   availabilityCheck,
   createChurch,
   cycle,
@@ -369,6 +370,13 @@ async function seedEveryTenantedTable(): Promise<void> {
     churchId: IDS.church,
     availabilityCheckId: IDS.availabilityCheck,
     shiftId: IDS.shift,
+  });
+
+  await testDb.insert(availabilityAsk).values({
+    churchId: IDS.church,
+    ministryId: IDS.ministry,
+    cycleId: IDS.cycle,
+    askedAt: new Date('2026-06-01T00:00:00Z'),
   });
 
   await testDb.insert(notification).values({

@@ -6,15 +6,28 @@ import {
   event,
   ministry,
   ministryMembership,
+  ministryMembershipRole,
   ministryParticipation,
   shift,
+  shiftRequirement,
+  unavailableShift,
   user,
   volunteer,
 } from '@church/db';
 import { fromDate } from '@church/time';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import {
+  and,
+  countDistinct,
+  eq,
+  exists,
+  inArray,
+  isNull,
+  ne,
+  type SQL,
+} from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 import type {
+  AvailabilityCheckId,
   EventId,
   MinistryId,
   ShiftId,
@@ -25,6 +38,7 @@ import type {
   ActiveMinistryMembership,
   AvailabilityCheckRepository,
   CheckContext,
+  CheckMarkCountRow,
   CheckShiftRow,
   ConfirmCheckInput,
   CreateChecksInput,
@@ -35,6 +49,8 @@ import type {
   ListChecksByVolunteerInput,
   ListMinistryLeaderVolunteerIdsInput,
   MinistryLeaderRow,
+  RelevantShiftTotalRow,
+  ScheduleScopeInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
@@ -52,6 +68,10 @@ export const actionable = () =>
     isNull(availabilityCheck.withdrawnAt),
     eq(ministryMembership.status, 'active'),
   );
+
+interface SelectActiveMembershipsInput extends ListActiveMembershipsInput {
+  filter?: SQL;
+}
 
 interface ShareLockMembershipsInput<Query extends PgSelect> {
   query: Query;
@@ -75,10 +95,153 @@ export class DrizzleAvailabilityCheckRepository
 
   private readonly db: AnyDrizzleDb;
 
-  async listActiveMemberships(
-    input: ListActiveMembershipsInput,
+  /** Each ShiftRequirement of a Shift the Ministry serves in the Cycle. */
+  private servedRequirements({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: ScheduleScopeInput) {
+    return getClient({ db: this.db, tx })
+      .select({
+        shiftId: shiftRequirement.shiftId,
+        roleId: shiftRequirement.roleId,
+      })
+      .from(shiftRequirement)
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shiftRequirement.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          withChurchIsolation({ table: shiftRequirement, churchId }),
+          eq(ministryParticipation.ministryId, ministryId),
+          eq(event.cycleId, cycleId),
+          ne(event.status, 'cancelled'),
+        ),
+      )
+      .as('served_requirement');
+  }
+
+  async listEligibleMemberships(
+    input: ScheduleScopeInput,
   ): Promise<ActiveMinistryMembership[]> {
     const db = getClient({ db: this.db, tx: input.tx });
+    const served = this.servedRequirements(input);
+    const holdsNeededRole = exists(
+      db
+        .select({ roleId: served.roleId })
+        .from(ministryMembershipRole)
+        .innerJoin(served, eq(served.roleId, ministryMembershipRole.roleId))
+        .where(
+          eq(
+            ministryMembershipRole.ministryMembershipId,
+            ministryMembership.id,
+          ),
+        ),
+    );
+
+    return this.selectActiveMemberships({ ...input, filter: holdsNeededRole });
+  }
+
+  async listCheckMarkCounts({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: ScheduleScopeInput): Promise<CheckMarkCountRow[]> {
+    const served = this.servedRequirements({
+      churchId,
+      ministryId,
+      cycleId,
+      tx,
+    });
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        availabilityCheckId: availabilityCheck.id,
+        unavailableShiftCount: countDistinct(unavailableShift.shiftId),
+      })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .leftJoin(
+        ministryMembershipRole,
+        eq(ministryMembershipRole.ministryMembershipId, ministryMembership.id),
+      )
+      .leftJoin(served, eq(served.roleId, ministryMembershipRole.roleId))
+      .leftJoin(
+        unavailableShift,
+        and(
+          eq(unavailableShift.availabilityCheckId, availabilityCheck.id),
+          eq(unavailableShift.shiftId, served.shiftId),
+        ),
+      )
+      .where(
+        and(
+          withChurchIsolation({ table: availabilityCheck, churchId }),
+          eq(availabilityCheck.cycleId, cycleId),
+          eq(ministryMembership.ministryId, ministryId),
+          isNull(availabilityCheck.withdrawnAt),
+        ),
+      )
+      .groupBy(availabilityCheck.id);
+
+    return rows.map((row) => ({
+      availabilityCheckId: row.availabilityCheckId as AvailabilityCheckId,
+      unavailableShiftCount: row.unavailableShiftCount,
+    }));
+  }
+
+  async listRelevantShiftTotals({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: ScheduleScopeInput): Promise<RelevantShiftTotalRow[]> {
+    const served = this.servedRequirements({
+      churchId,
+      ministryId,
+      cycleId,
+      tx,
+    });
+
+    return getClient({ db: this.db, tx })
+      .select({
+        ministryMembershipId: ministryMembership.id,
+        shiftCount: countDistinct(served.shiftId),
+      })
+      .from(ministryMembership)
+      .leftJoin(
+        ministryMembershipRole,
+        eq(ministryMembershipRole.ministryMembershipId, ministryMembership.id),
+      )
+      .leftJoin(served, eq(served.roleId, ministryMembershipRole.roleId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryMembership, churchId }),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.status, 'active'),
+        ),
+      )
+      .groupBy(ministryMembership.id);
+  }
+
+  listActiveMemberships(
+    input: ListActiveMembershipsInput,
+  ): Promise<ActiveMinistryMembership[]> {
+    return this.selectActiveMemberships(input);
+  }
+
+  private async selectActiveMemberships({
+    churchId,
+    ministryId,
+    tx,
+    filter,
+  }: SelectActiveMembershipsInput): Promise<ActiveMinistryMembership[]> {
+    const db = getClient({ db: this.db, tx });
     const query = db
       .select({
         ministryMembershipId: ministryMembership.id,
@@ -91,17 +254,15 @@ export class DrizzleAvailabilityCheckRepository
       .innerJoin(user, eq(user.id, volunteer.userId))
       .where(
         and(
-          eq(ministryMembership.ministryId, input.ministryId),
+          eq(ministryMembership.ministryId, ministryId),
           eq(ministryMembership.status, 'active'),
-          withChurchIsolation({
-            table: ministryMembership,
-            churchId: input.churchId,
-          }),
+          withChurchIsolation({ table: ministryMembership, churchId }),
+          filter,
         ),
       )
       .$dynamic();
     // Ask waits out a concurrent removal.
-    const rows = await shareLockMembershipsInTx({ query, tx: input.tx });
+    const rows = await shareLockMembershipsInTx({ query, tx });
 
     return rows.map((row) => ({
       ministryMembershipId: row.ministryMembershipId,

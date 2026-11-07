@@ -100,17 +100,50 @@ export interface ConfirmCheckInput {
   tx?: TransactionContext;
 }
 
+/** One Schedule: a Ministry's part of a Cycle. */
+export interface ScheduleScopeInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: CycleId;
+  tx?: TransactionContext;
+}
+
+export interface CheckMarkCountRow {
+  availabilityCheckId: AvailabilityCheckId;
+  unavailableShiftCount: number;
+}
+
+export interface RelevantShiftTotalRow {
+  ministryMembershipId: string;
+  shiftCount: number;
+}
+
 /**
  * The actionable reads (`getCheckContext`, `listByVolunteer`, `listByCycle`,
  * `confirm`) see only checks that are not withdrawn, and the first two only
  * on an active Ministry Membership. Inside a transaction,
- * `listActiveMemberships` and `getCheckContext` share-lock the memberships
- * they return, serializing with Remove from Ministry.
+ * `listActiveMemberships`, `listEligibleMemberships` and `getCheckContext`
+ * share-lock the memberships they return, serializing with Remove from
+ * Ministry.
+ *
+ * The Schedule reads count a Shift when the Ministry serves it in the Cycle (a
+ * non-cancelled Event) and a ShiftRequirement of it names a Role the
+ * membership holds, however many requirements match.
  */
 export interface AvailabilityCheckRepository {
   listActiveMemberships(
     input: ListActiveMembershipsInput,
   ): Promise<ActiveMinistryMembership[]>;
+  /** Active memberships holding a Role that a served Shift needs. */
+  listEligibleMemberships(
+    input: ScheduleScopeInput,
+  ): Promise<ActiveMinistryMembership[]>;
+  /** Per non-withdrawn check of the Schedule, including zero counts. */
+  listCheckMarkCounts(input: ScheduleScopeInput): Promise<CheckMarkCountRow[]>;
+  /** Per active membership of the Ministry, including zero totals. */
+  listRelevantShiftTotals(
+    input: ScheduleScopeInput,
+  ): Promise<RelevantShiftTotalRow[]>;
   listByCycle(input: ListChecksByCycleInput): Promise<AvailabilityCheck[]>;
   createMany(input: CreateChecksInput): Promise<AvailabilityCheck[]>;
   /** Throws `NotFoundError` unless the check is actionable. */

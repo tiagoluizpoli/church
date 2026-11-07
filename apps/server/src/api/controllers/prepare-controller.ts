@@ -20,6 +20,7 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  answersResponseSchema,
   askAvailabilityResponseSchema,
   askBlockedFlaggedShiftsResponseSchema,
   askPreviewResponseSchema,
@@ -545,12 +546,12 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'getCycleAvailabilityStatus',
-          summary: "Get a Ministry's AvailabilityCheck status for a cycle",
+          summary: "Get the Answers to a Schedule's Ask",
           description:
-            "List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.",
+            'List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, Deadline and Remind cooldown.',
           querystring: cycleParticipationQuerySchema,
           response: {
-            200: availabilityStatusResponseSchema,
+            200: answersResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
           },
@@ -574,20 +575,13 @@ export class PrepareController implements FastifyController {
         )
           return;
 
-        const statuses =
+        const answers =
           await this.availabilityCheckManager.listCycleCheckStatuses({
             churchId: ChurchId.from(request.churchId),
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
           });
-        return reply.send({
-          statuses: statuses.map((status) => ({
-            volunteerId: status.volunteerId,
-            volunteerName: status.volunteerName,
-            state: status.state,
-            confirmedAt: status.confirmedAt,
-          })),
-        });
+        return reply.send(answers);
       },
     );
 

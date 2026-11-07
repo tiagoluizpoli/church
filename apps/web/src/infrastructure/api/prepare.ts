@@ -158,8 +158,8 @@ const askAvailability = (
       );
     }
   /**
- * List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.
- * @summary Get a Ministry's AvailabilityCheck status for a cycle
+ * List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, Deadline and Remind cooldown.
+ * @summary Get the Answers to a Schedule's Ask
  */
 const getCycleAvailabilityStatus = (
     cycleId: string,

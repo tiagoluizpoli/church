@@ -65,12 +65,24 @@ export interface ListCycleCheckStatusesInput {
   ministryId: MinistryId;
 }
 
-/** Per-membership acknowledgement status; `state` absent means no check requested yet. */
+/** One asked Volunteer: an existing, non-withdrawn check on an active membership. */
 export interface CheckStatusRow {
   volunteerId: string;
   volunteerName: string;
-  state?: AvailabilityCheckState;
+  state: AvailabilityCheckState;
   confirmedAt?: Instant;
+  unavailableShiftCount: number;
+  /** Shifts needing a Role the Volunteer holds: the "3 of 12" basis. */
+  shiftCount: number;
+}
+
+export interface CycleCheckStatuses {
+  asked: number;
+  confirmed: number;
+  answerBy: CalendarDay | null;
+  /** When Remind is next allowed; `null` while it is allowed now. */
+  remindAvailableAt: Instant | null;
+  statuses: CheckStatusRow[];
 }
 
 export interface GetAskPreviewInput {
@@ -105,5 +117,5 @@ export interface IAvailabilityCheckManager {
   listCheckStatuses(input: ListCheckStatusesInput): Promise<CheckStatusRow[]>;
   listCycleCheckStatuses(
     input: ListCycleCheckStatusesInput,
-  ): Promise<CheckStatusRow[]>;
+  ): Promise<CycleCheckStatuses>;
 }

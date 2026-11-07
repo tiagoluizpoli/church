@@ -2825,12 +2825,26 @@ export const GetCycleAvailabilityStatus200StatusesItemState = {
 export type GetCycleAvailabilityStatus200StatusesItem = {
   volunteerId: string;
   volunteerName: string;
-  state?: GetCycleAvailabilityStatus200StatusesItemState;
+  state: GetCycleAvailabilityStatus200StatusesItemState;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
+  unavailableShiftCount: number;
+  shiftCount: number;
 };
 
 export type GetCycleAvailabilityStatus200 = {
+  asked: number;
+  confirmed: number;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+     */
+  remindAvailableAt: string | null;
   statuses: GetCycleAvailabilityStatus200StatusesItem[];
 };
 

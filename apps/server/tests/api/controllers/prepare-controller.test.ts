@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { parseInstant } from '@church/time';
+import { parseCalendarDay, parseInstant } from '@church/time';
 import {
   afterAll,
   beforeAll,
@@ -384,18 +384,29 @@ describe('Prepare participation routes', () => {
   });
 
   it('GET /api/v1/prepare/cycles/:id/availability-status returns 200', async () => {
-    availabilityCheckManager.listCycleCheckStatuses.mockResolvedValue([
-      {
-        volunteerId: 'vol-1',
-        volunteerName: 'E2E Volunteer',
-        state: 'confirmed',
-        confirmedAt: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
-      },
-      {
-        volunteerId: 'vol-2',
-        volunteerName: 'Grace Hopper',
-      },
-    ]);
+    availabilityCheckManager.listCycleCheckStatuses.mockResolvedValue({
+      asked: 2,
+      confirmed: 1,
+      answerBy: parseCalendarDay({ value: '2026-08-20' }),
+      remindAvailableAt: parseInstant({ value: '2026-08-04T10:00:00.000Z' }),
+      statuses: [
+        {
+          volunteerId: 'vol-1',
+          volunteerName: 'E2E Volunteer',
+          state: 'confirmed',
+          confirmedAt: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
+          unavailableShiftCount: 3,
+          shiftCount: 12,
+        },
+        {
+          volunteerId: 'vol-2',
+          volunteerName: 'Grace Hopper',
+          state: 'pending',
+          unavailableShiftCount: 0,
+          shiftCount: 4,
+        },
+      ],
+    });
 
     const response = await app.inject({
       method: 'GET',
@@ -404,16 +415,25 @@ describe('Prepare participation routes', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
+      asked: 2,
+      confirmed: 1,
+      answerBy: '2026-08-20',
+      remindAvailableAt: '2026-08-04T10:00:00.000Z',
       statuses: [
         {
           volunteerId: 'vol-1',
           volunteerName: 'E2E Volunteer',
           state: 'confirmed',
           confirmedAt: '2026-08-03T10:00:00.000Z',
+          unavailableShiftCount: 3,
+          shiftCount: 12,
         },
         {
           volunteerId: 'vol-2',
           volunteerName: 'Grace Hopper',
+          state: 'pending',
+          unavailableShiftCount: 0,
+          shiftCount: 4,
         },
       ],
     });

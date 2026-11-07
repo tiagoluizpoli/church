@@ -172,27 +172,6 @@ export class DrizzleAvailabilityCheckRepository
       .values({ churchId, ministryId, cycleId, askedAt, answerBy });
   }
 
-  async setAnswerBy({
-    churchId,
-    ministryId,
-    cycleId,
-    answerBy,
-    tx,
-  }: SetAnswerByInput): Promise<boolean> {
-    const updated = await getClient({ db: this.db, tx })
-      .update(availabilityAsk)
-      .set({ answerBy })
-      .where(
-        and(
-          withChurchIsolation({ table: availabilityAsk, churchId }),
-          eq(availabilityAsk.ministryId, ministryId),
-          eq(availabilityAsk.cycleId, cycleId),
-        ),
-      )
-      .returning({ id: availabilityAsk.id });
-    return updated.length > 0;
-  }
-
   /** One Schedule's ask record, by its unique key. */
   private askRecordOf({ churchId, ministryId, cycleId }: ScheduleScopeInput) {
     return and(
@@ -213,6 +192,27 @@ export class DrizzleAvailabilityCheckRepository
     return {
       lastRemindedAt: lastRemindedAt && fromDate({ date: lastRemindedAt }),
     };
+  }
+
+  async setAnswerBy({
+    churchId,
+    ministryId,
+    cycleId,
+    answerBy,
+    tx,
+  }: SetAnswerByInput): Promise<boolean> {
+    const updated = await getClient({ db: this.db, tx })
+      .update(availabilityAsk)
+      .set({ answerBy })
+      .where(
+        and(
+          withChurchIsolation({ table: availabilityAsk, churchId }),
+          eq(availabilityAsk.ministryId, ministryId),
+          eq(availabilityAsk.cycleId, cycleId),
+        ),
+      )
+      .returning({ id: availabilityAsk.id });
+    return updated.length > 0;
   }
 
   async stampReminded({

@@ -6792,10 +6792,11 @@ paths:
   /api/v1/prepare/cycles/{cycleId}/availability-status:
     get:
       operationId: getCycleAvailabilityStatus
-      summary: Get a Ministry's AvailabilityCheck status for a cycle
+      summary: Get the Answers to a Schedule's Ask
       tags:
         - prepare
-      description: List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.
+      description: List the asked Volunteers with their marks and relevant Shift
+        totals, plus the confirmed counts, Deadline and Remind cooldown.
       parameters:
         - schema:
             type: string
@@ -6815,6 +6816,20 @@ paths:
               schema:
                 type: object
                 properties:
+                  asked:
+                    type: number
+                  confirmed:
+                    type: number
+                  answerBy:
+                    nullable: true
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  remindAvailableAt:
+                    nullable: true
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                   statuses:
                     type: array
                     items:
@@ -6833,11 +6848,22 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        unavailableShiftCount:
+                          type: number
+                        shiftCount:
+                          type: number
                       required:
                         - volunteerId
                         - volunteerName
+                        - state
+                        - unavailableShiftCount
+                        - shiftCount
                       additionalProperties: false
                 required:
+                  - asked
+                  - confirmed
+                  - answerBy
+                  - remindAvailableAt
                   - statuses
                 additionalProperties: false
         "403":

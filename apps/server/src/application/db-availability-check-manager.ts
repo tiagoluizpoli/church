@@ -3,6 +3,7 @@ import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
   compareCalendarDays,
+  type Instant,
   millisecondsBetween,
   now,
   toDate,
@@ -16,6 +17,7 @@ import type {
   AskScheduleInput,
   AskScheduleResult,
   CheckStatusRow,
+  CycleCheckStatuses,
   GetAskPreviewInput,
   IAvailabilityCheckManager,
   ListCheckStatusesInput,
@@ -71,6 +73,10 @@ interface DbAvailabilityCheckManagerDependencies {
   notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
   config: AppConfig;
+}
+
+interface RemindAvailableAtInput {
+  lastRemindedAt: Instant | null;
 }
 
 interface EnsureCycleAskableInput {
@@ -368,17 +374,9 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       }
 
       const remindedAt = now();
-      const { lastRemindedAt } = askRecord;
-      if (lastRemindedAt) {
-        const remindAvailableAt = addMilliseconds({
-          instant: lastRemindedAt,
-          milliseconds: this.reminderCooldownMs,
-        });
-        const waitMs = millisecondsBetween({
-          start: remindedAt,
-          end: remindAvailableAt,
-        });
-        if (waitMs > 0) throw new RemindOnCooldownError({ remindAvailableAt });
+      const remindAvailableAt = this.remindAvailableAt(askRecord);
+      if (remindAvailableAt) {
+        throw new RemindOnCooldownError({ remindAvailableAt });
       }
 
       // Read before the sweep: a check it creates gets the opened notice, never the reminder.
@@ -533,45 +531,91 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       churchId: input.churchId,
       eventId: participation.eventId,
     });
-    return this.listCycleCheckStatuses({
+    const { statuses } = await this.listCycleCheckStatuses({
       churchId: input.churchId,
       cycleId: event.cycleId,
       ministryId: participation.ministryId,
     });
+    return statuses;
   }
 
   async listCycleCheckStatuses(
     input: ListCycleCheckStatusesInput,
-  ): Promise<CheckStatusRow[]> {
-    await this.cycleRepository.getById({
-      churchId: input.churchId,
-      cycleId: input.cycleId,
+  ): Promise<CycleCheckStatuses> {
+    const { churchId, cycleId, ministryId } = input;
+    const ministry = await this.ministryRepository.getById({
+      churchId,
+      id: ministryId,
     });
-    const memberships =
-      await this.availabilityCheckRepository.listActiveMemberships({
-        churchId: input.churchId,
-        ministryId: input.ministryId,
-      });
+    if (ministry.deletedAt)
+      throw new NotFoundError(`Ministry not found: ${ministryId}`);
+    await this.cycleRepository.getById({ churchId, cycleId });
+
+    const [memberships, markCounts, shiftTotals, answerBy, askRecord] =
+      await Promise.all([
+        this.availabilityCheckRepository.listActiveMemberships(input),
+        this.availabilityCheckRepository.listCheckMarkCounts(input),
+        this.availabilityCheckRepository.listRelevantShiftTotals(input),
+        this.availabilityCheckRepository.findAnswerBy(input),
+        this.availabilityCheckRepository.findAskRecord(input),
+      ]);
     const checks = await this.availabilityCheckRepository.listByCycle({
-      churchId: input.churchId,
-      cycleId: input.cycleId,
+      churchId,
+      cycleId,
       ministryMembershipIds: memberships.map(
-        (membership) => membership.ministryMembershipId,
+        ({ ministryMembershipId }) => ministryMembershipId,
       ),
     });
     const checkByMembershipId = new Map(
       checks.map((check) => [check.ministryMembershipId, check]),
     );
+    const marksByCheckId = new Map(
+      markCounts.map((row) => [
+        row.availabilityCheckId,
+        row.unavailableShiftCount,
+      ]),
+    );
+    const shiftsByMembershipId = new Map(
+      shiftTotals.map((row) => [row.ministryMembershipId, row.shiftCount]),
+    );
 
-    return memberships.map((membership) => {
-      const check = checkByMembershipId.get(membership.ministryMembershipId);
-      return {
-        volunteerId: membership.volunteerId as string,
-        volunteerName: membership.volunteerName,
-        state: check?.state,
-        confirmedAt: check?.confirmedAt,
-      };
+    const statuses = memberships.flatMap<CheckStatusRow>(
+      ({ ministryMembershipId, volunteerId, volunteerName }) => {
+        const check = checkByMembershipId.get(ministryMembershipId);
+        if (!check) return [];
+        return {
+          volunteerId: volunteerId as string,
+          volunteerName,
+          state: check.state,
+          confirmedAt: check.confirmedAt,
+          unavailableShiftCount: marksByCheckId.get(check.id) ?? 0,
+          shiftCount: shiftsByMembershipId.get(ministryMembershipId) ?? 0,
+        };
+      },
+    );
+
+    return {
+      asked: statuses.length,
+      confirmed: statuses.filter(({ state }) => state === 'confirmed').length,
+      answerBy,
+      remindAvailableAt: this.remindAvailableAt({
+        lastRemindedAt: askRecord?.lastRemindedAt ?? null,
+      }),
+      statuses,
+    };
+  }
+
+  /** Null unless a past Remind still holds the cooldown. */
+  private remindAvailableAt({
+    lastRemindedAt,
+  }: RemindAvailableAtInput): Instant | null {
+    if (!lastRemindedAt) return null;
+    const availableAt = addMilliseconds({
+      instant: lastRemindedAt,
+      milliseconds: this.reminderCooldownMs,
     });
+    const waitMs = millisecondsBetween({ start: now(), end: availableAt });
+    return waitMs > 0 ? availableAt : null;
   }
 
   async resendReminder(input: ResendReminderInput): Promise<void> {

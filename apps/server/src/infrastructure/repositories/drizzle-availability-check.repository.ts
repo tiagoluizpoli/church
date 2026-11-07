@@ -17,7 +17,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { fromDate } from '@church/time';
+import { type CalendarDay, fromDate, parseCalendarDay } from '@church/time';
 import {
   and,
   asc,
@@ -273,6 +273,25 @@ export class DrizzleAvailabilityCheckRepository
         ),
       )
       .groupBy(ministryMembership.id);
+  }
+
+  async findAnswerBy({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: ScheduleScopeInput): Promise<CalendarDay | null> {
+    const [ask] = await getClient({ db: this.db, tx })
+      .select({ answerBy: availabilityAsk.answerBy })
+      .from(availabilityAsk)
+      .where(
+        and(
+          withChurchIsolation({ table: availabilityAsk, churchId }),
+          eq(availabilityAsk.ministryId, ministryId),
+          eq(availabilityAsk.cycleId, cycleId),
+        ),
+      );
+    return ask?.answerBy ? parseCalendarDay({ value: ask.answerBy }) : null;
   }
 
   async listServedShifts({

@@ -90,6 +90,7 @@ export function createAvailabilityCheckRepositoryFake() {
       vi.fn<AvailabilityCheckRepository['listCheckMarkCounts']>(),
     listRelevantShiftTotals:
       vi.fn<AvailabilityCheckRepository['listRelevantShiftTotals']>(),
+    findAnswerBy: vi.fn<AvailabilityCheckRepository['findAnswerBy']>(),
     listServedShifts: vi.fn<AvailabilityCheckRepository['listServedShifts']>(),
     listRolesWithoutHolders:
       vi.fn<AvailabilityCheckRepository['listRolesWithoutHolders']>(),

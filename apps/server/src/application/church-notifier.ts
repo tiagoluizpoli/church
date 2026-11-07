@@ -270,5 +270,8 @@ function availabilityEmailFacts(data: AvailabilityDeliveryFacts) {
     cycleStartDate: data.cycleStartDate,
     cycleEndDate: data.cycleEndDate,
     actionUrl: data.actionUrl,
+    shiftCount: data.shiftCount,
+    answerBy: data.answerBy,
+    deadlinePassed: data.deadlinePassed,
   };
 }

@@ -48,6 +48,7 @@ import {
 } from '@/seeds/builders/volunteer';
 import {
   createSchedulingManagers,
+  seedInclusion,
   seedRequirement,
   seedRole,
   seedRoleQualification,
@@ -245,6 +246,11 @@ async function seedServedEvent({
     start,
     end,
     status: 'scheduled',
+  });
+  await seedInclusion({
+    churchId,
+    participationId: graph.participation.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
   });
   const shift = await seedShift({
     churchId,
@@ -931,6 +937,35 @@ describe('PUT /prepare/cycles/:cycleId/availability-deadline', () => {
         .update(ministryParticipation)
         .set({ state: 'published' })
         .where(eq(ministryParticipation.ministryId, ministryId));
+
+      await expectRefused({ cycleId, ministryId });
+    });
+
+    it.each([
+      ['an unserved Event', 'scheduled', false],
+      ['a cancelled Event', 'cancelled', true],
+    ] as const)('refuses a published Schedule whose only preparing row is %s', async (_label, status, served) => {
+      const { churchId, ministryId, cycleId } = await seedAsked();
+      await db
+        .update(ministryParticipation)
+        .set({ state: 'published' })
+        .where(eq(ministryParticipation.ministryId, ministryId));
+      const other = await createSchedulingPhase3EventGraph({
+        churchId,
+        cycleId,
+        ministryId,
+        title: 'Not serving',
+        start: FIRST_START,
+        end: FIRST_END,
+        status,
+      });
+      if (served) {
+        await seedInclusion({
+          churchId,
+          participationId: other.participation.id,
+          eventTimeBlockId: other.eventTimeBlock.id,
+        });
+      }
 
       await expectRefused({ cycleId, ministryId });
     });

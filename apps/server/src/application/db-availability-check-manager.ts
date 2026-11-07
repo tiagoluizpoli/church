@@ -339,9 +339,16 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     const cycle = await this.cycleRepository.getById({ churchId, cycleId, tx });
     ensureCycleAskable({ cycle, timeZone, transition });
 
-    const participations =
-      await this.participationRepository.lockSchedule(scope);
-    const servingStates = participations.map(({ state }) => state);
+    await this.participationRepository.lockSchedule(scope);
+    // Read after the lock, on the Schedules read's basis: unserved and cancelled rows do not count.
+    const servingRows =
+      await this.participationRepository.listScheduleServingStates({
+        churchId,
+        ministryIds: [ministryId],
+        cycleIds: [cycleId],
+        tx,
+      });
+    const servingStates = servingRows.map(({ state }) => state);
     if (deriveScheduleStage({ servingStates }) === 'published') {
       throw new IllegalStateTransitionError({
         from: 'published',

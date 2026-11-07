@@ -318,6 +318,7 @@ export function buildManagers({
       eventRepository: planningEventRepository,
       availabilityCheckRepository,
       cycleRepository,
+      ministryRepository,
       notifications,
       unitOfWork,
     });

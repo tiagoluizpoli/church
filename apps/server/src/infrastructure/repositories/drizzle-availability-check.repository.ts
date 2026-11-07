@@ -5,10 +5,12 @@ import {
   church,
   cycle,
   event,
+  eventTimeBlock,
   ministry,
   ministryMembership,
   ministryMembershipRole,
   ministryParticipation,
+  role,
   shift,
   shiftRequirement,
   unavailableShift,
@@ -18,19 +20,24 @@ import {
 import { type CalendarDay, fromDate, parseCalendarDay } from '@church/time';
 import {
   and,
+  asc,
+  count,
   countDistinct,
   eq,
   exists,
   inArray,
   isNull,
   ne,
+  not,
   type SQL,
 } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 import type {
   AvailabilityCheckId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
+  RoleId,
   ShiftId,
   UserId,
   VolunteerId,
@@ -51,7 +58,9 @@ import type {
   ListMinistryLeaderVolunteerIdsInput,
   MinistryLeaderRow,
   RelevantShiftTotalRow,
+  RoleWithoutHolderRow,
   ScheduleScopeInput,
+  ServedShiftRow,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
@@ -247,6 +256,87 @@ export class DrizzleAvailabilityCheckRepository
         ),
       );
     return ask?.answerBy ? parseCalendarDay({ value: ask.answerBy }) : null;
+  }
+
+  async listServedShifts({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: ScheduleScopeInput): Promise<ServedShiftRow[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        eventId: event.id,
+        eventTimeBlockId: eventTimeBlock.id,
+        eventTimeBlockStartsAt: eventTimeBlock.startTime,
+        requirementCount: count(shiftRequirement.id),
+      })
+      .from(shift)
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shift.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .leftJoin(shiftRequirement, eq(shiftRequirement.shiftId, shift.id))
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          eq(ministryParticipation.ministryId, ministryId),
+          eq(event.cycleId, cycleId),
+          ne(event.status, 'cancelled'),
+        ),
+      )
+      .groupBy(shift.id, event.id, eventTimeBlock.id)
+      .orderBy(asc(eventTimeBlock.startTime));
+
+    return rows.map((row) => ({
+      eventId: row.eventId as EventId,
+      eventTimeBlockId: row.eventTimeBlockId as EventTimeBlockId,
+      eventTimeBlockStartsAt: fromDate({ date: row.eventTimeBlockStartsAt }),
+      flagged: row.requirementCount === 0,
+    }));
+  }
+
+  async listRolesWithoutHolders(
+    input: ScheduleScopeInput,
+  ): Promise<RoleWithoutHolderRow[]> {
+    const { churchId, ministryId, tx } = input;
+    const db = getClient({ db: this.db, tx });
+    const served = this.servedRequirements(input);
+    const held = exists(
+      db
+        .select({ roleId: ministryMembershipRole.roleId })
+        .from(ministryMembershipRole)
+        .innerJoin(
+          ministryMembership,
+          eq(
+            ministryMembership.id,
+            ministryMembershipRole.ministryMembershipId,
+          ),
+        )
+        .where(
+          and(
+            eq(ministryMembershipRole.roleId, role.id),
+            withChurchIsolation({ table: ministryMembership, churchId }),
+            eq(ministryMembership.ministryId, ministryId),
+            eq(ministryMembership.status, 'active'),
+          ),
+        ),
+    );
+    const rows = await db
+      .select({
+        roleId: role.id,
+        roleName: role.name,
+        shiftCount: countDistinct(served.shiftId),
+      })
+      .from(served)
+      .innerJoin(role, eq(role.id, served.roleId))
+      .where(not(held))
+      .groupBy(role.id)
+      .orderBy(asc(role.name));
+
+    return rows.map((row) => ({ ...row, roleId: row.roleId as RoleId }));
   }
 
   listActiveMemberships(

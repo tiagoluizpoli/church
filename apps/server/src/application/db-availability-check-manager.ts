@@ -1,8 +1,11 @@
+import { NotFoundError } from '@church/core';
 import type { CycleId } from '../domain/branded-ids';
 import type {
   AskAvailabilityInput,
   AskAvailabilityResult,
+  AskPreview,
   CheckStatusRow,
+  GetAskPreviewInput,
   IAvailabilityCheckManager,
   ListCheckStatusesInput,
   ListCycleCheckStatusesInput,
@@ -14,6 +17,7 @@ import type {
   AvailabilityCheckRepository,
 } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
+import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
@@ -35,6 +39,7 @@ interface DbAvailabilityCheckManagerDependencies {
   eventRepository: PlanningEventRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
   cycleRepository: CycleRepository;
+  ministryRepository: MinistryRepository;
   notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
 }
@@ -44,6 +49,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
   private readonly eventRepository: PlanningEventRepository;
   private readonly availabilityCheckRepository: AvailabilityCheckRepository;
   private readonly cycleRepository: CycleRepository;
+  private readonly ministryRepository: MinistryRepository;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
 
@@ -52,6 +58,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     eventRepository,
     availabilityCheckRepository,
     cycleRepository,
+    ministryRepository,
     notifications,
     unitOfWork,
   }: DbAvailabilityCheckManagerDependencies) {
@@ -59,8 +66,43 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     this.eventRepository = eventRepository;
     this.availabilityCheckRepository = availabilityCheckRepository;
     this.cycleRepository = cycleRepository;
+    this.ministryRepository = ministryRepository;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
+  }
+
+  async getAskPreview(input: GetAskPreviewInput): Promise<AskPreview> {
+    const { churchId, cycleId, ministryId } = input;
+    const ministry = await this.ministryRepository.getById({
+      churchId,
+      id: ministryId,
+    });
+    if (ministry.deletedAt)
+      throw new NotFoundError(`Ministry not found: ${ministryId}`);
+    await this.cycleRepository.getById({ churchId, cycleId });
+
+    const [eligibleMemberships, servedShifts, rolesWithoutHolders] =
+      await Promise.all([
+        this.availabilityCheckRepository.listEligibleMemberships(input),
+        this.availabilityCheckRepository.listServedShifts(input),
+        this.availabilityCheckRepository.listRolesWithoutHolders(input),
+      ]);
+    const flaggedStartByBlock = new Map(
+      servedShifts
+        .filter((shift) => shift.flagged)
+        .map((shift) => [shift.eventTimeBlockId, shift.eventTimeBlockStartsAt]),
+    );
+
+    return {
+      eligibleVolunteerCount: eligibleMemberships.length,
+      shiftCount: servedShifts.length,
+      eventCount: new Set(servedShifts.map((shift) => shift.eventId)).size,
+      flaggedBlocks: Array.from(
+        flaggedStartByBlock,
+        ([eventTimeBlockId, startsAt]) => ({ eventTimeBlockId, startsAt }),
+      ),
+      rolesWithoutHolders,
+    };
   }
 
   async askAvailability(

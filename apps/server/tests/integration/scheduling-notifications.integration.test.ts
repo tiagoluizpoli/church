@@ -29,6 +29,7 @@ import {
   DrizzleAvailabilityCheckRepository,
   DrizzleCycleRepository,
   DrizzleMinistryParticipationRepository,
+  DrizzleMinistryRepository,
   DrizzleNotificationRepository,
   DrizzlePlanningEventRepository,
 } from '@/infrastructure/repositories';
@@ -108,6 +109,7 @@ function buildAvailabilityManager({
       db: schedulingTestDb,
     }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+    ministryRepository: new DrizzleMinistryRepository({ db: schedulingTestDb }),
     notifications,
     unitOfWork: uow,
   });

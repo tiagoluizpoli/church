@@ -190,6 +190,7 @@ function createAvailabilityCheckHarness() {
     eventRepository,
     availabilityCheckRepository,
     cycleRepository,
+    ministryRepository: createMinistryRepositoryFake(),
     unitOfWork,
     notifications,
   });

@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { CalendarDay, Instant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
+  AvailabilityEmail,
   ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
   EmailDuration,
@@ -412,60 +413,173 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
     recipientFirstName: 'João',
   };
 
-  it('words availability opened and its reminder from the bell keys, with escaped facts', () => {
+  describe('N3/N4 availability wording', () => {
+    const ministryName = 'Louvor & <Banda>';
+    const cycleName = 'Dezembro';
+    const days = { startDate: '01/12/2026', endDate: '31/12/2026' };
     const facts = {
       ...member,
-      ministryName: 'Louvor & <Banda>',
-      cycleName: 'Dezembro',
+      ministryName,
+      cycleName,
       ...cycleDays,
       actionUrl: 'https://app.church.test/dashboard?section=availability',
     };
-    const opened = prepareEmail({
-      payload: { kind: 'availability.opened', ...facts },
-      from: 'church@example.com',
-      locale: 'pt-BR',
-      appName,
-    });
-    const reminder = prepareEmail({
-      payload: { kind: 'availability.reminder', ...facts },
-      from: 'church@example.com',
-      locale: 'pt-BR',
-      appName,
-    });
-    const ministryName = 'Louvor & <Banda>';
-    const days = { startDate: '01/12/2026', endDate: '31/12/2026' };
 
-    expect(opened.request.subject).toBe(
-      m.notification_availability_opened_title({ ministryName }, ptBR),
+    function render(payload: AvailabilityEmail) {
+      return prepareEmail({
+        payload,
+        from: 'church@example.com',
+        locale: 'pt-BR',
+        appName,
+      }).request;
+    }
+
+    const shifts = m.notification_availability_shifts_other(
+      { count: 12, ...days },
+      ptBR,
     );
-    expect(reminder.request.subject).toBe(
-      m.notification_availability_reminder_title({ ministryName }, ptBR),
+    const markOnly = m.notification_availability_mark_only({}, ptBR);
+    const answerBy = m.notification_availability_answer_by(
+      { deadline: '20/11/2026' },
+      ptBR,
     );
-    expect(opened.request.text).toContain(
-      m.notification_availability_opened_body(
-        { cycleName: 'Dezembro', ...days },
-        ptBR,
-      ),
+    const deadlinePassed = m.notification_availability_deadline_passed(
+      { deadline: '20/11/2026' },
+      ptBR,
     );
-    expect(reminder.request.text).toContain(
-      m.notification_availability_reminder_body(
-        { ministryName, cycleName: 'Dezembro', ...days },
-        ptBR,
-      ),
-    );
-    expect(opened.request.text).toContain(
-      m.email_greeting_notification({ firstName: 'João' }, ptBR),
-    );
-    expect(opened.request.html).toContain('Louvor &amp; &lt;Banda&gt;');
-    expect(opened.request.html).not.toContain('&amp;amp;');
-    expect(opened.request.html).toContain(
-      `<a href="${facts.actionUrl}">${m.email_availability_action({}, ptBR)}</a>`,
-    );
-    expect(opened.request.text).toContain(`: ${facts.actionUrl}`);
-    expect(opened.request.from).toBe('"Igreja & <Graça>" <church@example.com>');
-    expect(opened.request.text).toContain(
-      m.email_footer_membership({ churchName: member.churchName }, ptBR),
-    );
+
+    it('uses the #389 pt-BR text, with no gendered article before the Ministry', () => {
+      const opened = render({
+        kind: 'availability.opened',
+        ...facts,
+        ministryName: 'Louvor',
+        shiftCount: 2,
+        answerBy: '2026-11-20' as CalendarDay,
+      });
+      const reminder = render({
+        kind: 'availability.reminder',
+        ...facts,
+        ministryName: 'Louvor',
+        shiftCount: 1,
+        answerBy: '2026-11-20' as CalendarDay,
+        deadlinePassed: true,
+      });
+
+      expect(opened.subject).toBe(
+        'O ministério Louvor precisa da sua disponibilidade · Dezembro',
+      );
+      expect(opened.text).toContain('2 turnos de 01/12/2026 a 31/12/2026.');
+      expect(opened.text).toContain('Responda até 20/11/2026.');
+      expect(opened.text).toContain(
+        'Marque só os turnos em que não pode servir e confirme.',
+      );
+      expect(opened.html).toContain('>Responder</a>');
+      expect(reminder.subject).toBe(
+        'Lembrete: confirme sua disponibilidade · Louvor · Dezembro',
+      );
+      expect(reminder.text).toContain('1 turno de 01/12/2026 a 31/12/2026.');
+      expect(reminder.text).toContain(
+        'O prazo era 20/11/2026, mas seu líder ainda precisa da sua resposta.',
+      );
+    });
+
+    it('opened: Shift count, span and mark-only line, the Deadline only when set', () => {
+      const without = render({
+        kind: 'availability.opened',
+        ...facts,
+        shiftCount: 12,
+      });
+      const withDeadline = render({
+        kind: 'availability.opened',
+        ...facts,
+        shiftCount: 12,
+        answerBy: '2026-11-20' as CalendarDay,
+      });
+
+      expect(without.subject).toBe(
+        m.notification_availability_opened_title(
+          { ministryName, cycleName },
+          ptBR,
+        ),
+      );
+      expect(without.text).toContain(shifts);
+      expect(without.text).toContain(markOnly);
+      expect(without.text).not.toContain(answerBy);
+      expect(withDeadline.text).toContain(answerBy);
+      expect(withDeadline.text).toContain(markOnly);
+    });
+
+    it('reminder: no Deadline, before it and after it', () => {
+      const reminder = {
+        kind: 'availability.reminder',
+        ...facts,
+        shiftCount: 12,
+      } as const;
+      const deadline = { answerBy: '2026-11-20' as CalendarDay };
+      const without = render(reminder);
+      const before = render({
+        ...reminder,
+        ...deadline,
+        deadlinePassed: false,
+      });
+      const after = render({ ...reminder, ...deadline, deadlinePassed: true });
+
+      expect(without.subject).toBe(
+        m.notification_availability_reminder_title(
+          { ministryName, cycleName },
+          ptBR,
+        ),
+      );
+      expect(without.text).toContain(shifts);
+      expect(without.text).not.toContain(answerBy);
+      expect(without.text).not.toContain(deadlinePassed);
+      expect(before.text).toContain(answerBy);
+      expect(before.text).not.toContain(deadlinePassed);
+      expect(after.text).toContain(deadlinePassed);
+      expect(after.text).not.toContain(answerBy);
+    });
+
+    it('words one Shift in the singular', () => {
+      expect(
+        render({ kind: 'availability.opened', ...facts, shiftCount: 1 }).text,
+      ).toContain(m.notification_availability_shifts_one(days, ptBR));
+    });
+
+    it('renders a row frozen before the Shift count from the Cycle span alone', () => {
+      const { text } = render({ kind: 'availability.opened', ...facts });
+
+      expect(text).toContain(m.notification_availability_span(days, ptBR));
+      expect(text).toContain(markOnly);
+      expect(text).not.toContain('undefined');
+    });
+
+    it('escapes every interpolated value in the HTML and keeps the plain text intact', () => {
+      const { html, text, from } = render({
+        kind: 'availability.opened',
+        ...facts,
+        cycleName: '<i>Dezembro</i>',
+        shiftCount: 12,
+      });
+
+      expect(html).toContain('Louvor &amp; &lt;Banda&gt;');
+      expect(html).toContain('&lt;i&gt;Dezembro&lt;/i&gt;');
+      expect(html).not.toContain('<Banda>');
+      expect(html).not.toContain('<i>Dezembro');
+      expect(html).not.toContain('&amp;amp;');
+      expect(text).toContain('Louvor & <Banda>');
+      expect(text).toContain('<i>Dezembro</i>');
+      expect(html).toContain(
+        `<a href="${facts.actionUrl}">${m.email_availability_action({}, ptBR)}</a>`,
+      );
+      expect(text).toContain(`: ${facts.actionUrl}`);
+      expect(from).toBe('"Igreja & <Graça>" <church@example.com>');
+      expect(text).toContain(
+        m.email_greeting_notification({ firstName: 'João' }, ptBR),
+      );
+      expect(text).toContain(
+        m.email_footer_membership({ churchName: member.churchName }, ptBR),
+      );
+    });
   });
 
   it('renders publication times and Shifts in the Church Timezone', () => {

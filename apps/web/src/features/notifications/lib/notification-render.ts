@@ -29,22 +29,20 @@ export function renderNotification(
         kindLabel: m.notification_kind_ministry_invitation(),
         actionLabel: m.notification_ministry_invitation_action(),
       };
-    case 'availability_opened': {
-      const facts = availabilityFacts(item.data);
+    case 'availability_opened':
       return {
-        title: m.notification_availability_opened_title(facts),
-        body: m.notification_availability_opened_body(facts),
+        title: m.notification_availability_opened_title(item.data),
+        body: availabilityBody(item.data),
         kindLabel: m.notification_kind_availability_opened(),
+        actionLabel: m.email_availability_action(),
       };
-    }
-    case 'availability_reminder': {
-      const facts = availabilityFacts(item.data);
+    case 'availability_reminder':
       return {
-        title: m.notification_availability_reminder_title(facts),
-        body: m.notification_availability_reminder_body(facts),
+        title: m.notification_availability_reminder_title(item.data),
+        body: availabilityBody(item.data),
         kindLabel: m.notification_kind_availability_reminder(),
+        actionLabel: m.email_availability_action(),
       };
-    }
     case 'schedule_published': {
       const { data } = item;
       const at = (value: string) =>
@@ -135,16 +133,38 @@ interface AvailabilityData {
   cycleName: string;
   cycleStartDate: string;
   cycleEndDate: string;
+  shiftCount?: number;
+  answerBy?: string;
+  deadlinePassed?: boolean;
 }
 
-/** Cycle bounds name days, so they never pass through a timezone. */
-function availabilityFacts(data: AvailabilityData) {
-  return {
-    ministryName: data.ministryName,
-    cycleName: data.cycleName,
+/** The email's fact lines; rows frozen before the count and Deadline lack
+ * them. Cycle bounds and the Deadline name days, so no timezone applies. */
+function availabilityBody(data: AvailabilityData) {
+  const { shiftCount, answerBy, deadlinePassed } = data;
+  const days = {
     startDate: formatCalendarDateOnly({ value: data.cycleStartDate }),
     endDate: formatCalendarDateOnly({ value: data.cycleEndDate }),
   };
+  const shifts =
+    shiftCount === undefined
+      ? m.notification_availability_span(days)
+      : pluralMessage({
+          count: shiftCount,
+          one: () => m.notification_availability_shifts_one(days),
+          other: () =>
+            m.notification_availability_shifts_other({
+              count: shiftCount,
+              ...days,
+            }),
+        });
+  const markOnly = m.notification_availability_mark_only();
+  if (answerBy === undefined) return `${shifts}\n${markOnly}`;
+  const deadline = formatCalendarDateOnly({ value: answerBy });
+  const answerLine = deadlinePassed
+    ? m.notification_availability_deadline_passed({ deadline })
+    : m.notification_availability_answer_by({ deadline });
+  return `${shifts}\n${answerLine}\n${markOnly}`;
 }
 
 type CycleReadyToPrepareData = Extract<

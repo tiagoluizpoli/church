@@ -1,4 +1,4 @@
-import type { Instant } from '@church/time';
+import type { CalendarDay, Instant } from '@church/time';
 import type {
   AvailabilityCheckId,
   ChurchId,
@@ -144,6 +144,8 @@ export interface AvailabilityCheckRepository {
   listRelevantShiftTotals(
     input: ScheduleScopeInput,
   ): Promise<RelevantShiftTotalRow[]>;
+  /** The Schedule's Deadline; `null` without one or before the Ask. */
+  findAnswerBy(input: ScheduleScopeInput): Promise<CalendarDay | null>;
   listByCycle(input: ListChecksByCycleInput): Promise<AvailabilityCheck[]>;
   createMany(input: CreateChecksInput): Promise<AvailabilityCheck[]>;
   /** Throws `NotFoundError` unless the check is actionable. */

@@ -229,6 +229,7 @@ export function buildManagers({
         eventRepository: planningEventRepository,
         eventTimeBlockRepository,
         assignmentRepository,
+        availabilityCheckRepository,
         roleRepository,
         volunteerRepository,
         webBaseUrl: env.CORS_ORIGIN,

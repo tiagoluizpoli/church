@@ -430,7 +430,29 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
       }),
     });
   await expect(preparedWelcomeRows).toHaveCount(month.expectedPrefilledBlocks);
-  await expect(preparedWelcomeRows.first().getByRole('checkbox')).toBeChecked();
+  const welcomeRow = preparedWelcomeRows.first();
+  await expect(welcomeRow).toContainText(
+    m.prepare_row_summary(
+      {
+        shifts: m.usual_setup_shift_count_one({}, { locale: 'pt-BR' }),
+        people: m.prepare_people_count_one({}, { locale: 'pt-BR' }),
+      },
+      { locale: 'pt-BR' },
+    ),
+  );
+  // Schedule rows summarize the Usual setup; its serves control lives in
+  // the nested Time block editor reached by opening that row.
+  await welcomeRow.click();
+  await expect(leaderPage).toHaveURL(
+    new RegExp(
+      `/schedules/${journey.ministries.worship.id}/${cycleId}/slots/[^/]+$`,
+    ),
+  );
+  await expect(
+    leaderPage.getByRole('checkbox', {
+      name: m.usual_setup_serves_label({}, { locale: 'pt-BR' }),
+    }),
+  ).toBeChecked();
   await leaderContext.close();
 
   const volunteerContext = await newPersonaContext({

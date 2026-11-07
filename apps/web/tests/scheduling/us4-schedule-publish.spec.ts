@@ -53,13 +53,25 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
     .filter({ hasText: eventTitle })
     .first();
   await expect(eventRow).toBeVisible();
-  await expect(eventRow.getByTestId('participation-state-badge')).toHaveText(
-    'Availability requested',
+  // Schedule rows now summarize Time blocks. Check the journey's initial
+  // lifecycle state through the retained participation read before publish.
+  const initialStateResponse = await page.request.get(
+    `${SERVER_URL}/api/v1/prepare/cycles/${cycleId}/participation`,
+    { params: { ministryId: worshipMinistryId } },
   );
+  expect(initialStateResponse.ok()).toBeTruthy();
+  const initialStateBody =
+    (await initialStateResponse.json()) as ParticipationResponse;
+  expect(
+    initialStateBody.events.find(
+      (event) => event.participation.id === worshipParticipationId,
+    )?.participation.state,
+  ).toBe('availability_requested');
 
-  await eventRow
-    .getByTestId(`open-schedule-link-${worshipParticipationId}`)
-    .click();
+  await page.getByTestId('open-assign-link').click();
+  await expect(page).toHaveURL(
+    `/schedules/${worshipMinistryId}/${cycleId}/assign`,
+  );
 
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
     timeout: 15_000,

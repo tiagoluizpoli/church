@@ -1,6 +1,7 @@
 import type { DomainError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
+import type { Instant } from '@church/time';
 import { type ErrorMessage, errorMessage } from './error-table';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
 import {
@@ -26,6 +27,7 @@ import {
   type ExistingInvitationReference,
   PendingMinistryInvitationExistsError,
 } from '@/domain/errors/pending-ministry-invitation-exists';
+import { RemindOnCooldownError } from '@/domain/errors/remind-on-cooldown';
 import { RoleInUseError } from '@/domain/errors/role-in-use';
 import { SectorInUseError } from '@/domain/errors/sector-in-use';
 import {
@@ -149,6 +151,13 @@ export function headcountFloors(
 export function flaggedBlocks(error: DomainError): FlaggedBlock[] | undefined {
   return error instanceof AskBlockedFlaggedShiftsError
     ? error.flaggedBlocks
+    : undefined;
+}
+
+/** When a Schedule on cooldown can be reminded again, also sent to the client. */
+export function remindAvailableAt(error: DomainError): Instant | undefined {
+  return error instanceof RemindOnCooldownError
+    ? error.remindAvailableAt
     : undefined;
 }
 

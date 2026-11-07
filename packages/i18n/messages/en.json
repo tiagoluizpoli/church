@@ -78,6 +78,7 @@
   "error_headcount_below_assigned": "People needed can't go below the Volunteers already assigned.",
   "error_headcount_below_assigned_count": "Already assigned: {count}. People needed can't go below that number.",
   "error_ask_blocked_flagged_shifts": "Some Shifts have no Role needed yet. Fix them before asking for availability.",
+  "error_remind_on_cooldown": "This Schedule was reminded recently. You can remind again once the wait is over.",
   "error_validation_ask_no_eligible_volunteers": "No Volunteer holds a Role these Shifts need, so there is nobody to ask.",
   "error_shift_has_responses": "Volunteers already answered for or are assigned to a Shift this change would discard. Nothing was changed.",
   "error_upcoming_assignments": "Upcoming Assignments still depend on this. Change them in the Assign board first.",

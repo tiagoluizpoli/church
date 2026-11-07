@@ -64,6 +64,7 @@ import type {
   ScheduleScopeInput,
   ServedShiftRow,
   SetAnswerByInput,
+  StampRemindedInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
@@ -212,6 +213,16 @@ export class DrizzleAvailabilityCheckRepository
       )
       .returning({ id: availabilityAsk.id });
     return updated.length > 0;
+  }
+
+  async stampReminded({
+    remindedAt,
+    ...scope
+  }: StampRemindedInput): Promise<void> {
+    await getClient({ db: this.db, tx: scope.tx })
+      .update(availabilityAsk)
+      .set({ lastRemindedAt: remindedAt })
+      .where(this.askRecordOf(scope));
   }
 
   async listCheckMarkCounts({

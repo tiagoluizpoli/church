@@ -22,6 +22,8 @@ import type {
   IAvailabilityCheckManager,
   ListCheckStatusesInput,
   ListCycleCheckStatusesInput,
+  RemindScheduleInput,
+  RemindScheduleResult,
   ResendReminderInput,
   SetDeadlineInput,
 } from '../domain/contracts/application/availability-check-manager';
@@ -29,6 +31,7 @@ import type { IChurchNotifications } from '../domain/contracts/application/churc
 import type {
   ActiveMinistryMembership,
   AvailabilityCheckRepository,
+  ScheduleScopeInput,
   ServedShiftRow,
 } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
@@ -49,6 +52,7 @@ import {
   type FlaggedBlock,
 } from '../domain/errors/ask-blocked-flagged-shifts';
 import { AskNoEligibleVolunteersError } from '../domain/errors/ask-no-eligible-volunteers';
+import { RemindOnCooldownError } from '../domain/errors/remind-on-cooldown';
 
 interface NotifyMembershipsInput {
   tx: TransactionContext;
@@ -78,11 +82,28 @@ interface RemindAvailableAtInput {
 interface EnsureCycleAskableInput {
   cycle: Cycle;
   timeZone: string;
-  transition?: string;
+  transition: string;
+}
+
+interface LockUnpublishedScheduleInput extends ScheduleScopeInput {
+  tx: TransactionContext;
+  timeZone: string;
+  transition: string;
+}
+
+interface OpenChecksInput extends ScheduleScopeInput {
+  tx: TransactionContext;
+  eligible: ActiveMinistryMembership[];
+}
+
+interface OpenChecksResult {
+  createdCheckCount: number;
+  notifiedVolunteerCount: number;
 }
 
 const ASK_TRANSITION = 'ask_availability';
 const DEADLINE_TRANSITION = 'set_deadline';
+const REMIND_TRANSITION = 'remind';
 
 interface FlaggedBlocksOfInput {
   servedShifts: ServedShiftRow[];
@@ -106,7 +127,7 @@ function flaggedBlocksOf({
 function ensureCycleAskable({
   cycle,
   timeZone,
-  transition = ASK_TRANSITION,
+  transition,
 }: EnsureCycleAskableInput): void {
   const churchToday = today({ instant: now(), timeZone });
   if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
@@ -284,7 +305,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         cycleId,
         tx,
       });
-      ensureCycleAskable({ cycle, timeZone });
+      ensureCycleAskable({ cycle, timeZone, transition: ASK_TRANSITION });
 
       // Locked so a concurrent repeat Ask sees the moved state and refuses.
       const participations =
@@ -319,36 +340,153 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         askedAt: toDate({ instant: now() }),
         answerBy,
       });
-      // A membership that once held a withdrawn check keeps it: no new check, no notice.
-      const created = await this.availabilityCheckRepository.createMany({
-        churchId,
-        checks: eligible.map(({ ministryMembershipId }) => ({
-          cycleId,
-          ministryMembershipId,
-        })),
-        tx,
-      });
-      const createdMembershipIds = new Set(
-        created.map((check) => check.ministryMembershipId),
-      );
-      const asked = eligible.filter(({ ministryMembershipId }) =>
-        createdMembershipIds.has(ministryMembershipId),
-      );
-      await this.notifications.enqueue({
-        tx,
-        kind: 'availability_opened',
-        to: asked.map(({ userId }) => ({ userId, churchId })),
-        data: { cycleId: cycleId as string, ministryId: ministryId as string },
-      });
+      const opened = await this.openChecks({ ...scope, eligible });
       const rolesWithoutHolders =
         await this.availabilityCheckRepository.listRolesWithoutHolders(scope);
 
+      return { ...opened, rolesWithoutHolders };
+    });
+  }
+
+  async remindSchedule({
+    churchId,
+    ministryId,
+    cycleId,
+  }: RemindScheduleInput): Promise<RemindScheduleResult> {
+    const { timezone: timeZone } = await this.churchRepository.getById({
+      id: churchId,
+    });
+
+    return this.unitOfWork.run(async (tx) => {
+      const scope = { churchId, ministryId, cycleId, tx };
+      await this.lockUnpublishedSchedule({
+        ...scope,
+        timeZone,
+        transition: REMIND_TRANSITION,
+      });
+      const askRecord =
+        await this.availabilityCheckRepository.findAskRecord(scope);
+      if (!askRecord) {
+        throw new IllegalStateTransitionError({
+          from: 'not_asked',
+          to: REMIND_TRANSITION,
+        });
+      }
+
+      const remindedAt = now();
+      const remindAvailableAt = this.remindAvailableAt(askRecord);
+      if (remindAvailableAt) {
+        throw new RemindOnCooldownError({ remindAvailableAt });
+      }
+
+      // Read before the sweep: a check it creates gets the opened notice, never the reminder.
+      const memberships =
+        await this.availabilityCheckRepository.listActiveMemberships(scope);
+      const checks = await this.availabilityCheckRepository.listByCycle({
+        churchId,
+        cycleId,
+        ministryMembershipIds: memberships.map(
+          ({ ministryMembershipId }) => ministryMembershipId,
+        ),
+        tx,
+      });
+      const notConfirmedMembershipIds = new Set(
+        checks
+          .filter(({ state }) => state === 'pending')
+          .map(({ ministryMembershipId }) => ministryMembershipId),
+      );
+      const notConfirmed = memberships.filter(({ ministryMembershipId }) =>
+        notConfirmedMembershipIds.has(ministryMembershipId),
+      );
+      const eligible =
+        await this.availabilityCheckRepository.listEligibleMemberships(scope);
+
+      const { createdCheckCount } = await this.openChecks({
+        ...scope,
+        eligible,
+      });
+      await this.notifications.enqueue({
+        tx,
+        kind: 'availability_reminder',
+        to: notConfirmed.map(({ userId }) => ({ userId, churchId })),
+        data: { cycleId: cycleId as string, ministryId: ministryId as string },
+      });
+      await this.availabilityCheckRepository.stampReminded({
+        ...scope,
+        remindedAt: toDate({ instant: remindedAt }),
+      });
+
       return {
-        createdCheckCount: created.length,
-        notifiedVolunteerCount: asked.length,
-        rolesWithoutHolders,
+        remindedCount: notConfirmed.length,
+        newCheckCount: createdCheckCount,
+        remindAvailableAt: addMilliseconds({
+          instant: remindedAt,
+          milliseconds: this.reminderCooldownMs,
+        }),
       };
     });
+  }
+
+  /** Refuses an archived Ministry, a closed Cycle and a published Schedule; locked so a concurrent publish waits. */
+  private async lockUnpublishedSchedule({
+    timeZone,
+    transition,
+    ...scope
+  }: LockUnpublishedScheduleInput): Promise<void> {
+    const { churchId, cycleId, ministryId, tx } = scope;
+    await this.ministryRepository.lockActive({
+      churchId,
+      ministryId,
+      strength: 'share',
+      tx,
+    });
+    const cycle = await this.cycleRepository.getById({ churchId, cycleId, tx });
+    ensureCycleAskable({ cycle, timeZone, transition });
+
+    const participations =
+      await this.participationRepository.lockSchedule(scope);
+    const servingStates = participations.map(({ state }) => state);
+    if (deriveScheduleStage({ servingStates }) === 'published') {
+      throw new IllegalStateTransitionError({
+        from: 'published',
+        to: transition,
+      });
+    }
+  }
+
+  /** Creates the missing checks and enqueues availability_opened for exactly those Volunteers. */
+  private async openChecks({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+    eligible,
+  }: OpenChecksInput): Promise<OpenChecksResult> {
+    // A membership that once held a withdrawn check keeps it: no new check, no notice.
+    const created = await this.availabilityCheckRepository.createMany({
+      churchId,
+      checks: eligible.map(({ ministryMembershipId }) => ({
+        cycleId,
+        ministryMembershipId,
+      })),
+      tx,
+    });
+    const createdMembershipIds = new Set(
+      created.map((check) => check.ministryMembershipId),
+    );
+    const opened = eligible.filter(({ ministryMembershipId }) =>
+      createdMembershipIds.has(ministryMembershipId),
+    );
+    await this.notifications.enqueue({
+      tx,
+      kind: 'availability_opened',
+      to: opened.map(({ userId }) => ({ userId, churchId })),
+      data: { cycleId: cycleId as string, ministryId: ministryId as string },
+    });
+    return {
+      createdCheckCount: created.length,
+      notifiedVolunteerCount: opened.length,
+    };
   }
 
   async setDeadline({
@@ -363,33 +501,11 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
 
     await this.unitOfWork.run(async (tx) => {
       const scope = { churchId, ministryId, cycleId, tx };
-      await this.ministryRepository.lockActive({
-        churchId,
-        ministryId,
-        strength: 'share',
-        tx,
-      });
-      const cycle = await this.cycleRepository.getById({
-        churchId,
-        cycleId,
-        tx,
-      });
-      ensureCycleAskable({
-        cycle,
+      await this.lockUnpublishedSchedule({
+        ...scope,
         timeZone,
         transition: DEADLINE_TRANSITION,
       });
-
-      // Locked so a concurrent publish cannot slip past this check.
-      const participations =
-        await this.participationRepository.lockSchedule(scope);
-      const servingStates = participations.map(({ state }) => state);
-      if (deriveScheduleStage({ servingStates }) === 'published') {
-        throw new IllegalStateTransitionError({
-          from: 'published',
-          to: DEADLINE_TRANSITION,
-        });
-      }
 
       const asked = await this.availabilityCheckRepository.setAnswerBy({
         ...scope,

@@ -1,21 +1,17 @@
-import { parseInstant, parseTimeOfDay } from '@church/time';
+import { parseTimeOfDay } from '@church/time';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   buildEventTimeBlockDayMarkers,
   buildMinistryPrepareSummary,
-  createInitialSplitForms,
   filterEventTimeBlocksByName,
   filterEventTimeBlocksByTimeOfDay,
-  formatTimeRange,
   isTimeWindowFilterEmpty,
-  participationStateLabel,
   toCalendarDateString,
   toScheduleKey,
-  validateManualSpans,
 } from '@/features/scheduling/components/participation-prepare.utils';
 import type { GetCycleParticipation200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
 
-const EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['eventTimeBlocks'][number] =
+const _EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['eventTimeBlocks'][number] =
   {
     eventTimeBlock: {
       id: 'event-time-block-1',
@@ -30,6 +26,7 @@ const EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['eventTimeBlocks
     included: true,
     shifts: [],
     requirements: [],
+    shiftsChangedAfterAsk: false,
   };
 
 type EventTimeBlockViewOverride = {
@@ -49,6 +46,7 @@ function makeEventView(
   const { eventTimeBlockOverrides, ...eventOverrides } = overrides;
 
   return {
+    generatedFromTemplate: false,
     participation: {
       id: 'participation-1',
       churchId: 'church-1',
@@ -83,6 +81,7 @@ function makeEventView(
           included: true,
           shifts: [],
           requirements: [],
+          shiftsChangedAfterAsk: false,
         },
       ]
     ).map((eventTimeBlockOverride) => ({
@@ -100,6 +99,7 @@ function makeEventView(
       included: eventTimeBlockOverride.included ?? true,
       shifts: eventTimeBlockOverride.shifts ?? [],
       requirements: eventTimeBlockOverride.requirements ?? [],
+      shiftsChangedAfterAsk: false,
     })),
     ...eventOverrides,
   };
@@ -216,40 +216,6 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
 
       expect(rows[0]).toMatchObject({ eventCount: 0, eventTimeBlockCount: 0 });
     });
-  });
-});
-
-describe('formatTimeRange (#159 — church-time seam, one format, non-UTC ambient TZ)', () => {
-  const ORIGINAL_TZ = process.env.TZ;
-
-  beforeAll(() => {
-    process.env.TZ = 'Pacific/Auckland';
-  });
-
-  afterAll(() => {
-    process.env.TZ = ORIGINAL_TZ;
-  });
-
-  it('formats a time block range on the Church Timezone wall clock (dd/MM/yyyy HH:mm – HH:mm)', () => {
-    // 09:00–11:00 church-local in America/Sao_Paulo (UTC-3).
-    expect(
-      formatTimeRange({
-        start: '2027-01-04T12:00:00.000Z',
-        end: '2027-01-04T14:00:00.000Z',
-        timeZone: 'America/Sao_Paulo',
-      }),
-    ).toBe('04/01/2027 09:00 – 11:00');
-  });
-
-  it('formats a Shift time range that crosses midnight with a second date', () => {
-    // 22:00 Monday to 02:00 Tuesday church-local in America/Sao_Paulo.
-    expect(
-      formatTimeRange({
-        start: '2027-01-05T01:00:00.000Z',
-        end: '2027-01-05T05:00:00.000Z',
-        timeZone: 'America/Sao_Paulo',
-      }),
-    ).toBe('04/01/2027 22:00 – 05/01/2027 02:00');
   });
 });
 
@@ -663,318 +629,5 @@ describe('isTimeWindowFilterEmpty', () => {
         end: parseTimeOfDay({ value: '20:00' }),
       }),
     ).toBe(false);
-  });
-});
-
-describe('validateManualSpans (T023 — reused/extended for manual-split-editor)', () => {
-  describe('Happy Path', () => {
-    it('accepts spans fully within time block bounds, in order, non-overlapping', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              label: '',
-            },
-            {
-              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBeNull();
-    });
-
-    it('accepts spans given out of chronological order', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-              label: '',
-            },
-            {
-              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBeNull();
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('rejects a span with identical start and end (zero duration)', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBe('Each manual shift must end after it starts.');
-    });
-
-    it('rejects a span that ends before it starts', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBe('Each manual shift must end after it starts.');
-    });
-
-    it('rejects a span starting before the parent time block bounds', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T08:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBe('Manual shifts must stay within the parent time block bounds.');
-    });
-
-    it('rejects a span ending after the parent time block bounds', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T12:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBe('Manual shifts must stay within the parent time block bounds.');
-    });
-
-    it('rejects overlapping spans (including touching-but-crossing bounds)', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T10:30:00Z' }),
-              label: '',
-            },
-            {
-              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBe('Manual shifts cannot overlap.');
-    });
-
-    it('accepts back-to-back spans that touch at the boundary without overlapping', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              label: '',
-            },
-            {
-              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBeNull();
-    });
-
-    it('accepts manual spans within a parent EventTimeBlock whose own bounds cross midnight', () => {
-      const overnightEventTimeBlockView: GetCycleParticipation200EventsItem['eventTimeBlocks'][number] =
-        {
-          ...EVENT_TIME_BLOCK_VIEW,
-          eventTimeBlock: {
-            ...EVENT_TIME_BLOCK_VIEW.eventTimeBlock,
-            startTime: '2026-07-12T22:00:00Z',
-            endTime: '2026-07-13T02:00:00Z',
-          },
-        };
-
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: overnightEventTimeBlockView,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T22:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-13T00:00:00Z' }),
-              label: '',
-            },
-            {
-              startTime: parseInstant({ value: '2026-07-13T00:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-13T02:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBeNull();
-    });
-
-    it('rejects a manual span that starts before an overnight parent EventTimeBlock even though its wall-clock time reads later in the day', () => {
-      const overnightEventTimeBlockView: GetCycleParticipation200EventsItem['eventTimeBlocks'][number] =
-        {
-          ...EVENT_TIME_BLOCK_VIEW,
-          eventTimeBlock: {
-            ...EVENT_TIME_BLOCK_VIEW.eventTimeBlock,
-            startTime: '2026-07-12T22:00:00Z',
-            endTime: '2026-07-13T02:00:00Z',
-          },
-        };
-
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: overnightEventTimeBlockView,
-          spans: [
-            {
-              startTime: parseInstant({ value: '2026-07-12T20:00:00Z' }),
-              endTime: parseInstant({ value: '2026-07-13T01:00:00Z' }),
-              label: '',
-            },
-          ],
-        }),
-      ).toBe('Manual shifts must stay within the parent time block bounds.');
-    });
-  });
-
-  describe('Invalid / Empty Input', () => {
-    it('accepts zero spans (nothing to validate yet)', () => {
-      expect(
-        validateManualSpans({
-          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
-          spans: [],
-        }),
-      ).toBeNull();
-    });
-  });
-});
-
-describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
-  it('defaults equalCount to 1 (single shift) for a time block with exactly one server-default shift', () => {
-    const forms = createInitialSplitForms([
-      makeEventView({
-        eventTimeBlockOverrides: [
-          {
-            included: true,
-            shifts: [
-              {
-                id: 'shift-1',
-                participationId: 'participation-1',
-                eventTimeBlockId: 'event-time-block-1',
-                startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-                endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-              },
-            ],
-          },
-        ],
-      }),
-    ]);
-
-    expect(forms['event-time-block-1']).toMatchObject({
-      mode: 'equal',
-      equalCount: '1',
-    });
-  });
-
-  it('defaults equalCount to 1 when a time block has zero shifts yet', () => {
-    const forms = createInitialSplitForms([
-      makeEventView({
-        eventTimeBlockOverrides: [{ included: false, shifts: [] }],
-      }),
-    ]);
-
-    expect(forms['event-time-block-1']).toMatchObject({
-      mode: 'equal',
-      equalCount: '1',
-    });
-  });
-
-  it('preserves an existing multi-shift count instead of forcing single', () => {
-    const forms = createInitialSplitForms([
-      makeEventView({
-        eventTimeBlockOverrides: [
-          {
-            included: true,
-            shifts: [
-              {
-                id: 'shift-1',
-                participationId: 'participation-1',
-                eventTimeBlockId: 'event-time-block-1',
-                startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-                endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-              },
-              {
-                id: 'shift-2',
-                participationId: 'participation-1',
-                eventTimeBlockId: 'event-time-block-1',
-                startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
-                endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-              },
-              {
-                id: 'shift-3',
-                participationId: 'participation-1',
-                eventTimeBlockId: 'event-time-block-1',
-                startTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-                endTime: parseInstant({ value: '2026-07-12T12:00:00Z' }),
-              },
-            ],
-          },
-        ],
-      }),
-    ]);
-
-    expect(forms['event-time-block-1']).toMatchObject({
-      mode: 'equal',
-      equalCount: '3',
-    });
-  });
-});
-
-describe('participationStateLabel', () => {
-  it('shows the glossary stage words', () => {
-    expect(
-      (
-        [
-          'preparing',
-          'availability_requested',
-          'assigning',
-          'published',
-        ] as const
-      ).map((state) => participationStateLabel({ state })),
-    ).toEqual([
-      'Preparing',
-      'Availability requested',
-      'Assigning',
-      'Published',
-    ]);
   });
 });

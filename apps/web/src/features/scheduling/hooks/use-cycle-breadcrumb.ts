@@ -13,23 +13,26 @@ export interface BreadcrumbSegmentOverride {
  * same label from the Ministry-scoped summaries available to leaders.
  */
 export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
-  const { cycleId, ministryId } = useParams({ strict: false });
+  const { cycleId, ministryId, timeSlotId } = useParams({ strict: false });
   const cycleDetailsQuery = useQuery({
     queryKey: ['cycle-details', cycleId],
     queryFn: () => adminApi.getCycle(cycleId ?? ''),
     enabled: cycleId !== undefined && ministryId === undefined,
     retry: false,
   });
-  const scheduleSummariesQuery = useQuery({
-    queryKey: ['prepare-cycle-summaries', ministryId],
-    queryFn: () => adminApi.listScheduleSummaries(ministryId ?? ''),
-    enabled: cycleId !== undefined && ministryId !== undefined,
+  const schedules = useQuery({
+    queryKey: ['prepare-schedules'],
+    queryFn: () => adminApi.listSchedules(),
+    enabled:
+      cycleId !== undefined &&
+      ministryId !== undefined &&
+      timeSlotId === undefined,
     retry: false,
   });
   const cycleName = ministryId
-    ? scheduleSummariesQuery.data?.cycles.find(
-        (cycle) => cycle.cycleId === cycleId,
-      )?.name
+    ? schedules.data?.schedules.find(
+        (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
+      )?.cycle.name
     : cycleDetailsQuery.data?.cycle.name;
 
   if (cycleId === undefined || !cycleName) {

@@ -9,11 +9,19 @@ import type {
   CycleParticipationView,
   ParticipationEventTimeBlockView,
   ParticipationEventView,
+  ParticipationRequirementView,
+  ParticipationShiftView,
   ScheduleSummaryView,
+  ScheduleView,
 } from '../../domain/contracts/application/participation-manager';
-import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
+import { CYCLE_STATE_OPTIONS } from '../../domain/entities/cycle';
+import {
+  type MinistryParticipation,
+  SCHEDULE_STAGE_OPTIONS,
+} from '../../domain/entities/ministry-participation';
 import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
+import { VALIDATION_REASONS } from '../../domain/errors/validation-rule-error';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -58,17 +66,58 @@ export type ShiftRequirementResponse = z.infer<
   typeof shiftRequirementResponseSchema
 >;
 
+export const participationRequirementViewSchema =
+  shiftRequirementResponseSchema.extend({
+    assignedCount: z.number(),
+  });
+
+export const participationShiftViewSchema = shiftResponseSchema.extend({
+  requirements: z.array(participationRequirementViewSchema),
+  unavailableMarkCount: z.number(),
+  assignmentCount: z.number(),
+  flagged: z.boolean(),
+});
+
 export const participationEventTimeBlockViewSchema = z.object({
   eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
-  shifts: z.array(shiftResponseSchema),
-  requirements: z.array(shiftRequirementResponseSchema),
+  shifts: z.array(participationShiftViewSchema),
+  requirements: z.array(participationRequirementViewSchema),
+  shiftsChangedAfterAsk: z.boolean(),
 });
 
 export const participationEventViewSchema = z.object({
   participation: participationResponseSchema,
   event: eventResponseSchema,
+  generatedFromTemplate: z.boolean(),
   eventTimeBlocks: z.array(participationEventTimeBlockViewSchema),
+});
+
+/** A 409 `HEADCOUNT_BELOW_ASSIGNED`: the localized envelope plus every refused floor. */
+export const headcountBelowAssignedResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  headcountFloors: z.array(
+    z.object({
+      shiftId: z.string(),
+      sectorId: z.string(),
+      roleId: z.string(),
+      assignedCount: z.number().int(),
+    }),
+  ),
+});
+
+/** A 409 `SHIFT_HAS_RESPONSES`: the localized envelope plus per-Shift counts. */
+export const shiftHasResponsesResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  shiftResponses: z.array(
+    z.object({
+      shiftId: z.string(),
+      unavailableMarkCount: z.number().int(),
+      assignmentCount: z.number().int(),
+    }),
+  ),
 });
 
 export const cycleParticipationResponseSchema = z.object({
@@ -78,47 +127,44 @@ export type CycleParticipationResponse = z.infer<
   typeof cycleParticipationResponseSchema
 >;
 
-export const setInclusionsBodySchema = z.object({
-  eventTimeBlockIds: z.array(z.string()),
-});
-
 const manualSplitSpanSchema = z.object({
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
   label: z.string().optional(),
 });
 
-export const splitShiftsBodySchema = z.object({
-  strategy: z.discriminatedUnion('kind', [
-    z.object({
-      kind: z.literal('equal-n'),
-      n: z.number().int().min(1),
-    }),
-    z.object({
-      kind: z.literal('manual'),
-      spans: z.array(manualSplitSpanSchema).min(1),
-    }),
-  ]),
-});
-export type SplitShiftsBody = z.infer<typeof splitShiftsBodySchema>;
-
-export const updateShiftBodySchema = z.object({
-  startTime: z.string().datetime().optional(),
-  endTime: z.string().datetime().optional(),
-  label: z.string().optional(),
-});
-export type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
-
-export const shiftRequirementBodySchema = z.object({
+const preparationHeadcountSchema = z.object({
+  shiftIndex: z.number().int().min(0),
   sectorId: z.string(),
   roleId: z.string(),
-  peopleNeeded: z.number().int().min(1),
-  notes: z.string().optional(),
+  peopleNeeded: z.number().int().min(0),
 });
-export type ShiftRequirementBody = z.infer<typeof shiftRequirementBodySchema>;
 
-export const shiftListResponseSchema = z.object({
-  shifts: z.array(shiftResponseSchema),
+/** One block's complete desired state; a zero count or an omitted pair means no requirement. */
+export const savePreparationBodySchema = z.object({
+  serves: z.boolean(),
+  shiftSplit: z
+    .discriminatedUnion('kind', [
+      z.object({
+        kind: z.literal('equal'),
+        count: z.number().int().min(1),
+      }),
+      z.object({
+        kind: z.literal('manual'),
+        spans: z.array(manualSplitSpanSchema),
+      }),
+    ])
+    .optional(),
+  headcounts: z.array(preparationHeadcountSchema).optional(),
+});
+export type SavePreparationBody = z.infer<typeof savePreparationBodySchema>;
+
+/** A 422: a named rule's `reason`, or the body schema's field-aware `issues`. */
+export const preparationValidationErrorResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  reason: z.enum(VALIDATION_REASONS).optional(),
+  issues: z.array(z.unknown()).optional(),
 });
 
 export const askAvailabilityResponseSchema = z.object({
@@ -148,6 +194,25 @@ export const scheduleSummaryListResponseSchema = z.object({
 export type ScheduleSummaryListResponse = z.infer<
   typeof scheduleSummaryListResponseSchema
 >;
+
+export const scheduleResponseSchema = z.object({
+  ministry: z.object({ id: z.string(), name: z.string() }),
+  cycle: z.object({
+    id: z.string(),
+    name: z.string(),
+    startDate: calendarDaySchema,
+    endDate: calendarDaySchema,
+    state: z.enum(CYCLE_STATE_OPTIONS),
+  }),
+  stage: z.enum(SCHEDULE_STAGE_OPTIONS),
+  asking: z.object({ confirmed: z.number(), asked: z.number() }).optional(),
+});
+export type ScheduleResponse = z.infer<typeof scheduleResponseSchema>;
+
+export const scheduleListResponseSchema = z.object({
+  schedules: z.array(scheduleResponseSchema),
+});
+export type ScheduleListResponse = z.infer<typeof scheduleListResponseSchema>;
 
 export const availabilityStatusResponseSchema = z.object({
   statuses: z.array(
@@ -198,12 +263,31 @@ function toShiftRequirementResponse(
   };
 }
 
+function toRequirementView({
+  requirement,
+  assignedCount,
+}: ParticipationRequirementView) {
+  return { ...toShiftRequirementResponse(requirement), assignedCount };
+}
+
+function toShiftView(view: ParticipationShiftView) {
+  const { shift, requirements, unavailableMarkCount, assignmentCount } = view;
+  return {
+    ...toShiftResponse(shift),
+    requirements: requirements.map(toRequirementView),
+    unavailableMarkCount,
+    assignmentCount,
+    flagged: view.flagged,
+  };
+}
+
 function toEventTimeBlockView(view: ParticipationEventTimeBlockView) {
   return {
     eventTimeBlock: eventTimeBlockMapper.toResponse(view.eventTimeBlock),
     included: view.included,
-    shifts: view.shifts.map(toShiftResponse),
-    requirements: view.requirements.map(toShiftRequirementResponse),
+    shifts: view.shifts.map(toShiftView),
+    requirements: view.requirements.map(toRequirementView),
+    shiftsChangedAfterAsk: view.shiftsChangedAfterAsk,
   };
 }
 
@@ -239,10 +323,31 @@ function toScheduleSummaryResponse(
   };
 }
 
+function toScheduleResponse({
+  ministry,
+  cycle,
+  stage,
+  asking,
+}: ScheduleView): ScheduleResponse {
+  return {
+    ministry: { id: ministry.id as string, name: ministry.name },
+    cycle: {
+      id: cycle.id as string,
+      name: cycle.name,
+      startDate: cycle.startDate,
+      endDate: cycle.endDate,
+      state: cycle.state,
+    },
+    stage,
+    asking,
+  };
+}
+
 function toEventView(view: ParticipationEventView) {
   return {
     participation: toParticipationResponse(view.participation),
     event: eventMapper.toResponse(view.event),
+    generatedFromTemplate: view.generatedFromTemplate,
     eventTimeBlocks: view.eventTimeBlocks.map(toEventTimeBlockView),
   };
 }
@@ -251,17 +356,18 @@ export const participationMapper = {
   toResponse: toParticipationResponse,
   shiftToResponse: toShiftResponse,
   requirementToResponse: toShiftRequirementResponse,
-  shiftListToResponse(shifts: Shift[]) {
-    return { shifts: shifts.map(toShiftResponse) };
-  },
   cycleViewToResponse(
     view: CycleParticipationView,
   ): CycleParticipationResponse {
     return { events: view.events.map(toEventView) };
   },
+  eventTimeBlockViewToResponse: toEventTimeBlockView,
   scheduleSummaryListToResponse(
     views: ScheduleSummaryView[],
   ): ScheduleSummaryListResponse {
     return { cycles: views.map(toScheduleSummaryResponse) };
+  },
+  scheduleListToResponse(views: ScheduleView[]): ScheduleListResponse {
+    return { schedules: views.map(toScheduleResponse) };
   },
 };

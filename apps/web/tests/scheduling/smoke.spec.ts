@@ -85,13 +85,9 @@ test('prepare lets a leader reach the cycle builder', async ({
     }),
   );
 
-  // The cycle's own schedule link; both it and the older "Assign" link on the
-  // cycle list resolve to the same assign URL.
-  await page
-    .getByTestId(
-      `open-schedule-link-${journey.events.teamService.participationId}`,
-    )
-    .click();
+  // The Schedule owns one builder link for the Ministry's whole Cycle.
+  await page.getByTestId('open-assign-link').click();
+  await expect(page).toHaveURL(worshipBuilderPath({ journey }));
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
     timeout: 15_000,
   });

@@ -19,6 +19,12 @@ export interface GetParticipationInput {
   tx?: TransactionContext;
 }
 
+export interface LockParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  tx: TransactionContext;
+}
+
 export interface FindParticipationByMinistryEventInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -71,17 +77,24 @@ export interface ListInclusionsInput {
   tx?: TransactionContext;
 }
 
-export interface ReplaceInclusionsInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-  eventTimeBlockIds: EventTimeBlockId[];
-  tx?: TransactionContext;
-}
-
 export interface AddInclusionInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
   eventTimeBlockId: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface RemoveInclusionInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  eventTimeBlockId: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface FindAvailabilityRequestedAtInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
   tx?: TransactionContext;
 }
 
@@ -113,8 +126,32 @@ export interface ScheduleSummaryRow {
   availabilityRequestedForAny: boolean;
 }
 
+export interface ListSchedulesFactsInput {
+  churchId: ChurchId;
+  ministryIds: MinistryId[];
+  cycleIds: CycleId[];
+  tx?: TransactionContext;
+}
+
+/** One distinct MinistryParticipation state serving a block of a Schedule. */
+export interface ScheduleServingStateRow {
+  ministryId: string;
+  cycleId: string;
+  state: ParticipationState;
+}
+
+/** A Schedule's AvailabilityChecks still held by active Ministry Memberships. */
+export interface ScheduleCheckCountRow {
+  ministryId: string;
+  cycleId: string;
+  confirmed: number;
+  asked: number;
+}
+
 export interface MinistryParticipationRepository {
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
+  /** Holds the row until `tx` ends, so its state cannot change under the caller. */
+  lockById(input: LockParticipationInput): Promise<MinistryParticipation>;
   findByMinistryEvent(
     input: FindParticipationByMinistryEventInput,
   ): Promise<MinistryParticipation | null>;
@@ -139,10 +176,21 @@ export interface MinistryParticipationRepository {
   listInclusions(
     input: ListInclusionsInput,
   ): Promise<ParticipationEventTimeBlockInclusion[]>;
-  replaceInclusions(input: ReplaceInclusionsInput): Promise<void>;
   addInclusion(input: AddInclusionInput): Promise<void>;
+  removeInclusion(input: RemoveInclusionInput): Promise<void>;
   touch(input: TouchParticipationInput): Promise<void>;
+  /** When the Ministry first asked for availability in the Cycle: its earliest Availability Check. Null before any ask. */
+  findAvailabilityRequestedAt(
+    input: FindAvailabilityRequestedAtInput,
+  ): Promise<Date | null>;
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryRow[]>;
+  /** Leaves out opted-out MinistryParticipations and cancelled Events. */
+  listScheduleServingStates(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleServingStateRow[]>;
+  countScheduleChecks(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleCheckCountRow[]>;
 }

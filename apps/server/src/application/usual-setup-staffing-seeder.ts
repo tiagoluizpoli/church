@@ -51,6 +51,25 @@ export interface SeedStaffingInput {
   tx: TransactionContext;
 }
 
+export interface SeedParticipationBlockInput {
+  churchId: ChurchId;
+  participation: MinistryParticipation;
+  block: StaffingSeedEventTimeBlock;
+  setup: UsualSetupSeedContext;
+  tx: TransactionContext;
+}
+
+interface PlanForInput {
+  participation: MinistryParticipation;
+  block: StaffingSeedEventTimeBlock;
+  setup: UsualSetupSeedContext;
+}
+
+interface WritePlanInput extends IncludedPlan {
+  churchId: ChurchId;
+  tx: TransactionContext;
+}
+
 interface IncludedPlan {
   block: StaffingSeedEventTimeBlock;
   participation: MinistryParticipation;
@@ -139,48 +158,88 @@ export class UsualSetupStaffingSeeder {
 
   async seed(input: SeedStaffingInput): Promise<void> {
     const { churchId, tx } = input;
-    for await (const { block, participation, plan } of this.includedPlans(
-      input,
-    )) {
-      await this.participationRepository.addInclusion({
-        churchId,
-        participationId: participation.id,
-        eventTimeBlockId: block.eventTimeBlockId,
-        tx,
-      });
+    for await (const included of this.includedPlans(input)) {
+      await this.writePlan({ ...included, churchId, tx });
+    }
+  }
 
-      const shifts = plan.shifts.map(
-        (shiftPlan) =>
-          new Shift({
-            props: {
-              churchId,
-              participationId: participation.id,
-              eventTimeBlockId: block.eventTimeBlockId,
-              startTime: shiftPlan.startTime,
-              endTime: shiftPlan.endTime,
-              label: shiftPlan.label,
-            },
-            eventTimeBlockBounds: block,
-          }),
-      );
-      await this.shiftRepository.createMany({ churchId, shifts, tx });
+  /** Seeds one block of one participation; false when the setup policy excludes it. */
+  async seedParticipationBlock({
+    churchId,
+    participation,
+    block,
+    setup,
+    tx,
+  }: SeedParticipationBlockInput): Promise<boolean> {
+    const plan = this.planFor({ participation, block, setup });
+    if (!plan?.include) return false;
+    await this.writePlan({ churchId, participation, block, plan, tx });
+    return true;
+  }
 
-      for (const [index, shiftPlan] of plan.shifts.entries()) {
-        const shift = shifts[index];
-        if (!shift) continue;
-        for (const headcount of shiftPlan.headcounts) {
-          await this.shiftRepository.upsertRequirement({
+  private async writePlan({
+    churchId,
+    block,
+    participation,
+    plan,
+    tx,
+  }: WritePlanInput): Promise<void> {
+    await this.participationRepository.addInclusion({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: block.eventTimeBlockId,
+      tx,
+    });
+
+    const shifts = plan.shifts.map(
+      (shiftPlan) =>
+        new Shift({
+          props: {
             churchId,
-            shiftId: shift.id,
             participationId: participation.id,
-            sectorId: headcount.sectorId,
-            roleId: headcount.roleId,
-            peopleNeeded: headcount.peopleNeeded,
-            tx,
-          });
-        }
+            eventTimeBlockId: block.eventTimeBlockId,
+            startTime: shiftPlan.startTime,
+            endTime: shiftPlan.endTime,
+            label: shiftPlan.label,
+          },
+          eventTimeBlockBounds: block,
+        }),
+    );
+    await this.shiftRepository.createMany({ churchId, shifts, tx });
+
+    for (const [index, shiftPlan] of plan.shifts.entries()) {
+      const shift = shifts[index];
+      if (!shift) continue;
+      for (const headcount of shiftPlan.headcounts) {
+        await this.shiftRepository.saveRequirement({
+          churchId,
+          shiftId: shift.id,
+          participationId: participation.id,
+          sectorId: headcount.sectorId,
+          roleId: headcount.roleId,
+          peopleNeeded: headcount.peopleNeeded,
+          tx,
+        });
       }
     }
+  }
+
+  private planFor({
+    participation,
+    block,
+    setup,
+  }: PlanForInput): ParticipationSeedPlan | undefined {
+    const direction = setup.directionByMinistry.get(participation.ministryId);
+    if (!direction) return undefined;
+
+    return this.profileSeeder.plan({
+      eventTimeBlock: block,
+      profileEntries:
+        setup.entriesByMinistry.get(participation.ministryId) ?? [],
+      ministryDefaultDirection: direction,
+      globalDefaultAllIn: setup.globalDefaultAllIn,
+      timeZone: setup.timeZone,
+    });
   }
 
   /** Each (block, active Ministry participation) the setup policy includes. */
@@ -208,20 +267,8 @@ export class UsualSetupStaffingSeeder {
 
       for (const block of blocks) {
         for (const participation of participations) {
-          const direction = setup.directionByMinistry.get(
-            participation.ministryId,
-          );
-          if (!direction) continue;
-
-          const plan = this.profileSeeder.plan({
-            eventTimeBlock: block,
-            profileEntries:
-              setup.entriesByMinistry.get(participation.ministryId) ?? [],
-            ministryDefaultDirection: direction,
-            globalDefaultAllIn: setup.globalDefaultAllIn,
-            timeZone: setup.timeZone,
-          });
-          if (plan.include) yield { block, participation, plan };
+          const plan = this.planFor({ participation, block, setup });
+          if (plan?.include) yield { block, participation, plan };
         }
       }
     }

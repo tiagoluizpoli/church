@@ -177,6 +177,7 @@ function createRepos(): Repos {
   const unavailableShiftRepo: UnavailableShiftRepository = {
     listByVolunteerForEvent: vi.fn(),
     listByVolunteers: vi.fn(async () => []),
+    listByParticipation: vi.fn(),
     listUnavailableShiftsByCheck: vi.fn(),
     replaceUnavailableShiftsForCheck: vi.fn(),
   };
@@ -218,6 +219,7 @@ function createRepos(): Repos {
 
   const ministryParticipationRepo: MinistryParticipationRepository = {
     getById: vi.fn(),
+    lockById: vi.fn(),
     findByMinistryEvent: vi.fn(async () => buildParticipation()),
     create: vi.fn(),
     listByEvent: vi.fn(async () => [buildParticipation()]),
@@ -226,10 +228,13 @@ function createRepos(): Repos {
     listByIds: vi.fn(),
     updateState: vi.fn(),
     listInclusions: vi.fn(),
-    replaceInclusions: vi.fn(),
     addInclusion: vi.fn(),
+    removeInclusion: vi.fn(),
     touch: vi.fn(),
+    findAvailabilityRequestedAt: vi.fn(),
     listScheduleSummaries: vi.fn(),
+    listScheduleServingStates: vi.fn(),
+    countScheduleChecks: vi.fn(),
   };
 
   const authorityManager = {

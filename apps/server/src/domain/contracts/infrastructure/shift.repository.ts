@@ -33,6 +33,8 @@ export interface ListShiftsByEventTimeBlockInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
   eventTimeBlockId: EventTimeBlockId;
+  /** Holds the rows until commit: answers and Assignments referencing them wait. */
+  forUpdate?: boolean;
   tx?: TransactionContext;
 }
 
@@ -58,7 +60,7 @@ export interface DeleteShiftsByEventTimeBlockInput {
   tx?: TransactionContext;
 }
 
-export interface UpsertShiftRequirementInput {
+export interface SaveShiftRequirementInput {
   churchId: ChurchId;
   shiftId: ShiftId;
   participationId: MinistryParticipationId;
@@ -67,6 +69,12 @@ export interface UpsertShiftRequirementInput {
   sectorId: SectorId;
   peopleNeeded: number;
   notes?: string;
+  tx?: TransactionContext;
+}
+
+export interface DeleteShiftRequirementsInput {
+  churchId: ChurchId;
+  shiftRequirementIds: ShiftRequirementId[];
   tx?: TransactionContext;
 }
 
@@ -95,9 +103,8 @@ export interface ShiftRepository {
   deleteByEventTimeBlock(
     input: DeleteShiftsByEventTimeBlockInput,
   ): Promise<void>;
-  upsertRequirement(
-    input: UpsertShiftRequirementInput,
-  ): Promise<ShiftRequirement>;
+  saveRequirement(input: SaveShiftRequirementInput): Promise<ShiftRequirement>;
+  deleteRequirements(input: DeleteShiftRequirementsInput): Promise<void>;
   listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,
   ): Promise<ShiftRequirement[]>;

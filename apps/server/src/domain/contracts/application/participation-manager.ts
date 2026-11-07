@@ -7,22 +7,27 @@ import type {
   MinistryId,
   MinistryParticipationId,
   RoleId,
-  SectorId,
   ShiftId,
   TemplateTimeBlockId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
+import type { Cycle } from '../../entities/cycle';
 import type { Event } from '../../entities/event';
 import type { EventTimeBlock } from '../../entities/event-time-block';
+import type { Ministry } from '../../entities/ministry';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
-import type { MinistryParticipation } from '../../entities/ministry-participation';
+import type {
+  MinistryParticipation,
+  ScheduleStage,
+} from '../../entities/ministry-participation';
 import type { Shift } from '../../entities/shift';
 import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type {
   UsualSetup,
   UsualSetupEntryInput,
+  UsualSetupHeadcount,
 } from '../../entities/usual-setup';
 import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
@@ -32,16 +37,37 @@ export interface GetCycleParticipationInput {
   ministryId: MinistryId;
 }
 
+export interface ParticipationRequirementView {
+  requirement: ShiftRequirement;
+  /** Active Assignments on this requirement; cancelled and declined are excluded. */
+  assignedCount: number;
+}
+
+/** What the prepare guards and flags read, always per Shift. */
+export interface ParticipationShiftView {
+  shift: Shift;
+  requirements: ParticipationRequirementView[];
+  unavailableMarkCount: number;
+  /** Active Assignments on the Shift; cancelled and declined are excluded. */
+  assignmentCount: number;
+  /** The Shift has no ShiftRequirement. */
+  flagged: boolean;
+}
+
 export interface ParticipationEventTimeBlockView {
   eventTimeBlock: EventTimeBlock;
   included: boolean;
-  shifts: Shift[];
-  requirements: ShiftRequirement[];
+  shifts: ParticipationShiftView[];
+  requirements: ParticipationRequirementView[];
+  /** A Shift was created after availability was requested, so earlier answers do not cover it. */
+  shiftsChangedAfterAsk: boolean;
 }
 
 export interface ParticipationEventView {
   participation: MinistryParticipation;
   event: Event;
+  /** Generated from an EventTemplate; false for a one-off Event. */
+  generatedFromTemplate: boolean;
   eventTimeBlocks: ParticipationEventTimeBlockView[];
 }
 
@@ -109,41 +135,6 @@ export interface PublishCycleView {
   published: boolean;
   belowFull: boolean;
   participations: PublishCycleParticipationOutcome[];
-}
-
-export interface SetInclusionsInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-  eventTimeBlockIds: EventTimeBlockId[];
-}
-
-export interface SplitShiftsManagerInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-  eventTimeBlockId: EventTimeBlockId;
-  strategy: ShiftSplitStrategy;
-}
-
-export interface UpdateShiftManagerInput {
-  churchId: ChurchId;
-  shiftId: ShiftId;
-  startTime?: Date;
-  endTime?: Date;
-  label?: string;
-}
-
-export interface DeleteShiftManagerInput {
-  churchId: ChurchId;
-  shiftId: ShiftId;
-}
-
-export interface UpsertRequirementManagerInput {
-  churchId: ChurchId;
-  shiftId: ShiftId;
-  sectorId: SectorId;
-  roleId: RoleId;
-  peopleNeeded: number;
-  notes?: string;
 }
 
 export interface ListUsualSetupBlocksInput {
@@ -228,6 +219,37 @@ export interface ScheduleSummaryView {
   availabilityRequestedForAny: boolean;
 }
 
+export interface ListSchedulesInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+}
+
+export interface ScheduleAskingView {
+  confirmed: number;
+  asked: number;
+}
+
+/** One Ministry's part of one Sent or Past Cycle. `asking` is set only in that stage. */
+export interface ScheduleView {
+  ministry: Ministry;
+  cycle: Cycle;
+  stage: ScheduleStage;
+  asking?: ScheduleAskingView;
+}
+
+/** The complete desired state of one EventTimeBlock for one MinistryParticipation. */
+export interface SavePreparationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  eventTimeBlockId: EventTimeBlockId;
+  serves: boolean;
+  /** Serving with neither this nor `headcounts` opts a block with no Shifts in. */
+  shiftSplit?: ShiftSplitStrategy;
+  /** `shiftIndex` points into the submitted split; a zero count is an omission. */
+  headcounts?: UsualSetupHeadcount[];
+}
+
 export interface IParticipationManager {
   getCycleParticipation(
     input: GetCycleParticipationInput,
@@ -235,13 +257,10 @@ export interface IParticipationManager {
   getCycleBuilderData(
     input: GetCycleBuilderDataInput,
   ): Promise<CycleBuilderView>;
-  setInclusions(input: SetInclusionsInput): Promise<void>;
-  splitShifts(input: SplitShiftsManagerInput): Promise<Shift[]>;
-  updateShift(input: UpdateShiftManagerInput): Promise<Shift>;
-  deleteShift(input: DeleteShiftManagerInput): Promise<void>;
-  upsertRequirement(
-    input: UpsertRequirementManagerInput,
-  ): Promise<ShiftRequirement>;
+  /** Applies one block's desired state atomically, leaving other blocks untouched. */
+  savePreparation(
+    input: SavePreparationInput,
+  ): Promise<ParticipationEventTimeBlockView>;
   /** Every current block by template name and block order, saved or not. */
   listUsualSetupBlocks(
     input: ListUsualSetupBlocksInput,
@@ -260,4 +279,6 @@ export interface IParticipationManager {
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryView[]>;
+  /** Newest Cycle first, then Ministries alphabetically. */
+  listSchedules(input: ListSchedulesInput): Promise<ScheduleView[]>;
 }

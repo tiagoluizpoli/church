@@ -3,6 +3,7 @@ import {
   availabilityCheck,
   cycle,
   event,
+  ministryMembership,
   ministryParticipation,
   participationEventTimeBlockInclusion,
   shift,
@@ -15,12 +16,14 @@ import {
   eq,
   inArray,
   isNull,
+  min,
   ne,
-  notInArray,
+  sql,
 } from 'drizzle-orm';
 import type {
   AddInclusionInput,
   CreateParticipationInput,
+  FindAvailabilityRequestedAtInput,
   FindParticipationByMinistryEventInput,
   GetParticipationInput,
   HasCycleStaffingInput,
@@ -29,8 +32,12 @@ import type {
   ListParticipationsByIdsInput,
   ListParticipationsByMinistryInput,
   ListScheduleSummariesInput,
+  ListSchedulesFactsInput,
+  LockParticipationInput,
   MinistryParticipationRepository,
-  ReplaceInclusionsInput,
+  RemoveInclusionInput,
+  ScheduleCheckCountRow,
+  ScheduleServingStateRow,
   ScheduleSummaryRow,
   TouchParticipationInput,
   UpdateParticipationStateInput,
@@ -83,6 +90,33 @@ export class DrizzleMinistryParticipationRepository
       throw new NotFoundError(
         `Participation not found: ${input.participationId}`,
       );
+    }
+
+    return mapMinistryParticipation(row);
+  }
+
+  async lockById({
+    churchId,
+    participationId,
+    tx,
+  }: LockParticipationInput): Promise<MinistryParticipation> {
+    if (!isValidUuid(participationId)) {
+      throw new NotFoundError(`Participation not found: ${participationId}`);
+    }
+
+    const [row] = await getClient({ db: this.db, tx })
+      .select()
+      .from(ministryParticipation)
+      .where(
+        and(
+          eq(ministryParticipation.id, participationId),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+        ),
+      )
+      .for('no key update');
+
+    if (!row) {
+      throw new NotFoundError(`Participation not found: ${participationId}`);
     }
 
     return mapMinistryParticipation(row);
@@ -292,6 +326,29 @@ export class DrizzleMinistryParticipationRepository
     return false;
   }
 
+  async findAvailabilityRequestedAt({
+    churchId,
+    cycleId,
+    ministryId,
+    tx,
+  }: FindAvailabilityRequestedAtInput): Promise<Date | null> {
+    const [row] = await getClient({ db: this.db, tx })
+      .select({ requestedAt: min(availabilityCheck.createdAt) })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .where(
+        and(
+          eq(availabilityCheck.cycleId, cycleId),
+          eq(ministryMembership.ministryId, ministryId),
+          withChurchIsolation({ table: availabilityCheck, churchId }),
+        ),
+      );
+    return row?.requestedAt ?? null;
+  }
+
   async listInclusions(
     input: ListInclusionsInput,
   ): Promise<ParticipationEventTimeBlockInclusion[]> {
@@ -315,77 +372,30 @@ export class DrizzleMinistryParticipationRepository
     return rows.map(mapParticipationEventTimeBlockInclusion);
   }
 
-  async replaceInclusions(input: ReplaceInclusionsInput): Promise<void> {
-    const db = getClient({ db: this.db, tx: input.tx });
-
-    if (input.eventTimeBlockIds.length === 0) {
-      await db.delete(participationEventTimeBlockInclusion).where(
-        and(
-          eq(
-            participationEventTimeBlockInclusion.participationId,
-            input.participationId,
-          ),
-          withChurchIsolation({
-            table: participationEventTimeBlockInclusion,
-            churchId: input.churchId,
-          }),
-        ),
-      );
-      return;
-    }
-
-    await db.delete(participationEventTimeBlockInclusion).where(
-      and(
-        eq(
-          participationEventTimeBlockInclusion.participationId,
-          input.participationId,
-        ),
-        withChurchIsolation({
-          table: participationEventTimeBlockInclusion,
-          churchId: input.churchId,
-        }),
-        notInArray(
-          participationEventTimeBlockInclusion.eventTimeBlockId,
-          input.eventTimeBlockIds,
-        ),
-      ),
-    );
-
-    const existing = await db
-      .select({
-        eventTimeBlockId: participationEventTimeBlockInclusion.eventTimeBlockId,
-      })
-      .from(participationEventTimeBlockInclusion)
+  async removeInclusion({
+    churchId,
+    participationId,
+    eventTimeBlockId,
+    tx,
+  }: RemoveInclusionInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .delete(participationEventTimeBlockInclusion)
       .where(
         and(
           eq(
             participationEventTimeBlockInclusion.participationId,
-            input.participationId,
+            participationId,
+          ),
+          eq(
+            participationEventTimeBlockInclusion.eventTimeBlockId,
+            eventTimeBlockId,
           ),
           withChurchIsolation({
             table: participationEventTimeBlockInclusion,
-            churchId: input.churchId,
+            churchId,
           }),
-          inArray(
-            participationEventTimeBlockInclusion.eventTimeBlockId,
-            input.eventTimeBlockIds,
-          ),
         ),
       );
-    const existingIds = new Set(existing.map((row) => row.eventTimeBlockId));
-    const missing = input.eventTimeBlockIds.filter(
-      (eventTimeBlockId) => !existingIds.has(eventTimeBlockId),
-    );
-
-    if (missing.length > 0) {
-      await db.insert(participationEventTimeBlockInclusion).values(
-        missing.map((eventTimeBlockId) => ({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          eventTimeBlockId,
-        })),
-      );
-    }
   }
 
   async addInclusion(input: AddInclusionInput): Promise<void> {
@@ -559,5 +569,75 @@ export class DrizzleMinistryParticipationRepository
         availabilityRequestedForAny,
       };
     });
+  }
+
+  async listScheduleServingStates({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleServingStateRow[]> {
+    return getClient({ db: this.db, tx })
+      .selectDistinct({
+        ministryId: ministryParticipation.ministryId,
+        cycleId: event.cycleId,
+        state: ministryParticipation.state,
+      })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(
+        participationEventTimeBlockInclusion,
+        eq(
+          participationEventTimeBlockInclusion.participationId,
+          ministryParticipation.id,
+        ),
+      )
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          withChurchIsolation({ table: event, churchId }),
+          withChurchIsolation({
+            table: participationEventTimeBlockInclusion,
+            churchId,
+          }),
+          inArray(ministryParticipation.ministryId, ministryIds),
+          inArray(event.cycleId, cycleIds),
+          ne(event.status, 'cancelled'),
+        ),
+      );
+  }
+
+  async countScheduleChecks({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleCheckCountRow[]> {
+    return getClient({ db: this.db, tx })
+      .select({
+        ministryId: ministryMembership.ministryId,
+        cycleId: availabilityCheck.cycleId,
+        confirmed:
+          sql<number>`count(*) filter (where ${availabilityCheck.state} = 'confirmed')`.mapWith(
+            Number,
+          ),
+        asked: count(),
+      })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .where(
+        and(
+          withChurchIsolation({ table: availabilityCheck, churchId }),
+          withChurchIsolation({ table: ministryMembership, churchId }),
+          inArray(ministryMembership.ministryId, ministryIds),
+          inArray(availabilityCheck.cycleId, cycleIds),
+          eq(ministryMembership.status, 'active'),
+          isNull(availabilityCheck.withdrawnAt),
+        ),
+      )
+      .groupBy(ministryMembership.ministryId, availabilityCheck.cycleId);
   }
 }

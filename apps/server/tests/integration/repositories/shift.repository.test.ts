@@ -386,7 +386,7 @@ describe('DrizzleShiftRepository', () => {
     ).toEqual([]);
   });
 
-  it('upsertRequirement matches on (shift, sector, role) and lists each with its Sector', async () => {
+  it('saveRequirement matches on (shift, sector, role) and lists each with its Sector', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedParticipationGraph(
       seed.churchAId,
@@ -435,17 +435,17 @@ describe('DrizzleShiftRepository', () => {
     if (!babiesRoom || !kidsRoom) throw new Error('setup failed');
     const place = { churchId, shiftId: shift.id, participationId, roleId };
 
-    const created = await repo.upsertRequirement({
+    const created = await repo.saveRequirement({
       ...place,
       sectorId: SectorId.from(babiesRoom.id),
       peopleNeeded: 1,
     });
-    const updated = await repo.upsertRequirement({
+    const updated = await repo.saveRequirement({
       ...place,
       sectorId: SectorId.from(babiesRoom.id),
       peopleNeeded: 3,
     });
-    const otherSector = await repo.upsertRequirement({
+    const otherSector = await repo.saveRequirement({
       ...place,
       sectorId: SectorId.from(kidsRoom.id),
       peopleNeeded: 2,

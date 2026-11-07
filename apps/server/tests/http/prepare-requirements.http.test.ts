@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sector, shiftRequirement } from '@church/db';
+import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -39,7 +40,7 @@ const mockGetSession = vi.mocked(
 const activeChurchResolver = { resolve: vi.fn() };
 const authorityGuard = {
   decideManageAnyMinistry: vi.fn(),
-  decideManageShift: vi.fn(),
+  decideManageParticipation: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -65,11 +66,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  resetClock();
   await app.close();
 });
 
 beforeEach(async () => {
   vi.resetAllMocks();
+  setTestClock({ instant: parseInstant({ value: '2026-09-01T00:00:00Z' }) });
   await resetSchedulingPhase3Db();
 });
 
@@ -87,7 +90,7 @@ async function seedPreparingShift() {
     autoSelected: false,
   });
   authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
-  authorityGuard.decideManageShift.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageParticipation.mockResolvedValue({ allowed: true });
 
   const cycle = await createSchedulingPhase3Cycle({
     churchId: seed.churchAId,
@@ -156,6 +159,7 @@ async function seedPreparingShift() {
 
   return {
     shiftId: shift.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
     participationId: graph.participation.id,
     teacherId: teacher.id,
     babiesRoomId: babiesRoom.id,
@@ -166,34 +170,49 @@ async function seedPreparingShift() {
   };
 }
 
-interface PutRequirementInput {
-  shiftId: string;
-  payload: Record<string, unknown>;
+interface SaveHeadcountsInput {
+  seed: Awaited<ReturnType<typeof seedPreparingShift>>;
+  headcounts: Record<string, unknown>[];
 }
 
-async function putRequirement({ shiftId, payload }: PutRequirementInput) {
-  return await app.inject({
+async function saveHeadcounts({ seed, headcounts }: SaveHeadcountsInput) {
+  return app.inject({
     method: 'PUT',
-    url: `/api/v1/prepare/shifts/${shiftId}/requirements`,
-    payload,
+    url: `/api/v1/prepare/participations/${seed.participationId}/event-time-blocks/${seed.eventTimeBlockId}/preparation`,
+    payload: {
+      serves: true,
+      shiftSplit: {
+        kind: 'manual',
+        spans: [
+          {
+            startTime: '2026-09-07T09:00:00.000Z',
+            endTime: '2026-09-07T10:00:00.000Z',
+            label: 'Morning',
+          },
+        ],
+      },
+      headcounts: headcounts.map((entry) => ({ shiftIndex: 0, ...entry })),
+    },
   });
 }
 
-describe('PUT /prepare/shifts/:shiftId/requirements on Sectors', () => {
+describe('block preparation headcounts on Sectors', () => {
   it('creates a requirement for a Sector of the Ministry and returns its Sector', async () => {
     const seed = await seedPreparingShift();
 
-    const response = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: {
-        sectorId: seed.babiesRoomId,
-        roleId: seed.teacherId,
-        peopleNeeded: 1,
-      },
+    const response = await saveHeadcounts({
+      seed,
+      headcounts: [
+        {
+          sectorId: seed.babiesRoomId,
+          roleId: seed.teacherId,
+          peopleNeeded: 1,
+        },
+      ],
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json().requirements[0]).toMatchObject({
       shiftId: seed.shiftId,
       sectorId: seed.babiesRoomId,
       sectorName: 'Babies Room',
@@ -205,52 +224,45 @@ describe('PUT /prepare/shifts/:shiftId/requirements on Sectors', () => {
   it('updates the existing requirement on the same Shift, Sector and Role', async () => {
     const seed = await seedPreparingShift();
     const payload = { sectorId: seed.babiesRoomId, roleId: seed.teacherId };
-    const created = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: { ...payload, peopleNeeded: 1 },
+    const created = await saveHeadcounts({
+      seed,
+      headcounts: [{ ...payload, peopleNeeded: 1 }],
     });
 
-    const updated = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: { ...payload, peopleNeeded: 3 },
+    const updated = await saveHeadcounts({
+      seed,
+      headcounts: [{ ...payload, peopleNeeded: 3 }],
     });
 
     expect(updated.statusCode).toBe(200);
-    expect(updated.json()).toMatchObject({
-      id: created.json().id,
+    expect(updated.json().requirements[0]).toMatchObject({
+      id: created.json().requirements[0].id,
       peopleNeeded: 3,
     });
   });
 
   it('keeps the same Role at two Sectors as two requirements', async () => {
     const seed = await seedPreparingShift();
-
-    const babies = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: {
-        sectorId: seed.babiesRoomId,
-        roleId: seed.teacherId,
-        peopleNeeded: 1,
-      },
-    });
-    const kids = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: {
-        sectorId: seed.kidsRoomId,
-        roleId: seed.teacherId,
-        peopleNeeded: 2,
-      },
+    const response = await saveHeadcounts({
+      seed,
+      headcounts: [
+        {
+          sectorId: seed.babiesRoomId,
+          roleId: seed.teacherId,
+          peopleNeeded: 1,
+        },
+        { sectorId: seed.kidsRoomId, roleId: seed.teacherId, peopleNeeded: 2 },
+      ],
     });
 
-    expect(kids.json().id).not.toBe(babies.json().id);
-    expect(kids.json()).toMatchObject({
-      sectorName: 'Kids Room',
-      peopleNeeded: 2,
-    });
-    expect(babies.json()).toMatchObject({
-      sectorName: 'Babies Room',
-      peopleNeeded: 1,
-    });
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json().requirements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sectorName: 'Babies Room', peopleNeeded: 1 }),
+        expect.objectContaining({ sectorName: 'Kids Room', peopleNeeded: 2 }),
+      ]),
+    );
+    expect(response.json().requirements).toHaveLength(2);
   });
 
   it.each([
@@ -259,13 +271,15 @@ describe('PUT /prepare/shifts/:shiftId/requirements on Sectors', () => {
   ] as const)('refuses a Sector of %s with 404', async (_label, sectorKey) => {
     const seed = await seedPreparingShift();
 
-    const response = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: {
-        sectorId: seed[sectorKey],
-        roleId: seed.teacherId,
-        peopleNeeded: 1,
-      },
+    const response = await saveHeadcounts({
+      seed,
+      headcounts: [
+        {
+          sectorId: seed[sectorKey],
+          roleId: seed.teacherId,
+          peopleNeeded: 1,
+        },
+      ],
     });
 
     expect(response.statusCode).toBe(404);
@@ -279,13 +293,15 @@ describe('PUT /prepare/shifts/:shiftId/requirements on Sectors', () => {
       .set({ archivedAt: new Date() })
       .where(eq(sector.id, seed.babiesRoomId));
 
-    const response = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: {
-        sectorId: seed.babiesRoomId,
-        roleId: seed.teacherId,
-        peopleNeeded: 1,
-      },
+    const response = await saveHeadcounts({
+      seed,
+      headcounts: [
+        {
+          sectorId: seed.babiesRoomId,
+          roleId: seed.teacherId,
+          peopleNeeded: 1,
+        },
+      ],
     });
 
     expect(response.statusCode).toBe(404);
@@ -301,13 +317,15 @@ describe('PUT /prepare/shifts/:shiftId/requirements on Sectors', () => {
   it('refuses a Role of another Ministry with 404', async () => {
     const seed = await seedPreparingShift();
 
-    const response = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: {
-        sectorId: seed.babiesRoomId,
-        roleId: seed.foreignRoleId,
-        peopleNeeded: 1,
-      },
+    const response = await saveHeadcounts({
+      seed,
+      headcounts: [
+        {
+          sectorId: seed.babiesRoomId,
+          roleId: seed.foreignRoleId,
+          peopleNeeded: 1,
+        },
+      ],
     });
 
     expect(response.statusCode).toBe(404);
@@ -317,9 +335,9 @@ describe('PUT /prepare/shifts/:shiftId/requirements on Sectors', () => {
   it('rejects a body without a Sector', async () => {
     const seed = await seedPreparingShift();
 
-    const response = await putRequirement({
-      shiftId: seed.shiftId,
-      payload: { roleId: seed.teacherId, peopleNeeded: 1 },
+    const response = await saveHeadcounts({
+      seed,
+      headcounts: [{ roleId: seed.teacherId, peopleNeeded: 1 }],
     });
 
     expect(response.statusCode).toBe(422);

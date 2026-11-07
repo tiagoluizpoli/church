@@ -136,6 +136,9 @@ function createHarness() {
   );
   const participationRepository = createMinistryParticipationRepositoryFake();
   participationRepository.getById.mockImplementation(async () => participation);
+  participationRepository.lockById.mockImplementation(
+    async () => participation,
+  );
   const volunteerRepository = createVolunteerRepositoryFake();
   volunteerRepository.hasMembershipInMinistry.mockImplementation(
     async () => true,
@@ -183,6 +186,8 @@ function createHarness() {
     ministryRepository: ministryRepo,
     roleRepository: roleRepo,
     notifications,
+    churchRepository: {} as never,
+    staffingSeeder: {} as never,
     unitOfWork,
   });
   const volunteerManager = new DbVolunteerManager({

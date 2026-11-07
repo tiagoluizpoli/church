@@ -92,6 +92,8 @@ function createParticipationManager(): DbParticipationManager {
     roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
     sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
     notifications: createChurchNotificationsSpy(),
+    churchRepository: {} as never,
+    staffingSeeder: {} as never,
     unitOfWork,
   });
 }

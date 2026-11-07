@@ -450,6 +450,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -587,6 +588,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -724,6 +726,7 @@ export const CreatePlanningEvent422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -842,6 +845,7 @@ export const UpdatePlanningEvent422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -1540,6 +1544,7 @@ export const MintMinistryInvitation422Reason = {
   DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
   DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
   USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
   INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
   INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
   INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
@@ -2123,6 +2128,67 @@ export type SaveUsualSetupBlock404 = {
   message: string;
 };
 
+export type ListSchedules200SchedulesItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type ListSchedules200SchedulesItemCycleState = typeof ListSchedules200SchedulesItemCycleState[keyof typeof ListSchedules200SchedulesItemCycleState];
+
+
+export const ListSchedules200SchedulesItemCycleState = {
+  draft: 'draft',
+  sent: 'sent',
+  past: 'past',
+} as const;
+
+export type ListSchedules200SchedulesItemCycle = {
+  id: string;
+  name: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+  state: ListSchedules200SchedulesItemCycleState;
+};
+
+export type ListSchedules200SchedulesItemStage = typeof ListSchedules200SchedulesItemStage[keyof typeof ListSchedules200SchedulesItemStage];
+
+
+export const ListSchedules200SchedulesItemStage = {
+  to_prepare: 'to_prepare',
+  asking: 'asking',
+  assigning: 'assigning',
+  published: 'published',
+  not_serving: 'not_serving',
+} as const;
+
+export type ListSchedules200SchedulesItemAsking = {
+  confirmed: number;
+  asked: number;
+};
+
+export type ListSchedules200SchedulesItem = {
+  ministry: ListSchedules200SchedulesItemMinistry;
+  cycle: ListSchedules200SchedulesItemCycle;
+  stage: ListSchedules200SchedulesItemStage;
+  asking?: ListSchedules200SchedulesItemAsking;
+};
+
+export type ListSchedules200 = {
+  schedules: ListSchedules200SchedulesItem[];
+};
+
+export type ListSchedules401 = {
+  error: string;
+  message: string;
+};
+
+export type ListSchedules403 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleParticipationParams = {
 ministryId: string;
 };
@@ -2204,6 +2270,18 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock 
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };
 
+export type GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItemRequirementsItem = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  sectorId: string;
+  sectorName: string;
+  peopleNeeded: number;
+  notes?: string;
+  assignedCount: number;
+};
+
 export type GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem = {
   id: string;
   participationId: string;
@@ -2213,6 +2291,10 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItemRequirementsItem[];
+  unavailableMarkCount: number;
+  assignmentCount: number;
+  flagged: boolean;
 };
 
 export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsItem = {
@@ -2224,6 +2306,7 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsIte
   sectorName: string;
   peopleNeeded: number;
   notes?: string;
+  assignedCount: number;
 };
 
 export type GetCycleParticipation200EventsItemEventTimeBlocksItem = {
@@ -2231,11 +2314,13 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItem = {
   included: boolean;
   shifts: GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem[];
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsItem[];
+  shiftsChangedAfterAsk: boolean;
 };
 
 export type GetCycleParticipation200EventsItem = {
   participation: GetCycleParticipation200EventsItemParticipation;
   event: GetCycleParticipation200EventsItemEvent;
+  generatedFromTemplate: boolean;
   eventTimeBlocks: GetCycleParticipation200EventsItemEventTimeBlocksItem[];
 };
 
@@ -2291,39 +2376,15 @@ export type ListScheduleSummaries404 = {
   message: string;
 };
 
-export type SetParticipationInclusionsBody = {
-  eventTimeBlockIds: string[];
-};
-
-/**
- * @nullable
- */
-export type SetParticipationInclusions204 = typeof SetParticipationInclusions204[keyof typeof SetParticipationInclusions204] | null;
-
-
-export const SetParticipationInclusions204 = {
-} as const;
-
-export type SetParticipationInclusions403 = {
-  error: string;
-  message: string;
-};
-
-export type SetParticipationInclusions404 = {
-  error: string;
-  message: string;
-};
-
-export type SplitParticipationShiftsBodyStrategy = {
-  kind: 'equal-n';
+export type SaveEventTimeBlockPreparationBodyShiftSplit = {
+  kind: 'equal';
   /**
      * @minimum 1
      * @maximum 9007199254740991
      */
-  n: number;
+  count: number;
 } | {
   kind: 'manual';
-  /** @minItems 1 */
   spans: ({
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime: string;
@@ -2333,95 +2394,58 @@ export type SplitParticipationShiftsBodyStrategy = {
 })[];
 };
 
-export type SplitParticipationShiftsBody = {
-  strategy: SplitParticipationShiftsBodyStrategy;
-};
-
-export type SplitParticipationShifts201ShiftsItem = {
-  id: string;
-  participationId: string;
-  eventTimeBlockId: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  startTime: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  endTime: string;
-  label?: string;
-};
-
-export type SplitParticipationShifts201 = {
-  shifts: SplitParticipationShifts201ShiftsItem[];
-};
-
-export type SplitParticipationShifts403 = {
-  error: string;
-  message: string;
-};
-
-export type SplitParticipationShifts404 = {
-  error: string;
-  message: string;
-};
-
-export type UpdateShiftBody = {
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  startTime?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  endTime?: string;
-  label?: string;
-};
-
-export type UpdateShift200 = {
-  id: string;
-  participationId: string;
-  eventTimeBlockId: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  startTime: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  endTime: string;
-  label?: string;
-};
-
-export type UpdateShift403 = {
-  error: string;
-  message: string;
-};
-
-export type UpdateShift404 = {
-  error: string;
-  message: string;
-};
-
-/**
- * @nullable
- */
-export type DeleteShift204 = typeof DeleteShift204[keyof typeof DeleteShift204] | null;
-
-
-export const DeleteShift204 = {
-} as const;
-
-export type DeleteShift403 = {
-  error: string;
-  message: string;
-};
-
-export type DeleteShift404 = {
-  error: string;
-  message: string;
-};
-
-export type UpsertShiftRequirementBody = {
+export type SaveEventTimeBlockPreparationBodyHeadcountsItem = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftIndex: number;
   sectorId: string;
   roleId: string;
   /**
-     * @minimum 1
+     * @minimum 0
      * @maximum 9007199254740991
      */
+  peopleNeeded: number;
+};
+
+export type SaveEventTimeBlockPreparationBody = {
+  serves: boolean;
+  shiftSplit?: SaveEventTimeBlockPreparationBodyShiftSplit;
+  headcounts?: SaveEventTimeBlockPreparationBodyHeadcountsItem[];
+};
+
+export type SaveEventTimeBlockPreparation200EventTimeBlockStatus = typeof SaveEventTimeBlockPreparation200EventTimeBlockStatus[keyof typeof SaveEventTimeBlockPreparation200EventTimeBlockStatus];
+
+
+export const SaveEventTimeBlockPreparation200EventTimeBlockStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
   peopleNeeded: number;
   notes?: string;
 };
 
-export type UpsertShiftRequirement200 = {
+export type SaveEventTimeBlockPreparation200EventTimeBlock = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  status: SaveEventTimeBlockPreparation200EventTimeBlockStatus;
+  requirements: SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem[];
+};
+
+export type SaveEventTimeBlockPreparation200ShiftsItemRequirementsItem = {
   id: string;
   shiftId: string;
   participationId: string;
@@ -2430,16 +2454,121 @@ export type UpsertShiftRequirement200 = {
   sectorName: string;
   peopleNeeded: number;
   notes?: string;
+  assignedCount: number;
 };
 
-export type UpsertShiftRequirement403 = {
+export type SaveEventTimeBlockPreparation200ShiftsItem = {
+  id: string;
+  participationId: string;
+  eventTimeBlockId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  requirements: SaveEventTimeBlockPreparation200ShiftsItemRequirementsItem[];
+  unavailableMarkCount: number;
+  assignmentCount: number;
+  flagged: boolean;
+};
+
+export type SaveEventTimeBlockPreparation200RequirementsItem = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  sectorId: string;
+  sectorName: string;
+  peopleNeeded: number;
+  notes?: string;
+  assignedCount: number;
+};
+
+export type SaveEventTimeBlockPreparation200 = {
+  eventTimeBlock: SaveEventTimeBlockPreparation200EventTimeBlock;
+  included: boolean;
+  shifts: SaveEventTimeBlockPreparation200ShiftsItem[];
+  requirements: SaveEventTimeBlockPreparation200RequirementsItem[];
+  shiftsChangedAfterAsk: boolean;
+};
+
+export type SaveEventTimeBlockPreparation400 = {
   error: string;
   message: string;
 };
 
-export type UpsertShiftRequirement404 = {
+export type SaveEventTimeBlockPreparation401 = {
   error: string;
   message: string;
+};
+
+export type SaveEventTimeBlockPreparation403 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation404 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation409 = {
+  error: string;
+  message: string;
+  headcountFloors: {
+  shiftId: string;
+  sectorId: string;
+  roleId: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  assignedCount: number;
+}[];
+} | {
+  error: string;
+  message: string;
+  shiftResponses: {
+  shiftId: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  unavailableMarkCount: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  assignmentCount: number;
+}[];
+} | {
+  error: string;
+  message: string;
+};
+
+export type SaveEventTimeBlockPreparation422Reason = typeof SaveEventTimeBlockPreparation422Reason[keyof typeof SaveEventTimeBlockPreparation422Reason];
+
+
+export const SaveEventTimeBlockPreparation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+} as const;
+
+export type SaveEventTimeBlockPreparation422 = {
+  error: string;
+  message: string;
+  reason?: SaveEventTimeBlockPreparation422Reason;
+  issues?: unknown[];
 };
 
 export type AskAvailability202 = {

@@ -9,7 +9,6 @@ import {
   MinistryParticipationId,
   RoleId,
   SectorId,
-  ShiftId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -24,18 +23,17 @@ import {
   askAvailabilityResponseSchema,
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
+  headcountBelowAssignedResponseSchema,
+  participationEventTimeBlockViewSchema,
   participationMapper,
+  preparationValidationErrorResponseSchema,
+  type SavePreparationBody,
+  savePreparationBodySchema,
+  scheduleListResponseSchema,
   scheduleSummaryListResponseSchema,
-  setInclusionsBodySchema,
-  shiftListResponseSchema,
-  shiftRequirementBodySchema,
-  shiftRequirementResponseSchema,
-  shiftResponseSchema,
-  splitShiftsBodySchema,
-  updateShiftBodySchema,
+  shiftHasResponsesResponseSchema,
 } from '../dtos/participation.dto';
 import { refuse } from '../utils/refuse';
-import { optionalDateFromInstantString } from '../utils/request-time';
 
 interface CycleParticipationRouteParams {
   cycleId: string;
@@ -58,20 +56,10 @@ interface ParticipationEventTimeBlockRouteParams {
   eventTimeBlockId: string;
 }
 
-interface ShiftRouteParams {
-  shiftId: string;
-}
-
 interface DenyParticipationScopeInput {
   request: FastifyRequest;
   reply: FastifyReply;
   participationId: string;
-}
-
-interface DenyShiftScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  shiftId: string;
 }
 
 interface DenyAuthorityDecisionInput {
@@ -79,11 +67,6 @@ interface DenyAuthorityDecisionInput {
   reply: FastifyReply;
   allowed: boolean;
 }
-
-type SplitShiftsBody = z.infer<typeof splitShiftsBodySchema>;
-type SetInclusionsBody = z.infer<typeof setInclusionsBodySchema>;
-type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
-type ShiftRequirementBody = z.infer<typeof shiftRequirementBodySchema>;
 
 const cycleParticipationQuerySchema = z.object({
   ministryId: z.string(),
@@ -133,6 +116,46 @@ export class PrepareController implements FastifyController {
     app.addHook(
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+    );
+
+    app.get(
+      '/schedules',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'listSchedules',
+          summary: "List the caller's Schedules",
+          description:
+            'List one row per Ministry and Sent or Past Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader.',
+          response: {
+            200: scheduleListResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const { isChurchAdmin, ledMinistries } =
+          await this.authorityGuard.resolveCallerCapabilities({
+            churchId,
+            userId: UserId.from(request.userId),
+          });
+        if (!isChurchAdmin && ledMinistries.length === 0) {
+          refuse({ reply, request, code: 'FORBIDDEN' });
+          return;
+        }
+
+        const schedules = await this.participationManager.listSchedules({
+          churchId,
+          ministryIds: isChurchAdmin
+            ? undefined
+            : ledMinistries.map(({ ministryId }) => ministryId),
+        });
+        return reply.send(
+          participationMapper.scheduleListToResponse(schedules),
+        );
+      },
     );
 
     app.get(
@@ -223,55 +246,27 @@ export class PrepareController implements FastifyController {
     );
 
     app.put(
-      '/participations/:participationId/inclusions',
+      '/participations/:participationId/event-time-blocks/:eventTimeBlockId/preparation',
       {
         schema: {
           tags: ['prepare'],
-          operationId: 'setParticipationInclusions',
-          summary: "Set a MinistryParticipation's included EventTimeBlocks",
+          operationId: 'saveEventTimeBlockPreparation',
+          summary: "Save one EventTimeBlock's preparation",
           description:
-            'Replace the set of EventTimeBlocks a Ministry is opted into for a MinistryParticipation.',
-          body: setInclusionsBodySchema,
+            'Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup. A headcount cannot drop below its active Assignments. Re-splitting, deleting a Shift or opting out is refused while an affected Shift carries UnavailableShift marks or active Assignments.',
+          body: savePreparationBodySchema,
           response: {
-            204: z.null(),
+            200: participationEventTimeBlockViewSchema,
+            400: errorResponseSchema,
+            401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const body = request.body as SetInclusionsBody;
-        await this.participationManager.setInclusions({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-          eventTimeBlockIds: body.eventTimeBlockIds.map(EventTimeBlockId.from),
-        });
-        return reply.status(204).send();
-      },
-    );
-
-    app.post(
-      '/participations/:participationId/event-time-blocks/:eventTimeBlockId/shifts',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'splitParticipationShifts',
-          summary: 'Split a EventTimeBlock into Shifts',
-          description:
-            "Split a MinistryParticipation's EventTimeBlock into Shifts, either into equal parts or by manually-set spans.",
-          body: splitShiftsBodySchema,
-          response: {
-            201: shiftListResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
+            409: z.union([
+              headcountBelowAssignedResponseSchema,
+              shiftHasResponsesResponseSchema,
+              errorResponseSchema,
+            ]),
+            422: preparationValidationErrorResponseSchema,
           },
         },
       },
@@ -285,113 +280,22 @@ export class PrepareController implements FastifyController {
         });
         if (denied) return;
 
-        const body = request.body as SplitShiftsBody;
-        const shifts = await this.participationManager.splitShifts({
+        const { serves, shiftSplit, headcounts } =
+          request.body as SavePreparationBody;
+        const view = await this.participationManager.savePreparation({
           churchId: ChurchId.from(request.churchId),
           participationId: MinistryParticipationId.from(participationId),
           eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-          strategy: toSplitStrategy({ body }),
-        });
-        return reply
-          .status(201)
-          .send(participationMapper.shiftListToResponse(shifts));
-      },
-    );
-
-    app.patch(
-      '/shifts/:shiftId',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'updateShift',
-          summary: 'Update a Shift',
-          description: "Update a Shift's bounds or label.",
-          body: updateShiftBodySchema,
-          response: {
-            200: shiftResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
-
-        const body = request.body as UpdateShiftBody;
-        const shift = await this.participationManager.updateShift({
-          churchId: ChurchId.from(request.churchId),
-          shiftId: ShiftId.from(shiftId),
-          startTime: optionalDateFromInstantString({ value: body.startTime }),
-          endTime: optionalDateFromInstantString({ value: body.endTime }),
-          label: body.label,
-        });
-        return reply.send(participationMapper.shiftToResponse(shift));
-      },
-    );
-
-    app.delete(
-      '/shifts/:shiftId',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'deleteShift',
-          summary: 'Delete a Shift',
-          description: 'Delete a Shift from its MinistryParticipation.',
-          response: {
-            204: z.null(),
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
-
-        await this.participationManager.deleteShift({
-          churchId: ChurchId.from(request.churchId),
-          shiftId: ShiftId.from(shiftId),
-        });
-        return reply.status(204).send();
-      },
-    );
-
-    app.put(
-      '/shifts/:shiftId/requirements',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'upsertShiftRequirement',
-          summary: 'Set a Shift staffing requirement',
-          description:
-            'Set the ShiftRequirement headcount for a Sector and Role within a Shift.',
-          body: shiftRequirementBodySchema,
-          response: {
-            200: shiftRequirementResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
-
-        const body = request.body as ShiftRequirementBody;
-        const requirement = await this.participationManager.upsertRequirement({
-          churchId: ChurchId.from(request.churchId),
-          shiftId: ShiftId.from(shiftId),
-          sectorId: SectorId.from(body.sectorId),
-          roleId: RoleId.from(body.roleId),
-          peopleNeeded: body.peopleNeeded,
-          notes: body.notes,
+          serves,
+          shiftSplit: shiftSplit && toPreparationSplit({ shiftSplit }),
+          headcounts: headcounts?.map((headcount) => ({
+            ...headcount,
+            sectorId: SectorId.from(headcount.sectorId),
+            roleId: RoleId.from(headcount.roleId),
+          })),
         });
         return reply.send(
-          participationMapper.requirementToResponse(requirement),
+          participationMapper.eventTimeBlockViewToResponse(view),
         );
       },
     );
@@ -581,24 +485,6 @@ export class PrepareController implements FastifyController {
     });
   }
 
-  private async denyShiftScope({
-    request,
-    reply,
-    shiftId,
-  }: DenyShiftScopeInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageShift({
-      churchId: ChurchId.from(request.churchId),
-      shiftId: ShiftId.from(shiftId),
-      userId: UserId.from(request.userId),
-    });
-
-    return this.denyAuthorityDecision({
-      request,
-      reply,
-      allowed: decision.allowed,
-    });
-  }
-
   private async denyAuthorityDecision({
     request,
     reply,
@@ -618,18 +504,19 @@ export class PrepareController implements FastifyController {
   }
 }
 
-interface ToSplitStrategyInput {
-  body: SplitShiftsBody;
+interface ToPreparationSplitInput {
+  shiftSplit: NonNullable<SavePreparationBody['shiftSplit']>;
 }
 
-function toSplitStrategy({ body }: ToSplitStrategyInput): ShiftSplitStrategy {
-  if (body.strategy.kind === 'equal-n') {
-    return { kind: 'equal-n', n: body.strategy.n };
+function toPreparationSplit({
+  shiftSplit,
+}: ToPreparationSplitInput): ShiftSplitStrategy {
+  if (shiftSplit.kind === 'equal') {
+    return { kind: 'equal-n', n: shiftSplit.count };
   }
-
   return {
     kind: 'manual',
-    spans: body.strategy.spans.map((span) => ({
+    spans: shiftSplit.spans.map((span) => ({
       startTime: parseInstant({ value: span.startTime }),
       endTime: parseInstant({ value: span.endTime }),
       label: span.label,

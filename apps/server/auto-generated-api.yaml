@@ -1074,6 +1074,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -1386,6 +1387,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -1708,6 +1710,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -1938,6 +1941,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -3546,6 +3550,7 @@ paths:
                       - DUPLICATE_TEMPLATE_NAME
                       - DUPLICATE_TEMPLATE_BLOCK_LABEL
                       - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
                       - INVALID_SHIFT_INDEX
                       - INVITATION_ROLE_REQUIRED
                       - INVALID_EVENT_BOUNDS
@@ -5149,6 +5154,124 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/prepare/schedules:
+    get:
+      operationId: listSchedules
+      summary: List the caller's Schedules
+      tags:
+        - prepare
+      description: "List one row per Ministry and Sent or Past Cycle with its derived
+        stage: every active Ministry for a ChurchAdmin, the led ones for a
+        leader."
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schedules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ministry:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                        cycle:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            startDate:
+                              type: string
+                              format: date
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                            endDate:
+                              type: string
+                              format: date
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                            state:
+                              type: string
+                              enum:
+                                - draft
+                                - sent
+                                - past
+                          required:
+                            - id
+                            - name
+                            - startDate
+                            - endDate
+                            - state
+                          additionalProperties: false
+                        stage:
+                          type: string
+                          enum:
+                            - to_prepare
+                            - asking
+                            - assigning
+                            - published
+                            - not_serving
+                        asking:
+                          type: object
+                          properties:
+                            confirmed:
+                              type: number
+                            asked:
+                              type: number
+                          required:
+                            - confirmed
+                            - asked
+                          additionalProperties: false
+                      required:
+                        - ministry
+                        - cycle
+                        - stage
+                      additionalProperties: false
+                required:
+                  - schedules
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/participation:
     get:
       operationId: getCycleParticipation
@@ -5257,6 +5380,8 @@ paths:
                             - createdAt
                             - updatedAt
                           additionalProperties: false
+                        generatedFromTemplate:
+                          type: boolean
                         eventTimeBlocks:
                           type: array
                           items:
@@ -5342,12 +5467,55 @@ paths:
                                       pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                     label:
                                       type: string
+                                    requirements:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: string
+                                          shiftId:
+                                            type: string
+                                          participationId:
+                                            type: string
+                                          roleId:
+                                            type: string
+                                          sectorId:
+                                            type: string
+                                          sectorName:
+                                            type: string
+                                          peopleNeeded:
+                                            type: number
+                                          notes:
+                                            type: string
+                                          assignedCount:
+                                            type: number
+                                        required:
+                                          - id
+                                          - shiftId
+                                          - participationId
+                                          - roleId
+                                          - sectorId
+                                          - sectorName
+                                          - peopleNeeded
+                                          - assignedCount
+                                        additionalProperties: false
+                                    unavailableMarkCount:
+                                      type: number
+                                    assignmentCount:
+                                      type: number
+                                    flagged:
+                                      type: boolean
                                   required:
                                     - id
                                     - participationId
                                     - eventTimeBlockId
                                     - startTime
                                     - endTime
+                                    - requirements
+                                    - unavailableMarkCount
+                                    - assignmentCount
+                                    - flagged
                                   additionalProperties: false
                               requirements:
                                 type: array
@@ -5370,6 +5538,8 @@ paths:
                                       type: number
                                     notes:
                                       type: string
+                                    assignedCount:
+                                      type: number
                                   required:
                                     - id
                                     - shiftId
@@ -5378,16 +5548,21 @@ paths:
                                     - sectorId
                                     - sectorName
                                     - peopleNeeded
+                                    - assignedCount
                                   additionalProperties: false
+                              shiftsChangedAfterAsk:
+                                type: boolean
                             required:
                               - eventTimeBlock
                               - included
                               - shifts
                               - requirements
+                              - shiftsChangedAfterAsk
                             additionalProperties: false
                       required:
                         - participation
                         - event
+                        - generatedFromTemplate
                         - eventTimeBlocks
                       additionalProperties: false
                 required:
@@ -5523,14 +5698,19 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/prepare/participations/{participationId}/inclusions:
+  /api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/preparation:
     put:
-      operationId: setParticipationInclusions
-      summary: Set a MinistryParticipation's included EventTimeBlocks
+      operationId: saveEventTimeBlockPreparation
+      summary: Save one EventTimeBlock's preparation
       tags:
         - prepare
-      description: Replace the set of EventTimeBlocks a Ministry is opted into for a
-        MinistryParticipation.
+      description: Apply the complete desired Serves, Shift split and headcounts of
+        one EventTimeBlock in one transaction. Omitted or zero headcounts remove
+        their ShiftRequirement; other blocks are untouched. Serving with neither
+        split nor headcounts opts a block with no Shifts in from the Usual
+        setup. A headcount cannot drop below its active Assignments.
+        Re-splitting, deleting a Shift or opting out is refused while an
+        affected Shift carries UnavailableShift marks or active Assignments.
       requestBody:
         required: true
         content:
@@ -5538,88 +5718,23 @@ paths:
             schema:
               type: object
               properties:
-                eventTimeBlockIds:
-                  type: array
-                  items:
-                    type: string
-              required:
-                - eventTimeBlockIds
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: participationId
-          required: true
-      responses:
-        "204":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: string
-                nullable: true
-                enum:
-                  - null
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-  /api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/shifts:
-    post:
-      operationId: splitParticipationShifts
-      summary: Split a EventTimeBlock into Shifts
-      tags:
-        - prepare
-      description: Split a MinistryParticipation's EventTimeBlock into Shifts, either
-        into equal parts or by manually-set spans.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                strategy:
+                serves:
+                  type: boolean
+                shiftSplit:
                   oneOf:
                     - type: object
                       properties:
                         kind:
                           type: string
                           enum:
-                            - equal-n
-                        n:
+                            - equal
+                        count:
                           type: integer
                           minimum: 1
                           maximum: 9007199254740991
                       required:
                         - kind
-                        - n
+                        - count
                     - type: object
                       properties:
                         kind:
@@ -5627,7 +5742,6 @@ paths:
                           enum:
                             - manual
                         spans:
-                          minItems: 1
                           type: array
                           items:
                             type: object
@@ -5648,8 +5762,30 @@ paths:
                       required:
                         - kind
                         - spans
+                headcounts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      shiftIndex:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                      sectorId:
+                        type: string
+                      roleId:
+                        type: string
+                      peopleNeeded:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - shiftIndex
+                      - sectorId
+                      - roleId
+                      - peopleNeeded
               required:
-                - strategy
+                - serves
       parameters:
         - schema:
             type: string
@@ -5662,13 +5798,72 @@ paths:
           name: eventTimeBlockId
           required: true
       responses:
-        "201":
+        "200":
           description: Default Response
           content:
             application/json:
               schema:
                 type: object
                 properties:
+                  eventTimeBlock:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      churchId:
+                        type: string
+                      eventId:
+                        type: string
+                      startTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      endTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      label:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - active
+                          - cancelled
+                      requirements:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            eventTimeBlockId:
+                              type: string
+                            roleId:
+                              type: string
+                            sectorId:
+                              type: string
+                            peopleNeeded:
+                              type: number
+                            notes:
+                              type: string
+                          required:
+                            - id
+                            - eventTimeBlockId
+                            - roleId
+                            - sectorId
+                            - peopleNeeded
+                          additionalProperties: false
+                    required:
+                      - id
+                      - churchId
+                      - eventId
+                      - startTime
+                      - endTime
+                      - status
+                      - requirements
+                    additionalProperties: false
+                  included:
+                    type: boolean
                   shifts:
                     type: array
                     items:
@@ -5690,15 +5885,127 @@ paths:
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                         label:
                           type: string
+                        requirements:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              shiftId:
+                                type: string
+                              participationId:
+                                type: string
+                              roleId:
+                                type: string
+                              sectorId:
+                                type: string
+                              sectorName:
+                                type: string
+                              peopleNeeded:
+                                type: number
+                              notes:
+                                type: string
+                              assignedCount:
+                                type: number
+                            required:
+                              - id
+                              - shiftId
+                              - participationId
+                              - roleId
+                              - sectorId
+                              - sectorName
+                              - peopleNeeded
+                              - assignedCount
+                            additionalProperties: false
+                        unavailableMarkCount:
+                          type: number
+                        assignmentCount:
+                          type: number
+                        flagged:
+                          type: boolean
                       required:
                         - id
                         - participationId
                         - eventTimeBlockId
                         - startTime
                         - endTime
+                        - requirements
+                        - unavailableMarkCount
+                        - assignmentCount
+                        - flagged
                       additionalProperties: false
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        shiftId:
+                          type: string
+                        participationId:
+                          type: string
+                        roleId:
+                          type: string
+                        sectorId:
+                          type: string
+                        sectorName:
+                          type: string
+                        peopleNeeded:
+                          type: number
+                        notes:
+                          type: string
+                        assignedCount:
+                          type: number
+                      required:
+                        - id
+                        - shiftId
+                        - participationId
+                        - roleId
+                        - sectorId
+                        - sectorName
+                        - peopleNeeded
+                        - assignedCount
+                      additionalProperties: false
+                  shiftsChangedAfterAsk:
+                    type: boolean
                 required:
+                  - eventTimeBlock
+                  - included
                   - shifts
+                  - requirements
+                  - shiftsChangedAfterAsk
+                additionalProperties: false
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "403":
           description: Default Response
@@ -5730,120 +6037,86 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/prepare/shifts/{shiftId}:
-    patch:
-      operationId: updateShift
-      summary: Update a Shift
-      tags:
-        - prepare
-      description: Update a Shift's bounds or label.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                startTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                endTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                label:
-                  type: string
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: shiftId
-          required: true
-      responses:
-        "200":
+        "409":
           description: Default Response
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  participationId:
-                    type: string
-                  eventTimeBlockId:
-                    type: string
-                  startTime:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                  endTime:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                  label:
-                    type: string
-                required:
-                  - id
-                  - participationId
-                  - eventTimeBlockId
-                  - startTime
-                  - endTime
-                additionalProperties: false
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-    delete:
-      operationId: deleteShift
-      summary: Delete a Shift
-      tags:
-        - prepare
-      description: Delete a Shift from its MinistryParticipation.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: shiftId
-          required: true
-      responses:
-        "204":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: string
-                nullable: true
-                enum:
-                  - null
-        "403":
+                anyOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      headcountFloors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            shiftId:
+                              type: string
+                            sectorId:
+                              type: string
+                            roleId:
+                              type: string
+                            assignedCount:
+                              type: integer
+                              minimum: -9007199254740991
+                              maximum: 9007199254740991
+                          required:
+                            - shiftId
+                            - sectorId
+                            - roleId
+                            - assignedCount
+                          additionalProperties: false
+                    required:
+                      - error
+                      - message
+                      - headcountFloors
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      shiftResponses:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            shiftId:
+                              type: string
+                            unavailableMarkCount:
+                              type: integer
+                              minimum: -9007199254740991
+                              maximum: 9007199254740991
+                            assignmentCount:
+                              type: integer
+                              minimum: -9007199254740991
+                              maximum: 9007199254740991
+                          required:
+                            - shiftId
+                            - unavailableMarkCount
+                            - assignmentCount
+                          additionalProperties: false
+                    required:
+                      - error
+                      - message
+                      - shiftResponses
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                    required:
+                      - error
+                      - message
+                    additionalProperties: false
+        "422":
           description: Default Response
           content:
             application/json:
@@ -5854,118 +6127,24 @@ paths:
                     type: string
                   message:
                     type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
+                  reason:
                     type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-  /api/v1/prepare/shifts/{shiftId}/requirements:
-    put:
-      operationId: upsertShiftRequirement
-      summary: Set a Shift staffing requirement
-      tags:
-        - prepare
-      description: Set the ShiftRequirement headcount for a Sector and Role within a Shift.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                sectorId:
-                  type: string
-                roleId:
-                  type: string
-                peopleNeeded:
-                  type: integer
-                  minimum: 1
-                  maximum: 9007199254740991
-                notes:
-                  type: string
-              required:
-                - sectorId
-                - roleId
-                - peopleNeeded
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: shiftId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  shiftId:
-                    type: string
-                  participationId:
-                    type: string
-                  roleId:
-                    type: string
-                  sectorId:
-                    type: string
-                  sectorName:
-                    type: string
-                  peopleNeeded:
-                    type: number
-                  notes:
-                    type: string
-                required:
-                  - id
-                  - shiftId
-                  - participationId
-                  - roleId
-                  - sectorId
-                  - sectorName
-                  - peopleNeeded
-                additionalProperties: false
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                  issues:
+                    type: array
+                    items: {}
                 required:
                   - error
                   - message

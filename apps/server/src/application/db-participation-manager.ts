@@ -1,7 +1,14 @@
 import { NotFoundError } from '@church/core';
-import { compareInstants, fromDate, type Instant, toDate } from '@church/time';
+import {
+  compareCalendarDays,
+  compareInstants,
+  type Instant,
+  now,
+  today,
+} from '@church/time';
 import type {
   ChurchId,
+  EventTimeBlockId,
   MinistryId,
   RoleId,
   SectorId,
@@ -16,7 +23,6 @@ import type {
   CycleBuilderShiftView,
   CycleBuilderView,
   CycleParticipationView,
-  DeleteShiftManagerInput,
   EligibleVolunteerView,
   GetCycleBuilderDataInput,
   GetCycleParticipationInput,
@@ -24,22 +30,23 @@ import type {
   IParticipationManager,
   ListEligibleVolunteersInput,
   ListScheduleSummariesInput,
+  ListSchedulesInput,
   ListUsualSetupBlocksInput,
   ParticipationCompletionView,
   ParticipationEventTimeBlockView,
   ParticipationEventView,
+  ParticipationShiftView,
   PublishCycleInput,
   PublishCycleParticipationOutcome,
   PublishCycleView,
+  SavePreparationInput,
   SaveUsualSetupBlockInput,
   ScheduleSummaryView,
-  SetInclusionsInput,
-  SplitShiftsManagerInput,
-  UpdateShiftManagerInput,
-  UpsertRequirementManagerInput,
+  ScheduleView,
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
@@ -55,47 +62,122 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
-import type { EventWithEventTimeBlocks } from '../domain/entities/event';
+import type { Cycle } from '../domain/entities/cycle';
+import type { Event, EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { EventTemplate } from '../domain/entities/event-template';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import {
   calculateCompletionPercent,
+  deriveScheduleStage,
   type MinistryParticipation,
 } from '../domain/entities/ministry-participation';
-import { Shift } from '../domain/entities/shift';
+import type { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import type { TemplateTimeBlock } from '../domain/entities/template-time-block';
+import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import {
   assertManualSplitFitsBlock,
+  assertUniqueHeadcounts,
+  assertValidHeadcounts,
   assertValidUsualSetupProps,
   toSaveableUsualSetupEntry,
   type UsualSetup,
+  type UsualSetupHeadcount,
 } from '../domain/entities/usual-setup';
+import { IllegalStateTransitionError } from '../domain/errors';
+import { HeadcountBelowAssignedError } from '../domain/errors/headcount-below-assigned';
+import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
+import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
+import { PreparationEmptyError } from '../domain/errors/preparation-empty';
+import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
 import {
-  IllegalStateTransitionError,
-  InvalidRequiredCountError,
-} from '../domain/errors';
-import { ShiftSplitter } from '../domain/services/shift-splitter';
+  type ShiftSplitStrategy,
+  ShiftSplitter,
+} from '../domain/services/shift-splitter';
 import {
+  spansFitBlock,
   splitFitsBlock,
   wallClockUtcBounds,
 } from '../domain/services/usual-setup-planner';
+import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
   tx: TransactionContext;
 }
 
-interface EnsurePrepareInput {
+interface EnsurePreparationEditableInput {
   participation: MinistryParticipation;
-  action: string;
+  cycle: Cycle;
+  timeZone: string;
+}
+
+interface PreparationTarget {
+  churchId: ChurchId;
+  participation: MinistryParticipation;
+  eventTimeBlock: EventTimeBlock;
+  tx: TransactionContext;
+}
+
+interface OptInPreparationInput extends PreparationTarget {
+  timeZone: string;
+}
+
+interface DiscardPreparationInput extends PreparationTarget {
+  existingShifts: Shift[];
+}
+
+interface ApplyPreparationGraphInput extends PreparationTarget {
+  existingShifts: Shift[];
+  shiftSplit?: ShiftSplitStrategy;
+  headcounts: UsualSetupHeadcount[];
+}
+
+interface ApplyShiftChangeInput extends PreparationTarget {
+  updateLabels: boolean;
+  desiredShifts: Shift[];
+  change: ShiftChange;
+}
+
+interface ReconcileRequirementsInput extends PreparationTarget {
+  current: ShiftRequirement[];
+  desired: DesiredRequirement[];
+}
+
+interface LoadShiftResponsesInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipation['id'];
+  tx?: TransactionContext;
+}
+
+interface RequirementPlace {
+  shiftId: Shift['id'] | undefined;
+  sectorId: SectorId;
+  roleId: RoleId;
+}
+
+interface DesiredRequirement extends RequirementPlace {
+  shiftId: Shift['id'];
+  peopleNeeded: number;
+}
+
+interface LoadEventViewInput {
+  churchId: ChurchId;
+  eventGroup: EventWithEventTimeBlocks;
+  participation: MinistryParticipation;
+  availabilityRequestedAt: Date | null;
+  tx: TransactionContext;
+}
+
+interface LoadPreparationViewInput extends PreparationTarget {
+  event: Event;
 }
 
 interface ResolveParticipationEventTimeBlockInput {
   churchId: GetCycleParticipationInput['churchId'];
   participation: MinistryParticipation;
-  eventTimeBlockId: SetInclusionsInput['eventTimeBlockIds'][number];
+  eventTimeBlockId: EventTimeBlockId;
   tx?: TransactionContext;
 }
 
@@ -105,6 +187,9 @@ interface BuildEventViewInput {
   includedEventTimeBlockIds: Set<string>;
   shifts: Shift[];
   requirements: ShiftRequirement[];
+  marks: UnavailableShift[];
+  assignments: Assignment[];
+  availabilityRequestedAt: Date | null;
 }
 
 interface GetParticipationCompletionInternalInput {
@@ -190,6 +275,15 @@ interface NotifyParticipationPublishedInput {
   tx: TransactionContext;
 }
 
+interface ScheduleKeyInput {
+  ministryId: string;
+  cycleId: string;
+}
+
+function scheduleKey({ ministryId, cycleId }: ScheduleKeyInput): string {
+  return `${ministryId}:${cycleId}`;
+}
+
 interface DbParticipationManagerDependencies {
   participationRepository: MinistryParticipationRepository;
   shiftRepository: ShiftRepository;
@@ -204,6 +298,8 @@ interface DbParticipationManagerDependencies {
   cycleRepository: CycleRepository;
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
+  churchRepository: ChurchRepository;
+  staffingSeeder: UsualSetupStaffingSeeder;
   notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
 }
@@ -236,6 +332,8 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly cycleRepository: CycleRepository;
   private readonly roleRepository: RoleRepository;
   private readonly sectorRepository: SectorRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly staffingSeeder: UsualSetupStaffingSeeder;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
 
@@ -253,6 +351,8 @@ export class DbParticipationManager implements IParticipationManager {
     cycleRepository,
     roleRepository,
     sectorRepository,
+    churchRepository,
+    staffingSeeder,
     notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
@@ -269,6 +369,8 @@ export class DbParticipationManager implements IParticipationManager {
     this.cycleRepository = cycleRepository;
     this.roleRepository = roleRepository;
     this.sectorRepository = sectorRepository;
+    this.churchRepository = churchRepository;
+    this.staffingSeeder = staffingSeeder;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
   }
@@ -276,10 +378,13 @@ export class DbParticipationManager implements IParticipationManager {
   async getCycleParticipation(
     input: GetCycleParticipationInput,
   ): Promise<CycleParticipationView> {
-    await this.ministryRepository.getById({
+    const ministry = await this.ministryRepository.getById({
       churchId: input.churchId,
       id: input.ministryId,
     });
+    // Prepare excludes archived Ministries even when participation already exists.
+    if (ministry.deletedAt)
+      throw new NotFoundError(`Ministry not found: ${input.ministryId}`);
     await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
@@ -291,6 +396,13 @@ export class DbParticipationManager implements IParticipationManager {
         cycleId: input.cycleId,
         tx,
       });
+      const availabilityRequestedAt =
+        await this.participationRepository.findAvailabilityRequestedAt({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          ministryId: input.ministryId,
+          tx,
+        });
       const events: ParticipationEventView[] = [];
 
       for (const eventGroup of eventGroups) {
@@ -299,40 +411,49 @@ export class DbParticipationManager implements IParticipationManager {
           eventId: eventGroup.event.id,
           tx,
         });
-        const [inclusions, shifts, requirements] = await Promise.all([
-          this.participationRepository.listInclusions({
-            churchId: input.churchId,
-            participationId: participation.id,
-            tx,
-          }),
-          this.shiftRepository.listByParticipation({
-            churchId: input.churchId,
-            participationId: participation.id,
-            tx,
-          }),
-          this.shiftRepository.listRequirementsByParticipation({
-            churchId: input.churchId,
-            participationId: participation.id,
-            tx,
-          }),
-        ]);
-
         events.push(
-          buildEventView({
+          await this.loadEventView({
+            churchId: input.churchId,
             eventGroup,
             participation,
-            includedEventTimeBlockIds: new Set(
-              inclusions.map(
-                (inclusion) => inclusion.eventTimeBlockId as string,
-              ),
-            ),
-            shifts,
-            requirements,
+            availabilityRequestedAt,
+            tx,
           }),
         );
       }
 
       return { events };
+    });
+  }
+
+  private async loadEventView({
+    churchId,
+    eventGroup,
+    participation,
+    availabilityRequestedAt,
+    tx,
+  }: LoadEventViewInput): Promise<ParticipationEventView> {
+    const scope = { churchId, participationId: participation.id, tx };
+    const [inclusions, shifts, requirements, marks, assignments] =
+      await Promise.all([
+        this.participationRepository.listInclusions(scope),
+        this.shiftRepository.listByParticipation(scope),
+        this.shiftRepository.listRequirementsByParticipation(scope),
+        this.unavailableShiftRepository.listByParticipation(scope),
+        this.assignmentRepository.listByParticipation(scope),
+      ]);
+
+    return buildEventView({
+      eventGroup,
+      participation,
+      includedEventTimeBlockIds: new Set(
+        inclusions.map((inclusion) => inclusion.eventTimeBlockId as string),
+      ),
+      shifts,
+      requirements,
+      marks,
+      assignments,
+      availabilityRequestedAt,
     });
   }
 
@@ -439,215 +560,6 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  async setInclusions(input: SetInclusionsInput): Promise<void> {
-    await this.unitOfWork.run(async (tx) => {
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'set_inclusions' });
-
-      const previousInclusions =
-        await this.participationRepository.listInclusions({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          tx,
-        });
-      const nextEventTimeBlockIds = new Set(
-        input.eventTimeBlockIds as string[],
-      );
-      const removedEventTimeBlockIds = previousInclusions
-        .map((inclusion) => inclusion.eventTimeBlockId)
-        .filter(
-          (eventTimeBlockId) =>
-            !nextEventTimeBlockIds.has(eventTimeBlockId as string),
-        );
-
-      await this.participationRepository.replaceInclusions({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlockIds: input.eventTimeBlockIds,
-        tx,
-      });
-
-      for (const eventTimeBlockId of removedEventTimeBlockIds) {
-        await this.shiftRepository.deleteByEventTimeBlock({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          eventTimeBlockId,
-          tx,
-        });
-      }
-
-      for (const eventTimeBlockId of input.eventTimeBlockIds) {
-        const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
-          churchId: input.churchId,
-          participation,
-          eventTimeBlockId,
-          tx,
-        });
-        const existingShifts = await this.shiftRepository.listByEventTimeBlock({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          eventTimeBlockId,
-          tx,
-        });
-
-        if (existingShifts.length === 0) {
-          await this.shiftRepository.createMany({
-            churchId: input.churchId,
-            shifts: [
-              new Shift({
-                props: {
-                  churchId: input.churchId,
-                  participationId: input.participationId,
-                  eventTimeBlockId,
-                  startTime: eventTimeBlock.startTime,
-                  endTime: eventTimeBlock.endTime,
-                },
-                eventTimeBlockBounds: {
-                  startTime: eventTimeBlock.startTime,
-                  endTime: eventTimeBlock.endTime,
-                },
-              }),
-            ],
-            tx,
-          });
-        }
-      }
-
-      participation.touch();
-      await this.participationRepository.touch({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-    });
-  }
-
-  async splitShifts(input: SplitShiftsManagerInput): Promise<Shift[]> {
-    return this.unitOfWork.run(async (tx) => {
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'split_shifts' });
-
-      const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
-        churchId: input.churchId,
-        participation,
-        eventTimeBlockId: input.eventTimeBlockId,
-        tx,
-      });
-
-      const shifts = this.splitter.split({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlock: {
-          id: eventTimeBlock.id,
-          startTime: eventTimeBlock.startTime,
-          endTime: eventTimeBlock.endTime,
-        },
-        strategy: input.strategy,
-      });
-
-      await this.shiftRepository.deleteByEventTimeBlock({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlockId: input.eventTimeBlockId,
-        tx,
-      });
-      const created = await this.shiftRepository.createMany({
-        churchId: input.churchId,
-        shifts,
-        tx,
-      });
-      await this.participationRepository.addInclusion({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        eventTimeBlockId: input.eventTimeBlockId,
-        tx,
-      });
-
-      participation.touch();
-      await this.participationRepository.touch({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-
-      return created;
-    });
-  }
-
-  async updateShift(input: UpdateShiftManagerInput): Promise<Shift> {
-    return this.unitOfWork.run(async (tx) => {
-      const shift = await this.shiftRepository.getById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        tx,
-      });
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: shift.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'update_shift' });
-
-      const eventTimeBlock = await this.eventTimeBlockRepository.getById({
-        churchId: input.churchId,
-        eventTimeBlockId: shift.eventTimeBlockId,
-        tx,
-      });
-
-      shift.updateBounds({
-        startTime: input.startTime
-          ? fromDate({ date: input.startTime })
-          : shift.startTime,
-        endTime: input.endTime
-          ? fromDate({ date: input.endTime })
-          : shift.endTime,
-        eventTimeBlockBounds: {
-          startTime: eventTimeBlock.startTime,
-          endTime: eventTimeBlock.endTime,
-        },
-      });
-
-      return this.shiftRepository.update({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        startTime: toDate({ instant: shift.startTime }),
-        endTime: toDate({ instant: shift.endTime }),
-        ...(input.label !== undefined ? { label: input.label } : {}),
-        tx,
-      });
-    });
-  }
-
-  async deleteShift(input: DeleteShiftManagerInput): Promise<void> {
-    await this.unitOfWork.run(async (tx) => {
-      const shift = await this.shiftRepository.getById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        tx,
-      });
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: shift.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'delete_shift' });
-
-      await this.shiftRepository.deleteById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        tx,
-      });
-    });
-  }
-
   /**
    * A Sector or Role outside the Ministry (or Church) is not found (#385),
    * and so is an archived Role. The active Roles stay share-locked until `tx`
@@ -687,52 +599,332 @@ export class DbParticipationManager implements IParticipationManager {
     }
   }
 
-  async upsertRequirement(
-    input: UpsertRequirementManagerInput,
-  ): Promise<ShiftRequirement> {
-    if (input.peopleNeeded < 1) {
-      throw new InvalidRequiredCountError();
-    }
+  async savePreparation({
+    churchId,
+    participationId,
+    eventTimeBlockId,
+    serves,
+    shiftSplit,
+    headcounts,
+  }: SavePreparationInput): Promise<ParticipationEventTimeBlockView> {
+    const { timezone: timeZone } = await this.churchRepository.getById({
+      id: churchId,
+    });
 
     return this.unitOfWork.run(async (tx) => {
-      const shift = await this.shiftRepository.getById({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
+      // Serializes saves of this participation and holds its state until commit.
+      const participation = await this.participationRepository.lockById({
+        churchId,
+        participationId,
         tx,
       });
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: shift.participationId,
-        tx,
-      });
-      ensurePrepare({ participation, action: 'upsert_requirement' });
-      await this.assertMinistryHeadcounts({
-        churchId: input.churchId,
+      // An archived Ministry is not found for new use.
+      await this.ministryRepository.lockActive({
+        churchId,
         ministryId: participation.ministryId,
-        headcounts: [{ sectorId: input.sectorId, roleId: input.roleId }],
+        strength: 'share',
+        tx,
+      });
+      const eventTimeBlock = await this.resolveParticipationEventTimeBlock({
+        churchId,
+        participation,
+        eventTimeBlockId,
+        tx,
+      });
+      const event = await this.eventRepository.getEvent({
+        churchId,
+        eventId: participation.eventId,
+        tx,
+      });
+      const cycle = await this.cycleRepository.getById({
+        churchId,
+        cycleId: event.cycleId,
+        tx,
+      });
+      ensurePreparationEditable({ participation, cycle, timeZone });
+
+      const target = { churchId, participation, eventTimeBlock, tx };
+      // Locked so a racing answer or Assignment is counted below, never cascaded away.
+      const existingShifts = await this.shiftRepository.listByEventTimeBlock({
+        churchId,
+        participationId,
+        eventTimeBlockId,
+        forUpdate: true,
         tx,
       });
 
-      const requirement = await this.shiftRepository.upsertRequirement({
-        churchId: input.churchId,
-        shiftId: input.shiftId,
-        participationId: shift.participationId,
-        sectorId: input.sectorId,
-        roleId: input.roleId,
-        peopleNeeded: input.peopleNeeded,
-        notes: input.notes,
-        tx,
-      });
+      if (!serves) {
+        await this.discardPreparation({ ...target, existingShifts });
+      } else if (
+        existingShifts.length === 0 &&
+        !shiftSplit &&
+        headcounts === undefined
+      ) {
+        await this.optInPreparation({ ...target, timeZone });
+      } else {
+        await this.applyPreparationGraph({
+          ...target,
+          existingShifts,
+          shiftSplit,
+          headcounts: headcounts ?? [],
+        });
+      }
 
-      participation.touch();
       await this.participationRepository.touch({
-        churchId: input.churchId,
-        participationId: participation.id,
+        churchId,
+        participationId,
         tx,
       });
 
-      return requirement;
+      return this.loadPreparationView({ ...target, event });
     });
+  }
+
+  private async discardPreparation({
+    churchId,
+    participation,
+    eventTimeBlock,
+    existingShifts,
+    tx,
+  }: DiscardPreparationInput): Promise<void> {
+    const block = {
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    };
+    assertNoShiftResponses({
+      shifts: existingShifts,
+      responses: await this.loadShiftResponses(block),
+    });
+    await this.shiftRepository.deleteByEventTimeBlock(block);
+    await this.participationRepository.removeInclusion(block);
+  }
+
+  /** Re-seeds from a serving Usual setup entry, else one whole-block Shift that reads flagged. */
+  private async optInPreparation({
+    churchId,
+    participation,
+    eventTimeBlock,
+    timeZone,
+    tx,
+  }: OptInPreparationInput): Promise<void> {
+    const seeded = await this.staffingSeeder.seedParticipationBlock({
+      churchId,
+      participation,
+      block: {
+        eventId: eventTimeBlock.eventId,
+        eventTimeBlockId: eventTimeBlock.id,
+        sourceTemplateTimeBlockId: eventTimeBlock.sourceTemplateTimeBlockId,
+        startTime: eventTimeBlock.startTime,
+        endTime: eventTimeBlock.endTime,
+      },
+      setup: await this.staffingSeeder.loadSetup({ churchId, timeZone, tx }),
+      tx,
+    });
+    if (seeded) return;
+
+    await this.participationRepository.addInclusion({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    });
+    const shifts = this.splitter.split({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlock,
+      strategy: { kind: 'equal-n', n: 1 },
+    });
+    await this.shiftRepository.createMany({ churchId, shifts, tx });
+  }
+
+  /** Validates the submitted graph completely, then writes it over the block. */
+  private async applyPreparationGraph({
+    existingShifts,
+    shiftSplit,
+    headcounts,
+    ...target
+  }: ApplyPreparationGraphInput): Promise<void> {
+    const { churchId, participation, eventTimeBlock, tx } = target;
+    // A zero row is an omission, but it still may not repeat a place.
+    assertUniqueHeadcounts({ headcounts });
+    if (!shiftSplit) {
+      throw new PreparationEmptyError();
+    }
+    const positive = headcounts.filter(({ peopleNeeded }) => peopleNeeded > 0);
+    assertValidHeadcounts({ headcounts: positive });
+    if (
+      shiftSplit.kind === 'manual' &&
+      !spansFitBlock({ spans: shiftSplit.spans, block: eventTimeBlock })
+    ) {
+      throw new InvalidShiftSplitError(
+        'manual spans must be chronological, must not overlap and must lie within the block',
+      );
+    }
+    const desiredShifts = this.splitter.split({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlock,
+      strategy: shiftSplit,
+    });
+    if (positive.some(({ shiftIndex }) => shiftIndex >= desiredShifts.length)) {
+      throw new InvalidShiftIndexError();
+    }
+
+    const change = diffShifts({ existingShifts, desiredShifts });
+    const participationId = participation.id;
+    const responses = await this.loadShiftResponses({
+      churchId,
+      participationId,
+      tx,
+    });
+    assertNoShiftResponses({
+      // Flow 6: adding beside an answered Shift is a re-split whatever its shape;
+      // a pure delete affects only the Shifts it removes.
+      shifts: change.added.length > 0 ? existingShifts : change.removed,
+      responses,
+    });
+    const shiftIds = new Set<string | undefined>(
+      change.shifts.map((shift) => shift.id),
+    );
+    const allRequirements =
+      await this.shiftRepository.listRequirementsByParticipation({
+        churchId,
+        participationId,
+        tx,
+      });
+    const current = allRequirements.filter((requirement) =>
+      shiftIds.has(requirement.shiftId),
+    );
+    const desired = positive.flatMap(({ shiftIndex, ...headcount }) => {
+      const shift = change.shifts[shiftIndex];
+      return shift ? [{ ...headcount, shiftId: shift.id }] : [];
+    });
+    assertHeadcountFloors({ current, desired, responses });
+    if (positive.length === 0) {
+      throw new PreparationEmptyError();
+    }
+    await this.assertMinistryHeadcounts({
+      churchId,
+      ministryId: participation.ministryId,
+      headcounts: positive,
+      tx,
+    });
+
+    await this.applyShiftChange({
+      ...target,
+      desiredShifts,
+      change,
+      updateLabels: shiftSplit.kind === 'manual',
+    });
+    await this.participationRepository.addInclusion({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: eventTimeBlock.id,
+      tx,
+    });
+    await this.reconcileRequirements({ ...target, current, desired });
+  }
+
+  private async loadShiftResponses({
+    churchId,
+    participationId,
+    tx,
+  }: LoadShiftResponsesInput): Promise<ShiftResponses> {
+    const scope = { churchId, participationId, tx };
+    const [marks, assignments] = await Promise.all([
+      this.unavailableShiftRepository.listByParticipation(scope),
+      this.assignmentRepository.listByParticipation(scope),
+    ]);
+    return countShiftResponses({ marks, assignments });
+  }
+
+  /** The same spans keep their Shifts, so answers and Assignments stay attached. */
+  private async applyShiftChange({
+    churchId,
+    desiredShifts,
+    updateLabels,
+    change: { shifts, added, removed },
+    tx,
+  }: ApplyShiftChangeInput): Promise<void> {
+    for (const { id: shiftId } of removed) {
+      await this.shiftRepository.deleteById({ churchId, shiftId, tx });
+    }
+    await this.shiftRepository.createMany({ churchId, shifts: added, tx });
+    // Equal splits cannot express labels; only the manual editor can change them.
+    if (!updateLabels) return;
+    for (const [index, shift] of shifts.entries()) {
+      const label = desiredShifts[index]?.label;
+      if (added.includes(shift) || shift.label === label) continue;
+      await this.shiftRepository.update({
+        churchId,
+        shiftId: shift.id,
+        label: label ?? null,
+        tx,
+      });
+    }
+  }
+
+  /** Omission removes a requirement; a kept pair keeps its id and notes. */
+  private async reconcileRequirements({
+    churchId,
+    participation,
+    current,
+    desired,
+    tx,
+  }: ReconcileRequirementsInput): Promise<void> {
+    const participationId = participation.id;
+    const desiredPlaces = new Set(desired.map(placeOf));
+
+    await this.shiftRepository.deleteRequirements({
+      churchId,
+      shiftRequirementIds: current
+        .filter((requirement) => !desiredPlaces.has(placeOf(requirement)))
+        .map((requirement) => requirement.id),
+      tx,
+    });
+
+    const notesByPlace = new Map(
+      current.map((requirement) => [placeOf(requirement), requirement.notes]),
+    );
+    for (const place of desired) {
+      await this.shiftRepository.saveRequirement({
+        ...place,
+        churchId,
+        participationId,
+        notes: notesByPlace.get(placeOf(place)),
+        tx,
+      });
+    }
+  }
+
+  private async loadPreparationView({
+    churchId,
+    participation,
+    eventTimeBlock,
+    event,
+    tx,
+  }: LoadPreparationViewInput): Promise<ParticipationEventTimeBlockView> {
+    const availabilityRequestedAt =
+      await this.participationRepository.findAvailabilityRequestedAt({
+        churchId,
+        cycleId: event.cycleId,
+        ministryId: participation.ministryId,
+        tx,
+      });
+    const { eventTimeBlocks } = await this.loadEventView({
+      churchId,
+      eventGroup: { event, eventTimeBlocks: [eventTimeBlock] },
+      participation,
+      availabilityRequestedAt,
+      tx,
+    });
+    const [view] = eventTimeBlocks;
+    if (!view) {
+      throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlock.id}`);
+    }
+    return view;
   }
 
   async listUsualSetupBlocks({
@@ -953,11 +1145,18 @@ export class DbParticipationManager implements IParticipationManager {
       const alreadyPublished: PublishCandidate[] = [];
 
       for (const eventGroup of eventGroups) {
-        const participation = await this.getOrCreateParticipation({
+        const { id: participationId } = await this.getOrCreateParticipation({
           churchId: input.churchId,
           cycleId: input.cycleId,
           ministryId: input.ministryId,
           eventId: eventGroup.event.id,
+          tx,
+        });
+        // Locked before completion is read, in the stable Event order: a racing
+        // preparation save is seen here, or sees this publish and is refused.
+        const participation = await this.participationRepository.lockById({
+          churchId: input.churchId,
+          participationId,
           tx,
         });
         const completion = await this.getCompletionInternal({
@@ -1080,6 +1279,52 @@ export class DbParticipationManager implements IParticipationManager {
       availabilityRequestedForAll: row.availabilityRequestedForAll,
       availabilityRequestedForAny: row.availabilityRequestedForAny,
     }));
+  }
+
+  async listSchedules({
+    churchId,
+    ministryIds: scopedMinistryIds,
+  }: ListSchedulesInput): Promise<ScheduleView[]> {
+    const [ministries, cycles] = await Promise.all([
+      this.ministryRepository.listByChurch({
+        churchId,
+        ids: scopedMinistryIds,
+      }),
+      this.cycleRepository.list({ churchId }),
+    ]);
+    const sentCycles = cycles.filter((cycle) => cycle.state !== 'draft');
+    if (ministries.length === 0 || sentCycles.length === 0) return [];
+
+    const scope = {
+      churchId,
+      ministryIds: ministries.map((ministry) => ministry.id),
+      cycleIds: sentCycles.map((cycle) => cycle.id),
+    };
+    const [servingStates, checkCounts] = await Promise.all([
+      this.participationRepository.listScheduleServingStates(scope),
+      this.participationRepository.countScheduleChecks(scope),
+    ]);
+
+    const statesBySchedule = Map.groupBy(servingStates, scheduleKey);
+    const countsBySchedule = new Map(
+      checkCounts.map((row) => [scheduleKey(row), row]),
+    );
+
+    return sentCycles.flatMap((cycle) =>
+      ministries.map((ministry) => {
+        const key = scheduleKey({
+          ministryId: ministry.id,
+          cycleId: cycle.id,
+        });
+        const rows = statesBySchedule.get(key) ?? [];
+        const stage = deriveScheduleStage({
+          servingStates: rows.map((row) => row.state),
+        });
+        if (stage !== 'asking') return { ministry, cycle, stage };
+        const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
+        return { ministry, cycle, stage, asking: { confirmed, asked } };
+      }),
+    );
   }
 
   private async getOrCreateParticipation(
@@ -1552,13 +1797,151 @@ function sortEligibleVolunteers(
   });
 }
 
-function ensurePrepare({ participation, action }: EnsurePrepareInput): void {
-  if (participation.state !== 'preparing') {
-    throw new IllegalStateTransitionError({
-      from: participation.state,
-      to: action,
-    });
+/** Preparing through assigning accept edits; published and elapsed or unsent Cycles refuse. */
+function ensurePreparationEditable({
+  participation,
+  cycle,
+  timeZone,
+}: EnsurePreparationEditableInput): void {
+  const to = 'save_preparation';
+  if (participation.state === 'published') {
+    throw new IllegalStateTransitionError({ from: participation.state, to });
   }
+  const currentInstant = now();
+  const churchToday = today({ instant: currentInstant, timeZone });
+  // endDate is the Cycle's last day: edits stay open through it.
+  if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) > 0) {
+    throw new IllegalStateTransitionError({ from: 'past', to });
+  }
+  if (cycle.state !== 'sent') {
+    throw new IllegalStateTransitionError({ from: cycle.state, to });
+  }
+}
+
+interface DiffShiftsInput {
+  existingShifts: Shift[];
+  desiredShifts: Shift[];
+}
+
+interface ShiftChange {
+  /** The desired Shifts in order, an existing Shift wherever its span survives. */
+  shifts: Shift[];
+  added: Shift[];
+  removed: Shift[];
+}
+
+function diffShifts({
+  existingShifts,
+  desiredShifts,
+}: DiffShiftsInput): ShiftChange {
+  const shifts = desiredShifts.map(
+    (desired) =>
+      existingShifts.find(
+        (existing) =>
+          compareInstants({
+            left: existing.startTime,
+            right: desired.startTime,
+          }) === 0 &&
+          compareInstants({
+            left: existing.endTime,
+            right: desired.endTime,
+          }) === 0,
+      ) ?? desired,
+  );
+  return {
+    shifts,
+    added: shifts.filter((shift) => !existingShifts.includes(shift)),
+    removed: existingShifts.filter((shift) => !shifts.includes(shift)),
+  };
+}
+
+interface ShiftResponses {
+  markCountByShift: Map<string, number>;
+  assignmentCountByShift: Map<string, number>;
+  assignedCountByRequirement: Map<string, number>;
+}
+
+interface CountShiftResponsesInput {
+  marks: UnavailableShift[];
+  assignments: Assignment[];
+}
+
+function countShiftResponses({
+  marks,
+  assignments,
+}: CountShiftResponsesInput): ShiftResponses {
+  const activeAssignments = assignments.filter((assignment) =>
+    isActiveAssignmentStatus(assignment.status),
+  );
+  return {
+    markCountByShift: countBy({
+      keys: marks.map((mark) => mark.shiftId as string),
+    }),
+    assignmentCountByShift: countBy({
+      keys: activeAssignments.map((assignment) => assignment.shiftId as string),
+    }),
+    assignedCountByRequirement: countBy({
+      keys: activeAssignments.map(
+        (assignment) => assignment.shiftRequirementId as string,
+      ),
+    }),
+  };
+}
+
+interface AssertNoShiftResponsesInput {
+  shifts: Shift[];
+  responses: ShiftResponses;
+}
+
+function assertNoShiftResponses({
+  shifts,
+  responses: { markCountByShift, assignmentCountByShift },
+}: AssertNoShiftResponsesInput): void {
+  const shiftResponses = shifts
+    .map(({ id: shiftId }) => ({
+      shiftId,
+      unavailableMarkCount: markCountByShift.get(shiftId as string) ?? 0,
+      assignmentCount: assignmentCountByShift.get(shiftId as string) ?? 0,
+    }))
+    .filter(
+      ({ unavailableMarkCount, assignmentCount }) =>
+        unavailableMarkCount > 0 || assignmentCount > 0,
+    );
+  if (shiftResponses.length > 0) {
+    throw new ShiftHasResponsesError({ shiftResponses });
+  }
+}
+
+interface AssertHeadcountFloorsInput {
+  current: ShiftRequirement[];
+  desired: DesiredRequirement[];
+  responses: ShiftResponses;
+}
+
+function assertHeadcountFloors({
+  current,
+  desired,
+  responses: { assignedCountByRequirement },
+}: AssertHeadcountFloorsInput): void {
+  const neededByPlace = new Map(
+    desired.map((place) => [placeOf(place), place.peopleNeeded]),
+  );
+  const headcountFloors = current.flatMap((requirement) => {
+    const { shiftId, sectorId, roleId } = requirement;
+    const assignedCount =
+      assignedCountByRequirement.get(requirement.id as string) ?? 0;
+    const needed = neededByPlace.get(placeOf(requirement)) ?? 0;
+    return shiftId && needed < assignedCount
+      ? [{ shiftId, sectorId, roleId, assignedCount }]
+      : [];
+  });
+  if (headcountFloors.length > 0) {
+    throw new HeadcountBelowAssignedError({ headcountFloors });
+  }
+}
+
+function placeOf({ shiftId, sectorId, roleId }: RequirementPlace): string {
+  return `${shiftId}:${sectorId}:${roleId}`;
 }
 
 function buildEventView({
@@ -1567,47 +1950,98 @@ function buildEventView({
   includedEventTimeBlockIds,
   shifts,
   requirements,
+  marks,
+  assignments,
+  availabilityRequestedAt,
 }: BuildEventViewInput): ParticipationEventView {
-  const shiftsByEventTimeBlock = new Map<string, Shift[]>();
-  for (const shift of shifts) {
-    const eventTimeBlockShifts =
-      shiftsByEventTimeBlock.get(shift.eventTimeBlockId as string) ?? [];
-    eventTimeBlockShifts.push(shift);
-    shiftsByEventTimeBlock.set(
-      shift.eventTimeBlockId as string,
-      eventTimeBlockShifts,
-    );
-  }
+  const {
+    markCountByShift,
+    assignmentCountByShift,
+    assignedCountByRequirement,
+  } = countShiftResponses({ marks, assignments });
 
-  const requirementsByShift = new Map<string, ShiftRequirement[]>();
-  for (const requirement of requirements) {
-    const key = (requirement.shiftId ?? '') as string;
-    const shiftRequirements = requirementsByShift.get(key) ?? [];
-    shiftRequirements.push(requirement);
-    requirementsByShift.set(key, shiftRequirements);
-  }
+  const shiftsByEventTimeBlock = groupBy({
+    items: shifts,
+    keyOf: (shift) => shift.eventTimeBlockId as string,
+  });
+  const requirementsByShift = groupBy({
+    items: requirements,
+    keyOf: (requirement) => (requirement.shiftId ?? '') as string,
+  });
 
   const eventTimeBlocks: ParticipationEventTimeBlockView[] =
     eventGroup.eventTimeBlocks.map((eventTimeBlock) => {
       const eventTimeBlockShifts =
         shiftsByEventTimeBlock.get(eventTimeBlock.id as string) ?? [];
-      const shiftRequirements = eventTimeBlockShifts.flatMap(
-        (shift) => requirementsByShift.get(shift.id as string) ?? [],
+      const shiftViews: ParticipationShiftView[] = eventTimeBlockShifts.map(
+        (shift) => {
+          const shiftRequirements = (
+            requirementsByShift.get(shift.id as string) ?? []
+          ).map((requirement) => ({
+            requirement,
+            assignedCount:
+              assignedCountByRequirement.get(requirement.id as string) ?? 0,
+          }));
+
+          return {
+            shift,
+            requirements: shiftRequirements,
+            unavailableMarkCount: markCountByShift.get(shift.id as string) ?? 0,
+            assignmentCount:
+              assignmentCountByShift.get(shift.id as string) ?? 0,
+            flagged: shiftRequirements.length === 0,
+          };
+        },
       );
 
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
-        shifts: eventTimeBlockShifts,
-        requirements: shiftRequirements,
+        shifts: shiftViews,
+        requirements: shiftViews.flatMap((view) => view.requirements),
+        shiftsChangedAfterAsk:
+          availabilityRequestedAt !== null &&
+          eventTimeBlockShifts.some(
+            (shift) => shift.createdAt > availabilityRequestedAt,
+          ),
       };
     });
 
   return {
     participation,
     event: eventGroup.event,
+    generatedFromTemplate: eventGroup.event.sourceTemplateId !== undefined,
     eventTimeBlocks,
   };
+}
+
+interface CountByInput {
+  keys: string[];
+}
+
+function countBy({ keys }: CountByInput): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const key of keys) {
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+interface GroupByInput<Item> {
+  items: Item[];
+  keyOf: (item: Item) => string;
+}
+
+function groupBy<Item>({
+  items,
+  keyOf,
+}: GroupByInput<Item>): Map<string, Item[]> {
+  const groups = new Map<string, Item[]>();
+  for (const item of items) {
+    const key = keyOf(item);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+  return groups;
 }
 
 interface RangesOverlapInput {

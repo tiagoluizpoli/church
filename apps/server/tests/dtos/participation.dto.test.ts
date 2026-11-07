@@ -171,30 +171,6 @@ describe('participationMapper', () => {
     });
   });
 
-  describe('shiftListToResponse', () => {
-    it('maps an empty list of shifts', () => {
-      expect(participationMapper.shiftListToResponse([])).toEqual({
-        shifts: [],
-      });
-    });
-
-    it('maps a non-empty list of shifts', () => {
-      const shift = buildShift('Only Shift');
-
-      const response = participationMapper.shiftListToResponse([shift]);
-
-      expect(response.shifts).toHaveLength(1);
-      expect(response.shifts[0]).toEqual({
-        id: 'shift-1',
-        participationId: 'participation-1',
-        eventTimeBlockId: 'event-time-block-1',
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        label: 'Only Shift',
-      });
-    });
-  });
-
   describe('cycleViewToResponse', () => {
     it('maps a full nested structure with populated event time blocks, shifts, and requirements', () => {
       const participation = buildParticipation();
@@ -218,8 +194,24 @@ describe('participationMapper', () => {
       const populatedEventTimeBlockView: ParticipationEventTimeBlockView = {
         eventTimeBlock,
         included: true,
-        shifts: [shift],
-        requirements: [requirement],
+        shifts: [
+          {
+            shift,
+            requirements: [{ requirement, assignedCount: 2 }],
+            unavailableMarkCount: 3,
+            assignmentCount: 2,
+            flagged: false,
+          },
+          {
+            shift: buildShift('Evening Shift'),
+            requirements: [],
+            unavailableMarkCount: 0,
+            assignmentCount: 0,
+            flagged: true,
+          },
+        ],
+        requirements: [{ requirement, assignedCount: 2 }],
+        shiftsChangedAfterAsk: true,
       };
 
       const emptyEventTimeBlockView: ParticipationEventTimeBlockView = {
@@ -227,11 +219,13 @@ describe('participationMapper', () => {
         included: false,
         shifts: [],
         requirements: [],
+        shiftsChangedAfterAsk: false,
       };
 
       const eventView: ParticipationEventView = {
         participation,
         event,
+        generatedFromTemplate: true,
         eventTimeBlocks: [populatedEventTimeBlockView, emptyEventTimeBlockView],
       };
 
@@ -257,9 +251,22 @@ describe('participationMapper', () => {
         throw new Error('expected mapped event time blocks');
       }
       expect(populatedEventTimeBlock.included).toBe(true);
-      expect(populatedEventTimeBlock.shifts).toHaveLength(1);
+      expect(mappedEventView.generatedFromTemplate).toBe(true);
+      expect(populatedEventTimeBlock.shiftsChangedAfterAsk).toBe(true);
+      expect(populatedEventTimeBlock.shifts).toHaveLength(2);
+      expect(populatedEventTimeBlock.shifts[0]).toMatchObject({
+        unavailableMarkCount: 3,
+        assignmentCount: 2,
+        flagged: false,
+        requirements: [{ id: 'req-1', assignedCount: 2 }],
+      });
+      expect(populatedEventTimeBlock.shifts[1]).toMatchObject({
+        flagged: true,
+        requirements: [],
+      });
       expect(populatedEventTimeBlock.requirements).toHaveLength(1);
       expect(populatedEventTimeBlock.requirements[0]).toEqual({
+        assignedCount: 2,
         id: 'req-1',
         shiftId: 'shift-1',
         participationId: 'participation-1',

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import {
   type CalendarDay,
@@ -173,7 +174,7 @@ export function PrepareCalendar({
         variant="ghost"
         size="icon-touch"
         data-testid="prepare-calendar-scroll-left"
-        aria-label="Scroll to earlier days"
+        aria-label={m.prepare_calendar_earlier()}
         onClick={() => scrollByStep(-1)}
       >
         <ChevronLeftIcon className="size-4" />
@@ -223,7 +224,9 @@ export function PrepareCalendar({
                 data-day-filter={isDayFilter || undefined}
                 aria-pressed={isDayFilter}
                 aria-label={
-                  hasEvent ? `${fullDateLabel}, has events` : fullDateLabel
+                  hasEvent
+                    ? m.prepare_calendar_has_events({ day: fullDateLabel })
+                    : fullDateLabel
                 }
                 tabIndex={isRovingTarget ? 0 : -1}
                 className={cn(
@@ -269,7 +272,7 @@ export function PrepareCalendar({
         variant="ghost"
         size="icon-touch"
         data-testid="prepare-calendar-scroll-right"
-        aria-label="Scroll to later days"
+        aria-label={m.prepare_calendar_later()}
         onClick={() => scrollByStep(1)}
       >
         <ChevronRightIcon className="size-4" />

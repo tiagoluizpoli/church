@@ -10,9 +10,7 @@ import {
   vi,
 } from 'vitest';
 import { PrepareController } from '@/api/controllers/prepare-controller';
-import { Shift } from '@/domain/entities/shift';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
-import { ShiftOutOfBoundsError } from '@/domain/errors/shift-out-of-bounds';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -31,11 +29,6 @@ const mockGetSession = vi.mocked(
 
 const participationManager = {
   getCycleParticipation: vi.fn(),
-  setInclusions: vi.fn(),
-  splitShifts: vi.fn(),
-  updateShift: vi.fn(),
-  deleteShift: vi.fn(),
-  upsertRequirement: vi.fn(),
   listScheduleSummaries: vi.fn(),
 };
 
@@ -68,24 +61,6 @@ function createActiveChurchResolution() {
     volunteerId: '44444444-4444-4444-8444-444444444444',
     autoSelected: false,
   };
-}
-
-function createShift(): Shift {
-  return new Shift({
-    id: '66666666-6666-6666-8666-666666666666',
-    props: {
-      churchId: '11111111-1111-1111-1111-111111111111',
-      participationId: '22222222-2222-2222-8222-222222222222',
-      eventTimeBlockId: '33333333-3333-3333-8333-333333333333',
-      startTime: parseInstant({ value: '2026-08-03T09:00:00.000Z' }),
-      endTime: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
-      label: 'Welcome',
-    },
-    eventTimeBlockBounds: {
-      startTime: parseInstant({ value: '2026-08-03T09:00:00.000Z' }),
-      endTime: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
-    },
-  });
 }
 
 beforeAll(async () => {
@@ -159,35 +134,6 @@ const scopedPrepareRoutes: ScopedPrepareRoute[] = [
     decision: 'decideManageMinistry',
   },
   {
-    method: 'PUT',
-    url: `/api/v1/prepare/participations/${PARTICIPATION}/inclusions`,
-    decision: 'decideManageParticipation',
-    payload: { eventTimeBlockIds: [] },
-  },
-  {
-    method: 'POST',
-    url: `/api/v1/prepare/participations/${PARTICIPATION}/event-time-blocks/${BLOCK}/shifts`,
-    decision: 'decideManageParticipation',
-    payload: { strategy: { kind: 'equal-n', n: 2 } },
-  },
-  {
-    method: 'PATCH',
-    url: `/api/v1/prepare/shifts/${SHIFT}`,
-    decision: 'decideManageShift',
-    payload: { label: 'Renamed' },
-  },
-  {
-    method: 'DELETE',
-    url: `/api/v1/prepare/shifts/${SHIFT}`,
-    decision: 'decideManageShift',
-  },
-  {
-    method: 'PUT',
-    url: `/api/v1/prepare/shifts/${SHIFT}/requirements`,
-    decision: 'decideManageShift',
-    payload: { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 1 },
-  },
-  {
     method: 'POST',
     url: `/api/v1/prepare/participations/${PARTICIPATION}/ask-availability`,
     decision: 'decideManageParticipation',
@@ -217,6 +163,63 @@ function expectNoPrepareWork(): void {
     expect(operation).not.toHaveBeenCalled();
   }
 }
+
+const retiredPrepareRoutes: ScopedPrepareRoute[] = [
+  {
+    method: 'PUT',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/inclusions`,
+    decision: 'decideManageParticipation',
+    payload: { eventTimeBlockIds: [] },
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/prepare/participations/${PARTICIPATION}/event-time-blocks/${BLOCK}/shifts`,
+    decision: 'decideManageParticipation',
+    payload: { strategy: { kind: 'equal-n', n: 2 } },
+  },
+  {
+    method: 'PATCH',
+    url: `/api/v1/prepare/shifts/${SHIFT}`,
+    decision: 'decideManageShift',
+    payload: { label: 'Renamed' },
+  },
+  {
+    method: 'DELETE',
+    url: `/api/v1/prepare/shifts/${SHIFT}`,
+    decision: 'decideManageShift',
+  },
+  {
+    method: 'PUT',
+    url: `/api/v1/prepare/shifts/${SHIFT}/requirements`,
+    decision: 'decideManageShift',
+    payload: { sectorId: 'sector-1', roleId: 'role-1', peopleNeeded: 1 },
+  },
+];
+
+describe('Retired Prepare writes', () => {
+  it('omits the retired paths from OpenAPI', () => {
+    const { paths } = app.swagger();
+    expect(paths).toBeDefined();
+    for (const route of retiredPrepareRoutes) {
+      const path = route.url
+        .replace(PARTICIPATION, '{participationId}')
+        .replace(BLOCK, '{eventTimeBlockId}')
+        .replace(SHIFT, '{shiftId}');
+      expect(paths?.[path]).toBeUndefined();
+    }
+  });
+
+  it.each(retiredPrepareRoutes)('$method $url is unregistered', async ({
+    method,
+    url,
+    payload,
+  }) => {
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(404);
+    expectNoPrepareWork();
+  });
+});
 
 describe('Prepare route refusals', () => {
   it.each(
@@ -282,13 +285,6 @@ describe('Prepare participation routes', () => {
     const scopeProtectedOperations = [
       paths['/api/v1/prepare/cycles/{cycleId}/participation']?.get,
       paths['/api/v1/prepare/ministries/{ministryId}/cycles-summary']?.get,
-      paths['/api/v1/prepare/participations/{participationId}/inclusions']?.put,
-      paths[
-        '/api/v1/prepare/participations/{participationId}/event-time-blocks/{eventTimeBlockId}/shifts'
-      ]?.post,
-      paths['/api/v1/prepare/shifts/{shiftId}']?.patch,
-      paths['/api/v1/prepare/shifts/{shiftId}']?.delete,
-      paths['/api/v1/prepare/shifts/{shiftId}/requirements']?.put,
       paths['/api/v1/prepare/participations/{participationId}/ask-availability']
         ?.post,
       paths['/api/v1/prepare/cycles/{cycleId}/availability-status']?.get,
@@ -340,86 +336,6 @@ describe('Prepare participation routes', () => {
     expect(availabilityCheckManager.askAvailability).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/prepare/participations/:id/event-time-blocks/:eventTimeBlockId/shifts returns 201', async () => {
-    participationManager.splitShifts.mockResolvedValue([createShift()]);
-
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/event-time-blocks/33333333-3333-3333-8333-333333333333/shifts',
-      payload: {
-        strategy: {
-          kind: 'equal-n',
-          n: 1,
-        },
-      },
-    });
-
-    expect(response.statusCode).toBe(201);
-    expect(response.json()).toEqual({
-      shifts: [
-        {
-          id: '66666666-6666-6666-8666-666666666666',
-          participationId: '22222222-2222-2222-8222-222222222222',
-          eventTimeBlockId: '33333333-3333-3333-8333-333333333333',
-          startTime: '2026-08-03T09:00:00.000Z',
-          endTime: '2026-08-03T10:00:00.000Z',
-          label: 'Welcome',
-        },
-      ],
-    });
-  });
-
-  it('POST /api/v1/prepare/participations/:id/event-time-blocks/:eventTimeBlockId/shifts returns 409 for out-of-bounds splits', async () => {
-    participationManager.splitShifts.mockRejectedValue(
-      new ShiftOutOfBoundsError(),
-    );
-
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/event-time-blocks/33333333-3333-3333-8333-333333333333/shifts',
-      payload: {
-        strategy: {
-          kind: 'manual',
-          spans: [
-            {
-              startTime: '2026-08-03T08:00:00.000Z',
-              endTime: '2026-08-03T11:00:00.000Z',
-            },
-          ],
-        },
-      },
-    });
-
-    expect(response.statusCode).toBe(409);
-    expect(response.json()).toEqual({
-      error: 'SHIFT_OUT_OF_BOUNDS',
-      message: m.error_shift_out_of_bounds(),
-    });
-  });
-
-  it('POST /api/v1/prepare/participations/:id/event-time-blocks/:eventTimeBlockId/shifts returns 403 for another ministry scope', async () => {
-    authorityGuard.decideManageParticipation.mockResolvedValue(false);
-    authorityGuard.decideManageAnyMinistry.mockResolvedValue(false);
-
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/prepare/participations/22222222-2222-2222-8222-222222222222/event-time-blocks/33333333-3333-3333-8333-333333333333/shifts',
-      payload: {
-        strategy: {
-          kind: 'equal-n',
-          n: 2,
-        },
-      },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: 'FORBIDDEN',
-      message: m.error_forbidden(),
-    });
-    expect(participationManager.splitShifts).not.toHaveBeenCalled();
-  });
-
   it('POST /api/v1/prepare/participations/:id/ask-availability returns 202', async () => {
     availabilityCheckManager.askAvailability.mockResolvedValue({
       createdCheckCount: 4,
@@ -436,6 +352,15 @@ describe('Prepare participation routes', () => {
       createdCheckCount: 4,
       notifiedVolunteerCount: 4,
     });
+  });
+
+  it('keeps the per-participation reminder callable', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/prepare/participations/${PARTICIPATION}/resend-availability`,
+    });
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({ resent: true });
   });
 
   it('POST /api/v1/prepare/participations/:id/ask-availability returns 409 for wrong state', async () => {

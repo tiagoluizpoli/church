@@ -170,6 +170,19 @@ export class DbAssignmentManager implements IAssignmentManager {
     input,
     tx,
   }: CreateParticipationAssignmentTransactionInput): Promise<CreateParticipationAssignmentResult> {
+    // Read unlocked only to name the Participation row.
+    const { participationId } = await this.shiftRepository.getById({
+      churchId: input.churchId,
+      shiftId: input.shiftId,
+      tx,
+    });
+    // The Participation before its Shifts, as saves and Publish lock: their
+    // committed graph and state are read below, and neither can deadlock with this.
+    const participation = await this.participationRepository.lockById({
+      churchId: input.churchId,
+      participationId,
+      tx,
+    });
     const shift = await this.shiftRepository.getById({
       churchId: input.churchId,
       shiftId: input.shiftId,
@@ -182,13 +195,6 @@ export class DbAssignmentManager implements IAssignmentManager {
       tx,
     });
     const { roleId } = requirement;
-    const participationId =
-      requirement.participationId ?? shift.participationId;
-    const participation = await this.participationRepository.getById({
-      churchId: input.churchId,
-      participationId,
-      tx,
-    });
     const hasMembership =
       await this.volunteerRepository.hasMembershipInMinistry({
         churchId: input.churchId,

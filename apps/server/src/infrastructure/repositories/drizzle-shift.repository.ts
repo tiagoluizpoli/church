@@ -1,19 +1,20 @@
 import { NotFoundError } from '@church/core';
 import { sector, shift, shiftRequirement } from '@church/db';
 import { toDate } from '@church/time';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type {
   CreateShiftsInput,
   DeleteShiftInput,
+  DeleteShiftRequirementsInput,
   DeleteShiftsByEventTimeBlockInput,
   GetRequirementForShiftInput,
   GetShiftInput,
   ListRequirementsByParticipationInput,
   ListShiftsByEventTimeBlockInput,
   ListShiftsByParticipationInput,
+  SaveShiftRequirementInput,
   ShiftRepository,
   UpdateShiftInput,
-  UpsertShiftRequirementInput,
 } from '../../domain/contracts/infrastructure/shift.repository';
 import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
@@ -102,7 +103,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
     input: ListShiftsByEventTimeBlockInput,
   ): Promise<Shift[]> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const rows = await db
+    const query = db
       .select()
       .from(shift)
       .where(
@@ -113,6 +114,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
         ),
       )
       .orderBy(asc(shift.startTime));
+    const rows = await (input.forUpdate ? query.for('update') : query);
 
     return rows.map(mapShift);
   }
@@ -170,8 +172,8 @@ export class DrizzleShiftRepository implements ShiftRepository {
       );
   }
 
-  async upsertRequirement(
-    input: UpsertShiftRequirementInput,
+  async saveRequirement(
+    input: SaveShiftRequirementInput,
   ): Promise<ShiftRequirement> {
     const db = getClient({ db: this.db, tx: input.tx });
     const [existing] = await db
@@ -226,6 +228,22 @@ export class DrizzleShiftRepository implements ShiftRepository {
     }
 
     return mapShiftRequirement({ row, sectorName: named.name });
+  }
+
+  async deleteRequirements({
+    churchId,
+    shiftRequirementIds,
+    tx,
+  }: DeleteShiftRequirementsInput): Promise<void> {
+    if (shiftRequirementIds.length === 0) return;
+    await getClient({ db: this.db, tx })
+      .delete(shiftRequirement)
+      .where(
+        and(
+          inArray(shiftRequirement.id, shiftRequirementIds),
+          withChurchIsolation({ table: shiftRequirement, churchId }),
+        ),
+      );
   }
 
   async listRequirementsByParticipation(

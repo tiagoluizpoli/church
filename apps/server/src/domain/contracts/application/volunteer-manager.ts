@@ -205,6 +205,9 @@ export interface IVolunteerManager {
   getAvailabilityCheck(
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
+  answerAvailabilityCheck(
+    input: SetUnavailableShiftsInput,
+  ): Promise<VolunteerAvailabilityCheckDetail>;
   setUnavailableShifts(
     input: SetUnavailableShiftsInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;

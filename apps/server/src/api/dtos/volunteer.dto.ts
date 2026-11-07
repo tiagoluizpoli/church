@@ -72,6 +72,21 @@ export type AvailabilityCheckDetailResponse = z.infer<
   typeof availabilityCheckDetailResponseSchema
 >;
 
+export const answerAvailabilityCheckBodySchema = z.object({
+  shiftIds: z.array(z.uuid()),
+  wholeDayDates: z.array(calendarDaySchema).optional(),
+});
+
+export const answerConflictResponseSchema = z.object({
+  error: z.enum([
+    'SHIFT_PUBLISHED',
+    'ILLEGAL_STATE_TRANSITION',
+    'CROSS_MINISTRY_SCOPE',
+  ]),
+  message: z.string(),
+  shiftIds: z.array(z.string()).optional(),
+});
+
 export const setUnavailableShiftsBodySchema = z.object({
   shiftIds: z.array(z.string()),
   wholeDayDates: z.array(calendarDaySchema).optional(),

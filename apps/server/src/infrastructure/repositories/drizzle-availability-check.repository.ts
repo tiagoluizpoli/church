@@ -535,8 +535,30 @@ export class DrizzleAvailabilityCheckRepository
       throw new NotFoundError(`Availability check not found: ${input.checkId}`);
     }
 
+    let check = row.check;
+    if (input.tx && input.lockForAnswer) {
+      const [locked] = await db
+        .select()
+        .from(availabilityCheck)
+        .where(
+          and(
+            eq(availabilityCheck.id, input.checkId),
+            withChurchIsolation({
+              table: availabilityCheck,
+              churchId: input.churchId,
+            }),
+            isNull(availabilityCheck.withdrawnAt),
+          ),
+        )
+        .for('update');
+      if (!locked)
+        throw new NotFoundError(
+          `Availability check not found: ${input.checkId}`,
+        );
+      check = locked;
+    }
     return {
-      check: mapAvailabilityCheck(row.check),
+      check: mapAvailabilityCheck(check),
       volunteerId: row.volunteerId as VolunteerId,
       ministryId: row.ministryId as MinistryId,
       ministryName: row.ministryName,

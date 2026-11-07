@@ -46,6 +46,8 @@ export interface CreateChecksInput {
 }
 
 export interface GetCheckContextInput {
+  /** Serialize answers so concurrent pending requests stamp confirmation once. */
+  lockForAnswer?: boolean;
   churchId: ChurchId;
   checkId: AvailabilityCheckId;
   tx?: TransactionContext;

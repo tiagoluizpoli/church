@@ -5,6 +5,8 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AnswerAvailabilityCheck200,
+  AnswerAvailabilityCheckBody,
   CancelOwnAssignment204,
   ConfirmAvailabilityCheck204,
   GetAvailabilityCheck200,
@@ -87,6 +89,21 @@ const getAvailabilityCheck = (
     }
   /**
  * Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.
+ * @summary Answer an AvailabilityCheck
+ */
+const answerAvailabilityCheck = (
+    checkId: string,
+    answerAvailabilityCheckBody: AnswerAvailabilityCheckBody,
+ ) => {
+      return apiClient<AnswerAvailabilityCheck200>(
+      {url: `/api/v1/volunteer/availability-checks/${checkId}/answer`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: answerAvailabilityCheckBody
+    },
+      );
+    }
+  /**
+ * Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.
  * @summary Set unavailable shifts on an AvailabilityCheck
  */
 const setUnavailableShifts = (
@@ -151,12 +168,13 @@ const getPublishedVolunteerSchedule = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailableShifts,confirmAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getPublishedVolunteerSchedule}};
+  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,setUnavailableShifts,confirmAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getPublishedVolunteerSchedule}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
 export type ListAvailabilityChecksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['listAvailabilityChecks']>>>
 export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAvailabilityCheck']>>>
+export type AnswerAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['answerAvailabilityCheck']>>>
 export type SetUnavailableShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['setUnavailableShifts']>>>
 export type ConfirmAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['confirmAvailabilityCheck']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>

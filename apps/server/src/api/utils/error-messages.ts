@@ -34,6 +34,7 @@ import {
   ShiftHasResponsesError,
   type ShiftResponseCount,
 } from '@/domain/errors/shift-has-responses';
+import { ShiftPublishedError } from '@/domain/errors/shift-published';
 import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import {
   type ValidationReason,
@@ -185,4 +186,8 @@ export function domainErrorMessage({
     return VALIDATION_REASON_MESSAGES[reason]({}, { locale });
   }
   return errorMessage({ code: error.code, locale });
+}
+
+export function publishedShiftIds(error: DomainError): string[] | undefined {
+  return error instanceof ShiftPublishedError ? error.shiftIds : undefined;
 }

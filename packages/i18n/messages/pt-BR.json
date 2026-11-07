@@ -80,6 +80,7 @@
   "error_ask_blocked_flagged_shifts": "Alguns Turnos ainda não têm Função definida. Corrija-os antes de pedir a disponibilidade.",
   "error_remind_on_cooldown": "Esta Escala recebeu um lembrete há pouco. Você poderá lembrar de novo quando a espera terminar.",
   "error_validation_ask_no_eligible_volunteers": "Nenhum Voluntário tem uma Função necessária para estes Turnos, então não há a quem perguntar.",
+  "error_shift_published": "Alguns Turnos já foram publicados. Atualize e revise sua resposta.",
   "error_shift_has_responses": "Voluntários já responderam ou estão escalados em um Turno que esta mudança descartaria. Nada foi alterado.",
   "error_upcoming_assignments": "Escalas futuras ainda dependem disso. Altere-as primeiro na montagem da escala.",
   "error_validation_error": "Algumas informações são inválidas.",

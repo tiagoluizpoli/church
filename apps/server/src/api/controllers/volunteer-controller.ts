@@ -23,6 +23,8 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  answerAvailabilityCheckBodySchema,
+  answerConflictResponseSchema,
   assignmentListResponseSchema,
   assignmentResponseSchema,
   availabilityCheckDetailResponseSchema,
@@ -226,6 +228,47 @@ export class VolunteerController implements FastifyController {
               checkId: AvailabilityCheckId.from(checkId),
               volunteerId: VolunteerId.from(request.volunteerId as string),
               churchId: ChurchId.from(request.churchId),
+            }),
+        });
+        if (!detail) return;
+        return reply.send(
+          volunteerMapper.availabilityCheckDetailToResponse(detail),
+        );
+      },
+    );
+
+    app.put(
+      '/availability-checks/:checkId/answer',
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'answerAvailabilityCheck',
+          summary: 'Answer an AvailabilityCheck',
+          description:
+            "Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
+          body: answerAvailabilityCheckBodySchema,
+          response: {
+            200: availabilityCheckDetailResponseSchema,
+            404: notFoundResponseSchema,
+            409: answerConflictResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { checkId } = request.params as AvailabilityCheckRouteParams;
+        const body = request.body as z.infer<
+          typeof answerAvailabilityCheckBodySchema
+        >;
+        const detail = await this.withPrivateObjectNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.volunteerManager.answerAvailabilityCheck({
+              checkId: AvailabilityCheckId.from(checkId),
+              volunteerId: VolunteerId.from(request.volunteerId as string),
+              churchId: ChurchId.from(request.churchId),
+              shiftIds: body.shiftIds.map((shiftId) => ShiftId.from(shiftId)),
+              wholeDayDates: body.wholeDayDates,
             }),
         });
         if (!detail) return;

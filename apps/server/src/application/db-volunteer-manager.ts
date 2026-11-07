@@ -57,7 +57,9 @@ import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
+import { IllegalStateTransitionError } from '../domain/errors/illegal-state-transition';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
+import { ShiftPublishedError } from '../domain/errors/shift-published';
 import {
   assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
@@ -169,6 +171,7 @@ function scheduleVolunteerName(name: string | undefined): string | undefined {
 }
 
 interface GetOwnedCheckContextInput extends GetAvailabilityCheckInput {
+  lockForAnswer?: boolean;
   tx?: TransactionContext;
 }
 
@@ -651,12 +654,14 @@ export class DbVolunteerManager implements IVolunteerManager {
    */
   private async getOwnedCheckContext({
     tx,
+    lockForAnswer,
     ...input
   }: GetOwnedCheckContextInput): Promise<CheckContext> {
     const context = await this.availabilityCheckRepo.getCheckContext({
       churchId: input.churchId,
       checkId: input.checkId,
       tx,
+      lockForAnswer,
     });
     if ((context.volunteerId as string) !== (input.volunteerId as string)) {
       throw new CheckAccessDeniedError();
@@ -762,6 +767,80 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail> {
     const context = await this.getOwnedCheckContext(input);
+    return this.resolveCheckDetail({ context, input });
+  }
+
+  async answerAvailabilityCheck(
+    input: SetUnavailableShiftsInput,
+  ): Promise<VolunteerAvailabilityCheckDetail> {
+    const context = await this.unitOfWork.run(async (tx) => {
+      const owned = await this.getOwnedCheckContext({ ...input, tx });
+      await this.participationRepo.lockSchedule({
+        churchId: input.churchId,
+        ministryId: owned.ministryId,
+        cycleId: owned.check.cycleId,
+        tx,
+      });
+      const context = await this.getOwnedCheckContext({
+        ...input,
+        tx,
+        lockForAnswer: true,
+      });
+      if (context.readOnly) {
+        throw new IllegalStateTransitionError({ from: 'past', to: 'answer' });
+      }
+      const shifts = await this.availabilityCheckRepo.listCheckShifts({
+        churchId: input.churchId,
+        checkId: input.checkId,
+        heldRolesOnly: true,
+        tx,
+      });
+
+      const wholeDayShiftIds = (input.wholeDayDates ?? []).flatMap((date) =>
+        expandWholeDayShiftIds({
+          churchDate: parseCalendarDay({ value: date }),
+          timeZone: context.timeZone,
+          shifts,
+        }),
+      );
+      const requestedShiftIds = [
+        ...new Set<ShiftId>([...input.shiftIds, ...wholeDayShiftIds]),
+      ];
+
+      assertUnavailableShiftsWithinScope({
+        candidateShiftIds: shifts.map((shift) => shift.shiftId),
+        requestedShiftIds,
+      });
+
+      const publishedShiftIds = shifts
+        .filter(
+          (shift) =>
+            shift.published && requestedShiftIds.includes(shift.shiftId),
+        )
+        .map((shift) => shift.shiftId);
+      if (publishedShiftIds.length > 0) {
+        throw new ShiftPublishedError({ shiftIds: publishedShiftIds });
+      }
+
+      await this.unavailableShiftRepo.replaceUnavailableShiftsForCheck({
+        churchId: input.churchId,
+        availabilityCheckId: input.checkId,
+        shiftIds: requestedShiftIds,
+        tx,
+      });
+      if (context.check.state === 'pending') {
+        context.check.confirm();
+        const confirmedAt = context.check.confirmedAt ?? nowInstant();
+        await this.availabilityCheckRepo.confirm({
+          churchId: input.churchId,
+          checkId: input.checkId,
+          confirmedAt: toDate({ instant: confirmedAt }),
+          tx,
+        });
+      }
+      return context;
+    });
+
     return this.resolveCheckDetail({ context, input });
   }
 

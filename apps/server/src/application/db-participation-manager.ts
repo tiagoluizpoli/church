@@ -1029,19 +1029,12 @@ export class DbParticipationManager implements IParticipationManager {
       const shiftRequirements = requirements.filter(
         (requirement) => requirement.shiftId === shift.id,
       );
-      const qualifiedVolunteers =
-        shiftRequirements.length === 0
-          ? await this.volunteerRepository.listByMinistry({
-              churchId: input.churchId,
-              ministryId: participation.ministryId,
-              tx,
-            })
-          : await this.listQualifiedVolunteersForShift({
-              churchId: input.churchId,
-              participation,
-              requirements: shiftRequirements,
-              tx,
-            });
+      const qualifiedVolunteers = await this.listQualifiedVolunteersForShift({
+        churchId: input.churchId,
+        participation,
+        requirements: shiftRequirements,
+        tx,
+      });
       const membershipInfoByVolunteerId =
         await this.listVolunteerMembershipInfo({
           churchId: input.churchId,
@@ -1525,28 +1518,12 @@ export class DbParticipationManager implements IParticipationManager {
       volunteersByRole.set(roleKey, volunteers);
     }
 
-    // A shift with no requirements falls back to the whole ministry.
-    const needsMinistryWide = shifts.some(
-      (shift) =>
-        (requirementsByShift.get(shift.id as string) ?? []).length === 0,
-    );
-    const volunteersInMinistry = needsMinistryWide
-      ? await this.volunteerRepository.listByMinistry({
-          churchId,
-          ministryId: participation.ministryId,
-          tx,
-        })
-      : [];
-
     // Union of everyone who could appear so unavailable shifts/assignments load once.
     const volunteersById = new Map<string, QualifiedVolunteerRef>();
     for (const volunteers of volunteersByRole.values()) {
       for (const volunteer of volunteers) {
         volunteersById.set(volunteer.id as string, volunteer);
       }
-    }
-    for (const volunteer of volunteersInMinistry) {
-      volunteersById.set(volunteer.id as string, volunteer);
     }
     const volunteerIds = [...volunteersById.values()].map(
       (volunteer) => volunteer.id,
@@ -1595,15 +1572,12 @@ export class DbParticipationManager implements IParticipationManager {
     for (const shift of shifts) {
       const shiftRequirements =
         requirementsByShift.get(shift.id as string) ?? [];
-      const qualified: QualifiedVolunteerRef[] =
-        shiftRequirements.length === 0
-          ? volunteersInMinistry
-          : dedupeVolunteersById(
-              shiftRequirements.flatMap(
-                (requirement) =>
-                  volunteersByRole.get(requirement.roleId as string) ?? [],
-              ),
-            );
+      const qualified: QualifiedVolunteerRef[] = dedupeVolunteersById(
+        shiftRequirements.flatMap(
+          (requirement) =>
+            volunteersByRole.get(requirement.roleId as string) ?? [],
+        ),
+      );
       const eligible = qualified.map((volunteer) =>
         buildEligibleForVolunteer({
           volunteer,

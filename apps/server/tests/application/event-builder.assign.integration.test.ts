@@ -602,6 +602,58 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       ]),
     );
   });
+
+  it('offers no eligible Volunteers for a Shift with no requirements, on both reads', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'No Requirements Cycle',
+      startDate: CYCLE_START,
+      endDate: CYCLE_END,
+      state: 'sent',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Sunday Service',
+      start: EVENT_START,
+      end: EVENT_END,
+    });
+    const shiftId = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      eventTimeBlockId: graph.eventTimeBlock.id,
+      startTime: EVENT_START,
+      endTime: EVENT_END,
+    });
+    await seedUnqualifiedMember({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Role-less Member',
+      email: 'role-less-731@test.com',
+    });
+    const manager = createParticipationManager();
+
+    const publicRead = await manager.listEligibleVolunteers({
+      churchId: ChurchId.from(seed.churchAId),
+      shiftId: ShiftId.from(shiftId),
+    });
+    const view = await manager.getCycleBuilderData({
+      churchId: ChurchId.from(seed.churchAId),
+      cycleId: CycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+      userId: UserId.from(seed.adminUserId),
+    });
+
+    expect(publicRead).toEqual([]);
+    const shiftView = view.events
+      .flatMap((eventView) => eventView.eventTimeBlocks)
+      .flatMap((eventTimeBlock) => eventTimeBlock.shifts)
+      .find((shift) => (shift.shift.id as string) === shiftId);
+    expect(shiftView).toBeDefined();
+    expect(shiftView?.eligibleVolunteers).toEqual([]);
+  });
 });
 
 describe('DbAssignmentManager.createParticipationAssignment membership race (issue #61)', () => {

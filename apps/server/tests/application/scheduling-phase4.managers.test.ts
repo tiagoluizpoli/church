@@ -303,10 +303,24 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
   );
   vi.mocked(
     repositories.shiftRepository.listRequirementsByParticipation,
-  ).mockResolvedValue([]);
-  vi.mocked(repositories.volunteerRepository.listByMinistry).mockResolvedValue([
-    volunteer,
+  ).mockResolvedValue([
+    new ShiftRequirement({
+      id: ShiftRequirementId.from({ raw: 'requirement' }),
+      props: {
+        churchId,
+        eventTimeBlockId,
+        participationId,
+        shiftId,
+        roleId: RoleId.from('role'),
+        sectorId: SectorId.from('sector'),
+        sectorName: 'Door',
+        peopleNeeded: 1,
+      },
+    }),
   ]);
+  vi.mocked(
+    repositories.volunteerRepository.listQualifiedForRole,
+  ).mockResolvedValue([volunteer]);
   vi.mocked(
     repositories.volunteerRepository.listMinistryMemberships,
   ).mockResolvedValue([]);

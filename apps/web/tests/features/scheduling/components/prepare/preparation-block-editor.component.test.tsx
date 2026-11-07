@@ -1001,7 +1001,17 @@ it('saves headcounts for existing multi-day manual Shifts without losing their d
     },
   ];
   api.getCycleParticipation.mockResolvedValue({
-    events: [{ ...EVENT, eventTimeBlocks: [block] }],
+    events: [
+      {
+        ...EVENT,
+        event: {
+          ...EVENT.event,
+          start: block.eventTimeBlock.startTime,
+          end: block.eventTimeBlock.endTime,
+        },
+        eventTimeBlocks: [block],
+      },
+    ],
   });
   api.saveEventTimeBlockPreparation.mockResolvedValue(block);
   const user = userEvent.setup();
@@ -1075,7 +1085,17 @@ it('keeps a saved manual Shift on its CalendarDays when its shared time controls
     },
   ];
   api.getCycleParticipation.mockResolvedValue({
-    events: [{ ...EVENT, eventTimeBlocks: [block] }],
+    events: [
+      {
+        ...EVENT,
+        event: {
+          ...EVENT.event,
+          start: block.eventTimeBlock.startTime,
+          end: block.eventTimeBlock.endTime,
+        },
+        eventTimeBlocks: [block],
+      },
+    ],
   });
   api.saveEventTimeBlockPreparation.mockResolvedValue(block);
   const user = userEvent.setup();

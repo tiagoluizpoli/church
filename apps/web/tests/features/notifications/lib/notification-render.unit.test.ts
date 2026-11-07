@@ -49,8 +49,11 @@ const schedule = {
 afterEach(() => overwriteGetLocale(() => 'en'));
 
 describe('retained scheduling Notifications', () => {
-  describe('N3/N4 words, the same keys as the email', () => {
-    const ptBR = { locale: 'pt-BR' } as const;
+  describe.each([
+    'en',
+    'pt-BR',
+  ] as const)('N3/N4 words in %s, the same keys as the email', (locale) => {
+    const language = { locale };
     const days = { startDate: '01/12/2026', endDate: '31/12/2026' };
     const names = { ministryName: 'Louvor', cycleName: 'Dezembro 2026' };
     const render = (kind: string, facts: object) =>
@@ -60,35 +63,37 @@ describe('retained scheduling Notifications', () => {
         data: { ...availability, ...facts },
       } as GetNotifications200ItemsItem);
     const lines = (...parts: string[]) => parts.join('\n');
-    const markOnly = () => m.notification_availability_mark_only({}, ptBR);
+    const markOnly = () => m.notification_availability_mark_only({}, language);
     const shifts = () =>
-      m.notification_availability_shifts_other({ count: 12 }, ptBR);
+      m.notification_availability_shifts_other({ count: 12 }, language);
     const openedBody = () =>
       m.notification_availability_opened_body(
         { shifts: shifts(), ...days },
-        ptBR,
+        language,
       );
     const reminderBody = () =>
       m.notification_availability_reminder_body(
         { shifts: shifts(), ...days },
-        ptBR,
+        language,
       );
     const deadline = { deadline: '20/11/2026' };
     const answerBy = '2026-11-20';
 
-    it('opened: count, span, mark-only line and the Answer action, in pt-BR', () => {
-      overwriteGetLocale(() => 'pt-BR');
+    it('opened: count, span, mark-only line and the Answer action, in the viewing locale', () => {
+      overwriteGetLocale(() => locale);
       const rendered = render('availability_opened', { shiftCount: 12 });
 
       expect(rendered.title).toBe(
-        m.notification_availability_opened_title(names, ptBR),
+        m.notification_availability_opened_title(names, language),
       );
       expect(rendered.body).toBe(lines(openedBody(), markOnly()));
-      expect(rendered.actionLabel).toBe(m.email_availability_action({}, ptBR));
+      expect(rendered.actionLabel).toBe(
+        m.email_availability_action({}, language),
+      );
     });
 
     it('opened: always says Answer by, even past the Deadline', () => {
-      overwriteGetLocale(() => 'pt-BR');
+      overwriteGetLocale(() => locale);
       const { body } = render('availability_opened', {
         shiftCount: 12,
         answerBy,
@@ -98,18 +103,18 @@ describe('retained scheduling Notifications', () => {
       expect(body).toBe(
         lines(
           openedBody(),
-          m.notification_availability_answer_by(deadline, ptBR),
+          m.notification_availability_answer_by(deadline, language),
           markOnly(),
         ),
       );
     });
 
     it('reminder: words the Deadline before and after it passed', () => {
-      overwriteGetLocale(() => 'pt-BR');
+      overwriteGetLocale(() => locale);
       const facts = { shiftCount: 12, answerBy };
 
       expect(render('availability_reminder', facts).title).toBe(
-        m.notification_availability_reminder_title(names, ptBR),
+        m.notification_availability_reminder_title(names, language),
       );
       expect(
         render('availability_reminder', { ...facts, deadlinePassed: false })
@@ -117,7 +122,7 @@ describe('retained scheduling Notifications', () => {
       ).toBe(
         lines(
           reminderBody(),
-          m.notification_availability_answer_by(deadline, ptBR),
+          m.notification_availability_answer_by(deadline, language),
           markOnly(),
         ),
       );
@@ -127,37 +132,44 @@ describe('retained scheduling Notifications', () => {
       ).toBe(
         lines(
           reminderBody(),
-          m.notification_availability_deadline_passed(deadline, ptBR),
+          m.notification_availability_deadline_passed(deadline, language),
           markOnly(),
         ),
       );
     });
 
     it('words one Shift in the singular', () => {
-      overwriteGetLocale(() => 'pt-BR');
+      overwriteGetLocale(() => locale);
 
       expect(render('availability_opened', { shiftCount: 1 }).body).toBe(
         lines(
           m.notification_availability_opened_body(
             {
-              shifts: m.notification_availability_shifts_one({}, ptBR),
+              shifts: m.notification_availability_shifts_one({}, language),
               ...days,
             },
-            ptBR,
+            language,
           ),
           markOnly(),
         ),
       );
     });
 
-    it('renders history frozen before the count and Deadline from the span', () => {
-      overwriteGetLocale(() => 'pt-BR');
-      const { body } = render('availability_reminder', {});
+    it.each([
+      'availability_opened',
+      'availability_reminder',
+    ])('%s history frozen before the count and Deadline stays readable', (kind) => {
+      overwriteGetLocale(() => locale);
+      const rendered = render(kind, {});
+      const { body } = rendered;
 
       expect(body).toBe(
-        lines(m.notification_availability_span(days, ptBR), markOnly()),
+        lines(m.notification_availability_span(days, language), markOnly()),
       );
       expect(body).not.toContain('undefined');
+      expect(rendered.actionLabel).toBe(
+        m.email_availability_action({}, language),
+      );
     });
   });
 
@@ -212,15 +224,21 @@ describe('retained scheduling Notifications', () => {
     );
   });
 
-  it('links availability to the dashboard availability section', () => {
-    expect(resolveNotificationDestination(opened)).toEqual({
-      target: { to: '/dashboard', search: { section: 'availability' } },
-      isFallback: false,
-    });
-    expect(resolveNotificationDestination(reminder).target).toEqual({
-      to: '/dashboard',
-      search: { section: 'availability' },
-    });
+  it.each([
+    'availability_opened',
+    'availability_reminder',
+  ] as const)('%s keeps its availability deep link for old and new facts', (kind) => {
+    for (const facts of [{}, { shiftCount: 12, answerBy: '2026-11-20' }]) {
+      const item: GetNotifications200ItemsItem = {
+        ...base,
+        kind,
+        data: { ...availability, ...facts },
+      };
+      expect(resolveNotificationDestination(item)).toEqual({
+        target: { to: '/dashboard', search: { section: 'availability' } },
+        isFallback: false,
+      });
+    }
   });
 
   it('links publication to the event on the dashboard assignments section', () => {

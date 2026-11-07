@@ -52,6 +52,8 @@ const CHECK_ID = '77777777-7777-4777-8777-777777777777';
 const SHIFT_ID = '66666666-6666-4666-8666-666666666666';
 
 interface MockCheckDetail {
+  answerBy: null;
+  readOnly: boolean;
   id: string;
   cycleId: string;
   cycleName: string;
@@ -67,11 +69,14 @@ interface MockCheckDetail {
     endTime: Instant;
     label?: string;
     available: boolean;
+    published: boolean;
   }>;
 }
 
 function createCheckDetail(): MockCheckDetail {
   return {
+    answerBy: null,
+    readOnly: false,
     id: CHECK_ID,
     cycleId: '22222222-2222-4222-8222-222222222222',
     cycleName: 'August 2026',
@@ -87,6 +92,7 @@ function createCheckDetail(): MockCheckDetail {
         endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
         label: 'Morning',
         available: false,
+        published: false,
       },
     ],
   };
@@ -139,6 +145,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
         ministryId: '33333333-3333-4333-8333-333333333331',
         ministryName: 'Scheduling Ministry A',
         state: 'pending',
+        answerBy: null,
         totalShiftCount: 2,
         unavailableShiftCount: 0,
       },

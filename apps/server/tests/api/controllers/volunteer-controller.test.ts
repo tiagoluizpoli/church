@@ -187,6 +187,8 @@ describe('Volunteer route access', () => {
 
   it('returns a serving Volunteer their own check', async () => {
     volunteerManager.getAvailabilityCheck.mockResolvedValue({
+      answerBy: null,
+      readOnly: false,
       id: CHECK_ID,
       cycleId: 'cycle-1',
       cycleName: 'August',

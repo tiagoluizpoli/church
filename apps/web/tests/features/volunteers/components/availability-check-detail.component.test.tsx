@@ -23,6 +23,8 @@ describe('AvailabilityCheckDetail (T157)', () => {
     renderWithProviders(
       <AvailabilityCheckDetail
         check={{
+          answerBy: null,
+          readOnly: false,
           id: 'check-1',
           cycleId: 'cycle-1',
           cycleName: 'Q1 Cycle',
@@ -37,6 +39,7 @@ describe('AvailabilityCheckDetail (T157)', () => {
               startTime: '2027-01-04T12:00:00.000Z',
               endTime: '2027-01-04T14:00:00.000Z',
               available: true,
+              published: false,
             },
           ],
         }}
@@ -65,6 +68,8 @@ describe('AvailabilityCheckDetail (T157)', () => {
     renderWithProviders(
       <AvailabilityCheckDetail
         check={{
+          answerBy: null,
+          readOnly: false,
           id: 'check-1',
           cycleId: 'cycle-1',
           cycleName: 'Q1 Cycle',

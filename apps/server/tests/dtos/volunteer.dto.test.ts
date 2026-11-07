@@ -279,6 +279,7 @@ describe('volunteerMapper', () => {
 
       const response = volunteerMapper.availabilityCheckListToResponse([
         {
+          answerBy: null,
           id: 'chk1',
           cycleId: 'pc1',
           cycleName: 'Spring 2026',
@@ -298,6 +299,7 @@ describe('volunteerMapper', () => {
     it('maps summaries with confirmedAt absent', () => {
       const response = volunteerMapper.availabilityCheckListToResponse([
         {
+          answerBy: null,
           id: 'chk2',
           cycleId: 'pc1',
           cycleName: 'Spring 2026',
@@ -326,6 +328,8 @@ describe('volunteerMapper', () => {
       const endTime = parseInstant({ value: '2026-01-11T11:00:00.000Z' });
 
       const response = volunteerMapper.availabilityCheckDetailToResponse({
+        answerBy: null,
+        readOnly: false,
         id: 'chk1',
         cycleId: 'pc1',
         cycleName: 'Spring 2026',
@@ -342,6 +346,7 @@ describe('volunteerMapper', () => {
             endTime,
             label: 'Morning',
             available: true,
+            published: false,
           },
           {
             shiftId: 'sh2',
@@ -350,6 +355,7 @@ describe('volunteerMapper', () => {
             startTime,
             endTime,
             available: false,
+            published: false,
           },
         ],
       });
@@ -363,6 +369,8 @@ describe('volunteerMapper', () => {
 
     it('maps a detail with confirmedAt absent and shifts empty', () => {
       const response = volunteerMapper.availabilityCheckDetailToResponse({
+        answerBy: null,
+        readOnly: false,
         id: 'chk2',
         cycleId: 'pc1',
         cycleName: 'Spring 2026',

@@ -490,6 +490,8 @@ export class DrizzleAvailabilityCheckRepository
       ministryId: ministryMembership.ministryId,
       ministryName: ministry.name,
       cycleName: cycle.name,
+      answerBy: availabilityAsk.answerBy,
+      cycleState: cycle.state,
       timeZone: church.timezone,
     };
   }
@@ -506,6 +508,14 @@ export class DrizzleAvailabilityCheckRepository
       .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
       .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .innerJoin(church, eq(church.id, availabilityCheck.churchId))
+      .leftJoin(
+        availabilityAsk,
+        and(
+          eq(availabilityAsk.churchId, availabilityCheck.churchId),
+          eq(availabilityAsk.ministryId, ministryMembership.ministryId),
+          eq(availabilityAsk.cycleId, availabilityCheck.cycleId),
+        ),
+      )
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
@@ -531,6 +541,8 @@ export class DrizzleAvailabilityCheckRepository
       ministryId: row.ministryId as MinistryId,
       ministryName: row.ministryName,
       cycleName: row.cycleName,
+      readOnly: row.cycleState === 'past',
+      answerBy: row.answerBy ? parseCalendarDay({ value: row.answerBy }) : null,
       timeZone: row.timeZone,
     };
   }
@@ -549,16 +561,26 @@ export class DrizzleAvailabilityCheckRepository
       .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
       .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .innerJoin(church, eq(church.id, availabilityCheck.churchId))
+      .leftJoin(
+        availabilityAsk,
+        and(
+          eq(availabilityAsk.churchId, availabilityCheck.churchId),
+          eq(availabilityAsk.ministryId, ministryMembership.ministryId),
+          eq(availabilityAsk.cycleId, availabilityCheck.cycleId),
+        ),
+      )
       .where(
         and(
           eq(ministryMembership.volunteerId, input.volunteerId),
+          ne(cycle.state, 'past'),
           actionable(),
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,
           }),
         ),
-      );
+      )
+      .orderBy(asc(availabilityCheck.state), asc(availabilityCheck.id));
 
     return rows.map((row) => ({
       check: mapAvailabilityCheck(row.check),
@@ -566,6 +588,8 @@ export class DrizzleAvailabilityCheckRepository
       ministryId: row.ministryId as MinistryId,
       ministryName: row.ministryName,
       cycleName: row.cycleName,
+      readOnly: row.cycleState === 'past',
+      answerBy: row.answerBy ? parseCalendarDay({ value: row.answerBy }) : null,
       timeZone: row.timeZone,
     }));
   }
@@ -580,6 +604,7 @@ export class DrizzleAvailabilityCheckRepository
         startTime: shift.startTime,
         endTime: shift.endTime,
         label: shift.label,
+        participationState: ministryParticipation.state,
       })
       .from(availabilityCheck)
       .innerJoin(
@@ -601,6 +626,26 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
+          input.heldRolesOnly
+            ? exists(
+                db
+                  .select({ id: shiftRequirement.id })
+                  .from(shiftRequirement)
+                  .innerJoin(
+                    ministryMembershipRole,
+                    eq(ministryMembershipRole.roleId, shiftRequirement.roleId),
+                  )
+                  .where(
+                    and(
+                      eq(shiftRequirement.shiftId, shift.id),
+                      eq(
+                        ministryMembershipRole.ministryMembershipId,
+                        ministryMembership.id,
+                      ),
+                    ),
+                  ),
+              )
+            : undefined,
           withChurchIsolation({
             table: availabilityCheck,
             churchId: input.churchId,
@@ -616,6 +661,7 @@ export class DrizzleAvailabilityCheckRepository
       startTime: fromDate({ date: row.startTime }),
       endTime: fromDate({ date: row.endTime }),
       label: row.label ?? undefined,
+      published: row.participationState === 'published',
     }));
   }
 

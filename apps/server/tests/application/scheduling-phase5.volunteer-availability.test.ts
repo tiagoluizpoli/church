@@ -60,6 +60,7 @@ const evening = ShiftId.from('evening');
 const instant = (value: string) => parseInstant({ value });
 const shifts: [CheckShiftRow, CheckShiftRow] = [
   {
+    published: false,
     shiftId: morning,
     eventId,
     eventTitle: 'Service',
@@ -67,6 +68,7 @@ const shifts: [CheckShiftRow, CheckShiftRow] = [
     endTime: instant('2026-08-02T15:00:00Z'),
   },
   {
+    published: false,
     shiftId: evening,
     eventId,
     eventTitle: 'Service',
@@ -82,6 +84,8 @@ function createHarness() {
     props: { churchId, cycleId, ministryMembershipId: 'membership' },
   });
   const context: CheckContext = {
+    answerBy: null,
+    readOnly: false,
     check,
     volunteerId,
     ministryId,

@@ -672,6 +672,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
         checkId: input.checkId,
+        heldRolesOnly: true,
       }),
       this.unavailableShiftRepo.listUnavailableShiftsByCheck({
         churchId: input.churchId,
@@ -697,6 +698,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         startTime: shift.startTime,
         endTime: shift.endTime,
         label: shift.label,
+        published: shift.published,
         available: availableByShiftId.get(shift.shiftId) ?? true,
       }),
     );
@@ -709,6 +711,8 @@ export class DbVolunteerManager implements IVolunteerManager {
       ministryName: context.ministryName,
       state: context.check.state,
       confirmedAt: context.check.confirmedAt,
+      answerBy: context.answerBy,
+      readOnly: context.readOnly,
       shifts: checkShifts,
     };
   }
@@ -728,6 +732,7 @@ export class DbVolunteerManager implements IVolunteerManager {
           this.availabilityCheckRepo.listCheckShifts({
             churchId: input.churchId,
             checkId,
+            heldRolesOnly: true,
           }),
           this.unavailableShiftRepo.listUnavailableShiftsByCheck({
             churchId: input.churchId,
@@ -743,8 +748,11 @@ export class DbVolunteerManager implements IVolunteerManager {
           ministryName: context.ministryName,
           state: context.check.state,
           confirmedAt: context.check.confirmedAt,
+          answerBy: context.answerBy,
           totalShiftCount: shifts.length,
-          unavailableShiftCount: unavailableShifts.length,
+          unavailableShiftCount: shifts.filter((shift) =>
+            unavailableShifts.some((mark) => mark.shiftId === shift.shiftId),
+          ).length,
         };
       }),
     );

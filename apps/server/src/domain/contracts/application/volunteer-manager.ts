@@ -1,4 +1,4 @@
-import type { Instant } from '@church/time';
+import type { CalendarDay, Instant } from '@church/time';
 import type {
   AssignmentId,
   AvailabilityCheckId,
@@ -87,6 +87,7 @@ export interface MinistrySchedule {
 }
 
 export interface VolunteerAvailabilityCheckSummary {
+  answerBy: CalendarDay | null;
   id: string;
   cycleId: string;
   cycleName: string;
@@ -99,6 +100,7 @@ export interface VolunteerAvailabilityCheckSummary {
 }
 
 export interface VolunteerCheckShift {
+  published: boolean;
   shiftId: string;
   eventId: string;
   eventTitle: string;
@@ -109,6 +111,8 @@ export interface VolunteerCheckShift {
 }
 
 export interface VolunteerAvailabilityCheckDetail {
+  answerBy: CalendarDay | null;
+  readOnly: boolean;
   id: string;
   cycleId: string;
   cycleName: string;

@@ -32,6 +32,7 @@ export const availabilityCheckSummarySchema = z.object({
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
   confirmedAt: instantSchema.optional(),
+  answerBy: calendarDaySchema.nullable(),
   totalShiftCount: z.number(),
   unavailableShiftCount: z.number(),
 });
@@ -52,9 +53,12 @@ const availabilityCheckShiftSchema = z.object({
   endTime: instantSchema,
   label: z.string().optional(),
   available: z.boolean(),
+  published: z.boolean(),
 });
 
 export const availabilityCheckDetailResponseSchema = z.object({
+  answerBy: calendarDaySchema.nullable(),
+  readOnly: z.boolean(),
   id: z.string(),
   cycleId: z.string(),
   cycleName: z.string(),
@@ -184,6 +188,7 @@ function availabilityCheckSummaryToResponse(
     ministryName: summary.ministryName,
     state: summary.state,
     confirmedAt: summary.confirmedAt,
+    answerBy: summary.answerBy,
     totalShiftCount: summary.totalShiftCount,
     unavailableShiftCount: summary.unavailableShiftCount,
   };
@@ -200,6 +205,8 @@ function availabilityCheckDetailToResponse(
     ministryName: detail.ministryName,
     state: detail.state,
     confirmedAt: detail.confirmedAt,
+    answerBy: detail.answerBy,
+    readOnly: detail.readOnly,
     shifts: detail.shifts.map((shift) => ({
       shiftId: shift.shiftId,
       eventId: shift.eventId,
@@ -208,6 +215,7 @@ function availabilityCheckDetailToResponse(
       endTime: shift.endTime,
       label: shift.label,
       available: shift.available,
+      published: shift.published,
     })),
   };
 }

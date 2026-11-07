@@ -4976,6 +4976,11 @@ export type ListAvailabilityChecks200ChecksItem = {
   state: ListAvailabilityChecks200ChecksItemState;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
   totalShiftCount: number;
   unavailableShiftCount: number;
 };
@@ -5002,9 +5007,16 @@ export type GetAvailabilityCheck200ShiftsItem = {
   endTime: string;
   label?: string;
   available: boolean;
+  published: boolean;
 };
 
 export type GetAvailabilityCheck200 = {
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+  readOnly: boolean;
   id: string;
   cycleId: string;
   cycleName: string;
@@ -5045,9 +5057,16 @@ export type SetUnavailableShifts200ShiftsItem = {
   endTime: string;
   label?: string;
   available: boolean;
+  published: boolean;
 };
 
 export type SetUnavailableShifts200 = {
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+  readOnly: boolean;
   id: string;
   cycleId: string;
   cycleName: string;

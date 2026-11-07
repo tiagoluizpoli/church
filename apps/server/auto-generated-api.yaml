@@ -12025,6 +12025,11 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        answerBy:
+                          nullable: true
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
                         totalShiftCount:
                           type: number
                         unavailableShiftCount:
@@ -12036,6 +12041,7 @@ paths:
                         - ministryId
                         - ministryName
                         - state
+                        - answerBy
                         - totalShiftCount
                         - unavailableShiftCount
                       additionalProperties: false
@@ -12064,6 +12070,13 @@ paths:
               schema:
                 type: object
                 properties:
+                  answerBy:
+                    nullable: true
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  readOnly:
+                    type: boolean
                   id:
                     type: string
                   cycleId:
@@ -12106,6 +12119,8 @@ paths:
                           type: string
                         available:
                           type: boolean
+                        published:
+                          type: boolean
                       required:
                         - shiftId
                         - eventId
@@ -12113,8 +12128,11 @@ paths:
                         - startTime
                         - endTime
                         - available
+                        - published
                       additionalProperties: false
                 required:
+                  - answerBy
+                  - readOnly
                   - id
                   - cycleId
                   - cycleName
@@ -12179,6 +12197,13 @@ paths:
               schema:
                 type: object
                 properties:
+                  answerBy:
+                    nullable: true
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  readOnly:
+                    type: boolean
                   id:
                     type: string
                   cycleId:
@@ -12221,6 +12246,8 @@ paths:
                           type: string
                         available:
                           type: boolean
+                        published:
+                          type: boolean
                       required:
                         - shiftId
                         - eventId
@@ -12228,8 +12255,11 @@ paths:
                         - startTime
                         - endTime
                         - available
+                        - published
                       additionalProperties: false
                 required:
+                  - answerBy
+                  - readOnly
                   - id
                   - cycleId
                   - cycleName

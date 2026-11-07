@@ -21,7 +21,9 @@ import type {
   RemindScheduleBody,
   ResendAvailabilityReminder202,
   SaveEventTimeBlockPreparation200,
-  SaveEventTimeBlockPreparationBody
+  SaveEventTimeBlockPreparationBody,
+  SetAvailabilityDeadline200,
+  SetAvailabilityDeadlineBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -114,6 +116,21 @@ const askScheduleAvailability = (
       );
     }
   /**
+ * Write the answer-by Deadline on the ask record, silently: no Notification is enqueued. Refused before the Ask, on a published Schedule and on a Past Cycle.
+ * @summary Set, move or clear a Schedule's Deadline
+ */
+const setAvailabilityDeadline = (
+    cycleId: string,
+    setAvailabilityDeadlineBody: SetAvailabilityDeadlineBody,
+ ) => {
+      return apiClient<SetAvailabilityDeadline200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/availability-deadline`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: setAvailabilityDeadlineBody
+    },
+      );
+    }
+  /**
  * In one transaction, create checks and enqueue availability_opened for newly eligible Volunteers, enqueue availability_reminder for every not-confirmed check and stamp the cooldown, even with zero recipients. Refused before the Ask, after publish, on a Past Cycle and inside the cooldown.
  * @summary Remind a Schedule
  */
@@ -178,13 +195,14 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {listSchedules,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,remindSchedule,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,setAvailabilityDeadline,remindSchedule,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type GetAskPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAskPreview']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SaveEventTimeBlockPreparationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['saveEventTimeBlockPreparation']>>>
 export type AskScheduleAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askScheduleAvailability']>>>
+export type SetAvailabilityDeadlineResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['setAvailabilityDeadline']>>>
 export type RemindScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['remindSchedule']>>>
 export type AskAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askAvailability']>>>
 export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleAvailabilityStatus']>>>

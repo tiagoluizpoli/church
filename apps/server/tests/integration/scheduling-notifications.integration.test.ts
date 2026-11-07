@@ -9,7 +9,12 @@ import {
   outboxMessage,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
-import { type Instant, resetClock, setTestClock } from '@church/time';
+import {
+  type Instant,
+  parseCalendarDay,
+  resetClock,
+  setTestClock,
+} from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
@@ -857,6 +862,62 @@ describe('availability delivery facts resolved per recipient', () => {
     const reminded = inbox.find((row) => row.kind === 'availability_reminder');
     expect(opened?.data).toMatchObject({ answerBy: '2999-01-10' });
     expect(reminded?.data).toMatchObject({ answerBy: '2999-02-20' });
+  });
+
+  it('a real Remind carries the moved Deadline to the not-confirmed and Answer by to the newly eligible, even past it', async () => {
+    const guitar = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Guitar',
+    });
+    await seedNeededShift([guitar.id]);
+    await seedRoleHolder('ana', guitar.id);
+    const scheduleKey = {
+      churchId: ChurchId.from(ids.churchId),
+      ministryId: MinistryId.from(ids.ministryId),
+      cycleId: CycleId.from(cycleId),
+    };
+    const manager = buildAvailabilityManager();
+    setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
+    await manager.askSchedule({
+      ...scheduleKey,
+      answerBy: parseCalendarDay({ value: '2026-11-10' }),
+    });
+    const emailSender = new CaptureEmailSender('Church');
+    const drainer = buildDrainer(emailSender);
+    await drainer.drainOnce({ limit: 10 });
+    await manager.setDeadline({
+      ...scheduleKey,
+      answerBy: parseCalendarDay({ value: '2026-11-20' }),
+    });
+    await seedRoleHolder('bia', guitar.id);
+
+    setTestClock({ instant: '2026-11-25T12:00:00.000Z' as Instant });
+    await manager.remindSchedule(scheduleKey);
+    await drainer.drainOnce({ limit: 10 });
+
+    const [opening, ...afterRemind] = emailSender.sent;
+    expect(opening).toMatchObject({
+      kind: 'availability.opened',
+      to: 'ana@test.com',
+      answerBy: '2026-11-10',
+    });
+    expect(afterRemind).toHaveLength(2);
+    expect(afterRemind).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'availability.reminder',
+          to: 'ana@test.com',
+          answerBy: '2026-11-20',
+          deadlinePassed: true,
+        }),
+        expect.objectContaining({
+          kind: 'availability.opened',
+          to: 'bia@test.com',
+          answerBy: '2026-11-20',
+        }),
+      ]),
+    );
   });
 
   it('marks the Deadline passed only once the Church Timezone has left that day', async () => {

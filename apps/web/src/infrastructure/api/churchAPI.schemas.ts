@@ -2618,6 +2618,8 @@ export type SaveEventTimeBlockPreparation422 = {
 
 export type AskScheduleAvailabilityBody = {
   ministryId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  answerBy?: string;
 };
 
 export type AskScheduleAvailability200RolesWithoutHoldersItem = {
@@ -2683,6 +2685,69 @@ export type AskScheduleAvailability422 = {
   error: string;
   message: string;
   reason?: AskScheduleAvailability422Reason;
+  issues?: unknown[];
+};
+
+export type SetAvailabilityDeadlineBody = {
+  ministryId: string;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+};
+
+export type SetAvailabilityDeadline200 = {
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+};
+
+export type SetAvailabilityDeadline401 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline403 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline404 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline409 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline422Reason = typeof SetAvailabilityDeadline422Reason[keyof typeof SetAvailabilityDeadline422Reason];
+
+
+export const SetAvailabilityDeadline422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type SetAvailabilityDeadline422 = {
+  error: string;
+  message: string;
+  reason?: SetAvailabilityDeadline422Reason;
   issues?: unknown[];
 };
 

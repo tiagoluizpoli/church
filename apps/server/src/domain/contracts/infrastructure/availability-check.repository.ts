@@ -112,6 +112,11 @@ export interface ScheduleScopeInput {
 
 export interface CreateAskRecordInput extends ScheduleScopeInput {
   askedAt: Date;
+  answerBy?: CalendarDay;
+}
+
+export interface SetAnswerByInput extends ScheduleScopeInput {
+  answerBy: CalendarDay | null;
 }
 
 export interface AskRecordRow {
@@ -169,6 +174,8 @@ export interface AvailabilityCheckRepository {
   /** The Schedule's ask record; null until it is asked. */
   findAskRecord(input: ScheduleScopeInput): Promise<AskRecordRow | null>;
   stampReminded(input: StampRemindedInput): Promise<void>;
+  /** Whether the Schedule had an ask record to write to. */
+  setAnswerBy(input: SetAnswerByInput): Promise<boolean>;
   /** Per non-withdrawn check of the Schedule, including zero counts. */
   listCheckMarkCounts(input: ScheduleScopeInput): Promise<CheckMarkCountRow[]>;
   /** Per active membership of the Ministry, including zero totals. */

@@ -23,6 +23,7 @@ import type {
   RemindScheduleInput,
   RemindScheduleResult,
   ResendReminderInput,
+  SetDeadlineInput,
 } from '../domain/contracts/application/availability-check-manager';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
@@ -39,7 +40,10 @@ import type { PlanningEventRepository } from '../domain/contracts/infrastructure
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Cycle } from '../domain/entities/cycle';
-import type { MinistryParticipation } from '../domain/entities/ministry-participation';
+import {
+  deriveScheduleStage,
+  type MinistryParticipation,
+} from '../domain/entities/ministry-participation';
 import { IllegalStateTransitionError } from '../domain/errors';
 import {
   AskBlockedFlaggedShiftsError,
@@ -75,6 +79,12 @@ interface EnsureCycleAskableInput {
   transition: string;
 }
 
+interface LockUnpublishedScheduleInput extends ScheduleScopeInput {
+  tx: TransactionContext;
+  timeZone: string;
+  transition: string;
+}
+
 interface OpenChecksInput extends ScheduleScopeInput {
   tx: TransactionContext;
   eligible: ActiveMinistryMembership[];
@@ -86,6 +96,7 @@ interface OpenChecksResult {
 }
 
 const ASK_TRANSITION = 'ask_availability';
+const DEADLINE_TRANSITION = 'set_deadline';
 const REMIND_TRANSITION = 'remind';
 
 interface FlaggedBlocksOfInput {
@@ -268,6 +279,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     churchId,
     ministryId,
     cycleId,
+    answerBy,
   }: AskScheduleInput): Promise<AskScheduleResult> {
     const { timezone: timeZone } = await this.churchRepository.getById({
       id: churchId,
@@ -320,6 +332,7 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       await this.availabilityCheckRepository.createAskRecord({
         ...scope,
         askedAt: toDate({ instant: now() }),
+        answerBy,
       });
       const opened = await this.openChecks({ ...scope, eligible });
       const rolesWithoutHolders =
@@ -340,33 +353,16 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
 
     return this.unitOfWork.run(async (tx) => {
       const scope = { churchId, ministryId, cycleId, tx };
-      await this.ministryRepository.lockActive({
-        churchId,
-        ministryId,
-        strength: 'share',
-        tx,
+      await this.lockUnpublishedSchedule({
+        ...scope,
+        timeZone,
+        transition: REMIND_TRANSITION,
       });
-      const cycle = await this.cycleRepository.getById({
-        churchId,
-        cycleId,
-        tx,
-      });
-      ensureCycleAskable({ cycle, timeZone, transition: REMIND_TRANSITION });
-
-      // Locked so a concurrent Remind sees this stamp and a racing publish waits.
-      const participations =
-        await this.participationRepository.lockSchedule(scope);
-      if (participations.some(({ state }) => state === 'published')) {
-        throw new IllegalStateTransitionError({
-          from: 'published',
-          to: REMIND_TRANSITION,
-        });
-      }
       const askRecord =
         await this.availabilityCheckRepository.findAskRecord(scope);
       if (!askRecord) {
         throw new IllegalStateTransitionError({
-          from: 'preparing',
+          from: 'not_asked',
           to: REMIND_TRANSITION,
         });
       }
@@ -433,6 +429,33 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     });
   }
 
+  /** Refuses an archived Ministry, a closed Cycle and a published Schedule; locked so a concurrent publish waits. */
+  private async lockUnpublishedSchedule({
+    timeZone,
+    transition,
+    ...scope
+  }: LockUnpublishedScheduleInput): Promise<void> {
+    const { churchId, cycleId, ministryId, tx } = scope;
+    await this.ministryRepository.lockActive({
+      churchId,
+      ministryId,
+      strength: 'share',
+      tx,
+    });
+    const cycle = await this.cycleRepository.getById({ churchId, cycleId, tx });
+    ensureCycleAskable({ cycle, timeZone, transition });
+
+    const participations =
+      await this.participationRepository.lockSchedule(scope);
+    const servingStates = participations.map(({ state }) => state);
+    if (deriveScheduleStage({ servingStates }) === 'published') {
+      throw new IllegalStateTransitionError({
+        from: 'published',
+        to: transition,
+      });
+    }
+  }
+
   /** Creates the missing checks and enqueues availability_opened for exactly those Volunteers. */
   private async openChecks({
     churchId,
@@ -466,6 +489,37 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       createdCheckCount: created.length,
       notifiedVolunteerCount: opened.length,
     };
+  }
+
+  async setDeadline({
+    churchId,
+    ministryId,
+    cycleId,
+    answerBy,
+  }: SetDeadlineInput): Promise<void> {
+    const { timezone: timeZone } = await this.churchRepository.getById({
+      id: churchId,
+    });
+
+    await this.unitOfWork.run(async (tx) => {
+      const scope = { churchId, ministryId, cycleId, tx };
+      await this.lockUnpublishedSchedule({
+        ...scope,
+        timeZone,
+        transition: DEADLINE_TRANSITION,
+      });
+
+      const asked = await this.availabilityCheckRepository.setAnswerBy({
+        ...scope,
+        answerBy,
+      });
+      if (!asked) {
+        throw new IllegalStateTransitionError({
+          from: 'not_asked',
+          to: DEADLINE_TRANSITION,
+        });
+      }
+    });
   }
 
   async listCheckStatuses(

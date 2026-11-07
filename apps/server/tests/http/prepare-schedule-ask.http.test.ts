@@ -315,13 +315,28 @@ async function seedSchedule() {
 interface AskInput {
   cycleId: string;
   ministryId: string;
+  answerBy?: string;
 }
 
-function ask({ cycleId, ministryId }: AskInput) {
+function ask({ cycleId, ministryId, answerBy }: AskInput) {
   return app.inject({
     method: 'POST',
     url: `/api/v1/prepare/cycles/${cycleId}/ask-availability`,
-    payload: { ministryId },
+    payload: { ministryId, answerBy },
+  });
+}
+
+interface PutDeadlineInput {
+  cycleId: string;
+  ministryId: string;
+  answerBy: unknown;
+}
+
+function putDeadline({ cycleId, ministryId, answerBy }: PutDeadlineInput) {
+  return app.inject({
+    method: 'PUT',
+    url: `/api/v1/prepare/cycles/${cycleId}/availability-deadline`,
+    payload: { ministryId, answerBy },
   });
 }
 
@@ -349,6 +364,20 @@ async function listParticipationStates(ministryId: string) {
     .from(ministryParticipation)
     .where(eq(ministryParticipation.ministryId, ministryId));
   return rows.map((row) => row.state);
+}
+
+/** A Schedule with one Teacher holder and a signed-in ChurchAdmin. */
+async function seedAskable() {
+  const schedule = await seedSchedule();
+  const { churchId, ministryId, teacher } = schedule;
+  const holder = await seedServingPerson({
+    churchId,
+    ministryId,
+    roleIds: [teacher.id],
+  });
+  const admin = await seedPerson({ churchId, accessLevel: 'admin' });
+  signIn({ userId: admin, churchId });
+  return { ...schedule, holder };
 }
 
 describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
@@ -436,20 +465,6 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
     expect(queued[0]?.data).toEqual({ cycleId, ministryId });
   });
 
-  /** A Schedule with one Teacher holder and a signed-in ChurchAdmin. */
-  async function seedAskable() {
-    const schedule = await seedSchedule();
-    const { churchId, ministryId, teacher } = schedule;
-    const holder = await seedServingPerson({
-      churchId,
-      ministryId,
-      roleIds: [teacher.id],
-    });
-    const admin = await seedPerson({ churchId, accessLevel: 'admin' });
-    signIn({ userId: admin, churchId });
-    return { ...schedule, holder };
-  }
-
   interface ExpectNothingWrittenInput {
     ministryId: string;
   }
@@ -465,6 +480,33 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
       'preparing',
     ]);
   }
+
+  it('persists the optional Deadline on the ask record', async () => {
+    const { ministryId, cycleId } = await seedAskable();
+
+    const response = await ask({
+      cycleId,
+      ministryId,
+      answerBy: '2026-09-05',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const [record] = await listAskRecords();
+    expect(record?.answerBy).toBe('2026-09-05');
+  });
+
+  it('refuses a malformed Deadline with 422 and writes nothing', async () => {
+    const { ministryId, cycleId } = await seedAskable();
+
+    const response = await ask({
+      cycleId,
+      ministryId,
+      answerBy: '2026-02-30',
+    });
+
+    expect(response.statusCode).toBe(422);
+    await expectNothingWritten({ ministryId });
+  });
 
   it('lets a leader ask their own Ministry', async () => {
     const { churchId, ministryId, cycleId, teacher } = await seedSchedule();
@@ -771,6 +813,254 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
         404, 404, 404, 404,
       ]);
       await expectNothingWritten({ ministryId });
+    });
+  });
+});
+
+describe('PUT /prepare/cycles/:cycleId/availability-deadline', () => {
+  /** A Schedule already asked, its Deadline unset. */
+  async function seedAsked() {
+    const schedule = await seedAskable();
+    const { cycleId, ministryId } = schedule;
+    const asked = await ask({ cycleId, ministryId });
+    expect(asked.statusCode).toBe(200);
+    return schedule;
+  }
+
+  it('sets, moves and clears the Deadline writing only the ask record', async () => {
+    const { ministryId, cycleId } = await seedAsked();
+    const [askedRecord] = await listAskRecords();
+    const checksBefore = await listChecks();
+    const outboxBefore = await listOutbox();
+    const statesBefore = await listParticipationStates(ministryId);
+
+    for (const answerBy of ['2026-09-05', '2026-09-10', null]) {
+      const response = await putDeadline({ cycleId, ministryId, answerBy });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ answerBy });
+      expect(await listAskRecords()).toEqual([{ ...askedRecord, answerBy }]);
+    }
+
+    expect(await listOutbox()).toEqual(outboxBefore);
+    expect(outboxBefore).toHaveLength(1);
+    expect(await listChecks()).toEqual(checksBefore);
+    expect(await listParticipationStates(ministryId)).toEqual(statesBefore);
+  });
+
+  it('leaves another Schedule of the Cycle alone', async () => {
+    const { churchId, ministryId, cycleId } = await seedAsked();
+    const otherMinistry = await buildMinistry({
+      db,
+      churchId,
+      name: 'Other Ministry',
+    });
+    await db.insert(availabilityAsk).values({
+      churchId,
+      ministryId: otherMinistry.id,
+      cycleId,
+      askedAt: new Date(DURING_CYCLE),
+      answerBy: '2026-09-20',
+    });
+
+    await putDeadline({ cycleId, ministryId, answerBy: '2026-09-05' });
+
+    const days = (await listAskRecords()).map((record) => record.answerBy);
+    expect(days.sort()).toEqual(['2026-09-05', '2026-09-20']);
+  });
+
+  it('allows it while the Schedule is assigning', async () => {
+    const { ministryId, cycleId } = await seedAsked();
+    await db
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, ministryId));
+
+    const response = await putDeadline({
+      cycleId,
+      ministryId,
+      answerBy: '2026-09-05',
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('allows it while part of the Schedule is still unpublished', async () => {
+    const { ministryId, cycleId, second } = await seedAsked();
+    await db
+      .update(ministryParticipation)
+      .set({ state: 'published' })
+      .where(eq(ministryParticipation.id, second.participation.id));
+
+    const response = await putDeadline({
+      cycleId,
+      ministryId,
+      answerBy: '2026-09-05',
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  describe('refusals', () => {
+    interface ExpectRefusedInput {
+      cycleId: string;
+      ministryId: string;
+    }
+
+    async function expectRefused({ cycleId, ministryId }: ExpectRefusedInput) {
+      const response = await putDeadline({
+        cycleId,
+        ministryId,
+        answerBy: '2026-09-05',
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+      const records = await listAskRecords();
+      expect(records.every((record) => record.answerBy === null)).toBe(true);
+    }
+
+    it('refuses before the Ask and creates no ask record', async () => {
+      const { ministryId, cycleId } = await seedAskable();
+
+      await expectRefused({ cycleId, ministryId });
+      expect(await listAskRecords()).toEqual([]);
+    });
+
+    it('refuses a published Schedule', async () => {
+      const { ministryId, cycleId } = await seedAsked();
+      await db
+        .update(ministryParticipation)
+        .set({ state: 'published' })
+        .where(eq(ministryParticipation.ministryId, ministryId));
+
+      await expectRefused({ cycleId, ministryId });
+    });
+
+    it('refuses a Cycle past its last day', async () => {
+      const { ministryId, cycleId } = await seedAsked();
+      setTestClock({ instant: parseInstant({ value: AFTER_CYCLE }) });
+
+      await expectRefused({ cycleId, ministryId });
+    });
+
+    it('refuses a Cycle in the past state', async () => {
+      const { ministryId, cycleId } = await seedAsked();
+      await db
+        .update(cycle)
+        .set({ state: 'past' })
+        .where(eq(cycle.id, cycleId));
+
+      await expectRefused({ cycleId, ministryId });
+    });
+
+    it.each([
+      ['an impossible day', '2026-02-30'],
+      ['a non-date', 'soon'],
+      ['an Instant', '2026-09-05T12:00:00.000Z'],
+      ['a missing value', undefined],
+    ])('answers 422 for %s', async (_label, answerBy) => {
+      const { ministryId, cycleId } = await seedAsked();
+
+      const response = await putDeadline({ cycleId, ministryId, answerBy });
+
+      expect(response.statusCode).toBe(422);
+      const [record] = await listAskRecords();
+      expect(record?.answerBy).toBeNull();
+    });
+  });
+
+  describe('access', () => {
+    it('answers 401 when signed out', async () => {
+      const { ministryId, cycleId } = await seedAsked();
+      mockGetSession.mockResolvedValue(null as never);
+
+      const response = await putDeadline({
+        cycleId,
+        ministryId,
+        answerBy: '2026-09-05',
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('lets a leader edit their own Ministry and refuses a Volunteer', async () => {
+      const { churchId, ministryId, cycleId, holder } = await seedAsked();
+      const leader = await seedServingPerson({
+        churchId,
+        ministryId,
+        ministryAccessLevel: 'leader',
+      });
+
+      signIn({ userId: holder.userId, churchId });
+      const refused = await putDeadline({
+        cycleId,
+        ministryId,
+        answerBy: '2026-09-05',
+      });
+      signIn({ userId: leader.userId, churchId });
+      const allowed = await putDeadline({
+        cycleId,
+        ministryId,
+        answerBy: '2026-09-05',
+      });
+
+      expect(refused.statusCode).toBe(403);
+      expect(allowed.statusCode).toBe(200);
+    });
+
+    it("answers 404 for another Ministry's leader and another Church's Cycle", async () => {
+      const { churchId, ministryId, cycleId, seed } = await seedAsked();
+      const otherMinistry = await buildMinistry({
+        db,
+        churchId,
+        name: 'Other Ministry',
+      });
+      const foreignLeader = await seedServingPerson({
+        churchId,
+        ministryId: otherMinistry.id,
+        ministryAccessLevel: 'leader',
+      });
+      const { id: foreignCycleId } = await createSchedulingPhase3Cycle({
+        churchId: seed.churchBId,
+        name: 'Other Church Cycle',
+        startDate: new Date('2026-09-01T00:00:00.000Z'),
+        endDate: new Date('2026-09-30T00:00:00.000Z'),
+        state: 'sent',
+      });
+
+      const foreignCycle = await putDeadline({
+        cycleId: foreignCycleId,
+        ministryId,
+        answerBy: '2026-09-05',
+      });
+      signIn({ userId: foreignLeader.userId, churchId });
+      const foreignMinistry = await putDeadline({
+        cycleId,
+        ministryId,
+        answerBy: '2026-09-05',
+      });
+
+      expect(foreignCycle.statusCode).toBe(404);
+      expect(foreignMinistry.statusCode).toBe(404);
+      const [record] = await listAskRecords();
+      expect(record?.answerBy).toBeNull();
+    });
+
+    it('answers 404 for an archived Ministry', async () => {
+      const { ministryId, cycleId } = await seedAsked();
+      await db
+        .update(ministry)
+        .set({ deletedAt: new Date() })
+        .where(eq(ministry.id, ministryId));
+
+      const response = await putDeadline({
+        cycleId,
+        ministryId,
+        answerBy: '2026-09-05',
+      });
+
+      expect(response.statusCode).toBe(404);
     });
   });
 });

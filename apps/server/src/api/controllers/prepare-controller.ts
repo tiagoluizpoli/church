@@ -25,6 +25,7 @@ import {
   askPreviewResponseSchema,
   askScheduleBodySchema,
   askScheduleResponseSchema,
+  availabilityDeadlineResponseSchema,
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
   headcountBelowAssignedResponseSchema,
@@ -38,6 +39,7 @@ import {
   savePreparationBodySchema,
   scheduleListResponseSchema,
   scheduleSummaryListResponseSchema,
+  setAvailabilityDeadlineBodySchema,
   shiftHasResponsesResponseSchema,
 } from '../dtos/participation.dto';
 import { refuse } from '../utils/refuse';
@@ -56,6 +58,9 @@ interface CycleMinistryQuery {
 
 type AskScheduleBody = z.infer<typeof askScheduleBodySchema>;
 type RemindScheduleBody = z.infer<typeof remindScheduleBodySchema>;
+type SetAvailabilityDeadlineBody = z.infer<
+  typeof setAvailabilityDeadlineBodySchema
+>;
 
 interface ParticipationRouteParams {
   participationId: string;
@@ -380,7 +385,7 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId } = request.body as AskScheduleBody;
+        const { ministryId, answerBy } = request.body as AskScheduleBody;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
@@ -400,8 +405,58 @@ export class PrepareController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           cycleId: CycleId.from(cycleId),
+          answerBy,
         });
         return reply.send(result);
+      },
+    );
+
+    app.put(
+      '/cycles/:cycleId/availability-deadline',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'setAvailabilityDeadline',
+          summary: "Set, move or clear a Schedule's Deadline",
+          description:
+            'Write the answer-by Deadline on the ask record, silently: no Notification is enqueued. Refused before the Ask, on a published Schedule and on a Past Cycle.',
+          body: setAvailabilityDeadlineBodySchema,
+          response: {
+            200: availabilityDeadlineResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+            422: preparationValidationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId, answerBy } =
+          request.body as SetAvailabilityDeadlineBody;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        await this.availabilityCheckManager.setDeadline({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          cycleId: CycleId.from(cycleId),
+          answerBy,
+        });
+        return reply.send({ answerBy });
       },
     );
 

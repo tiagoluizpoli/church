@@ -41,6 +41,8 @@ export const availabilityNotificationDataSchema = z.object({
   cycleName: z.string(),
   cycleStartDate: calendarDaySchema,
   cycleEndDate: calendarDaySchema,
+  /** The ask record's Deadline at first delivery, when one was set. */
+  answerBy: calendarDaySchema.optional(),
 });
 
 /** One of the recipient's own Shifts in the published event. */

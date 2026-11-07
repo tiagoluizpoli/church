@@ -1,4 +1,4 @@
-import type { Instant } from '@church/time';
+import type { CalendarDay, Instant } from '@church/time';
 import type {
   ChurchId,
   CycleId,
@@ -23,6 +23,14 @@ export interface AskScheduleInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   cycleId: CycleId;
+  answerBy?: CalendarDay;
+}
+
+export interface SetDeadlineInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: CycleId;
+  answerBy: CalendarDay | null;
 }
 
 export interface AskScheduleResult extends AskAvailabilityResult {
@@ -78,6 +86,8 @@ export interface IAvailabilityCheckManager {
   getAskPreview(input: GetAskPreviewInput): Promise<AskPreview>;
   askAvailability(input: AskAvailabilityInput): Promise<AskAvailabilityResult>;
   askSchedule(input: AskScheduleInput): Promise<AskScheduleResult>;
+  /** Set, move or clear the Deadline silently: no Notification is enqueued. */
+  setDeadline(input: SetDeadlineInput): Promise<void>;
   resendReminder(input: ResendReminderInput): Promise<void>;
   listCheckStatuses(input: ListCheckStatusesInput): Promise<CheckStatusRow[]>;
   listCycleCheckStatuses(

@@ -62,6 +62,7 @@ import type {
   RoleWithoutHolderRow,
   ScheduleScopeInput,
   ServedShiftRow,
+  SetAnswerByInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
@@ -161,11 +162,33 @@ export class DrizzleAvailabilityCheckRepository
     ministryId,
     cycleId,
     askedAt,
+    answerBy,
     tx,
   }: CreateAskRecordInput): Promise<void> {
     await getClient({ db: this.db, tx })
       .insert(availabilityAsk)
-      .values({ churchId, ministryId, cycleId, askedAt });
+      .values({ churchId, ministryId, cycleId, askedAt, answerBy });
+  }
+
+  async setAnswerBy({
+    churchId,
+    ministryId,
+    cycleId,
+    answerBy,
+    tx,
+  }: SetAnswerByInput): Promise<boolean> {
+    const updated = await getClient({ db: this.db, tx })
+      .update(availabilityAsk)
+      .set({ answerBy })
+      .where(
+        and(
+          withChurchIsolation({ table: availabilityAsk, churchId }),
+          eq(availabilityAsk.ministryId, ministryId),
+          eq(availabilityAsk.cycleId, cycleId),
+        ),
+      )
+      .returning({ id: availabilityAsk.id });
+    return updated.length > 0;
   }
 
   async listCheckMarkCounts({

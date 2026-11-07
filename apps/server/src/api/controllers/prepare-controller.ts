@@ -31,6 +31,9 @@ import {
   participationEventTimeBlockViewSchema,
   participationMapper,
   preparationValidationErrorResponseSchema,
+  remindOnCooldownResponseSchema,
+  remindScheduleBodySchema,
+  remindScheduleResponseSchema,
   type SavePreparationBody,
   savePreparationBodySchema,
   scheduleListResponseSchema,
@@ -52,6 +55,7 @@ interface CycleMinistryQuery {
 }
 
 type AskScheduleBody = z.infer<typeof askScheduleBodySchema>;
+type RemindScheduleBody = z.infer<typeof remindScheduleBodySchema>;
 
 interface ParticipationRouteParams {
   participationId: string;
@@ -393,6 +397,52 @@ export class PrepareController implements FastifyController {
           return;
 
         const result = await this.availabilityCheckManager.askSchedule({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.send(result);
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/remind',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'remindSchedule',
+          summary: 'Remind a Schedule',
+          description:
+            'In one transaction, create checks and enqueue availability_opened for newly eligible Volunteers, enqueue availability_reminder for every not-confirmed check and stamp the cooldown, even with zero recipients. Refused before the Ask, after publish, on a Past Cycle and inside the cooldown.',
+          body: remindScheduleBodySchema,
+          response: {
+            200: remindScheduleResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([remindOnCooldownResponseSchema, errorResponseSchema]),
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId } = request.body as RemindScheduleBody;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const result = await this.availabilityCheckManager.remindSchedule({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           cycleId: CycleId.from(cycleId),

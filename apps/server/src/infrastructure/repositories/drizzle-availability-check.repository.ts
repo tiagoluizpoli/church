@@ -44,6 +44,7 @@ import type {
 } from '../../domain/branded-ids';
 import type {
   ActiveMinistryMembership,
+  AskRecordRow,
   AvailabilityCheckRepository,
   CheckContext,
   CheckMarkCountRow,
@@ -62,6 +63,7 @@ import type {
   RoleWithoutHolderRow,
   ScheduleScopeInput,
   ServedShiftRow,
+  StampRemindedInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
@@ -166,6 +168,38 @@ export class DrizzleAvailabilityCheckRepository
     await getClient({ db: this.db, tx })
       .insert(availabilityAsk)
       .values({ churchId, ministryId, cycleId, askedAt });
+  }
+
+  /** One Schedule's ask record, by its unique key. */
+  private askRecordOf({ churchId, ministryId, cycleId }: ScheduleScopeInput) {
+    return and(
+      withChurchIsolation({ table: availabilityAsk, churchId }),
+      eq(availabilityAsk.ministryId, ministryId),
+      eq(availabilityAsk.cycleId, cycleId),
+    );
+  }
+
+  async findAskRecord(input: ScheduleScopeInput): Promise<AskRecordRow | null> {
+    const [row] = await getClient({ db: this.db, tx: input.tx })
+      .select({ lastRemindedAt: availabilityAsk.lastRemindedAt })
+      .from(availabilityAsk)
+      .where(this.askRecordOf(input));
+    if (!row) return null;
+
+    const { lastRemindedAt } = row;
+    return {
+      lastRemindedAt: lastRemindedAt && fromDate({ date: lastRemindedAt }),
+    };
+  }
+
+  async stampReminded({
+    remindedAt,
+    ...scope
+  }: StampRemindedInput): Promise<void> {
+    await getClient({ db: this.db, tx: scope.tx })
+      .update(availabilityAsk)
+      .set({ lastRemindedAt: remindedAt })
+      .where(this.askRecordOf(scope));
   }
 
   async listCheckMarkCounts({

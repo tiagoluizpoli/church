@@ -85,6 +85,8 @@ export function createAvailabilityCheckRepositoryFake() {
     listEligibleMemberships:
       vi.fn<AvailabilityCheckRepository['listEligibleMemberships']>(),
     createAskRecord: vi.fn<AvailabilityCheckRepository['createAskRecord']>(),
+    findAskRecord: vi.fn<AvailabilityCheckRepository['findAskRecord']>(),
+    stampReminded: vi.fn<AvailabilityCheckRepository['stampReminded']>(),
     listCheckMarkCounts:
       vi.fn<AvailabilityCheckRepository['listCheckMarkCounts']>(),
     listRelevantShiftTotals:

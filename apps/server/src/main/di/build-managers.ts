@@ -321,6 +321,7 @@ export function buildManagers({
       churchRepository,
       notifications,
       unitOfWork,
+      config,
     });
   const activeChurchSelectionManager =
     overrides.activeChurchSelectionManager ??

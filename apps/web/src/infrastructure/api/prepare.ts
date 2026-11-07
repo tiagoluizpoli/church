@@ -17,6 +17,8 @@ import type {
   GetCycleParticipationParams,
   ListScheduleSummaries200,
   ListSchedules200,
+  RemindSchedule200,
+  RemindScheduleBody,
   ResendAvailabilityReminder202,
   SaveEventTimeBlockPreparation200,
   SaveEventTimeBlockPreparationBody
@@ -112,6 +114,21 @@ const askScheduleAvailability = (
       );
     }
   /**
+ * In one transaction, create checks and enqueue availability_opened for newly eligible Volunteers, enqueue availability_reminder for every not-confirmed check and stamp the cooldown, even with zero recipients. Refused before the Ask, after publish, on a Past Cycle and inside the cooldown.
+ * @summary Remind a Schedule
+ */
+const remindSchedule = (
+    cycleId: string,
+    remindScheduleBody: RemindScheduleBody,
+ ) => {
+      return apiClient<RemindSchedule200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/remind`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: remindScheduleBody
+    },
+      );
+    }
+  /**
  * Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.
  * @summary Ask availability for a MinistryParticipation
  */
@@ -161,13 +178,14 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {listSchedules,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,remindSchedule,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type GetAskPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAskPreview']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SaveEventTimeBlockPreparationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['saveEventTimeBlockPreparation']>>>
 export type AskScheduleAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askScheduleAvailability']>>>
+export type RemindScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['remindSchedule']>>>
 export type AskAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askAvailability']>>>
 export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleAvailabilityStatus']>>>
 export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAvailabilityStatus']>>>

@@ -114,6 +114,14 @@ export interface CreateAskRecordInput extends ScheduleScopeInput {
   askedAt: Date;
 }
 
+export interface AskRecordRow {
+  lastRemindedAt: Instant | null;
+}
+
+export interface StampRemindedInput extends ScheduleScopeInput {
+  remindedAt: Date;
+}
+
 export interface CheckMarkCountRow {
   availabilityCheckId: AvailabilityCheckId;
   unavailableShiftCount: number;
@@ -158,6 +166,9 @@ export interface AvailabilityCheckRepository {
     input: ScheduleScopeInput,
   ): Promise<ActiveMinistryMembership[]>;
   createAskRecord(input: CreateAskRecordInput): Promise<void>;
+  /** The Schedule's ask record; null until it is asked. */
+  findAskRecord(input: ScheduleScopeInput): Promise<AskRecordRow | null>;
+  stampReminded(input: StampRemindedInput): Promise<void>;
   /** Per non-withdrawn check of the Schedule, including zero counts. */
   listCheckMarkCounts(input: ScheduleScopeInput): Promise<CheckMarkCountRow[]>;
   /** Per active membership of the Ministry, including zero totals. */

@@ -72,6 +72,7 @@ export type MappedDomainCode =
   | 'HEADCOUNT_BELOW_ASSIGNED'
   | 'SHIFT_HAS_RESPONSES'
   | 'ASK_BLOCKED_FLAGGED_SHIFTS'
+  | 'REMIND_ON_COOLDOWN'
   | 'VALIDATION_ERROR';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
@@ -206,6 +207,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   ASK_BLOCKED_FLAGGED_SHIFTS: {
     status: 409,
     message: m.error_ask_blocked_flagged_shifts,
+  },
+  REMIND_ON_COOLDOWN: {
+    status: 409,
+    message: m.error_remind_on_cooldown,
   },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
 };

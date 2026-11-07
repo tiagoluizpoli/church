@@ -110,6 +110,7 @@ function buildAvailabilityManager({
     churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
     notifications,
     unitOfWork: uow,
+    config: appConfig,
   });
 }
 

@@ -2686,6 +2686,50 @@ export type AskScheduleAvailability422 = {
   issues?: unknown[];
 };
 
+export type RemindScheduleBody = {
+  ministryId: string;
+};
+
+export type RemindSchedule200 = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  remindedCount: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  newCheckCount: number;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  remindAvailableAt: string;
+};
+
+export type RemindSchedule401 = {
+  error: string;
+  message: string;
+};
+
+export type RemindSchedule403 = {
+  error: string;
+  message: string;
+};
+
+export type RemindSchedule404 = {
+  error: string;
+  message: string;
+};
+
+export type RemindSchedule409 = {
+  error: string;
+  message: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  remindAvailableAt: string;
+} | {
+  error: string;
+  message: string;
+};
+
 export type AskAvailability202 = {
   createdCheckCount: number;
   notifiedVolunteerCount: number;

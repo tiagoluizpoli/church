@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { parseInstant, parseTimeOfDay } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
@@ -195,6 +196,7 @@ function createAvailabilityCheckHarness() {
     churchRepository: createChurchRepositoryFake(),
     unitOfWork,
     notifications,
+    config: appConfig,
   });
   return {
     manager,

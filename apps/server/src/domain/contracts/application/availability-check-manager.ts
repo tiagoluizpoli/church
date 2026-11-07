@@ -29,6 +29,18 @@ export interface AskScheduleResult extends AskAvailabilityResult {
   rolesWithoutHolders: AskPreviewRoleWithoutHolders[];
 }
 
+export interface RemindScheduleInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: CycleId;
+}
+
+export interface RemindScheduleResult {
+  remindedCount: number;
+  newCheckCount: number;
+  remindAvailableAt: Instant;
+}
+
 export interface ResendReminderInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -78,6 +90,7 @@ export interface IAvailabilityCheckManager {
   getAskPreview(input: GetAskPreviewInput): Promise<AskPreview>;
   askAvailability(input: AskAvailabilityInput): Promise<AskAvailabilityResult>;
   askSchedule(input: AskScheduleInput): Promise<AskScheduleResult>;
+  remindSchedule(input: RemindScheduleInput): Promise<RemindScheduleResult>;
   resendReminder(input: ResendReminderInput): Promise<void>;
   listCheckStatuses(input: ListCheckStatusesInput): Promise<CheckStatusRow[]>;
   listCycleCheckStatuses(

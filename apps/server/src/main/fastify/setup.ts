@@ -27,6 +27,7 @@ import {
   headcountFloors,
   invalidEvents,
   outsideEvents,
+  remindAvailableAt,
   shiftResponses,
   upcomingAssignments,
   validationField,
@@ -182,6 +183,7 @@ export async function createFastify({
       const floors = headcountFloors(error);
       const responses = shiftResponses(error);
       const flagged = flaggedBlocks(error);
+      const availableAt = remindAvailableAt(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
@@ -196,6 +198,7 @@ export async function createFastify({
         ...(floors && { headcountFloors: floors }),
         ...(responses && { shiftResponses: responses }),
         ...(flagged && { flaggedBlocks: flagged }),
+        ...(availableAt && { remindAvailableAt: availableAt }),
       });
     }
 

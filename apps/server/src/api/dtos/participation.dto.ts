@@ -206,6 +206,23 @@ export const askBlockedFlaggedShiftsResponseSchema = z.object({
   flaggedBlocks: z.array(flaggedBlockResponseSchema),
 });
 
+export const remindScheduleBodySchema = z.object({
+  ministryId: z.string(),
+});
+
+export const remindScheduleResponseSchema = z.object({
+  remindedCount: z.number().int(),
+  newCheckCount: z.number().int(),
+  remindAvailableAt: instantSchema,
+});
+
+/** A 409 `REMIND_ON_COOLDOWN`: the localized envelope plus the next-available Instant. */
+export const remindOnCooldownResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  remindAvailableAt: instantSchema,
+});
+
 export const scheduleSummaryResponseSchema = z.object({
   cycleId: z.string(),
   name: z.string(),

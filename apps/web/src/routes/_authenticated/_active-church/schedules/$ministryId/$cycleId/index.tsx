@@ -4,6 +4,7 @@ import { createFileRoute, Link, useLocation } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -20,6 +21,7 @@ import {
 import { PrepareCalendar } from '@/features/scheduling/components/prepare/prepare-calendar';
 import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prepare/prepare-event-time-block-list';
 import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
+import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-ask';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
@@ -129,6 +131,12 @@ function PrepareWorkspaceRoute() {
               >
                 {m.schedules_back()}
               </Link>
+              {schedule.stage === 'asking' ? (
+                <Badge variant="secondary">{m.schedules_asking_stage()}</Badge>
+              ) : null}
+              {!readOnly && schedule.stage === 'to_prepare' ? (
+                <ScheduleAsk ministryId={ministryId} cycleId={cycleId} />
+              ) : null}
               <Link
                 to="/schedules/$ministryId/$cycleId/assign"
                 params={{ ministryId, cycleId }}

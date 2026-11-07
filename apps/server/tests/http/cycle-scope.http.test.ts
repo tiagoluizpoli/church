@@ -63,6 +63,7 @@ beforeAll(async () => {
     churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
     notifications: createChurchNotificationsSpy(),
     unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
+    config: appConfig,
   });
   app = await createFastify({ locale: testLocale });
   const assign = new AssignController({

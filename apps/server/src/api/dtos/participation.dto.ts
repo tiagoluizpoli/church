@@ -269,6 +269,23 @@ export const availabilityStatusResponseSchema = z.object({
   ),
 });
 
+export const answersResponseSchema = z.object({
+  asked: z.number(),
+  confirmed: z.number(),
+  answerBy: calendarDaySchema.nullable(),
+  remindAvailableAt: instantSchema.nullable(),
+  statuses: z.array(
+    z.object({
+      volunteerId: z.string(),
+      volunteerName: z.string(),
+      state: z.enum(['pending', 'confirmed']),
+      confirmedAt: instantSchema.optional(),
+      unavailableShiftCount: z.number(),
+      shiftCount: z.number(),
+    }),
+  ),
+});
+
 function toParticipationResponse(
   participation: MinistryParticipation,
 ): ParticipationResponse {

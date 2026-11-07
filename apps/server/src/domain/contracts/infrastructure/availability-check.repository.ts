@@ -115,6 +115,10 @@ export interface CreateAskRecordInput extends ScheduleScopeInput {
   answerBy?: CalendarDay;
 }
 
+export interface AskRecordRow {
+  lastRemindedAt: Instant | null;
+}
+
 export interface SetAnswerByInput extends ScheduleScopeInput {
   answerBy: CalendarDay | null;
 }
@@ -163,6 +167,8 @@ export interface AvailabilityCheckRepository {
     input: ScheduleScopeInput,
   ): Promise<ActiveMinistryMembership[]>;
   createAskRecord(input: CreateAskRecordInput): Promise<void>;
+  /** The Schedule's ask record; null until it is asked. */
+  findAskRecord(input: ScheduleScopeInput): Promise<AskRecordRow | null>;
   /** Whether the Schedule had an ask record to write to. */
   setAnswerBy(input: SetAnswerByInput): Promise<boolean>;
   /** Per non-withdrawn check of the Schedule, including zero counts. */

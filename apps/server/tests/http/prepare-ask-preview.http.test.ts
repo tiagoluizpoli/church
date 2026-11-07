@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   ministry,
   ministryParticipation,
@@ -89,6 +90,7 @@ beforeAll(async () => {
       churchRepository: new DrizzleChurchRepository({ db }),
       notifications: {} as never,
       unitOfWork,
+      config: appConfig,
     }),
     activeChurchResolver: new DbActiveChurchResolver({
       actorRepository,

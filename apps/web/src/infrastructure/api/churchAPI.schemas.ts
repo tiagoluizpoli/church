@@ -2343,6 +2343,45 @@ export type GetCycleParticipation404 = {
   message: string;
 };
 
+export type GetAskPreviewParams = {
+ministryId: string;
+};
+
+export type GetAskPreview200FlaggedBlocksItem = {
+  eventTimeBlockId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startsAt: string;
+};
+
+export type GetAskPreview200RolesWithoutHoldersItem = {
+  roleId: string;
+  roleName: string;
+  shiftCount: number;
+};
+
+export type GetAskPreview200 = {
+  eligibleVolunteerCount: number;
+  shiftCount: number;
+  eventCount: number;
+  flaggedBlocks: GetAskPreview200FlaggedBlocksItem[];
+  rolesWithoutHolders: GetAskPreview200RolesWithoutHoldersItem[];
+};
+
+export type GetAskPreview401 = {
+  error: string;
+  message: string;
+};
+
+export type GetAskPreview403 = {
+  error: string;
+  message: string;
+};
+
+export type GetAskPreview404 = {
+  error: string;
+  message: string;
+};
+
 export type ListScheduleSummaries200CyclesItemStatus = typeof ListScheduleSummaries200CyclesItemStatus[keyof typeof ListScheduleSummaries200CyclesItemStatus];
 
 
@@ -2584,10 +2623,6 @@ export type AskScheduleAvailabilityBody = {
 export type AskScheduleAvailability200RolesWithoutHoldersItem = {
   roleId: string;
   roleName: string;
-  /**
-     * @minimum -9007199254740991
-     * @maximum 9007199254740991
-     */
   shiftCount: number;
 };
 

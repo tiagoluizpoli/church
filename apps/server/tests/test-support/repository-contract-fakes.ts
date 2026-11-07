@@ -84,15 +84,14 @@ export function createAvailabilityCheckRepositoryFake() {
       vi.fn<AvailabilityCheckRepository['listActiveMemberships']>(),
     listEligibleMemberships:
       vi.fn<AvailabilityCheckRepository['listEligibleMemberships']>(),
-    listFlaggedBlocks:
-      vi.fn<AvailabilityCheckRepository['listFlaggedBlocks']>(),
-    listRolesWithoutHolders:
-      vi.fn<AvailabilityCheckRepository['listRolesWithoutHolders']>(),
     createAskRecord: vi.fn<AvailabilityCheckRepository['createAskRecord']>(),
     listCheckMarkCounts:
       vi.fn<AvailabilityCheckRepository['listCheckMarkCounts']>(),
     listRelevantShiftTotals:
       vi.fn<AvailabilityCheckRepository['listRelevantShiftTotals']>(),
+    listServedShifts: vi.fn<AvailabilityCheckRepository['listServedShifts']>(),
+    listRolesWithoutHolders:
+      vi.fn<AvailabilityCheckRepository['listRolesWithoutHolders']>(),
     listByCycle: vi.fn<AvailabilityCheckRepository['listByCycle']>(),
     createMany: vi.fn<AvailabilityCheckRepository['createMany']>(),
     getCheckContext: vi.fn<AvailabilityCheckRepository['getCheckContext']>(),

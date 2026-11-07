@@ -1,11 +1,14 @@
+import { NotFoundError } from '@church/core';
 import { compareCalendarDays, now, toDate, today } from '@church/time';
 import type { CycleId } from '../domain/branded-ids';
 import type {
   AskAvailabilityInput,
   AskAvailabilityResult,
+  AskPreview,
   AskScheduleInput,
   AskScheduleResult,
   CheckStatusRow,
+  GetAskPreviewInput,
   IAvailabilityCheckManager,
   ListCheckStatusesInput,
   ListCycleCheckStatusesInput,
@@ -15,6 +18,7 @@ import type { IChurchNotifications } from '../domain/contracts/application/churc
 import type {
   ActiveMinistryMembership,
   AvailabilityCheckRepository,
+  ServedShiftRow,
 } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
@@ -26,7 +30,10 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { Cycle } from '../domain/entities/cycle';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import { IllegalStateTransitionError } from '../domain/errors';
-import { AskBlockedFlaggedShiftsError } from '../domain/errors/ask-blocked-flagged-shifts';
+import {
+  AskBlockedFlaggedShiftsError,
+  type FlaggedBlock,
+} from '../domain/errors/ask-blocked-flagged-shifts';
 import { AskNoEligibleVolunteersError } from '../domain/errors/ask-no-eligible-volunteers';
 
 interface NotifyMembershipsInput {
@@ -55,6 +62,24 @@ interface EnsureCycleAskableInput {
 }
 
 const ASK_TRANSITION = 'ask_availability';
+
+interface FlaggedBlocksOfInput {
+  servedShifts: ServedShiftRow[];
+}
+
+function flaggedBlocksOf({
+  servedShifts,
+}: FlaggedBlocksOfInput): FlaggedBlock[] {
+  const startByBlock = new Map(
+    servedShifts
+      .filter((shift) => shift.flagged)
+      .map((shift) => [shift.eventTimeBlockId, shift.eventTimeBlockStartsAt]),
+  );
+  return Array.from(startByBlock, ([eventTimeBlockId, startsAt]) => ({
+    eventTimeBlockId,
+    startsAt,
+  }));
+}
 
 /** Only a Sent Cycle that has not ended can be asked about. */
 function ensureCycleAskable({
@@ -101,6 +126,31 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     this.churchRepository = churchRepository;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
+  }
+
+  async getAskPreview(input: GetAskPreviewInput): Promise<AskPreview> {
+    const { churchId, cycleId, ministryId } = input;
+    const ministry = await this.ministryRepository.getById({
+      churchId,
+      id: ministryId,
+    });
+    if (ministry.deletedAt)
+      throw new NotFoundError(`Ministry not found: ${ministryId}`);
+    await this.cycleRepository.getById({ churchId, cycleId });
+
+    const [eligibleMemberships, servedShifts, rolesWithoutHolders] =
+      await Promise.all([
+        this.availabilityCheckRepository.listEligibleMemberships(input),
+        this.availabilityCheckRepository.listServedShifts(input),
+        this.availabilityCheckRepository.listRolesWithoutHolders(input),
+      ]);
+    return {
+      eligibleVolunteerCount: eligibleMemberships.length,
+      shiftCount: servedShifts.length,
+      eventCount: new Set(servedShifts.map((shift) => shift.eventId)).size,
+      flaggedBlocks: flaggedBlocksOf({ servedShifts }),
+      rolesWithoutHolders,
+    };
   }
 
   async askAvailability(
@@ -217,8 +267,9 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         participation.askAvailability();
       }
 
-      const flaggedBlocks =
-        await this.availabilityCheckRepository.listFlaggedBlocks(scope);
+      const servedShifts =
+        await this.availabilityCheckRepository.listServedShifts(scope);
+      const flaggedBlocks = flaggedBlocksOf({ servedShifts });
       if (flaggedBlocks.length > 0) {
         throw new AskBlockedFlaggedShiftsError({ flaggedBlocks });
       }

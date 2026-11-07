@@ -4,6 +4,7 @@ import type {
   ChurchId,
   CycleId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   RoleId,
   ShiftId,
@@ -11,7 +12,6 @@ import type {
   VolunteerId,
 } from '../../branded-ids';
 import type { AvailabilityCheck } from '../../entities/availability-check';
-import type { FlaggedBlock } from '../../errors/ask-blocked-flagged-shifts';
 import type { TransactionContext } from './transaction-context';
 
 export interface ListActiveMembershipsInput {
@@ -114,12 +114,6 @@ export interface CreateAskRecordInput extends ScheduleScopeInput {
   askedAt: Date;
 }
 
-export interface RoleWithoutHoldersRow {
-  roleId: RoleId;
-  roleName: string;
-  shiftCount: number;
-}
-
 export interface CheckMarkCountRow {
   availabilityCheckId: AvailabilityCheckId;
   unavailableShiftCount: number;
@@ -127,6 +121,19 @@ export interface CheckMarkCountRow {
 
 export interface RelevantShiftTotalRow {
   ministryMembershipId: string;
+  shiftCount: number;
+}
+
+export interface ServedShiftRow {
+  eventId: EventId;
+  eventTimeBlockId: EventTimeBlockId;
+  eventTimeBlockStartsAt: Instant;
+  flagged: boolean;
+}
+
+export interface RoleWithoutHolderRow {
+  roleId: RoleId;
+  roleName: string;
   shiftCount: number;
 }
 
@@ -150,12 +157,6 @@ export interface AvailabilityCheckRepository {
   listEligibleMemberships(
     input: ScheduleScopeInput,
   ): Promise<ActiveMinistryMembership[]>;
-  /** Blocks holding a served Shift with no ShiftRequirement, earliest first. */
-  listFlaggedBlocks(input: ScheduleScopeInput): Promise<FlaggedBlock[]>;
-  /** Roles a served Shift needs that no active Membership of the Ministry holds. */
-  listRolesWithoutHolders(
-    input: ScheduleScopeInput,
-  ): Promise<RoleWithoutHoldersRow[]>;
   createAskRecord(input: CreateAskRecordInput): Promise<void>;
   /** Per non-withdrawn check of the Schedule, including zero counts. */
   listCheckMarkCounts(input: ScheduleScopeInput): Promise<CheckMarkCountRow[]>;
@@ -163,6 +164,12 @@ export interface AvailabilityCheckRepository {
   listRelevantShiftTotals(
     input: ScheduleScopeInput,
   ): Promise<RelevantShiftTotalRow[]>;
+  /** One row per served Shift, earliest block first; flagged when it names no Role. */
+  listServedShifts(input: ScheduleScopeInput): Promise<ServedShiftRow[]>;
+  /** Roles a served Shift needs and no active membership holds, by name. */
+  listRolesWithoutHolders(
+    input: ScheduleScopeInput,
+  ): Promise<RoleWithoutHolderRow[]>;
   listByCycle(input: ListChecksByCycleInput): Promise<AvailabilityCheck[]>;
   createMany(input: CreateChecksInput): Promise<AvailabilityCheck[]>;
   /** Throws `NotFoundError` unless the check is actionable. */

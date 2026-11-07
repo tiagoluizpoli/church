@@ -22,6 +22,7 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   askAvailabilityResponseSchema,
   askBlockedFlaggedShiftsResponseSchema,
+  askPreviewResponseSchema,
   askScheduleBodySchema,
   askScheduleResponseSchema,
   availabilityStatusResponseSchema,
@@ -204,6 +205,51 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         return reply.send(participationMapper.cycleViewToResponse(view));
+      },
+    );
+
+    app.get(
+      '/cycles/:cycleId/ask-preview',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'getAskPreview',
+          summary: 'Preview what an Ask for availability would cover',
+          description:
+            'Read the eligible Volunteer count, served Shift and Event counts, flagged blocks and needed Roles nobody holds for one Ministry in one Cycle. Writes nothing; a Ministry serving nothing answers zeroes.',
+          querystring: cycleParticipationQuerySchema,
+          response: {
+            200: askPreviewResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const preview = await this.availabilityCheckManager.getAskPreview({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          ministryId: MinistryId.from(ministryId),
+        });
+        return reply.send(preview);
       },
     );
 

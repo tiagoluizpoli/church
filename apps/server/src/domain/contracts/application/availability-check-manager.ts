@@ -7,6 +7,7 @@ import type {
   RoleId,
 } from '../../branded-ids';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
+import type { FlaggedBlock } from '../../errors/ask-blocked-flagged-shifts';
 
 export interface AskAvailabilityInput {
   churchId: ChurchId;
@@ -24,14 +25,8 @@ export interface AskScheduleInput {
   cycleId: CycleId;
 }
 
-export interface RoleWithoutHolders {
-  roleId: RoleId;
-  roleName: string;
-  shiftCount: number;
-}
-
 export interface AskScheduleResult extends AskAvailabilityResult {
-  rolesWithoutHolders: RoleWithoutHolders[];
+  rolesWithoutHolders: AskPreviewRoleWithoutHolders[];
 }
 
 export interface ResendReminderInput {
@@ -58,7 +53,29 @@ export interface CheckStatusRow {
   confirmedAt?: Instant;
 }
 
+export interface GetAskPreviewInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
+}
+
+export interface AskPreviewRoleWithoutHolders {
+  roleId: RoleId;
+  roleName: string;
+  shiftCount: number;
+}
+
+/** What an Ask would cover; the Ministry serving nothing reads as zeroes. */
+export interface AskPreview {
+  eligibleVolunteerCount: number;
+  shiftCount: number;
+  eventCount: number;
+  flaggedBlocks: FlaggedBlock[];
+  rolesWithoutHolders: AskPreviewRoleWithoutHolders[];
+}
+
 export interface IAvailabilityCheckManager {
+  getAskPreview(input: GetAskPreviewInput): Promise<AskPreview>;
   askAvailability(input: AskAvailabilityInput): Promise<AskAvailabilityResult>;
   askSchedule(input: AskScheduleInput): Promise<AskScheduleResult>;
   resendReminder(input: ResendReminderInput): Promise<void>;

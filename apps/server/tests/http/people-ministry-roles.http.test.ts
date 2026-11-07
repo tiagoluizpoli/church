@@ -179,6 +179,7 @@ beforeAll(async () => {
       churchRepository: new DrizzleChurchRepository({ db }),
       notifications,
       unitOfWork,
+      config: appConfig,
     }),
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: {

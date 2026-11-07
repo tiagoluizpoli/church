@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   availabilityAsk,
   availabilityCheck,
@@ -103,6 +104,7 @@ beforeAll(async () => {
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
       unitOfWork: new DrizzleUnitOfWork({ db }),
+      config: appConfig,
     }),
     activeChurchResolver: new DbActiveChurchResolver({
       actorRepository,

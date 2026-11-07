@@ -85,6 +85,7 @@ export function createAvailabilityCheckRepositoryFake() {
     listEligibleMemberships:
       vi.fn<AvailabilityCheckRepository['listEligibleMemberships']>(),
     createAskRecord: vi.fn<AvailabilityCheckRepository['createAskRecord']>(),
+    findAskRecord: vi.fn<AvailabilityCheckRepository['findAskRecord']>(),
     setAnswerBy: vi.fn<AvailabilityCheckRepository['setAnswerBy']>(),
     listCheckMarkCounts:
       vi.fn<AvailabilityCheckRepository['listCheckMarkCounts']>(),

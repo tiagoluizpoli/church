@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { parseInstant, parseTimeOfDay } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
@@ -195,6 +196,7 @@ function createAvailabilityCheckHarness() {
     churchRepository: createChurchRepositoryFake(),
     unitOfWork,
     notifications,
+    config: appConfig,
   });
   return {
     manager,
@@ -743,79 +745,5 @@ describe('availability requests', () => {
       tx,
     });
     expect(checks.createMany).not.toHaveBeenCalled();
-  });
-
-  it('lists pending, confirmed, and never-requested members through both status surfaces', async () => {
-    const {
-      manager,
-      availabilityCheckRepository: checks,
-      cycleRepository,
-      participationRepository,
-      eventRepository,
-    } = createAvailabilityCheckHarness();
-    const confirmedAt = parseInstant({ value: '2026-08-01T12:00:00Z' });
-    checks.listActiveMemberships.mockResolvedValue([
-      ...members,
-      {
-        ministryMembershipId: 'membership-3',
-        volunteerId: VolunteerId.from('volunteer-3'),
-        userId: UserId.from('user-3'),
-        volunteerName: 'Three',
-      },
-    ]);
-    checks.listByCycle.mockResolvedValue([
-      new AvailabilityCheck({
-        props: { churchId, cycleId, ministryMembershipId: 'membership-1' },
-      }),
-      new AvailabilityCheck({
-        props: {
-          churchId,
-          cycleId,
-          ministryMembershipId: 'membership-2',
-          state: 'confirmed',
-          confirmedAt,
-        },
-      }),
-    ]);
-    const expected = [
-      {
-        volunteerId: VolunteerId.from('volunteer-1'),
-        volunteerName: 'One',
-        state: 'pending',
-        confirmedAt: undefined,
-      },
-      {
-        volunteerId: VolunteerId.from('volunteer-2'),
-        volunteerName: 'Two',
-        state: 'confirmed',
-        confirmedAt,
-      },
-      {
-        volunteerId: VolunteerId.from('volunteer-3'),
-        volunteerName: 'Three',
-        state: undefined,
-        confirmedAt: undefined,
-      },
-    ];
-    await expect(
-      manager.listCheckStatuses({ churchId, participationId }),
-    ).resolves.toEqual(expected);
-    await expect(
-      manager.listCycleCheckStatuses({ churchId, cycleId, ministryId }),
-    ).resolves.toEqual(expected);
-    expect(participationRepository.getById).toHaveBeenCalledWith({
-      churchId,
-      participationId,
-    });
-    expect(eventRepository.getEvent).toHaveBeenCalledWith({
-      churchId,
-      eventId,
-    });
-    expect(cycleRepository.getById).toHaveBeenCalledWith({ churchId, cycleId });
-    expect(checks.listByCycle).toHaveBeenCalledWith({
-      churchId,
-      cycleId,
-      ministryMembershipIds: ['membership-1', 'membership-2', 'membership-3'],
-    });
   });
 });

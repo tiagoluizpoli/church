@@ -317,6 +317,8 @@ export function buildManagers({
       eventRepository: planningEventRepository,
       availabilityCheckRepository,
       cycleRepository,
+      ministryRepository,
+      churchRepository,
       notifications,
       unitOfWork,
     });

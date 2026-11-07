@@ -3,6 +3,10 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { type ErrorMessage, errorMessage } from './error-table';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
+import {
+  AskBlockedFlaggedShiftsError,
+  type FlaggedBlock,
+} from '@/domain/errors/ask-blocked-flagged-shifts';
 import { EventGraphRuleError } from '@/domain/errors/event-graph-rule';
 import {
   EventOutsideCycleError,
@@ -56,6 +60,7 @@ export const VALIDATION_REASON_MESSAGES: Record<
     m.error_validation_duplicate_event_time_block_label,
   DUPLICATE_EVENT_TIME_BLOCK_ID:
     m.error_validation_duplicate_event_time_block_id,
+  ASK_NO_ELIGIBLE_VOLUNTEERS: m.error_validation_ask_no_eligible_volunteers,
 };
 
 interface DomainErrorMessageInput {
@@ -137,6 +142,13 @@ export function headcountFloors(
 ): HeadcountFloor[] | undefined {
   return error instanceof HeadcountBelowAssignedError
     ? error.headcountFloors
+    : undefined;
+}
+
+/** The flagged blocks refusing an Ask, also sent to the client. */
+export function flaggedBlocks(error: DomainError): FlaggedBlock[] | undefined {
+  return error instanceof AskBlockedFlaggedShiftsError
+    ? error.flaggedBlocks
     : undefined;
 }
 

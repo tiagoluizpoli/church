@@ -6,6 +6,8 @@
  */
 import type {
   AskAvailability202,
+  AskScheduleAvailability200,
+  AskScheduleAvailabilityBody,
   GetAvailabilityStatus200,
   GetCycleAvailabilityStatus200,
   GetCycleAvailabilityStatusParams,
@@ -79,6 +81,21 @@ const saveEventTimeBlockPreparation = (
       );
     }
   /**
+ * Move every MinistryParticipation of a Ministry's Schedule to availability_requested, write the ask record, spawn one AvailabilityCheck per Volunteer holding a needed Role and notify each, in one transaction. Refused while a served Shift is flagged, with zero eligible Volunteers, and on a repeat Ask.
+ * @summary Ask availability for a Schedule
+ */
+const askScheduleAvailability = (
+    cycleId: string,
+    askScheduleAvailabilityBody: AskScheduleAvailabilityBody,
+ ) => {
+      return apiClient<AskScheduleAvailability200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/ask-availability`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: askScheduleAvailabilityBody
+    },
+      );
+    }
+  /**
  * Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.
  * @summary Ask availability for a MinistryParticipation
  */
@@ -128,11 +145,12 @@ const resendAvailabilityReminder = (
     },
       );
     }
-  return {listSchedules,getCycleParticipation,listScheduleSummaries,saveEventTimeBlockPreparation,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SaveEventTimeBlockPreparationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['saveEventTimeBlockPreparation']>>>
+export type AskScheduleAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askScheduleAvailability']>>>
 export type AskAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askAvailability']>>>
 export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleAvailabilityStatus']>>>
 export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAvailabilityStatus']>>>

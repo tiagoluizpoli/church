@@ -39,6 +39,7 @@ import { DbPeopleListManager } from '@/application/db-people-list-manager';
 import { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleChurchAccessRepository } from '@/infrastructure/repositories/drizzle-church-access.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
@@ -174,6 +175,8 @@ beforeAll(async () => {
         db,
       }),
       cycleRepository: new DrizzleCycleRepository({ db }),
+      ministryRepository: new DrizzleMinistryRepository({ db }),
+      churchRepository: new DrizzleChurchRepository({ db }),
       notifications,
       unitOfWork,
     }),

@@ -172,6 +172,32 @@ export const askAvailabilityResponseSchema = z.object({
   notifiedVolunteerCount: z.number(),
 });
 
+export const askScheduleBodySchema = z.object({
+  ministryId: z.string(),
+});
+
+export const askScheduleResponseSchema = askAvailabilityResponseSchema.extend({
+  rolesWithoutHolders: z.array(
+    z.object({
+      roleId: z.string(),
+      roleName: z.string(),
+      shiftCount: z.number().int(),
+    }),
+  ),
+});
+
+/** A 409 `ASK_BLOCKED_FLAGGED_SHIFTS`: the localized envelope plus every flagged block. */
+export const askBlockedFlaggedShiftsResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  flaggedBlocks: z.array(
+    z.object({
+      eventTimeBlockId: z.string(),
+      startsAt: instantSchema,
+    }),
+  ),
+});
+
 export const scheduleSummaryResponseSchema = z.object({
   cycleId: z.string(),
   name: z.string(),

@@ -458,6 +458,7 @@ export const CreateEventTemplate422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -596,6 +597,7 @@ export const UpdateEventTemplate422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -734,6 +736,7 @@ export const CreatePlanningEvent422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type CreatePlanningEvent422 = {
@@ -853,6 +856,7 @@ export const UpdatePlanningEvent422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type UpdatePlanningEvent422 = {
@@ -1552,6 +1556,7 @@ export const MintMinistryInvitation422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type MintMinistryInvitation422 = {
@@ -2562,12 +2567,87 @@ export const SaveEventTimeBlockPreparation422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type SaveEventTimeBlockPreparation422 = {
   error: string;
   message: string;
   reason?: SaveEventTimeBlockPreparation422Reason;
+  issues?: unknown[];
+};
+
+export type AskScheduleAvailabilityBody = {
+  ministryId: string;
+};
+
+export type AskScheduleAvailability200RolesWithoutHoldersItem = {
+  roleId: string;
+  roleName: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  shiftCount: number;
+};
+
+export type AskScheduleAvailability200 = {
+  createdCheckCount: number;
+  notifiedVolunteerCount: number;
+  rolesWithoutHolders: AskScheduleAvailability200RolesWithoutHoldersItem[];
+};
+
+export type AskScheduleAvailability401 = {
+  error: string;
+  message: string;
+};
+
+export type AskScheduleAvailability403 = {
+  error: string;
+  message: string;
+};
+
+export type AskScheduleAvailability404 = {
+  error: string;
+  message: string;
+};
+
+export type AskScheduleAvailability409 = {
+  error: string;
+  message: string;
+  flaggedBlocks: ({
+  eventTimeBlockId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startsAt: string;
+})[];
+} | {
+  error: string;
+  message: string;
+};
+
+export type AskScheduleAvailability422Reason = typeof AskScheduleAvailability422Reason[keyof typeof AskScheduleAvailability422Reason];
+
+
+export const AskScheduleAvailability422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type AskScheduleAvailability422 = {
+  error: string;
+  message: string;
+  reason?: AskScheduleAvailability422Reason;
   issues?: unknown[];
 };
 

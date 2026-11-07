@@ -5,11 +5,13 @@ import type {
   CycleId,
   EventId,
   MinistryId,
+  RoleId,
   ShiftId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
 import type { AvailabilityCheck } from '../../entities/availability-check';
+import type { FlaggedBlock } from '../../errors/ask-blocked-flagged-shifts';
 import type { TransactionContext } from './transaction-context';
 
 export interface ListActiveMembershipsInput {
@@ -108,6 +110,16 @@ export interface ScheduleScopeInput {
   tx?: TransactionContext;
 }
 
+export interface CreateAskRecordInput extends ScheduleScopeInput {
+  askedAt: Date;
+}
+
+export interface RoleWithoutHoldersRow {
+  roleId: RoleId;
+  roleName: string;
+  shiftCount: number;
+}
+
 export interface CheckMarkCountRow {
   availabilityCheckId: AvailabilityCheckId;
   unavailableShiftCount: number;
@@ -138,6 +150,13 @@ export interface AvailabilityCheckRepository {
   listEligibleMemberships(
     input: ScheduleScopeInput,
   ): Promise<ActiveMinistryMembership[]>;
+  /** Blocks holding a served Shift with no ShiftRequirement, earliest first. */
+  listFlaggedBlocks(input: ScheduleScopeInput): Promise<FlaggedBlock[]>;
+  /** Roles a served Shift needs that no active Membership of the Ministry holds. */
+  listRolesWithoutHolders(
+    input: ScheduleScopeInput,
+  ): Promise<RoleWithoutHoldersRow[]>;
+  createAskRecord(input: CreateAskRecordInput): Promise<void>;
   /** Per non-withdrawn check of the Schedule, including zero counts. */
   listCheckMarkCounts(input: ScheduleScopeInput): Promise<CheckMarkCountRow[]>;
   /** Per active membership of the Ministry, including zero totals. */

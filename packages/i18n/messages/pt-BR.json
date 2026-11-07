@@ -77,6 +77,8 @@
   "error_ministry_role_required": "Um voluntário deste ministério precisa manter pelo menos uma função.",
   "error_headcount_below_assigned": "Pessoas necessárias não pode ficar abaixo dos Voluntários já escalados.",
   "error_headcount_below_assigned_count": "Já escalados: {count}. Pessoas necessárias não pode ficar abaixo desse número.",
+  "error_ask_blocked_flagged_shifts": "Alguns Turnos ainda não têm Função definida. Corrija-os antes de pedir a disponibilidade.",
+  "error_validation_ask_no_eligible_volunteers": "Nenhum Voluntário tem uma Função necessária para estes Turnos, então não há a quem perguntar.",
   "error_shift_has_responses": "Voluntários já responderam ou estão escalados em um Turno que esta mudança descartaria. Nada foi alterado.",
   "error_upcoming_assignments": "Escalas futuras ainda dependem disso. Altere-as primeiro na montagem da escala.",
   "error_validation_error": "Algumas informações são inválidas.",

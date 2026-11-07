@@ -1,13 +1,16 @@
 import { NotFoundError } from '@church/core';
 import {
+  availabilityAsk,
   availabilityCheck,
   church,
   cycle,
   event,
+  eventTimeBlock,
   ministry,
   ministryMembership,
   ministryMembershipRole,
   ministryParticipation,
+  role,
   shift,
   shiftRequirement,
   unavailableShift,
@@ -17,19 +20,23 @@ import {
 import { fromDate } from '@church/time';
 import {
   and,
+  asc,
   countDistinct,
   eq,
   exists,
   inArray,
   isNull,
   ne,
+  not,
   type SQL,
 } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 import type {
   AvailabilityCheckId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
+  RoleId,
   ShiftId,
   UserId,
   VolunteerId,
@@ -41,6 +48,7 @@ import type {
   CheckMarkCountRow,
   CheckShiftRow,
   ConfirmCheckInput,
+  CreateAskRecordInput,
   CreateChecksInput,
   GetCheckContextInput,
   ListActiveMembershipsInput,
@@ -50,10 +58,12 @@ import type {
   ListMinistryLeaderVolunteerIdsInput,
   MinistryLeaderRow,
   RelevantShiftTotalRow,
+  RoleWithoutHoldersRow,
   ScheduleScopeInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
+import type { FlaggedBlock } from '../../domain/errors/ask-blocked-flagged-shifts';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -143,6 +153,93 @@ export class DrizzleAvailabilityCheckRepository
     );
 
     return this.selectActiveMemberships({ ...input, filter: holdsNeededRole });
+  }
+
+  async listFlaggedBlocks({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: ScheduleScopeInput): Promise<FlaggedBlock[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .selectDistinct({
+        eventTimeBlockId: eventTimeBlock.id,
+        startsAt: eventTimeBlock.startTime,
+      })
+      .from(shift)
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shift.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .leftJoin(shiftRequirement, eq(shiftRequirement.shiftId, shift.id))
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          eq(ministryParticipation.ministryId, ministryId),
+          eq(event.cycleId, cycleId),
+          ne(event.status, 'cancelled'),
+          isNull(shiftRequirement.id),
+        ),
+      )
+      .orderBy(asc(eventTimeBlock.startTime), asc(eventTimeBlock.id));
+
+    return rows.map((row) => ({
+      eventTimeBlockId: row.eventTimeBlockId as EventTimeBlockId,
+      startsAt: fromDate({ date: row.startsAt }),
+    }));
+  }
+
+  async listRolesWithoutHolders(
+    input: ScheduleScopeInput,
+  ): Promise<RoleWithoutHoldersRow[]> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const served = this.servedRequirements(input);
+    const hasHolder = exists(
+      db
+        .select({ id: ministryMembershipRole.id })
+        .from(ministryMembershipRole)
+        .innerJoin(
+          ministryMembership,
+          eq(
+            ministryMembership.id,
+            ministryMembershipRole.ministryMembershipId,
+          ),
+        )
+        .where(
+          and(
+            eq(ministryMembershipRole.roleId, role.id),
+            eq(ministryMembership.ministryId, input.ministryId),
+            eq(ministryMembership.status, 'active'),
+          ),
+        ),
+    );
+    const rows = await db
+      .select({
+        roleId: role.id,
+        roleName: role.name,
+        shiftCount: countDistinct(served.shiftId),
+      })
+      .from(served)
+      .innerJoin(role, eq(role.id, served.roleId))
+      .where(not(hasHolder))
+      .groupBy(role.id, role.name)
+      .orderBy(asc(role.name));
+
+    return rows.map((row) => ({ ...row, roleId: row.roleId as RoleId }));
+  }
+
+  async createAskRecord({
+    churchId,
+    ministryId,
+    cycleId,
+    askedAt,
+    tx,
+  }: CreateAskRecordInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .insert(availabilityAsk)
+      .values({ churchId, ministryId, cycleId, askedAt });
   }
 
   async listCheckMarkCounts({

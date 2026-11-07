@@ -25,6 +25,13 @@ export interface LockParticipationInput {
   tx: TransactionContext;
 }
 
+export interface LockScheduleParticipationsInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: CycleId;
+  tx: TransactionContext;
+}
+
 export interface FindParticipationByMinistryEventInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -152,6 +159,10 @@ export interface MinistryParticipationRepository {
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
   /** Holds the row until `tx` ends, so its state cannot change under the caller. */
   lockById(input: LockParticipationInput): Promise<MinistryParticipation>;
+  /** Every participation of the (Ministry, Cycle), locked until commit. */
+  lockSchedule(
+    input: LockScheduleParticipationsInput,
+  ): Promise<MinistryParticipation[]>;
   findByMinistryEvent(
     input: FindParticipationByMinistryEventInput,
   ): Promise<MinistryParticipation | null>;

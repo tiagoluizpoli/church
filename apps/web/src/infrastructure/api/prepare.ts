@@ -5,17 +5,22 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  AskAvailability202,
-  GetAvailabilityStatus200,
+  AskScheduleAvailability200,
+  AskScheduleAvailabilityBody,
+  GetAskPreview200,
+  GetAskPreviewParams,
   GetCycleAvailabilityStatus200,
   GetCycleAvailabilityStatusParams,
   GetCycleParticipation200,
   GetCycleParticipationParams,
   ListScheduleSummaries200,
   ListSchedules200,
-  ResendAvailabilityReminder202,
+  RemindSchedule200,
+  RemindScheduleBody,
   SaveEventTimeBlockPreparation200,
-  SaveEventTimeBlockPreparationBody
+  SaveEventTimeBlockPreparationBody,
+  SetAvailabilityDeadline200,
+  SetAvailabilityDeadlineBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -51,6 +56,20 @@ const getCycleParticipation = (
       );
     }
   /**
+ * Read the eligible Volunteer count, served Shift and Event counts, flagged blocks and needed Roles nobody holds for one Ministry in one Cycle. Writes nothing; a Ministry serving nothing answers zeroes.
+ * @summary Preview what an Ask for availability would cover
+ */
+const getAskPreview = (
+    cycleId: string,
+    params: GetAskPreviewParams,
+ ) => {
+      return apiClient<GetAskPreview200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/ask-preview`, method: 'GET',
+        params
+    },
+      );
+    }
+  /**
  * List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.
  * @summary List a Ministry's cycle prepare summaries
  */
@@ -79,20 +98,53 @@ const saveEventTimeBlockPreparation = (
       );
     }
   /**
- * Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.
- * @summary Ask availability for a MinistryParticipation
+ * Move every MinistryParticipation of a Ministry's Schedule to availability_requested, write the ask record, spawn one AvailabilityCheck per Volunteer holding a needed Role and notify each, in one transaction. Refused while a served Shift is flagged, with zero eligible Volunteers, and on a repeat Ask.
+ * @summary Ask availability for a Schedule
  */
-const askAvailability = (
-    participationId: string,
+const askScheduleAvailability = (
+    cycleId: string,
+    askScheduleAvailabilityBody: AskScheduleAvailabilityBody,
  ) => {
-      return apiClient<AskAvailability202>(
-      {url: `/api/v1/prepare/participations/${participationId}/ask-availability`, method: 'POST'
+      return apiClient<AskScheduleAvailability200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/ask-availability`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: askScheduleAvailabilityBody
     },
       );
     }
   /**
- * List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.
- * @summary Get a Ministry's AvailabilityCheck status for a cycle
+ * Write the answer-by Deadline on the ask record, silently: no Notification is enqueued. Refused before the Ask, on a published Schedule and on a Past Cycle.
+ * @summary Set, move or clear a Schedule's Deadline
+ */
+const setAvailabilityDeadline = (
+    cycleId: string,
+    setAvailabilityDeadlineBody: SetAvailabilityDeadlineBody,
+ ) => {
+      return apiClient<SetAvailabilityDeadline200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/availability-deadline`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: setAvailabilityDeadlineBody
+    },
+      );
+    }
+  /**
+ * In one transaction, create checks and enqueue availability_opened for newly eligible Volunteers, enqueue availability_reminder for every not-confirmed check and stamp the cooldown, even with zero recipients. Refused before the Ask, after publish, on a Past Cycle and inside the cooldown.
+ * @summary Remind a Schedule
+ */
+const remindSchedule = (
+    cycleId: string,
+    remindScheduleBody: RemindScheduleBody,
+ ) => {
+      return apiClient<RemindSchedule200>(
+      {url: `/api/v1/prepare/cycles/${cycleId}/remind-availability`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: remindScheduleBody
+    },
+      );
+    }
+  /**
+ * List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, Deadline and Remind cooldown.
+ * @summary Get the Answers to a Schedule's Ask
  */
 const getCycleAvailabilityStatus = (
     cycleId: string,
@@ -104,36 +156,13 @@ const getCycleAvailabilityStatus = (
     },
       );
     }
-  /**
- * List the AvailabilityCheck states of a MinistryParticipation's Volunteers.
- * @summary Get a MinistryParticipation's AvailabilityCheck status
- */
-const getAvailabilityStatus = (
-    participationId: string,
- ) => {
-      return apiClient<GetAvailabilityStatus200>(
-      {url: `/api/v1/prepare/participations/${participationId}/availability-status`, method: 'GET'
-    },
-      );
-    }
-  /**
- * Resend the availability reminder Notification to a MinistryParticipation's unconfirmed Volunteers.
- * @summary Resend an availability reminder
- */
-const resendAvailabilityReminder = (
-    participationId: string,
- ) => {
-      return apiClient<ResendAvailabilityReminder202>(
-      {url: `/api/v1/prepare/participations/${participationId}/resend-availability`, method: 'POST'
-    },
-      );
-    }
-  return {listSchedules,getCycleParticipation,listScheduleSummaries,saveEventTimeBlockPreparation,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+  return {listSchedules,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,setAvailabilityDeadline,remindSchedule,getCycleAvailabilityStatus}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
+export type GetAskPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAskPreview']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>
 export type SaveEventTimeBlockPreparationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['saveEventTimeBlockPreparation']>>>
-export type AskAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askAvailability']>>>
+export type AskScheduleAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askScheduleAvailability']>>>
+export type SetAvailabilityDeadlineResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['setAvailabilityDeadline']>>>
+export type RemindScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['remindSchedule']>>>
 export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleAvailabilityStatus']>>>
-export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAvailabilityStatus']>>>
-export type ResendAvailabilityReminderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['resendAvailabilityReminder']>>>

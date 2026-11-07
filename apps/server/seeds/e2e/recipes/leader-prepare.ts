@@ -21,6 +21,7 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.leaderPrepare;
 /**
  * A Worship Ministry the leader prepares alone in its own Church: the leader
  * owns the Ministry's usual setup, so no other journey can replace it.
+ * Two Volunteers hold the usher Role needed by J6; the leader has no Role.
  * The journey creates its own Cycle, template and events through the
  * API; the graph holds only what it starts from.
  */
@@ -39,7 +40,20 @@ const PLAN = {
       memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
   },
-  pool: {},
+  pool: {
+    ana: {
+      name: 'Ana Ramos',
+      memberships: [
+        { ministry: 'worship', accessLevel: 'volunteer', roles: ['usher'] },
+      ],
+    },
+    bruno: {
+      name: 'Bruno Lima',
+      memberships: [
+        { ministry: 'worship', accessLevel: 'volunteer', roles: ['usher'] },
+      ],
+    },
+  },
 } as const satisfies AssignChurchPlan;
 
 export interface LeaderPrepareJourney

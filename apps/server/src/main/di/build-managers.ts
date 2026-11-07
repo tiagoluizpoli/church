@@ -229,6 +229,7 @@ export function buildManagers({
         eventRepository: planningEventRepository,
         eventTimeBlockRepository,
         assignmentRepository,
+        availabilityCheckRepository,
         roleRepository,
         volunteerRepository,
         webBaseUrl: env.CORS_ORIGIN,
@@ -314,11 +315,13 @@ export function buildManagers({
     overrides.availabilityCheckManager ??
     new DbAvailabilityCheckManager({
       participationRepository: ministryParticipationRepository,
-      eventRepository: planningEventRepository,
       availabilityCheckRepository,
       cycleRepository,
+      ministryRepository,
+      churchRepository,
       notifications,
       unitOfWork,
+      config,
     });
   const activeChurchSelectionManager =
     overrides.activeChurchSelectionManager ??

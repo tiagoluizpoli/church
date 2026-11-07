@@ -39,6 +39,7 @@ export const ISOLATED_SPECS = [
   'scheduling/qualification.spec.ts',
   'scheduling/smoke.spec.ts',
   'scheduling/us2-leader-prepare.spec.ts',
+  'scheduling/j6-leader-availability.spec.ts',
   'scheduling/us3-volunteer-availability.spec.ts',
   'scheduling/us4-schedule-publish.spec.ts',
   'scheduling/us5-leader-reassign.spec.ts',

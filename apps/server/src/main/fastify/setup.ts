@@ -23,9 +23,11 @@ import {
   conflictingCycles,
   domainErrorMessage,
   existingInvitation,
+  flaggedBlocks,
   headcountFloors,
   invalidEvents,
   outsideEvents,
+  remindAvailableAt,
   shiftResponses,
   upcomingAssignments,
   validationField,
@@ -180,6 +182,8 @@ export async function createFastify({
       const invalid = invalidEvents(error);
       const floors = headcountFloors(error);
       const responses = shiftResponses(error);
+      const flagged = flaggedBlocks(error);
+      const availableAt = remindAvailableAt(error);
       return reply.status(status).send({
         error: error.code,
         message: message ?? genericError,
@@ -193,6 +197,8 @@ export async function createFastify({
         ...(invalid && { invalidEvents: invalid }),
         ...(floors && { headcountFloors: floors }),
         ...(responses && { shiftResponses: responses }),
+        ...(flagged && { flaggedBlocks: flagged }),
+        ...(availableAt && { remindAvailableAt: availableAt }),
       });
     }
 

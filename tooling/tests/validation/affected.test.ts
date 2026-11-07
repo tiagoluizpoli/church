@@ -336,7 +336,7 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects the planning handoff and leader-prepare journeys for the N2 Prepare destination', () => {
+  it('selects J6, planning handoff and leader-prepare journeys for the N2 Prepare destination', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
@@ -344,6 +344,7 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/j6-leader-availability.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-prepare.spec.ts',
@@ -371,12 +372,13 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects the leader-prepare journey for the prepare API client', () => {
+  it('selects J6 and leader-prepare journeys for the prepare API client', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/infrastructure/api/prepare.ts'],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/j6-leader-availability.spec.ts',
       'tests/scheduling/us2-leader-prepare.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
@@ -635,18 +637,29 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects only the availability journey for the availability-status feature files', () => {
-    for (const changedPath of [
-      'apps/web/src/features/scheduling/components/availability-status-section.tsx',
-      'apps/web/src/features/scheduling/utils/availability-status.ts',
-    ]) {
-      const plan = classifyChanges({ changedPaths: [changedPath] });
+  it('selects J6 and the availability journey for the Answers component', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/scheduling/components/availability-status-section.tsx',
+      ],
+    });
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/j6-leader-availability.spec.ts',
+      'tests/scheduling/us3-volunteer-availability.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
 
-      expect(plan.e2eSpecPaths).toEqual([
-        'tests/scheduling/us3-volunteer-availability.spec.ts',
-      ]);
-      expect(plan.missingJourneyMappings).toEqual([]);
-    }
+  it('selects only the availability journey for its status utility', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/scheduling/utils/availability-status.ts',
+      ],
+    });
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/us3-volunteer-availability.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
   });
 
   it('selects breadcrumb accessibility and the Cycle leader handoff for their owning hooks', () => {
@@ -724,6 +737,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/event-templates.spec.ts',
+      'tests/scheduling/j6-leader-availability.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',

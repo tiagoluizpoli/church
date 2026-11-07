@@ -1,11 +1,13 @@
 import { appConfig } from '@church/app-config';
 import {
   assignment,
+  availabilityAsk,
   availabilityCheck,
   identityAudit,
   member,
   ministryMembership,
   ministryMembershipRole,
+  ministryParticipation,
   role,
   unavailableShift,
   volunteer as volunteerTable,
@@ -39,13 +41,13 @@ import { DbPeopleListManager } from '@/application/db-people-list-manager';
 import { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleChurchAccessRepository } from '@/infrastructure/repositories/drizzle-church-access.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryMembershipRepository } from '@/infrastructure/repositories/drizzle-ministry-membership.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePeopleListRepository } from '@/infrastructure/repositories/drizzle-people-list.repository';
-import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -169,18 +171,19 @@ beforeAll(async () => {
       participationRepository: new DrizzleMinistryParticipationRepository({
         db,
       }),
-      eventRepository: new DrizzlePlanningEventRepository({ db }),
       availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({
         db,
       }),
       cycleRepository: new DrizzleCycleRepository({ db }),
+      ministryRepository: new DrizzleMinistryRepository({ db }),
+      churchRepository: new DrizzleChurchRepository({ db }),
       notifications,
       unitOfWork,
+      config: appConfig,
     }),
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: {
-      decideManageParticipation: async () => ({ allowed: true }),
-      decideManageShift: async () => ({ allowed: true }),
+      decideManageMinistry: async () => ({ allowed: true }),
     } as never,
   });
   await app.register(
@@ -2238,12 +2241,24 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       });
       await removeFrom({ as: 'ada', member: 'val', membership: ws('val') });
 
+      await db.insert(availabilityAsk).values({
+        churchId: CHURCH_A,
+        ministryId: f.worship,
+        cycleId: culto.event.cycleId,
+        askedAt: new Date(NOW),
+      });
+      await db
+        .update(ministryParticipation)
+        .set({ state: 'availability_requested' })
+        .where(eq(ministryParticipation.id, culto.participation.id));
+
       const reminded = await app.inject({
         method: 'POST',
-        url: `/api/v1/prepare/participations/${culto.participation.id}/resend-availability`,
+        url: `/api/v1/prepare/cycles/${culto.event.cycleId}/remind-availability`,
         headers: { [USER_HEADER]: 'lea' },
+        payload: { ministryId: f.worship },
       });
-      expect(reminded.statusCode).toBe(202);
+      expect(reminded.statusCode).toBe(200);
       expect(notifications.enqueue).toHaveBeenCalledWith(
         expect.objectContaining({
           kind: 'availability_reminder',
@@ -2253,7 +2268,7 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
 
       const status = await app.inject({
         method: 'GET',
-        url: `/api/v1/prepare/participations/${culto.participation.id}/availability-status`,
+        url: `/api/v1/prepare/cycles/${culto.event.cycleId}/availability-status?ministryId=${f.worship}`,
         headers: { [USER_HEADER]: 'lea' },
       });
       expect(status.statusCode).toBe(200);
@@ -2261,9 +2276,9 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
         volunteers.get(`val:${CHURCH_A}`),
       );
 
-      const { participation } = await preparing();
-      const asked = await askAvailability(participation);
-      expect(asked.statusCode).toBe(202);
+      const { cycle } = await preparing();
+      const asked = await askAvailability(cycle);
+      expect(asked.statusCode).toBe(200);
       expect(await checksOf(ws('val'))).toHaveLength(3);
     });
   });
@@ -2433,9 +2448,9 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       const first = await preparing();
       const [asked, removed] = (await holding({
         lock: lockValWorship(),
-        steps: [() => askAvailability(first.participation), removeVal],
+        steps: [() => askAvailability(first.cycle), removeVal],
       })) as Awaited<ReturnType<typeof removeFrom>>[];
-      expect([asked?.statusCode, removed?.statusCode]).toEqual([202, 200]);
+      expect([asked?.statusCode, removed?.statusCode]).toEqual([200, 200]);
       const [created] = await checksOf(ws('val'));
       expect(created?.withdrawnAt).toEqual(new Date(NOW));
 
@@ -2446,11 +2461,11 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
         steps: [
           () =>
             removeFrom({ as: 'ada', member: 'kim', membership: kimWorship }),
-          () => askAvailability(second.participation),
+          () => askAvailability(second.cycle),
         ],
       })) as Awaited<ReturnType<typeof removeFrom>>[];
       expect([removedKim?.statusCode, askedAfter?.statusCode]).toEqual([
-        200, 202,
+        200, 200,
       ]);
       // kim's earlier check from the first ask is withdrawn; the later ask created none.
       const kimChecks = await checksOf(kimWorship);
@@ -2542,7 +2557,7 @@ interface PreparingInput {
   month?: string;
 }
 
-/** A Worship participation still preparing, on its own Event in its own Cycle. */
+/** A Worship Schedule still preparing in its own Sent Cycle: one Shift needing Vocals and Guitar. */
 async function preparing({
   name = 'Fevereiro',
   month = '2027-02',
@@ -2554,7 +2569,7 @@ async function preparing({
     name,
     startDate: `${month}-01` as never,
     endDate: `${month}-28` as never,
-    state: 'draft',
+    state: 'sent',
   });
   const event = await buildEvent({
     db,
@@ -2580,12 +2595,38 @@ async function preparing({
     state: 'preparing',
     eventTimeBlockIds: [block.id],
   });
-  return { cycle, participation };
+  const shift = await buildShift({
+    db,
+    churchId: CHURCH_A,
+    participationId: participation.id,
+    eventTimeBlockId: block.id,
+    start: at(`${month}-10T10:00:00.000Z`),
+    end: at(`${month}-10T12:00:00.000Z`),
+  });
+  const sector = await buildSector({
+    db,
+    churchId: CHURCH_A,
+    ministryId: f.worship,
+    name: `Stage ${name}`,
+  });
+  for (const roleId of [f.vocals, f.guitar]) {
+    await buildShiftRequirement({
+      db,
+      churchId: CHURCH_A,
+      participationId: participation.id,
+      shiftId: shift.id,
+      roleId,
+      sectorId: sector.id,
+      peopleNeeded: 1,
+    });
+  }
+  return { cycle };
 }
 
-const askAvailability = (participation: { id: string }) =>
+const askAvailability = (cycle: { id: string }) =>
   app.inject({
     method: 'POST',
-    url: `/api/v1/prepare/participations/${participation.id}/ask-availability`,
+    url: `/api/v1/prepare/cycles/${cycle.id}/ask-availability`,
     headers: { [USER_HEADER]: 'lea' },
+    payload: { ministryId: f.worship },
   });

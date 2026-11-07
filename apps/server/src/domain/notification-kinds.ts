@@ -41,6 +41,12 @@ export const availabilityNotificationDataSchema = z.object({
   cycleName: z.string(),
   cycleStartDate: calendarDaySchema,
   cycleEndDate: calendarDaySchema,
+  /** The recipient's own relevant Shifts; absent on rows frozen before it. */
+  shiftCount: z.number().int().nonnegative().optional(),
+  /** The ask record's Deadline at first delivery, when one was set. */
+  answerBy: calendarDaySchema.optional(),
+  /** Whether that Deadline had passed then, so bell and email word it alike. */
+  deadlinePassed: z.boolean().optional(),
 });
 
 /** One of the recipient's own Shifts in the published event. */

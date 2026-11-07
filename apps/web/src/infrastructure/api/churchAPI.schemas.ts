@@ -458,6 +458,7 @@ export const CreateEventTemplate422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -596,6 +597,7 @@ export const UpdateEventTemplate422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -734,6 +736,7 @@ export const CreatePlanningEvent422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type CreatePlanningEvent422 = {
@@ -853,6 +856,7 @@ export const UpdatePlanningEvent422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type UpdatePlanningEvent422 = {
@@ -1552,6 +1556,7 @@ export const MintMinistryInvitation422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type MintMinistryInvitation422 = {
@@ -2338,6 +2343,45 @@ export type GetCycleParticipation404 = {
   message: string;
 };
 
+export type GetAskPreviewParams = {
+ministryId: string;
+};
+
+export type GetAskPreview200FlaggedBlocksItem = {
+  eventTimeBlockId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startsAt: string;
+};
+
+export type GetAskPreview200RolesWithoutHoldersItem = {
+  roleId: string;
+  roleName: string;
+  shiftCount: number;
+};
+
+export type GetAskPreview200 = {
+  eligibleVolunteerCount: number;
+  shiftCount: number;
+  eventCount: number;
+  flaggedBlocks: GetAskPreview200FlaggedBlocksItem[];
+  rolesWithoutHolders: GetAskPreview200RolesWithoutHoldersItem[];
+};
+
+export type GetAskPreview401 = {
+  error: string;
+  message: string;
+};
+
+export type GetAskPreview403 = {
+  error: string;
+  message: string;
+};
+
+export type GetAskPreview404 = {
+  error: string;
+  message: string;
+};
+
 export type ListScheduleSummaries200CyclesItemStatus = typeof ListScheduleSummaries200CyclesItemStatus[keyof typeof ListScheduleSummaries200CyclesItemStatus];
 
 
@@ -2562,6 +2606,7 @@ export const SaveEventTimeBlockPreparation422Reason = {
   EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
 } as const;
 
 export type SaveEventTimeBlockPreparation422 = {
@@ -2571,17 +2616,181 @@ export type SaveEventTimeBlockPreparation422 = {
   issues?: unknown[];
 };
 
-export type AskAvailability202 = {
-  createdCheckCount: number;
-  notifiedVolunteerCount: number;
+export type AskScheduleAvailabilityBody = {
+  ministryId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  answerBy?: string;
 };
 
-export type AskAvailability403 = {
+export type AskScheduleAvailability200RolesWithoutHoldersItem = {
+  roleId: string;
+  roleName: string;
+  shiftCount: number;
+};
+
+export type AskScheduleAvailability200 = {
+  createdCheckCount: number;
+  notifiedVolunteerCount: number;
+  rolesWithoutHolders: AskScheduleAvailability200RolesWithoutHoldersItem[];
+};
+
+export type AskScheduleAvailability401 = {
   error: string;
   message: string;
 };
 
-export type AskAvailability404 = {
+export type AskScheduleAvailability403 = {
+  error: string;
+  message: string;
+};
+
+export type AskScheduleAvailability404 = {
+  error: string;
+  message: string;
+};
+
+export type AskScheduleAvailability409 = {
+  error: string;
+  message: string;
+  flaggedBlocks: ({
+  eventTimeBlockId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startsAt: string;
+})[];
+} | {
+  error: string;
+  message: string;
+};
+
+export type AskScheduleAvailability422Reason = typeof AskScheduleAvailability422Reason[keyof typeof AskScheduleAvailability422Reason];
+
+
+export const AskScheduleAvailability422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type AskScheduleAvailability422 = {
+  error: string;
+  message: string;
+  reason?: AskScheduleAvailability422Reason;
+  issues?: unknown[];
+};
+
+export type SetAvailabilityDeadlineBody = {
+  ministryId: string;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+};
+
+export type SetAvailabilityDeadline200 = {
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+};
+
+export type SetAvailabilityDeadline401 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline403 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline404 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline409 = {
+  error: string;
+  message: string;
+};
+
+export type SetAvailabilityDeadline422Reason = typeof SetAvailabilityDeadline422Reason[keyof typeof SetAvailabilityDeadline422Reason];
+
+
+export const SetAvailabilityDeadline422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type SetAvailabilityDeadline422 = {
+  error: string;
+  message: string;
+  reason?: SetAvailabilityDeadline422Reason;
+  issues?: unknown[];
+};
+
+export type RemindScheduleBody = {
+  ministryId: string;
+};
+
+export type RemindSchedule200 = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  remindedCount: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  newCheckCount: number;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  remindAvailableAt: string;
+};
+
+export type RemindSchedule401 = {
+  error: string;
+  message: string;
+};
+
+export type RemindSchedule403 = {
+  error: string;
+  message: string;
+};
+
+export type RemindSchedule404 = {
+  error: string;
+  message: string;
+};
+
+export type RemindSchedule409 = {
+  error: string;
+  message: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  remindAvailableAt: string;
+} | {
   error: string;
   message: string;
 };
@@ -2601,12 +2810,26 @@ export const GetCycleAvailabilityStatus200StatusesItemState = {
 export type GetCycleAvailabilityStatus200StatusesItem = {
   volunteerId: string;
   volunteerName: string;
-  state?: GetCycleAvailabilityStatus200StatusesItemState;
+  state: GetCycleAvailabilityStatus200StatusesItemState;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
+  unavailableShiftCount: number;
+  shiftCount: number;
 };
 
 export type GetCycleAvailabilityStatus200 = {
+  asked: number;
+  confirmed: number;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+     */
+  remindAvailableAt: string | null;
   statuses: GetCycleAvailabilityStatus200StatusesItem[];
 };
 
@@ -2616,50 +2839,6 @@ export type GetCycleAvailabilityStatus403 = {
 };
 
 export type GetCycleAvailabilityStatus404 = {
-  error: string;
-  message: string;
-};
-
-export type GetAvailabilityStatus200StatusesItemState = typeof GetAvailabilityStatus200StatusesItemState[keyof typeof GetAvailabilityStatus200StatusesItemState];
-
-
-export const GetAvailabilityStatus200StatusesItemState = {
-  pending: 'pending',
-  confirmed: 'confirmed',
-} as const;
-
-export type GetAvailabilityStatus200StatusesItem = {
-  volunteerId: string;
-  volunteerName: string;
-  state?: GetAvailabilityStatus200StatusesItemState;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  confirmedAt?: string;
-};
-
-export type GetAvailabilityStatus200 = {
-  statuses: GetAvailabilityStatus200StatusesItem[];
-};
-
-export type GetAvailabilityStatus403 = {
-  error: string;
-  message: string;
-};
-
-export type GetAvailabilityStatus404 = {
-  error: string;
-  message: string;
-};
-
-export type ResendAvailabilityReminder202 = {
-  resent: boolean;
-};
-
-export type ResendAvailabilityReminder403 = {
-  error: string;
-  message: string;
-};
-
-export type ResendAvailabilityReminder404 = {
   error: string;
   message: string;
 };
@@ -3176,6 +3355,14 @@ export type GetNotifications200ItemsItem = {
   cycleStartDate: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   cycleEndDate: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftCount?: number;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  answerBy?: string;
+  deadlinePassed?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -3196,6 +3383,14 @@ export type GetNotifications200ItemsItem = {
   cycleStartDate: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   cycleEndDate: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftCount?: number;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  answerBy?: string;
+  deadlinePassed?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -4579,6 +4774,14 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   cycleStartDate: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   cycleEndDate: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftCount?: number;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  answerBy?: string;
+  deadlinePassed?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -4599,6 +4802,14 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   cycleStartDate: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   cycleEndDate: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  shiftCount?: number;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  answerBy?: string;
+  deadlinePassed?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

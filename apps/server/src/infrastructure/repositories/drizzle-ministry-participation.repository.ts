@@ -34,6 +34,7 @@ import type {
   ListScheduleSummariesInput,
   ListSchedulesFactsInput,
   LockParticipationInput,
+  LockScheduleParticipationsInput,
   MinistryParticipationRepository,
   RemoveInclusionInput,
   ScheduleCheckCountRow,
@@ -120,6 +121,29 @@ export class DrizzleMinistryParticipationRepository
     }
 
     return mapMinistryParticipation(row);
+  }
+
+  async lockSchedule({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: LockScheduleParticipationsInput): Promise<MinistryParticipation[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({ participation: ministryParticipation })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          eq(ministryParticipation.ministryId, ministryId),
+          eq(event.cycleId, cycleId),
+        ),
+      )
+      .orderBy(asc(ministryParticipation.id))
+      .for('no key update', { of: ministryParticipation });
+
+    return rows.map((row) => mapMinistryParticipation(row.participation));
   }
 
   async findByMinistryEvent(

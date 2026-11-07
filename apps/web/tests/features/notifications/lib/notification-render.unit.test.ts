@@ -49,6 +49,130 @@ const schedule = {
 afterEach(() => overwriteGetLocale(() => 'en'));
 
 describe('retained scheduling Notifications', () => {
+  describe.each([
+    'en',
+    'pt-BR',
+  ] as const)('N3/N4 words in %s, the same keys as the email', (locale) => {
+    const language = { locale };
+    const days = { startDate: '01/12/2026', endDate: '31/12/2026' };
+    const names = { ministryName: 'Louvor', cycleName: 'Dezembro 2026' };
+    const render = (kind: string, facts: object) =>
+      renderNotification({
+        ...base,
+        kind,
+        data: { ...availability, ...facts },
+      } as GetNotifications200ItemsItem);
+    const lines = (...parts: string[]) => parts.join('\n');
+    const markOnly = () => m.notification_availability_mark_only({}, language);
+    const shifts = () =>
+      m.notification_availability_shifts_other({ count: 12 }, language);
+    const openedBody = () =>
+      m.notification_availability_opened_body(
+        { shifts: shifts(), ...days },
+        language,
+      );
+    const reminderBody = () =>
+      m.notification_availability_reminder_body(
+        { shifts: shifts(), ...days },
+        language,
+      );
+    const deadline = { deadline: '20/11/2026' };
+    const answerBy = '2026-11-20';
+
+    it('opened: count, span, mark-only line and the Answer action, in the viewing locale', () => {
+      overwriteGetLocale(() => locale);
+      const rendered = render('availability_opened', { shiftCount: 12 });
+
+      expect(rendered.title).toBe(
+        m.notification_availability_opened_title(names, language),
+      );
+      expect(rendered.body).toBe(lines(openedBody(), markOnly()));
+      expect(rendered.actionLabel).toBe(
+        m.email_availability_action({}, language),
+      );
+    });
+
+    it('opened: always says Answer by, even past the Deadline', () => {
+      overwriteGetLocale(() => locale);
+      const { body } = render('availability_opened', {
+        shiftCount: 12,
+        answerBy,
+        deadlinePassed: true,
+      });
+
+      expect(body).toBe(
+        lines(
+          openedBody(),
+          m.notification_availability_answer_by(deadline, language),
+          markOnly(),
+        ),
+      );
+    });
+
+    it('reminder: words the Deadline before and after it passed', () => {
+      overwriteGetLocale(() => locale);
+      const facts = { shiftCount: 12, answerBy };
+
+      expect(render('availability_reminder', facts).title).toBe(
+        m.notification_availability_reminder_title(names, language),
+      );
+      expect(
+        render('availability_reminder', { ...facts, deadlinePassed: false })
+          .body,
+      ).toBe(
+        lines(
+          reminderBody(),
+          m.notification_availability_answer_by(deadline, language),
+          markOnly(),
+        ),
+      );
+      expect(
+        render('availability_reminder', { ...facts, deadlinePassed: true })
+          .body,
+      ).toBe(
+        lines(
+          reminderBody(),
+          m.notification_availability_deadline_passed(deadline, language),
+          markOnly(),
+        ),
+      );
+    });
+
+    it('words one Shift in the singular', () => {
+      overwriteGetLocale(() => locale);
+
+      expect(render('availability_opened', { shiftCount: 1 }).body).toBe(
+        lines(
+          m.notification_availability_opened_body(
+            {
+              shifts: m.notification_availability_shifts_one({}, language),
+              ...days,
+            },
+            language,
+          ),
+          markOnly(),
+        ),
+      );
+    });
+
+    it.each([
+      'availability_opened',
+      'availability_reminder',
+    ])('%s history frozen before the count and Deadline stays readable', (kind) => {
+      overwriteGetLocale(() => locale);
+      const rendered = render(kind, {});
+      const { body } = rendered;
+
+      expect(body).toBe(
+        lines(m.notification_availability_span(days, language), markOnly()),
+      );
+      expect(body).not.toContain('undefined');
+      expect(rendered.actionLabel).toBe(
+        m.email_availability_action({}, language),
+      );
+    });
+  });
+
   it('distinguishes availability opened from the reminder', () => {
     expect(renderNotification(opened).title).not.toBe(
       renderNotification(reminder).title,
@@ -62,12 +186,13 @@ describe('retained scheduling Notifications', () => {
     overwriteGetLocale(() => 'pt-BR');
 
     expect(renderNotification(opened)).toMatchObject({
-      title: 'Louvor quer a sua disponibilidade',
-      body: 'Informe quando você pode servir em Dezembro 2026 (01/12/2026 – 31/12/2026).',
+      title:
+        'O ministério Louvor precisa da sua disponibilidade · Dezembro 2026',
+      body: 'De 01/12/2026 a 31/12/2026.\nMarque só os turnos em que não pode servir e confirme.',
       kindLabel: 'Disponibilidade solicitada',
     });
     expect(renderNotification(reminder).title).toBe(
-      'Lembrete: disponibilidade para Louvor',
+      'Lembrete: confirme sua disponibilidade · Louvor · Dezembro 2026',
     );
   });
 
@@ -99,15 +224,21 @@ describe('retained scheduling Notifications', () => {
     );
   });
 
-  it('links availability to the dashboard availability section', () => {
-    expect(resolveNotificationDestination(opened)).toEqual({
-      target: { to: '/dashboard', search: { section: 'availability' } },
-      isFallback: false,
-    });
-    expect(resolveNotificationDestination(reminder).target).toEqual({
-      to: '/dashboard',
-      search: { section: 'availability' },
-    });
+  it.each([
+    'availability_opened',
+    'availability_reminder',
+  ] as const)('%s keeps its availability deep link for old and new facts', (kind) => {
+    for (const facts of [{}, { shiftCount: 12, answerBy: '2026-11-20' }]) {
+      const item: GetNotifications200ItemsItem = {
+        ...base,
+        kind,
+        data: { ...availability, ...facts },
+      };
+      expect(resolveNotificationDestination(item)).toEqual({
+        target: { to: '/dashboard', search: { section: 'availability' } },
+        isFallback: false,
+      });
+    }
   });
 
   it('links publication to the event on the dashboard assignments section', () => {

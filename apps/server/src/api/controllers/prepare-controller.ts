@@ -20,17 +20,25 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
-  askAvailabilityResponseSchema,
-  availabilityStatusResponseSchema,
+  answersResponseSchema,
+  askBlockedFlaggedShiftsResponseSchema,
+  askPreviewResponseSchema,
+  askScheduleBodySchema,
+  askScheduleResponseSchema,
+  availabilityDeadlineResponseSchema,
   cycleParticipationResponseSchema,
   headcountBelowAssignedResponseSchema,
   participationEventTimeBlockViewSchema,
   participationMapper,
   preparationValidationErrorResponseSchema,
+  remindOnCooldownResponseSchema,
+  remindScheduleBodySchema,
+  remindScheduleResponseSchema,
   type SavePreparationBody,
   savePreparationBodySchema,
   scheduleListResponseSchema,
   scheduleSummaryListResponseSchema,
+  setAvailabilityDeadlineBodySchema,
   shiftHasResponsesResponseSchema,
 } from '../dtos/participation.dto';
 import { refuse } from '../utils/refuse';
@@ -47,9 +55,11 @@ interface CycleMinistryQuery {
   ministryId: string;
 }
 
-interface ParticipationRouteParams {
-  participationId: string;
-}
+type AskScheduleBody = z.infer<typeof askScheduleBodySchema>;
+type RemindScheduleBody = z.infer<typeof remindScheduleBodySchema>;
+type SetAvailabilityDeadlineBody = z.infer<
+  typeof setAvailabilityDeadlineBodySchema
+>;
 
 interface ParticipationEventTimeBlockRouteParams {
   participationId: string;
@@ -75,10 +85,6 @@ const cycleParticipationQuerySchema = z.object({
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
-});
-
-const resendAvailabilityResponseSchema = z.object({
-  resent: z.boolean(),
 });
 
 interface PrepareControllerDependencies {
@@ -203,6 +209,51 @@ export class PrepareController implements FastifyController {
     );
 
     app.get(
+      '/cycles/:cycleId/ask-preview',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'getAskPreview',
+          summary: 'Preview what an Ask for availability would cover',
+          description:
+            'Read the eligible Volunteer count, served Shift and Event counts, flagged blocks and needed Roles nobody holds for one Ministry in one Cycle. Writes nothing; a Ministry serving nothing answers zeroes.',
+          querystring: cycleParticipationQuerySchema,
+          response: {
+            200: askPreviewResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const preview = await this.availabilityCheckManager.getAskPreview({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          ministryId: MinistryId.from(ministryId),
+        });
+        return reply.send(preview);
+      },
+    );
+
+    app.get(
       '/ministries/:ministryId/cycles-summary',
       {
         schema: {
@@ -301,35 +352,148 @@ export class PrepareController implements FastifyController {
     );
 
     app.post(
-      '/participations/:participationId/ask-availability',
+      '/cycles/:cycleId/ask-availability',
       {
         schema: {
           tags: ['prepare'],
-          operationId: 'askAvailability',
-          summary: 'Ask availability for a MinistryParticipation',
+          operationId: 'askScheduleAvailability',
+          summary: 'Ask availability for a Schedule',
           description:
-            "Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.",
+            "Move every MinistryParticipation of a Ministry's Schedule to availability_requested, write the ask record, spawn one AvailabilityCheck per Volunteer holding a needed Role and notify each, in one transaction. Refused while a served Shift is flagged, with zero eligible Volunteers, and on a repeat Ask.",
+          body: askScheduleBodySchema,
           response: {
-            202: askAvailabilityResponseSchema,
+            200: askScheduleResponseSchema,
+            401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
+            409: z.union([
+              askBlockedFlaggedShiftsResponseSchema,
+              errorResponseSchema,
+            ]),
+            422: preparationValidationErrorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId, answerBy } = request.body as AskScheduleBody;
 
-        const result = await this.availabilityCheckManager.askAvailability({
+        const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
         });
-        return reply.status(202).send(result);
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const result = await this.availabilityCheckManager.askSchedule({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          cycleId: CycleId.from(cycleId),
+          answerBy,
+        });
+        return reply.send(result);
+      },
+    );
+
+    app.put(
+      '/cycles/:cycleId/availability-deadline',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'setAvailabilityDeadline',
+          summary: "Set, move or clear a Schedule's Deadline",
+          description:
+            'Write the answer-by Deadline on the ask record, silently: no Notification is enqueued. Refused before the Ask, on a published Schedule and on a Past Cycle.',
+          body: setAvailabilityDeadlineBodySchema,
+          response: {
+            200: availabilityDeadlineResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+            422: preparationValidationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId, answerBy } =
+          request.body as SetAvailabilityDeadlineBody;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        await this.availabilityCheckManager.setDeadline({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          cycleId: CycleId.from(cycleId),
+          answerBy,
+        });
+        return reply.send({ answerBy });
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/remind-availability',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'remindSchedule',
+          summary: 'Remind a Schedule',
+          description:
+            'In one transaction, create checks and enqueue availability_opened for newly eligible Volunteers, enqueue availability_reminder for every not-confirmed check and stamp the cooldown, even with zero recipients. Refused before the Ask, after publish, on a Past Cycle and inside the cooldown.',
+          body: remindScheduleBodySchema,
+          response: {
+            200: remindScheduleResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: z.union([remindOnCooldownResponseSchema, errorResponseSchema]),
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId } = request.body as RemindScheduleBody;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const result = await this.availabilityCheckManager.remindSchedule({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.send(result);
       },
     );
 
@@ -339,12 +503,12 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'getCycleAvailabilityStatus',
-          summary: "Get a Ministry's AvailabilityCheck status for a cycle",
+          summary: "Get the Answers to a Schedule's Ask",
           description:
-            "List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.",
+            'List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, Deadline and Remind cooldown.',
           querystring: cycleParticipationQuerySchema,
           response: {
-            200: availabilityStatusResponseSchema,
+            200: answersResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
           },
@@ -368,93 +532,13 @@ export class PrepareController implements FastifyController {
         )
           return;
 
-        const statuses =
+        const answers =
           await this.availabilityCheckManager.listCycleCheckStatuses({
             churchId: ChurchId.from(request.churchId),
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
           });
-        return reply.send({
-          statuses: statuses.map((status) => ({
-            volunteerId: status.volunteerId,
-            volunteerName: status.volunteerName,
-            state: status.state,
-            confirmedAt: status.confirmedAt,
-          })),
-        });
-      },
-    );
-
-    app.get(
-      '/participations/:participationId/availability-status',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'getAvailabilityStatus',
-          summary: "Get a MinistryParticipation's AvailabilityCheck status",
-          description:
-            "List the AvailabilityCheck states of a MinistryParticipation's Volunteers.",
-          response: {
-            200: availabilityStatusResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const statuses = await this.availabilityCheckManager.listCheckStatuses({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-        });
-        return reply.send({
-          statuses: statuses.map((status) => ({
-            volunteerId: status.volunteerId,
-            volunteerName: status.volunteerName,
-            state: status.state,
-            confirmedAt: status.confirmedAt,
-          })),
-        });
-      },
-    );
-
-    app.post(
-      '/participations/:participationId/resend-availability',
-      {
-        schema: {
-          tags: ['prepare'],
-          operationId: 'resendAvailabilityReminder',
-          summary: 'Resend an availability reminder',
-          description:
-            "Resend the availability reminder Notification to a MinistryParticipation's unconfirmed Volunteers.",
-          response: {
-            202: resendAvailabilityResponseSchema,
-            403: errorResponseSchema,
-            404: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        await this.availabilityCheckManager.resendReminder({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-        });
-        return reply.status(202).send({ resent: true });
+        return reply.send(answers);
       },
     );
   }

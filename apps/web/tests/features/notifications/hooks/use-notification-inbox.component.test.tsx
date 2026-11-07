@@ -268,6 +268,94 @@ describe('useNotificationInbox', () => {
     expect(result.current.items[0]?.title).toBe('You were invited to Worship');
   });
 
+  it.each([
+    'availability_opened',
+    'availability_reminder',
+  ] as const)('%s keeps old and new inbox rows readable when the viewing locale changes', async (kind) => {
+    const data = {
+      cycleId: MINISTRY_ID,
+      ministryId: MINISTRY_ID,
+      ministryName: 'Louvor',
+      cycleName: 'Dezembro 2026',
+      cycleStartDate: '2026-12-01',
+      cycleEndDate: '2026-12-31',
+    };
+    getNotifications.mockResolvedValue({
+      items: [
+        {
+          id: 'legacy-availability',
+          kind,
+          data,
+          createdAt: '2026-11-01T12:00:00.000Z',
+        },
+        {
+          id: 'current-availability',
+          kind,
+          data: { ...data, shiftCount: 12, answerBy: '2026-11-20' },
+          createdAt: '2026-11-02T12:00:00.000Z',
+        },
+      ],
+      unreadCount: 2,
+    });
+    overwriteGetLocale(() => 'pt-BR');
+    const { result, rerender } = renderInbox();
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+    for (const locale of ['pt-BR', 'en'] as const) {
+      overwriteGetLocale(() => locale);
+      rerender();
+      const language = { locale };
+      const days = { startDate: '01/12/2026', endDate: '31/12/2026' };
+      const names = { ministryName: 'Louvor', cycleName: 'Dezembro 2026' };
+      const title =
+        kind === 'availability_opened'
+          ? m.notification_availability_opened_title(names, language)
+          : m.notification_availability_reminder_title(names, language);
+      const shifts = m.notification_availability_shifts_other(
+        { count: 12 },
+        language,
+      );
+      const countAndSpan =
+        kind === 'availability_opened'
+          ? m.notification_availability_opened_body(
+              { shifts, ...days },
+              language,
+            )
+          : m.notification_availability_reminder_body(
+              { shifts, ...days },
+              language,
+            );
+      const markOnly = m.notification_availability_mark_only({}, language);
+      const actionLabel = m.email_availability_action({}, language);
+
+      expect(result.current.items[0]).toMatchObject({
+        title,
+        body: [m.notification_availability_span(days, language), markOnly].join(
+          '\n',
+        ),
+        actionLabel,
+      });
+      expect(result.current.items[1]).toMatchObject({
+        title,
+        body: [
+          countAndSpan,
+          m.notification_availability_answer_by(
+            { deadline: '20/11/2026' },
+            language,
+          ),
+          markOnly,
+        ].join('\n'),
+        actionLabel,
+      });
+      act(() => result.current.openNotification('current-availability'));
+      expect(result.current.selectedNotification).toMatchObject({
+        title,
+        body: result.current.items[1]?.body,
+        actionLabel,
+      });
+    }
+  });
+
   it('shows none of the previous inbox after the Active Church or User changes', async () => {
     getNotifications.mockImplementation(async () => ({
       items: [invitation({ id: 'church-1-row' })],

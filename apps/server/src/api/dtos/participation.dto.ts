@@ -167,9 +167,67 @@ export const preparationValidationErrorResponseSchema = z.object({
   issues: z.array(z.unknown()).optional(),
 });
 
-export const askAvailabilityResponseSchema = z.object({
+const flaggedBlockResponseSchema = z.object({
+  eventTimeBlockId: z.string(),
+  startsAt: instantSchema,
+});
+
+const roleWithoutHoldersResponseSchema = z.object({
+  roleId: z.string(),
+  roleName: z.string(),
+  shiftCount: z.number(),
+});
+
+export const askPreviewResponseSchema = z.object({
+  eligibleVolunteerCount: z.number(),
+  shiftCount: z.number(),
+  eventCount: z.number(),
+  flaggedBlocks: z.array(flaggedBlockResponseSchema),
+  rolesWithoutHolders: z.array(roleWithoutHoldersResponseSchema),
+});
+
+export const askScheduleBodySchema = z.object({
+  ministryId: z.string(),
+  answerBy: calendarDaySchema.optional(),
+});
+
+export const setAvailabilityDeadlineBodySchema = z.object({
+  ministryId: z.string(),
+  answerBy: calendarDaySchema.nullable(),
+});
+
+export const availabilityDeadlineResponseSchema = z.object({
+  answerBy: calendarDaySchema.nullable(),
+});
+
+export const askScheduleResponseSchema = z.object({
   createdCheckCount: z.number(),
   notifiedVolunteerCount: z.number(),
+  rolesWithoutHolders: z.array(roleWithoutHoldersResponseSchema),
+});
+
+/** A 409 `ASK_BLOCKED_FLAGGED_SHIFTS`: the localized envelope plus every flagged block. */
+export const askBlockedFlaggedShiftsResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  flaggedBlocks: z.array(flaggedBlockResponseSchema),
+});
+
+export const remindScheduleBodySchema = z.object({
+  ministryId: z.string(),
+});
+
+export const remindScheduleResponseSchema = z.object({
+  remindedCount: z.number().int(),
+  newCheckCount: z.number().int(),
+  remindAvailableAt: instantSchema,
+});
+
+/** A 409 `REMIND_ON_COOLDOWN`: the localized envelope plus the next-available Instant. */
+export const remindOnCooldownResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  remindAvailableAt: instantSchema,
 });
 
 export const scheduleSummaryResponseSchema = z.object({
@@ -214,13 +272,19 @@ export const scheduleListResponseSchema = z.object({
 });
 export type ScheduleListResponse = z.infer<typeof scheduleListResponseSchema>;
 
-export const availabilityStatusResponseSchema = z.object({
+export const answersResponseSchema = z.object({
+  asked: z.number(),
+  confirmed: z.number(),
+  answerBy: calendarDaySchema.nullable(),
+  remindAvailableAt: instantSchema.nullable(),
   statuses: z.array(
     z.object({
       volunteerId: z.string(),
       volunteerName: z.string(),
-      state: z.enum(['pending', 'confirmed']).optional(),
+      state: z.enum(['pending', 'confirmed']),
       confirmedAt: instantSchema.optional(),
+      unavailableShiftCount: z.number(),
+      shiftCount: z.number(),
     }),
   ),
 });

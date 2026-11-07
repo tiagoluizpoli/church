@@ -1082,6 +1082,7 @@ paths:
                       - EVENT_TIME_BLOCK_LABEL_REQUIRED
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
                   field:
                     type: string
                   issues:
@@ -1395,6 +1396,7 @@ paths:
                       - EVENT_TIME_BLOCK_LABEL_REQUIRED
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
                   field:
                     type: string
                   issues:
@@ -1718,6 +1720,7 @@ paths:
                       - EVENT_TIME_BLOCK_LABEL_REQUIRED
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
                   field:
                     type: string
                   issues:
@@ -1949,6 +1952,7 @@ paths:
                       - EVENT_TIME_BLOCK_LABEL_REQUIRED
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
                   field:
                     type: string
                   issues:
@@ -3558,6 +3562,7 @@ paths:
                       - EVENT_TIME_BLOCK_LABEL_REQUIRED
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
                   field:
                     type: string
                   issues:
@@ -5598,6 +5603,123 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/prepare/cycles/{cycleId}/ask-preview:
+    get:
+      operationId: getAskPreview
+      summary: Preview what an Ask for availability would cover
+      tags:
+        - prepare
+      description: Read the eligible Volunteer count, served Shift and Event counts,
+        flagged blocks and needed Roles nobody holds for one Ministry in one
+        Cycle. Writes nothing; a Ministry serving nothing answers zeroes.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eligibleVolunteerCount:
+                    type: number
+                  shiftCount:
+                    type: number
+                  eventCount:
+                    type: number
+                  flaggedBlocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eventTimeBlockId:
+                          type: string
+                        startsAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      required:
+                        - eventTimeBlockId
+                        - startsAt
+                      additionalProperties: false
+                  rolesWithoutHolders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        roleId:
+                          type: string
+                        roleName:
+                          type: string
+                        shiftCount:
+                          type: number
+                      required:
+                        - roleId
+                        - roleName
+                        - shiftCount
+                      additionalProperties: false
+                required:
+                  - eligibleVolunteerCount
+                  - shiftCount
+                  - eventCount
+                  - flaggedBlocks
+                  - rolesWithoutHolders
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/ministries/{ministryId}/cycles-summary:
     get:
       operationId: listScheduleSummaries
@@ -6142,6 +6264,7 @@ paths:
                       - EVENT_TIME_BLOCK_LABEL_REQUIRED
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
                   issues:
                     type: array
                     items: {}
@@ -6149,22 +6272,40 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/prepare/participations/{participationId}/ask-availability:
+  /api/v1/prepare/cycles/{cycleId}/ask-availability:
     post:
-      operationId: askAvailability
-      summary: Ask availability for a MinistryParticipation
+      operationId: askScheduleAvailability
+      summary: Ask availability for a Schedule
       tags:
         - prepare
-      description: Spawn AvailabilityChecks for a MinistryParticipation's Volunteers
-        and move it into availability_requested.
+      description: Move every MinistryParticipation of a Ministry's Schedule to
+        availability_requested, write the ask record, spawn one
+        AvailabilityCheck per Volunteer holding a needed Role and notify each,
+        in one transaction. Refused while a served Shift is flagged, with zero
+        eligible Volunteers, and on a repeat Ask.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ministryId:
+                  type: string
+                answerBy:
+                  type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+              required:
+                - ministryId
       parameters:
         - schema:
             type: string
           in: path
-          name: participationId
+          name: cycleId
           required: true
       responses:
-        "202":
+        "200":
           description: Default Response
           content:
             application/json:
@@ -6175,9 +6316,41 @@ paths:
                     type: number
                   notifiedVolunteerCount:
                     type: number
+                  rolesWithoutHolders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        roleId:
+                          type: string
+                        roleName:
+                          type: string
+                        shiftCount:
+                          type: number
+                      required:
+                        - roleId
+                        - roleName
+                        - shiftCount
+                      additionalProperties: false
                 required:
                   - createdCheckCount
                   - notifiedVolunteerCount
+                  - rolesWithoutHolders
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "403":
           description: Default Response
@@ -6209,13 +6382,361 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      flaggedBlocks:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            eventTimeBlockId:
+                              type: string
+                            startsAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - eventTimeBlockId
+                            - startsAt
+                          additionalProperties: false
+                    required:
+                      - error
+                      - message
+                      - flaggedBlocks
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                    required:
+                      - error
+                      - message
+                    additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/prepare/cycles/{cycleId}/availability-deadline:
+    put:
+      operationId: setAvailabilityDeadline
+      summary: Set, move or clear a Schedule's Deadline
+      tags:
+        - prepare
+      description: "Write the answer-by Deadline on the ask record, silently: no
+        Notification is enqueued. Refused before the Ask, on a published
+        Schedule and on a Past Cycle."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ministryId:
+                  type: string
+                answerBy:
+                  nullable: true
+                  type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+              required:
+                - ministryId
+                - answerBy
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answerBy:
+                    nullable: true
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                required:
+                  - answerBy
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/prepare/cycles/{cycleId}/remind-availability:
+    post:
+      operationId: remindSchedule
+      summary: Remind a Schedule
+      tags:
+        - prepare
+      description: In one transaction, create checks and enqueue availability_opened
+        for newly eligible Volunteers, enqueue availability_reminder for every
+        not-confirmed check and stamp the cooldown, even with zero recipients.
+        Refused before the Ask, after publish, on a Past Cycle and inside the
+        cooldown.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ministryId:
+                  type: string
+              required:
+                - ministryId
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  remindedCount:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  newCheckCount:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  remindAvailableAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                required:
+                  - remindedCount
+                  - newCheckCount
+                  - remindAvailableAt
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                      remindAvailableAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                    required:
+                      - error
+                      - message
+                      - remindAvailableAt
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                      message:
+                        type: string
+                    required:
+                      - error
+                      - message
+                    additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/availability-status:
     get:
       operationId: getCycleAvailabilityStatus
-      summary: Get a Ministry's AvailabilityCheck status for a cycle
+      summary: Get the Answers to a Schedule's Ask
       tags:
         - prepare
-      description: List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.
+      description: List the asked Volunteers with their marks and relevant Shift
+        totals, plus the confirmed counts, Deadline and Remind cooldown.
       parameters:
         - schema:
             type: string
@@ -6235,6 +6756,20 @@ paths:
               schema:
                 type: object
                 properties:
+                  asked:
+                    type: number
+                  confirmed:
+                    type: number
+                  answerBy:
+                    nullable: true
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  remindAvailableAt:
+                    nullable: true
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                   statuses:
                     type: array
                     items:
@@ -6253,146 +6788,23 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        unavailableShiftCount:
+                          type: number
+                        shiftCount:
+                          type: number
                       required:
                         - volunteerId
                         - volunteerName
+                        - state
+                        - unavailableShiftCount
+                        - shiftCount
                       additionalProperties: false
                 required:
+                  - asked
+                  - confirmed
+                  - answerBy
+                  - remindAvailableAt
                   - statuses
-                additionalProperties: false
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-  /api/v1/prepare/participations/{participationId}/availability-status:
-    get:
-      operationId: getAvailabilityStatus
-      summary: Get a MinistryParticipation's AvailabilityCheck status
-      tags:
-        - prepare
-      description: List the AvailabilityCheck states of a MinistryParticipation's
-        Volunteers.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: participationId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  statuses:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        volunteerId:
-                          type: string
-                        volunteerName:
-                          type: string
-                        state:
-                          type: string
-                          enum:
-                            - pending
-                            - confirmed
-                        confirmedAt:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                      required:
-                        - volunteerId
-                        - volunteerName
-                      additionalProperties: false
-                required:
-                  - statuses
-                additionalProperties: false
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-  /api/v1/prepare/participations/{participationId}/resend-availability:
-    post:
-      operationId: resendAvailabilityReminder
-      summary: Resend an availability reminder
-      tags:
-        - prepare
-      description: Resend the availability reminder Notification to a
-        MinistryParticipation's unconfirmed Volunteers.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: participationId
-          required: true
-      responses:
-        "202":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  resent:
-                    type: boolean
-                required:
-                  - resent
                 additionalProperties: false
         "403":
           description: Default Response
@@ -7642,6 +8054,16 @@ paths:
                                   type: string
                                   format: date
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                shiftCount:
+                                  type: integer
+                                  minimum: 0
+                                  maximum: 9007199254740991
+                                answerBy:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                deadlinePassed:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - ministryId
@@ -7697,6 +8119,16 @@ paths:
                                   type: string
                                   format: date
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                shiftCount:
+                                  type: integer
+                                  minimum: 0
+                                  maximum: 9007199254740991
+                                answerBy:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                deadlinePassed:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - ministryId
@@ -11121,6 +11553,16 @@ paths:
                                   type: string
                                   format: date
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                shiftCount:
+                                  type: integer
+                                  minimum: 0
+                                  maximum: 9007199254740991
+                                answerBy:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                deadlinePassed:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - ministryId
@@ -11176,6 +11618,16 @@ paths:
                                   type: string
                                   format: date
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                shiftCount:
+                                  type: integer
+                                  minimum: 0
+                                  maximum: 9007199254740991
+                                answerBy:
+                                  type: string
+                                  format: date
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                deadlinePassed:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - ministryId

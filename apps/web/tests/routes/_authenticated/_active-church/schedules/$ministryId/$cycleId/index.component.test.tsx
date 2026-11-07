@@ -1,7 +1,8 @@
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
   BLOCK,
   CYCLE_ID,
@@ -13,9 +14,12 @@ import {
 } from '@/tests/features/scheduling/components/prepare/preparation-block.fixtures';
 import { activeChurchApiMock } from '@/tests/setup/active-church';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
+import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const api = vi.hoisted(() => ({
+  getAskPreview: vi.fn(),
+  askScheduleAvailability: vi.fn(),
   listMinistries: vi.fn(),
   listScheduleSummaries: vi.fn(),
   getCycleParticipation: vi.fn(),
@@ -48,8 +52,18 @@ vi.mock('@/components/app-shell', () => ({
 }));
 vi.mock('@/components/ui/sonner', () => ({ Toaster: () => null }));
 
+afterEach(() => overwriteGetLocale(() => 'pt-BR'));
+
 beforeEach(() => {
   vi.clearAllMocks();
+  api.askScheduleAvailability.mockReset();
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 34,
+    shiftCount: 12,
+    eventCount: 9,
+    flaggedBlocks: [],
+    rolesWithoutHolders: [],
+  });
   api.listMinistries.mockRejectedValue(new Error('admin-only read'));
   api.listScheduleSummaries.mockResolvedValue({ cycles: [] });
   api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
@@ -115,6 +129,10 @@ it.each([
     churchTimezone: 'America/Sao_Paulo',
   });
   expect(await screen.findByText(m.prepare_block_read_only())).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: m.prepare_ask() }),
+  ).not.toBeInTheDocument();
+  expect(api.getAskPreview).not.toHaveBeenCalled();
   expect(
     screen.getByTestId(
       `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
@@ -318,4 +336,423 @@ it.each([
     lookup.mockRestore();
     HTMLElement.prototype.scrollIntoView = previous;
   }
+});
+
+it('disables Ask while Shifts are flagged and links the affected rows in Church Timezone', async () => {
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 34,
+    shiftCount: 12,
+    eventCount: 9,
+    flaggedBlocks: [
+      {
+        eventTimeBlockId: BLOCK.eventTimeBlock.id,
+        startsAt: BLOCK.eventTimeBlock.startTime,
+      },
+    ],
+    rolesWithoutHolders: [],
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByText(m.prepare_ask_flagged());
+  const ask = screen.getByRole('button', { name: m.prepare_ask() });
+  expect(ask).toBeDisabled();
+  expect(screen.getByText(m.prepare_ask_flagged())).toBeVisible();
+  expect(
+    screen.getByRole('link', { name: '03/01/2027 22:00' }),
+  ).toHaveAttribute(
+    'href',
+    `/schedules/${MINISTRY_ID}/${CYCLE_ID}/slots/${BLOCK.eventTimeBlock.id}`,
+  );
+});
+
+it('hides Ask when the Ministry serves nothing in the Cycle', async () => {
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 0,
+    shiftCount: 0,
+    eventCount: 0,
+    flaggedBlocks: [],
+    rolesWithoutHolders: [],
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByTestId('prepare-calendar');
+  await waitFor(() =>
+    expect(api.getAskPreview).toHaveBeenCalledWith(CYCLE_ID, {
+      ministryId: MINISTRY_ID,
+    }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: m.prepare_ask() }),
+    ).not.toBeInTheDocument(),
+  );
+});
+
+it('previews counts and unheld Roles with People and Invitations links that open in new tabs', async () => {
+  const user = userEvent.setup();
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 34,
+    shiftCount: 12,
+    eventCount: 9,
+    flaggedBlocks: [],
+    rolesWithoutHolders: [
+      { roleId: 'guitar', roleName: 'Guitarrista', shiftCount: 3 },
+      { roleId: 'keys', roleName: 'Tecladista', shiftCount: 1 },
+    ],
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent(
+    m.prepare_ask_counts({
+      volunteers: '34 Voluntários',
+      shifts: '12 Turnos',
+      events: '9 Eventos',
+    }),
+  );
+  expect(dialog).toHaveTextContent(
+    m.prepare_ask_role_warning({ role: 'Guitarrista', shifts: '3 Turnos' }),
+  );
+  expect(dialog).toHaveTextContent(
+    m.prepare_ask_role_warning({ role: 'Tecladista', shifts: '1 Turno' }),
+  );
+  for (const [label, href] of [
+    [m.nav_people(), '/people'],
+    [m.nav_invitations(), '/invitations'],
+  ]) {
+    const links = within(dialog).getAllByRole('link', { name: label });
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link).toHaveAttribute('href', href);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    }
+  }
+  expect(
+    within(dialog).getByRole('button', { name: m.prepare_ask_deadline() }),
+  ).toBeVisible();
+});
+
+it('keeps the dialog confirmation disabled and explains when no Volunteers are eligible', async () => {
+  const user = userEvent.setup();
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 0,
+    shiftCount: 1,
+    eventCount: 1,
+    flaggedBlocks: [],
+    rolesWithoutHolders: [],
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent(
+    m.prepare_ask_counts({
+      volunteers: '0 Voluntários',
+      shifts: '1 Turno',
+      events: '1 Evento',
+    }),
+  );
+  expect(dialog).toHaveTextContent(m.prepare_ask_zero_eligible());
+  const confirm = within(dialog).getByRole('button', { name: m.prepare_ask() });
+  expect(confirm).toBeDisabled();
+  await user.click(confirm);
+  expect(api.askScheduleAvailability).not.toHaveBeenCalled();
+});
+
+it.each([
+  false,
+  true,
+])('asks once with a selected Deadline (cleared: %s), refreshes Schedules and enters asking', async (clearDeadline) => {
+  const user = userEvent.setup();
+  let finishAsk: () => void = () => {};
+  api.askScheduleAvailability.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishAsk = () => {
+          api.listSchedules.mockResolvedValue({
+            schedules: [
+              {
+                ...SCHEDULE,
+                stage: 'asking',
+                asking: { confirmed: 0, asked: 34 },
+              },
+            ],
+          });
+          api.getCycleParticipation.mockResolvedValue({
+            events: [
+              {
+                ...EVENT,
+                participation: {
+                  ...EVENT.participation,
+                  state: 'availability_requested',
+                },
+              },
+            ],
+          });
+          resolve({
+            createdCheckCount: 34,
+            notifiedVolunteerCount: 34,
+            rolesWithoutHolders: [],
+          });
+        };
+      }),
+  );
+  const { queryClient } = renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  const dialog = await screen.findByRole('dialog');
+  await pickCalendarDate({
+    user,
+    trigger: screen.getByTestId('prepare-ask-deadline'),
+    date: '2027-01-02',
+  });
+  expect(screen.getByTestId('prepare-ask-deadline')).toHaveTextContent(
+    '02/01/2027',
+  );
+  if (clearDeadline) {
+    await user.click(
+      screen.getByRole('button', { name: m.date_picker_clear() }),
+    );
+    expect(screen.getByTestId('prepare-ask-deadline')).toHaveTextContent(
+      m.date_picker_placeholder(),
+    );
+  }
+  await user.click(
+    within(dialog).getByRole('button', { name: m.prepare_ask() }),
+  );
+  await waitFor(() =>
+    expect(api.askScheduleAvailability).toHaveBeenCalledWith(
+      CYCLE_ID,
+      clearDeadline
+        ? { ministryId: MINISTRY_ID }
+        : { ministryId: MINISTRY_ID, answerBy: '2027-01-02' },
+    ),
+  );
+  expect(
+    within(dialog).getByRole('button', { name: m.prepare_ask_pending() }),
+  ).toBeDisabled();
+  await user.click(
+    within(dialog).getByRole('button', { name: m.prepare_ask_pending() }),
+  );
+  expect(api.askScheduleAvailability).toHaveBeenCalledTimes(1);
+  await act(async () => finishAsk());
+  expect(await screen.findByText(m.schedules_asking_stage())).toBeVisible();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: m.prepare_ask() }),
+  ).not.toBeInTheDocument();
+  expect(queryClient.getQueryData(['prepare-schedules'])).toMatchObject({
+    schedules: [{ stage: 'asking' }],
+  });
+});
+
+it('keeps the selected Deadline and localized refusal visible so a failed Ask can be retried', async () => {
+  const user = userEvent.setup();
+  api.askScheduleAvailability.mockRejectedValue({
+    isAxiosError: true,
+    response: {
+      status: 422,
+      data: {
+        error: 'VALIDATION_ERROR',
+        message: 'Confira o Prazo e tente novamente.',
+      },
+    },
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  const dialog = await screen.findByRole('dialog');
+  await pickCalendarDate({
+    user,
+    trigger: screen.getByTestId('prepare-ask-deadline'),
+    date: '2027-01-02',
+  });
+  await user.click(
+    within(dialog).getByRole('button', { name: m.prepare_ask() }),
+  );
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'Confira o Prazo e tente novamente.',
+  );
+  expect(screen.getByTestId('prepare-ask-deadline')).toHaveTextContent(
+    '02/01/2027',
+  );
+  expect(
+    within(dialog).getByRole('button', { name: m.prepare_ask() }),
+  ).toBeEnabled();
+  expect(
+    screen.queryByText(m.schedules_asking_stage()),
+  ).not.toBeInTheDocument();
+});
+
+it('shows the authoritative flagged-block refusal inside the dialog when another tab changes a Shift', async () => {
+  const user = userEvent.setup();
+  api.askScheduleAvailability.mockRejectedValue({
+    isAxiosError: true,
+    response: {
+      status: 409,
+      data: {
+        error: 'ASK_BLOCKED_FLAGGED_SHIFTS',
+        message: m.prepare_ask_flagged(),
+        flaggedBlocks: [
+          {
+            eventTimeBlockId: BLOCK.eventTimeBlock.id,
+            startsAt: BLOCK.eventTimeBlock.startTime,
+          },
+        ],
+      },
+    },
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  const dialog = await screen.findByRole('dialog');
+  await user.click(
+    within(dialog).getByRole('button', { name: m.prepare_ask() }),
+  );
+  const link = await within(dialog).findByRole('link', {
+    name: '03/01/2027 22:00',
+  });
+  expect(link).toHaveAttribute(
+    'href',
+    `/schedules/${MINISTRY_ID}/${CYCLE_ID}/slots/${BLOCK.eventTimeBlock.id}`,
+  );
+  expect(
+    within(dialog).getByRole('button', { name: m.prepare_ask() }),
+  ).toBeDisabled();
+});
+
+it('keeps Ask disabled while the preview loads, then retries a failed preview', async () => {
+  const user = userEvent.setup();
+  let rejectPreview: (error: Error) => void = () => {};
+  api.getAskPreview.mockReturnValue(
+    new Promise((_resolve, reject) => {
+      rejectPreview = reject;
+    }),
+  );
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  expect(ask).toBeDisabled();
+  expect(
+    screen.getByRole('status', { name: m.prepare_ask_loading() }),
+  ).toBeVisible();
+  await act(async () => rejectPreview(new Error('offline')));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    m.prepare_ask_preview_error(),
+  );
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 1,
+    shiftCount: 1,
+    eventCount: 1,
+    flaggedBlocks: [],
+    rolesWithoutHolders: [],
+  });
+  await user.click(screen.getByRole('button', { name: m.schedules_retry() }));
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  expect(await screen.findByRole('dialog')).toHaveTextContent(
+    m.prepare_ask_counts({
+      volunteers: '1 Voluntário',
+      shifts: '1 Turno',
+      events: '1 Evento',
+    }),
+  );
+});
+
+it.each([
+  'en',
+  'pt-BR',
+] as const)('renders the singular Ask dialog through the %s catalog', async (locale) => {
+  overwriteGetLocale(() => locale);
+  const user = userEvent.setup();
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 1,
+    shiftCount: 1,
+    eventCount: 1,
+    flaggedBlocks: [],
+    rolesWithoutHolders: [],
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  const dialog = await screen.findByRole('dialog', { name: m.prepare_ask() });
+  const volunteers = m.prepare_ask_volunteers_one();
+  const shifts = m.prepare_ask_shifts_one();
+  const events = m.prepare_ask_events_one();
+  const counts = m.prepare_ask_counts({ volunteers, shifts, events });
+  expect(dialog).toHaveTextContent(counts);
+  expect(dialog).toHaveTextContent(m.prepare_ask_deadline_hint());
+  expect(
+    within(dialog).getByRole('button', { name: m.prepare_ask_deadline() }),
+  ).toBeVisible();
+  expect(
+    within(dialog).getByRole('button', { name: m.prepare_ask_cancel() }),
+  ).toBeVisible();
+});
+
+it('refreshes the stage after another tab has already Asked so the dialog cannot reopen', async () => {
+  const user = userEvent.setup();
+  api.askScheduleAvailability.mockImplementation(async () => {
+    api.listSchedules.mockResolvedValue({
+      schedules: [{ ...SCHEDULE, stage: 'asking' }],
+    });
+    throw {
+      isAxiosError: true,
+      response: {
+        status: 409,
+        data: {
+          error: 'ILLEGAL_STATE_TRANSITION',
+          message: 'A disponibilidade já foi solicitada.',
+        },
+      },
+    };
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+  await user.click(ask);
+  const dialog = await screen.findByRole('dialog');
+  await user.click(
+    within(dialog).getByRole('button', { name: m.prepare_ask() }),
+  );
+  expect(await screen.findByText(m.schedules_asking_stage())).toBeVisible();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: m.prepare_ask() }),
+  ).not.toBeInTheDocument();
 });

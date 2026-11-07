@@ -15,9 +15,10 @@ import { AssignController } from '@/api/controllers/assign-controller';
 import { PrepareController } from '@/api/controllers/prepare-controller';
 import { DbAvailabilityCheckManager } from '@/application';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -50,15 +51,15 @@ beforeAll(async () => {
     participationRepository: new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
     }),
-    eventRepository: new DrizzlePlanningEventRepository({
-      db: schedulingTestDb,
-    }),
     availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,
     }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+    ministryRepository: new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
     notifications: createChurchNotificationsSpy(),
     unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
+    config: appConfig,
   });
   app = await createFastify({ locale: testLocale });
   const assign = new AssignController({

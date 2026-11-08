@@ -1013,5 +1013,13 @@
   "answers_remind": "Lembrar quem não confirmou ({count})",
   "answers_remind_pending": "Enviando lembretes…",
   "answers_remind_cooldown": "Disponível novamente às {time}",
-  "answers_remind_error": "Não foi possível enviar os lembretes. Tente novamente."
+  "answers_remind_error": "Não foi possível enviar os lembretes. Tente novamente.",
+  "availability_list_empty": "Nada para responder agora. Seu líder vai avisar você.",
+  "availability_list_loading": "Carregando consultas de disponibilidade…",
+  "availability_list_error": "Não foi possível carregar as consultas de disponibilidade. Tente novamente.",
+  "availability_list_not_confirmed": "Ainda não confirmada",
+  "availability_list_confirmed_all": "Confirmada, disponível para tudo",
+  "availability_list_confirmed_count": "Confirmada · indisponível para {unavailable} de {total}",
+  "availability_list_answer_by": "Responda até {date}",
+  "availability_list_overdue": "Prazo vencido · era até {date}"
 }

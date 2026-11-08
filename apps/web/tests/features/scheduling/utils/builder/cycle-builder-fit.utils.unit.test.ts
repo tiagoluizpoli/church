@@ -172,11 +172,11 @@ describe('overrideKindForFit', () => {
     );
   });
 
-  it('asks an unqualified fit to justify qualification', () => {
+  it('never offers a qualification override', () => {
     expect(
       overrideKindForFit({
         fit: { tier: 'unqualified' },
       }),
-    ).toBe('not_qualified');
+    ).toBeUndefined();
   });
 });

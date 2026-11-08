@@ -44,7 +44,7 @@ describe('AssignmentPicker', () => {
     ).toBeVisible();
   });
 
-  it('flags the unqualified and sinks them below the qualified (B-2)', () => {
+  it('does not offer an unqualified volunteer', () => {
     renderWithProviders(
       <AssignmentPicker
         open
@@ -70,15 +70,7 @@ describe('AssignmentPicker', () => {
       />,
     );
 
-    // The list still offers her — it is the deliberate "I know what I'm doing"
-    // surface — but it says what the pick will cost, and it is not the top one
-    // even though she is the more available of the two.
-    expect(screen.getByTestId('picker-option-unqualified')).toHaveTextContent(
-      'Not qualified — needs an override',
-    );
-    const names = screen
-      .getAllByTestId('picker-option-name')
-      .map((option) => option.textContent);
-    expect(names).toEqual(['Qualified Volunteer', 'Unqualified Volunteer']);
+    expect(screen.queryByText('Unqualified Volunteer')).not.toBeInTheDocument();
+    expect(screen.getByText('Qualified Volunteer')).toBeInTheDocument();
   });
 });

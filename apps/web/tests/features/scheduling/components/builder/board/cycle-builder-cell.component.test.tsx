@@ -254,8 +254,7 @@ describe('CycleBuilderCell', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers an unqualified selection with a warning instead of hiding it (B-2)', async () => {
-    const user = userEvent.setup();
+  it('does not offer assignment for an unqualified selection', async () => {
     const onSelect = vi.fn();
     renderCell({
       shift: {
@@ -270,37 +269,11 @@ describe('CycleBuilderCell', () => {
       onSelect,
     });
 
-    // Qualification is a soft constraint with friction, not a hard filter:
-    // the fit still surfaces as an assignable tier the cell renders...
-    expect(
-      screen.getByTestId('cycle-requirement-requirement-role-1'),
-    ).toHaveAttribute('data-selected-fit', 'unqualified');
-    // Dotted, not dashed: `unqualified` reads apart from `override` at a
-    // glance, without hovering, even though both share the amber "needs a
-    // reason" color (B-9).
-    expect(
-      screen.getByTestId('cycle-requirement-requirement-role-1'),
-    ).toHaveClass('outline-2', 'outline-dotted');
-    // ...and Add stays available beside it — selecting someone must not take
-    // away the picker from the cells where they don't qualify (B-7).
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
-
-    const assign = screen.getByRole('button', {
-      name: 'Assign Grace Hopper — Not qualified for this role — assigning is an override',
-    });
-    expect(assign).toHaveClass('text-yellow-700');
-
-    await user.click(assign);
-
-    // `overrideKindForFit()` translates the tier to `not_qualified`, which
-    // opens `OverrideDialog`'s not-qualified variant (FR-016) — the same path
-    // every other override reaches, never a silent commit.
-    expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        volunteerId: 'volunteer-1',
-        conflictType: 'not_qualified',
-      }),
-    );
+    expect(
+      screen.queryByRole('button', { name: /Assign Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('sends the conflict with an override assignment so a reason is captured (FR-016)', async () => {

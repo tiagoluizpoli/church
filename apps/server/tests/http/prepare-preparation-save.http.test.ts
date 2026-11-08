@@ -68,6 +68,7 @@ import {
   createSchedulingManagers,
   seedRequirement,
   seedRole,
+  seedRoleQualification,
   seedShift,
   seedVolunteerMembership,
 } from '@/tests/application/scheduling-schedule.helpers';
@@ -1456,11 +1457,16 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         base,
         peopleNeeded: 1,
       });
-      const { volunteer } = await seedVolunteerMembership({
+      const { volunteer, membership } = await seedVolunteerMembership({
         churchId: base.churchId,
         ministryId: base.ministryId,
         name: 'Racing Volunteer',
         email: `racing-${randomUUID()}@test.com`,
+      });
+      await seedRoleQualification({
+        churchId: base.churchId,
+        membershipId: membership.id,
+        roleId: base.roleId,
       });
       await db
         .update(ministryParticipation)

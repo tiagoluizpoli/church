@@ -37,6 +37,7 @@ import {
   dropTargetData,
 } from '../../../utils/builder/cycle-builder-dnd.utils';
 import {
+  isAssignableFit,
   overrideKindForFit,
   volunteerFitForShiftRole,
 } from '../../../utils/builder/cycle-builder-fit.utils';
@@ -303,10 +304,7 @@ export function CycleBuilderMatrix(props: Props) {
   // Everyone the leader may commit to the focused shift, each carrying the tier
   // that pick would land in — so the rail's own button can say what the pick
   // costs instead of presenting a conflict commit as frictionless (B-2).
-  // Qualification, like availability and double-booking, is an override path,
-  // not a hard filter — `assignableFits()` below includes `unqualified`. Two
-  // hard "no"s stay out: someone already serving this shift and anyone whose
-  // fit is `none`.
+  // Only Role holders without a conflicting assignment can be offered here.
   const focusedShiftAssigneeIds = focusedShift
     ? new Set(
         focusedShift.assignments
@@ -332,7 +330,7 @@ export function CycleBuilderMatrix(props: Props) {
       roleId: focused.roleId,
       volunteerId,
     });
-    if (fit.tier === 'none') return;
+    if (!isAssignableFit({ fit })) return;
     props.onSelectAssignment({
       volunteerId,
       shiftId: focused.shiftId,
@@ -343,7 +341,7 @@ export function CycleBuilderMatrix(props: Props) {
       )?.volunteerName,
       eventTimeBlockLabel: focused.eventTimeBlockLabel,
       roleLabel: focused.roleLabel,
-      // Whatever this pick has to justify — unavailable or not qualified —
+      // Whatever this pick has to justify — currently unavailability —
       // comes from the shared predicate, never from this call
       // site's own reading of the tier (FR-016).
       conflictType: overrideKindForFit({ fit }),

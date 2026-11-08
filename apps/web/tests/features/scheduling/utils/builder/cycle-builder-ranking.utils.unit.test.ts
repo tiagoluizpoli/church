@@ -160,7 +160,7 @@ describe('rankVolunteersForShiftRole', () => {
     expect(ranking.ids).toEqual(['released']);
   });
 
-  it('ranks unqualified volunteers last instead of dropping them (B-2)', () => {
+  it('excludes volunteers who do not hold the Role', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({
@@ -177,10 +177,10 @@ describe('rankVolunteersForShiftRole', () => {
     expect(
       rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
         .ids,
-    ).toEqual(['usher', 'greeter']);
+    ).toEqual(['usher']);
   });
 
-  it('ranks a conflicted qualified volunteer ahead of an unqualified one', () => {
+  it('excludes unqualified volunteers from the ranking', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({
@@ -207,7 +207,7 @@ describe('rankVolunteersForShiftRole', () => {
     expect(
       rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
         .ids,
-    ).toEqual(['unavailable', 'unqualified', 'double-booked']);
+    ).toEqual(['unavailable', 'double-booked']);
   });
 
   it('badges nobody as ideal when the ministry has configured no qualifications', () => {
@@ -233,7 +233,7 @@ describe('rankVolunteersForShiftRole', () => {
       roleId: 'role-1',
       assignments: [],
     });
-    expect(ranking.ids).toEqual(['ana', 'bruno']);
+    expect(ranking.ids).toEqual([]);
     expect(ranking.idealVolunteerId).toBeUndefined();
   });
 

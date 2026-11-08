@@ -3,47 +3,16 @@ import type {
   CycleBuilderShiftSummary,
 } from '../../hooks/use-cycle-builder';
 
-/**
- * How well one volunteer fits one shift×role. **This is the builder's only
- * qualification rule** — the rail's ranking, the picker's list, the picker's
- * recommendations, the board's reverse highlight and every drop target read it,
- * so no two gestures can enforce different rules (B-2).
- *
- * `ready`       — qualified and genuinely free: the obvious drop target.
- * `override`    — qualified but unavailable. Still assignable; overriding is a
- *                 real workflow, it just must not look routine — and FR-016
- *                 requires a confirmation before it is accepted.
- * `unqualified` — not qualified for this role, but still assignable: the
- *                 server only warns `NOT_QUALIFIED`, so hard-filtering here would
- *                 make the rail's "the leader can overrule" stance a lie
- *                 (B-2). Ranked last and routed to `OverrideDialog`'s
- *                 `not_qualified` variant by every gesture via
- *                 `overrideKindForFit()`.
- * `none`        — no gesture may offer it: not a candidate for this shift at
- *                 all (a hard `NOT_IN_MINISTRY` server-side), or double-booked
- *                 (a hard `DOUBLE_BOOKED`, never overridable).
- */
+/** A candidate's fit for a specific Shift and Role. */
 export type ShiftRoleFit =
   | { tier: 'ready' }
   | { tier: 'override' }
   | { tier: 'unqualified' }
   | { tier: 'none' };
 
-/**
- * Every tier a leader may actually commit — `ShiftRoleFit` minus `none`.
- * Includes `unqualified`: assignable with an override, not filtered out (B-2).
- */
-export type AssignableFitTier = Exclude<ShiftRoleFit, { tier: 'none' }>['tier'];
+export type AssignableFitTier = 'ready' | 'override';
 
-/**
- * What a caller would have to justify. Builder candidates are NOT
- * qualification-filtered before this translation runs — `'not_qualified'` is
- * a real, reachable value here, not a defensive-only case (B-2). The one
- * function that does filter qualification is `recommendations()`, and only
- * for its own suggestion groups: nobody is ever *recommended* into a reason
- * they did not ask for.
- */
-export type AssignmentOverrideKind = 'unavailable' | 'not_qualified';
+export type AssignmentOverrideKind = 'unavailable';
 
 interface OverrideKindForFitInput {
   fit: ShiftRoleFit;
@@ -58,7 +27,6 @@ interface OverrideKindForFitInput {
 export function overrideKindForFit({
   fit,
 }: OverrideKindForFitInput): AssignmentOverrideKind | undefined {
-  if (fit.tier === 'unqualified') return 'not_qualified';
   if (fit.tier === 'override') return 'unavailable';
   return undefined;
 }
@@ -67,22 +35,13 @@ interface IsAssignableFitInput {
   fit: ShiftRoleFit;
 }
 
-/**
- * Whether a leader may commit this pick at all. Only `none` (not a candidate
- * for this shift, or double-booked) is a hard no; qualification, like
- * availability, is overridable (B-2).
- *
- * Written as an exhaustive switch rather than `tier !== 'none'` so that adding
- * a fifth tier fails to compile here instead of silently defaulting to
- * assignable. `ShiftRoleFit` has already grown once (B-2 added `unqualified`),
- * and every such widening is a decision each predicate must make explicitly.
- */
 export function isAssignableFit({ fit }: IsAssignableFitInput): boolean {
   switch (fit.tier) {
     case 'ready':
     case 'override':
-    case 'unqualified':
       return true;
+    case 'unqualified':
+      return false;
     case 'none':
       return false;
   }
@@ -92,18 +51,6 @@ interface IsRecommendableFitInput {
   fit: ShiftRoleFit;
 }
 
-/**
- * Whether this pick may be *suggested*, which is a stronger claim than whether
- * it may be committed: recommending someone into an override reason they did
- * not go looking for is the one thing the picker must never do. So
- * `unqualified` is assignable (`isAssignableFit`) but not recommendable.
- *
- * This exists because `recommendations()` used to hand-roll the same rule as
- * `fit.tier !== 'unqualified'` while its two sibling consumers went through a
- * shared predicate — the exact "one rule, three spellings" drift that B-2 was
- * written to end and that has recurred three times in this directory.
- * Exhaustive for the same reason as `isAssignableFit`.
- */
 export function isRecommendableFit({ fit }: IsRecommendableFitInput): boolean {
   switch (fit.tier) {
     case 'ready':

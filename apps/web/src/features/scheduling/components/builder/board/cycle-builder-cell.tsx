@@ -73,7 +73,7 @@ interface CycleBuilderCellProps {
 const FIT_EXPLANATION: Record<ShiftRoleFit['tier'], string | undefined> = {
   ready: undefined,
   override: 'Not available for this shift — assigning is an override',
-  unqualified: 'Not qualified for this role — assigning is an override',
+  unqualified: 'Not qualified for this role',
   none: undefined,
 };
 

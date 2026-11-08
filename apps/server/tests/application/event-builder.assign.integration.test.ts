@@ -528,7 +528,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('excludes an unqualified ministry member from shift eligibility and flags their assignment as NOT_QUALIFIED', async () => {
+  it('excludes an unqualified ministry member and refuses their assignment', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -589,22 +589,20 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
     ).toBe(false);
 
     const assignmentManager = createAssignmentManager();
-    const result = await assignmentManager.createParticipationAssignment({
-      churchId: ChurchId.from(seed.churchAId),
-      shiftId: ShiftId.from(shiftId),
-      volunteerId: VolunteerId.from(unqualified.volunteerId),
-      shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
-      actorId: UserId.from(seed.adminUserId),
+    await expect(
+      assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shiftId),
+        volunteerId: VolunteerId.from(unqualified.volunteerId),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: shiftRequirementId,
+        }),
+        actorId: UserId.from(seed.adminUserId),
+      }),
+    ).rejects.toMatchObject({
+      code: 'HARD_CONSTRAINT_VIOLATION',
+      reason: 'NOT_QUALIFIED',
     });
-
-    // The gate is `hasRoleQualification`, ministry-scoped since the
-    // qualification-check bug fix — membership without an explicit role
-    // grant surfaces as a NOT_QUALIFIED warning on the assignment attempt.
-    expect(result.warnings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: 'NOT_QUALIFIED' }),
-      ]),
-    );
   });
 
   it('offers no eligible Volunteers for a Shift with no requirements, on both reads', async () => {

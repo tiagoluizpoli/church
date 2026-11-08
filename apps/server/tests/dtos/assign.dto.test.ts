@@ -139,14 +139,10 @@ describe('assignMapper', () => {
             type: 'FAIRNESS_EXCEEDED',
             details: 'volunteer over fairness limit',
           },
-          {
-            type: 'NOT_QUALIFIED',
-            details: 'volunteer is not qualified for this role',
-          },
         ],
       });
 
-      expect(response.warnings).toHaveLength(4);
+      expect(response.warnings).toHaveLength(3);
       expect(response.warnings[0]?.conflictingId).toBeUndefined();
       expect(response.warnings[1]?.conflictingId).toBe('a2');
       expect(

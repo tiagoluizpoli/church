@@ -3246,7 +3246,6 @@ export const CreateParticipationAssignment201WarningsItemType = {
   UNAVAILABLE: 'UNAVAILABLE',
   DOUBLE_BOOKED: 'DOUBLE_BOOKED',
   FAIRNESS_EXCEEDED: 'FAIRNESS_EXCEEDED',
-  NOT_QUALIFIED: 'NOT_QUALIFIED',
 } as const;
 
 export type CreateParticipationAssignment201WarningsItem = {

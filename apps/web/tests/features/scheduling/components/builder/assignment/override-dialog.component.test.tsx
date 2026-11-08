@@ -19,35 +19,6 @@ describe('OverrideDialog (T104)', () => {
     expect(screen.getByText(/John D\. is unavailable/i)).toBeVisible();
   });
 
-  it('names the role in the not-qualified variant (B-2)', async () => {
-    const user = userEvent.setup();
-    const onConfirm = vi.fn();
-    render(
-      <OverrideDialog
-        {...baseProps}
-        conflictType="not_qualified"
-        roleLabel="Sound"
-        onConfirm={onConfirm}
-      />,
-    );
-
-    // "isn't qualified for this role" would waste the variant — the whole
-    // point is that the leader is told which role she is forcing.
-    expect(
-      screen.getByText(/John D\. isn't qualified for Sound/i),
-    ).toBeVisible();
-
-    await user.click(screen.getByRole('button', { name: /assign anyway/i }));
-    expect(onConfirm).toHaveBeenCalledOnce();
-  });
-
-  it('falls back to generic role copy when the gesture sent no role name', () => {
-    render(<OverrideDialog {...baseProps} conflictType="not_qualified" />);
-    expect(
-      screen.getByText(/John D\. isn't qualified for this role/i),
-    ).toBeVisible();
-  });
-
   it('asks for no reason and confirms in one click', async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();

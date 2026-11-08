@@ -19,8 +19,6 @@ interface OverrideDialogProps {
   volunteerName: string;
   volunteerMembership?: AssigneeMembership;
   eventTimeBlockLabel: string;
-  /** The role being filled — named in the `not_qualified` variant's copy. */
-  roleLabel?: string;
   isPending: boolean;
   onConfirm: () => void;
 }
@@ -28,36 +26,27 @@ interface OverrideDialogProps {
 export function OverrideDialog({
   open,
   onOpenChange,
-  conflictType,
   volunteerName,
   volunteerMembership,
   eventTimeBlockLabel,
-  roleLabel,
   isPending,
   onConfirm,
 }: OverrideDialogProps) {
-  // Qualification is its own override, not a flavour of "unavailable": the
-  // server treats it as a separate `NOT_QUALIFIED` warning, and a leader
-  // forcing it is answering a different question.
-  const isNotQualified = conflictType === 'not_qualified';
   const name = formatVolunteerName(volunteerName);
-  const conflictText = isNotQualified
-    ? `${name} isn't qualified for ${roleLabel ?? 'this role'}`
-    : `${name} is unavailable`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-1">
-            {isNotQualified ? 'Assign anyway?' : 'Override conflict'}
+            Override conflict
             <AssigneeRoleBadge
               membership={volunteerMembership}
               fullNameOnExpand={volunteerName}
             />
           </DialogTitle>
           <DialogDescription>
-            {conflictText} for {eventTimeBlockLabel}.
+            {name} is unavailable for {eventTimeBlockLabel}.
           </DialogDescription>
         </DialogHeader>
 
@@ -77,11 +66,7 @@ export function OverrideDialog({
               onConfirm();
             }}
           >
-            {isPending
-              ? 'Saving…'
-              : isNotQualified
-                ? 'Assign anyway'
-                : 'Confirm Override'}
+            {isPending ? 'Saving…' : 'Confirm Override'}
           </Button>
         </DialogFooter>
       </DialogContent>

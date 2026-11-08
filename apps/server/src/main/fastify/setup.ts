@@ -36,6 +36,7 @@ import {
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
 import { requestLocale } from '../../api/utils/request-locale';
+import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
 import { auth } from '../di/server-auth';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
@@ -173,7 +174,10 @@ export async function createFastify({
       if (message === undefined) {
         request.log.warn({ code: error.code }, 'No catalog message for code');
       }
-      const reason = validationReason(error);
+      const reason =
+        error instanceof HardConstraintError && error.reason === 'NOT_QUALIFIED'
+          ? error.reason
+          : validationReason(error);
       const field = validationField(error);
       const blockers = archiveBlockers(error);
       const existing = existingInvitation(error);

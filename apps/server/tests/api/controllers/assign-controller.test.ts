@@ -321,8 +321,8 @@ describe('Assign routes', () => {
       }),
       warnings: [
         {
-          type: 'NOT_QUALIFIED',
-          details: 'Volunteer is not qualified for the requested role',
+          type: 'UNAVAILABLE',
+          details: 'Volunteer is unavailable',
         },
       ],
     });
@@ -361,8 +361,8 @@ describe('Assign routes', () => {
       },
       warnings: [
         {
-          type: 'NOT_QUALIFIED',
-          details: 'Volunteer is not qualified for the requested role',
+          type: 'UNAVAILABLE',
+          details: 'Volunteer is unavailable',
         },
       ],
     });

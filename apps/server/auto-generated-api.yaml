@@ -7675,7 +7675,6 @@ paths:
                             - UNAVAILABLE
                             - DOUBLE_BOOKED
                             - FAIRNESS_EXCEEDED
-                            - NOT_QUALIFIED
                         details:
                           type: string
                         conflictingId:

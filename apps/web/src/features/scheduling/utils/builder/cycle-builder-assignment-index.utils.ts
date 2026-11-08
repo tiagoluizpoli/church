@@ -157,9 +157,6 @@ export function candidates({
           ministryAccessLevel: volunteer.ministryAccessLevel,
         },
         availabilityStatus: volunteer.isAvailable ? 'available' : 'no_response',
-        // Not filtered out (B-2): the picker still lists an unqualified
-        // candidate, badged so the pick reads as needing a reason rather than
-        // being a free one.
         isQualified: fit.tier !== 'unqualified',
         // A candidate is never assigned to *this* shift (filtered above), so all
         // of their active assignments are elsewhere — the shift-scoped "other"
@@ -255,7 +252,7 @@ interface AssignableFitsInput {
  * that is what lets a card render "Pick me" as a warning for a pick that will
  * demand an override reason.
  *
- * Includes `unqualified` (B-2): "Pick me" offers everyone in the eligible pool,
+ * Only assignable fits are included: "Pick me" offers Role holders in the eligible pool,
  * rendering a costly pick as a warning rather than hiding the person.
  */
 export function assignableFits({
@@ -267,7 +264,9 @@ export function assignableFits({
   for (const volunteer of shift.eligibleVolunteers) {
     if (excludedVolunteerIds?.has(volunteer.volunteerId)) continue;
     const fit = shiftRoleFitForEligibleVolunteer({ volunteer, roleId });
-    if (fit.tier !== 'none') fits.set(volunteer.volunteerId, fit.tier);
+    if (fit.tier === 'ready' || fit.tier === 'override') {
+      fits.set(volunteer.volunteerId, fit.tier);
+    }
   }
   return fits;
 }

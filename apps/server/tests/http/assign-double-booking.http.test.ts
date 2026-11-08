@@ -323,6 +323,24 @@ describe('builder eligibility contract', () => {
           shiftId: seed.targetShiftId,
         });
     }
+    const unqualified = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unqualified',
+      email: 'eligibility-unqualified@test.com',
+    });
+    const shiftResponse = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/eligible-volunteers`,
+    });
+    expect(shiftResponse.statusCode).toBe(200);
+    expect(
+      shiftResponse
+        .json()
+        .volunteers.map(
+          (person: { volunteerId: string }) => person.volunteerId,
+        ),
+    ).not.toContain(unqualified.volunteer.id);
     const response = await app.inject({
       method: 'GET',
       url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
@@ -525,7 +543,49 @@ describe('reassign without a reason input', () => {
 });
 
 describe('requirement-bound Assignment HTTP contract', () => {
-  it('derives the Role and scope, warns for missing qualification, and preserves the Sector on replacement', async () => {
+  it('refuses an unqualified member on create and reassign', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const unqualified = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unqualified',
+      email: 'refusal@test.com',
+    });
+    const refused = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: unqualified.volunteer.id,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({
+      error: 'HARD_CONSTRAINT_VIOLATION',
+      reason: 'NOT_QUALIFIED',
+    });
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: seed.freeVolunteerId,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const reassigned = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${created.json().assignment.id}/reassign`,
+      payload: { volunteerId: unqualified.volunteer.id },
+    });
+    expect(reassigned.statusCode).toBe(409);
+    expect(reassigned.json()).toMatchObject({
+      error: 'HARD_CONSTRAINT_VIOLATION',
+      reason: 'NOT_QUALIFIED',
+    });
+  });
+
+  it('derives the Role and scope, accepts a Role holder, and preserves the Sector on replacement', async () => {
     const seed = await seedCrossMinistryOverlap();
     const sector = await buildSector({
       db: schedulingTestDb,
@@ -541,17 +601,22 @@ describe('requirement-bound Assignment HTTP contract', () => {
       sectorId: sector.id,
       peopleNeeded: 1,
     });
-    const unqualified = await seedVolunteerMembership({
+    const qualified = await seedVolunteerMembership({
       churchId: seed.churchId,
       ministryId: seed.ministryId,
       name: 'Unqualified',
       email: 'requirement-warning@test.com',
     });
+    await seedRoleQualification({
+      churchId: seed.churchId,
+      membershipId: qualified.membership.id,
+      roleId: seed.targetRoleId,
+    });
     const created = await app.inject({
       method: 'POST',
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
-        volunteerId: unqualified.volunteer.id,
+        volunteerId: qualified.volunteer.id,
         shiftRequirementId: requirement.id,
       },
     });
@@ -563,13 +628,13 @@ describe('requirement-bound Assignment HTTP contract', () => {
         participationId: seed.targetParticipationId,
         roleId: seed.targetRoleId,
       },
-      warnings: [{ type: 'NOT_QUALIFIED' }],
+      warnings: [],
     });
     const duplicate = await app.inject({
       method: 'POST',
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
-        volunteerId: unqualified.volunteer.id,
+        volunteerId: qualified.volunteer.id,
         shiftRequirementId: seed.targetRequirementId,
       },
     });

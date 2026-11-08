@@ -11,7 +11,6 @@ import {
 } from '../../utils/builder/cycle-builder-staffing.utils';
 import { OverrideDialog } from './assignment/override-dialog';
 import { AuditLogPanel } from './audit-log-panel';
-import type { CycleBuilderCellSelectInput } from './board/cycle-builder-cell';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
 import { CycleBuilderHeader } from './cycle-builder-header';
 import { Button } from '@/components/ui/button';
@@ -40,17 +39,6 @@ interface CycleBuilderProps {
   reassignAssignment: CycleBuilderMutations['reassignAssignment'];
   syncedAt?: number;
   isRefreshing?: boolean;
-}
-
-interface RoleLabelForInput {
-  input: CycleBuilderCellSelectInput;
-  data: CycleBuilderData;
-}
-
-function roleLabelFor({ input, data }: RoleLabelForInput): string | undefined {
-  return (
-    input.roleLabel ?? data.roles.find((role) => role.id === input.roleId)?.name
-  );
 }
 
 export function CycleBuilder({
@@ -294,11 +282,6 @@ export function CycleBuilder({
         volunteerMembership={actions.override?.volunteerMembership}
         eventTimeBlockLabel={
           actions.override?.input.eventTimeBlockLabel ?? 'this shift'
-        }
-        roleLabel={
-          actions.override
-            ? roleLabelFor({ input: actions.override.input, data })
-            : undefined
         }
         isPending={actions.isSaving}
         onConfirm={actions.confirmOverride}

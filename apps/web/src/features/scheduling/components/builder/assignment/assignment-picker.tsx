@@ -129,15 +129,13 @@ export function AssignmentPicker({
     return volunteers
       .filter(
         (volunteer) =>
+          volunteer.isQualified !== false &&
           (!shouldExcludeSuggestedVolunteers ||
             !suggestedVolunteerIds.has(volunteer.id)) &&
           (!q || volunteer.name.toLowerCase().includes(q)),
       )
       .sort(
         (a, b) =>
-          // Unqualified last: the list keeps offering them, but it never puts
-          // the pick that needs the most justification at the top.
-          Number(a.isQualified === false) - Number(b.isQualified === false) ||
           STATUS_RANK[a.availabilityStatus] - STATUS_RANK[b.availabilityStatus],
       );
   }, [
@@ -246,15 +244,6 @@ export function AssignmentPicker({
                   >
                     {v.name}
                   </span>
-                  {v.isQualified === false ? (
-                    <span
-                      className="mt-0.5 flex items-center gap-1 text-destructive text-xs"
-                      data-testid="picker-option-unqualified"
-                    >
-                      <TriangleAlertIcon className="size-3 shrink-0" />
-                      Not qualified — needs an override
-                    </span>
-                  ) : null}
                   {v.alreadyServingAssignments?.length ? (
                     v.alreadyServingAssignments.length === 1 ? (
                       <span className="mt-0.5 flex items-center gap-1 text-xs text-yellow-700 dark:text-yellow-300">

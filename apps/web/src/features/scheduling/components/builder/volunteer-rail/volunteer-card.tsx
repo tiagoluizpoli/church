@@ -186,7 +186,6 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
 const ASSIGN_FIT_WARNING: Record<AssignableFitTier, string> = {
   ready: '',
   override: 'not available for this shift, needs an override',
-  unqualified: 'not qualified for this role, needs an override',
 };
 
 interface VolunteerCardProps {
@@ -201,7 +200,7 @@ interface VolunteerCardProps {
    * it, to the tier that pick would land in. The card's action swaps from
    * "Select shift" to "Pick me": focus-then-pick is the builder's primary assign
    * path (B-2), so it is the filled primary button here while "Select shift"
-   * stays quiet. `override` and `unqualified` render it as a warning instead —
+   * stays quiet. `override` renders it as a warning instead —
    * a pick that will demand a reason must not look like a free one.
    */
   assignFit?: AssignableFitTier;
@@ -425,13 +424,8 @@ export function VolunteerCard({
             data-assign-fit={assignFit}
             className={cn(
               cornerActionClassName,
-              // Dashed = needs an availability override, dotted = needs a
-              // qualification override — same amber, different border style,
-              // so the two risk types read apart without hovering (B-9).
               assignFit === 'override' &&
                 'border-yellow-600/50 border-dashed text-yellow-700 dark:text-yellow-300',
-              assignFit === 'unqualified' &&
-                'border-yellow-600/50 border-dotted text-yellow-700 dark:text-yellow-300',
             )}
             onClick={() => onAssignToFocused(volunteer.volunteerId)}
           >

@@ -244,7 +244,7 @@ describe('assignedVolunteerIdsForShift', () => {
 });
 
 describe('candidates', () => {
-  it('lists an unqualified volunteer, badged as needing a reason rather than hidden', () => {
+  it('excludes an unqualified volunteer', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({ volunteerId: 'ana', volunteerName: 'Ana' }),
@@ -262,11 +262,7 @@ describe('candidates', () => {
       index: indexFor(makeData()),
     });
 
-    // B-2: qualification is a soft constraint. Hiding Diego here is the exact
-    // regression that shipped twice — the rail would say "no candidates" while
-    // this picker offered him, or vice versa.
-    expect(rows.map((row) => row.id)).toEqual(['ana', 'diego']);
-    expect(rows.find((row) => row.id === 'diego')?.isQualified).toBe(false);
+    expect(rows.map((row) => row.id)).toEqual(['ana']);
     expect(rows.find((row) => row.id === 'ana')?.isQualified).toBe(true);
   });
 
@@ -391,15 +387,11 @@ describe('recommendations', () => {
       index: indexFor(makeData()),
     });
 
-    // Recommending is a stronger claim than listing: `candidates()` offers
-    // the two who are not double-booked, but nobody is *suggested* into an
-    // override reason they did not go looking for. This is the
-    // `isRecommendableFit()` bar.
     expect(groups.safe).toEqual([]);
     expect(groups.needsResponse).toEqual([]);
     expect(
       candidates({ shift, roleId: 'role-1', index: indexFor(makeData()) }),
-    ).toHaveLength(2);
+    ).toHaveLength(0);
   });
 
   it('splits qualified volunteers into safe and needs-response groups, never suggesting the double-booked', () => {
@@ -529,7 +521,7 @@ describe('recommendations', () => {
 });
 
 describe('assignableFits', () => {
-  it('offers every assignable tier including unqualified, and honours exclusions', () => {
+  it('offers only Role holders and honours exclusions', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({ volunteerId: 'ready', volunteerName: 'Ana' }),
@@ -560,7 +552,7 @@ describe('assignableFits', () => {
 
     expect(fits.get('ready')).toBe('ready');
     expect(fits.get('override')).toBe('override');
-    expect(fits.get('unqualified')).toBe('unqualified');
+    expect(fits.has('unqualified')).toBe(false);
     expect(fits.has('excluded')).toBe(false);
     expect(fits.has('double-booked')).toBe(false);
   });
@@ -639,7 +631,7 @@ describe('buildCellDerivedIndex', () => {
     const vocals = derived.get(
       focusKey({ shiftRequirementId: 'requirement-role-2' }),
     );
-    expect(sound?.candidates.map((row) => row.id)).toEqual(['ana', 'diego']);
+    expect(sound?.candidates.map((row) => row.id)).toEqual(['ana']);
     expect(sound?.recommendations.safe.map((row) => row.id)).toEqual(['ana']);
     expect(vocals?.recommendations.safe.map((row) => row.id)).toEqual([
       'ana',

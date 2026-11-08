@@ -202,117 +202,101 @@ async function setUpTwoMinistryOverlapCycle({
   });
 }
 
-interface OpenWorshipCheckAndMarkOneShiftUnavailableParams {
-  page: Page;
-  journey: VolunteerAvailabilityJourney;
-}
-
-async function openWorshipCheckAndMarkOneShiftUnavailable({
-  page,
-  journey,
-}: OpenWorshipCheckAndMarkOneShiftUnavailableParams): Promise<void> {
-  await page.goto('/volunteer/availability');
-
-  await expect(page.getByTestId('availability-check-list')).toBeVisible();
-  // One check per ministry membership for the sent cycle: Worship (leader
-  // membership) and Care (volunteer membership). The journey's own Church
-  // holds no other cycle, so the ministry name alone selects one card.
-  const worshipCard = page
-    .getByTestId('availability-check-card')
-    .filter({ hasText: journey.ministries.worship.name })
-    .filter({ hasText: CYCLE_NAME });
-  await expect(worshipCard).toHaveCount(1);
-
-  const careCard = page
-    .getByTestId('availability-check-card')
-    .filter({ hasText: journey.ministries.care.name })
-    .filter({ hasText: CYCLE_NAME });
-  await expect(careCard).toHaveCount(1);
-
-  await worshipCard.click();
-
-  await expect(page.getByTestId('availability-check-detail')).toBeVisible();
-
-  const shiftRows = page.getByTestId('shift-availability-row');
-  expect(await shiftRows.count()).toBeGreaterThanOrEqual(2);
-
-  const unavailableShiftsResponsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/availability-checks/') &&
-      response.url().endsWith('/unavailable-shifts') &&
-      response.request().method() === 'PUT',
-  );
-  await shiftRows.first().getByTestId('mark-unavailable-toggle').click();
-  await page.getByTestId('save-unavailable-shifts-button').click();
-  const unavailableShiftsResponse = await unavailableShiftsResponsePromise;
-  expect(unavailableShiftsResponse.ok()).toBeTruthy();
-}
-
-test('volunteer in two ministries confirms despite a cross-ministry overlap', async ({
+test('J7: volunteers answer overlapping Ministry checks', async ({
   browser,
   page,
 }, testInfo) => {
   const journey = loadVolunteerAvailabilityJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.leader });
   await setUpTwoMinistryOverlapCycle({ page, journey });
+  await page.goto('/availability');
 
-  await openWorshipCheckAndMarkOneShiftUnavailable({ page, journey });
+  const worshipCard = page
+    .getByRole('link')
+    .filter({
+      hasText: journey.ministries.worship.name,
+    })
+    .filter({ hasText: CYCLE_NAME });
+  const careCard = page
+    .getByRole('link')
+    .filter({
+      hasText: journey.ministries.care.name,
+    })
+    .filter({ hasText: CYCLE_NAME });
+  await expect(worshipCard).toHaveCount(1);
+  await expect(careCard).toHaveCount(1);
+  await worshipCard.click();
 
-  const confirmResponsePromise = page.waitForResponse(
+  const shifts = page.getByRole('switch', {
+    name: 'Indisponível',
+    exact: true,
+  });
+  await expect(shifts.first()).toBeVisible();
+  expect(await shifts.count()).toBeGreaterThanOrEqual(2);
+  const days = page.getByRole('region').filter({ has: shifts });
+  expect(await days.count()).toBeGreaterThanOrEqual(2);
+  await expect(days.first().getByRole('heading', { level: 3 })).toBeVisible();
+  await shifts.first().click();
+  const answerRequests: string[] = [];
+  page.on('request', (request) => {
+    if (
+      request.url().includes('/availability-checks/') &&
+      request.method() === 'PUT'
+    ) {
+      answerRequests.push(request.url());
+    }
+  });
+  const answerResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/availability-checks/') &&
-      response.url().endsWith('/confirm') &&
-      response.request().method() === 'POST',
+      response.url().endsWith('/answer') &&
+      response.request().method() === 'PUT',
   );
-  await page.getByTestId('confirm-availability-button').click();
-  const confirmResponse = await confirmResponsePromise;
+  await page
+    .getByRole('button', { name: /Confirmar: indisponível para 1 de/ })
+    .click();
+  expect((await answerResponse).status()).toBe(200);
+  await expect(worshipCard).toContainText(
+    'Confirmada · indisponível para 1 de',
+  );
+  expect(answerRequests).toHaveLength(1);
 
-  // An overlap no longer blocks the confirm (DL2-VA-05).
-  expect(confirmResponse.status()).toBe(204);
+  // The remaining Worship shifts overlap Care's shifts; confirming Care must succeed.
+  await careCard.click();
+  const overlapResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/answer') &&
+      response.request().method() === 'PUT',
+  );
+  await page
+    .getByRole('button', { name: 'Confirmar: disponível para tudo' })
+    .click();
+  expect((await overlapResponse).status()).toBe(200);
+  await expect(careCard).toContainText('Confirmada, disponível para tudo');
+  expect(answerRequests).toHaveLength(2);
 
-  // A single-ministry volunteer's clean confirm still exercises the
-  // underlying availability-confirm flow, even though the leader-facing
-  // verification that used to follow it is gone — see the note below.
-  // Uses the volunteer persona, a member of Worship alone.
-  const singleMinistryActorContext = await newPersonaContext({
+  const volunteerContext = await newPersonaContext({
     browser,
     persona: journey.personas.volunteer,
   });
-  const singleMinistryActorPage = await singleMinistryActorContext.newPage();
-  await singleMinistryActorPage.goto('/volunteer/availability');
-
-  const cleanVolunteerCard = singleMinistryActorPage
-    .getByTestId('availability-check-card')
-    .filter({ hasText: CYCLE_NAME })
-    .filter({ hasText: journey.ministries.worship.name });
-  await expect(cleanVolunteerCard).toHaveCount(1);
-  await cleanVolunteerCard.click();
-  await expect(
-    singleMinistryActorPage.getByTestId('availability-check-detail'),
-  ).toBeVisible();
-
-  const singleMinistryConfirmResponsePromise =
-    singleMinistryActorPage.waitForResponse(
-      (response) =>
-        response.url().includes('/availability-checks/') &&
-        response.url().endsWith('/confirm') &&
-        response.request().method() === 'POST',
-    );
-  await singleMinistryActorPage
-    .getByTestId('confirm-availability-button')
+  const volunteerPage = await volunteerContext.newPage();
+  await volunteerPage.goto('/availability');
+  const volunteerCard = volunteerPage
+    .getByRole('link')
+    .filter({
+      hasText: journey.ministries.worship.name,
+    })
+    .filter({ hasText: CYCLE_NAME });
+  await expect(volunteerCard).toHaveCount(1);
+  await volunteerCard.click();
+  const cleanResponse = volunteerPage.waitForResponse(
+    (response) =>
+      response.url().endsWith('/answer') &&
+      response.request().method() === 'PUT',
+  );
+  await volunteerPage
+    .getByRole('button', { name: 'Confirmar: disponível para tudo' })
     .click();
-  const singleMinistryConfirmResponse =
-    await singleMinistryConfirmResponsePromise;
-  expect(singleMinistryConfirmResponse.status()).toBe(204);
-  await singleMinistryActorContext.close();
-
-  // KNOWN GAP: this test used to finish with the leader opening the
-  // prepare workspace to check a per-volunteer Acknowledged/Not-looked
-  // status list (`AvailabilityStatusSection`) showing this confirm next to
-  // Grace Hopper's untouched check. That view was dropped when the old
-  // event-card prepare UI (`participation-prepare.tsx`) was replaced
-  // by the day-grouped workspace in commit a04911d and was never rebuilt
-  // into the new UI — `availability-status-section.tsx` still exists but
-  // is unused by any route. Restore this assertion once that leader-facing
-  // view exists again.
+  expect((await cleanResponse).status()).toBe(200);
+  await expect(volunteerCard).toContainText('Confirmada, disponível para tudo');
+  await volunteerContext.close();
 });

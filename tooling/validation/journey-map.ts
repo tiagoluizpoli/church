@@ -87,6 +87,11 @@ const LEADER_AVAILABILITY_SPEC_PATHS = [
   'tests/scheduling/j6-leader-availability.spec.ts',
 ];
 
+// J7 (#754): a Volunteer answers independent Ministry checks.
+const VOLUNTEER_AVAILABILITY_SPEC_PATHS = [
+  'tests/scheduling/us3-volunteer-availability.spec.ts',
+];
+
 // Specs whose starting graph comes from a server E2E recipe (#327): their
 // own journey recipe, or the shared personas global setup loads (#330).
 const JOURNEY_RECIPE_SPEC_PATHS = [
@@ -116,7 +121,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/us1-admin-plan.spec.ts',
   'tests/scheduling/us2-leader-prepare.spec.ts',
   ...LEADER_AVAILABILITY_SPEC_PATHS,
-  'tests/scheduling/us3-volunteer-availability.spec.ts',
+  ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
@@ -142,7 +147,7 @@ const CYCLE_EDGE_SPEC_PATHS = [
 // planning-role-guard-matrix.spec.ts navigates all three scheduling routes
 // (cycles, prepare, and the assign builder — asserting
 // directly on the builder's `cycle-builder` testid), so it belongs in all
-// three journeys' maps. None of these navigate /volunteer/availability, so
+// three journeys' maps. None of these navigate the availability pages, so
 // that journey stays out.
 const PLANNING_ADMIN_SPEC_PATHS = [
   'tests/scheduling/event-templates.spec.ts',
@@ -168,10 +173,6 @@ const BUILDER_SPEC_PATHS = [
   'tests/scheduling/smoke.spec.ts',
 ];
 
-const AVAILABILITY_STATUS_SPEC_PATHS = [
-  'tests/scheduling/us3-volunteer-availability.spec.ts',
-];
-
 // Sourced from verified route-to-spec coupling (e.g. a spec's page.goto
 // target matches the route file's path). Each entry here is a mapped hit;
 // every production web/server path that matches none of them falls back to
@@ -185,6 +186,17 @@ const PREPARE_ROUTE_FILES = [
 ].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
 
 export const JOURNEY_MAP: JourneyMapping[] = [
+  ...[
+    'apps/web/src/routes/_authenticated/_active-church/availability.tsx',
+    'apps/web/src/routes/_authenticated/_active-church/availability_.$checkId.tsx',
+    'apps/web/src/features/volunteers/components/availability-list-page.tsx',
+    'apps/web/src/features/volunteers/components/availability-detail-page.tsx',
+    'apps/web/src/features/volunteers/hooks/use-availability-check-breadcrumb.ts',
+    'apps/web/src/features/volunteers/lib/unavailable-shifts.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: VOLUNTEER_AVAILABILITY_SPEC_PATHS,
+  })),
   ...[
     'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
     'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId.tsx',
@@ -270,27 +282,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
     specPaths: ['tests/scheduling/capability-index.spec.ts'],
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/volunteer',
-    specPaths: ['tests/scheduling/us3-volunteer-availability.spec.ts'],
-  },
-  // #289 — narrows to the individual files verified against each spec's
-  // page.goto target; see PLANNING_ADMIN_SPEC_PATHS/PREPARE_SPEC_PATHS/
-  // BUILDER_SPEC_PATHS/AVAILABILITY_STATUS_SPEC_PATHS above. The removed
-  // blanket `apps/web/src/features/scheduling/` prefix used to pull
-  // smoke/us3/us4/qualification/builder-event-time-block-focus/guard-matrix into every
-  // change under this tree regardless of which journey it belonged to.
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/scheduling/components/availability-status-section.tsx',
-    specPaths: AVAILABILITY_STATUS_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/scheduling/utils/availability-status.ts',
-    specPaths: AVAILABILITY_STATUS_SPEC_PATHS,
   },
   {
     // Rendered only within the planning-admin surface (planning-admin.tsx

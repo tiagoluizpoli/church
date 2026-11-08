@@ -9,6 +9,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useId, useState } from 'react';
+import { z } from 'zod';
 import {
   buildUnavailableShiftsBody,
   createInitialUnavailableShiftDraft,
@@ -16,6 +17,7 @@ import {
   toggleShiftUnavailable,
   toggleWholeDayUnavailable,
 } from '../lib/unavailable-shifts';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -27,9 +29,15 @@ import { CapabilityGate } from '@/shared/components/capability-gate';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import {
   formatCalendarDateOnly,
+  formatDayOf,
   formatInstantRangeOf,
 } from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
+
+const publishedRefusalSchema = z.object({
+  error: z.literal('SHIFT_PUBLISHED'),
+  shiftIds: z.array(z.string()),
+});
 
 export interface AvailabilityDetailPageProps {
   checkId: string;
@@ -44,17 +52,65 @@ interface AvailabilityAnswerProps {
 function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
   const { churchTimezone } = useTimezone();
   const switchPrefix = useId();
+  const editableShifts = check.shifts.filter((shift) => !shift.published);
   const [draft, setDraft] = useState(() =>
     createInitialUnavailableShiftDraft({
-      shifts: check.shifts,
+      shifts: editableShifts,
       timeZone: churchTimezone,
     }),
   );
   const queryClient = useQueryClient();
+  const [publishedRefusal, setPublishedRefusal] = useState(false);
   const answer = useMutation({
     mutationFn: () => {
       const body = buildUnavailableShiftsBody({ draft });
+      // A whole day containing a published Shift must be sent as individual marks.
+      body.wholeDayDates = body.wholeDayDates?.filter((day) =>
+        check.shifts.every(
+          (shift) =>
+            !shift.published ||
+            getShiftDate({ shift, timeZone: churchTimezone }) !== day,
+        ),
+      );
+      body.shiftIds = body.shiftIds.filter((id) =>
+        editableShifts.some((shift) => shift.shiftId === id),
+      );
       return volunteerApi.answerAvailabilityCheck(check.id, body);
+    },
+    onMutate: () => setPublishedRefusal(false),
+    onError: async (error) => {
+      const data: unknown = isAxiosError(error)
+        ? error.response?.data
+        : undefined;
+      const refusal = publishedRefusalSchema.safeParse(data);
+      if (!refusal.success) return;
+      setPublishedRefusal(true);
+      const refusedIds = new Set(refusal.data.shiftIds);
+      const pruneDraft = (detail: GetAvailabilityCheck200) => {
+        setDraft((current) => {
+          const remainingShifts = detail.shifts
+            .filter(
+              (shift) => !shift.published && !refusedIds.has(shift.shiftId),
+            )
+            .map((shift) => ({
+              ...shift,
+              available: !current.markedShiftIds.has(shift.shiftId),
+            }));
+          return createInitialUnavailableShiftDraft({
+            shifts: remainingShifts,
+            timeZone: churchTimezone,
+          });
+        });
+      };
+      pruneDraft(check);
+      await queryClient.invalidateQueries({
+        queryKey: ['availability-check', check.id],
+      });
+      const refreshed = queryClient.getQueryData<GetAvailabilityCheck200>([
+        'availability-check',
+        check.id,
+      ]);
+      if (refreshed) pruneDraft(refreshed);
     },
     onSuccess: async (updated) => {
       queryClient.setQueryData(['availability-check', check.id], updated);
@@ -66,8 +122,10 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
   });
   const unavailable = draft.markedShiftIds.size;
   const total = check.shifts.length;
-  const label =
-    unavailable === 0
+  const confirmed = check.state === 'confirmed';
+  const label = confirmed
+    ? m.availability_detail_save_changes()
+    : unavailable === 0
       ? m.availability_detail_confirm_all()
       : total === 1
         ? m.availability_detail_confirm_count_one({ unavailable, total })
@@ -111,6 +169,21 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
             </span>
           ) : null}
         </p>
+        {confirmed ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Badge>{m.availability_detail_confirmed()}</Badge>
+            {check.confirmedAt ? (
+              <time dateTime={check.confirmedAt}>
+                {m.availability_detail_confirmed_on({
+                  date: formatDayOf({
+                    value: check.confirmedAt,
+                    timeZone: churchTimezone,
+                  }),
+                })}
+              </time>
+            ) : null}
+          </div>
+        ) : null}
       </header>
       {[...days].map(([day, shifts]) => {
         const dayLabel = formatCalendarDayWithWeekday({
@@ -128,13 +201,17 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
                 {m.availability_detail_whole_day()}
                 <Switch
                   id={`${switchPrefix}-day-${day}`}
-                  disabled={answer.isPending}
+                  disabled={
+                    check.readOnly ||
+                    answer.isPending ||
+                    !shifts.some((shift) => !shift.published)
+                  }
                   checked={draft.wholeDayDates.has(day)}
                   onCheckedChange={() =>
                     setDraft((current) =>
                       toggleWholeDayUnavailable({
                         draft: current,
-                        shifts: check.shifts,
+                        shifts: editableShifts,
                         date: day,
                         timeZone: churchTimezone,
                       }),
@@ -160,6 +237,11 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
                         timeZone: churchTimezone,
                       })}
                     </p>
+                    {shift.published ? (
+                      <p className="text-muted-foreground text-sm">
+                        {m.availability_detail_published()}
+                      </p>
+                    ) : null}
                     {shift.label ? (
                       <p className="text-sm">{shift.label}</p>
                     ) : null}
@@ -171,13 +253,19 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
                     {m.availability_detail_unavailable()}
                     <Switch
                       id={`${switchPrefix}-shift-${shift.shiftId}`}
-                      disabled={answer.isPending}
-                      checked={draft.markedShiftIds.has(shift.shiftId)}
+                      disabled={
+                        check.readOnly || answer.isPending || shift.published
+                      }
+                      checked={
+                        shift.published
+                          ? !shift.available
+                          : draft.markedShiftIds.has(shift.shiftId)
+                      }
                       onCheckedChange={() =>
                         setDraft((current) =>
                           toggleShiftUnavailable({
                             draft: current,
-                            shifts: check.shifts,
+                            shifts: editableShifts,
                             shiftId: shift.shiftId,
                             timeZone: churchTimezone,
                           }),
@@ -191,25 +279,33 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
           </section>
         );
       })}
-      <div className="sticky bottom-20 z-10 border-t bg-background py-3 md:bottom-0">
-        <Button
-          size="touch"
-          className="h-auto min-h-11 w-full whitespace-normal"
-          disabled={answer.isPending}
-          onClick={() => answer.mutate()}
-        >
-          {answer.isPending
-            ? m.availability_detail_pending()
-            : answer.isError
-              ? m.availability_detail_answer_error()
-              : label}
-        </Button>
-        {answer.isError ? (
-          <p role="alert" className="pt-2 text-destructive text-sm">
-            {label}
-          </p>
-        ) : null}
-      </div>
+      {!check.readOnly ? (
+        <div className="sticky bottom-20 z-10 border-t bg-background py-3 md:bottom-0">
+          <Button
+            size="touch"
+            className="h-auto min-h-11 w-full whitespace-normal"
+            disabled={answer.isPending}
+            onClick={() => answer.mutate()}
+          >
+            {answer.isPending
+              ? confirmed
+                ? m.availability_detail_saving()
+                : m.availability_detail_pending()
+              : answer.isError
+                ? confirmed
+                  ? m.availability_detail_save_error()
+                  : m.availability_detail_answer_error()
+                : label}
+          </Button>
+          {answer.isError ? (
+            <p role="alert" className="pt-2 text-destructive text-sm">
+              {publishedRefusal
+                ? m.availability_detail_published_retry()
+                : label}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

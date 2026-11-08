@@ -1013,5 +1013,12 @@
   "answers_remind": "Lembrar quem não confirmou ({count})",
   "answers_remind_pending": "Enviando lembretes…",
   "answers_remind_cooldown": "Disponível novamente às {time}",
-  "answers_remind_error": "Não foi possível enviar os lembretes. Tente novamente."
+  "answers_remind_error": "Não foi possível enviar os lembretes. Tente novamente.",
+  "availability_detail_save_changes": "Salvar alterações",
+  "availability_detail_saving": "Salvando alterações…",
+  "availability_detail_save_error": "Não foi possível salvar as alterações. Tentar novamente",
+  "availability_detail_confirmed": "Confirmada",
+  "availability_detail_confirmed_on": "Confirmada em {date}",
+  "availability_detail_published": "Este turno já foi publicado. Se precisar de ajuda, acesse Minha escala de serviço.",
+  "availability_detail_published_retry": "Alguns turnos foram publicados. Revise as alterações restantes e tente novamente."
 }

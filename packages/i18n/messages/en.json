@@ -1013,5 +1013,12 @@
   "answers_remind": "Remind those who haven't confirmed ({count})",
   "answers_remind_pending": "Sending reminders…",
   "answers_remind_cooldown": "Available again at {time}",
-  "answers_remind_error": "Could not send reminders. Try again."
+  "answers_remind_error": "Could not send reminders. Try again.",
+  "availability_detail_save_changes": "Save changes",
+  "availability_detail_saving": "Saving changes…",
+  "availability_detail_save_error": "Could not save changes. Retry",
+  "availability_detail_confirmed": "Confirmed",
+  "availability_detail_confirmed_on": "Confirmed on {date}",
+  "availability_detail_published": "This Shift is published. If you need help, use My schedule.",
+  "availability_detail_published_retry": "Some Shifts were published. Review your remaining changes and try again."
 }

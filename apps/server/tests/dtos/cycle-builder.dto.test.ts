@@ -4,6 +4,12 @@ import { cycleBuilderResponseSchema } from '@/api/dtos/cycle-builder.dto';
 describe('cycleBuilderResponseSchema', () => {
   it('accepts a requirement without any mutation capability flag', () => {
     const response = {
+      cycle: {
+        id: 'cycle-1',
+        name: 'January',
+        startDate: '2027-01-01',
+        endDate: '2027-01-31',
+      },
       events: [
         {
           participation: {

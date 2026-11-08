@@ -464,7 +464,7 @@ export class DbParticipationManager implements IParticipationManager {
       churchId: input.churchId,
       id: input.ministryId,
     });
-    await this.cycleRepository.getById({
+    const cycle = await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
     });
@@ -556,7 +556,7 @@ export class DbParticipationManager implements IParticipationManager {
         name: role.name,
       }));
 
-      return { events, roles: roleOptions };
+      return { cycle, events, roles: roleOptions };
     });
   }
 

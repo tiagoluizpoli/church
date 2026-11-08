@@ -1,10 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
 import { useSchedulingAccessFallback } from '@/shared/hooks/use-scheduling-access-fallback';
-import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign',
@@ -24,11 +22,6 @@ function EventBuilderRoute() {
     deleteAssignment,
     reassignAssignment,
   } = useCycleBuilder({ cycleId, ministryId });
-  const cycleQuery = useQuery({
-    queryKey: ['assign-cycle', cycleId],
-    queryFn: () => adminApi.getCycle(cycleId),
-    retry: false,
-  });
 
   useSchedulingAccessFallback({ shouldRedirect: query.isError });
 
@@ -36,7 +29,7 @@ function EventBuilderRoute() {
     return null;
   }
 
-  if (query.isLoading || cycleQuery.isLoading || !cycleQuery.data || !data) {
+  if (query.isLoading || !query.data || !data) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-20 w-full" />
@@ -55,9 +48,9 @@ function EventBuilderRoute() {
         data={data}
         cycleId={cycleId}
         ministryId={ministryId}
-        cycleName={cycleQuery.data.cycle.name}
-        cycleStartDate={cycleQuery.data.cycle.startDate}
-        cycleEndDate={cycleQuery.data.cycle.endDate}
+        cycleName={query.data.cycle.name}
+        cycleStartDate={query.data.cycle.startDate}
+        cycleEndDate={query.data.cycle.endDate}
         isPublishing={publish.isPending}
         onPublish={(confirmBelowFull) => publish.mutate(confirmBelowFull)}
         createAssignment={createAssignment}

@@ -51,6 +51,12 @@ const ANA_ASSIGNMENT: RawAssignment = {
 
 function makeCycleBuilderData(): GetCycleBuilderData200 {
   return {
+    cycle: {
+      id: 'cycle-1',
+      name: 'August',
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    },
     roles: [{ id: 'role-1', name: 'Sound' }],
     events: [
       {

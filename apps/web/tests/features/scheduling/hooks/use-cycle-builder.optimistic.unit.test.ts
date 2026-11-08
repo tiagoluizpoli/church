@@ -31,6 +31,12 @@ const EXISTING_ASSIGNMENT: RawAssignment = {
 
 function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
   return {
+    cycle: {
+      id: 'cycle-1',
+      name: 'August',
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    },
     roles: [{ id: 'role-1', name: 'Sound' }],
     events: [
       {

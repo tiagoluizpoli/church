@@ -112,6 +112,7 @@ export interface CycleBuilderRoleOption {
 }
 
 export interface CycleBuilderView {
+  cycle: Cycle;
   events: CycleBuilderEventView[];
   roles: CycleBuilderRoleOption[];
 }

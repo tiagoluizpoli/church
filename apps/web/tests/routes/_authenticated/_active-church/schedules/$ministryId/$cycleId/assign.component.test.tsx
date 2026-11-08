@@ -3,13 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
-const getCycle = vi.fn();
 const getCycleBuilderData = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
-    getCycle: (...args: unknown[]) => getCycle(...args),
     getCycleBuilderData: (...args: unknown[]) => getCycleBuilderData(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
@@ -36,20 +34,16 @@ vi.mock('@/components/ui/sonner', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  getCycle.mockResolvedValue({
+  getCycleBuilderData.mockResolvedValue({
     cycle: {
       id: 'cycle-1',
-      churchId: 'church-1',
       name: 'August 2026',
-      startDate: '2026-07-10T00:00:00',
-      endDate: '2026-07-12T00:00:00',
-      state: 'sent',
-      createdAt: '2026-07-01T00:00:00',
-      updatedAt: '2026-07-01T00:00:00',
+      startDate: '2026-07-10',
+      endDate: '2026-07-12',
     },
+    roles: [],
     events: [],
   });
-  getCycleBuilderData.mockResolvedValue({ roles: [], events: [] });
 });
 
 describe('Assign board route', () => {
@@ -60,6 +54,8 @@ describe('Assign board route', () => {
     });
 
     const board = await screen.findByTestId('event-builder-route');
+    expect(screen.getAllByText(/August 2026/).length).toBeGreaterThan(0);
+    expect(screen.getByText('10/07 – 12/07/2026')).toBeVisible();
     expect(board).toHaveAttribute('data-ministry-id', 'ministry-1');
     expect(board).toHaveAttribute('data-cycle-id', 'cycle-1');
     expect(

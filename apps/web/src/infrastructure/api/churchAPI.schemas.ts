@@ -2847,6 +2847,15 @@ export type GetCycleBuilderDataParams = {
 ministryId: string;
 };
 
+export type GetCycleBuilderData200Cycle = {
+  id: string;
+  name: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+};
+
 export type GetCycleBuilderData200EventsItemParticipationState = typeof GetCycleBuilderData200EventsItemParticipationState[keyof typeof GetCycleBuilderData200EventsItemParticipationState];
 
 
@@ -3017,6 +3026,7 @@ export type GetCycleBuilderData200RolesItem = {
 };
 
 export type GetCycleBuilderData200 = {
+  cycle: GetCycleBuilderData200Cycle;
   events: GetCycleBuilderData200EventsItem[];
   roles: GetCycleBuilderData200RolesItem[];
 };

@@ -1020,5 +1020,13 @@
   "availability_detail_confirmed": "Confirmada",
   "availability_detail_confirmed_on": "Confirmada em {date}",
   "availability_detail_published": "Este turno já foi publicado. Se precisar de ajuda, acesse Minha escala de serviço.",
-  "availability_detail_published_retry": "Alguns turnos foram publicados. Revise as alterações restantes e tente novamente."
+  "availability_detail_published_retry": "Alguns turnos foram publicados. Revise as alterações restantes e tente novamente.",
+  "availability_list_empty": "Nada para responder agora. Seu líder vai avisar você.",
+  "availability_list_loading": "Carregando consultas de disponibilidade…",
+  "availability_list_error": "Não foi possível carregar as consultas de disponibilidade. Tente novamente.",
+  "availability_list_not_confirmed": "Ainda não confirmada",
+  "availability_list_confirmed_all": "Confirmada, disponível para tudo",
+  "availability_list_confirmed_count": "Confirmada · indisponível para {unavailable} de {total}",
+  "availability_list_answer_by": "Responda até {date}",
+  "availability_list_overdue": "Prazo vencido · era até {date}"
 }

@@ -187,7 +187,7 @@ const GROUP_HEADINGS: Record<NavGroup, (() => string) | null> = {
 };
 
 // Pages that light up an entry besides its own path: Home's page is still
-// /dashboard until Spec 31, Availability redirects into /volunteer/availability.
+// /dashboard until Spec 31; the legacy availability page remains active until removal.
 const EXTRA_ACTIVE_PATHS: Record<string, string[]> = {
   '/': ['/dashboard'],
   '/availability': ['/volunteer/availability'],

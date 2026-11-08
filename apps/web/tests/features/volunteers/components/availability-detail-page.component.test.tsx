@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { parseInstant, setTestClock } from '@church/time';
+import { QueryClient } from '@tanstack/react-query';
 import {
   createBrowserHistory,
   createMemoryHistory,
@@ -82,6 +83,7 @@ function renderPage(
   person = 'person',
   checkId = 'check-1',
   browser = false,
+  queryClient?: QueryClient,
 ) {
   const root = createRootRoute({ component: Outlet });
   const page = createRoute({
@@ -110,6 +112,7 @@ function renderPage(
   return {
     ...renderWithProviders(<RouterProvider router={router} />, {
       churchTimezone: 'America/Sao_Paulo',
+      queryClient,
     }),
     router,
   };
@@ -129,6 +132,205 @@ beforeEach(() => {
 });
 
 describe('Availability check page', () => {
+  it('reconciles a restored whole day after cached detail refetches without marking a newly added Shift', async () => {
+    localStorage.setItem(
+      'availability-draft:person:check-1',
+      '["morning", "evening"]',
+    );
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
+    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    api.getAvailabilityCheck.mockReturnValue(
+      new Promise<GetAvailabilityCheck200>((resolve) => {
+        resolveDetail = resolve;
+      }),
+    );
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage(vi.fn(), 'person', 'check-1', false, queryClient);
+    const day = (
+      await screen.findAllByRole('switch', {
+        name: m.availability_detail_whole_day(),
+      })
+    )[0];
+    expect(day).toBeChecked();
+    await act(async () =>
+      resolveDetail({
+        ...CHECK,
+        shifts: [
+          ...CHECK.shifts,
+          {
+            ...CHECK.shifts[1],
+            shiftId: 'added',
+            eventTitle: 'Added service',
+          },
+        ],
+      }),
+    );
+    await screen.findByText('Added service');
+    expect(day).not.toBeChecked();
+    const toggles = screen.getAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).toBeChecked();
+    expect(toggles[1]).not.toBeChecked();
+    expect(toggles[2]).toBeChecked();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_confirm_count({ unavailable: 2, total: 4 }),
+      }),
+    );
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['evening', 'morning'],
+      wholeDayDates: [],
+    });
+  });
+
+  it('preserves in-session edits while refetch prunes removed and published marks and updates untouched rows', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
+    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    api.getAvailabilityCheck.mockReturnValue(
+      new Promise<GetAvailabilityCheck200>((resolve) => {
+        resolveDetail = resolve;
+      }),
+    );
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage(vi.fn(), 'person', 'check-1', false, queryClient);
+    const days = await screen.findAllByRole('switch', {
+      name: m.availability_detail_whole_day(),
+    });
+    await userEvent.click(days[0]);
+    await userEvent.click(days[1]);
+    await act(async () =>
+      resolveDetail({
+        ...CHECK,
+        shifts: [
+          { ...CHECK.shifts[0], published: true },
+          CHECK.shifts[2],
+          { ...CHECK.shifts[1], shiftId: 'added', eventTitle: 'Added service' },
+        ],
+      }),
+    );
+    await screen.findByText('Added service');
+    expect(screen.queryByText('Culto da manhã')).not.toBeInTheDocument();
+    const toggles = screen.getAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).not.toBeChecked();
+    expect(toggles[1]).not.toBeChecked();
+    expect(toggles[1]).toHaveAttribute('aria-disabled', 'true');
+    expect(toggles[2]).toBeChecked();
+    expect(
+      screen.getAllByRole('switch', {
+        name: m.availability_detail_whole_day(),
+      })[0],
+    ).not.toBeChecked();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_confirm_count({ unavailable: 1, total: 3 }),
+      }),
+    );
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['next-day'],
+      wholeDayDates: ['2026-10-05'],
+    });
+    expect(localStorage.getItem('availability-draft:person:check-1')).toBe(
+      '["next-day"]',
+    );
+  });
+
+  it('follows refreshed server marks when the cached draft is untouched without inventing unsent changes', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
+    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    api.getAvailabilityCheck.mockReturnValue(
+      new Promise<GetAvailabilityCheck200>((resolve) => {
+        resolveDetail = resolve;
+      }),
+    );
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage(vi.fn(), 'person', 'check-1', false, queryClient);
+    await screen.findByText('Kids');
+    await act(async () =>
+      resolveDetail({
+        ...CHECK,
+        shifts: CHECK.shifts.map((shift) => ({
+          ...shift,
+          available: shift.shiftId !== 'morning',
+        })),
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('switch', {
+          name: m.availability_detail_unavailable(),
+        })[0],
+      ).toBeChecked(),
+    );
+    expect(
+      localStorage.getItem('availability-draft:person:check-1'),
+    ).toBeNull();
+    const closing = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(closing);
+    expect(closing.defaultPrevented).toBe(false);
+    await userEvent.click(screen.getByRole('button'));
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['morning'],
+      wholeDayDates: [],
+    });
+  });
+
+  it('keeps local additions and removals across repeated refetches while untouched rows follow the server', async () => {
+    const queryClient = new QueryClient();
+    const initial = {
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    };
+    api.getAvailabilityCheck.mockResolvedValue(initial);
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage(vi.fn(), 'person', 'check-1', false, queryClient);
+    const toggles = await screen.findAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    await userEvent.click(toggles[0]);
+    await userEvent.click(toggles[2]);
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...initial,
+      shifts: initial.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId === 'next-day',
+      })),
+    });
+    await act(() =>
+      queryClient.invalidateQueries({
+        queryKey: ['availability-check', 'check-1'],
+      }),
+    );
+    expect(toggles[0]).not.toBeChecked();
+    await waitFor(() => expect(toggles[1]).toBeChecked());
+    expect(toggles[2]).toBeChecked();
+    await act(() =>
+      queryClient.invalidateQueries({
+        queryKey: ['availability-check', 'check-1'],
+      }),
+    );
+    expect(toggles[0]).not.toBeChecked();
+    expect(toggles[1]).toBeChecked();
+    expect(toggles[2]).toBeChecked();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_confirm_count({ unavailable: 2, total: 3 }),
+      }),
+    );
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['evening', 'next-day'],
+      wholeDayDates: ['2026-10-05'],
+    });
+  });
+
   it('persists each toggle across a reload without leaking to another Person or check', async () => {
     const first = renderPage();
     const toggles = await screen.findAllByRole('switch', {

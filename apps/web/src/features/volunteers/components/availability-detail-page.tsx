@@ -107,7 +107,8 @@ function AvailabilityAnswer({
       const refusal = publishedRefusalSchema.safeParse(data);
       if (!refusal.success) return;
       setPublishedRefusal(true);
-      const refusedIds = new Set(refusal.data.shiftIds);
+      const { shiftIds } = refusal.data;
+      const refusedIds = new Set(shiftIds);
       const pruneDraft = (detail: GetAvailabilityCheck200) => {
         setDraft((current) => {
           const remainingShifts = detail.shifts
@@ -145,6 +146,10 @@ function AvailabilityAnswer({
   });
   const unavailable = draft.markedShiftIds.size;
   const total = check.shifts.length;
+  const locale = getLocale();
+  const confirmationDate = check.confirmedAt
+    ? formatDayOf({ value: check.confirmedAt, timeZone: churchTimezone })
+    : null;
   const confirmed = check.state === 'confirmed';
   const label = confirmed
     ? m.availability_detail_save_changes()
@@ -195,13 +200,10 @@ function AvailabilityAnswer({
         {confirmed ? (
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge>{m.availability_detail_confirmed()}</Badge>
-            {check.confirmedAt ? (
+            {check.confirmedAt && confirmationDate ? (
               <time dateTime={check.confirmedAt}>
                 {m.availability_detail_confirmed_on({
-                  date: formatDayOf({
-                    value: check.confirmedAt,
-                    timeZone: churchTimezone,
-                  }),
+                  date: confirmationDate,
                 })}
               </time>
             ) : null}
@@ -227,7 +229,7 @@ function AvailabilityAnswer({
       {[...days].map(([day, shifts]) => {
         const dayLabel = formatCalendarDayWithWeekday({
           day,
-          locale: getLocale(),
+          locale,
         });
         return (
           <section key={day} aria-label={dayLabel} className="space-y-2">

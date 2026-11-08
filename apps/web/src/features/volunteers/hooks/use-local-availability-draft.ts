@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { z } from 'zod';
 import {
   createInitialUnavailableShiftDraft,
@@ -10,6 +16,12 @@ interface LocalAvailabilityDraftInput {
   check: GetAvailabilityCheck200;
   userId: string;
   timeZone: string;
+}
+
+interface DraftSnapshot {
+  check: GetAvailabilityCheck200;
+  timeZone: string;
+  draft: UnavailableShiftDraft;
 }
 
 const storedMarksSchema = z.array(z.string());
@@ -28,17 +40,17 @@ export function useLocalAvailabilityDraft({
   const [initial] = useState(() => {
     if (check.readOnly) return serverDraft;
     try {
-      const stored: unknown = JSON.parse(
-        localStorage.getItem(storageKey) ?? 'null',
-      );
+      const storedJson = localStorage.getItem(storageKey) ?? 'null';
+      const stored: unknown = JSON.parse(storedJson);
       const parsed = storedMarksSchema.safeParse(stored);
       if (parsed.success) {
         const marks = new Set(parsed.data);
+        const restoredShifts = editableShifts.map((shift) => ({
+          ...shift,
+          available: !marks.has(shift.shiftId),
+        }));
         return createInitialUnavailableShiftDraft({
-          shifts: editableShifts.map((shift) => ({
-            ...shift,
-            available: !marks.has(shift.shiftId),
-          })),
+          shifts: restoredShifts,
           timeZone,
         });
       }
@@ -47,14 +59,48 @@ export function useLocalAvailabilityDraft({
     }
     return serverDraft;
   });
-  const [draft, setDraft] = useState(initial);
+  const cleared = useRef(false);
+  const [snapshot, setSnapshot] = useState<DraftSnapshot>(() => ({
+    check,
+    timeZone,
+    draft: initial,
+  }));
+  let { draft } = snapshot;
+  if (snapshot.check !== check || snapshot.timeZone !== timeZone) {
+    const { check: previousCheck } = snapshot;
+    const previousShiftEntries = previousCheck.shifts.map(
+      (shift) => [shift.shiftId, shift] as const,
+    );
+    const previousShifts = new Map(previousShiftEntries);
+    // Preserve only actual local edits; untouched rows follow the fresh server
+    // answer. Whole days describe visible marks, never intent for unseen Shifts.
+    const reconciledShifts = editableShifts.map((shift) => {
+      const previous = previousShifts.get(shift.shiftId);
+      const marked = draft.markedShiftIds.has(shift.shiftId);
+      const locallyEdited =
+        previous && !previous.published && marked === previous.available;
+      return {
+        ...shift,
+        available:
+          !check.readOnly && !cleared.current && locallyEdited
+            ? !marked
+            : shift.available,
+      };
+    });
+    draft = createInitialUnavailableShiftDraft({
+      shifts: reconciledShifts,
+      timeZone,
+    });
+    // Adjust during render so switches, counts, submission and persistence all
+    // observe the same reconciled detail before committing the refreshed page.
+    setSnapshot({ check, timeZone, draft });
+  }
   const differsFromServer = (value: UnavailableShiftDraft) =>
     !check.readOnly &&
     editableShifts.some(
       (shift) => value.markedShiftIds.has(shift.shiftId) === shift.available,
     );
   const [restored, setRestored] = useState(() => differsFromServer(initial));
-  const cleared = useRef(false);
   const hasUnsentChanges = differsFromServer(draft);
 
   useEffect(() => {
@@ -65,7 +111,8 @@ export function useLocalAvailabilityDraft({
         const marks = editableShifts
           .filter((shift) => draft.markedShiftIds.has(shift.shiftId))
           .map((shift) => shift.shiftId);
-        localStorage.setItem(storageKey, JSON.stringify(marks));
+        const serializedMarks = JSON.stringify(marks);
+        localStorage.setItem(storageKey, serializedMarks);
       }
     } catch {
       // A storage failure must not prevent answering the check.
@@ -83,11 +130,16 @@ export function useLocalAvailabilityDraft({
   };
   const discard = () => {
     clear();
-    setDraft(serverDraft);
+    setSnapshot({ check, timeZone, draft: serverDraft });
   };
-  const updateDraft: typeof setDraft = (next) => {
+  const updateDraft: Dispatch<SetStateAction<UnavailableShiftDraft>> = (
+    next,
+  ) => {
     cleared.current = false;
-    setDraft(next);
+    setSnapshot((current) => {
+      const nextDraft = typeof next === 'function' ? next(current.draft) : next;
+      return { ...current, draft: nextDraft };
+    });
   };
   return {
     draft,

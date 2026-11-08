@@ -721,10 +721,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // #217 — the volunteer controller's own-assignment cancel endpoint is what
   // proves a different volunteer gets a 403, not just a UI affordance. #218 —
   // it also owns the /notifications list, read, and read-all endpoints the
-  // bell and inbox call.
+  // bell and inbox call. #746 — its /answer endpoint also owns J7.
   {
     sourcePathPrefix: 'apps/server/src/api/controllers/volunteer-controller.ts',
     specPaths: [
+      ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
       'tests/scheduling/us5-leader-reassign.spec.ts',
       ...NOTIFICATION_BELL_SPEC_PATHS,
     ],

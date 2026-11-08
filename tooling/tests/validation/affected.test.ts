@@ -665,9 +665,12 @@ describe('classifyChanges', () => {
       changedPaths: ['apps/server/src/api/controllers/volunteer-controller.ts'],
     });
     expect(volunteerControllerPlan.e2eSpecPaths).toEqual([
+      'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us5-leader-reassign.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
     ]);
+
+    expect(volunteerControllerPlan.missingJourneyMappings).toEqual([]);
 
     const journeyRecipePlan = classifyChanges({
       changedPaths: [

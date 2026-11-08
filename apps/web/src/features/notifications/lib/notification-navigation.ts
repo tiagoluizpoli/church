@@ -51,16 +51,18 @@ export function resolveNotificationDestination(
         isFallback: false,
       };
     case 'availability_opened':
-    case 'availability_reminder':
+    case 'availability_reminder': {
+      const { checkId } = item.data;
       return {
-        target: item.data.checkId
+        target: checkId
           ? {
               to: '/availability/$checkId',
-              params: { checkId: item.data.checkId },
+              params: { checkId },
             }
           : { to: '/availability' },
         isFallback: false,
       };
+    }
     case 'schedule_published':
       return {
         target: {

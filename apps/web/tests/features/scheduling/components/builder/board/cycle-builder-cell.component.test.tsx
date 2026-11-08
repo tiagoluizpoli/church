@@ -116,6 +116,28 @@ function renderCell(
 }
 
 describe('CycleBuilderCell', () => {
+  it('offers People and Invitations when nobody holds the role', () => {
+    renderCell({
+      shift: { ...shift, eligibleVolunteers: [] },
+      roleLabel: 'Main · Greeter',
+      displayRoleLabel: 'Greeter',
+      pickerVolunteers: [],
+    });
+
+    expect(screen.getByText('Ninguém possui a função Greeter')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Pessoas' })).toHaveAttribute(
+      'href',
+      '/people',
+    );
+    expect(screen.getByRole('link', { name: 'Convites' })).toHaveAttribute(
+      'href',
+      '/invitations',
+    );
+    for (const link of screen.getAllByRole('link')) {
+      expect(link).toHaveAttribute('target', '_blank');
+    }
+  });
+
   it('shows one compact add chip while a role still has capacity', () => {
     renderCell({ assignments: [assignments[0]] });
 

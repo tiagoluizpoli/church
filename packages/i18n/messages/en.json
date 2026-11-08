@@ -102,6 +102,7 @@
   "error_invitation_unavailable": "This invitation is not available.",
   "nav_my_schedule": "My schedule",
   "nav_ministries": "Ministries",
+  "builder_no_role_holders": "No one holds {role}",
   "nav_people": "People",
   "nav_invitations": "Invitations",
   "shell_coming_soon": "Coming soon.",

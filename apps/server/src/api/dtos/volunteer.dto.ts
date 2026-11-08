@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type {
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
-  DashboardAvailabilityTask,
   MinistrySchedule,
   MinistryScheduleEvent,
   VolunteerAvailabilityCheckDetail,
@@ -87,11 +86,6 @@ export const answerConflictResponseSchema = z.object({
   shiftIds: z.array(z.string()).optional(),
 });
 
-export const setUnavailableShiftsBodySchema = z.object({
-  shiftIds: z.array(z.string()),
-  wholeDayDates: z.array(calendarDaySchema).optional(),
-});
-
 const dashboardAssignmentItemSchema = z.object({
   assignmentId: z.string(),
   eventTimeBlockId: z.string(),
@@ -123,26 +117,12 @@ type DashboardAssignmentGroupResponse = z.infer<
   typeof dashboardAssignmentGroupSchema
 >;
 
-const dashboardAvailabilityTaskSchema = z.object({
-  eventId: z.string(),
-  eventTitle: z.string(),
-  ministryId: z.string(),
-  ministryName: z.string(),
-  eventStart: instantSchema,
-  eventEnd: instantSchema,
-  completionState: z.enum(['missing', 'partial', 'complete']),
-});
-type DashboardAvailabilityTaskResponse = z.infer<
-  typeof dashboardAvailabilityTaskSchema
->;
-
 const dashboardMinistryOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
 });
 
 export const dashboardResponseSchema = z.object({
-  availabilityTasks: z.array(dashboardAvailabilityTaskSchema),
   upcomingAssignmentGroups: z.array(dashboardAssignmentGroupSchema),
   unreadNotificationCount: z.number(),
   notificationPreview: z.array(memberNotificationResponseSchema),
@@ -235,20 +215,6 @@ function availabilityCheckDetailToResponse(
   };
 }
 
-function dashboardAvailabilityTaskToResponse(
-  task: DashboardAvailabilityTask,
-): DashboardAvailabilityTaskResponse {
-  return {
-    eventId: task.eventId,
-    eventTitle: task.eventTitle,
-    ministryId: task.ministryId,
-    ministryName: task.ministryName,
-    eventStart: parseInstant({ value: task.eventStart }),
-    eventEnd: parseInstant({ value: task.eventEnd }),
-    completionState: task.completionState,
-  };
-}
-
 function dashboardAssignmentItemToResponse(
   item: DashboardAssignmentItem,
 ): DashboardAssignmentItemResponse {
@@ -284,9 +250,6 @@ function dashboardAssignmentGroupToResponse(
 
 function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
   return {
-    availabilityTasks: dashboard.availabilityTasks.map(
-      dashboardAvailabilityTaskToResponse,
-    ),
     upcomingAssignmentGroups: dashboard.upcomingAssignmentGroups.map(
       dashboardAssignmentGroupToResponse,
     ),

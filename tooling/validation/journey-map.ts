@@ -63,7 +63,6 @@ const VOLUNTEER_TRANSFER_SPEC_PATHS = [
 // dashboard-query-options' cached-snapshot reads) also drive the offline
 // experience proven by us5-offline, so it joins this shared group.
 const VOLUNTEER_DASHBOARD_SPEC_PATHS = [
-  'tests/volunteer-dashboard/us1-availability.spec.ts',
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
@@ -125,7 +124,6 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-  'tests/volunteer-dashboard/us1-availability.spec.ts',
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
@@ -577,21 +575,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix:
       'apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx',
     specPaths: ['tests/volunteer-dashboard/us5-offline.spec.ts'],
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/availability-needed-section.tsx',
-    specPaths: ['tests/volunteer-dashboard/us1-availability.spec.ts'],
-  },
-  {
-    // #218 — also renders the offline-disabled Save/edit affordances
-    // us5-offline asserts on.
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/availability-form.tsx',
-    specPaths: [
-      'tests/volunteer-dashboard/us1-availability.spec.ts',
-      'tests/volunteer-dashboard/us5-offline.spec.ts',
-    ],
   },
   // #216 — published-schedule visibility: the ministry-schedule dashboard
   // section is exercised directly by us4-ministry-schedule, and reused by

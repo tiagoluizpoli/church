@@ -24,7 +24,6 @@ function createVolunteerDashboardHookResult(
   return {
     assignmentGroups: [],
     availabilityEventTimeBlocks: [],
-    availabilityTasks: [],
     cancelAssignment: {
       isPending: false,
     },
@@ -85,19 +84,10 @@ describe('VolunteerDashboard empty-state regressions', () => {
     renderWithProviders(<VolunteerDashboard />);
 
     expect(
-      screen.getByRole('tab', { name: /Availability Needed/i }),
-    ).not.toHaveTextContent(/\d/);
-
-    expect(
       screen.getByText(
         'You are not currently scheduled for any upcoming published assignments.',
       ),
     ).toBeInTheDocument();
-
-    await user.click(screen.getByRole('tab', { name: /Availability Needed/i }));
-    expect(
-      screen.queryByText('Availability needed', { exact: true }),
-    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Ministry Schedule' }));
     expect(
@@ -105,41 +95,5 @@ describe('VolunteerDashboard empty-state regressions', () => {
         'Published events for this ministry will appear here when leaders finalize them.',
       ),
     ).toBeInTheDocument();
-  });
-
-  it('surfaces an outstanding availability task via the tab badge and its own tab content, without switching away from the default tab', async () => {
-    const user = userEvent.setup();
-
-    mockedUseVolunteerDashboard.mockReturnValue(
-      createVolunteerDashboardHookResult({
-        availabilityTasks: [
-          {
-            completionState: 'missing',
-            eventEnd: '2099-01-06T11:00:00.000Z',
-            eventId: 'event-1',
-            eventStart: '2099-01-06T09:00:00.000Z',
-            eventTitle: 'Youth Gathering',
-            ministryId: 'ministry-1',
-            ministryName: 'Adult Ministry',
-          },
-        ],
-      }),
-    );
-
-    renderWithProviders(<VolunteerDashboard />);
-
-    expect(screen.getByText('My Upcoming Assignments')).toBeInTheDocument();
-    expect(
-      screen.queryByText('Availability needed', { exact: true }),
-    ).not.toBeInTheDocument();
-
-    const availabilityTab = screen.getByRole('tab', {
-      name: /Availability Needed/i,
-    });
-    expect(availabilityTab).toHaveTextContent('1');
-
-    await user.click(availabilityTab);
-    expect(screen.getByText('Availability needed')).toBeInTheDocument();
-    expect(screen.getByText('Youth Gathering')).toBeInTheDocument();
   });
 });

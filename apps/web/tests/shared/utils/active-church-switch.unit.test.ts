@@ -43,7 +43,6 @@ describe('active Church route policy', () => {
       '/dashboard?section=availability#today',
     ],
     ['/notifications', '/dashboard'],
-    ['/volunteer/availability', '/dashboard'],
     ['/cycles', '/cycles'],
     ['/cycles/', '/cycles/'],
     ['/schedules/', '/schedules/'],

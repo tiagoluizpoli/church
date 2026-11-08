@@ -12,16 +12,6 @@ import type { Assignment } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { Notification } from '../../entities/notification';
 
-export interface DashboardAvailabilityTask {
-  eventId: string;
-  eventTitle: string;
-  ministryId: string;
-  ministryName: string;
-  eventStart: string;
-  eventEnd: string;
-  completionState: 'missing' | 'partial' | 'complete';
-}
-
 export interface DashboardAssignmentItem {
   assignmentId: string;
   eventTimeBlockId: string;
@@ -53,7 +43,6 @@ export interface DashboardMinistryOption {
 }
 
 export interface VolunteerDashboard {
-  availabilityTasks: DashboardAvailabilityTask[];
   upcomingAssignmentGroups: DashboardAssignmentGroup[];
   unreadNotificationCount: number;
   /** The caller's own latest member Notifications (User + Active Church). */
@@ -134,24 +123,13 @@ export interface GetAvailabilityCheckInput {
   churchId: ChurchId;
 }
 
-export interface SetUnavailableShiftsInput {
+export interface AnswerAvailabilityCheckInput {
   checkId: AvailabilityCheckId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
   shiftIds: ShiftId[];
   /** Church-local dates (`yyyy-MM-dd`); each expands to one unavailable shift per shift on that date. */
   wholeDayDates?: string[];
-}
-
-export interface ConfirmAvailabilityCheckInput {
-  checkId: AvailabilityCheckId;
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-}
-
-export interface ConfirmAvailabilityCheckResult {
-  state: AvailabilityCheckState;
-  confirmedAt: Instant;
 }
 
 export interface RespondToAssignmentInput {
@@ -206,14 +184,8 @@ export interface IVolunteerManager {
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
   answerAvailabilityCheck(
-    input: SetUnavailableShiftsInput,
+    input: AnswerAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
-  setUnavailableShifts(
-    input: SetUnavailableShiftsInput,
-  ): Promise<VolunteerAvailabilityCheckDetail>;
-  confirmAvailabilityCheck(
-    input: ConfirmAvailabilityCheckInput,
-  ): Promise<ConfirmAvailabilityCheckResult>;
   respondToAssignment(input: RespondToAssignmentInput): Promise<Assignment>;
   cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void>;
 }

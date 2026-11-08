@@ -5,7 +5,6 @@ import { useOnlineState } from './use-online-state';
 
 export interface DashboardRefreshVisibleData {
   assignmentGroups: unknown;
-  availabilityTasks: unknown;
   ministrySchedule: unknown;
 }
 

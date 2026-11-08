@@ -11,12 +11,10 @@ import {
 } from '@church/time';
 import type { MinistryId, ShiftId } from '../domain/branded-ids';
 import type {
+  AnswerAvailabilityCheckInput,
   CancelOwnAssignmentInput,
-  ConfirmAvailabilityCheckInput,
-  ConfirmAvailabilityCheckResult,
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
-  DashboardAvailabilityTask,
   GetAvailabilityCheckInput,
   GetDashboardInput,
   GetMinistryScheduleInput,
@@ -26,7 +24,6 @@ import type {
   ListAvailabilityChecksInput,
   MinistrySchedule,
   RespondToAssignmentInput,
-  SetUnavailableShiftsInput,
   VolunteerAvailabilityCheckDetail,
   VolunteerAvailabilityCheckSummary,
   VolunteerCheckShift,
@@ -52,8 +49,6 @@ import type {
   Assignment,
   AssignmentStatus,
 } from '../domain/entities/assignment';
-import type { EventTimeBlock } from '../domain/entities/event-time-block';
-import type { UnavailableShift } from '../domain/entities/unavailable-shift';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
@@ -77,45 +72,6 @@ interface DashboardAssignmentGroupDraft {
   ministryName: string;
   eventStart: string;
   items: DashboardAssignmentItem[];
-}
-
-interface EventTimeBlockKeyInput {
-  startTime: Instant;
-  endTime: Instant;
-}
-
-function eventTimeBlockKey({
-  startTime,
-  endTime,
-}: EventTimeBlockKeyInput): string {
-  return `${startTime}::${endTime}`;
-}
-
-interface AvailabilityCompletionStateInput {
-  entries: UnavailableShift[];
-  eventTimeBlocks: EventTimeBlock[];
-}
-
-function availabilityCompletionState({
-  entries,
-  eventTimeBlocks,
-}: AvailabilityCompletionStateInput): 'missing' | 'partial' | 'complete' {
-  if (eventTimeBlocks.length === 0) return 'missing';
-  const matchingKeys = new Set(
-    entries.map((e) =>
-      eventTimeBlockKey({
-        startTime: e.shiftStartTime,
-        endTime: e.shiftEndTime,
-      }),
-    ),
-  );
-  const answered = eventTimeBlocks.filter((s) =>
-    matchingKeys.has(
-      eventTimeBlockKey({ startTime: s.startTime, endTime: s.endTime }),
-    ),
-  ).length;
-  if (answered === 0) return 'missing';
-  return answered >= eventTimeBlocks.length ? 'complete' : 'partial';
 }
 
 function isPublishedStatus(
@@ -253,61 +209,6 @@ export class DbVolunteerManager implements IVolunteerManager {
       .map((m) => ({ id: m.id as string, name: m.name }));
 
     const ministryById = new Map(ministries.map((m) => [m.id, m]));
-
-    // Availability tasks: future events with incomplete availability
-    const availabilityTasksNested = await Promise.all(
-      ministries.map(async (ministry) => {
-        const events = await this.eventRepo.listByMinistry({
-          churchId,
-          ministryId: ministry.id as MinistryId,
-        });
-        return Promise.all(
-          events.map(
-            async (event): Promise<DashboardAvailabilityTask | null> => {
-              if (compareInstants({ left: event.start, right: now }) <= 0)
-                return null;
-              const eventWithEventTimeBlocks =
-                await this.eventRepo.getWithEventTimeBlocks({
-                  churchId,
-                  eventId: event.id,
-                });
-              if (eventWithEventTimeBlocks.eventTimeBlocks.length === 0)
-                return null;
-              const entries =
-                await this.unavailableShiftRepo.listByVolunteerForEvent({
-                  churchId,
-                  volunteerId,
-                  eventId: event.id,
-                });
-              const completionState = availabilityCompletionState({
-                entries,
-                eventTimeBlocks: eventWithEventTimeBlocks.eventTimeBlocks,
-              });
-              if (completionState === 'complete') return null;
-              return {
-                eventId: event.id as string,
-                eventTitle: event.title,
-                ministryId: ministry.id,
-                ministryName: ministry.name,
-                eventStart: event.start,
-                eventEnd: event.end,
-                completionState,
-              };
-            },
-          ),
-        );
-      }),
-    );
-
-    const availabilityTasks = availabilityTasksNested
-      .flat()
-      .filter((t): t is DashboardAvailabilityTask => t != null)
-      .sort((a, b) =>
-        compareInstants({
-          left: a.eventStart as Instant,
-          right: b.eventStart as Instant,
-        }),
-      );
 
     // Assignment groups: upcoming published assignments grouped by event
     const allAssignments = await this.listPublishedAssignmentsForVolunteer({
@@ -466,7 +367,6 @@ export class DbVolunteerManager implements IVolunteerManager {
       upcomingAssignmentGroups[0]?.ministryId ?? ministries[0]?.id;
 
     return {
-      availabilityTasks,
       upcomingAssignmentGroups,
       unreadNotificationCount,
       notificationPreview,
@@ -771,7 +671,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   }
 
   async answerAvailabilityCheck(
-    input: SetUnavailableShiftsInput,
+    input: AnswerAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail> {
     const context = await this.unitOfWork.run(async (tx) => {
       const owned = await this.getOwnedCheckContext({ ...input, tx });
@@ -842,66 +742,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     });
 
     return this.resolveCheckDetail({ context, input });
-  }
-
-  async setUnavailableShifts(
-    input: SetUnavailableShiftsInput,
-  ): Promise<VolunteerAvailabilityCheckDetail> {
-    const context = await this.unitOfWork.run(async (tx) => {
-      const context = await this.getOwnedCheckContext({ ...input, tx });
-      const shifts = await this.availabilityCheckRepo.listCheckShifts({
-        churchId: input.churchId,
-        checkId: input.checkId,
-        tx,
-      });
-
-      const wholeDayShiftIds = (input.wholeDayDates ?? []).flatMap((date) =>
-        expandWholeDayShiftIds({
-          churchDate: parseCalendarDay({ value: date }),
-          timeZone: context.timeZone,
-          shifts,
-        }),
-      );
-      const requestedShiftIds = [
-        ...new Set<ShiftId>([...input.shiftIds, ...wholeDayShiftIds]),
-      ];
-
-      assertUnavailableShiftsWithinScope({
-        candidateShiftIds: shifts.map((shift) => shift.shiftId),
-        requestedShiftIds,
-      });
-
-      await this.unavailableShiftRepo.replaceUnavailableShiftsForCheck({
-        churchId: input.churchId,
-        availabilityCheckId: input.checkId,
-        shiftIds: requestedShiftIds,
-        tx,
-      });
-      return context;
-    });
-
-    return this.resolveCheckDetail({ context, input });
-  }
-
-  async confirmAvailabilityCheck(
-    input: ConfirmAvailabilityCheckInput,
-  ): Promise<ConfirmAvailabilityCheckResult> {
-    return this.unitOfWork.run(async (tx) => {
-      const context = await this.getOwnedCheckContext({ ...input, tx });
-
-      // Entity transition guards the confirm gate (pending → confirmed, FR-019).
-      context.check.confirm();
-
-      const confirmedAt = context.check.confirmedAt ?? nowInstant();
-      await this.availabilityCheckRepo.confirm({
-        churchId: input.churchId,
-        checkId: input.checkId,
-        confirmedAt: toDate({ instant: confirmedAt }),
-        tx,
-      });
-
-      return { state: 'confirmed' as const, confirmedAt };
-    });
   }
 
   async respondToAssignment(

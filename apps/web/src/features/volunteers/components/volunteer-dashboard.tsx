@@ -1,40 +1,20 @@
 import { useDashboardRefresh } from '../hooks/use-dashboard-refresh';
 import { useVolunteerDashboard } from '../hooks/use-volunteer-dashboard';
-import {
-  mapAvailabilityEvent,
-  mapAvailabilityTask,
-} from '../lib/dashboard-mappers';
-import { AvailabilityForm } from './availability-form';
-import { AvailabilityNeededSection } from './availability-needed-section';
 import { BackgroundRefreshIndicator } from './background-refresh-indicator';
 import { DashboardOfflineBanner } from './dashboard-offline-banner';
 import { MinistryScheduleSection } from './ministry-schedule-section';
 import { UpcomingAssignmentsSection } from './upcoming-assignments-section';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useTimezone } from '@/shared/hooks/use-timezone';
 
-export type DashboardTabId =
-  | 'upcoming-assignments'
-  | 'availability-needed'
-  | 'ministry-schedule';
+export type DashboardTabId = 'upcoming-assignments' | 'ministry-schedule';
 
 export interface VolunteerDashboardProps {
-  initialSection?: 'availability' | 'assignments' | 'ministry_schedule';
-  initialEventId?: string;
+  initialSection?: 'assignments' | 'ministry_schedule';
   initialAssignmentId?: string;
   initialMinistryId?: string;
 }
 
 export const DASHBOARD_SECTION_OPTIONS = [
-  'availability',
   'assignments',
   'ministry_schedule',
 ] as const;
@@ -48,10 +28,6 @@ interface ResolveInitialTabIdInput {
 function resolveInitialTabId({
   initialSection,
 }: ResolveInitialTabIdInput): DashboardTabId {
-  if (initialSection === 'availability') {
-    return 'availability-needed';
-  }
-
   if (initialSection === 'ministry_schedule') {
     return 'ministry-schedule';
   }
@@ -61,14 +37,11 @@ function resolveInitialTabId({
 
 export function VolunteerDashboard({
   initialSection,
-  initialEventId,
   initialAssignmentId,
   initialMinistryId,
 }: VolunteerDashboardProps) {
-  const { churchTimezone } = useTimezone();
   const dashboard = useVolunteerDashboard({
     initialSection,
-    initialEventId,
     initialAssignmentId,
     initialMinistryId,
   });
@@ -76,7 +49,6 @@ export function VolunteerDashboard({
     onRefresh: dashboard.invalidateVolunteerDashboard,
     visibleData: {
       assignmentGroups: dashboard.assignmentGroups,
-      availabilityTasks: dashboard.availabilityTasks,
       ministrySchedule: dashboard.ministrySchedule?.events ?? [],
     },
   });
@@ -105,14 +77,6 @@ export function VolunteerDashboard({
             <TabsTrigger value="upcoming-assignments">
               Upcoming Assignments
             </TabsTrigger>
-            <TabsTrigger value="availability-needed">
-              Availability Needed
-              {dashboard.availabilityTasks.length > 0 ? (
-                <Badge variant="secondary">
-                  {dashboard.availabilityTasks.length}
-                </Badge>
-              ) : null}
-            </TabsTrigger>
             <TabsTrigger value="ministry-schedule">
               Ministry Schedule
             </TabsTrigger>
@@ -136,15 +100,6 @@ export function VolunteerDashboard({
           />
         </TabsContent>
 
-        <TabsContent value="availability-needed">
-          <AvailabilityNeededSection
-            tasks={dashboard.availabilityTasks.map((task) =>
-              mapAvailabilityTask({ task, timeZone: churchTimezone }),
-            )}
-            onOpenEvent={dashboard.setSelectedEventId}
-          />
-        </TabsContent>
-
         <TabsContent value="ministry-schedule">
           <MinistryScheduleSection
             ministries={dashboard.ministryOptions}
@@ -156,42 +111,6 @@ export function VolunteerDashboard({
           />
         </TabsContent>
       </Tabs>
-
-      <Dialog
-        open={dashboard.selectedTask != null}
-        onOpenChange={(open) => {
-          if (!open) {
-            dashboard.setSelectedEventId(undefined);
-          }
-        }}
-      >
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Availability editor</DialogTitle>
-            <DialogDescription>
-              Save your event-specific availability before the event begins.
-            </DialogDescription>
-          </DialogHeader>
-          {dashboard.selectedTask ? (
-            <AvailabilityForm
-              event={mapAvailabilityEvent(dashboard.selectedTask)}
-              eventTimeBlocks={dashboard.availabilityEventTimeBlocks}
-              isEditable={true}
-              isOnline={refresh.isOnline}
-              onSave={dashboard.handleSaveAvailability}
-              saveState={
-                dashboard.saveAvailability.isPending
-                  ? 'saving'
-                  : dashboard.saveAvailability.isSuccess
-                    ? 'saved'
-                    : dashboard.saveAvailability.isError
-                      ? 'error'
-                      : 'idle'
-              }
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

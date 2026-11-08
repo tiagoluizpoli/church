@@ -978,7 +978,7 @@ describe('development seed recipe', () => {
         query: sql`select count(*) as value from unavailable_shift`,
       }),
     ).toBe(326);
-    // confirmAvailabilityCheck refuses (flag off) while two unmarked Shifts
+    // the former confirmation operation refuses (flag off) while two unmarked Shifts
     // of different Ministries a Volunteer answers for intersect.
     expect(
       await queryCount({

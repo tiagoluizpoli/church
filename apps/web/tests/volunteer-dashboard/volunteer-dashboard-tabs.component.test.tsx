@@ -24,7 +24,6 @@ function createVolunteerDashboardHookResult(
   return {
     assignmentGroups: [],
     availabilityEventTimeBlocks: [],
-    availabilityTasks: [],
     cancelAssignment: {
       isPending: false,
     },
@@ -70,27 +69,6 @@ function createVolunteerDashboardHookResult(
 
 const mockedUseVolunteerDashboard = vi.mocked(useVolunteerDashboard);
 
-const availabilityTasksFixture = [
-  {
-    completionState: 'missing' as const,
-    eventEnd: '2099-01-06T11:00:00.000Z',
-    eventId: 'event-1',
-    eventStart: '2099-01-06T09:00:00.000Z',
-    eventTitle: 'Youth Gathering',
-    ministryId: 'ministry-1',
-    ministryName: 'Adult Ministry',
-  },
-  {
-    completionState: 'partial' as const,
-    eventEnd: '2099-01-07T11:00:00.000Z',
-    eventId: 'event-2',
-    eventStart: '2099-01-07T09:00:00.000Z',
-    eventTitle: 'Sunday Service',
-    ministryId: 'ministry-1',
-    ministryName: 'Adult Ministry',
-  },
-];
-
 describe('VolunteerDashboard tabs', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -98,51 +76,20 @@ describe('VolunteerDashboard tabs', () => {
 
   it('defaults to the Upcoming Assignments tab and keeps other tab content unmounted', () => {
     mockedUseVolunteerDashboard.mockReturnValue(
-      createVolunteerDashboardHookResult({
-        availabilityTasks: availabilityTasksFixture,
-      }),
+      createVolunteerDashboardHookResult(),
     );
 
     renderWithProviders(<VolunteerDashboard />);
 
     expect(screen.getByText('My Upcoming Assignments')).toBeInTheDocument();
-    expect(screen.queryByText('Availability needed')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('tab', { name: /Availability Needed/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText(
         'Browse published schedule rows without leader-only conflict or audit details.',
       ),
     ).not.toBeInTheDocument();
-  });
-
-  it('shows an outstanding-count badge on the Availability Needed tab without switching to it', () => {
-    mockedUseVolunteerDashboard.mockReturnValue(
-      createVolunteerDashboardHookResult({
-        availabilityTasks: availabilityTasksFixture,
-      }),
-    );
-
-    renderWithProviders(<VolunteerDashboard />);
-
-    const availabilityTab = screen.getByRole('tab', {
-      name: /Availability Needed/i,
-    });
-
-    expect(availabilityTab).toHaveTextContent('2');
-    expect(screen.queryByText('Availability needed')).not.toBeInTheDocument();
-  });
-
-  it('omits the outstanding-count badge when there are no outstanding availability tasks', () => {
-    mockedUseVolunteerDashboard.mockReturnValue(
-      createVolunteerDashboardHookResult({ availabilityTasks: [] }),
-    );
-
-    renderWithProviders(<VolunteerDashboard />);
-
-    const availabilityTab = screen.getByRole('tab', {
-      name: /Availability Needed/i,
-    });
-
-    expect(availabilityTab).not.toHaveTextContent(/\d/);
   });
 
   it('renders Ministry Schedule content only when its tab is active', async () => {
@@ -169,25 +116,6 @@ describe('VolunteerDashboard tabs', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('switches to the Availability Needed tab on click and shows its content', async () => {
-    const user = userEvent.setup();
-
-    mockedUseVolunteerDashboard.mockReturnValue(
-      createVolunteerDashboardHookResult({
-        availabilityTasks: availabilityTasksFixture,
-      }),
-    );
-
-    renderWithProviders(<VolunteerDashboard />);
-
-    await user.click(screen.getByRole('tab', { name: /Availability Needed/i }));
-
-    expect(screen.getByText('Availability needed')).toBeInTheDocument();
-    expect(
-      screen.queryByText('My Upcoming Assignments'),
-    ).not.toBeInTheDocument();
-  });
-
   // #219, right-sized from home-landing.spec.ts, which looped over 4 role
   // storage states: '/' unconditionally redirects here
   // (route-protection.spec.ts proves the redirect itself) for every role.
@@ -201,9 +129,7 @@ describe('VolunteerDashboard tabs', () => {
   // must never resurface on this surface.
   it('never renders the leftover starter-template banner or a duplicate Events list', () => {
     mockedUseVolunteerDashboard.mockReturnValue(
-      createVolunteerDashboardHookResult({
-        availabilityTasks: availabilityTasksFixture,
-      }),
+      createVolunteerDashboardHookResult(),
     );
 
     renderWithProviders(<VolunteerDashboard />);

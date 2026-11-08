@@ -13,8 +13,7 @@ describe('dashboard query options', () => {
     window.localStorage.setItem(
       'volunteer-dashboard:snapshot',
       JSON.stringify({
-        availabilityTasks: [{ eventId: 'event-1' }],
-        upcomingAssignmentGroups: [],
+        upcomingAssignmentGroups: [{ eventId: 'event-1' }],
         ministryOptions: [],
         notificationUnreadCount: 0,
         fetchedAt: '2026-06-30T12:00:00.000Z',
@@ -25,7 +24,7 @@ describe('dashboard query options', () => {
 
     expect(config.initialData).toBeUndefined();
     expect(config.placeholderData?.()).toMatchObject({
-      availabilityTasks: [{ eventId: 'event-1' }],
+      upcomingAssignmentGroups: [{ eventId: 'event-1' }],
     });
     expect(config.refetchOnMount).toBe('always');
   });
@@ -34,8 +33,7 @@ describe('dashboard query options', () => {
     window.localStorage.setItem(
       'volunteer-dashboard:snapshot',
       JSON.stringify({
-        availabilityTasks: [{ eventId: 'event-2' }],
-        upcomingAssignmentGroups: [],
+        upcomingAssignmentGroups: [{ eventId: 'event-2' }],
         ministryOptions: [],
         notificationUnreadCount: 0,
         fetchedAt: '2026-06-30T12:00:00.000Z',
@@ -46,7 +44,7 @@ describe('dashboard query options', () => {
 
     expect(config.placeholderData).toBeUndefined();
     expect(config.initialData?.()).toMatchObject({
-      availabilityTasks: [{ eventId: 'event-2' }],
+      upcomingAssignmentGroups: [{ eventId: 'event-2' }],
     });
     expect(config.refetchOnMount).toBe(false);
   });

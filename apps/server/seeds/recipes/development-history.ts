@@ -923,7 +923,7 @@ async function askAvailabilityRound({
     }
   }
 
-  // confirmAvailabilityCheck refuses, with the overlap flag off, while two
+  // the former confirmation operation refuses, with the overlap flag off, while two
   // unmarked Shifts of different Ministries intersect, so every cross-Ministry
   // Volunteer marked one side of each overlapping pair: the side they do not
   // serve, or else their second Ministry on odd weeks and their first on even.

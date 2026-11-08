@@ -190,7 +190,6 @@ const GROUP_HEADINGS: Record<NavGroup, (() => string) | null> = {
 // /dashboard until Spec 31; the legacy availability page remains active until removal.
 const EXTRA_ACTIVE_PATHS: Record<string, string[]> = {
   '/': ['/dashboard'],
-  '/availability': ['/volunteer/availability'],
 };
 
 // Static URL segment -> catalog label. A spec adding a segment adds it here.

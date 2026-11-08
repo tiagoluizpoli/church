@@ -411,25 +411,11 @@ describe('classifyChanges', () => {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
       expect(plan.e2eSpecPaths).toEqual([
-        'tests/volunteer-dashboard/us1-availability.spec.ts',
         'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
         'tests/volunteer-dashboard/us5-offline.spec.ts',
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
     }
-  });
-
-  it('selects only the Availability journey for the availability-needed section', () => {
-    const plan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/features/volunteers/components/availability-needed-section.tsx',
-      ],
-    });
-
-    expect(plan.e2eSpecPaths).toEqual([
-      'tests/volunteer-dashboard/us1-availability.spec.ts',
-    ]);
-    expect(plan.missingJourneyMappings).toEqual([]);
   });
 
   it('falls back to the critical smoke set for the upcoming-assignments section', () => {
@@ -456,20 +442,6 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects the offline and availability journeys for the availability form', () => {
-    const plan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/features/volunteers/components/availability-form.tsx',
-      ],
-    });
-
-    expect(plan.e2eSpecPaths).toEqual([
-      'tests/volunteer-dashboard/us1-availability.spec.ts',
-      'tests/volunteer-dashboard/us5-offline.spec.ts',
-    ]);
-    expect(plan.missingJourneyMappings).toEqual([]);
-  });
-
   it('selects both the dashboard and notification-bell journeys for use-online-state', () => {
     const plan = classifyChanges({
       changedPaths: [
@@ -479,7 +451,6 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us1-availability.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
@@ -512,7 +483,6 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us1-availability.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
@@ -542,7 +512,6 @@ describe('classifyChanges', () => {
       'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us4-schedule-publish.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us1-availability.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
@@ -740,7 +709,6 @@ describe('classifyChanges', () => {
       'tests/scheduling/us4-schedule-publish.spec.ts',
       'tests/scheduling/us5-leader-reassign.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us1-availability.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);

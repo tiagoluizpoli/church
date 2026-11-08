@@ -25,9 +25,7 @@ export const dashboardSearchSchema = removedFromSearchSchema
   .extend(churchOnlyWarningSearchSchema.shape)
   .extend(ministryInvitationResultSearchSchema.shape)
   .extend({
-    section: z
-      .enum(['availability', 'assignments', 'ministry_schedule'])
-      .optional(),
+    section: z.enum(['assignments', 'ministry_schedule']).optional(),
     eventId: z.string().optional(),
     assignmentId: z.string().optional(),
     ministryId: z.string().optional(),
@@ -100,7 +98,6 @@ export function DashboardEntry({ search, volunteerName }: DashboardEntryProps) {
       />
       <VolunteerDashboard
         initialSection={search.section}
-        initialEventId={search.eventId}
         initialAssignmentId={search.assignmentId}
         initialMinistryId={search.ministryId}
       />

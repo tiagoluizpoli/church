@@ -295,19 +295,6 @@ describe('AppShell flat nav per persona (F7)', () => {
     ).toHaveAttribute('aria-current', 'page');
   });
 
-  it('marks Availability active on /volunteer/availability', () => {
-    asPersona({ hasVolunteerMembership: true });
-    mockPathname = '/volunteer/availability';
-
-    renderShell();
-
-    expect(
-      within(screen.getByTestId('sidebar')).getByRole('link', {
-        name: m.nav_availability(),
-      }),
-    ).toHaveAttribute('aria-current', 'page');
-  });
-
   it('targets Home at / and never shows a Dashboard entry', () => {
     asPersona();
 

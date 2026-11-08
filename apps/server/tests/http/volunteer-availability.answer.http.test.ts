@@ -312,6 +312,81 @@ describe('Volunteer answers through PostgreSQL', () => {
     expect(await db.select().from(outboxMessage)).toEqual([]);
   });
 
+  it('preserves a published unavailable mark while editable marks change or are cleared', async () => {
+    const { check, shift, graph, churchId, ministryId, period, role } =
+      await seedAnswer();
+    const editableGraph = await createSchedulingPhase3EventGraph({
+      churchId,
+      ministryId,
+      cycleId: period.id,
+      title: 'Editable Service',
+      start: new Date('2026-09-08T12:00:00Z'),
+      end: new Date('2026-09-08T14:00:00Z'),
+      status: 'scheduled',
+    });
+    const editable = await seedShift({
+      churchId,
+      participationId: editableGraph.participation.id,
+      eventTimeBlockId: editableGraph.eventTimeBlock.id,
+      startTime: new Date('2026-09-08T12:00:00Z'),
+      endTime: new Date('2026-09-08T14:00:00Z'),
+      label: 'Editable',
+    });
+    await seedRequirement({
+      churchId,
+      participationId: editableGraph.participation.id,
+      shiftId: editable.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    const initial = await app.inject({
+      method: 'PUT',
+      url: `${ROOT}/${check.id}/answer`,
+      payload: { shiftIds: [shift.id] },
+    });
+    expect(initial.statusCode).toBe(200);
+    await db
+      .update(ministryParticipation)
+      .set({ state: 'published' })
+      .where(eq(ministryParticipation.id, graph.participation.id));
+    setTestClock({ instant: parseInstant({ value: '2026-09-08T12:00:00Z' }) });
+    for (const editableMarks of [[editable.id], []]) {
+      const response = await app.inject({
+        method: 'PUT',
+        url: `${ROOT}/${check.id}/answer`,
+        payload: { shiftIds: editableMarks },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        state: 'confirmed',
+        confirmedAt: initial.json().confirmedAt,
+        shifts: [
+          { shiftId: shift.id, published: true, available: false },
+          {
+            shiftId: editable.id,
+            published: false,
+            available: editableMarks.length === 0,
+          },
+        ],
+      });
+      const storedMarks = await db
+        .select()
+        .from(unavailableShift)
+        .where(eq(unavailableShift.availabilityCheckId, check.id));
+      expect(storedMarks.map((mark) => mark.shiftId).sort()).toEqual(
+        [shift.id, ...editableMarks].sort(),
+      );
+      const [storedCheck] = await db
+        .select()
+        .from(availabilityCheck)
+        .where(eq(availabilityCheck.id, check.id));
+      expect(storedCheck?.confirmedAt?.toISOString()).toBe(
+        initial.json().confirmedAt,
+      );
+      expect(await db.select().from(outboxMessage)).toEqual([]);
+    }
+  });
+
   it('rolls marks back when confirming fails in PostgreSQL', async () => {
     const { check, shift, churchId } = await seedAnswer();
     await buildUnavailableShift({

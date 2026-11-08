@@ -33,6 +33,8 @@ export default defineConfig({
       },
     }),
   ],
+  // Keep the lazy availability route from triggering a reload of active pages.
+  optimizeDeps: { include: ['@base-ui/react/switch'] },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

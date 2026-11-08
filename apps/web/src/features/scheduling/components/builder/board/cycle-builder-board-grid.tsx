@@ -18,7 +18,10 @@ import {
   type FocusedShift,
   focusKey,
 } from '../../../utils/builder/cycle-builder-shift-lookup.utils';
-import { staffingStatusClasses } from '../../../utils/builder/cycle-builder-staffing.utils';
+import {
+  countCoveredPlaces,
+  staffingStatusClasses,
+} from '../../../utils/builder/cycle-builder-staffing.utils';
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
@@ -210,119 +213,184 @@ export function CycleBuilderBoardGrid({
                                         `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`}
                                     </p>
                                     <div className="space-y-2">
-                                      {shift.requirements.map((requirement) => {
-                                        const assignments =
-                                          shift.assignments.filter(
-                                            (assignment) =>
-                                              assignment.shiftRequirementId ===
-                                                requirement.id &&
-                                              isActiveAssignment({
-                                                status: assignment.status,
-                                              }),
-                                          );
-                                        const roleName =
-                                          data.roles.find(
-                                            (role) =>
-                                              role.id === requirement.roleId,
-                                          )?.name ?? 'Role';
-                                        const roleLabel = `${requirement.sectorName} · ${roleName}`;
-                                        const requirementFocusKey = focusKey({
-                                          shiftRequirementId: requirement.id,
-                                        });
-                                        const cellDerived =
-                                          cellDerivedByKey.get(
-                                            requirementFocusKey,
-                                          );
-                                        const suggestionGroups =
-                                          cellDerived?.recommendations ?? {
-                                            safe: [],
-                                            needsResponse: [],
-                                          };
-                                        const focusOnRequirement = () =>
-                                          onFocusRequirement({
-                                            key: requirementFocusKey,
-                                            label: buildFocusLabel({
-                                              roleLabel,
-                                              eventTimeBlockLabel:
-                                                eventTimeBlock.label ??
-                                                'this shift',
-                                              eventTitle: event.title,
-                                              dateText: dateLabel({
-                                                day: date,
-                                                locale: getLocale(),
-                                              }),
-                                            }),
-                                            shiftId: shift.shiftId,
-                                            shiftRequirementId: requirement.id,
-                                            roleId: requirement.roleId,
-                                            roleLabel,
-                                            eventTimeBlockLabel:
-                                              eventTimeBlock.label ??
-                                              'this shift',
-                                            ...rankVolunteersForShiftRole({
-                                              shift,
-                                              roleId: requirement.roleId,
-                                              assignments: data.assignments,
-                                            }),
-                                          });
-                                        return (
-                                          <CycleBuilderCell
-                                            key={requirement.id}
-                                            shift={shift}
-                                            shiftRequirementId={requirement.id}
-                                            roleId={requirement.roleId}
-                                            roleLabel={roleLabel}
-                                            peopleNeeded={
-                                              requirement.peopleNeeded
+                                      {[
+                                        ...new Set(
+                                          shift.requirements.map(
+                                            (requirement) =>
+                                              requirement.sectorId ??
+                                              requirement.sectorName,
+                                          ),
+                                        ),
+                                      ].map((sectorKey) => (
+                                        <fieldset
+                                          key={sectorKey}
+                                          className="space-y-2"
+                                        >
+                                          <legend className="px-1 font-semibold text-foreground">
+                                            {
+                                              shift.requirements.find(
+                                                (requirement) =>
+                                                  (requirement.sectorId ??
+                                                    requirement.sectorName) ===
+                                                  sectorKey,
+                                              )?.sectorName
                                             }
-                                            assignments={assignments}
-                                            pickerVolunteers={
-                                              cellDerived?.candidates ?? []
-                                            }
-                                            suggestions={suggestionGroups.safe}
-                                            needsResponseSuggestions={
-                                              suggestionGroups.needsResponse
-                                            }
-                                            eventTimeBlockLabel={
-                                              eventTimeBlock.label ??
-                                              'this shift'
-                                            }
-                                            selectedVolunteerId={
-                                              selectedVolunteerId
-                                            }
-                                            selectedVolunteerName={
-                                              selectedVolunteerName
-                                            }
-                                            isPublished={
-                                              event.state === 'published'
-                                            }
-                                            isFocused={
-                                              focusedKey === requirementFocusKey
-                                            }
-                                            onFocus={focusOnRequirement}
-                                            onToggleFocus={() => {
-                                              if (
-                                                focusedKey ===
-                                                requirementFocusKey
-                                              )
-                                                onClearFocus();
-                                              else focusOnRequirement();
-                                            }}
-                                            onSelect={onSelectAssignment}
-                                            onRemove={onRemoveAssignment}
-                                            failedWrites={failedWritesByCell.get(
-                                              requirementFocusKey,
-                                            )}
-                                            onRetryFailedWrite={
-                                              onRetryFailedWrite
-                                            }
-                                            onDismissFailedWrite={
-                                              onDismissFailedWrite
-                                            }
-                                          />
-                                        );
-                                      })}
+                                          </legend>
+                                          {shift.requirements
+                                            .filter(
+                                              (requirement) =>
+                                                (requirement.sectorId ??
+                                                  requirement.sectorName) ===
+                                                sectorKey,
+                                            )
+                                            .map((requirement) => {
+                                              const assignments =
+                                                shift.assignments.filter(
+                                                  (assignment) =>
+                                                    assignment.shiftRequirementId ===
+                                                      requirement.id &&
+                                                    isActiveAssignment({
+                                                      status: assignment.status,
+                                                    }),
+                                                );
+                                              const roleName =
+                                                data.roles.find(
+                                                  (role) =>
+                                                    role.id ===
+                                                    requirement.roleId,
+                                                )?.name ?? 'Role';
+                                              const roleLabel = `${requirement.sectorName} · ${roleName}`;
+                                              const requirementFocusKey =
+                                                focusKey({
+                                                  shiftRequirementId:
+                                                    requirement.id,
+                                                });
+                                              const cellDerived =
+                                                cellDerivedByKey.get(
+                                                  requirementFocusKey,
+                                                );
+                                              const suggestionGroups =
+                                                cellDerived?.recommendations ?? {
+                                                  safe: [],
+                                                  needsResponse: [],
+                                                };
+                                              const focusOnRequirement = () =>
+                                                onFocusRequirement({
+                                                  key: requirementFocusKey,
+                                                  label: buildFocusLabel({
+                                                    roleLabel,
+                                                    eventTimeBlockLabel:
+                                                      eventTimeBlock.label ??
+                                                      'this shift',
+                                                    eventTitle: event.title,
+                                                    dateText: dateLabel({
+                                                      day: date,
+                                                      locale: getLocale(),
+                                                    }),
+                                                  }),
+                                                  shiftId: shift.shiftId,
+                                                  shiftRequirementId:
+                                                    requirement.id,
+                                                  roleId: requirement.roleId,
+                                                  roleLabel,
+                                                  eventTimeBlockLabel:
+                                                    eventTimeBlock.label ??
+                                                    'this shift',
+                                                  ...rankVolunteersForShiftRole(
+                                                    {
+                                                      shift,
+                                                      roleId:
+                                                        requirement.roleId,
+                                                      assignments:
+                                                        data.assignments,
+                                                    },
+                                                  ),
+                                                });
+                                              return (
+                                                <CycleBuilderCell
+                                                  key={requirement.id}
+                                                  shift={shift}
+                                                  shiftRequirementId={
+                                                    requirement.id
+                                                  }
+                                                  roleId={requirement.roleId}
+                                                  roleLabel={roleLabel}
+                                                  displayRoleLabel={roleName}
+                                                  peopleNeeded={
+                                                    requirement.peopleNeeded
+                                                  }
+                                                  assignments={assignments}
+                                                  pickerVolunteers={
+                                                    cellDerived?.candidates ??
+                                                    []
+                                                  }
+                                                  suggestions={
+                                                    suggestionGroups.safe
+                                                  }
+                                                  needsResponseSuggestions={
+                                                    suggestionGroups.needsResponse
+                                                  }
+                                                  eventTimeBlockLabel={
+                                                    eventTimeBlock.label ??
+                                                    'this shift'
+                                                  }
+                                                  selectedVolunteerId={
+                                                    selectedVolunteerId
+                                                  }
+                                                  selectedVolunteerName={
+                                                    selectedVolunteerName
+                                                  }
+                                                  isPublished={
+                                                    event.state === 'published'
+                                                  }
+                                                  isFocused={
+                                                    focusedKey ===
+                                                    requirementFocusKey
+                                                  }
+                                                  onFocus={focusOnRequirement}
+                                                  onToggleFocus={() => {
+                                                    if (
+                                                      focusedKey ===
+                                                      requirementFocusKey
+                                                    )
+                                                      onClearFocus();
+                                                    else focusOnRequirement();
+                                                  }}
+                                                  onSelect={onSelectAssignment}
+                                                  onRemove={onRemoveAssignment}
+                                                  failedWrites={failedWritesByCell.get(
+                                                    requirementFocusKey,
+                                                  )}
+                                                  onRetryFailedWrite={
+                                                    onRetryFailedWrite
+                                                  }
+                                                  onDismissFailedWrite={
+                                                    onDismissFailedWrite
+                                                  }
+                                                />
+                                              );
+                                            })}
+                                        </fieldset>
+                                      ))}
                                     </div>
+                                    <p
+                                      className="border-t pt-2 text-right font-medium text-muted-foreground"
+                                      data-testid={`cycle-shift-footer-${shift.shiftId}`}
+                                    >
+                                      {(() => {
+                                        const needed =
+                                          shift.requirements.reduce(
+                                            (total, requirement) =>
+                                              total + requirement.peopleNeeded,
+                                            0,
+                                          );
+                                        const empty =
+                                          needed - countCoveredPlaces(shift);
+                                        return empty === 0
+                                          ? 'Full'
+                                          : `${empty} empty`;
+                                      })()}
+                                    </p>
                                   </section>
                                 ))}
                               </div>

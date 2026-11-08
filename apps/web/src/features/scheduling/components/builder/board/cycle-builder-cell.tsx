@@ -40,6 +40,7 @@ interface CycleBuilderCellProps {
   shiftRequirementId: string;
   roleId: string;
   roleLabel: string;
+  displayRoleLabel?: string;
   peopleNeeded: number;
   assignments: CycleBuilderAssignment[];
   pickerVolunteers: PickerVolunteer[];
@@ -105,6 +106,7 @@ export function CycleBuilderCell({
   shiftRequirementId,
   roleId,
   roleLabel,
+  displayRoleLabel,
   peopleNeeded,
   assignments,
   pickerVolunteers,
@@ -267,7 +269,7 @@ export function CycleBuilderCell({
     >
       <div className="flex items-center justify-between gap-2">
         <RoleFocusButton
-          roleLabel={roleLabel}
+          roleLabel={displayRoleLabel ?? roleLabel}
           shiftRequirementId={shiftRequirementId}
           isFocused={isFocused ?? false}
           onToggleFocus={onToggleFocus}

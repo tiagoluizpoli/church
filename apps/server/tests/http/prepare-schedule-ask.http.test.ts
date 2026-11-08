@@ -466,7 +466,13 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
     expect(queued.every(({ kind }) => kind === 'availability_opened')).toBe(
       true,
     );
-    expect(queued[0]?.data).toEqual({ cycleId, ministryId });
+    for (const volunteer of [holder, holderOfTwoRoles]) {
+      const check = checks.find(
+        (row) => row.ministryMembershipId === volunteer.membershipId,
+      );
+      const notice = queued.find(({ to }) => to.userId === volunteer.userId);
+      expect(notice?.data).toEqual({ cycleId, ministryId, checkId: check?.id });
+    }
   });
 
   interface ExpectNothingWrittenInput {

@@ -8034,6 +8034,10 @@ paths:
                             data:
                               type: object
                               properties:
+                                checkId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 cycleId:
                                   type: string
                                   format: uuid
@@ -8099,6 +8103,10 @@ paths:
                             data:
                               type: object
                               properties:
+                                checkId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 cycleId:
                                   type: string
                                   format: uuid
@@ -11330,42 +11338,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  availabilityTasks:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        eventId:
-                          type: string
-                        eventTitle:
-                          type: string
-                        ministryId:
-                          type: string
-                        ministryName:
-                          type: string
-                        eventStart:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        eventEnd:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        completionState:
-                          type: string
-                          enum:
-                            - missing
-                            - partial
-                            - complete
-                      required:
-                        - eventId
-                        - eventTitle
-                        - ministryId
-                        - ministryName
-                        - eventStart
-                        - eventEnd
-                        - completionState
-                      additionalProperties: false
                   upcomingAssignmentGroups:
                     type: array
                     items:
@@ -11533,6 +11505,10 @@ paths:
                             data:
                               type: object
                               properties:
+                                checkId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 cycleId:
                                   type: string
                                   format: uuid
@@ -11598,6 +11574,10 @@ paths:
                             data:
                               type: object
                               properties:
+                                checkId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 cycleId:
                                   type: string
                                   format: uuid
@@ -11814,7 +11794,6 @@ paths:
                         - name
                       additionalProperties: false
                 required:
-                  - availabilityTasks
                   - upcomingAssignmentGroups
                   - unreadNotificationCount
                   - notificationPreview
@@ -12025,6 +12004,11 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        answerBy:
+                          nullable: true
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
                         totalShiftCount:
                           type: number
                         unavailableShiftCount:
@@ -12036,6 +12020,7 @@ paths:
                         - ministryId
                         - ministryName
                         - state
+                        - answerBy
                         - totalShiftCount
                         - unavailableShiftCount
                       additionalProperties: false
@@ -12064,6 +12049,13 @@ paths:
               schema:
                 type: object
                 properties:
+                  answerBy:
+                    nullable: true
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  readOnly:
+                    type: boolean
                   id:
                     type: string
                   cycleId:
@@ -12106,6 +12098,8 @@ paths:
                           type: string
                         available:
                           type: boolean
+                        published:
+                          type: boolean
                       required:
                         - shiftId
                         - eventId
@@ -12113,8 +12107,11 @@ paths:
                         - startTime
                         - endTime
                         - available
+                        - published
                       additionalProperties: false
                 required:
+                  - answerBy
+                  - readOnly
                   - id
                   - cycleId
                   - cycleName
@@ -12138,10 +12135,10 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/volunteer/availability-checks/{checkId}/unavailable-shifts:
+  /api/v1/volunteer/availability-checks/{checkId}/answer:
     put:
-      operationId: setUnavailableShifts
-      summary: Set unavailable shifts on an AvailabilityCheck
+      operationId: answerAvailabilityCheck
+      summary: Answer an AvailabilityCheck
       tags:
         - volunteer
       description: Record the current Volunteer's unavailable shifts — by Shift or by
@@ -12157,6 +12154,8 @@ paths:
                   type: array
                   items:
                     type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                 wholeDayDates:
                   type: array
                   items:
@@ -12179,6 +12178,13 @@ paths:
               schema:
                 type: object
                 properties:
+                  answerBy:
+                    nullable: true
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  readOnly:
+                    type: boolean
                   id:
                     type: string
                   cycleId:
@@ -12221,6 +12227,8 @@ paths:
                           type: string
                         available:
                           type: boolean
+                        published:
+                          type: boolean
                       required:
                         - shiftId
                         - eventId
@@ -12228,8 +12236,11 @@ paths:
                         - startTime
                         - endTime
                         - available
+                        - published
                       additionalProperties: false
                 required:
+                  - answerBy
+                  - readOnly
                   - id
                   - cycleId
                   - cycleName
@@ -12253,31 +12264,7 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/volunteer/availability-checks/{checkId}/confirm:
-    post:
-      operationId: confirmAvailabilityCheck
-      summary: Confirm an AvailabilityCheck
-      tags:
-        - volunteer
-      description: Confirm the current Volunteer's AvailabilityCheck, recording
-        confirmedAt even when no unavailable shifts were left.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: checkId
-          required: true
-      responses:
-        "204":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: string
-                nullable: true
-                enum:
-                  - null
-        "404":
+        "409":
           description: Default Response
           content:
             application/json:
@@ -12286,8 +12273,16 @@ paths:
                 properties:
                   error:
                     type: string
+                    enum:
+                      - SHIFT_PUBLISHED
+                      - ILLEGAL_STATE_TRANSITION
+                      - CROSS_MINISTRY_SCOPE
                   message:
                     type: string
+                  shiftIds:
+                    type: array
+                    items:
+                      type: string
                 required:
                   - error
                   - message

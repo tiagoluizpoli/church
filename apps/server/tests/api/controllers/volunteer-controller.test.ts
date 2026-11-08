@@ -37,8 +37,6 @@ const volunteerManager = {
   getMinistrySchedule: vi.fn(),
   listAvailabilityChecks: vi.fn(),
   getAvailabilityCheck: vi.fn(),
-  setUnavailableShifts: vi.fn(),
-  confirmAvailabilityCheck: vi.fn(),
   respondToAssignment: vi.fn(),
   cancelOwnAssignment: vi.fn(),
 };
@@ -100,6 +98,18 @@ const servingCollections = [
 ];
 
 describe('Volunteer route access', () => {
+  it.each([
+    { method: 'PUT' as const, suffix: 'unavailable-shifts' },
+    { method: 'POST' as const, suffix: 'confirm' },
+  ])('retired $suffix operation returns 404', async ({ method, suffix }) => {
+    const response = await app.inject({
+      method,
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/${suffix}`,
+      payload: method === 'PUT' ? { shiftIds: [] } : undefined,
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it.each(
     servingCollections,
   )('$method $url returns 401 only when signed out', async ({
@@ -149,20 +159,6 @@ describe('Volunteer route access', () => {
       operation: volunteerManager.getAvailabilityCheck,
       payload: undefined,
     },
-    {
-      name: 'PUT unavailable shifts',
-      method: 'PUT' as const,
-      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/unavailable-shifts`,
-      operation: volunteerManager.setUnavailableShifts,
-      payload: { shiftIds: [] },
-    },
-    {
-      name: 'POST confirm',
-      method: 'POST' as const,
-      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/confirm`,
-      operation: volunteerManager.confirmAvailabilityCheck,
-      payload: undefined,
-    },
   ])("$name returns the same 404 for a missing and another Volunteer's check", async ({
     method,
     url,
@@ -187,6 +183,8 @@ describe('Volunteer route access', () => {
 
   it('returns a serving Volunteer their own check', async () => {
     volunteerManager.getAvailabilityCheck.mockResolvedValue({
+      answerBy: null,
+      readOnly: false,
       id: CHECK_ID,
       cycleId: 'cycle-1',
       cycleName: 'August',

@@ -9,7 +9,6 @@ describe('volunteerMapper', () => {
   describe('dashboardToResponse', () => {
     it('passes through a dashboard with defaultMinistryId present', () => {
       const dashboard = {
-        availabilityTasks: [],
         upcomingAssignmentGroups: [],
         unreadNotificationCount: 2,
         notificationPreview: [],
@@ -24,7 +23,6 @@ describe('volunteerMapper', () => {
 
     it('passes through a dashboard with defaultMinistryId absent', () => {
       const dashboard = {
-        availabilityTasks: [],
         upcomingAssignmentGroups: [],
         unreadNotificationCount: 0,
         notificationPreview: [],
@@ -38,17 +36,6 @@ describe('volunteerMapper', () => {
 
     it('parses a non-empty dashboard, branding every date/time field', () => {
       const dashboard = {
-        availabilityTasks: [
-          {
-            eventId: 'event-1',
-            eventTitle: 'Sunday Service',
-            ministryId: 'ministry-1',
-            ministryName: 'Worship',
-            eventStart: '2026-05-15T09:00:00.000Z',
-            eventEnd: '2026-05-15T11:00:00.000Z',
-            completionState: 'missing' as const,
-          },
-        ],
         upcomingAssignmentGroups: [
           {
             eventId: 'event-1',
@@ -99,42 +86,17 @@ describe('volunteerMapper', () => {
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
 
-      const task = response.availabilityTasks[0];
       const group = response.upcomingAssignmentGroups[0];
       const assignment = group?.assignments[0];
       const notification = response.notificationPreview[0];
-      if (!task || !group || !assignment || !notification) {
+      if (!group || !assignment || !notification) {
         throw new Error('expected every mapped section to be populated');
       }
-      expect(isInstant({ value: task.eventStart })).toBe(true);
-      expect(isInstant({ value: task.eventEnd })).toBe(true);
       expect(isInstant({ value: group.eventStart })).toBe(true);
       expect(isInstant({ value: assignment.startTime })).toBe(true);
       expect(isInstant({ value: assignment.endTime })).toBe(true);
       expect(isInstant({ value: notification.readAt ?? '' })).toBe(true);
       expect(isInstant({ value: notification.createdAt })).toBe(true);
-    });
-
-    it('throws on a malformed date/time field instead of silently passing it through', () => {
-      const dashboard = {
-        availabilityTasks: [
-          {
-            eventId: 'event-1',
-            eventTitle: 'Sunday Service',
-            ministryId: 'ministry-1',
-            ministryName: 'Worship',
-            eventStart: 'not-a-real-instant',
-            eventEnd: '2026-05-15T11:00:00.000Z',
-            completionState: 'missing' as const,
-          },
-        ],
-        upcomingAssignmentGroups: [],
-        unreadNotificationCount: 0,
-        notificationPreview: [],
-        ministryOptions: [],
-      };
-
-      expect(() => volunteerMapper.dashboardToResponse(dashboard)).toThrow();
     });
   });
 
@@ -279,6 +241,7 @@ describe('volunteerMapper', () => {
 
       const response = volunteerMapper.availabilityCheckListToResponse([
         {
+          answerBy: null,
           id: 'chk1',
           cycleId: 'pc1',
           cycleName: 'Spring 2026',
@@ -298,6 +261,7 @@ describe('volunteerMapper', () => {
     it('maps summaries with confirmedAt absent', () => {
       const response = volunteerMapper.availabilityCheckListToResponse([
         {
+          answerBy: null,
           id: 'chk2',
           cycleId: 'pc1',
           cycleName: 'Spring 2026',
@@ -326,6 +290,8 @@ describe('volunteerMapper', () => {
       const endTime = parseInstant({ value: '2026-01-11T11:00:00.000Z' });
 
       const response = volunteerMapper.availabilityCheckDetailToResponse({
+        answerBy: null,
+        readOnly: false,
         id: 'chk1',
         cycleId: 'pc1',
         cycleName: 'Spring 2026',
@@ -342,6 +308,7 @@ describe('volunteerMapper', () => {
             endTime,
             label: 'Morning',
             available: true,
+            published: false,
           },
           {
             shiftId: 'sh2',
@@ -350,6 +317,7 @@ describe('volunteerMapper', () => {
             startTime,
             endTime,
             available: false,
+            published: false,
           },
         ],
       });
@@ -363,6 +331,8 @@ describe('volunteerMapper', () => {
 
     it('maps a detail with confirmedAt absent and shifts empty', () => {
       const response = volunteerMapper.availabilityCheckDetailToResponse({
+        answerBy: null,
+        readOnly: false,
         id: 'chk2',
         cycleId: 'pc1',
         cycleName: 'Spring 2026',

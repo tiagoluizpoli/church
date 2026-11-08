@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadVolunteerDashboardJourney } from '@/tests/fixtures/journeys/volunteer-dashboard';
 
-test('US5: volunteer keeps cached dashboard data readable across all three tabs after reloading offline', async ({
+test('US5: volunteer keeps cached dashboard data readable across both tabs after reloading offline', async ({
   page,
 }, testInfo) => {
   // The journey owns its Volunteer persona and published schedule.
@@ -47,16 +47,4 @@ test('US5: volunteer keeps cached dashboard data readable across all three tabs 
 
   await page.getByRole('tab', { name: 'Ministry Schedule' }).click();
   await expect(page.getByText(journey.careEvent.title).first()).toBeVisible();
-
-  await page.getByRole('tab', { name: /Availability Needed/i }).click();
-  await expect(
-    page.getByText(journey.availabilityEvent.title).first(),
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Open availability editor' })
-    .first()
-    .click();
-  await expect(
-    page.getByRole('button', { name: 'Save availability' }),
-  ).toBeDisabled();
 });

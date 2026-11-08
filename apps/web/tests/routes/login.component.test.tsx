@@ -63,7 +63,6 @@ describe('the sign-in route (login)', () => {
   it('redirects an already-authenticated visitor onward to Home by default', async () => {
     getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
     getVolunteerDashboard.mockResolvedValue({
-      availabilityTasks: [],
       upcomingAssignmentGroups: [],
       unreadNotificationCount: 0,
       notificationPreview: [],
@@ -98,7 +97,6 @@ describe('the sign-in route (login)', () => {
   it('falls back to Home when the redirect target is rejected', async () => {
     getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
     getVolunteerDashboard.mockResolvedValue({
-      availabilityTasks: [],
       upcomingAssignmentGroups: [],
       unreadNotificationCount: 0,
       notificationPreview: [],

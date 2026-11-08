@@ -11,6 +11,7 @@ import {
   usePreparationBlockBreadcrumbs,
 } from '@/features/scheduling/hooks/use-preparation-block-breadcrumbs';
 import { useTemplateBreadcrumb } from '@/features/scheduling/hooks/use-template-breadcrumb';
+import { useAvailabilityCheckBreadcrumb } from '@/features/volunteers/hooks/use-availability-check-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -186,9 +187,15 @@ function ActiveChurchContents({
   breadcrumbOverrides = [],
 }: ActiveChurchContentsProps) {
   const preparationBreadcrumbs = usePreparationBlockBreadcrumbs();
+  const checkBreadcrumb = useAvailabilityCheckBreadcrumb();
+  const checkBreadcrumbs = checkBreadcrumb ? [checkBreadcrumb] : [];
   return (
     <AppShell
-      breadcrumbOverrides={[...breadcrumbOverrides, ...preparationBreadcrumbs]}
+      breadcrumbOverrides={[
+        ...breadcrumbOverrides,
+        ...preparationBreadcrumbs,
+        ...checkBreadcrumbs,
+      ]}
       notificationBell={<NotificationBell />}
     >
       <Outlet />

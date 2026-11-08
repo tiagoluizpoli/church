@@ -3346,6 +3346,8 @@ export type GetNotifications200ItemsItem = {
   kind: 'availability_opened';
   data: {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  checkId?: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   cycleId: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
@@ -3373,6 +3375,8 @@ export type GetNotifications200ItemsItem = {
   id: string;
   kind: 'availability_reminder';
   data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  checkId?: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   cycleId: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
@@ -4661,27 +4665,6 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
-export type GetVolunteerDashboard200AvailabilityTasksItemCompletionState = typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState];
-
-
-export const GetVolunteerDashboard200AvailabilityTasksItemCompletionState = {
-  missing: 'missing',
-  partial: 'partial',
-  complete: 'complete',
-} as const;
-
-export type GetVolunteerDashboard200AvailabilityTasksItem = {
-  eventId: string;
-  eventTitle: string;
-  ministryId: string;
-  ministryName: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  eventStart: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  eventEnd: string;
-  completionState: GetVolunteerDashboard200AvailabilityTasksItemCompletionState;
-};
-
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
 
 
@@ -4765,6 +4748,8 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   kind: 'availability_opened';
   data: {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  checkId?: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   cycleId: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
@@ -4792,6 +4777,8 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   id: string;
   kind: 'availability_reminder';
   data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  checkId?: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   cycleId: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
@@ -4879,7 +4866,6 @@ export type GetVolunteerDashboard200MinistryOptionsItem = {
 };
 
 export type GetVolunteerDashboard200 = {
-  availabilityTasks: GetVolunteerDashboard200AvailabilityTasksItem[];
   upcomingAssignmentGroups: GetVolunteerDashboard200UpcomingAssignmentGroupsItem[];
   unreadNotificationCount: number;
   notificationPreview: GetVolunteerDashboard200NotificationPreviewItem[];
@@ -4976,6 +4962,11 @@ export type ListAvailabilityChecks200ChecksItem = {
   state: ListAvailabilityChecks200ChecksItemState;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
   totalShiftCount: number;
   unavailableShiftCount: number;
 };
@@ -5002,9 +4993,16 @@ export type GetAvailabilityCheck200ShiftsItem = {
   endTime: string;
   label?: string;
   available: boolean;
+  published: boolean;
 };
 
 export type GetAvailabilityCheck200 = {
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+  readOnly: boolean;
   id: string;
   cycleId: string;
   cycleName: string;
@@ -5021,21 +5019,22 @@ export type GetAvailabilityCheck404 = {
   message: string;
 };
 
-export type SetUnavailableShiftsBody = {
+export type AnswerAvailabilityCheckBody = {
+  /** @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   shiftIds: string[];
   /** @items.pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   wholeDayDates?: string[];
 };
 
-export type SetUnavailableShifts200State = typeof SetUnavailableShifts200State[keyof typeof SetUnavailableShifts200State];
+export type AnswerAvailabilityCheck200State = typeof AnswerAvailabilityCheck200State[keyof typeof AnswerAvailabilityCheck200State];
 
 
-export const SetUnavailableShifts200State = {
+export const AnswerAvailabilityCheck200State = {
   pending: 'pending',
   confirmed: 'confirmed',
 } as const;
 
-export type SetUnavailableShifts200ShiftsItem = {
+export type AnswerAvailabilityCheck200ShiftsItem = {
   shiftId: string;
   eventId: string;
   eventTitle: string;
@@ -5045,37 +5044,45 @@ export type SetUnavailableShifts200ShiftsItem = {
   endTime: string;
   label?: string;
   available: boolean;
+  published: boolean;
 };
 
-export type SetUnavailableShifts200 = {
+export type AnswerAvailabilityCheck200 = {
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  answerBy: string | null;
+  readOnly: boolean;
   id: string;
   cycleId: string;
   cycleName: string;
   ministryId: string;
   ministryName: string;
-  state: SetUnavailableShifts200State;
+  state: AnswerAvailabilityCheck200State;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
-  shifts: SetUnavailableShifts200ShiftsItem[];
+  shifts: AnswerAvailabilityCheck200ShiftsItem[];
 };
 
-export type SetUnavailableShifts404 = {
+export type AnswerAvailabilityCheck404 = {
   error: string;
   message: string;
 };
 
-/**
- * @nullable
- */
-export type ConfirmAvailabilityCheck204 = typeof ConfirmAvailabilityCheck204[keyof typeof ConfirmAvailabilityCheck204] | null;
+export type AnswerAvailabilityCheck409Error = typeof AnswerAvailabilityCheck409Error[keyof typeof AnswerAvailabilityCheck409Error];
 
 
-export const ConfirmAvailabilityCheck204 = {
+export const AnswerAvailabilityCheck409Error = {
+  SHIFT_PUBLISHED: 'SHIFT_PUBLISHED',
+  ILLEGAL_STATE_TRANSITION: 'ILLEGAL_STATE_TRANSITION',
+  CROSS_MINISTRY_SCOPE: 'CROSS_MINISTRY_SCOPE',
 } as const;
 
-export type ConfirmAvailabilityCheck404 = {
-  error: string;
+export type AnswerAvailabilityCheck409 = {
+  error: AnswerAvailabilityCheck409Error;
   message: string;
+  shiftIds?: string[];
 };
 
 export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];

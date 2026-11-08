@@ -508,7 +508,7 @@ async function assignmentProblems({
                 and a.start_time < b.end_time and b.start_time < a.end_time`,
           })),
       },
-    'confirmed checks confirmAvailabilityCheck would have refused (unmarked cross-Ministry overlaps)':
+    'confirmed checks the former confirmation operation would have refused (unmarked cross-Ministry overlaps)':
       {
         actual: await countOf({
           db,

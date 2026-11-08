@@ -40,11 +40,7 @@ const ROUTES: Array<{
   { method: 'GET', url: '/api/v1/volunteer/availability-checks/some-id' },
   {
     method: 'PUT',
-    url: '/api/v1/volunteer/availability-checks/some-id/unavailable-shifts',
-  },
-  {
-    method: 'POST',
-    url: '/api/v1/volunteer/availability-checks/some-id/confirm',
+    url: '/api/v1/volunteer/availability-checks/some-id/answer',
   },
   { method: 'PATCH', url: '/api/v1/volunteer/assignments/some-id' },
   { method: 'POST', url: '/api/v1/volunteer/assignments/some-id/cancel' },

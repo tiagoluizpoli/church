@@ -35,6 +35,8 @@ export const ministryInvitationNotificationDataSchema = z.object({
 
 /** Availability opened (initial Ask) and the reminder share their facts. */
 export const availabilityNotificationDataSchema = z.object({
+  /** The recipient's check; absent on rows frozen before deep links. */
+  checkId: z.uuid().optional(),
   cycleId: z.uuid(),
   ministryId: z.uuid(),
   ministryName: z.string(),
@@ -132,6 +134,7 @@ const transferDigestRequestDataSchema = z.object({
  * template for them and stores no row.
  */
 const availabilityRequestDataSchema = z.object({
+  checkId: z.uuid().optional(),
   cycleId: z.uuid(),
   ministryId: z.uuid(),
 });

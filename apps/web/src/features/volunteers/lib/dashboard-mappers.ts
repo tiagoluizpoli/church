@@ -1,21 +1,3 @@
-import type {
-  AvailabilityEventTimeBlockViewModel,
-  AvailabilityEventViewModel,
-} from '../components/availability-form';
-import type { AvailabilityTaskViewModel } from '../components/availability-needed-section';
-import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
-import { formatInstantOf } from '@/shared/utils/church-time';
-
-export interface DashboardAvailabilityTask {
-  eventId: string;
-  eventTitle: string;
-  ministryId: string;
-  ministryName: string;
-  eventStart: string;
-  eventEnd: string;
-  completionState: 'missing' | 'partial' | 'complete';
-}
-
 export interface DashboardAssignmentItem {
   assignmentId: string;
   eventTimeBlockId: string;
@@ -70,8 +52,9 @@ export interface DashboardMinistrySchedule {
   events: DashboardMinistryScheduleEvent[];
 }
 
+import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
+
 export interface DashboardSnapshot {
-  availabilityTasks: DashboardAvailabilityTask[];
   upcomingAssignmentGroups: DashboardAssignmentGroup[];
   notificationUnreadCount: number;
   /** The caller's own latest member Notifications. */
@@ -79,44 +62,4 @@ export interface DashboardSnapshot {
   defaultMinistryId?: string;
   ministryOptions: DashboardMinistryOption[];
   fetchedAt: string;
-}
-
-export interface MapAvailabilityTaskInput {
-  task: DashboardAvailabilityTask;
-  timeZone: string;
-}
-
-export function mapAvailabilityTask({
-  task,
-  timeZone,
-}: MapAvailabilityTaskInput): AvailabilityTaskViewModel {
-  return {
-    eventId: task.eventId,
-    eventTitle: task.eventTitle,
-    ministryName: task.ministryName,
-    eventStartLabel: formatInstantOf({ value: task.eventStart, timeZone }),
-    eventEndLabel: formatInstantOf({ value: task.eventEnd, timeZone }),
-    completionState: task.completionState,
-  };
-}
-
-export function mapAvailabilityEvent(
-  task: DashboardAvailabilityTask,
-): AvailabilityEventViewModel {
-  return {
-    id: task.eventId,
-    title: task.eventTitle,
-    start: task.eventStart,
-    end: task.eventEnd,
-  };
-}
-
-interface AvailabilityEventTimeBlocksData {
-  eventTimeBlocks: AvailabilityEventTimeBlockViewModel[];
-}
-
-export function mapAvailabilityEventTimeBlocks(
-  data: AvailabilityEventTimeBlocksData | undefined,
-): AvailabilityEventTimeBlockViewModel[] {
-  return data?.eventTimeBlocks ?? [];
 }

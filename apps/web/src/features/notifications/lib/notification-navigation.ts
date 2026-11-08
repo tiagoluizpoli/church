@@ -4,6 +4,8 @@ import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAP
 
 export type NotificationNavigationTarget =
   | { to: '/notifications' }
+  | { to: '/availability' }
+  | { to: '/availability/$checkId'; params: { checkId: string } }
   | {
       to: '/invitations/ministry/$invitationId';
       params: { invitationId: string };
@@ -19,7 +21,7 @@ export type NotificationNavigationTarget =
   | {
       to: '/dashboard';
       search: {
-        section: 'availability' | 'assignments';
+        section: 'assignments';
         eventId?: string;
         ministryId?: string;
       };
@@ -49,11 +51,18 @@ export function resolveNotificationDestination(
         isFallback: false,
       };
     case 'availability_opened':
-    case 'availability_reminder':
+    case 'availability_reminder': {
+      const { checkId } = item.data;
       return {
-        target: { to: '/dashboard', search: { section: 'availability' } },
+        target: checkId
+          ? {
+              to: '/availability/$checkId',
+              params: { checkId },
+            }
+          : { to: '/availability' },
         isFallback: false,
       };
+    }
     case 'schedule_published':
       return {
         target: {

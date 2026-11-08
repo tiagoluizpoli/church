@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type {
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
-  DashboardAvailabilityTask,
   MinistrySchedule,
   MinistryScheduleEvent,
   VolunteerAvailabilityCheckDetail,
@@ -32,6 +31,7 @@ export const availabilityCheckSummarySchema = z.object({
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
   confirmedAt: instantSchema.optional(),
+  answerBy: calendarDaySchema.nullable(),
   totalShiftCount: z.number(),
   unavailableShiftCount: z.number(),
 });
@@ -52,9 +52,12 @@ const availabilityCheckShiftSchema = z.object({
   endTime: instantSchema,
   label: z.string().optional(),
   available: z.boolean(),
+  published: z.boolean(),
 });
 
 export const availabilityCheckDetailResponseSchema = z.object({
+  answerBy: calendarDaySchema.nullable(),
+  readOnly: z.boolean(),
   id: z.string(),
   cycleId: z.string(),
   cycleName: z.string(),
@@ -68,9 +71,19 @@ export type AvailabilityCheckDetailResponse = z.infer<
   typeof availabilityCheckDetailResponseSchema
 >;
 
-export const setUnavailableShiftsBodySchema = z.object({
-  shiftIds: z.array(z.string()),
+export const answerAvailabilityCheckBodySchema = z.object({
+  shiftIds: z.array(z.uuid()),
   wholeDayDates: z.array(calendarDaySchema).optional(),
+});
+
+export const answerConflictResponseSchema = z.object({
+  error: z.enum([
+    'SHIFT_PUBLISHED',
+    'ILLEGAL_STATE_TRANSITION',
+    'CROSS_MINISTRY_SCOPE',
+  ]),
+  message: z.string(),
+  shiftIds: z.array(z.string()).optional(),
 });
 
 const dashboardAssignmentItemSchema = z.object({
@@ -104,26 +117,12 @@ type DashboardAssignmentGroupResponse = z.infer<
   typeof dashboardAssignmentGroupSchema
 >;
 
-const dashboardAvailabilityTaskSchema = z.object({
-  eventId: z.string(),
-  eventTitle: z.string(),
-  ministryId: z.string(),
-  ministryName: z.string(),
-  eventStart: instantSchema,
-  eventEnd: instantSchema,
-  completionState: z.enum(['missing', 'partial', 'complete']),
-});
-type DashboardAvailabilityTaskResponse = z.infer<
-  typeof dashboardAvailabilityTaskSchema
->;
-
 const dashboardMinistryOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
 });
 
 export const dashboardResponseSchema = z.object({
-  availabilityTasks: z.array(dashboardAvailabilityTaskSchema),
   upcomingAssignmentGroups: z.array(dashboardAssignmentGroupSchema),
   unreadNotificationCount: z.number(),
   notificationPreview: z.array(memberNotificationResponseSchema),
@@ -184,6 +183,7 @@ function availabilityCheckSummaryToResponse(
     ministryName: summary.ministryName,
     state: summary.state,
     confirmedAt: summary.confirmedAt,
+    answerBy: summary.answerBy,
     totalShiftCount: summary.totalShiftCount,
     unavailableShiftCount: summary.unavailableShiftCount,
   };
@@ -200,6 +200,8 @@ function availabilityCheckDetailToResponse(
     ministryName: detail.ministryName,
     state: detail.state,
     confirmedAt: detail.confirmedAt,
+    answerBy: detail.answerBy,
+    readOnly: detail.readOnly,
     shifts: detail.shifts.map((shift) => ({
       shiftId: shift.shiftId,
       eventId: shift.eventId,
@@ -208,21 +210,8 @@ function availabilityCheckDetailToResponse(
       endTime: shift.endTime,
       label: shift.label,
       available: shift.available,
+      published: shift.published,
     })),
-  };
-}
-
-function dashboardAvailabilityTaskToResponse(
-  task: DashboardAvailabilityTask,
-): DashboardAvailabilityTaskResponse {
-  return {
-    eventId: task.eventId,
-    eventTitle: task.eventTitle,
-    ministryId: task.ministryId,
-    ministryName: task.ministryName,
-    eventStart: parseInstant({ value: task.eventStart }),
-    eventEnd: parseInstant({ value: task.eventEnd }),
-    completionState: task.completionState,
   };
 }
 
@@ -261,9 +250,6 @@ function dashboardAssignmentGroupToResponse(
 
 function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
   return {
-    availabilityTasks: dashboard.availabilityTasks.map(
-      dashboardAvailabilityTaskToResponse,
-    ),
     upcomingAssignmentGroups: dashboard.upcomingAssignmentGroups.map(
       dashboardAssignmentGroupToResponse,
     ),

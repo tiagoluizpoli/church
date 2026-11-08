@@ -2,7 +2,6 @@
 // data from server recipes: `journey-recipes.ts` and `shared-personas.ts`.
 
 export const volunteerDashboardFixtureIds = {
-  availabilityEventId: 'event-availability-1',
   assignmentEventId: 'event-assignment-1',
   ministryId: 'ministry-1',
   notificationId: 'notification-1',
@@ -10,23 +9,12 @@ export const volunteerDashboardFixtureIds = {
 } as const;
 
 export interface VolunteerDashboardSnapshotFixture {
-  availabilityTasks: VolunteerDashboardAvailabilityTaskFixture[];
   upcomingAssignmentGroups: VolunteerDashboardAssignmentGroupFixture[];
   notificationUnreadCount: number;
   notificationPreview: VolunteerDashboardNotificationFixture[];
   defaultMinistryId?: string;
   ministryOptions: VolunteerDashboardMinistryOptionFixture[];
   fetchedAt: string;
-}
-
-export interface VolunteerDashboardAvailabilityTaskFixture {
-  eventId: string;
-  eventTitle: string;
-  ministryId: string;
-  ministryName: string;
-  eventStart: string;
-  eventEnd: string;
-  completionState: 'missing' | 'partial' | 'complete';
 }
 
 export interface VolunteerDashboardAssignmentGroupFixture {
@@ -73,17 +61,6 @@ export interface VolunteerDashboardMinistryOptionFixture {
 
 export function createVolunteerDashboardSnapshotFixture(): VolunteerDashboardSnapshotFixture {
   return {
-    availabilityTasks: [
-      {
-        eventId: volunteerDashboardFixtureIds.availabilityEventId,
-        eventTitle: 'Youth Gathering',
-        ministryId: volunteerDashboardFixtureIds.ministryId,
-        ministryName: 'Adult Ministry',
-        eventStart: '2026-07-05T09:00:00.000Z',
-        eventEnd: '2026-07-05T11:00:00.000Z',
-        completionState: 'missing',
-      },
-    ],
     upcomingAssignmentGroups: [
       {
         eventId: volunteerDashboardFixtureIds.assignmentEventId,

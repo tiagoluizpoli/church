@@ -23,6 +23,8 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  answerAvailabilityCheckBodySchema,
+  answerConflictResponseSchema,
   assignmentListResponseSchema,
   assignmentResponseSchema,
   availabilityCheckDetailResponseSchema,
@@ -30,7 +32,6 @@ import {
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
   respondToAssignmentBodySchema,
-  setUnavailableShiftsBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 import { refuse } from '../utils/refuse';
@@ -236,31 +237,32 @@ export class VolunteerController implements FastifyController {
     );
 
     app.put(
-      '/availability-checks/:checkId/unavailable-shifts',
+      '/availability-checks/:checkId/answer',
       {
         schema: {
           tags: ['volunteer'],
-          operationId: 'setUnavailableShifts',
-          summary: 'Set unavailable shifts on an AvailabilityCheck',
+          operationId: 'answerAvailabilityCheck',
+          summary: 'Answer an AvailabilityCheck',
           description:
             "Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
-          body: setUnavailableShiftsBodySchema,
+          body: answerAvailabilityCheckBodySchema,
           response: {
             200: availabilityCheckDetailResponseSchema,
             404: notFoundResponseSchema,
+            409: answerConflictResponseSchema,
           },
         },
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
         const body = request.body as z.infer<
-          typeof setUnavailableShiftsBodySchema
+          typeof answerAvailabilityCheckBodySchema
         >;
         const detail = await this.withPrivateObjectNotFound({
           request,
           reply,
           operation: () =>
-            this.volunteerManager.setUnavailableShifts({
+            this.volunteerManager.answerAvailabilityCheck({
               checkId: AvailabilityCheckId.from(checkId),
               volunteerId: VolunteerId.from(request.volunteerId as string),
               churchId: ChurchId.from(request.churchId),
@@ -272,35 +274,6 @@ export class VolunteerController implements FastifyController {
         return reply.send(
           volunteerMapper.availabilityCheckDetailToResponse(detail),
         );
-      },
-    );
-
-    app.post(
-      '/availability-checks/:checkId/confirm',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'confirmAvailabilityCheck',
-          summary: 'Confirm an AvailabilityCheck',
-          description:
-            "Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no unavailable shifts were left.",
-          response: { 204: z.null(), 404: notFoundResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { checkId } = request.params as AvailabilityCheckRouteParams;
-        const confirmed = await this.withPrivateObjectNotFound({
-          request,
-          reply,
-          operation: () =>
-            this.volunteerManager.confirmAvailabilityCheck({
-              checkId: AvailabilityCheckId.from(checkId),
-              volunteerId: VolunteerId.from(request.volunteerId as string),
-              churchId: ChurchId.from(request.churchId),
-            }),
-        });
-        if (!confirmed) return;
-        return reply.status(204).send(null);
       },
     );
 

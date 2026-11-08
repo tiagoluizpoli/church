@@ -46,6 +46,8 @@ export interface CreateChecksInput {
 }
 
 export interface GetCheckContextInput {
+  /** Serialize answers so concurrent pending requests stamp confirmation once. */
+  lockForAnswer?: boolean;
   churchId: ChurchId;
   checkId: AvailabilityCheckId;
   tx?: TransactionContext;
@@ -53,6 +55,8 @@ export interface GetCheckContextInput {
 
 /** Check + everything its membership implies, resolved in one query. */
 export interface CheckContext {
+  readOnly: boolean;
+  answerBy: CalendarDay | null;
   check: AvailabilityCheck;
   volunteerId: VolunteerId;
   ministryId: MinistryId;
@@ -69,6 +73,8 @@ export interface ListChecksByVolunteerInput {
 }
 
 export interface ListCheckShiftsInput {
+  /** Read projections use held Roles; legacy writes retain their original scope. */
+  heldRolesOnly?: boolean;
   churchId: ChurchId;
   checkId: AvailabilityCheckId;
   tx?: TransactionContext;
@@ -76,6 +82,7 @@ export interface ListCheckShiftsInput {
 
 /** A shift inside the check's scope (its membership ministry × its cycle). */
 export interface CheckShiftRow {
+  published: boolean;
   shiftId: ShiftId;
   eventId: EventId;
   eventTitle: string;

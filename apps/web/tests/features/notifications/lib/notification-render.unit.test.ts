@@ -235,10 +235,28 @@ describe('retained scheduling Notifications', () => {
         data: { ...availability, ...facts },
       };
       expect(resolveNotificationDestination(item)).toEqual({
-        target: { to: '/dashboard', search: { section: 'availability' } },
+        target: { to: '/availability' },
         isFallback: false,
       });
     }
+  });
+
+  it.each([
+    'availability_opened',
+    'availability_reminder',
+  ] as const)('%s opens the recipient check when its id was frozen in the data', (kind) => {
+    const item: GetNotifications200ItemsItem = {
+      ...base,
+      kind,
+      data: { ...availability, checkId: ID },
+    };
+    expect(resolveNotificationDestination(item)).toEqual({
+      target: { to: '/availability/$checkId', params: { checkId: ID } },
+      isFallback: false,
+    });
+    expect(renderNotification(item).actionLabel).toBe(
+      m.email_availability_action(),
+    );
   });
 
   it('links publication to the event on the dashboard assignments section', () => {

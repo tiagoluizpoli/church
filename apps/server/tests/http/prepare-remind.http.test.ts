@@ -379,10 +379,17 @@ describe('POST /prepare/cycles/:cycleId/remind-availability', () => {
       ]),
     );
     expect(queued).toHaveLength(2);
-    expect(queued[0]?.data).toEqual({ cycleId, ministryId });
-    const newCheck = (await listChecks()).find(
+    const checks = await listChecks();
+    const newCheck = checks.find(
       (check) => check.ministryMembershipId === newcomer.membershipId,
     );
+    for (const volunteer of [holder, newcomer]) {
+      const check = checks.find(
+        (row) => row.ministryMembershipId === volunteer.membershipId,
+      );
+      const notice = queued.find(({ to }) => to.userId === volunteer.userId);
+      expect(notice?.data).toEqual({ cycleId, ministryId, checkId: check?.id });
+    }
     expect(newCheck?.state).toBe('pending');
     expect(await lastRemindedAt()).toEqual(new Date(REMINDED_AT));
   });

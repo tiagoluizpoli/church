@@ -143,6 +143,7 @@ export class SchedulingNotificationFacts {
           compareCalendarDays({ left: answerBy, right: churchToday }) < 0,
       };
       return {
+        checkId: data.checkId,
         cycleId: cycle.id,
         ministryId: ministry.id,
         ministryName: ministry.name,
@@ -152,7 +153,9 @@ export class SchedulingNotificationFacts {
         cycleEndDate: cycle.endDate,
         actionUrl: webLink({
           baseUrl: this.webBaseUrl,
-          path: '/dashboard?section=availability',
+          path: data.checkId
+            ? `/availability/${data.checkId}`
+            : '/availability',
         }),
         shiftCount: shiftTotal?.shiftCount,
         ...deadline,

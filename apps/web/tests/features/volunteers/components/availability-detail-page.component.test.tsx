@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { parseInstant, setTestClock } from '@church/time';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -83,6 +83,139 @@ beforeEach(() => {
 });
 
 describe('Availability check page', () => {
+  it('drops refused published marks, refreshes detail and retries with the remaining draft', async () => {
+    const response: AxiosResponse = {
+      status: 409,
+      statusText: 'Conflict',
+      data: { error: 'SHIFT_PUBLISHED', shiftIds: ['morning'] },
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+    };
+    api.answerAvailabilityCheck
+      .mockRejectedValueOnce(
+        new AxiosError('Published', undefined, undefined, undefined, response),
+      )
+      .mockResolvedValueOnce({ ...CHECK, state: 'confirmed' });
+    api.getAvailabilityCheck.mockResolvedValueOnce(CHECK).mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        published: shift.shiftId === 'morning',
+      })),
+    });
+    renderPage();
+    const days = await screen.findAllByRole('switch', {
+      name: m.availability_detail_whole_day(),
+    });
+    await userEvent.click(days[0]);
+    await userEvent.click(days[1]);
+    await userEvent.click(screen.getByRole('button'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.availability_detail_published_retry(),
+    );
+    await waitFor(() =>
+      expect(api.getAvailabilityCheck).toHaveBeenCalledTimes(2),
+    );
+    const toggles = screen.getAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).toHaveAttribute('aria-disabled', 'true');
+    expect(toggles[0]).not.toBeChecked();
+    expect(toggles[1]).toBeChecked();
+    expect(toggles[2]).toBeChecked();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_answer_error(),
+      }),
+    );
+    await waitFor(() =>
+      expect(api.answerAvailabilityCheck).toHaveBeenLastCalledWith('check-1', {
+        shiftIds: expect.arrayContaining(['evening', 'next-day']),
+        wholeDayDates: ['2026-10-05'],
+      }),
+    );
+    expect(api.answerAvailabilityCheck.mock.calls[1][1].shiftIds).toHaveLength(
+      2,
+    );
+  });
+
+  it('renders a Past-Cycle check with every control disabled and no answer button', async () => {
+    api.getAvailabilityCheck.mockResolvedValue({ ...CHECK, readOnly: true });
+    renderPage();
+    await screen.findByText('Kids');
+    for (const toggle of screen.getAllByRole('switch'))
+      expect(toggle).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole('switch', {
+        name: m.availability_detail_unavailable(),
+      }),
+    ).toHaveLength(3);
+  });
+
+  it('locks published rows while whole-day marking changes only unpublished Shifts', async () => {
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        published: shift.shiftId === 'morning',
+        available: shift.shiftId !== 'morning',
+      })),
+    });
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    expect(
+      await screen.findByText(m.availability_detail_published()),
+    ).toBeVisible();
+    const toggles = screen.getAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).toHaveAttribute('aria-disabled', 'true');
+    expect(toggles[0]).toBeChecked();
+    const day = screen.getAllByRole('switch', {
+      name: m.availability_detail_whole_day(),
+    })[0];
+    await userEvent.click(day);
+    expect(toggles[1]).toBeChecked();
+    await userEvent.click(screen.getByRole('button'));
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['evening'],
+      wholeDayDates: [],
+    });
+  });
+
+  it('saves a confirmed check with live switches and preserves its confirmation display', async () => {
+    const confirmed = {
+      ...CHECK,
+      state: 'confirmed',
+      confirmedAt: '2026-10-01T12:00:00Z',
+    };
+    api.getAvailabilityCheck.mockResolvedValue(confirmed);
+    api.answerAvailabilityCheck.mockResolvedValue(confirmed);
+    renderPage();
+    const save = await screen.findByRole('button', {
+      name: m.availability_detail_save_changes(),
+    });
+    const badge = screen.getByText(m.availability_detail_confirmed());
+    const confirmation = screen.getByText(
+      m.availability_detail_confirmed_on({ date: '01/10/2026' }),
+    );
+    await userEvent.click(
+      screen.getAllByRole('switch', {
+        name: m.availability_detail_unavailable(),
+      })[0],
+    );
+    await userEvent.click(save);
+    await waitFor(() =>
+      expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+        shiftIds: ['morning'],
+        wholeDayDates: [],
+      }),
+    );
+    expect(badge).toBeVisible();
+    expect(confirmation).toBeVisible();
+  });
+
   it('confirms with zero marks once and prevents duplicate submissions while pending', async () => {
     api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
     renderPage();

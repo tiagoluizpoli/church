@@ -722,10 +722,32 @@ export class DbVolunteerManager implements IVolunteerManager {
         throw new ShiftPublishedError({ shiftIds: publishedShiftIds });
       }
 
+      // Published answers are locked history, even when their Role is no longer held.
+      const [existingMarks, scopedShifts] = await Promise.all([
+        this.unavailableShiftRepo.listUnavailableShiftsByCheck({
+          churchId: input.churchId,
+          availabilityCheckId: input.checkId,
+          tx,
+        }),
+        this.availabilityCheckRepo.listCheckShifts({
+          churchId: input.churchId,
+          checkId: input.checkId,
+          tx,
+        }),
+      ]);
+      const lockedShiftIds = new Set(
+        scopedShifts
+          .filter((shift) => shift.published)
+          .map((shift) => shift.shiftId),
+      );
+      const preservedShiftIds = existingMarks
+        .filter((mark) => lockedShiftIds.has(mark.shiftId))
+        .map((mark) => mark.shiftId);
+      const nextShiftIds = [...preservedShiftIds, ...requestedShiftIds];
       await this.unavailableShiftRepo.replaceUnavailableShiftsForCheck({
         churchId: input.churchId,
         availabilityCheckId: input.checkId,
-        shiftIds: requestedShiftIds,
+        shiftIds: nextShiftIds,
         tx,
       });
       if (context.check.state === 'pending') {

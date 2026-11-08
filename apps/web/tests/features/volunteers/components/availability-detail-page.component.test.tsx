@@ -132,6 +132,210 @@ beforeEach(() => {
 });
 
 describe('Availability check page', () => {
+  it('preserves a stored mark matching cached unavailable detail until delayed fresh available detail arrives', async () => {
+    const storageKey = 'availability-draft:person:check-1';
+    localStorage.setItem(storageKey, '["morning"]');
+    const cached = {
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    };
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['availability-check', 'check-1'], cached);
+    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    api.getAvailabilityCheck.mockReturnValue(
+      new Promise<GetAvailabilityCheck200>((resolve) => {
+        resolveDetail = resolve;
+      }),
+    );
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { router } = renderPage(
+      vi.fn(),
+      'person',
+      'check-1',
+      true,
+      queryClient,
+    );
+    const toggles = await screen.findAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).toBeChecked();
+    expect(localStorage.getItem(storageKey)).toBe('["morning"]');
+    expect(screen.getByText(m.availability_draft_restored())).toBeVisible();
+    const pendingClose = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(pendingClose);
+    expect(pendingClose.defaultPrevented).toBe(true);
+    await act(async () => resolveDetail(CHECK));
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+    expect(toggles[0]).toBeChecked();
+    expect(localStorage.getItem(storageKey)).toBe('["morning"]');
+    expect(screen.getByText(m.availability_draft_restored())).toBeVisible();
+    const closing = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(closing);
+    expect(closing.defaultPrevented).toBe(true);
+    await act(async () => {
+      void router.navigate({ to: '/availability' });
+    });
+    expect(confirm).toHaveBeenCalledWith(m.availability_draft_leave());
+    expect(router.state.location.pathname).toBe('/availability/check-1');
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_confirm_count({ unavailable: 1, total: 3 }),
+      }),
+    );
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['morning'],
+      wholeDayDates: [],
+    });
+  });
+
+  it('preserves a stored empty removal matching cached available detail until delayed fresh unavailable detail arrives', async () => {
+    const storageKey = 'availability-draft:person:check-1';
+    localStorage.setItem(storageKey, '[]');
+    const cached = {
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    };
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
+    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    api.getAvailabilityCheck.mockReturnValue(
+      new Promise<GetAvailabilityCheck200>((resolve) => {
+        resolveDetail = resolve;
+      }),
+    );
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { router } = renderPage(
+      vi.fn(),
+      'person',
+      'check-1',
+      true,
+      queryClient,
+    );
+    const toggles = await screen.findAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).not.toBeChecked();
+    expect(localStorage.getItem(storageKey)).toBe('[]');
+    expect(screen.getByText(m.availability_draft_restored())).toBeVisible();
+    const pendingClose = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(pendingClose);
+    expect(pendingClose.defaultPrevented).toBe(true);
+    await act(async () => resolveDetail(cached));
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+    expect(toggles[0]).not.toBeChecked();
+    expect(localStorage.getItem(storageKey)).toBe('[]');
+    expect(screen.getByText(m.availability_draft_restored())).toBeVisible();
+    const closing = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(closing);
+    expect(closing.defaultPrevented).toBe(true);
+    await act(async () => {
+      void router.navigate({ to: '/availability' });
+    });
+    expect(confirm).toHaveBeenCalledWith(m.availability_draft_leave());
+    expect(router.state.location.pathname).toBe('/availability/check-1');
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_confirm_all(),
+      }),
+    );
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: [],
+      wholeDayDates: [],
+    });
+  });
+
+  it('persists edits during delayed restoration and preserves later edits across another fresh response', async () => {
+    const storageKey = 'availability-draft:person:check-1';
+    localStorage.setItem(storageKey, '["morning"]');
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['availability-check', 'check-1'], {
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    });
+    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    api.getAvailabilityCheck.mockReturnValue(
+      new Promise<GetAvailabilityCheck200>((resolve) => {
+        resolveDetail = resolve;
+      }),
+    );
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage(vi.fn(), 'person', 'check-1', false, queryClient);
+    const toggles = await screen.findAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    await userEvent.click(toggles[2]);
+    expect(localStorage.getItem(storageKey)).toBe('["morning","next-day"]');
+    await act(async () => resolveDetail(CHECK));
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+    expect(toggles[0]).toBeChecked();
+    expect(toggles[2]).toBeChecked();
+    await userEvent.click(toggles[1]);
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        eventTitle: 'Updated event',
+      })),
+    });
+    await act(() =>
+      queryClient.invalidateQueries({
+        queryKey: ['availability-check', 'check-1'],
+      }),
+    );
+    await screen.findAllByText('Updated event');
+    for (const toggle of toggles) expect(toggle).toBeChecked();
+    expect(localStorage.getItem(storageKey)).toBe(
+      '["evening","morning","next-day"]',
+    );
+    expect(screen.getByText(m.availability_draft_restored())).toBeVisible();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_confirm_count({ unavailable: 3, total: 3 }),
+      }),
+    );
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['evening', 'morning', 'next-day'],
+      wholeDayDates: ['2026-10-04', '2026-10-05'],
+    });
+  });
+
+  it('clears matching restored intent only after an unchanged fresh response establishes the baseline', async () => {
+    const storageKey = 'availability-draft:person:check-1';
+    localStorage.setItem(storageKey, '[]');
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
+    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    api.getAvailabilityCheck.mockReturnValue(
+      new Promise<GetAvailabilityCheck200>((resolve) => {
+        resolveDetail = resolve;
+      }),
+    );
+    renderPage(vi.fn(), 'person', 'check-1', true, queryClient);
+    await screen.findByText(m.availability_draft_restored());
+    expect(localStorage.getItem(storageKey)).toBe('[]');
+    await act(async () => resolveDetail(CHECK));
+    await waitFor(() => expect(localStorage.getItem(storageKey)).toBeNull());
+    expect(
+      screen.queryByText(m.availability_draft_restored()),
+    ).not.toBeInTheDocument();
+    const closing = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(closing);
+    expect(closing.defaultPrevented).toBe(false);
+    for (const toggle of screen.getAllByRole('switch'))
+      expect(toggle).not.toBeChecked();
+  });
+
   it('reconciles a restored whole day after cached detail refetches without marking a newly added Shift', async () => {
     localStorage.setItem(
       'availability-draft:person:check-1',

@@ -49,12 +49,14 @@ export interface AvailabilityDetailPageProps {
 
 interface AvailabilityAnswerProps {
   check: GetAvailabilityCheck200;
+  hasFreshDetail: boolean;
   userId: string;
   onAnswered: () => void | Promise<void>;
 }
 
 function AvailabilityAnswer({
   check,
+  hasFreshDetail,
   userId,
   onAnswered,
 }: AvailabilityAnswerProps) {
@@ -71,6 +73,7 @@ function AvailabilityAnswer({
     cleared,
   } = useLocalAvailabilityDraft({
     check,
+    hasFreshDetail,
     userId,
     timeZone: churchTimezone,
   });
@@ -388,6 +391,7 @@ function AvailabilityDetailContent({
       key={`${scope.userId}:${checkId}`}
       userId={scope.userId}
       check={query.data}
+      hasFreshDetail={query.isFetchedAfterMount}
       onAnswered={onAnswered}
     />
   );

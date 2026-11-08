@@ -16,12 +16,19 @@ interface LocalAvailabilityDraftInput {
   check: GetAvailabilityCheck200;
   userId: string;
   timeZone: string;
+  hasFreshDetail: boolean;
 }
 
 interface DraftSnapshot {
   check: GetAvailabilityCheck200;
   timeZone: string;
   draft: UnavailableShiftDraft;
+  awaitingBaseline: boolean;
+}
+
+interface InitialDraft {
+  draft: UnavailableShiftDraft;
+  fromStorage: boolean;
 }
 
 const storedMarksSchema = z.array(z.string());
@@ -30,6 +37,7 @@ export function useLocalAvailabilityDraft({
   check,
   userId,
   timeZone,
+  hasFreshDetail,
 }: LocalAvailabilityDraftInput) {
   const storageKey = `availability-draft:${userId}:${check.id}`;
   const editableShifts = check.shifts.filter((shift) => !shift.published);
@@ -37,8 +45,8 @@ export function useLocalAvailabilityDraft({
     shifts: editableShifts,
     timeZone,
   });
-  const [initial] = useState(() => {
-    if (check.readOnly) return serverDraft;
+  const [initial] = useState<InitialDraft>(() => {
+    if (check.readOnly) return { draft: serverDraft, fromStorage: false };
     try {
       const storedJson = localStorage.getItem(storageKey) ?? 'null';
       const stored: unknown = JSON.parse(storedJson);
@@ -49,36 +57,45 @@ export function useLocalAvailabilityDraft({
           ...shift,
           available: !marks.has(shift.shiftId),
         }));
-        return createInitialUnavailableShiftDraft({
+        const draft = createInitialUnavailableShiftDraft({
           shifts: restoredShifts,
           timeZone,
         });
+        return { draft, fromStorage: true };
       }
     } catch {
       // Storage can be unavailable; the in-memory draft remains usable.
     }
-    return serverDraft;
+    return { draft: serverDraft, fromStorage: false };
   });
   const cleared = useRef(false);
   const [snapshot, setSnapshot] = useState<DraftSnapshot>(() => ({
     check,
     timeZone,
-    draft: initial,
+    draft: initial.draft,
+    awaitingBaseline: initial.fromStorage && !hasFreshDetail,
   }));
   let { draft } = snapshot;
-  if (snapshot.check !== check || snapshot.timeZone !== timeZone) {
+  const baselineArrived = snapshot.awaitingBaseline && hasFreshDetail;
+  if (
+    snapshot.check !== check ||
+    snapshot.timeZone !== timeZone ||
+    baselineArrived
+  ) {
     const { check: previousCheck } = snapshot;
     const previousShiftEntries = previousCheck.shifts.map(
       (shift) => [shift.shiftId, shift] as const,
     );
     const previousShifts = new Map(previousShiftEntries);
-    // Preserve only actual local edits; untouched rows follow the fresh server
-    // answer. Whole days describe visible marks, never intent for unseen Shifts.
+    // A restored draft is intent until the first fresh response establishes its
+    // baseline. Afterwards, untouched rows follow refreshed server answers.
     const reconciledShifts = editableShifts.map((shift) => {
       const previous = previousShifts.get(shift.shiftId);
       const marked = draft.markedShiftIds.has(shift.shiftId);
       const locallyEdited =
-        previous && !previous.published && marked === previous.available;
+        previous &&
+        !previous.published &&
+        (snapshot.awaitingBaseline || marked === previous.available);
       return {
         ...shift,
         available:
@@ -93,15 +110,21 @@ export function useLocalAvailabilityDraft({
     });
     // Adjust during render so switches, counts, submission and persistence all
     // observe the same reconciled detail before committing the refreshed page.
-    setSnapshot({ check, timeZone, draft });
+    setSnapshot({
+      check,
+      timeZone,
+      draft,
+      awaitingBaseline: snapshot.awaitingBaseline && !hasFreshDetail,
+    });
   }
   const differsFromServer = (value: UnavailableShiftDraft) =>
     !check.readOnly &&
     editableShifts.some(
       (shift) => value.markedShiftIds.has(shift.shiftId) === shift.available,
     );
-  const [restored, setRestored] = useState(() => differsFromServer(initial));
-  const hasUnsentChanges = differsFromServer(draft);
+  const [restored, setRestored] = useState(initial.fromStorage);
+  const awaitingBaseline = snapshot.awaitingBaseline && !hasFreshDetail;
+  const hasUnsentChanges = awaitingBaseline || differsFromServer(draft);
 
   useEffect(() => {
     try {
@@ -130,7 +153,12 @@ export function useLocalAvailabilityDraft({
   };
   const discard = () => {
     clear();
-    setSnapshot({ check, timeZone, draft: serverDraft });
+    setSnapshot({
+      check,
+      timeZone,
+      draft: serverDraft,
+      awaitingBaseline: false,
+    });
   };
   const updateDraft: Dispatch<SetStateAction<UnavailableShiftDraft>> = (
     next,

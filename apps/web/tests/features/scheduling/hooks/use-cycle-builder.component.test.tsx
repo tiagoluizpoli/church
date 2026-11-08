@@ -1,8 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
+import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CycleBuilderHeader } from '@/features/scheduling/components/builder/cycle-builder-header';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
+import {
+  summarizeCycleCounts,
+  summarizeCycleStaffing,
+} from '@/features/scheduling/utils/builder/cycle-builder-staffing.utils';
 import type {
   GetCycleBuilderData200,
   GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem,
@@ -170,7 +175,52 @@ beforeEach(() => {
   adminApiMock.getCycleBuilderData.mockResolvedValue(makeCycleBuilderData());
 });
 
+function StaffingBoard() {
+  const { data, createAssignment } = useCycleBuilder({
+    cycleId: 'cycle-1',
+    ministryId: 'ministry-1',
+  });
+  if (!data) return null;
+  const staffing = summarizeCycleStaffing({ data });
+  return (
+    <>
+      <CycleBuilderHeader
+        staffing={staffing}
+        counts={summarizeCycleCounts({ data, assignedCount: staffing.filled })}
+      />
+      <button
+        type="button"
+        onClick={() =>
+          void createAssignment.mutateAsync({
+            shiftId: 'shift-1',
+            body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
+          })
+        }
+      >
+        Assign Bruno
+      </button>
+    </>
+  );
+}
+
 describe('useCycleBuilder optimistic assignments', () => {
+  it('updates the header total when an Assignment is made', async () => {
+    const pending = defer<unknown>();
+    adminApiMock.createParticipationAssignment.mockReturnValue(pending.promise);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <StaffingBoard />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText('1 of 2 places filled')).toBeVisible();
+    screen.getByRole('button', { name: 'Assign Bruno' }).click();
+    expect(await screen.findByText('2 of 2 places filled')).toBeVisible();
+    pending.resolve({});
+  });
+
   it('reports half coverage when two active Assignments fill only one of two Sector needs', async () => {
     const data = makeCycleBuilderData();
     const shift = data.events[0]?.eventTimeBlocks[0]?.shifts[0];

@@ -102,6 +102,7 @@
   "error_invitation_unavailable": "Este convite não está disponível.",
   "nav_my_schedule": "Minha escala",
   "nav_ministries": "Ministérios",
+  "builder_no_role_holders": "Ninguém possui a função {role}",
   "nav_people": "Pessoas",
   "nav_invitations": "Convites",
   "shell_coming_soon": "Em breve.",

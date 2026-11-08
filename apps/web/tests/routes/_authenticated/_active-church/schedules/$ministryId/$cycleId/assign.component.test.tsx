@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { focusManager } from '@tanstack/react-query';
+import { act, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
@@ -61,6 +62,40 @@ describe('Assign board route', () => {
     expect(
       screen.queryByTestId('prepare-workspace-page'),
     ).not.toBeInTheDocument();
+  });
+
+  it('refetches on return while keeping the board visible', async () => {
+    renderRoute({
+      initialPath: '/schedules/ministry-1/cycle-1/assign',
+      churchTimezone: 'UTC',
+    });
+    await screen.findByTestId('event-builder-route');
+    let resolveRead: ((value: unknown) => void) | undefined;
+    getCycleBuilderData.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(() => expect(getCycleBuilderData).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('event-builder-route')).toBeVisible();
+    await act(async () => {
+      resolveRead?.({
+        cycle: {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-07-10',
+          endDate: '2026-07-12',
+        },
+        roles: [],
+        events: [],
+      });
+    });
+    focusManager.setFocused(undefined);
   });
 
   it.each([

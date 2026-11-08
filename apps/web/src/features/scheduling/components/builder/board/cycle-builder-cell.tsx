@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useDndContext, useDroppable } from '@dnd-kit/core';
 import { PlusIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -129,6 +130,9 @@ export function CycleBuilderCell({
   const isTouch = useFormControlSize() === 'touch';
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const canAdd = assignments.length < peopleNeeded;
+  const hasRoleHolder = shift.eligibleVolunteers.some((volunteer) =>
+    volunteer.qualifiedRoleIds.includes(roleId),
+  );
   const selectedVolunteerIsAssignedToShift = shift.assignments.some(
     (assignment) =>
       assignment.volunteerId === selectedVolunteerId &&
@@ -279,6 +283,30 @@ export function CycleBuilderCell({
         </span>
       </div>
 
+      {!hasRoleHolder ? (
+        <p className="mt-2 text-muted-foreground text-xs">
+          <span>
+            {m.builder_no_role_holders({ role: displayRoleLabel ?? roleLabel })}
+          </span>{' '}
+          <a
+            className="underline underline-offset-2"
+            href="/people"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {m.nav_people()}
+          </a>
+          {' · '}
+          <a
+            className="underline underline-offset-2"
+            href="/invitations"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {m.nav_invitations()}
+          </a>
+        </p>
+      ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {assignments.map((assignment) => (
           <AssignmentButton

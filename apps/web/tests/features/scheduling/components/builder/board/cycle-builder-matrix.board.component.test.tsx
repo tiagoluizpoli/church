@@ -262,8 +262,19 @@ describe('CycleBuilderMatrix', () => {
     const kidsCell = screen.getByTestId('cycle-requirement-kids-requirement');
     expect(within(babiesCell).getByText('1/1')).toBeVisible();
     expect(within(kidsCell).getByText('0/2')).toBeVisible();
-    expect(within(babiesCell).getByText('Babies Room · Greeter')).toBeVisible();
-    expect(within(kidsCell).getByText('Kids Room · Greeter')).toBeVisible();
+    expect(
+      within(screen.getByRole('group', { name: 'Babies Room' })).getByText(
+        'Greeter',
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole('group', { name: 'Kids Room' })).getByText(
+        'Greeter',
+      ),
+    ).toBeVisible();
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      '2 empty',
+    );
 
     await user.click(within(kidsCell).getByRole('button', { name: 'Add' }));
     await user.click(await screen.findByText('Available Volunteer'));
@@ -296,6 +307,89 @@ describe('CycleBuilderMatrix', () => {
     expect(within(kidsCell).getByText('0/2')).toBeVisible();
   });
 
+  it('keeps distinct Sectors with the same name separate', () => {
+    const data = boardDataWithShiftAssignments();
+    const event = data.events[0];
+    const block = event.eventTimeBlocks[0];
+    const shift = block.shifts[0];
+    const requirements = shift.requirements.map((requirement, index) => ({
+      ...requirement,
+      sectorId: `sector-${index}`,
+    }));
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={{
+          ...data,
+          events: [
+            {
+              ...event,
+              eventTimeBlocks: [
+                { ...block, shifts: [{ ...shift, requirements }] },
+              ],
+            },
+          ],
+        }}
+        selectedDate="2026-08-02"
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+    const sectors = screen.getAllByRole('group', { name: 'Main' });
+    expect(sectors).toHaveLength(2);
+    const [firstSector, secondSector] = sectors;
+    if (!(firstSector && secondSector)) throw new Error('Sectors are missing');
+    expect(within(firstSector).getByText('Support')).toBeVisible();
+    expect(within(secondSector).getByText('Coordinator')).toBeVisible();
+  });
+
+  it('updates the shift footer when assignments are added and removed', () => {
+    const data = boardDataWithShiftAssignments();
+    const event = data.events[0];
+    const block = event.eventTimeBlocks[0];
+    const shift = block.shifts[0];
+    const renderBoard = (assignments: CycleBuilderAssignment[]) => (
+      <CycleBuilderMatrix
+        data={{
+          ...data,
+          events: [
+            {
+              ...event,
+              eventTimeBlocks: [
+                { ...block, shifts: [{ ...shift, assignments }] },
+              ],
+            },
+          ],
+        }}
+        selectedDate="2026-08-02"
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />
+    );
+    const { rerender } = renderWithProviders(
+      renderBoard([sameShiftAssignment]),
+    );
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      '1 empty',
+    );
+    const secondAssignment = {
+      ...sameShiftAssignment,
+      id: 'assignment-2',
+      shiftRequirementId: 'requirement-role-coordinator',
+    };
+    rerender(renderBoard([sameShiftAssignment, secondAssignment]));
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      'Full',
+    );
+    rerender(renderBoard([secondAssignment]));
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      '1 empty',
+    );
+  });
+
   it('excludes same-shift assignees and warns when they serve in another shift', async () => {
     const user = userEvent.setup();
     renderWithProviders(
@@ -308,6 +402,12 @@ describe('CycleBuilderMatrix', () => {
         onRemoveAssignment={vi.fn()}
       />,
     );
+
+    const morningGroup = screen.getAllByRole('group', { name: 'Main' })[0];
+    if (!morningGroup) throw new Error('Morning Sector is missing');
+    expect(within(morningGroup).getByText('Support')).toBeVisible();
+    expect(within(morningGroup).getByText('Coordinator')).toBeVisible();
+    expect(screen.queryByText(/\bteam\b/i)).not.toBeInTheDocument();
 
     const addButtons = screen.getAllByRole('button', { name: 'Add' });
     await user.click(addButtons[0]);
@@ -350,7 +450,9 @@ describe('CycleBuilderMatrix', () => {
       screen.getByTestId('cycle-event-staffing-percent-event-1'),
     ).toHaveClass('text-destructive');
     expect(screen.getByText(/Morning service/)).toBeVisible();
-    expect(screen.getByText('Main · Greeter')).toBeVisible();
+    expect(
+      within(screen.getByRole('group', { name: 'Main' })).getByText('Greeter'),
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Add' })).toHaveLength(1);
     expect(

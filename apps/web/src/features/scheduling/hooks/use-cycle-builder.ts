@@ -54,6 +54,7 @@ export interface CycleBuilderRequirementSummary {
   id: string;
   roleId: string;
   sectorName: string;
+  sectorId?: string;
   peopleNeeded: number;
 }
 

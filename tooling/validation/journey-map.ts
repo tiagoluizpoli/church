@@ -192,6 +192,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     'apps/web/src/features/volunteers/components/availability-list-page.tsx',
     'apps/web/src/features/volunteers/components/availability-detail-page.tsx',
     'apps/web/src/features/volunteers/hooks/use-availability-check-breadcrumb.ts',
+    'apps/web/src/features/volunteers/hooks/use-local-availability-draft.ts',
     'apps/web/src/features/volunteers/lib/unavailable-shifts.ts',
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,

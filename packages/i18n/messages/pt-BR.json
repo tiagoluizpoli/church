@@ -1028,5 +1028,8 @@
   "availability_list_confirmed_all": "Confirmada, disponível para tudo",
   "availability_list_confirmed_count": "Confirmada · indisponível para {unavailable} de {total}",
   "availability_list_answer_by": "Responda até {date}",
-  "availability_list_overdue": "Prazo vencido · era até {date}"
+  "availability_list_overdue": "Prazo vencido · era até {date}",
+  "availability_draft_restored": "Suas alterações não enviadas foram restauradas",
+  "availability_draft_discard": "Descartar",
+  "availability_draft_leave": "Sair com alterações não enviadas? Seu rascunho ficará neste dispositivo."
 }

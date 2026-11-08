@@ -1,9 +1,18 @@
 import { m } from '@church/i18n/messages';
 import { parseInstant, setTestClock } from '@church/time';
-import { screen, waitFor, within } from '@testing-library/react';
+import {
+  createBrowserHistory,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from '@tanstack/react-router';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailabilityDetailPage } from '@/features/volunteers/components/availability-detail-page';
 import type { GetAvailabilityCheck200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
@@ -61,17 +70,54 @@ const CHECK: GetAvailabilityCheck200 = {
   ],
 };
 
-function renderPage(onAnswered = vi.fn()) {
-  return renderWithProviders(
-    <CallerCapabilitiesScopeProvider churchId="church" userId="person">
-      <AvailabilityDetailPage checkId="check-1" onAnswered={onAnswered} />
-    </CallerCapabilitiesScopeProvider>,
-    { churchTimezone: 'America/Sao_Paulo' },
-  );
+const histories: ReturnType<typeof createBrowserHistory>[] = [];
+afterEach(() => {
+  cleanup();
+  for (const history of histories.splice(0)) history.destroy();
+  vi.restoreAllMocks();
+});
+
+function renderPage(
+  onAnswered = vi.fn(),
+  person = 'person',
+  checkId = 'check-1',
+  browser = false,
+) {
+  const root = createRootRoute({ component: Outlet });
+  const page = createRoute({
+    getParentRoute: () => root,
+    path: '/availability/$checkId',
+    component: () => (
+      <CallerCapabilitiesScopeProvider churchId="church" userId={person}>
+        <AvailabilityDetailPage checkId={checkId} onAnswered={onAnswered} />
+      </CallerCapabilitiesScopeProvider>
+    ),
+  });
+  const away = createRoute({
+    getParentRoute: () => root,
+    path: '/availability',
+    component: () => <p>Away</p>,
+  });
+  window.history.replaceState(null, '', `/availability/${checkId}`);
+  const history = browser
+    ? createBrowserHistory()
+    : createMemoryHistory({ initialEntries: [`/availability/${checkId}`] });
+  histories.push(history);
+  const router = createRouter({
+    routeTree: root.addChildren([page, away]),
+    history,
+  });
+  return {
+    ...renderWithProviders(<RouterProvider router={router} />, {
+      churchTimezone: 'America/Sao_Paulo',
+    }),
+    router,
+  };
 }
 
 beforeEach(() => {
   vi.resetAllMocks();
+  localStorage.clear();
   api.getCallerCapabilities.mockResolvedValue({
     churchId: 'church',
     isChurchAdmin: false,
@@ -83,6 +129,209 @@ beforeEach(() => {
 });
 
 describe('Availability check page', () => {
+  it('persists each toggle across a reload without leaking to another Person or check', async () => {
+    const first = renderPage();
+    const toggles = await screen.findAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    await userEvent.click(toggles[0]);
+    expect(
+      JSON.parse(
+        localStorage.getItem('availability-draft:person:check-1') ?? 'null',
+      ),
+    ).toEqual(['morning']);
+    first.unmount();
+    const restored = renderPage();
+    expect(
+      (
+        await screen.findAllByRole('switch', {
+          name: m.availability_detail_unavailable(),
+        })
+      )[0],
+    ).toBeChecked();
+    restored.unmount();
+    const anotherPerson = renderPage(vi.fn(), 'other-person');
+    expect(
+      (
+        await screen.findAllByRole('switch', {
+          name: m.availability_detail_unavailable(),
+        })
+      )[0],
+    ).not.toBeChecked();
+    anotherPerson.unmount();
+    api.getAvailabilityCheck.mockResolvedValue({ ...CHECK, id: 'other-check' });
+    renderPage(vi.fn(), 'person', 'other-check');
+    expect(
+      (
+        await screen.findAllByRole('switch', {
+          name: m.availability_detail_unavailable(),
+        })
+      )[0],
+    ).not.toBeChecked();
+    expect(localStorage.getItem('availability-draft:person:check-1')).toBe(
+      '["morning"]',
+    );
+  });
+
+  it('prunes missing and published Shifts before restoring, and Discard resets to server marks', async () => {
+    localStorage.setItem(
+      'availability-draft:person:check-1',
+      JSON.stringify(['morning', 'evening', 'removed']),
+    );
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        published: shift.shiftId === 'morning',
+        available: shift.shiftId !== 'next-day',
+      })),
+    });
+    renderPage();
+    expect(
+      await screen.findByText(m.availability_draft_restored()),
+    ).toBeVisible();
+    expect(
+      JSON.parse(
+        localStorage.getItem('availability-draft:person:check-1') ?? 'null',
+      ),
+    ).toEqual(['evening']);
+    await userEvent.click(
+      screen.getByRole('button', { name: m.availability_draft_discard() }),
+    );
+    const toggles = screen.getAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).not.toBeChecked();
+    expect(toggles[1]).not.toBeChecked();
+    expect(toggles[2]).toBeChecked();
+    expect(
+      localStorage.getItem('availability-draft:person:check-1'),
+    ).toBeNull();
+    expect(
+      screen.queryByText(m.availability_draft_restored()),
+    ).not.toBeInTheDocument();
+  });
+
+  it('asks before router navigation or closing with unsent changes and releases both guards after Discard', async () => {
+    localStorage.setItem('availability-draft:person:check-1', '["morning"]');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { router } = renderPage(vi.fn(), 'person', 'check-1', true);
+    await screen.findByText(m.availability_draft_restored());
+    const closing = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(closing);
+    expect(closing.defaultPrevented).toBe(true);
+    await act(async () => {
+      void router.navigate({ to: '/availability' });
+    });
+    expect(confirm).toHaveBeenCalledWith(m.availability_draft_leave());
+    expect(router.state.location.pathname).toBe('/availability/check-1');
+    await userEvent.click(
+      screen.getByRole('button', { name: m.availability_draft_discard() }),
+    );
+    const discarded = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(discarded);
+    expect(discarded.defaultPrevented).toBe(false);
+    await act(() => router.navigate({ to: '/availability' }));
+    expect(await screen.findByText('Away')).toBeVisible();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+  });
+
+  it('clears the draft before successful-answer navigation and releases the closing guard', async () => {
+    api.answerAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      state: 'confirmed',
+    });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const onAnswered = vi.fn(async () => {
+      expect(
+        localStorage.getItem('availability-draft:person:check-1'),
+      ).toBeNull();
+      const closing = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(closing);
+      expect(closing.defaultPrevented).toBe(false);
+      await router.navigate({ to: '/availability' });
+    });
+    const { router } = renderPage(onAnswered, 'person', 'check-1', true);
+    const toggles = await screen.findAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    const clean = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(clean);
+    expect(clean.defaultPrevented).toBe(false);
+    await userEvent.click(toggles[0]);
+    await userEvent.click(screen.getByRole('button'));
+    expect(await screen.findByText('Away')).toBeVisible();
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it('silently clears a restored entry whose marks all disappeared, were published or match the server', async () => {
+    localStorage.setItem(
+      'availability-draft:person:check-1',
+      '["removed", "morning", "evening"]',
+    );
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        published: shift.shiftId === 'morning',
+        available: shift.shiftId !== 'evening',
+      })),
+    });
+    renderPage();
+    await screen.findByText('Kids');
+    expect(
+      screen.queryByText(m.availability_draft_restored()),
+    ).not.toBeInTheDocument();
+    expect(
+      localStorage.getItem('availability-draft:person:check-1'),
+    ).toBeNull();
+  });
+
+  it('restores an empty draft when the unsent change removes a server mark', async () => {
+    localStorage.setItem('availability-draft:person:check-1', '[]');
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    });
+    renderPage();
+    expect(
+      await screen.findByText(m.availability_draft_restored()),
+    ).toBeVisible();
+    expect(
+      screen.getAllByRole('switch', {
+        name: m.availability_detail_unavailable(),
+      })[0],
+    ).not.toBeChecked();
+  });
+
+  it('keeps a Past-Cycle server answer visible and ignores the stored draft', async () => {
+    localStorage.setItem('availability-draft:person:check-1', '[]');
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      readOnly: true,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    });
+    renderPage();
+    const toggles = await screen.findAllByRole('switch', {
+      name: m.availability_detail_unavailable(),
+    });
+    expect(toggles[0]).toBeChecked();
+    expect(
+      screen.queryByText(m.availability_draft_restored()),
+    ).not.toBeInTheDocument();
+    expect(
+      localStorage.getItem('availability-draft:person:check-1'),
+    ).toBeNull();
+  });
+
   it('drops refused published marks, refreshes detail and retries with the remaining draft', async () => {
     const response: AxiosResponse = {
       status: 409,

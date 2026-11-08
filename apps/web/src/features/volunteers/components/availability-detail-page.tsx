@@ -7,9 +7,11 @@ import {
   today,
 } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useBlocker } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useId, useState } from 'react';
 import { z } from 'zod';
+import { useLocalAvailabilityDraft } from '../hooks/use-local-availability-draft';
 import {
   buildUnavailableShiftsBody,
   createInitialUnavailableShiftDraft,
@@ -25,6 +27,7 @@ import type {
   GetAvailabilityCheck200,
   GetAvailabilityCheck200ShiftsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { CapabilityGate } from '@/shared/components/capability-gate';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import {
@@ -46,19 +49,38 @@ export interface AvailabilityDetailPageProps {
 
 interface AvailabilityAnswerProps {
   check: GetAvailabilityCheck200;
+  userId: string;
   onAnswered: () => void | Promise<void>;
 }
 
-function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
+function AvailabilityAnswer({
+  check,
+  userId,
+  onAnswered,
+}: AvailabilityAnswerProps) {
   const { churchTimezone } = useTimezone();
   const switchPrefix = useId();
   const editableShifts = check.shifts.filter((shift) => !shift.published);
-  const [draft, setDraft] = useState(() =>
-    createInitialUnavailableShiftDraft({
-      shifts: editableShifts,
-      timeZone: churchTimezone,
-    }),
-  );
+  const {
+    draft,
+    setDraft,
+    restored,
+    discard,
+    clear,
+    hasUnsentChanges,
+    cleared,
+  } = useLocalAvailabilityDraft({
+    check,
+    userId,
+    timeZone: churchTimezone,
+  });
+  useBlocker({
+    shouldBlockFn: () =>
+      hasUnsentChanges &&
+      !cleared.current &&
+      !window.confirm(m.availability_draft_leave()),
+    enableBeforeUnload: () => hasUnsentChanges && !cleared.current,
+  });
   const queryClient = useQueryClient();
   const [publishedRefusal, setPublishedRefusal] = useState(false);
   const answer = useMutation({
@@ -113,6 +135,7 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
       if (refreshed) pruneDraft(refreshed);
     },
     onSuccess: async (updated) => {
+      clear();
       queryClient.setQueryData(['availability-check', check.id], updated);
       await queryClient.invalidateQueries({
         queryKey: ['availability-checks'],
@@ -185,6 +208,22 @@ function AvailabilityAnswer({ check, onAnswered }: AvailabilityAnswerProps) {
           </div>
         ) : null}
       </header>
+      {restored ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 text-sm"
+        >
+          <p>{m.availability_draft_restored()}</p>
+          <Button
+            variant="outline"
+            size="touch"
+            disabled={answer.isPending}
+            onClick={discard}
+          >
+            {m.availability_draft_discard()}
+          </Button>
+        </div>
+      ) : null}
       {[...days].map(([day, shifts]) => {
         const dayLabel = formatCalendarDayWithWeekday({
           day,
@@ -314,6 +353,7 @@ function AvailabilityDetailContent({
   checkId,
   onAnswered,
 }: AvailabilityDetailPageProps) {
+  const scope = useCallerCapabilitiesScope();
   const query = useQuery({
     queryKey: ['availability-check', checkId],
     queryFn: () => volunteerApi.getAvailabilityCheck(checkId),
@@ -340,10 +380,11 @@ function AvailabilityDetailContent({
       </div>
     );
   }
-  if (!query.data) return null;
+  if (!query.data || !scope?.userId) return null;
   return (
     <AvailabilityAnswer
-      key={checkId}
+      key={`${scope.userId}:${checkId}`}
+      userId={scope.userId}
       check={query.data}
       onAnswered={onAnswered}
     />

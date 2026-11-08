@@ -1028,5 +1028,8 @@
   "availability_list_confirmed_all": "Confirmed, available for everything",
   "availability_list_confirmed_count": "Confirmed · unavailable for {unavailable} of {total}",
   "availability_list_answer_by": "Answer by {date}",
-  "availability_list_overdue": "Overdue · was due {date}"
+  "availability_list_overdue": "Overdue · was due {date}",
+  "availability_draft_restored": "Your unsent changes were restored",
+  "availability_draft_discard": "Discard",
+  "availability_draft_leave": "Leave with unsent changes? Your draft will stay on this device."
 }

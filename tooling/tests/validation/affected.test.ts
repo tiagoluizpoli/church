@@ -637,29 +637,19 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects J6 and the availability journey for the Answers component', () => {
-    const plan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/features/scheduling/components/availability-status-section.tsx',
-      ],
-    });
-    expect(plan.e2eSpecPaths).toEqual([
-      'tests/scheduling/j6-leader-availability.spec.ts',
-      'tests/scheduling/us3-volunteer-availability.spec.ts',
-    ]);
-    expect(plan.missingJourneyMappings).toEqual([]);
-  });
-
-  it('selects only the availability journey for its status utility', () => {
-    const plan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/features/scheduling/utils/availability-status.ts',
-      ],
-    });
-    expect(plan.e2eSpecPaths).toEqual([
-      'tests/scheduling/us3-volunteer-availability.spec.ts',
-    ]);
-    expect(plan.missingJourneyMappings).toEqual([]);
+  it('selects J7 for the availability pages', () => {
+    for (const changedPath of [
+      'apps/web/src/routes/_authenticated/_active-church/availability.tsx',
+      'apps/web/src/routes/_authenticated/_active-church/availability_.$checkId.tsx',
+      'apps/web/src/features/volunteers/components/availability-list-page.tsx',
+      'apps/web/src/features/volunteers/components/availability-detail-page.tsx',
+    ]) {
+      const plan = classifyChanges({ changedPaths: [changedPath] });
+      expect(plan.e2eSpecPaths).toEqual([
+        'tests/scheduling/us3-volunteer-availability.spec.ts',
+      ]);
+      expect(plan.missingJourneyMappings).toEqual([]);
+    }
   });
 
   it('selects breadcrumb accessibility and the Cycle leader handoff for their owning hooks', () => {

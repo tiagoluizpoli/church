@@ -31,8 +31,6 @@ import { MinistryParticipation } from '@/domain/entities/ministry-participation'
 import { Notification } from '@/domain/entities/notification';
 import { Role } from '@/domain/entities/role';
 import { Shift } from '@/domain/entities/shift';
-import { UnavailableShift } from '@/domain/entities/unavailable-shift';
-import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import {
   createAssignmentRepositoryFake,
@@ -146,105 +144,6 @@ function createHarness() {
 }
 
 describe('volunteer availability', () => {
-  it('marks selected shifts unavailable and leaves others available', async () => {
-    const { manager, unavailableShiftRepo, tx } = createHarness();
-    unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue([
-      new UnavailableShift({
-        props: {
-          churchId,
-          availabilityCheckId: checkId,
-          shiftId: evening,
-          volunteerId,
-          shiftStartTime: shifts[1].startTime,
-          shiftEndTime: shifts[1].endTime,
-        },
-      }),
-    ]);
-    const detail = await manager.setUnavailableShifts({
-      ...input,
-      shiftIds: [evening],
-    });
-    expect(
-      unavailableShiftRepo.replaceUnavailableShiftsForCheck,
-    ).toHaveBeenCalledWith({
-      churchId,
-      availabilityCheckId: checkId,
-      shiftIds: [evening],
-      tx,
-    });
-    expect(
-      detail.shifts.map(({ shiftId, available }) => [shiftId, available]),
-    ).toEqual([
-      [morning, true],
-      [evening, false],
-    ]);
-  });
-  it('expands a whole church-local day to all its shifts', async () => {
-    const { manager, unavailableShiftRepo, tx } = createHarness();
-    await manager.setUnavailableShifts({
-      ...input,
-      shiftIds: [],
-      wholeDayDates: ['2026-08-02'],
-    });
-    expect(
-      unavailableShiftRepo.replaceUnavailableShiftsForCheck,
-    ).toHaveBeenCalledWith({
-      churchId,
-      availabilityCheckId: checkId,
-      shiftIds: [morning, evening],
-      tx,
-    });
-  });
-  it('rejects shifts outside the check scope', async () => {
-    const { manager, unavailableShiftRepo } = createHarness();
-    await expect(
-      manager.setUnavailableShifts({
-        ...input,
-        shiftIds: [ShiftId.from('other')],
-      }),
-    ).rejects.toThrow();
-    expect(
-      unavailableShiftRepo.replaceUnavailableShiftsForCheck,
-    ).not.toHaveBeenCalled();
-  });
-  it('confirms an empty response and persists its confirmation time', async () => {
-    const { manager, availabilityCheckRepo, tx } = createHarness();
-    const result = await manager.confirmAvailabilityCheck(input);
-    expect(result.state).toBe('confirmed');
-    expect(availabilityCheckRepo.confirm).toHaveBeenCalledWith({
-      churchId,
-      checkId,
-      confirmedAt: expect.any(Date),
-      tx,
-    });
-  });
-  it('confirms independently of other ministries, without requesting leader notifications', async () => {
-    const { manager, availabilityCheckRepo, notificationRepo } =
-      createHarness();
-    expect(await manager.confirmAvailabilityCheck(input)).toEqual(
-      expect.objectContaining({ state: 'confirmed' }),
-    );
-    expect(availabilityCheckRepo.listByVolunteer).not.toHaveBeenCalled();
-    expect(
-      availabilityCheckRepo.listMinistryLeaderVolunteerIds,
-    ).not.toHaveBeenCalled();
-    expect(notificationRepo.create).not.toHaveBeenCalled();
-  });
-  it('denies marking or confirming another volunteer’s check', async () => {
-    const { manager, unavailableShiftRepo, availabilityCheckRepo } =
-      createHarness();
-    const intruder = { ...input, volunteerId: VolunteerId.from('intruder') };
-    await expect(
-      manager.setUnavailableShifts({ ...intruder, shiftIds: [morning] }),
-    ).rejects.toThrow(CheckAccessDeniedError);
-    await expect(manager.confirmAvailabilityCheck(intruder)).rejects.toThrow(
-      CheckAccessDeniedError,
-    );
-    expect(
-      unavailableShiftRepo.replaceUnavailableShiftsForCheck,
-    ).not.toHaveBeenCalled();
-    expect(availabilityCheckRepo.confirm).not.toHaveBeenCalled();
-  });
   it('lists and resolves shifts as available by default', async () => {
     const { manager } = createHarness();
     expect(
@@ -269,7 +168,7 @@ describe('volunteer availability', () => {
 });
 
 describe('volunteer dashboard', () => {
-  it('composes availability, published assignments, notification preview and ministry options', async () => {
+  it('composes published assignments, notification preview and ministry options', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-01T00:00:00Z'));
     try {
@@ -361,9 +260,6 @@ describe('volunteer dashboard', () => {
         volunteerId,
         userId,
       });
-      expect(dashboard.availabilityTasks).toEqual([
-        expect.objectContaining({ eventId, completionState: 'missing' }),
-      ]);
       expect(dashboard.upcomingAssignmentGroups).toEqual([
         expect.objectContaining({
           eventId,

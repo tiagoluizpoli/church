@@ -317,7 +317,7 @@ describe('Volunteer availability reads through PostgreSQL', () => {
     });
     const saved = await app.inject({
       method: 'PUT',
-      url: `${ROOT}/${check.id}/unavailable-shifts`,
+      url: `${ROOT}/${check.id}/answer`,
       payload: { shiftIds: [held.id] },
     });
     expect(saved.statusCode).toBe(200);
@@ -329,11 +329,6 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       totalShiftCount: 1,
       unavailableShiftCount: 1,
     });
-    const confirmed = await app.inject({
-      method: 'POST',
-      url: `${ROOT}/${check.id}/confirm`,
-    });
-    expect(confirmed.statusCode).toBe(204);
     await db
       .update(ministryParticipation)
       .set({ state: 'published' })

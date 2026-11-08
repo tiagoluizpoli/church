@@ -2,12 +2,10 @@ import { now } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import type { AvailabilitySaveInput } from '../components/availability-form';
 import { getInitialExpandedAssignmentGroupId } from '../lib/assignment-grouping';
-import {
-  type DashboardAssignmentGroup,
-  type DashboardSnapshot,
-  mapAvailabilityEventTimeBlocks,
+import type {
+  DashboardAssignmentGroup,
+  DashboardSnapshot,
 } from '../lib/dashboard-mappers';
 import {
   getDashboardSnapshotQueryConfig,
@@ -20,8 +18,7 @@ import { queryClient } from '@/utils/api';
 import { volunteerApi } from '@/utils/api-instances';
 
 export interface UseVolunteerDashboardOptions {
-  initialSection?: 'availability' | 'assignments' | 'ministry_schedule';
-  initialEventId?: string;
+  initialSection?: 'assignments' | 'ministry_schedule';
   initialAssignmentId?: string;
   initialMinistryId?: string;
 }
@@ -47,7 +44,6 @@ function shouldKeepExpandedGroup({
 
 export function useVolunteerDashboard({
   initialSection,
-  initialEventId,
   initialAssignmentId,
   initialMinistryId,
 }: UseVolunteerDashboardOptions) {
@@ -57,7 +53,6 @@ export function useVolunteerDashboard({
     queryFn: async (): Promise<DashboardSnapshot> => {
       const result = await volunteerApi.getVolunteerDashboard();
       return {
-        availabilityTasks: result.availabilityTasks,
         upcomingAssignmentGroups: result.upcomingAssignmentGroups,
         notificationUnreadCount: result.unreadNotificationCount,
         notificationPreview: result.notificationPreview,
@@ -69,12 +64,8 @@ export function useVolunteerDashboard({
     ...getDashboardSnapshotQueryConfig(isOnline),
   });
   const dashboard = dashboardQuery.data;
-  const availabilityTasks = dashboard?.availabilityTasks ?? [];
   const assignmentGroups = dashboard?.upcomingAssignmentGroups ?? [];
 
-  const [selectedEventId, setSelectedEventId] = useState<string | undefined>(
-    initialSection === 'availability' ? initialEventId : undefined,
-  );
   const [expandedAssignmentEventId, setExpandedAssignmentEventId] = useState<
     string | undefined
   >(undefined);
@@ -85,27 +76,6 @@ export function useVolunteerDashboard({
   const [selectedMinistryId, setSelectedMinistryId] = useState<
     string | undefined
   >(initialSection === 'ministry_schedule' ? initialMinistryId : undefined);
-
-  useEffect(() => {
-    if (
-      selectedEventId &&
-      availabilityTasks.some((task) => task.eventId === selectedEventId)
-    ) {
-      return;
-    }
-
-    if (initialSection === 'availability' && availabilityTasks.length > 0) {
-      setSelectedEventId(initialEventId ?? availabilityTasks[0]?.eventId);
-      return;
-    }
-
-    if (
-      selectedEventId &&
-      availabilityTasks.every((task) => task.eventId !== selectedEventId)
-    ) {
-      setSelectedEventId(undefined);
-    }
-  }, [availabilityTasks, initialEventId, initialSection, selectedEventId]);
 
   useEffect(() => {
     const ministryOptions = dashboard?.ministryOptions ?? [];
@@ -185,17 +155,6 @@ export function useVolunteerDashboard({
     initialAssignmentId,
   ]);
 
-  const selectedTask = availabilityTasks.find(
-    (task) => task.eventId === selectedEventId,
-  );
-
-  const availabilityQuery = useQuery({
-    queryKey: ['my-availability'],
-    // Free-span availability was removed with the 017 reshape; the dashboard
-    // availability section migrates to availability checks in T067a.
-    queryFn: async () => ({ eventTimeBlocks: [] }),
-  });
-
   const ministryScheduleQuery = useQuery({
     queryKey: ['ministry-schedule', selectedMinistryId],
     queryFn: () => volunteerApi.getMinistrySchedule(selectedMinistryId ?? ''),
@@ -228,14 +187,11 @@ export function useVolunteerDashboard({
   const invalidateVolunteerDashboard = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['volunteer-dashboard'] }),
-      queryClient.invalidateQueries({ queryKey: ['my-availability'] }),
       queryClient.invalidateQueries({
         queryKey: ['ministry-schedule', selectedMinistryId],
       }),
     ]);
   };
-
-  const saveAvailability = useMutation({ mutationFn: async () => undefined });
 
   const respondToAssignment = useMutation({
     mutationFn: (input: AssignmentResponseMutationInput) =>
@@ -267,8 +223,6 @@ export function useVolunteerDashboard({
     },
   });
 
-  const handleSaveAvailability = (_input: AvailabilitySaveInput) => undefined;
-
   const handleRespondToAssignment = (
     input: AssignmentResponseMutationInput,
   ) => {
@@ -299,15 +253,10 @@ export function useVolunteerDashboard({
 
   return {
     assignmentGroups,
-    availabilityEventTimeBlocks: mapAvailabilityEventTimeBlocks(
-      availabilityQuery.data,
-    ),
-    availabilityTasks,
     cancelAssignment,
     expandedAssignmentEventId,
     handleCancelAssignment,
     handleRespondToAssignment,
-    handleSaveAvailability,
     handleToggleAssignmentGroup,
     invalidateVolunteerDashboard,
     isOnline,
@@ -318,10 +267,7 @@ export function useVolunteerDashboard({
     notificationUnreadCount: dashboard?.notificationUnreadCount ?? 0,
     openAssignmentGroup: setExpandedAssignmentEventId,
     respondToAssignment,
-    saveAvailability,
     selectedMinistryId,
-    selectedTask,
     setSelectedMinistryId,
-    setSelectedEventId,
   };
 }

@@ -32,7 +32,19 @@ describe('removed scheduling routes', () => {
       method: 'POST' as const,
       url: '/api/v1/admin/events/legacy/apply-template',
     },
-    { method: 'PUT' as const, url: '/api/v1/volunteer/availability' },
+    {
+      method: 'PUT' as const,
+      url: [
+        '/api/v1/volunteer/availability-checks/some-id',
+        'unavailable-shifts',
+      ].join('/'),
+    },
+    {
+      method: 'POST' as const,
+      url: ['/api/v1/volunteer/availability-checks/some-id', 'confirm'].join(
+        '/',
+      ),
+    },
     { method: 'POST' as const, url: '/api/v1/events/some-id/slots' },
     { method: 'PATCH' as const, url: '/api/v1/events/some-id/slots/slot-id' },
     { method: 'DELETE' as const, url: '/api/v1/events/some-id/slots/slot-id' },

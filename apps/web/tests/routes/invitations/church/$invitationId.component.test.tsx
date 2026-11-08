@@ -92,7 +92,6 @@ function axiosErrorWithStatus(status: number): AxiosError {
 }
 
 const EMPTY_DASHBOARD = {
-  availabilityTasks: [],
   upcomingAssignmentGroups: [],
   unreadNotificationCount: 0,
   notificationPreview: [],

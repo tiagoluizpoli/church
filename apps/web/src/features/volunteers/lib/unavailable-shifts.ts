@@ -1,7 +1,7 @@
 import type { CalendarDay } from '@church/time';
 import type {
+  AnswerAvailabilityCheckBody,
   GetAvailabilityCheck200ShiftsItem,
-  SetUnavailableShiftsBody,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { dayOf } from '@/shared/utils/church-time';
 
@@ -156,7 +156,7 @@ export function toggleWholeDayUnavailable({
 
 export function buildUnavailableShiftsBody({
   draft,
-}: BuildUnavailableShiftsBodyInput): SetUnavailableShiftsBody {
+}: BuildUnavailableShiftsBodyInput): AnswerAvailabilityCheckBody {
   return {
     shiftIds: [...draft.markedShiftIds],
     wholeDayDates: [...draft.wholeDayDates],

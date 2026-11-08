@@ -2211,8 +2211,7 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       for (const id of [pending, confirmed]) {
         for (const [method, path] of [
           ['GET', `/${id}`],
-          ['PUT', `/${id}/unavailable-shifts`],
-          ['POST', `/${id}/confirm`],
+          ['PUT', `/${id}/answer`],
         ] as const) {
           const res = await asVal(method, path);
           expect(res.statusCode, `${method} ${path}`).toBe(404);
@@ -2399,8 +2398,9 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       const { pending, confirmed } = await answeredChecks();
       const confirm = (id: string) => () =>
         app.inject({
-          method: 'POST',
-          url: `/api/v1/volunteer/availability-checks/${id}/confirm`,
+          method: 'PUT',
+          url: `/api/v1/volunteer/availability-checks/${id}/answer`,
+          payload: { shiftIds: [] },
           headers: { [USER_HEADER]: 'val' },
         });
 
@@ -2408,7 +2408,7 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
         lock: lockValWorship(),
         steps: [confirm(pending), removeVal],
       })) as Awaited<ReturnType<typeof removeFrom>>[];
-      expect(answered?.statusCode).toBe(204);
+      expect(answered?.statusCode).toBe(200);
       expect(removed?.statusCode).toBe(200);
       expect(await checkRow(pending)).toMatchObject({
         state: 'confirmed',
@@ -2430,8 +2430,9 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
           () => removeFrom({ as: 'ada', member: 'kim', membership: ws('kim') }),
           () =>
             app.inject({
-              method: 'POST',
-              url: `/api/v1/volunteer/availability-checks/${kimCheck}/confirm`,
+              method: 'PUT',
+              url: `/api/v1/volunteer/availability-checks/${kimCheck}/answer`,
+              payload: { shiftIds: [] },
               headers: { [USER_HEADER]: 'kim' },
             }),
         ],

@@ -1,7 +1,6 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { AvailabilityForm } from '@/features/volunteers/components/availability-form';
 import { BackgroundRefreshIndicator } from '@/features/volunteers/components/background-refresh-indicator';
 import { DashboardOfflineBanner } from '@/features/volunteers/components/dashboard-offline-banner';
 import { UpcomingAssignmentsSection } from '@/features/volunteers/components/upcoming-assignments-section';
@@ -38,31 +37,9 @@ describe('Volunteer dashboard offline + refresh UI', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps availability and assignment write affordances disabled while offline', () => {
+  it('keeps assignment write affordances disabled while offline', () => {
     renderWithProviders(
       <div>
-        <AvailabilityForm
-          event={{
-            id: 'event-1',
-            title: 'Youth Gathering',
-            start: '2099-01-05T09:00:00.000Z',
-            end: '2099-01-05T11:00:00.000Z',
-          }}
-          eventTimeBlocks={[
-            {
-              eventTimeBlockId: 'event-time-block-1',
-              label: '8:00 AM Service',
-              startTime: '2099-01-05T08:00:00.000Z',
-              endTime: '2099-01-05T09:30:00.000Z',
-              response: 'available',
-            },
-          ]}
-          isEditable={true}
-          isOnline={false}
-          onSave={vi.fn()}
-          saveState="idle"
-        />
-
         <UpcomingAssignmentsSection
           groups={[
             {
@@ -101,9 +78,6 @@ describe('Volunteer dashboard offline + refresh UI', () => {
       </div>,
     );
 
-    expect(
-      screen.getByRole('button', { name: 'Save availability' }),
-    ).toBeDisabled();
     const cannotServeButtons = screen.getAllByRole('button', {
       name: 'I cannot serve',
     });

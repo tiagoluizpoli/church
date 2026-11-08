@@ -79,16 +79,16 @@ function dataWithAssignments(
                   {
                     volunteerId: 'volunteer-a',
                     volunteerName: 'Volunteer A',
-                    isAvailable: true,
-                    hasConflict: false,
+                    answerState: 'available',
+                    conflict: null,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
                   },
                   {
                     volunteerId: 'volunteer-b',
                     volunteerName: 'Volunteer B',
-                    isAvailable: false,
-                    hasConflict: false,
+                    answerState: 'unavailable',
+                    conflict: null,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
                   },
@@ -259,7 +259,7 @@ describe('useCycleBuilderActions', () => {
     sourceShift.eligibleVolunteers = sourceShift.eligibleVolunteers.map(
       (volunteer) =>
         volunteer.volunteerId === 'volunteer-b'
-          ? { ...volunteer, isAvailable: false }
+          ? { ...volunteer, answerState: 'unavailable' }
           : volunteer,
     );
 

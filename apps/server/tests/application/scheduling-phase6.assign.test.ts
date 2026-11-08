@@ -581,7 +581,10 @@ describe('Assignment and publication managers', () => {
       shiftId,
     });
     expect(
-      eligible.map((item) => [item.volunteerName, item.isAvailable]),
+      eligible.map((item) => [
+        item.volunteerName,
+        item.answerState === 'available',
+      ]),
     ).toEqual([
       ['Ada Lovelace', true],
       ['Grace Hopper', true],
@@ -763,6 +766,8 @@ describe('Assignment and publication managers', () => {
     });
     expect(
       conflicted.find((item) => item.volunteerName === 'Amy'),
-    ).toMatchObject({ hasConflict: true });
+    ).toMatchObject({
+      conflict: expect.objectContaining({ assignmentId: expect.any(String) }),
+    });
   });
 });

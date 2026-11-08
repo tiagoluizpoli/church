@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { DndContext } from '@dnd-kit/core';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -50,6 +51,64 @@ const roles = [
 ];
 
 describe('VolunteerPoolSidebar (T102)', () => {
+  it('renders the four answer states in ranked order', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={[
+          {
+            volunteerId: 'd',
+            volunteerName: 'Dana Brown',
+            status: 'unavailable',
+          },
+          { volunteerId: 'c', volunteerName: 'Cleo Cook', status: 'not_asked' },
+          {
+            volunteerId: 'b',
+            volunteerName: 'Bea Baker',
+            status: 'unanswered',
+          },
+          { volunteerId: 'a', volunteerName: 'Ana Adams', status: 'available' },
+        ]}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={['a', 'b', 'c', 'd']}
+      />,
+    );
+    const cards = screen.getAllByTestId('volunteer-card');
+    expect(cards.map((card) => card.textContent)).toEqual([
+      expect.stringContaining(m.builder_state_available()),
+      expect.stringContaining(m.builder_state_unanswered()),
+      expect.stringContaining(m.builder_state_not_asked()),
+      expect.stringContaining(m.builder_state_unavailable()),
+    ]);
+  });
+
+  it('shows the overlap reason and prevents focused assignment', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={[
+          {
+            volunteerId: '1',
+            volunteerName: 'Alice Smith',
+            status: 'available',
+            conflictReason: 'Already serving in Worship 10:00–12:00',
+          },
+        ]}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={['1']}
+        assignableVolunteerFits={new Map()}
+        onAssignFocusedVolunteer={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText('Already serving in Worship 10:00–12:00'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('volunteer-pick-me')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('volunteer-select-shift'),
+    ).not.toBeInTheDocument();
+  });
   it('renders all volunteers initially', () => {
     renderSidebar(
       <VolunteerPoolSidebar
@@ -112,7 +171,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(onSelectVolunteer).toHaveBeenCalledWith('1');
   });
 
-  it('promotes a focused requirement’s candidates without hiding the rest of the pool', async () => {
+  it('shows only candidates for the focused requirement', async () => {
     const user = userEvent.setup();
     const onClearFocus = vi.fn();
 
@@ -134,21 +193,18 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(
       screen.getByRole('heading', { name: /^Best for this role/ }),
     ).toBeVisible();
-    expect(
-      screen.getByRole('heading', { name: /^Everyone else/ }),
-    ).toBeVisible();
 
     // Bob is ranked for the focused shift×role, so he is promoted over the
     // pool's own alphabetical order instead of Alice being filtered out.
     const [firstCard] = screen.getAllByTestId('volunteer-card');
     expect(firstCard).toHaveTextContent('Bob J.');
-    expect(screen.getByText('Alice S.')).toBeVisible();
+    expect(screen.queryByText('Alice S.')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'All volunteers' }));
     expect(onClearFocus).toHaveBeenCalledOnce();
   });
 
-  it('offers Pick me on every assignable card, not only the ranked ones', async () => {
+  it('offers Pick me on focused candidates', async () => {
     const user = userEvent.setup();
     const onAssignFocusedVolunteer = vi.fn();
 
@@ -173,17 +229,17 @@ describe('VolunteerPoolSidebar (T102)', () => {
     );
 
     const pickButtons = screen.getAllByTestId('volunteer-pick-me');
-    expect(pickButtons).toHaveLength(2);
+    expect(pickButtons).toHaveLength(1);
     expect(
       screen.queryByTestId('volunteer-select-shift'),
     ).not.toBeInTheDocument();
 
     // Alice (id 1) is under "Everyone else" yet still committable.
     await user.click(pickButtons[pickButtons.length - 1]);
-    expect(onAssignFocusedVolunteer).toHaveBeenCalledWith('1');
+    expect(onAssignFocusedVolunteer).toHaveBeenCalledWith('2');
   });
 
-  it('keeps Select shift on a card excluded from the assignable set', () => {
+  it('hides cards excluded from focused candidates', () => {
     renderSidebar(
       <VolunteerPoolSidebar
         volunteers={volunteers}
@@ -201,7 +257,9 @@ describe('VolunteerPoolSidebar (T102)', () => {
     );
 
     expect(screen.getAllByTestId('volunteer-pick-me')).toHaveLength(1);
-    expect(screen.getByTestId('volunteer-select-shift')).toBeVisible();
+    expect(
+      screen.queryByTestId('volunteer-select-shift'),
+    ).not.toBeInTheDocument();
   });
 
   it('offers no Pick me action when focus assignment is not wired', () => {
@@ -224,7 +282,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(screen.queryByTestId('volunteer-pick-me')).not.toBeInTheDocument();
   });
 
-  it('still lists the pool when nobody is qualified for the focused role', () => {
+  it('shows no candidates when nobody is qualified for the focused role', () => {
     renderSidebar(
       <VolunteerPoolSidebar
         volunteers={volunteers}
@@ -236,8 +294,8 @@ describe('VolunteerPoolSidebar (T102)', () => {
     );
 
     expect(screen.getByText('No candidates for this role')).toBeVisible();
-    expect(screen.getByText('Alice S.')).toBeVisible();
-    expect(screen.getByText('Bob J.')).toBeVisible();
+    expect(screen.queryByText('Alice S.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bob J.')).not.toBeInTheDocument();
   });
 
   it('keeps the focus ranking inside a grouped rail', async () => {
@@ -262,9 +320,8 @@ describe('VolunteerPoolSidebar (T102)', () => {
     // Ready first (Alice), then Awaiting — where the focus ranking puts Dana
     // ahead of Bob even though the pool sorts partial above no_response.
     const cards = screen.getAllByTestId('volunteer-card');
-    expect(cards[0]).toHaveTextContent('Alice S.');
-    expect(cards[1]).toHaveTextContent('Dana B.');
-    expect(cards[2]).toHaveTextContent('Bob J.');
+    expect(cards[0]).toHaveTextContent('Dana B.');
+    expect(cards[1]).toHaveTextContent('Bob J.');
   });
 
   it('groups volunteers by status and keeps unavailable volunteers expandable', async () => {
@@ -284,12 +341,20 @@ describe('VolunteerPoolSidebar (T102)', () => {
       await screen.findByRole('menuitemradio', { name: 'By status' }),
     );
 
-    expect(screen.getByText('Ready')).toBeVisible();
-    expect(screen.getByText('Awaiting')).toBeVisible();
+    expect(
+      screen.getAllByText(m.builder_state_available()).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(m.builder_state_unanswered()).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText('Dana B.')).toBeVisible();
     expect(screen.queryByText('Carol W.')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Unavailable (1)' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: `${m.builder_state_unavailable()} (1)`,
+      }),
+    );
     expect(screen.getByText('Carol W.')).toBeVisible();
   });
 

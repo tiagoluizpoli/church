@@ -61,8 +61,14 @@ export interface CycleBuilderRequirementSummary {
 export interface CycleBuilderEligibleVolunteerSummary {
   volunteerId: string;
   volunteerName: string;
-  isAvailable: boolean;
-  hasConflict: boolean;
+  answerState: 'available' | 'unanswered' | 'not_asked' | 'unavailable';
+  conflict: {
+    assignmentId: string;
+    ministryName: string;
+    eventTitle: string;
+    startTime: string;
+    endTime: string;
+  } | null;
   lastServedAt?: string;
   qualifiedRoleIds: string[];
   ministryAccessLevel: AssigneeMembership['ministryAccessLevel'];

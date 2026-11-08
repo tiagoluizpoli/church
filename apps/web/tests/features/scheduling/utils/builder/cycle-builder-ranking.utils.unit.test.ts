@@ -33,8 +33,8 @@ function makeEligible(
     Pick<CycleBuilderEligibleVolunteerSummary, 'volunteerId' | 'volunteerName'>,
 ): CycleBuilderEligibleVolunteerSummary {
   return {
-    isAvailable: true,
-    hasConflict: false,
+    answerState: 'available',
+    conflict: null,
     qualifiedRoleIds: ['role-1'],
     ministryAccessLevel: 'volunteer',
     ...overrides,
@@ -64,12 +64,18 @@ describe('rankVolunteersForShiftRole', () => {
         makeEligible({
           volunteerId: 'conflicted',
           volunteerName: 'Ana',
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
         makeEligible({
           volunteerId: 'silent',
           volunteerName: 'Bruno',
-          isAvailable: false,
+          answerState: 'unavailable',
         }),
         makeEligible({
           volunteerId: 'recent',
@@ -86,7 +92,7 @@ describe('rankVolunteersForShiftRole', () => {
       assignments: [],
     });
 
-    expect(ranking.ids).toEqual(['never', 'recent', 'silent', 'conflicted']);
+    expect(ranking.ids).toEqual(['conflicted', 'never', 'recent', 'silent']);
     expect(ranking.idealVolunteerId).toBe('never');
   });
 
@@ -191,12 +197,18 @@ describe('rankVolunteersForShiftRole', () => {
         makeEligible({
           volunteerId: 'unavailable',
           volunteerName: 'Bruno',
-          isAvailable: false,
+          answerState: 'unavailable',
         }),
         makeEligible({
           volunteerId: 'double-booked',
           volunteerName: 'Carla',
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
       ],
     });
@@ -207,7 +219,7 @@ describe('rankVolunteersForShiftRole', () => {
     expect(
       rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
         .ids,
-    ).toEqual(['unavailable', 'double-booked']);
+    ).toEqual(['double-booked', 'unavailable']);
   });
 
   it('badges nobody as ideal when the ministry has configured no qualifications', () => {
@@ -243,7 +255,13 @@ describe('rankVolunteersForShiftRole', () => {
         makeEligible({
           volunteerId: 'conflicted',
           volunteerName: 'Ana',
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
       ],
     });

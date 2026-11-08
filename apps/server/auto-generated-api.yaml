@@ -7146,10 +7146,6 @@ paths:
                                             type: string
                                           volunteerName:
                                             type: string
-                                          isAvailable:
-                                            type: boolean
-                                          hasConflict:
-                                            type: boolean
                                           answerState:
                                             type: string
                                             enum:
@@ -7198,8 +7194,6 @@ paths:
                                         required:
                                           - volunteerId
                                           - volunteerName
-                                          - isAvailable
-                                          - hasConflict
                                           - answerState
                                           - conflict
                                           - qualifiedRoleIds
@@ -7491,10 +7485,6 @@ paths:
                           type: string
                         volunteerName:
                           type: string
-                        isAvailable:
-                          type: boolean
-                        hasConflict:
-                          type: boolean
                         answerState:
                           type: string
                           enum:
@@ -7543,8 +7533,6 @@ paths:
                       required:
                         - volunteerId
                         - volunteerName
-                        - isAvailable
-                        - hasConflict
                         - answerState
                         - conflict
                         - qualifiedRoleIds

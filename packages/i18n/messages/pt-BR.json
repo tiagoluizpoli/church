@@ -1032,5 +1032,10 @@
   "availability_list_overdue": "Prazo vencido · era até {date}",
   "availability_draft_restored": "Suas alterações não enviadas foram restauradas",
   "availability_draft_discard": "Descartar",
-  "availability_draft_leave": "Sair com alterações não enviadas? Seu rascunho ficará neste dispositivo."
+  "availability_draft_leave": "Sair com alterações não enviadas? Seu rascunho ficará neste dispositivo.",
+  "builder_state_available": "Disponível",
+  "builder_state_unanswered": "Ainda não respondeu",
+  "builder_state_not_asked": "Não consultado",
+  "builder_state_unavailable": "Indisponível",
+  "builder_conflict_reason": "Já está servindo em {ministry} {start}–{end}"
 }

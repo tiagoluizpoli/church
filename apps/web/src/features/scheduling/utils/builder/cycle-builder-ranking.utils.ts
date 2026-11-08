@@ -38,7 +38,10 @@ export interface ShiftRoleRanking {
 
 const availabilityRank = (
   volunteer: CycleBuilderEligibleVolunteerSummary,
-): number => (volunteer.hasConflict ? 2 : volunteer.isAvailable ? 0 : 1);
+): number =>
+  ['available', 'unanswered', 'not_asked', 'unavailable'].indexOf(
+    volunteer.answerState,
+  );
 
 interface LastServedAtInput {
   volunteer: CycleBuilderEligibleVolunteerSummary;
@@ -46,20 +49,6 @@ interface LastServedAtInput {
 
 const lastServedAt = ({ volunteer }: LastServedAtInput): number =>
   lastServedMillis({ lastServedAt: volunteer.lastServedAt });
-
-interface FitRankInput {
-  volunteer: CycleBuilderEligibleVolunteerSummary;
-  roleId: string;
-}
-
-/** Ranking weight of a fit: the safer the tier, the higher up the rail. */
-function fitRank({ volunteer, roleId }: FitRankInput): number {
-  const { tier } = shiftRoleFitForEligibleVolunteer({ volunteer, roleId });
-  if (tier === 'ready') return 0;
-  if (tier === 'override') return 1;
-  if (tier === 'unqualified') return 2;
-  return 3;
-}
 
 /** Rank Role holders for the focused Shift. */
 export function rankVolunteersForShiftRole({
@@ -81,8 +70,6 @@ export function rankVolunteersForShiftRole({
     )
     .sort(
       (left, right) =>
-        fitRank({ volunteer: left, roleId }) -
-          fitRank({ volunteer: right, roleId }) ||
         availabilityRank(left) - availabilityRank(right) ||
         lastServedAt({ volunteer: left }) -
           lastServedAt({ volunteer: right }) ||
@@ -95,8 +82,10 @@ export function rankVolunteersForShiftRole({
     ids: ranked.map((volunteer) => volunteer.volunteerId),
     idealVolunteerId: ranked.find(
       (volunteer) =>
+        volunteer.answerState === 'available' &&
         shiftRoleFitForEligibleVolunteer({ volunteer, roleId }).tier ===
-          'ready' && (workload.get(volunteer.volunteerId) ?? 0) === 0,
+          'ready' &&
+        (workload.get(volunteer.volunteerId) ?? 0) === 0,
     )?.volunteerId,
   };
 }

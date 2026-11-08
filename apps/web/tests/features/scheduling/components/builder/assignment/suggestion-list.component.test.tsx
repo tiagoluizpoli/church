@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -108,7 +109,7 @@ describe('SuggestionList (T118)', () => {
     );
 
     expect(screen.getByTestId('suggestion-status-available')).toHaveTextContent(
-      'Available',
+      m.builder_state_available(),
     );
     expect(
       screen.getByTestId('suggestion-status-needs_response'),

@@ -360,6 +360,10 @@ describe('builder eligibility contract', () => {
       'Double Booked',
       'Unavailable',
     ]);
+    for (const person of eligible) {
+      expect(person).not.toHaveProperty('isAvailable');
+      expect(person).not.toHaveProperty('hasConflict');
+    }
     expect(eligible.map((person) => person.answerState)).toEqual([
       'available',
       'unanswered',
@@ -380,8 +384,6 @@ describe('builder eligibility contract', () => {
         startTime: '2026-09-07T09:30:00.000Z',
         endTime: '2026-09-07T10:30:00.000Z',
       },
-      isAvailable: true,
-      hasConflict: true,
     });
   });
 });

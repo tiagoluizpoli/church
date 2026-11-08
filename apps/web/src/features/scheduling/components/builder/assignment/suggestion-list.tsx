@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { SuggestedVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
@@ -38,9 +39,14 @@ const CONFLICT_STATUS: SuggestionStatusPresentation = {
 function getSuggestionStatus(
   status: SuggestedVolunteerStatus,
 ): SuggestionStatusPresentation {
-  if (status === 'available') {
-    return AVAILABLE_STATUS;
-  }
+  if (status === 'available')
+    return { ...AVAILABLE_STATUS, label: m.builder_state_available() };
+  if (status === 'unanswered')
+    return { ...NEEDS_RESPONSE_STATUS, label: m.builder_state_unanswered() };
+  if (status === 'not_asked')
+    return { ...NEEDS_RESPONSE_STATUS, label: m.builder_state_not_asked() };
+  if (status === 'unavailable')
+    return { ...CONFLICT_STATUS, label: m.builder_state_unavailable() };
 
   if (status === 'partial') {
     return PARTIAL_STATUS;

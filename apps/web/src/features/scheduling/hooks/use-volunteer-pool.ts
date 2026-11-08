@@ -5,6 +5,8 @@ import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 export type AvailabilityStatus =
   | 'available'
   | 'partial'
+  | 'unanswered'
+  | 'not_asked'
   | 'unavailable'
   | 'no_response';
 
@@ -35,9 +37,12 @@ interface PoolAssignment {
 const STATUS_RANK: Record<AvailabilityStatus, number> = {
   available: 0,
   partial: 1,
-  unavailable: 2,
+  unanswered: 1,
+  // biome-ignore lint/style/useNamingConvention: API state uses snake_case
+  not_asked: 2,
+  unavailable: 3,
   // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
-  no_response: 3,
+  no_response: 4,
 };
 
 export interface VolunteerPoolItem extends PoolVolunteer {

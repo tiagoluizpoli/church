@@ -31,16 +31,16 @@ const shift: CycleBuilderShiftSummary = {
     {
       volunteerId: 'volunteer-1',
       volunteerName: 'Grace Hopper',
-      isAvailable: true,
-      hasConflict: false,
+      answerState: 'available',
+      conflict: null,
       qualifiedRoleIds: [],
       ministryAccessLevel: 'volunteer',
     },
     {
       volunteerId: 'volunteer-2',
       volunteerName: 'Ada Lovelace',
-      isAvailable: true,
-      hasConflict: false,
+      answerState: 'available',
+      conflict: null,
       qualifiedRoleIds: [],
       ministryAccessLevel: 'volunteer',
     },
@@ -226,7 +226,7 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            isAvailable: false,
+            answerState: 'unavailable',
             qualifiedRoleIds: ['role-1'],
           },
         ],
@@ -259,7 +259,13 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            hasConflict: true,
+            conflict: {
+              assignmentId: 'conflict',
+              ministryName: 'Worship',
+              eventTitle: 'Service',
+              startTime: '2026-10-04T13:00:00Z',
+              endTime: '2026-10-04T15:00:00Z',
+            },
             qualifiedRoleIds: ['role-1'],
           },
         ],
@@ -307,7 +313,7 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            isAvailable: false,
+            answerState: 'unavailable',
             qualifiedRoleIds: ['role-1'],
           },
         ],

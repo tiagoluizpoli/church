@@ -271,8 +271,6 @@ describe('Assign routes', () => {
       {
         volunteerId: 'vol-1',
         volunteerName: 'Ada Lovelace',
-        isAvailable: true,
-        hasConflict: false,
         answerState: 'available',
         conflict: null,
         lastServedAt: parseInstant({ value: '2026-08-01T10:00:00.000Z' }),
@@ -292,8 +290,6 @@ describe('Assign routes', () => {
         {
           volunteerId: 'vol-1',
           volunteerName: 'Ada Lovelace',
-          isAvailable: true,
-          hasConflict: false,
           answerState: 'available',
           conflict: null,
           lastServedAt: '2026-08-01T10:00:00.000Z',

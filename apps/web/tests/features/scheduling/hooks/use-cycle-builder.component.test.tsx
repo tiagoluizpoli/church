@@ -120,8 +120,6 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                   {
                     volunteerId: 'ana',
                     volunteerName: 'Ana',
-                    isAvailable: true,
-                    hasConflict: false,
                     answerState: 'available',
                     conflict: null,
                     qualifiedRoleIds: ['role-1'],
@@ -130,8 +128,6 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                   {
                     volunteerId: 'bruno',
                     volunteerName: 'Bruno',
-                    isAvailable: true,
-                    hasConflict: false,
                     answerState: 'available',
                     conflict: null,
                     qualifiedRoleIds: ['role-1'],

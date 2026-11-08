@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import {
   type CycleBuilderData,
@@ -26,6 +27,7 @@ import { focusKey } from './cycle-builder-shift-lookup.utils';
 export interface ShiftAssignmentIndex {
   /** Active assignments per volunteer across the whole cycle (FR-017). */
   workload: Map<string, number>;
+  timeZone: string;
   /**
    * Every active, shift-bound assignment grouped by volunteer, each carrying the
    * label of the shift×role it stands in. A cell only reads this for candidates
@@ -109,7 +111,7 @@ export function buildShiftAssignmentIndex({
     ]);
   }
 
-  return { workload, activeAssignmentsByVolunteerId };
+  return { workload, activeAssignmentsByVolunteerId, timeZone };
 }
 
 /**
@@ -141,32 +143,45 @@ export function candidates({
   index,
 }: ShiftRoleCandidatesInput): PickerVolunteer[] {
   const assignedVolunteerIds = assignedVolunteerIdsForShift({ shift });
-  return (
-    shift.eligibleVolunteers
-      .filter((volunteer) => !assignedVolunteerIds.has(volunteer.volunteerId))
-      .map((volunteer) => ({
-        volunteer,
-        fit: shiftRoleFitForEligibleVolunteer({ volunteer, roleId }),
-      }))
-      // Double-booked candidates are refused outright (DOUBLE_BOOKED): unlisted.
-      .filter(({ fit }) => isAssignableFit({ fit }))
-      .map(({ volunteer, fit }) => ({
-        id: volunteer.volunteerId,
-        name: volunteer.volunteerName,
-        membership: {
-          ministryAccessLevel: volunteer.ministryAccessLevel,
-        },
-        availabilityStatus: volunteer.isAvailable ? 'available' : 'no_response',
-        isQualified: fit.tier !== 'unqualified',
-        // A candidate is never assigned to *this* shift (filtered above), so all
-        // of their active assignments are elsewhere — the shift-scoped "other"
-        // map and the cycle-wide one coincide here.
-        alreadyAssignedCount: index.workload.get(volunteer.volunteerId) ?? 0,
-        alreadyServingAssignments: index.activeAssignmentsByVolunteerId.get(
-          volunteer.volunteerId,
-        ),
-      }))
-  );
+  return shift.eligibleVolunteers
+    .filter((volunteer) => !assignedVolunteerIds.has(volunteer.volunteerId))
+    .map((volunteer) => ({
+      volunteer,
+      fit: shiftRoleFitForEligibleVolunteer({ volunteer, roleId }),
+    }))
+    .filter(
+      ({ volunteer, fit }) =>
+        volunteer.qualifiedRoleIds.includes(roleId) &&
+        (Boolean(volunteer.conflict) || isAssignableFit({ fit })),
+    )
+    .map(({ volunteer }) => ({
+      id: volunteer.volunteerId,
+      name: volunteer.volunteerName,
+      membership: {
+        ministryAccessLevel: volunteer.ministryAccessLevel,
+      },
+      availabilityStatus: volunteer.answerState,
+      conflictReason: volunteer.conflict
+        ? m.builder_conflict_reason({
+            ministry: volunteer.conflict.ministryName,
+            start: timeLabel({
+              instant: volunteer.conflict.startTime,
+              timeZone: index.timeZone,
+            }),
+            end: timeLabel({
+              instant: volunteer.conflict.endTime,
+              timeZone: index.timeZone,
+            }),
+          })
+        : undefined,
+      // A candidate is never assigned to *this* shift (filtered above), so all
+      // of their active assignments are elsewhere — the shift-scoped "other"
+      // map and the cycle-wide one coincide here.
+      alreadyAssignedCount: index.workload.get(volunteer.volunteerId) ?? 0,
+      alreadyServingAssignments: index.activeAssignmentsByVolunteerId.get(
+        volunteer.volunteerId,
+      ),
+    }));
 }
 
 interface ShiftRoleRecommendationsInput {
@@ -182,10 +197,7 @@ interface ToSuggestionInput {
 
 /**
  * The picker's suggestion groups. Recommending is a stronger claim than
- * listing, so only `ready`/`override` fits reach these groups — `unqualified`
- * is excluded here even though it is assignable elsewhere (`candidates()`,
- * the rail): nobody is ever *recommended* into a reason dialog they did not
- * go looking for. That narrower bar is `isRecommendableFit()`, shared rather
+ * listing, so only `ready`/`override` fits reach these groups. That narrower bar is `isRecommendableFit()`, shared rather
  * than spelled out inline, so this consumer cannot drift from the other two.
  */
 export function recommendations({
@@ -217,7 +229,7 @@ export function recommendations({
   );
   return {
     safe: eligible
-      .filter((volunteer) => volunteer.isAvailable)
+      .filter((volunteer) => volunteer.answerState === 'available')
       .sort((left, right) => {
         const served =
           lastServedMillis({ lastServedAt: left.lastServedAt }) -
@@ -232,10 +244,10 @@ export function recommendations({
       .slice(0, 5)
       .map((volunteer) => toSuggestion({ volunteer, status: 'available' })),
     needsResponse: eligible
-      .filter((volunteer) => !volunteer.isAvailable)
+      .filter((volunteer) => volunteer.answerState !== 'available')
       .slice(0, 5)
       .map((volunteer) =>
-        toSuggestion({ volunteer, status: 'needs_response' }),
+        toSuggestion({ volunteer, status: volunteer.answerState }),
       ),
   };
 }

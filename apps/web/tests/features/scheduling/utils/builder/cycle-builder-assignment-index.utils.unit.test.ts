@@ -1,3 +1,4 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { describe, expect, it } from 'vitest';
 import type {
   CycleBuilderAssignment,
@@ -51,8 +52,8 @@ function makeEligible(
     Pick<CycleBuilderEligibleVolunteerSummary, 'volunteerId' | 'volunteerName'>,
 ): CycleBuilderEligibleVolunteerSummary {
   return {
-    isAvailable: true,
-    hasConflict: false,
+    answerState: 'available',
+    conflict: null,
     qualifiedRoleIds: ['role-1'],
     ministryAccessLevel: 'volunteer',
     ...overrides,
@@ -263,7 +264,6 @@ describe('candidates', () => {
     });
 
     expect(rows.map((row) => row.id)).toEqual(['ana']);
-    expect(rows.find((row) => row.id === 'ana')?.isQualified).toBe(true);
   });
 
   it('drops volunteers already actively serving this shift, keeping cancelled ones available', () => {
@@ -298,12 +298,18 @@ describe('candidates', () => {
         makeEligible({
           volunteerId: 'silent',
           volunteerName: 'Bruno',
-          isAvailable: false,
+          answerState: 'unavailable',
         }),
         makeEligible({
           volunteerId: 'clashing',
           volunteerName: 'Carla',
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
       ],
     });
@@ -317,9 +323,17 @@ describe('candidates', () => {
     );
 
     expect(byId.get('free')).toBe('available');
-    expect(byId.get('silent')).toBe('no_response');
-    // Double-booked is refused outright (DOUBLE_BOOKED), so it is not listed.
-    expect(byId.has('clashing')).toBe(false);
+    expect(byId.get('silent')).toBe('unavailable');
+    expect(byId.get('clashing')).toBe('available');
+    overwriteGetLocale(() => 'en');
+    const conflict = candidates({
+      shift,
+      roleId: 'role-1',
+      index: indexFor(makeData()),
+    }).find((candidate) => candidate.id === 'clashing');
+    expect(conflict?.conflictReason).toBe(
+      'Already serving in Worship 10:00–12:00',
+    );
   });
 
   it('carries the cycle workload and the assignments held elsewhere', () => {
@@ -370,13 +384,19 @@ describe('recommendations', () => {
           volunteerId: 'unqualified-silent',
           volunteerName: 'Bruno',
           qualifiedRoleIds: ['role-2'],
-          isAvailable: false,
+          answerState: 'unavailable',
         }),
         makeEligible({
           volunteerId: 'unqualified-clashing',
           volunteerName: 'Carla',
           qualifiedRoleIds: ['role-2'],
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
       ],
     });
@@ -401,12 +421,18 @@ describe('recommendations', () => {
         makeEligible({
           volunteerId: 'silent',
           volunteerName: 'Bruno',
-          isAvailable: false,
+          answerState: 'unavailable',
         }),
         makeEligible({
           volunteerId: 'clashing',
           volunteerName: 'Carla',
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
       ],
     });
@@ -528,12 +554,18 @@ describe('assignableFits', () => {
         makeEligible({
           volunteerId: 'override',
           volunteerName: 'Bruno',
-          isAvailable: false,
+          answerState: 'unavailable',
         }),
         makeEligible({
           volunteerId: 'double-booked',
           volunteerName: 'Eva',
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
         makeEligible({
           volunteerId: 'unqualified',

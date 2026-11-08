@@ -77,10 +77,12 @@ export function shiftRoleFitForEligibleVolunteer({
   volunteer,
   roleId,
 }: ShiftRoleFitForEligibleVolunteerInput): ShiftRoleFit {
-  if (volunteer.hasConflict) return { tier: 'none' };
+  if (volunteer.conflict) return { tier: 'none' };
   if (!volunteer.qualifiedRoleIds.includes(roleId))
     return { tier: 'unqualified' };
-  return volunteer.isAvailable ? { tier: 'ready' } : { tier: 'override' };
+  return volunteer.answerState === 'unavailable'
+    ? { tier: 'override' }
+    : { tier: 'ready' };
 }
 
 interface VolunteerFitForShiftRoleInput {

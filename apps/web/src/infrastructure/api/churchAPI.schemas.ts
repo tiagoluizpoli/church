@@ -3016,8 +3016,6 @@ export const GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligib
 export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItem = {
   volunteerId: string;
   volunteerName: string;
-  isAvailable: boolean;
-  hasConflict: boolean;
   answerState: GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState;
   /** @nullable */
   conflict: GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemConflict;
@@ -3182,8 +3180,6 @@ export const ListEligibleVolunteers200VolunteersItemMinistryAccessLevel = {
 export type ListEligibleVolunteers200VolunteersItem = {
   volunteerId: string;
   volunteerName: string;
-  isAvailable: boolean;
-  hasConflict: boolean;
   answerState: ListEligibleVolunteers200VolunteersItemAnswerState;
   /** @nullable */
   conflict: ListEligibleVolunteers200VolunteersItemConflict;

@@ -304,7 +304,7 @@ export function VolunteerPoolSidebar({
           <VolunteerPoolList
             groupMode={groupMode}
             focusedVolunteers={focusPartition?.focused ?? null}
-            otherVolunteers={focusPartition?.others ?? sortedFilteredVolunteers}
+            otherVolunteers={focusPartition ? [] : sortedFilteredVolunteers}
             selectedVolunteerId={selectedVolunteerId}
             idealVolunteerId={idealVolunteerId}
             onSelectVolunteer={onSelectVolunteer}

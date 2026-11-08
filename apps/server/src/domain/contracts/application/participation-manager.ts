@@ -167,8 +167,6 @@ export interface UsualSetupBlockView {
 export interface EligibleVolunteerView {
   volunteerId: VolunteerId;
   volunteerName: string;
-  isAvailable: boolean;
-  hasConflict: boolean;
   answerState: 'available' | 'unanswered' | 'not_asked' | 'unavailable';
   conflict: {
     assignmentId: string;

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useDraggable } from '@dnd-kit/core';
 import { ClockIcon, StarIcon, TriangleAlertIcon } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
@@ -59,19 +60,37 @@ interface StatusPresentation {
  * plain text rather than a `Badge` — it sits flush on the card's top padding,
  * and a badge's own box would break that corner.
  */
-const STATUS_PRESENTATION: Record<AvailabilityStatus, StatusPresentation> = {
-  available: { label: 'Available', tone: 'text-green-700 dark:text-green-400' },
+const statusPresentations = (): Record<
+  AvailabilityStatus,
+  StatusPresentation
+> => ({
+  available: {
+    label: m.builder_state_available(),
+    tone: 'text-green-700 dark:text-green-400',
+  },
+  unanswered: {
+    label: m.builder_state_unanswered(),
+    tone: 'text-yellow-700 dark:text-yellow-300',
+  },
+  // biome-ignore lint/style/useNamingConvention: API state uses snake_case
+  not_asked: {
+    label: m.builder_state_not_asked(),
+    tone: 'text-muted-foreground',
+  },
   partial: {
     label: 'Partial',
     tone: 'text-yellow-700 dark:text-yellow-300',
   },
-  unavailable: { label: 'Unavailable', tone: 'text-destructive' },
+  unavailable: {
+    label: m.builder_state_unavailable(),
+    tone: 'text-destructive',
+  },
   // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
   no_response: {
     label: 'Needs response',
     tone: 'text-yellow-700 dark:text-yellow-300',
   },
-};
+});
 
 interface UseIsTruncatedResult {
   /** Attach to the element whose text may clip. */
@@ -232,7 +251,7 @@ export function VolunteerCard({
         workloadCount: volunteer.workloadCount,
         conflictReason: volunteer.conflictReason,
       },
-      disabled: isOverlay,
+      disabled: isOverlay || Boolean(volunteer.conflictReason),
     });
 
   const roleLabel = formatAssigneeRoleLabel({
@@ -245,7 +264,7 @@ export function VolunteerCard({
   const accessibleName = roleLabel
     ? `${volunteer.volunteerName}, ${roleLabel}`
     : volunteer.volunteerName;
-  const status = STATUS_PRESENTATION[volunteer.status];
+  const status = statusPresentations()[volunteer.status];
   const statusLine = (
     <span className={cn('shrink-0 text-xs', status.tone)}>{status.label}</span>
   );
@@ -278,7 +297,7 @@ export function VolunteerCard({
         // three text rows below what the approved layout uses.
         'flex items-stretch gap-3 rounded-lg border bg-card p-3',
         isSelected && 'border-primary bg-primary/5 ring-1 ring-primary',
-        isDragging && 'opacity-50',
+        (isDragging || volunteer.conflictReason) && 'opacity-50',
         isOverlay && 'shadow-lg',
       )}
       data-testid="volunteer-card"
@@ -359,6 +378,11 @@ export function VolunteerCard({
           />
         </div>
 
+        {volunteer.conflictReason ? (
+          <p className="text-muted-foreground text-xs">
+            {volunteer.conflictReason}
+          </p>
+        ) : null}
         {volunteer.qualifiedRoleNames?.length ? (
           <RolesLine roleNames={volunteer.qualifiedRoleNames} />
         ) : null}
@@ -405,7 +429,7 @@ export function VolunteerCard({
         ) : (
           statusLine
         )}
-        {assignFit && onAssignToFocused ? (
+        {volunteer.conflictReason ? null : assignFit && onAssignToFocused ? (
           // While a shift is focused the select affordance is redundant — the
           // rail is already scoped to one place — so the same corner commits
           // the pick instead. Conflict capture happens downstream, identical

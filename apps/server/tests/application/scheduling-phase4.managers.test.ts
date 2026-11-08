@@ -354,8 +354,8 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
     expect.objectContaining({
       volunteerId,
       volunteerName: 'Alex',
-      hasConflict: true,
-      isAvailable: true,
+      conflict: expect.objectContaining({ assignmentId: expect.any(String) }),
+      answerState: 'not_asked',
     }),
   ]);
   expect(

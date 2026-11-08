@@ -201,7 +201,6 @@ interface GetParticipationCompletionInternalInput {
 interface BuildEligibleVolunteerViewInput {
   volunteerId: string;
   volunteerName: string;
-  isUnavailable: boolean;
   answerState: EligibleVolunteerView['answerState'];
   conflict: EligibleVolunteerView['conflict'];
   lastServedAt?: Instant;
@@ -1876,9 +1875,6 @@ function buildEligibleForVolunteer({
   return buildEligibleVolunteerView({
     volunteerId: volunteer.id as string,
     volunteerName: volunteer.name ?? 'Unknown volunteer',
-    isUnavailable: unavailableShiftKeys.has(
-      `${volunteer.id as string}:${shift.id as string}`,
-    ),
     answerState,
     conflict,
     lastServedAt,
@@ -2205,7 +2201,6 @@ function isActiveAssignmentStatus(status: string): boolean {
 function buildEligibleVolunteerView({
   volunteerId,
   volunteerName,
-  isUnavailable,
   answerState,
   conflict,
   lastServedAt,
@@ -2215,8 +2210,6 @@ function buildEligibleVolunteerView({
   return {
     volunteerId: volunteerId as EligibleVolunteerView['volunteerId'],
     volunteerName,
-    isAvailable: !isUnavailable,
-    hasConflict: conflict !== null,
     answerState,
     conflict,
     lastServedAt,

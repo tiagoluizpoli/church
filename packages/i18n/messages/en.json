@@ -1032,5 +1032,10 @@
   "availability_list_overdue": "Overdue · was due {date}",
   "availability_draft_restored": "Your unsent changes were restored",
   "availability_draft_discard": "Discard",
-  "availability_draft_leave": "Leave with unsent changes? Your draft will stay on this device."
+  "availability_draft_leave": "Leave with unsent changes? Your draft will stay on this device.",
+  "builder_state_available": "Available",
+  "builder_state_unanswered": "Hasn't answered",
+  "builder_state_not_asked": "Not asked",
+  "builder_state_unavailable": "Unavailable",
+  "builder_conflict_reason": "Already serving in {ministry} {start}–{end}"
 }

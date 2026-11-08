@@ -33,8 +33,8 @@ function makeEligible(
     Pick<CycleBuilderEligibleVolunteerSummary, 'volunteerId' | 'volunteerName'>,
 ): CycleBuilderEligibleVolunteerSummary {
   return {
-    isAvailable: true,
-    hasConflict: false,
+    answerState: 'available',
+    conflict: null,
     qualifiedRoleIds: ['role-1'],
     ministryAccessLevel: 'volunteer',
     ...overrides,
@@ -48,12 +48,18 @@ describe('volunteerFitForShiftRole', () => {
       makeEligible({
         volunteerId: 'silent',
         volunteerName: 'Bruno',
-        isAvailable: false,
+        answerState: 'unavailable',
       }),
       makeEligible({
         volunteerId: 'conflicted',
         volunteerName: 'Carla',
-        hasConflict: true,
+        conflict: {
+          assignmentId: 'conflict',
+          ministryName: 'Worship',
+          eventTitle: 'Service',
+          startTime: '2026-10-04T13:00:00Z',
+          endTime: '2026-10-04T15:00:00Z',
+        },
       }),
       makeEligible({
         volunteerId: 'other-role',
@@ -113,7 +119,13 @@ describe('volunteerFitForShiftRole', () => {
           volunteerId: 'ana',
           volunteerName: 'Ana',
           qualifiedRoleIds: ['role-2'],
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
       ],
     });

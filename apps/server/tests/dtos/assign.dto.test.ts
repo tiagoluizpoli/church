@@ -15,8 +15,6 @@ describe('assignMapper', () => {
       const response = assignMapper.eligibleVolunteerToResponse({
         volunteerId: VolunteerId.from('v1'),
         volunteerName: 'Jane',
-        isAvailable: true,
-        hasConflict: false,
         answerState: 'available',
         conflict: null,
         lastServedAt,
@@ -27,8 +25,6 @@ describe('assignMapper', () => {
       expect(response).toEqual({
         volunteerId: 'v1',
         volunteerName: 'Jane',
-        isAvailable: true,
-        hasConflict: false,
         answerState: 'available',
         conflict: null,
         lastServedAt,
@@ -41,8 +37,6 @@ describe('assignMapper', () => {
       const response = assignMapper.eligibleVolunteerToResponse({
         volunteerId: VolunteerId.from('v2'),
         volunteerName: 'John',
-        isAvailable: false,
-        hasConflict: true,
         answerState: 'unavailable',
         conflict: null,
         qualifiedRoleIds: [],
@@ -62,8 +56,6 @@ describe('assignMapper', () => {
         {
           volunteerId: VolunteerId.from('v1'),
           volunteerName: 'Jane',
-          isAvailable: true,
-          hasConflict: false,
           answerState: 'available',
           conflict: null,
           qualifiedRoleIds: ['role-1'],
@@ -72,8 +64,6 @@ describe('assignMapper', () => {
         {
           volunteerId: VolunteerId.from('v2'),
           volunteerName: 'John',
-          isAvailable: false,
-          hasConflict: true,
           answerState: 'unavailable',
           conflict: null,
           qualifiedRoleIds: [],

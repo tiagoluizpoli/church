@@ -252,7 +252,15 @@ export function CycleBuilderMatrix(props: Props) {
     }
     return byCell;
   }, [props.failedWrites]);
-  const volunteers = useMemo(() => pool(props.data), [props.data]);
+  const focusedShiftContext =
+    focused &&
+    findShiftContextById({ data: props.data, shiftId: focused.shiftId });
+  const focusedShift = focusedShiftContext?.shift;
+  const volunteers = useMemo(
+    () =>
+      pool({ data: props.data, shift: focusedShift, timeZone: churchTimezone }),
+    [props.data, focusedShift, churchTimezone],
+  );
   const canManageAnyRequirement = props.data.events.some((event) =>
     event.eventTimeBlocks.some(
       (eventTimeBlock) =>
@@ -285,10 +293,6 @@ export function CycleBuilderMatrix(props: Props) {
   // already-assigned-elsewhere collisions are captured identically no matter
   // which surface started the assignment. Clearing focus afterwards returns the
   // cards to their plain "Select shift" state.
-  const focusedShiftContext =
-    focused &&
-    findShiftContextById({ data: props.data, shiftId: focused.shiftId });
-  const focusedShift = focusedShiftContext?.shift;
   const focusedRequirementIsEditable = Boolean(focused && focusedShiftContext);
   // A full role can still be focused, so the rail honours the same headcount
   // ceiling the board enforces cell-side as `canAdd`.

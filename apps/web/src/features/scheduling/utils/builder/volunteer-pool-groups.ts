@@ -24,6 +24,7 @@ export interface FocusPartition {
 export interface StatusVolunteerGroups {
   ready: VolunteerPoolItem[];
   awaiting: VolunteerPoolItem[];
+  notAsked: VolunteerPoolItem[];
   unavailable: VolunteerPoolItem[];
 }
 
@@ -71,11 +72,13 @@ export function groupVolunteersByStatus({
   const groups: StatusVolunteerGroups = {
     ready: [],
     awaiting: [],
+    notAsked: [],
     unavailable: [],
   };
 
   for (const volunteer of volunteers) {
     if (volunteer.status === 'available') groups.ready.push(volunteer);
+    else if (volunteer.status === 'not_asked') groups.notAsked.push(volunteer);
     else if (volunteer.status === 'unavailable') {
       groups.unavailable.push(volunteer);
     } else groups.awaiting.push(volunteer);

@@ -77,8 +77,8 @@ const builderData: CycleBuilderData = {
                 {
                   volunteerId: 'volunteer-1',
                   volunteerName: 'Grace Hopper',
-                  isAvailable: true,
-                  hasConflict: false,
+                  answerState: 'available',
+                  conflict: null,
                   qualifiedRoleIds: ['role-1'],
                   ministryAccessLevel: 'volunteer',
                 },

@@ -27,8 +27,6 @@ const assignmentWarningSchema = z.object({
 export const eligibleVolunteerResponseSchema = z.object({
   volunteerId: z.string(),
   volunteerName: z.string(),
-  isAvailable: z.boolean(),
-  hasConflict: z.boolean(),
   answerState: z.enum(['available', 'unanswered', 'not_asked', 'unavailable']),
   conflict: z
     .object({
@@ -76,8 +74,6 @@ export const assignMapper = {
     return {
       volunteerId: volunteer.volunteerId as string,
       volunteerName: volunteer.volunteerName,
-      isAvailable: volunteer.isAvailable,
-      hasConflict: volunteer.hasConflict,
       answerState: volunteer.answerState,
       conflict: volunteer.conflict,
       lastServedAt: volunteer.lastServedAt,

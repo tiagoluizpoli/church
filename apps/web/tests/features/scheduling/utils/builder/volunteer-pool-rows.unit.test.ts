@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { describe, expect, it } from 'vitest';
 import type { VolunteerPoolItem } from '@/features/scheduling/hooks/use-volunteer-pool';
 import {
@@ -96,7 +97,7 @@ describe('flattenPoolRows', () => {
     expect(cardIds(collapsed)).toEqual(['ana', 'bruno']);
     const trigger = collapsed.find((row) => row.kind === 'collapsible');
     expect(trigger).toMatchObject({
-      label: 'Unavailable',
+      label: m.builder_state_unavailable(),
       count: 1,
       open: false,
     });

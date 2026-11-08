@@ -2982,6 +2982,29 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignm
   assignedBy?: string;
 };
 
+export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState = typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState[keyof typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState];
+
+
+export const GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState = {
+  available: 'available',
+  unanswered: 'unanswered',
+  not_asked: 'not_asked',
+  unavailable: 'unavailable',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemConflict = {
+  assignmentId: string;
+  ministryName: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+} | null;
+
 export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemMinistryAccessLevel = typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemMinistryAccessLevel[keyof typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemMinistryAccessLevel];
 
 
@@ -2995,6 +3018,9 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibl
   volunteerName: string;
   isAvailable: boolean;
   hasConflict: boolean;
+  answerState: GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState;
+  /** @nullable */
+  conflict: GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemConflict;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   lastServedAt?: string;
   qualifiedRoleIds: string[];
@@ -3122,6 +3148,29 @@ export type PublishCycle404 = {
   message: string;
 };
 
+export type ListEligibleVolunteers200VolunteersItemAnswerState = typeof ListEligibleVolunteers200VolunteersItemAnswerState[keyof typeof ListEligibleVolunteers200VolunteersItemAnswerState];
+
+
+export const ListEligibleVolunteers200VolunteersItemAnswerState = {
+  available: 'available',
+  unanswered: 'unanswered',
+  not_asked: 'not_asked',
+  unavailable: 'unavailable',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ListEligibleVolunteers200VolunteersItemConflict = {
+  assignmentId: string;
+  ministryName: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+} | null;
+
 export type ListEligibleVolunteers200VolunteersItemMinistryAccessLevel = typeof ListEligibleVolunteers200VolunteersItemMinistryAccessLevel[keyof typeof ListEligibleVolunteers200VolunteersItemMinistryAccessLevel];
 
 
@@ -3135,6 +3184,9 @@ export type ListEligibleVolunteers200VolunteersItem = {
   volunteerName: string;
   isAvailable: boolean;
   hasConflict: boolean;
+  answerState: ListEligibleVolunteers200VolunteersItemAnswerState;
+  /** @nullable */
+  conflict: ListEligibleVolunteers200VolunteersItemConflict;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   lastServedAt?: string;
   qualifiedRoleIds: string[];

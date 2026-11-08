@@ -34,6 +34,16 @@ export const eligibleVolunteerResponseSchema = z.object({
   volunteerName: z.string(),
   isAvailable: z.boolean(),
   hasConflict: z.boolean(),
+  answerState: z.enum(['available', 'unanswered', 'not_asked', 'unavailable']),
+  conflict: z
+    .object({
+      assignmentId: z.string(),
+      ministryName: z.string(),
+      eventTitle: z.string(),
+      startTime: instantSchema,
+      endTime: instantSchema,
+    })
+    .nullable(),
   lastServedAt: instantSchema.optional(),
   qualifiedRoleIds: z.array(z.string()),
   ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
@@ -73,6 +83,8 @@ export const assignMapper = {
       volunteerName: volunteer.volunteerName,
       isAvailable: volunteer.isAvailable,
       hasConflict: volunteer.hasConflict,
+      answerState: volunteer.answerState,
+      conflict: volunteer.conflict,
       lastServedAt: volunteer.lastServedAt,
       qualifiedRoleIds: volunteer.qualifiedRoleIds,
       ministryAccessLevel: volunteer.ministryAccessLevel,

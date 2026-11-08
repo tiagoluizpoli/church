@@ -19,10 +19,15 @@ import {
 } from 'vitest';
 import { AssignController } from '@/api/controllers/assign-controller';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import type { CycleBuilderResponse } from '@/api/dtos/cycle-builder.dto';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
 import { buildMinistryMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingManagers,
@@ -52,6 +57,7 @@ const mockGetSession = vi.mocked(
 const activeChurchResolver = { resolve: vi.fn() };
 const authorityGuard = {
   decideManageAnyMinistry: vi.fn(),
+  decideManageMinistry: vi.fn(),
   decideManageParticipation: vi.fn(),
   decideManageShift: vi.fn(),
 };
@@ -129,6 +135,7 @@ async function seedCrossMinistryOverlap({
     autoSelected: false,
   });
   authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
   authorityGuard.decideManageParticipation.mockResolvedValue({ allowed: true });
   authorityGuard.decideManageShift.mockResolvedValue({ allowed: true });
 
@@ -224,7 +231,7 @@ async function seedCrossMinistryOverlap({
     roleId: otherRole.id,
     peopleNeeded: 1,
   });
-  await buildAssignment({
+  const overlap = await buildAssignment({
     db: schedulingTestDb,
     churchId: seed.churchAId,
     participationId: other.participation.id,
@@ -248,6 +255,8 @@ async function seedCrossMinistryOverlap({
   });
 
   return {
+    cycleId: cycle.id,
+    overlapId: overlap.id,
     churchId: seed.churchAId,
     foreignChurchId: seed.churchBId,
     foreignMinistryId: seed.ministryBId,
@@ -279,6 +288,85 @@ async function seedTargetAssignment(input: SeedTargetAssignmentInput) {
     status: 'pending',
   });
 }
+
+describe('builder eligibility contract', () => {
+  it('returns the answer state and cross-Ministry overlap details', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    for (const [name, state] of [
+      ['Available', 'confirmed'],
+      ['Unanswered', 'pending'],
+      ['Unavailable', 'confirmed'],
+    ] as const) {
+      const person = await seedVolunteerMembership({
+        churchId: seed.churchId,
+        ministryId: seed.ministryId,
+        name,
+        email: `${name.toLowerCase()}@test.com`,
+      });
+      await seedRoleQualification({
+        churchId: seed.churchId,
+        membershipId: person.membership.id,
+        roleId: seed.targetRoleId,
+      });
+      const check = await buildAvailabilityCheck({
+        db: schedulingTestDb,
+        churchId: seed.churchId,
+        cycleId: seed.cycleId,
+        ministryMembershipId: person.membership.id,
+        state,
+      });
+      if (name !== 'Available')
+        await buildUnavailableShift({
+          db: schedulingTestDb,
+          churchId: seed.churchId,
+          availabilityCheckId: check.id,
+          shiftId: seed.targetShiftId,
+        });
+    }
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
+    });
+    expect(response.statusCode).toBe(200);
+    const body: CycleBuilderResponse = response.json();
+    const shifts = body.events.flatMap((event) =>
+      event.eventTimeBlocks.flatMap((block) => block.shifts),
+    );
+    const eligible =
+      shifts.find((row) => row.shift.id === seed.targetShiftId)
+        ?.eligibleVolunteers ?? [];
+    expect(eligible.map((person) => person.volunteerName)).toEqual([
+      'Available',
+      'Unanswered',
+      'Free Volunteer',
+      'Double Booked',
+      'Unavailable',
+    ]);
+    expect(eligible.map((person) => person.answerState)).toEqual([
+      'available',
+      'unanswered',
+      'not_asked',
+      'not_asked',
+      'unavailable',
+    ]);
+    expect(
+      eligible.find(
+        (person) => person.volunteerId === seed.doubleBookedVolunteerId,
+      ),
+    ).toMatchObject({
+      answerState: 'not_asked',
+      conflict: {
+        assignmentId: seed.overlapId,
+        ministryName: 'Other ministry',
+        eventTitle: 'Other ministry service',
+        startTime: '2026-09-07T09:30:00.000Z',
+        endTime: '2026-09-07T10:30:00.000Z',
+      },
+      isAvailable: true,
+      hasConflict: true,
+    });
+  });
+});
 
 describe('DOUBLE_BOOKED refusal across Ministries', () => {
   it('POST /assign/shifts/:id/assignments refuses a Volunteer with an overlapping Assignment in another Ministry', async () => {

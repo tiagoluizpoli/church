@@ -115,6 +115,7 @@ export function createSchedulingManagers({
       unitOfWork,
     }),
     participationManager: new DbParticipationManager({
+      availabilityCheckRepository: availabilityCheckRepo,
       participationRepository: participationRepo,
       shiftRepository: shiftRepo,
       eventRepository: eventRepo,

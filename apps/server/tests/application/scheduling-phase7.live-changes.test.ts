@@ -172,6 +172,7 @@ function createHarness() {
   });
   const notifications = createChurchNotificationsSpy();
   const participationManager = new DbParticipationManager({
+    availabilityCheckRepository: availabilityCheckRepo,
     participationRepository,
     shiftRepository,
     assignmentRepository: assignmentRepo,

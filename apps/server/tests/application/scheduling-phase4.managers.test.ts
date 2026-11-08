@@ -123,6 +123,10 @@ function createParticipationHarness({
   const unitOfWork = createUnitOfWorkFake({ tx });
   const notifications = createChurchNotificationsSpy();
   const manager = new DbParticipationManager({
+    availabilityCheckRepository: {
+      listActiveMemberships: async () => [],
+      listByCycle: async () => [],
+    } as never,
     ...repositories,
     participationRepository: repositories.ministryParticipationRepository,
     eventRepository: repositories.planningEventRepository,
@@ -257,6 +261,21 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
 
 it('flags an eligible volunteer with an overlapping active assignment', async () => {
   const { manager, repositories } = createParticipationHarness();
+  repositories.planningEventRepository.getEvent.mockResolvedValue(
+    new Event({
+      id: eventId,
+      props: {
+        churchId,
+        cycleId: CycleId.from('cycle'),
+        title: 'Service',
+        start: startTime,
+        end: endTime,
+      },
+    }),
+  );
+  repositories.ministryRepository.getById.mockResolvedValue(
+    new Ministry({ id: ministryId, props: { churchId, name: 'Worship' } }),
+  );
   const volunteerId = VolunteerId.from('volunteer');
   const otherShiftId = ShiftId.from('other-shift');
   const volunteer = new Volunteer({

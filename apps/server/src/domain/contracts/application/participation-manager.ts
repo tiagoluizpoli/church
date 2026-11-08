@@ -169,6 +169,14 @@ export interface EligibleVolunteerView {
   volunteerName: string;
   isAvailable: boolean;
   hasConflict: boolean;
+  answerState: 'available' | 'unanswered' | 'not_asked' | 'unavailable';
+  conflict: {
+    assignmentId: string;
+    ministryName: string;
+    eventTitle: string;
+    startTime: Instant;
+    endTime: Instant;
+  } | null;
   lastServedAt?: Instant;
   /**
    * Every role this volunteer is qualified for in the ministry — not only the

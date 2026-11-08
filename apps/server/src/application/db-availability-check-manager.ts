@@ -286,13 +286,13 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         ),
         tx,
       });
-      const notConfirmedMembershipIds = new Set(
+      const pendingCheckIds = new Map(
         checks
           .filter(({ state }) => state === 'pending')
-          .map(({ ministryMembershipId }) => ministryMembershipId),
+          .map(({ ministryMembershipId, id }) => [ministryMembershipId, id]),
       );
       const notConfirmed = memberships.filter(({ ministryMembershipId }) =>
-        notConfirmedMembershipIds.has(ministryMembershipId),
+        pendingCheckIds.has(ministryMembershipId),
       );
       const eligible =
         await this.availabilityCheckRepository.listEligibleMemberships(scope);
@@ -301,12 +301,18 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         ...scope,
         eligible,
       });
-      await this.notifications.enqueue({
-        tx,
-        kind: 'availability_reminder',
-        to: notConfirmed.map(({ userId }) => ({ userId, churchId })),
-        data: { cycleId: cycleId as string, ministryId: ministryId as string },
-      });
+      for (const { ministryMembershipId, userId } of notConfirmed) {
+        await this.notifications.enqueue({
+          tx,
+          kind: 'availability_reminder',
+          to: [{ userId, churchId }],
+          data: {
+            cycleId,
+            ministryId,
+            checkId: pendingCheckIds.get(ministryMembershipId),
+          },
+        });
+      }
       await this.availabilityCheckRepository.stampReminded({
         ...scope,
         remindedAt: toDate({ instant: remindedAt }),
@@ -374,21 +380,25 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       })),
       tx,
     });
-    const createdMembershipIds = new Set(
-      created.map((check) => check.ministryMembershipId),
+    const recipientsByMembership = new Map(
+      eligible.map(({ ministryMembershipId, userId }) => [
+        ministryMembershipId,
+        userId,
+      ]),
     );
-    const opened = eligible.filter(({ ministryMembershipId }) =>
-      createdMembershipIds.has(ministryMembershipId),
-    );
-    await this.notifications.enqueue({
-      tx,
-      kind: 'availability_opened',
-      to: opened.map(({ userId }) => ({ userId, churchId })),
-      data: { cycleId: cycleId as string, ministryId: ministryId as string },
-    });
+    for (const check of created) {
+      const userId = recipientsByMembership.get(check.ministryMembershipId);
+      if (!userId) continue;
+      await this.notifications.enqueue({
+        tx,
+        kind: 'availability_opened',
+        to: [{ userId, churchId }],
+        data: { cycleId, ministryId, checkId: check.id },
+      });
+    }
     return {
       createdCheckCount: created.length,
-      notifiedVolunteerCount: opened.length,
+      notifiedVolunteerCount: created.length,
     };
   }
 

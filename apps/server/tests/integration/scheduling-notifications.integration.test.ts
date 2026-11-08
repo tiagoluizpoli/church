@@ -329,13 +329,22 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .from(availabilityCheck)
       .where(eq(availabilityCheck.cycleId, cycleId));
     expect(storedChecks).toHaveLength(2);
+    const memberships = await new DrizzleAvailabilityCheckRepository({
+      db: schedulingTestDb,
+    }).listActiveMemberships(scheduleKey());
+    const firstMembership = memberships.find(({ userId }) => userId === first);
+    const firstCheck = storedChecks.find(
+      ({ ministryMembershipId }) =>
+        ministryMembershipId === firstMembership?.ministryMembershipId,
+    );
+    expect(firstCheck).toBeDefined();
     const queued = await outboxRows();
     expect(queued).toHaveLength(2);
     expect(queued.map((row) => row.payload)).toContainEqual(
       expect.objectContaining({
         kind: 'availability_opened',
         to: { userId: first, churchId: ids.churchId },
-        data: { cycleId, ministryId: ids.ministryId },
+        data: { cycleId, ministryId: ids.ministryId, checkId: firstCheck?.id },
       }),
     );
 
@@ -361,6 +370,20 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       'ana@test.com',
       'bia@test.com',
     ]);
+    for (const email of emailSender.sent) {
+      const userId = email.to === 'ana@test.com' ? first : second;
+      const membership = memberships.find((row) => row.userId === userId);
+      const check = storedChecks.find(
+        (row) => row.ministryMembershipId === membership?.ministryMembershipId,
+      );
+      expect(email).toMatchObject({
+        actionUrl: `https://app.test/availability/${check?.id}`,
+      });
+      const delivered = emailSender.delivered.find(
+        (row) => row.payload.to === email.to,
+      );
+      expect(delivered?.request.html).toContain(`/availability/${check?.id}`);
+    }
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox.map((row) => row.userId).sort()).toEqual(
       [first, second].sort(),
@@ -421,6 +444,16 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     const queued = await outboxRows();
     expect(queued).toHaveLength(2);
     expect(queued.every((row) => row.kind === 'notification')).toBe(true);
+    const checks = await schedulingTestDb.select().from(availabilityCheck);
+    expect(queued.map((row) => row.payload)).toEqual(
+      expect.arrayContaining(
+        checks.map(({ id }) =>
+          expect.objectContaining({
+            data: { cycleId, ministryId: ids.ministryId, checkId: id },
+          }),
+        ),
+      ),
+    );
 
     const emailSender = new CaptureEmailSender('Church');
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
@@ -428,11 +461,68 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       'availability.reminder',
       'availability.reminder',
     ]);
+    expect(emailSender.sent).toEqual(
+      expect.arrayContaining(
+        checks.map(({ id }) =>
+          expect.objectContaining({
+            actionUrl: `https://app.test/availability/${id}`,
+          }),
+        ),
+      ),
+    );
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox.map((row) => row.kind)).toEqual([
       'availability_reminder',
       'availability_reminder',
     ]);
+  });
+
+  it('Remind deep-links a newly eligible Volunteer to the check opened by its sweep', async () => {
+    await askHolders('ana');
+    await schedulingTestDb.delete(outboxMessage);
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Late Role',
+    });
+    await seedNeededShift([role.id]);
+    const userId = await seedRoleHolder('late', role.id);
+
+    expect(
+      await buildAvailabilityManager().remindSchedule(scheduleKey()),
+    ).toMatchObject({
+      remindedCount: 1,
+      newCheckCount: 1,
+    });
+    const memberships = await new DrizzleAvailabilityCheckRepository({
+      db: schedulingTestDb,
+    }).listActiveMemberships(scheduleKey());
+    const membership = memberships.find((row) => row.userId === userId);
+    const checks = await schedulingTestDb.select().from(availabilityCheck);
+    const check = checks.find(
+      (row) => row.ministryMembershipId === membership?.ministryMembershipId,
+    );
+    expect(check).toBeDefined();
+    expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        kind: 'availability_opened',
+        to: { userId, churchId: ids.churchId },
+        data: { cycleId, ministryId: ids.ministryId, checkId: check?.id },
+      }),
+    );
+    const emailSender = new CaptureEmailSender('Church');
+    await buildDrainer(emailSender).drainOnce({ limit: 10 });
+    expect(
+      emailSender.sent.find((email) => email.to === 'late@test.com'),
+    ).toMatchObject({
+      kind: 'availability.opened',
+      actionUrl: `https://app.test/availability/${check?.id}`,
+    });
+    const inbox = await schedulingTestDb
+      .select()
+      .from(notification)
+      .where(eq(notification.userId, userId));
+    expect(inbox[0]?.data).toMatchObject({ checkId: check?.id });
   });
 
   it('publication notifies assigned Volunteers only, once each, with their own Shifts in the Church Timezone', async () => {
@@ -973,7 +1063,10 @@ describe('availability delivery facts resolved per recipient', () => {
     }
   });
 
-  it('still delivers a row frozen before the Shift count and Deadline joined the facts', async () => {
+  it.each([
+    'availability_opened',
+    'availability_reminder',
+  ] as const)('%s delivers frozen legacy facts with the checks-list email link', async (kind) => {
     const userId = await seedRoleHolder(
       'ana',
       (
@@ -984,7 +1077,7 @@ describe('availability delivery facts resolved per recipient', () => {
         })
       ).id,
     );
-    await enqueue('availability_opened', userId);
+    await enqueue(kind, userId);
     const oldFacts = {
       ...scope(),
       ministryName: 'Scheduling Ministry A',
@@ -1005,6 +1098,12 @@ describe('availability delivery facts resolved per recipient', () => {
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
     expect(result.failed).toBe(0);
+    expect(emailSender.sent[0]).toMatchObject({
+      actionUrl: 'https://app.test/availability',
+    });
+    expect(emailSender.delivered[0]?.request.html).toContain(
+      'https://app.test/availability',
+    );
     expect(emailSender.delivered[0]?.request.text).toContain(
       m.notification_availability_span({
         startDate: '01/12/2026',

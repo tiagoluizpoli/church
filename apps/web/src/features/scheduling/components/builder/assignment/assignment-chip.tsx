@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { Check, Clock, X } from 'lucide-react';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
@@ -88,7 +89,9 @@ export function AssignmentChip({
             )}
             data-testid="conflict-badge"
           >
-            {conflictStatus === 'unavailable' ? 'Unavailable' : 'Double-booked'}
+            {conflictStatus === 'unavailable'
+              ? m.builder_state_unavailable()
+              : 'Double-booked'}
           </Badge>
         )}
 

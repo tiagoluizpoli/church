@@ -1036,6 +1036,11 @@
   "builder_state_available": "Available",
   "builder_state_unanswered": "Hasn't answered",
   "builder_state_not_asked": "Not asked",
+  "builder_unavailable_confirm_title": "Assign anyway?",
+  "builder_unavailable_confirm_description": "{name} marked unavailable for {shift}.",
+  "builder_unavailable_confirm_action": "Assign anyway",
+  "builder_unavailable_confirm_cancel": "Cancel",
+  "builder_unavailable_confirm_saving": "Saving…",
   "builder_state_unavailable": "Unavailable",
   "builder_conflict_reason": "Already serving in {ministry} {start}–{end}"
 }

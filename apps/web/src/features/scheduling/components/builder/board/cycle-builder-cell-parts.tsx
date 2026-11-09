@@ -20,6 +20,7 @@ interface AssignmentButtonProps {
   shiftId: string;
   shiftRequirementId: string;
   isPublished: boolean;
+  isUnavailable: boolean;
   isEditable?: boolean;
   onRemove: () => void;
   onSelect: (input: AssignmentButtonSelectInput) => void;
@@ -37,6 +38,7 @@ export function AssignmentButton({
   shiftId,
   shiftRequirementId,
   isPublished,
+  isUnavailable,
   isEditable = true,
   onRemove,
   onSelect,
@@ -58,6 +60,7 @@ export function AssignmentButton({
     <AssignmentChip
       volunteerName={assignment.volunteerName ?? assignment.volunteerId}
       volunteerMembership={assignment.membership}
+      conflictStatus={isUnavailable ? 'unavailable' : undefined}
       confirmationStatus={
         assignment.status === 'pending' ||
         assignment.status === 'confirmed' ||

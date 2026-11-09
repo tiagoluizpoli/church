@@ -280,8 +280,8 @@ export function CycleBuilderBoardGrid({
                                                   label: buildFocusLabel({
                                                     roleLabel,
                                                     eventTimeBlockLabel:
-                                                      eventTimeBlock.label ??
-                                                      'this shift',
+                                                      shift.label ??
+                                                      `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`,
                                                     eventTitle: event.title,
                                                     dateText: dateLabel({
                                                       day: date,
@@ -294,8 +294,8 @@ export function CycleBuilderBoardGrid({
                                                   roleId: requirement.roleId,
                                                   roleLabel,
                                                   eventTimeBlockLabel:
-                                                    eventTimeBlock.label ??
-                                                    'this shift',
+                                                    shift.label ??
+                                                    `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`,
                                                   ...rankVolunteersForShiftRole(
                                                     {
                                                       shift,
@@ -331,8 +331,8 @@ export function CycleBuilderBoardGrid({
                                                     suggestionGroups.needsResponse
                                                   }
                                                   eventTimeBlockLabel={
-                                                    eventTimeBlock.label ??
-                                                    'this shift'
+                                                    shift.label ??
+                                                    `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`
                                                   }
                                                   selectedVolunteerId={
                                                     selectedVolunteerId

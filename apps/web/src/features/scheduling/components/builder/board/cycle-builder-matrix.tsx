@@ -30,6 +30,7 @@ import {
   eventMatchesDateSpan,
   eventOccursOnDay,
   isDateWithinRange,
+  timeLabel,
   weekdayForDayKey,
 } from '../../../utils/builder/cycle-builder-date.utils';
 import {
@@ -415,7 +416,8 @@ export function CycleBuilderMatrix(props: Props) {
               const roleLabel = `${requirement.sectorName} · ${roleName}`;
               {
                 const eventTimeBlockLabel =
-                  shiftContext.eventTimeBlock.label ?? 'this shift';
+                  shift.label ??
+                  `${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
                 setFocused({
                   key: focusKey({
                     shiftRequirementId: target.shiftRequirementId,

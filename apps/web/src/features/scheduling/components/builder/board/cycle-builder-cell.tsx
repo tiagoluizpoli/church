@@ -315,6 +315,11 @@ export function CycleBuilderCell({
             shiftId={shift.shiftId}
             shiftRequirementId={shiftRequirementId}
             isPublished={isPublished}
+            isUnavailable={shift.eligibleVolunteers.some(
+              (volunteer) =>
+                volunteer.volunteerId === assignment.volunteerId &&
+                volunteer.answerState === 'unavailable',
+            )}
             isEditable={isEditable}
             onFocus={onFocus}
             pickerVolunteers={pickerVolunteers}

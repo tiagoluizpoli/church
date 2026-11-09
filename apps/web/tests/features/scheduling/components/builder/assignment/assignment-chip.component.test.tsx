@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -50,7 +51,7 @@ describe('AssignmentChip (T100)', () => {
         />,
       );
       const badge = screen.getByTestId('conflict-badge');
-      expect(badge).toHaveTextContent('Unavailable');
+      expect(badge).toHaveTextContent(m.builder_state_unavailable());
       expect(badge.className).toContain('bg-destructive');
     });
 

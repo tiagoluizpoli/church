@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -14,9 +15,9 @@ const baseProps = {
 };
 
 describe('OverrideDialog (T104)', () => {
-  it('describes the conflict with the abbreviated volunteer name', () => {
+  it('names the volunteer and shift', () => {
     render(<OverrideDialog {...baseProps} />);
-    expect(screen.getByText(/John D\. is unavailable/i)).toBeVisible();
+    expect(screen.getByText(/John Doe.*9:00 AM – 11:00 AM/)).toBeVisible();
   });
 
   it('asks for no reason and confirms in one click', async () => {
@@ -24,13 +25,21 @@ describe('OverrideDialog (T104)', () => {
     const onConfirm = vi.fn();
     render(<OverrideDialog {...baseProps} onConfirm={onConfirm} />);
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /confirm override/i }));
+    await user.click(
+      screen.getByRole('button', {
+        name: m.builder_unavailable_confirm_action(),
+      }),
+    );
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 
   it('shows a pending label while saving', () => {
     render(<OverrideDialog {...baseProps} isPending={true} />);
-    expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_unavailable_confirm_saving(),
+      }),
+    ).toBeInTheDocument();
   });
 
   it('renders a Leader badge next to the title for a ministry Leader', () => {

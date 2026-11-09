@@ -388,6 +388,74 @@ describe('builder eligibility contract', () => {
   });
 });
 
+describe('Unavailable assignment', () => {
+  it('returns an UNAVAILABLE warning when a marked volunteer is assigned', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const person = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unavailable Volunteer',
+      email: 'unavailable-create@test.com',
+    });
+    await seedRoleQualification({
+      churchId: seed.churchId,
+      membershipId: person.membership.id,
+      roleId: seed.targetRoleId,
+    });
+    const check = await buildAvailabilityCheck({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      cycleId: seed.cycleId,
+      ministryMembershipId: person.membership.id,
+      state: 'confirmed',
+    });
+    await buildUnavailableShift({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      availabilityCheckId: check.id,
+      shiftId: seed.targetShiftId,
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: person.volunteer.id,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'UNAVAILABLE' }),
+      ]),
+    );
+    const read = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
+    });
+    expect(read.statusCode).toBe(200);
+    const body: CycleBuilderResponse = read.json();
+    const shift = body.events
+      .flatMap((event) =>
+        event.eventTimeBlocks.flatMap((block) => block.shifts),
+      )
+      .find((row) => row.shift.id === seed.targetShiftId);
+    expect(shift?.assignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ volunteerId: person.volunteer.id }),
+      ]),
+    );
+    expect(shift?.eligibleVolunteers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          volunteerId: person.volunteer.id,
+          answerState: 'unavailable',
+        }),
+      ]),
+    );
+  });
+});
+
 describe('DOUBLE_BOOKED refusal across Ministries', () => {
   it('POST /assign/shifts/:id/assignments refuses a Volunteer with an overlapping Assignment in another Ministry', async () => {
     const seed = await seedCrossMinistryOverlap();

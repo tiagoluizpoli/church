@@ -1,4 +1,5 @@
 import type { AppConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -58,6 +59,7 @@ const builderData: CycleBuilderData = {
           shifts: [
             {
               shiftId: 'shift-1',
+              label: 'Morning service',
               eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
@@ -247,6 +249,39 @@ describe('CycleBuilder header (B-4)', () => {
     expect(
       screen.queryByText(/Map the cycle, then place with confidence/),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('Unavailable assignment confirmation', () => {
+  function unavailableData(): CycleBuilderData {
+    const data = structuredClone(builderData);
+    data.events[0].eventTimeBlocks[0].shifts[0].eligibleVolunteers[0].answerState =
+      'unavailable';
+    data.events[0].eventTimeBlocks[0].shifts[0].label = 'Kids shift';
+    return data;
+  }
+
+  it('cancels without writing and confirms the named volunteer and shift once', async () => {
+    const user = userEvent.setup();
+    const { mutateAsync } = renderBuilder({ data: unavailableData() });
+    await assignGraceHopper();
+    expect(screen.getByRole('dialog')).toHaveTextContent('Grace Hopper');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Kids shift');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(mutateAsync).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.builder_unavailable_confirm_cancel(),
+      }),
+    );
+    expect(mutateAsync).not.toHaveBeenCalled();
+    await assignGraceHopper();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.builder_unavailable_confirm_action(),
+      }),
+    );
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
   });
 });
 

@@ -138,6 +138,21 @@ describe('CycleBuilderCell', () => {
     }
   });
 
+  it('keeps an unavailable warning on an assigned volunteer', () => {
+    renderCell({
+      assignments: [assignments[0]],
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], answerState: 'unavailable' },
+        ],
+      },
+    });
+    expect(
+      screen.getByTestId('cycle-assignment-assignment-1'),
+    ).toHaveTextContent('Indisponível');
+  });
+
   it('shows one compact add chip while a role still has capacity', () => {
     renderCell({ assignments: [assignments[0]] });
 

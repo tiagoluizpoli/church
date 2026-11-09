@@ -1043,5 +1043,16 @@
   "builder_unavailable_confirm_cancel": "Cancel",
   "builder_unavailable_confirm_saving": "Saving…",
   "builder_state_unavailable": "Unavailable",
-  "builder_conflict_reason": "Already serving in {ministry} {start}–{end}"
+  "builder_conflict_reason": "Already serving in {ministry} {start}–{end}",
+  "builder_header_title": "Cycle board",
+  "builder_header_no_dates": "No dates set for this cycle yet.",
+  "builder_header_events": "Events",
+  "builder_header_time_blocks": "Time blocks",
+  "builder_header_shifts": "Shifts",
+  "builder_header_assigned": "Assigned",
+  "builder_header_filled": "{filled} of {needed} places filled",
+  "builder_header_no_staffing": "No staffing required yet",
+  "builder_header_below_one": "1 shift is below target",
+  "builder_header_below_many": "{count} shifts are below target",
+  "builder_header_all_full": "Every included shift is at target"
 }

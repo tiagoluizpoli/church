@@ -1043,5 +1043,16 @@
   "builder_unavailable_confirm_cancel": "Cancelar",
   "builder_unavailable_confirm_saving": "Salvando…",
   "builder_state_unavailable": "Indisponível",
-  "builder_conflict_reason": "Já está servindo em {ministry} {start}–{end}"
+  "builder_conflict_reason": "Já está servindo em {ministry} {start}–{end}",
+  "builder_header_title": "Quadro da escala",
+  "builder_header_no_dates": "Nenhuma data definida para este ciclo.",
+  "builder_header_events": "Eventos",
+  "builder_header_time_blocks": "Blocos de horário",
+  "builder_header_shifts": "Turnos",
+  "builder_header_assigned": "Designados",
+  "builder_header_filled": "{filled} de {needed} vagas preenchidas",
+  "builder_header_no_staffing": "Nenhuma vaga necessária ainda",
+  "builder_header_below_one": "1 turno abaixo da meta",
+  "builder_header_below_many": "{count} turnos abaixo da meta",
+  "builder_header_all_full": "Todos os turnos incluídos atingiram a meta"
 }

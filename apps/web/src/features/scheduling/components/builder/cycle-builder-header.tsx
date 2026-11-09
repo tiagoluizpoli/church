@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import {
   formatCalendarDay,
   formatDayAndMonth,
@@ -101,30 +102,30 @@ export function CycleBuilderHeader({
   return (
     <div data-testid="cycle-builder-header">
       <WorkspaceIntroPanel
-        title={cycleName ?? 'Cycle board'}
-        description={dateRange ?? 'No dates set for this cycle yet.'}
+        title={cycleName ?? m.builder_header_title()}
+        description={dateRange ?? m.builder_header_no_dates()}
         autoFocusTitle
         aside={
           <div className="flex w-full flex-col items-stretch gap-3 xl:w-auto xl:items-end">
             <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:justify-end">
               <HeaderStatChip
                 testId="cycle-builder-event-count"
-                label="Events"
+                label={m.builder_header_events()}
                 value={counts.eventCount}
               />
               <HeaderStatChip
                 testId="cycle-builder-event-time-block-count"
-                label="Time blocks"
+                label={m.builder_header_time_blocks()}
                 value={counts.eventTimeBlockCount}
               />
               <HeaderStatChip
                 testId="cycle-builder-shift-count"
-                label="Shifts"
+                label={m.builder_header_shifts()}
                 value={counts.shiftCount}
               />
               <HeaderStatChip
                 testId="cycle-builder-assigned-count"
-                label="Assigned"
+                label={m.builder_header_assigned()}
                 value={counts.assignedCount}
               />
             </div>
@@ -139,8 +140,11 @@ export function CycleBuilderHeader({
               <p className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="font-medium">
                   {staffing.required > 0
-                    ? `${staffing.coveredPlaces} of ${staffing.required} places filled`
-                    : 'No staffing required yet'}
+                    ? m.builder_header_filled({
+                        filled: staffing.coveredPlaces,
+                        needed: staffing.required,
+                      })
+                    : m.builder_header_no_staffing()}
                 </span>
                 {/* The number stays on `--foreground`: `--destructive`
                     measures 4.45:1 against the app background at 14px, just
@@ -162,8 +166,12 @@ export function CycleBuilderHeader({
               <p className="flex items-baseline justify-between gap-3 text-muted-foreground text-xs">
                 <span>
                   {staffing.shiftsBelowTarget > 0
-                    ? `${staffing.shiftsBelowTarget} ${staffing.shiftsBelowTarget === 1 ? 'shift is' : 'shifts are'} below target`
-                    : 'Every included shift is at target'}
+                    ? staffing.shiftsBelowTarget === 1
+                      ? m.builder_header_below_one()
+                      : m.builder_header_below_many({
+                          count: staffing.shiftsBelowTarget,
+                        })
+                    : m.builder_header_all_full()}
                 </span>
                 <SyncedAgoLabel
                   syncedAt={syncedAt}

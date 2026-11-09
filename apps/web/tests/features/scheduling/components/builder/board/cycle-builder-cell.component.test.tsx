@@ -157,6 +157,9 @@ describe('CycleBuilderCell', () => {
     expect(
       screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).not.toHaveAttribute('data-drop-target');
+    expect(
+      screen.getByTestId('cycle-assignment-assignment-1'),
+    ).not.toHaveAttribute('data-drop-target');
   });
   it('renders the read-only message in Portuguese', () => {
     overwriteGetLocale(() => 'pt-BR');

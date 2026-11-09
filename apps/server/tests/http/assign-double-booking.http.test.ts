@@ -4,6 +4,7 @@ import {
   assignment,
   assignmentAudit,
   ministryParticipation,
+  outboxMessage,
   shiftRequirement,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
@@ -424,6 +425,8 @@ describe('late availability marks on the board', () => {
       availabilityCheckId: check.id,
       shiftId: seed.targetShiftId,
     });
+    const assignmentsBefore = await schedulingTestDb.select().from(assignment);
+    const outboxBefore = await schedulingTestDb.select().from(outboxMessage);
     const response = await app.inject({
       method: 'GET',
       url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
@@ -442,6 +445,12 @@ describe('late availability marks on the board', () => {
           lateMark: true,
         }),
       ]),
+    );
+    expect(await schedulingTestDb.select().from(assignment)).toEqual(
+      assignmentsBefore,
+    );
+    expect(await schedulingTestDb.select().from(outboxMessage)).toEqual(
+      outboxBefore,
     );
   });
 });

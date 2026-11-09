@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ministry } from '@church/db';
+import { assignment, ministry, outboxMessage } from '@church/db';
 import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
@@ -304,6 +304,8 @@ describe('late availability counts', () => {
       shiftId: shift.id,
     });
     signIn({ userId: seed.adminUserId, churchId: seed.churchAId });
+    const assignmentsBefore = await db.select().from(assignment);
+    const outboxBefore = await db.select().from(outboxMessage);
     const response = await listSchedules();
     expect(response.statusCode).toBe(200);
     expect(response.json().schedules).toEqual(
@@ -315,6 +317,8 @@ describe('late availability counts', () => {
         }),
       ]),
     );
+    expect(await db.select().from(assignment)).toEqual(assignmentsBefore);
+    expect(await db.select().from(outboxMessage)).toEqual(outboxBefore);
   });
 });
 

@@ -180,7 +180,19 @@ function ScheduleRows({ schedules }: ScheduleRowsProps) {
             <span>
               {row.ministry.name} · {row.cycle.name}
             </span>
-            <Badge variant="secondary">{stageLabel(row)}</Badge>
+            <span className="flex items-center gap-2">
+              {row.lateMarkCount > 0 ? (
+                <Badge
+                  variant="outline"
+                  aria-label={m.schedule_late_mark_count({
+                    count: row.lateMarkCount,
+                  })}
+                >
+                  ⚠ {row.lateMarkCount}
+                </Badge>
+              ) : null}
+              <Badge variant="secondary">{stageLabel(row)}</Badge>
+            </span>
           </Link>
         </li>
       ))}

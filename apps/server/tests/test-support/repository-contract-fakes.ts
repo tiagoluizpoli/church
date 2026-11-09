@@ -210,6 +210,8 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['listScheduleSummaries']>(),
     listScheduleServingStates:
       vi.fn<MinistryParticipationRepository['listScheduleServingStates']>(),
+    countScheduleLateMarks:
+      vi.fn<MinistryParticipationRepository['countScheduleLateMarks']>(),
     countScheduleChecks:
       vi.fn<MinistryParticipationRepository['countScheduleChecks']>(),
   } satisfies MinistryParticipationRepository;

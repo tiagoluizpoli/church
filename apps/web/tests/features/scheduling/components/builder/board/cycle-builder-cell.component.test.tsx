@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { DndContext } from '@dnd-kit/core';
 import { screen, waitFor } from '@testing-library/react';
@@ -67,6 +68,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
     volunteerName: 'Grace Hopper',
   },
   {
@@ -79,6 +81,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
     volunteerName: 'Ada Lovelace',
   },
 ];
@@ -125,6 +128,21 @@ function renderCell(
 }
 
 describe('CycleBuilderCell', () => {
+  it('shows the late mark and its Shift in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    renderCell({
+      shift: { ...shift, label: 'Manhã' },
+      assignments: assignments
+        .slice(0, 1)
+        .map((item) => ({ ...item, lateMark: true })),
+    });
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_late_mark_tooltip({ shift: 'Manhã' }),
+      }),
+    ).toBeVisible();
+  });
+
   it('offers People and Invitations when nobody holds the role', () => {
     renderCell({
       shift: { ...shift, eligibleVolunteers: [] },

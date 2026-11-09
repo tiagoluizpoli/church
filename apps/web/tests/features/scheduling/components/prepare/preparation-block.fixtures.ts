@@ -26,6 +26,7 @@ export const SCHEDULE: ListSchedules200SchedulesItem = {
     state: 'sent',
   },
   stage: 'to_prepare',
+  lateMarkCount: 0,
 };
 export const REQUIREMENT: PreparationRequirement = {
   id: 'requirement-1',

@@ -2,6 +2,7 @@ import { NotFoundError } from '@church/core';
 import {
   compareCalendarDays,
   compareInstants,
+  fromDate,
   type Instant,
   now,
   today,
@@ -297,6 +298,7 @@ interface BuildBuilderEventViewInput {
   shifts: Shift[];
   requirements: ShiftRequirement[];
   assignments: Assignment[];
+  marks: UnavailableShift[];
   eligibleByShift: Map<string, EligibleVolunteerView[]>;
 }
 
@@ -549,7 +551,7 @@ export class DbParticipationManager implements IParticipationManager {
           eventId: eventGroup.event.id,
           tx,
         });
-        const [inclusions, shifts, requirements, assignments] =
+        const [inclusions, shifts, requirements, assignments, marks] =
           await Promise.all([
             this.participationRepository.listInclusions({
               churchId: input.churchId,
@@ -567,6 +569,11 @@ export class DbParticipationManager implements IParticipationManager {
               tx,
             }),
             this.assignmentRepository.listByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.unavailableShiftRepository.listByParticipation({
               churchId: input.churchId,
               participationId: participation.id,
               tx,
@@ -599,6 +606,7 @@ export class DbParticipationManager implements IParticipationManager {
             shifts,
             requirements,
             assignments,
+            marks,
             eligibleByShift,
           }),
         );
@@ -1328,11 +1336,15 @@ export class DbParticipationManager implements IParticipationManager {
       ministryIds: ministries.map((ministry) => ministry.id),
       cycleIds: sentCycles.map((cycle) => cycle.id),
     };
-    const [servingStates, checkCounts] = await Promise.all([
+    const [servingStates, checkCounts, lateMarkCounts] = await Promise.all([
       this.participationRepository.listScheduleServingStates(scope),
       this.participationRepository.countScheduleChecks(scope),
+      this.participationRepository.countScheduleLateMarks(scope),
     ]);
 
+    const lateMarksBySchedule = new Map(
+      lateMarkCounts.map((row) => [scheduleKey(row), row.count]),
+    );
     const statesBySchedule = Map.groupBy(servingStates, scheduleKey);
     const countsBySchedule = new Map(
       checkCounts.map((row) => [scheduleKey(row), row]),
@@ -1348,9 +1360,17 @@ export class DbParticipationManager implements IParticipationManager {
         const stage = deriveScheduleStage({
           servingStates: rows.map((row) => row.state),
         });
-        if (stage !== 'asking') return { ministry, cycle, stage };
+        const lateMarkCount = lateMarksBySchedule.get(key) ?? 0;
+        if (stage !== 'asking')
+          return { ministry, cycle, stage, lateMarkCount };
         const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
-        return { ministry, cycle, stage, asking: { confirmed, asked } };
+        return {
+          ministry,
+          cycle,
+          stage,
+          lateMarkCount,
+          asking: { confirmed, asked },
+        };
       }),
     );
   }
@@ -1700,6 +1720,7 @@ function buildBuilderEventView({
   shifts,
   requirements,
   assignments,
+  marks,
   eligibleByShift,
 }: BuildBuilderEventViewInput): CycleBuilderEventView {
   const shiftsByEventTimeBlock = new Map<string, Shift[]>();
@@ -1742,7 +1763,20 @@ function buildBuilderEventView({
         (shift) => ({
           shift,
           requirements: requirementsByShift.get(shift.id as string) ?? [],
-          assignments: assignmentsByShift.get(shift.id as string) ?? [],
+          assignments: (assignmentsByShift.get(shift.id as string) ?? []).map(
+            (assignment) => ({
+              assignment,
+              lateMark: marks.some(
+                (mark) =>
+                  mark.shiftId === shift.id &&
+                  mark.volunteerId === assignment.volunteerId &&
+                  compareInstants({
+                    left: fromDate({ date: mark.createdAt }),
+                    right: assignment.assignedAt,
+                  }) > 0,
+              ),
+            }),
+          ),
           eligibleVolunteers: eligibleByShift.get(shift.id as string) ?? [],
         }),
       );

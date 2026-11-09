@@ -1207,5 +1207,7 @@
   "builder_last_week_many": "last served {count} weeks ago",
   "builder_last_month_one": "last served 1 month ago",
   "builder_last_month_many": "last served {count} months ago",
-  "builder_header_filled_one": "{filled} of 1 place filled"
+  "builder_header_filled_one": "{filled} of 1 place filled",
+  "builder_late_mark_tooltip": "Unavailable after assignment: {shift}",
+  "schedule_late_mark_count": "{count} late availability marks"
 }

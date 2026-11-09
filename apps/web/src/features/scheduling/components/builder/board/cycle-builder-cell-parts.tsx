@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 interface AssignmentButtonProps {
   assignment: CycleBuilderAssignment;
   shiftId: string;
+  shiftLabel: string;
   shiftRequirementId: string;
   isPublished: boolean;
   isUnavailable: boolean;
@@ -37,6 +38,7 @@ export interface AssignmentButtonSelectInput {
 export function AssignmentButton({
   assignment,
   shiftId,
+  shiftLabel,
   shiftRequirementId,
   isPublished,
   isUnavailable,
@@ -84,6 +86,18 @@ export function AssignmentButton({
       data-drop-target={isPending || !isEditable ? undefined : 'replace'}
       data-testid={`cycle-assignment-${assignment.id}`}
     >
+      {assignment.lateMark ? (
+        <Tooltip>
+          <TooltipTrigger
+            aria-label={m.builder_late_mark_tooltip({ shift: shiftLabel })}
+          >
+            ⚠
+          </TooltipTrigger>
+          <TooltipContent>
+            {m.builder_late_mark_tooltip({ shift: shiftLabel })}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
       {isPending || !isEditable ? (
         chip
       ) : (

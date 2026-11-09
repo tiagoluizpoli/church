@@ -1207,5 +1207,7 @@
   "builder_last_week_many": "serviu há {count} semanas",
   "builder_last_month_one": "serviu há 1 mês",
   "builder_last_month_many": "serviu há {count} meses",
-  "builder_header_filled_one": "{filled} de 1 vaga preenchida"
+  "builder_header_filled_one": "{filled} de 1 vaga preenchida",
+  "builder_late_mark_tooltip": "Indisponível após a escala: {shift}",
+  "schedule_late_mark_count": "{count} indisponibilidades após a escala"
 }

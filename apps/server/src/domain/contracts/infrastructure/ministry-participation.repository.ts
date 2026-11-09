@@ -155,6 +155,12 @@ export interface ScheduleCheckCountRow {
   asked: number;
 }
 
+export interface ScheduleLateMarkCountRow {
+  ministryId: string;
+  cycleId: string;
+  count: number;
+}
+
 export interface MinistryParticipationRepository {
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
   /** Holds the row until `tx` ends, so its state cannot change under the caller. */
@@ -201,6 +207,9 @@ export interface MinistryParticipationRepository {
   listScheduleServingStates(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleServingStateRow[]>;
+  countScheduleLateMarks(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleLateMarkCountRow[]>;
   countScheduleChecks(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleCheckCountRow[]>;

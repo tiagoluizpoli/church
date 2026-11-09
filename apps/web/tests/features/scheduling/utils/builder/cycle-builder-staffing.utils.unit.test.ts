@@ -41,6 +41,7 @@ function makeShift(
         shiftRequirementId: 'requirement-1',
         status: 'confirmed' as const,
         assignedAt: '2027-01-01T10:00:00Z',
+        lateMark: false,
       }),
     ),
     eligibleVolunteerCount: 0,

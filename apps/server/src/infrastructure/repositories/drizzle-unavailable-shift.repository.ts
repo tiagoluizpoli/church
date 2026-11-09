@@ -5,7 +5,7 @@ import {
   shift,
   unavailableShift,
 } from '@church/db';
-import { and, eq, inArray, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, notInArray, type SQL } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
@@ -155,24 +155,29 @@ export class DrizzleUnavailableShiftRepository
     input: ReplaceUnavailableShiftsForCheckInput,
   ): Promise<void> {
     const client = getClient({ db: this.db, tx: input.tx });
-    await client.delete(unavailableShift).where(
-      and(
-        withChurchIsolation({
-          table: unavailableShift,
-          churchId: input.churchId,
-        }),
-        eq(unavailableShift.availabilityCheckId, input.availabilityCheckId),
-      ),
-    );
+    const conditions = [
+      withChurchIsolation({
+        table: unavailableShift,
+        churchId: input.churchId,
+      }),
+      eq(unavailableShift.availabilityCheckId, input.availabilityCheckId),
+    ];
+    if (input.shiftIds.length > 0) {
+      conditions.push(notInArray(unavailableShift.shiftId, input.shiftIds));
+    }
+    await client.delete(unavailableShift).where(and(...conditions));
 
     if (input.shiftIds.length === 0) return;
 
-    await client.insert(unavailableShift).values(
-      input.shiftIds.map((shiftId) => ({
-        churchId: input.churchId,
-        availabilityCheckId: input.availabilityCheckId,
-        shiftId,
-      })),
-    );
+    await client
+      .insert(unavailableShift)
+      .values(
+        input.shiftIds.map((shiftId) => ({
+          churchId: input.churchId,
+          availabilityCheckId: input.availabilityCheckId,
+          shiftId,
+        })),
+      )
+      .onConflictDoNothing();
   }
 }

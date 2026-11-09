@@ -1,18 +1,11 @@
 import { m } from '@church/i18n/messages';
+import { isAxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import type { CycleBuilderCellSelectInput } from '../components/builder/board/cycle-builder-cell';
 import type { FailedAssignmentWrite } from '../components/builder/board/cycle-builder-cell-parts';
-import {
-  overrideKindForFit,
-  volunteerFitForShiftRole,
-} from '../utils/builder/cycle-builder-fit.utils';
-import { findShiftById } from '../utils/builder/cycle-builder-shift-lookup.utils';
-import {
-  type CycleBuilderAssignment,
-  type CycleBuilderData,
-  isActiveAssignment,
-} from './use-cycle-builder';
+import type { CycleBuilderData } from './use-cycle-builder';
 import { isOptimisticAssignmentId } from './use-cycle-builder.optimistic';
 import { randomId } from '@/shared/utils/id';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
@@ -51,20 +44,10 @@ export interface CycleBuilderMutations {
   };
 }
 
-export interface CollisionState {
-  input: CycleBuilderCellSelectInput;
-  source: CycleBuilderAssignment;
-  target?: CycleBuilderAssignment;
-}
-
-export type CollisionAction = 'move' | 'both' | 'swap';
-
-interface OverrideState {
+interface UnavailableState {
   input: CycleBuilderCellSelectInput;
   volunteerName: string;
   volunteerMembership?: AssigneeMembership;
-  collision?: CollisionState;
-  collisionAction?: CollisionAction;
 }
 
 interface UseCycleBuilderActionsInput extends CycleBuilderMutations {
@@ -82,22 +65,9 @@ interface ApplyAssignmentInput {
   mode?: 'create' | 'reassign';
 }
 
-interface ApplyCollisionInput {
-  action: CollisionAction;
-  collision?: CollisionState;
-  /** The leader already confirmed the conflict in the override dialog. */
-  overrideConfirmed?: boolean;
-}
-
 interface RemoveAssignmentInput {
   assignmentId: string;
   volunteerName: string;
-}
-
-interface AssignmentConflictInput {
-  assignment: CycleBuilderAssignment;
-  data: CycleBuilderData;
-  volunteerId: string;
 }
 
 interface ReportInput {
@@ -110,25 +80,14 @@ interface ErrorMessageInput {
   fallback: string;
 }
 
-function errorMessage({ error, fallback }: ErrorMessageInput): string {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
+const refusalSchema = z.object({ message: z.string().min(1) });
 
-function conflictTypeForAssignment({
-  assignment,
-  data,
-  volunteerId,
-}: AssignmentConflictInput) {
-  if (!assignment.shiftId) return undefined;
-  const shift = findShiftById({ data, shiftId: assignment.shiftId });
-  if (!shift) return undefined;
-  return overrideKindForFit({
-    fit: volunteerFitForShiftRole({
-      shift,
-      roleId: assignment.roleId,
-      volunteerId,
-    }),
-  });
+function errorMessage({ error, fallback }: ErrorMessageInput): string {
+  const refusal = refusalSchema.safeParse(
+    isAxiosError<unknown>(error) ? error.response?.data : undefined,
+  );
+  if (refusal.success) return refusal.data.message;
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 export function useCycleBuilderActions({
@@ -138,8 +97,7 @@ export function useCycleBuilderActions({
   reassignAssignment,
   onAssignmentApplied,
 }: UseCycleBuilderActionsInput) {
-  const [collision, setCollision] = useState<CollisionState | null>(null);
-  const [override, setOverride] = useState<OverrideState | null>(null);
+  const [unavailable, setUnavailable] = useState<UnavailableState | null>(null);
   const [failedWrites, setFailedWrites] = useState<FailedWriteEntry[]>([]);
   const [announcement, setAnnouncement] = useState('');
   const isSaving =
@@ -173,7 +131,7 @@ export function useCycleBuilderActions({
 
   // Mirrors `volunteerNameFor`'s lookup order — the assignment already on the
   // board first, then the shift's own eligible-volunteer rows — so the
-  // override dialog's "Leader" badge reflects the same person
+  // confirmation dialog's "Leader" badge reflects the same person
   // `volunteerNameFor` just named (FR-013).
   const volunteerMembershipFor = (
     input: CycleBuilderCellSelectInput,
@@ -262,110 +220,6 @@ export function useCycleBuilderActions({
     }
   };
 
-  const applyCollision = async ({
-    action,
-    collision: collisionOverride,
-    overrideConfirmed,
-  }: ApplyCollisionInput) => {
-    const activeCollision = collisionOverride ?? collision;
-    if (!activeCollision) return;
-    const { input, source, target } = activeCollision;
-
-    if (
-      isOptimisticAssignmentId({ assignmentId: source.id }) ||
-      (target && isOptimisticAssignmentId({ assignmentId: target.id }))
-    ) {
-      setCollision(null);
-      report({
-        message:
-          'Please wait for the assignment to finish syncing before moving or swapping it.',
-        tone: 'error',
-      });
-      return;
-    }
-
-    const swapConflictType =
-      action === 'swap' && target
-        ? conflictTypeForAssignment({
-            assignment: source,
-            data,
-            volunteerId: target.volunteerId,
-          })
-        : undefined;
-    const overrideInput =
-      swapConflictType && !input.conflictType
-        ? { ...input, conflictType: swapConflictType }
-        : input;
-    if (overrideInput.conflictType && !overrideConfirmed) {
-      setCollision(null);
-      setOverride({
-        input: overrideInput,
-        volunteerName: volunteerNameFor(overrideInput),
-        volunteerMembership: volunteerMembershipFor(overrideInput),
-        collision: activeCollision,
-        collisionAction: action,
-      });
-      return;
-    }
-
-    setCollision(null);
-    if (action === 'both') {
-      await applyAssignment({
-        input,
-        mode: target ? 'create' : undefined,
-      });
-      return;
-    }
-
-    const sourceName = source.volunteerName ?? source.volunteerId;
-    const targetName = target?.volunteerName ?? target?.volunteerId ?? '';
-    if (!(target && action === 'swap')) {
-      const applied = await applyAssignment({ input });
-      if (!applied) return;
-      try {
-        await deleteAssignment.mutateAsync(source.id);
-      } catch (error) {
-        report({
-          message: `${sourceName} was assigned here, but the previous assignment could not be removed — they are now in both: ${errorMessage({ error, fallback: m.common_removal_failed() })}`,
-          tone: 'error',
-        });
-      }
-      return;
-    }
-
-    try {
-      await reassignAssignment.mutateAsync({
-        assignmentId: source.id,
-        body: { volunteerId: target.volunteerId },
-      });
-    } catch (error) {
-      report({
-        message: `Could not move ${targetName} into ${sourceName}'s shift. Nothing was changed: ${errorMessage({ error, fallback: m.common_reassignment_failed() })}`,
-        tone: 'error',
-      });
-      return;
-    }
-
-    try {
-      await reassignAssignment.mutateAsync({
-        assignmentId: target.id,
-        body: { volunteerId: input.volunteerId },
-      });
-    } catch (error) {
-      report({
-        message: `Half-applied swap: ${targetName} was moved into ${sourceName}'s shift, but ${sourceName} could not take ${targetName}'s — ${errorMessage({ error, fallback: m.common_reassignment_failed() })}. Reassign ${sourceName} by hand.`,
-        tone: 'error',
-      });
-      return;
-    }
-
-    report({
-      message: `Swapped ${sourceName} and ${targetName}`,
-      tone: 'success',
-    });
-    onAssignmentApplied?.();
-  };
-
   const handleSelectAssignment = (input: CycleBuilderCellSelectInput) => {
     if (
       input.assignmentId &&
@@ -380,27 +234,8 @@ export function useCycleBuilderActions({
       : undefined;
     if (currentAssignment?.volunteerId === input.volunteerId) return;
 
-    const source = data.assignments.find(
-      (assignment) =>
-        assignment.volunteerId === input.volunteerId &&
-        assignment.id !== input.assignmentId &&
-        !isOptimisticAssignmentId({ assignmentId: assignment.id }) &&
-        isActiveAssignment({ status: assignment.status }),
-    );
-    if (source) {
-      setCollision({
-        input,
-        source,
-        target: input.assignmentId
-          ? data.assignments.find(
-              (assignment) => assignment.id === input.assignmentId,
-            )
-          : undefined,
-      });
-      return;
-    }
-    if (input.conflictType) {
-      setOverride({
+    if (input.unavailable) {
+      setUnavailable({
         input,
         volunteerName: volunteerNameFor(input),
         volunteerMembership: volunteerMembershipFor(input),
@@ -436,19 +271,10 @@ export function useCycleBuilderActions({
     [failedWrites],
   );
 
-  const confirmOverride = () => {
-    const confirmedOverride = override;
-    setOverride(null);
-    if (!confirmedOverride) return;
-    if (confirmedOverride.collision && confirmedOverride.collisionAction) {
-      void applyCollision({
-        action: confirmedOverride.collisionAction,
-        collision: confirmedOverride.collision,
-        overrideConfirmed: true,
-      });
-      return;
-    }
-    void applyAssignment({ input: confirmedOverride.input });
+  const confirmUnavailable = () => {
+    const confirmed = unavailable;
+    setUnavailable(null);
+    if (confirmed) void applyAssignment({ input: confirmed.input });
   };
 
   const removeAssignment = async ({
@@ -474,17 +300,14 @@ export function useCycleBuilderActions({
   return {
     announcement,
     boardFailedWrites,
-    applyCollision,
-    collision,
-    confirmOverride,
+    confirmUnavailable,
     dismissFailedWrite,
     failedWrites,
     handleSelectAssignment,
     isSaving,
-    override,
+    unavailable,
     removeAssignment,
     retryFailedWrite,
-    setCollision,
-    setOverride,
+    setUnavailable,
   };
 }

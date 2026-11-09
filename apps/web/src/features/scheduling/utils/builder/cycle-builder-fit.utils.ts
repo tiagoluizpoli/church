@@ -6,30 +6,11 @@ import type {
 /** A candidate's fit for a specific Shift and Role. */
 export type ShiftRoleFit =
   | { tier: 'ready' }
-  | { tier: 'override' }
+  | { tier: 'unavailable' }
   | { tier: 'unqualified' }
   | { tier: 'none' };
 
-export type AssignableFitTier = 'ready' | 'override';
-
-export type AssignmentOverrideKind = 'unavailable';
-
-interface OverrideKindForFitInput {
-  fit: ShiftRoleFit;
-}
-
-/**
- * The one translation from "how well does she fit" to "what must she justify".
- * Every assign gesture goes through here rather than testing tiers by hand —
- * that hand-testing is precisely how "Pick me" came to commit an unqualified
- * volunteer with no dialog while the droppable refused the same person.
- */
-export function overrideKindForFit({
-  fit,
-}: OverrideKindForFitInput): AssignmentOverrideKind | undefined {
-  if (fit.tier === 'override') return 'unavailable';
-  return undefined;
-}
+export type AssignableFitTier = 'ready' | 'unavailable';
 
 interface IsAssignableFitInput {
   fit: ShiftRoleFit;
@@ -38,7 +19,7 @@ interface IsAssignableFitInput {
 export function isAssignableFit({ fit }: IsAssignableFitInput): boolean {
   switch (fit.tier) {
     case 'ready':
-    case 'override':
+    case 'unavailable':
       return true;
     case 'unqualified':
       return false;
@@ -54,7 +35,7 @@ interface IsRecommendableFitInput {
 export function isRecommendableFit({ fit }: IsRecommendableFitInput): boolean {
   switch (fit.tier) {
     case 'ready':
-    case 'override':
+    case 'unavailable':
       return true;
     case 'unqualified':
     case 'none':
@@ -81,7 +62,7 @@ export function shiftRoleFitForEligibleVolunteer({
   if (!volunteer.qualifiedRoleIds.includes(roleId))
     return { tier: 'unqualified' };
   return volunteer.answerState === 'unavailable'
-    ? { tier: 'override' }
+    ? { tier: 'unavailable' }
     : { tier: 'ready' };
 }
 

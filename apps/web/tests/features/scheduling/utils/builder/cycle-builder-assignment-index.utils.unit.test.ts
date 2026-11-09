@@ -552,7 +552,7 @@ describe('assignableFits', () => {
       eligibleVolunteers: [
         makeEligible({ volunteerId: 'ready', volunteerName: 'Ana' }),
         makeEligible({
-          volunteerId: 'override',
+          volunteerId: 'unavailable',
           volunteerName: 'Bruno',
           answerState: 'unavailable',
         }),
@@ -583,7 +583,7 @@ describe('assignableFits', () => {
     });
 
     expect(fits.get('ready')).toBe('ready');
-    expect(fits.get('override')).toBe('override');
+    expect(fits.get('unavailable')).toBe('unavailable');
     expect(fits.has('unqualified')).toBe(false);
     expect(fits.has('excluded')).toBe(false);
     expect(fits.has('double-booked')).toBe(false);

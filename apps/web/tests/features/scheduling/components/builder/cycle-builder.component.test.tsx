@@ -3,6 +3,7 @@ import { m } from '@church/i18n/messages';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError, AxiosHeaders } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
@@ -282,6 +283,46 @@ describe('Unavailable assignment confirmation', () => {
       }),
     );
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+  });
+});
+
+describe('Assignment refusal', () => {
+  it('shows the localized HTTP refusal in the failed write', async () => {
+    const error = new AxiosError(
+      'Request failed with status code 409',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        data: { error: 'HARD_CONSTRAINT_VIOLATION', message: 'Already booked' },
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      },
+    );
+    renderBuilder({ createAssignment: () => Promise.reject(error) });
+    await assignGraceHopper();
+    expect(await screen.findByText('Already booked')).toBeVisible();
+  });
+
+  it('shows the server refusal without offering collision actions', async () => {
+    const data = structuredClone(builderData);
+    data.assignments = [
+      { ...existingAssignment, id: 'elsewhere', shiftId: 'other-shift' },
+    ];
+    renderBuilder({
+      data,
+      createAssignment: () => Promise.reject(new Error('Volunteer is booked')),
+    });
+
+    await assignGraceHopper();
+
+    expect(await screen.findByText('Volunteer is booked')).toBeVisible();
+    expect(
+      screen.queryByText('Volunteer already assigned'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Assign to both')).not.toBeInTheDocument();
   });
 });
 

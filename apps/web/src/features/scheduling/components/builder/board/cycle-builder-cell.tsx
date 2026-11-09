@@ -13,9 +13,7 @@ import type {
 } from '../../../utils/builder/cycle-builder-candidate.types';
 import { draggedVolunteerId } from '../../../utils/builder/cycle-builder-dnd.utils';
 import {
-  type AssignmentOverrideKind,
   isAssignableFit,
-  overrideKindForFit,
   type ShiftRoleFit,
   volunteerFitForShiftRole,
 } from '../../../utils/builder/cycle-builder-fit.utils';
@@ -68,12 +66,12 @@ interface CycleBuilderCellProps {
  * Why a pick costs what it costs, per tier. `none` never renders an action, so
  * it needs no copy. This is spoken on the button's accessible name and shown in
  * a real tooltip — it used to be a native `title`, which is the only place the
- * board explained an override and is reachable by neither keyboard nor screen
+ * board explained availability and is reachable by neither keyboard nor screen
  * reader (B-3).
  */
 const FIT_EXPLANATION: Record<ShiftRoleFit['tier'], string | undefined> = {
   ready: undefined,
-  override: 'Not available for this shift — assigning is an override',
+  unavailable: undefined,
   unqualified: 'Not qualified for this role',
   none: undefined,
 };
@@ -92,14 +90,7 @@ export interface CycleBuilderCellSelectInput {
   volunteerName?: string;
   assignmentId?: string;
   eventTimeBlockLabel?: string;
-  /** Names the role in override copy, so it never has to say "this role". */
-  roleLabel?: string;
-  /**
-   * What this write has to justify, or `undefined` when it needs no reason.
-   * Always `overrideKindForFit()` of the shared predicate — no gesture decides
-   * for itself whether a pick is risky (B-2).
-   */
-  conflictType?: AssignmentOverrideKind;
+  unavailable?: boolean;
 }
 
 export function CycleBuilderCell({
@@ -176,11 +167,7 @@ export function CycleBuilderCell({
   })
     ? selectedCandidateFit
     : { tier: 'none' };
-  // Every commit out of this cell — the picker's suggestions, the picker's
-  // plain list, the "Assign X" button — asks the same predicate what it owes.
-  // The picker's list used to send no `conflictType` at all, so an unavailable
-  // person chosen there committed with no reason while the identical person
-  // chosen from the rail was stopped (B-2).
+  // Each assignment gesture carries the same availability state.
   const commit = (input: CycleBuilderCellCommitInput) => {
     onFocus();
     onSelect({
@@ -191,14 +178,12 @@ export function CycleBuilderCell({
       volunteerName: input.volunteerName,
       assignmentId: input.assignmentId,
       eventTimeBlockLabel,
-      roleLabel,
-      conflictType: overrideKindForFit({
-        fit: volunteerFitForShiftRole({
+      unavailable:
+        volunteerFitForShiftRole({
           shift,
           roleId,
           volunteerId: input.volunteerId,
-        }),
-      }),
+        }).tier === 'unavailable',
     });
   };
   const selectSuggestion = (suggestion: SuggestedVolunteer) =>
@@ -207,7 +192,10 @@ export function CycleBuilderCell({
   // The "Assign X" pill, plus the explanation of what that pick will cost. The
   // explanation rides the accessible name as well as the tooltip: a button
   // whose consequence is only visible on hover tells a keyboard user nothing.
-  const fitExplanation = FIT_EXPLANATION[selectedFit.tier];
+  const fitExplanation =
+    selectedFit.tier === 'unavailable'
+      ? m.builder_unavailable_confirmation_required()
+      : FIT_EXPLANATION[selectedFit.tier];
   const assignLabel = `Assign ${selectedVolunteerName ?? 'selected volunteer'}`;
   const assignButton =
     selectedVolunteerId && selectedFit.tier !== 'none' ? (
@@ -219,10 +207,7 @@ export function CycleBuilderCell({
           'h-7 rounded-full border px-2 text-xs',
           selectedFit.tier === 'ready' &&
             'border-primary bg-primary/10 text-foreground',
-          // Dashed = needs an availability override, dotted = needs a
-          // qualification override — same amber, different border style, so
-          // the two risk types read apart without hovering (B-9).
-          selectedFit.tier === 'override' &&
+          selectedFit.tier === 'unavailable' &&
             'border-yellow-700 border-dashed text-yellow-700 dark:border-yellow-400 dark:text-yellow-300',
           selectedFit.tier === 'unqualified' &&
             'border-yellow-700 border-dotted text-yellow-700 dark:border-yellow-400 dark:text-yellow-300',
@@ -232,8 +217,6 @@ export function CycleBuilderCell({
           fitExplanation ? `${assignLabel} — ${fitExplanation}` : undefined
         }
         data-fit-tier={selectedFit.tier}
-        // FR-016: an override must reach the reason dialog, and `commit`
-        // is the only thing here that decides what a pick owes.
         onClick={() => commit({ volunteerId: selectedVolunteerId })}
       >
         {selectedFit.tier === 'ready' ? null : (
@@ -255,12 +238,8 @@ export function CycleBuilderCell({
         // computed under the 3:1 floor for a non-text boundary AND drew the
         // dangerous tier fainter than the safe one, while this ring is the only
         // way to find where a selected person fits across a scrolling board.
-        // `override` and `unqualified` share the outline color (both mean
-        // "needs a reason") but not the style — dashed vs. dotted — so a
-        // leader scanning the board doesn't have to hover to tell an
-        // availability override from a qualification one (B-9).
         selectedFit.tier === 'ready' && 'ring-2 ring-primary',
-        selectedFit.tier === 'override' &&
+        selectedFit.tier === 'unavailable' &&
           'outline-dashed outline-2 outline-yellow-700 dark:outline-yellow-400',
         selectedFit.tier === 'unqualified' &&
           'outline-dotted outline-2 outline-yellow-700 dark:outline-yellow-400',

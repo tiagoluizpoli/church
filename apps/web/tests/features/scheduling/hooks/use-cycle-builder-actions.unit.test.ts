@@ -180,12 +180,12 @@ describe('useCycleBuilderActions', () => {
         volunteerId: 'volunteer-b',
         volunteerName: 'Volunteer B',
         assignmentId: 'assignment-1',
-        conflictType: 'unavailable',
+        unavailable: true,
       }),
     );
 
-    expect(result.current.override).not.toBeNull();
-    act(() => result.current.confirmOverride());
+    expect(result.current.unavailable).not.toBeNull();
+    act(() => result.current.confirmUnavailable());
 
     await waitFor(() =>
       expect(writes.reassignAssignment.mutateAsync).toHaveBeenCalledWith({
@@ -193,105 +193,6 @@ describe('useCycleBuilderActions', () => {
         body: { volunteerId: 'volunteer-b' },
       }),
     );
-  });
-
-  it('requires a confirmed override before moving a conflicted volunteer', async () => {
-    const writes = mutations();
-    const source = assignment({
-      id: 'source-assignment',
-      volunteerId: 'volunteer-b',
-    });
-    const { result } = renderHook(() =>
-      useCycleBuilderActions({
-        data: dataWithAssignments([source]),
-        ...writes,
-      }),
-    );
-
-    act(() =>
-      result.current.handleSelectAssignment({
-        shiftId: 'shift-1',
-        shiftRequirementId: 'requirement-role-1',
-        roleId: 'role-1',
-        volunteerId: 'volunteer-b',
-        volunteerName: 'Volunteer B',
-        conflictType: 'unavailable',
-      }),
-    );
-    expect(result.current.collision).not.toBeNull();
-
-    await act(async () => {
-      await result.current.applyCollision({ action: 'move' });
-    });
-    expect(result.current.override).not.toBeNull();
-
-    act(() => result.current.confirmOverride());
-    await waitFor(() =>
-      expect(writes.createAssignment.mutateAsync).toHaveBeenCalledWith({
-        shiftId: 'shift-1',
-        body: {
-          volunteerId: 'volunteer-b',
-          shiftRequirementId: 'requirement-role-1',
-        },
-      }),
-    );
-    expect(writes.deleteAssignment.mutateAsync).toHaveBeenCalledWith(
-      'source-assignment',
-    );
-  });
-
-  it('requires a confirmed override for a conflicted swap leg before both writes', async () => {
-    const writes = mutations();
-    const source = assignment({
-      id: 'source-assignment',
-      volunteerId: 'volunteer-a',
-      shiftId: 'source-shift',
-    });
-    const target = assignment({
-      id: 'target-assignment',
-      volunteerId: 'volunteer-b',
-    });
-    const data = dataWithAssignments([source, target]);
-    const sourceShift = data.events[0]?.eventTimeBlocks[0]?.shifts[0];
-    if (!sourceShift) throw new Error('Test shift missing');
-    sourceShift.shiftId = 'source-shift';
-    sourceShift.assignments = [source];
-    sourceShift.eligibleVolunteers = sourceShift.eligibleVolunteers.map(
-      (volunteer) =>
-        volunteer.volunteerId === 'volunteer-b'
-          ? { ...volunteer, answerState: 'unavailable' }
-          : volunteer,
-    );
-
-    const { result } = renderHook(() =>
-      useCycleBuilderActions({ data, ...writes }),
-    );
-    act(() =>
-      result.current.handleSelectAssignment({
-        shiftId: 'shift-1',
-        shiftRequirementId: 'requirement-role-1',
-        roleId: 'role-1',
-        volunteerId: 'volunteer-a',
-        assignmentId: 'target-assignment',
-        conflictType: undefined,
-      }),
-    );
-    await act(async () => {
-      await result.current.applyCollision({ action: 'swap' });
-    });
-    expect(result.current.override).not.toBeNull();
-
-    act(() => result.current.confirmOverride());
-    await waitFor(() =>
-      expect(writes.reassignAssignment.mutateAsync).toHaveBeenNthCalledWith(1, {
-        assignmentId: 'source-assignment',
-        body: { volunteerId: 'volunteer-b' },
-      }),
-    );
-    expect(writes.reassignAssignment.mutateAsync).toHaveBeenNthCalledWith(2, {
-      assignmentId: 'target-assignment',
-      body: { volunteerId: 'volunteer-a' },
-    });
   });
 
   it('does not treat an optimistic assignment as a server collision source', async () => {
@@ -321,7 +222,6 @@ describe('useCycleBuilderActions', () => {
     await waitFor(() =>
       expect(writes.createAssignment.mutateAsync).toHaveBeenCalled(),
     );
-    expect(result.current.collision).toBeNull();
     expect(writes.deleteAssignment.mutateAsync).not.toHaveBeenCalled();
   });
 });

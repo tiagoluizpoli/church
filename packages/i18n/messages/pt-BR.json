@@ -1036,6 +1036,7 @@
   "builder_state_available": "Disponível",
   "builder_state_unanswered": "Ainda não respondeu",
   "builder_state_not_asked": "Não consultado",
+  "builder_unavailable_confirmation_required": "Indisponível para este turno — confirmação necessária",
   "builder_unavailable_confirm_title": "Designar mesmo assim?",
   "builder_unavailable_confirm_description": "{name} marcou indisponibilidade para {shift}.",
   "builder_unavailable_confirm_action": "Designar mesmo assim",

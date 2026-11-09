@@ -276,7 +276,7 @@ export function assignableFits({
   for (const volunteer of shift.eligibleVolunteers) {
     if (excludedVolunteerIds?.has(volunteer.volunteerId)) continue;
     const fit = shiftRoleFitForEligibleVolunteer({ volunteer, roleId });
-    if (fit.tier === 'ready' || fit.tier === 'override') {
+    if (fit.tier === 'ready' || fit.tier === 'unavailable') {
       fits.set(volunteer.volunteerId, fit.tier);
     }
   }

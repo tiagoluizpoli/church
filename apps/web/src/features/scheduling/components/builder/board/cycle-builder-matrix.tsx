@@ -39,7 +39,6 @@ import {
 } from '../../../utils/builder/cycle-builder-dnd.utils';
 import {
   isAssignableFit,
-  overrideKindForFit,
   volunteerFitForShiftRole,
 } from '../../../utils/builder/cycle-builder-fit.utils';
 import { pool } from '../../../utils/builder/cycle-builder-pool.utils';
@@ -289,11 +288,7 @@ export function CycleBuilderMatrix(props: Props) {
       workloadCount: workload.get(poolVolunteer.volunteerId) ?? 0,
     };
   }, [draggingVolunteerId, volunteers, activeAssignments]);
-  // Assign a rail person straight to the focused shift×role, through the very
-  // same path the board's own assign uses — so conflict overrides and
-  // already-assigned-elsewhere collisions are captured identically no matter
-  // which surface started the assignment. Clearing focus afterwards returns the
-  // cards to their plain "Select shift" state.
+  // Use the same assignment path for focused picks and board actions.
   const focusedRequirementIsEditable = Boolean(focused && focusedShiftContext);
   // A full role can still be focused, so the rail honours the same headcount
   // ceiling the board enforces cell-side as `canAdd`.
@@ -345,11 +340,10 @@ export function CycleBuilderMatrix(props: Props) {
         (volunteer) => volunteer.volunteerId === volunteerId,
       )?.volunteerName,
       eventTimeBlockLabel: focused.eventTimeBlockLabel,
-      roleLabel: focused.roleLabel,
       // Whatever this pick has to justify — currently unavailability —
       // comes from the shared predicate, never from this call
       // site's own reading of the tier (FR-016).
-      conflictType: overrideKindForFit({ fit }),
+      unavailable: fit.tier === 'unavailable',
     });
     setFocused(null);
   };
@@ -446,11 +440,7 @@ export function CycleBuilderMatrix(props: Props) {
                   }),
                 });
               }
-              // Dropping onto a shift that needs an override is an override like
-              // any other, and FR-016 does not care which gesture started it —
-              // the reason dialog is gated on this field. The drop target is
-              // disabled for tier `none`, so a drop that lands here is one the
-              // predicate already accepted.
+              // Carry availability to the shared assignment path.
               const droppedFit = volunteerFitForShiftRole({
                 shift,
                 roleId: requirement.roleId,
@@ -461,11 +451,8 @@ export function CycleBuilderMatrix(props: Props) {
                 shiftId: target.shiftId,
                 shiftRequirementId: target.shiftRequirementId,
                 roleId: requirement.roleId,
-                roleLabel,
                 assignmentId: target.assignmentId,
-                conflictType: droppedFit
-                  ? overrideKindForFit({ fit: droppedFit })
-                  : undefined,
+                unavailable: droppedFit.tier === 'unavailable',
               });
             }
           }}

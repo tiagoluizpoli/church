@@ -125,14 +125,10 @@ describe('assignMapper', () => {
             details: 'volunteer already booked',
             conflictingId: 'a2',
           },
-          {
-            type: 'FAIRNESS_EXCEEDED',
-            details: 'volunteer over fairness limit',
-          },
         ],
       });
 
-      expect(response.warnings).toHaveLength(3);
+      expect(response.warnings).toHaveLength(2);
       expect(response.warnings[0]?.conflictingId).toBeUndefined();
       expect(response.warnings[1]?.conflictingId).toBe('a2');
       expect(

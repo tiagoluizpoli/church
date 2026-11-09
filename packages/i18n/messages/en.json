@@ -1036,6 +1036,7 @@
   "builder_state_available": "Available",
   "builder_state_unanswered": "Hasn't answered",
   "builder_state_not_asked": "Not asked",
+  "builder_unavailable_confirmation_required": "Not available for this shift — confirmation required",
   "builder_unavailable_confirm_title": "Assign anyway?",
   "builder_unavailable_confirm_description": "{name} marked unavailable for {shift}.",
   "builder_unavailable_confirm_action": "Assign anyway",

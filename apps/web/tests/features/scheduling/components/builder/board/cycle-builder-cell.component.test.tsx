@@ -252,14 +252,14 @@ describe('CycleBuilderCell', () => {
 
     expect(
       screen.getByTestId('cycle-requirement-requirement-role-1'),
-    ).toHaveAttribute('data-selected-fit', 'override');
+    ).toHaveAttribute('data-selected-fit', 'unavailable');
     // Dashed amber outline, not a fainter ring than the safe tier: the
     // dangerous one used to be the harder of the two to see (B-3).
     expect(
       screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveClass('outline-2', 'outline-dashed');
     const assign = screen.getByRole('button', {
-      name: 'Assign Grace Hopper — Not available for this shift — assigning is an override',
+      name: 'Assign Grace Hopper — Indisponível para este turno — confirmação necessária',
     });
     expect(assign).toHaveClass('text-yellow-700');
     // The explanation used to live in a native `title`, reachable by neither
@@ -342,12 +342,12 @@ describe('CycleBuilderCell', () => {
       screen.getByRole('button', { name: /^Assign Grace Hopper/ }),
     );
 
-    // `CycleBuilder` opens the override dialog on `conflictType` alone —
+    // The board uses the availability state to confirm the assignment —
     // without it the assignment is applied with no reason and no audit.
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({
         volunteerId: 'volunteer-1',
-        conflictType: 'unavailable',
+        unavailable: true,
       }),
     );
   });
@@ -372,7 +372,7 @@ describe('CycleBuilderCell', () => {
     );
 
     expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ conflictType: undefined }),
+      expect.objectContaining({ unavailable: false }),
     );
   });
 

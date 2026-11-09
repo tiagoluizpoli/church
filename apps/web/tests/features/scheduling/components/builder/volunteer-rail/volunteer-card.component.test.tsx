@@ -226,7 +226,7 @@ describe('VolunteerCard (T048)', () => {
       <VolunteerCard
         volunteer={buildVolunteer({})}
         onSelect={noop}
-        assignFit="override"
+        assignFit="unavailable"
         onAssignToFocused={vi.fn()}
       />,
     );
@@ -234,9 +234,9 @@ describe('VolunteerCard (T048)', () => {
     // The rail must not present the riskiest pick as the frictionless one:
     // the reason is coming either way, so the button says so beforehand.
     const pickMe = screen.getByTestId('volunteer-pick-me');
-    expect(pickMe).toHaveAttribute('data-assign-fit', 'override');
+    expect(pickMe).toHaveAttribute('data-assign-fit', 'unavailable');
     expect(pickMe).toHaveAccessibleName(
-      'Assign Local Leader to this role — not available for this shift, needs an override',
+      'Assign Local Leader to this role — Indisponível para este turno — confirmação necessária',
     );
   });
 

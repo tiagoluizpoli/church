@@ -202,11 +202,6 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
  * What a non-`ready` pick will be asked to justify. Spoken on the button's
  * accessible name, since the icon alone says only "something is off".
  */
-const ASSIGN_FIT_WARNING: Record<AssignableFitTier, string> = {
-  ready: '',
-  override: 'not available for this shift, needs an override',
-};
-
 interface VolunteerCardProps {
   volunteer: VolunteerPoolItem;
   dragId?: string;
@@ -219,8 +214,7 @@ interface VolunteerCardProps {
    * it, to the tier that pick would land in. The card's action swaps from
    * "Select shift" to "Pick me": focus-then-pick is the builder's primary assign
    * path (B-2), so it is the filled primary button here while "Select shift"
-   * stays quiet. `override` renders it as a warning instead —
-   * a pick that will demand a reason must not look like a free one.
+   * stays quiet. Unavailable candidates show a warning before confirmation.
    */
   assignFit?: AssignableFitTier;
   onAssignToFocused?: (volunteerId: string) => void;
@@ -442,13 +436,13 @@ export function VolunteerCard({
             aria-label={
               assignFit === 'ready'
                 ? `Assign ${accessibleName} to this role`
-                : `Assign ${accessibleName} to this role — ${ASSIGN_FIT_WARNING[assignFit]}`
+                : `Assign ${accessibleName} to this role — ${m.builder_unavailable_confirmation_required()}`
             }
             data-testid="volunteer-pick-me"
             data-assign-fit={assignFit}
             className={cn(
               cornerActionClassName,
-              assignFit === 'override' &&
+              assignFit === 'unavailable' &&
                 'border-yellow-600/50 border-dashed text-yellow-700 dark:text-yellow-300',
             )}
             onClick={() => onAssignToFocused(volunteer.volunteerId)}

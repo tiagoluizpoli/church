@@ -1,5 +1,4 @@
 import { m } from '@church/i18n/messages';
-import type { AssignmentOverrideKind } from '../../../utils/builder/cycle-builder-fit.utils';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,10 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
-interface OverrideDialogProps {
+interface UnavailableConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  conflictType: AssignmentOverrideKind;
   volunteerName: string;
   volunteerMembership?: AssigneeMembership;
   eventTimeBlockLabel: string;
@@ -23,7 +21,7 @@ interface OverrideDialogProps {
   onConfirm: () => void;
 }
 
-export function OverrideDialog({
+export function UnavailableConfirmDialog({
   open,
   onOpenChange,
   volunteerName,
@@ -31,7 +29,7 @@ export function OverrideDialog({
   eventTimeBlockLabel,
   isPending,
   onConfirm,
-}: OverrideDialogProps) {
+}: UnavailableConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

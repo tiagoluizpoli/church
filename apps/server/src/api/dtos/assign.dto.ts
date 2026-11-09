@@ -8,7 +8,7 @@ import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-me
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 
 interface AssignmentWarningResponseInput {
-  type: 'UNAVAILABLE' | 'DOUBLE_BOOKED' | 'FAIRNESS_EXCEEDED';
+  type: 'UNAVAILABLE' | 'DOUBLE_BOOKED';
   details: string;
   conflictingId?: string;
 }
@@ -19,7 +19,7 @@ interface AssignmentResultResponseInput {
 }
 
 const assignmentWarningSchema = z.object({
-  type: z.enum(['UNAVAILABLE', 'DOUBLE_BOOKED', 'FAIRNESS_EXCEEDED']),
+  type: z.enum(['UNAVAILABLE', 'DOUBLE_BOOKED']),
   details: z.string(),
   conflictingId: z.string().optional(),
 });

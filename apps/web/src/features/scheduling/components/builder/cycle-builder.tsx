@@ -9,7 +9,7 @@ import {
   summarizeCycleCounts,
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
-import { OverrideDialog } from './assignment/override-dialog';
+import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
 import { AuditLogPanel } from './audit-log-panel';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
 import { CycleBuilderHeader } from './cycle-builder-header';
@@ -229,62 +229,16 @@ export function CycleBuilder({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={actions.collision !== null}
-        onOpenChange={(open) => !open && actions.setCollision(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Volunteer already assigned</DialogTitle>
-            <DialogDescription>
-              {actions.collision?.source.volunteerName ??
-                actions.collision?.source.volunteerId}{' '}
-              is already assigned elsewhere in this cycle.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-md bg-muted/50 p-3 text-sm">
-            Choose how to handle the existing assignment.
-          </div>
-          <DialogFooter className="flex-wrap">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => actions.setCollision(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                void actions.applyCollision({
-                  action: actions.collision?.target ? 'swap' : 'move',
-                })
-              }
-            >
-              {actions.collision?.target ? 'Swap assignments' : 'Move here'}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void actions.applyCollision({ action: 'both' })}
-            >
-              Assign to both
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <OverrideDialog
-        open={actions.override !== null}
-        onOpenChange={(open) => !open && actions.setOverride(null)}
-        conflictType={actions.override?.input.conflictType ?? 'unavailable'}
-        volunteerName={actions.override?.volunteerName ?? ''}
-        volunteerMembership={actions.override?.volunteerMembership}
+      <UnavailableConfirmDialog
+        open={actions.unavailable !== null}
+        onOpenChange={(open) => !open && actions.setUnavailable(null)}
+        volunteerName={actions.unavailable?.volunteerName ?? ''}
+        volunteerMembership={actions.unavailable?.volunteerMembership}
         eventTimeBlockLabel={
-          actions.override?.input.eventTimeBlockLabel ?? 'this shift'
+          actions.unavailable?.input.eventTimeBlockLabel ?? 'this shift'
         }
         isPending={actions.isSaving}
-        onConfirm={actions.confirmOverride}
+        onConfirm={actions.confirmUnavailable}
       />
     </WorkspacePage>
   );

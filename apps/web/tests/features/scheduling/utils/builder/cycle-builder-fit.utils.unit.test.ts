@@ -5,7 +5,6 @@ import type {
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
   isAssignableFit,
-  overrideKindForFit,
   volunteerFitForShiftRole,
 } from '@/features/scheduling/utils/builder/cycle-builder-fit.utils';
 
@@ -86,7 +85,7 @@ describe('volunteerFitForShiftRole', () => {
         roleId: 'role-1',
         volunteerId: 'silent',
       }),
-    ).toEqual({ tier: 'override' });
+    ).toEqual({ tier: 'unavailable' });
   });
 
   it('blocks a double-booked volunteer: not assignable, no override (DOUBLE_BOOKED is always refused)', () => {
@@ -98,7 +97,6 @@ describe('volunteerFitForShiftRole', () => {
 
     expect(fit).toEqual({ tier: 'none' });
     expect(isAssignableFit({ fit })).toBe(false);
-    expect(overrideKindForFit({ fit })).toBeUndefined();
   });
 
   it('reads another role’s qualification as unqualified, not as a non-candidate', () => {
@@ -169,26 +167,5 @@ describe('volunteerFitForShiftRole', () => {
         volunteerId: 'ana',
       }),
     ).toEqual({ tier: 'unqualified' });
-  });
-});
-
-describe('overrideKindForFit', () => {
-  it('asks for no reason when the fit is ready', () => {
-    expect(overrideKindForFit({ fit: { tier: 'ready' } })).toBeUndefined();
-    expect(overrideKindForFit({ fit: { tier: 'none' } })).toBeUndefined();
-  });
-
-  it('asks an override fit to justify unavailability', () => {
-    expect(overrideKindForFit({ fit: { tier: 'override' } })).toBe(
-      'unavailable',
-    );
-  });
-
-  it('never offers a qualification override', () => {
-    expect(
-      overrideKindForFit({
-        fit: { tier: 'unqualified' },
-      }),
-    ).toBeUndefined();
   });
 });

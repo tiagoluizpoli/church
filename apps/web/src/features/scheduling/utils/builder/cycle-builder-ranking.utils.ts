@@ -4,6 +4,7 @@ import {
   type CycleBuilderShiftSummary,
   isActiveAssignment,
 } from '../../hooks/use-cycle-builder';
+import { answerStateRank } from './cycle-builder-answer-state.utils';
 import { lastServedMillis } from './cycle-builder-date.utils';
 import { shiftRoleFitForEligibleVolunteer } from './cycle-builder-fit.utils';
 
@@ -36,13 +37,6 @@ export interface ShiftRoleRanking {
   idealVolunteerId?: string;
 }
 
-const availabilityRank = (
-  volunteer: CycleBuilderEligibleVolunteerSummary,
-): number =>
-  ['available', 'unanswered', 'not_asked', 'unavailable'].indexOf(
-    volunteer.answerState,
-  );
-
 interface LastServedAtInput {
   volunteer: CycleBuilderEligibleVolunteerSummary;
 }
@@ -70,7 +64,8 @@ export function rankVolunteersForShiftRole({
     )
     .sort(
       (left, right) =>
-        availabilityRank(left) - availabilityRank(right) ||
+        answerStateRank(left.answerState) -
+          answerStateRank(right.answerState) ||
         lastServedAt({ volunteer: left }) -
           lastServedAt({ volunteer: right }) ||
         (workload.get(left.volunteerId) ?? 0) -

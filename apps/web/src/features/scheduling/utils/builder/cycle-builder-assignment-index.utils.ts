@@ -10,6 +10,7 @@ import type {
   ServingAssignmentContext,
   SuggestedVolunteer,
 } from './cycle-builder-candidate.types';
+import { conflictReason } from './cycle-builder-conflict.utils';
 import {
   churchDayOf,
   dateLabel,
@@ -162,19 +163,10 @@ export function candidates({
         ministryAccessLevel: volunteer.ministryAccessLevel,
       },
       availabilityStatus: volunteer.answerState,
-      conflictReason: volunteer.conflict
-        ? m.builder_conflict_reason({
-            ministry: volunteer.conflict.ministryName,
-            start: timeLabel({
-              instant: volunteer.conflict.startTime,
-              timeZone: index.timeZone,
-            }),
-            end: timeLabel({
-              instant: volunteer.conflict.endTime,
-              timeZone: index.timeZone,
-            }),
-          })
-        : undefined,
+      conflictReason: conflictReason({
+        conflict: volunteer.conflict,
+        timeZone: index.timeZone,
+      }),
       // A candidate is never assigned to *this* shift (filtered above), so all
       // of their active assignments are elsewhere — the shift-scoped "other"
       // map and the cycle-wide one coincide here.

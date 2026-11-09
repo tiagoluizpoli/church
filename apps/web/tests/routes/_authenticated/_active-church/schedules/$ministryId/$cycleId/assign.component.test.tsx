@@ -1,5 +1,7 @@
+import { m } from '@church/i18n/messages';
 import { focusManager } from '@tanstack/react-query';
 import { act, screen, waitFor } from '@testing-library/react';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
@@ -17,6 +19,7 @@ vi.mock('@/utils/api-instances', async () => ({
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
+    useSession: () => ({ data: null, isPending: false }),
     getSession: (...args: unknown[]) => getSession(...args),
   },
 }));
@@ -35,6 +38,7 @@ vi.mock('@/components/ui/sonner', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
   getCycleBuilderData.mockResolvedValue({
     cycle: {
       id: 'cycle-1',
@@ -108,4 +112,86 @@ describe('Assign board route', () => {
     expect(await screen.findByText('Not Found')).toBeVisible();
     expect(screen.queryByTestId('event-builder-route')).not.toBeInTheDocument();
   });
+});
+
+it.each([
+  'Volunteer',
+  'TeamLeader',
+])('shows the no-access page for a %s receiving 403', async () => {
+  getCycleBuilderData.mockRejectedValue(
+    new AxiosError('Forbidden', undefined, undefined, undefined, {
+      status: 403,
+    } as AxiosResponse),
+  );
+  const { router } = renderRoute({
+    initialPath: '/schedules/ministry-1/cycle-1/assign',
+    churchTimezone: 'UTC',
+  });
+  expect(await screen.findByText(m.no_access_title())).toBeVisible();
+  expect(router.state.location.pathname).toBe('/no-access');
+});
+
+it('shows indistinguishable not found for a foreign Ministry leader receiving 404', async () => {
+  getCycleBuilderData.mockRejectedValue(
+    new AxiosError('Secret ministry name', undefined, undefined, undefined, {
+      status: 404,
+    } as AxiosResponse),
+  );
+  const { router } = renderRoute({
+    initialPath: '/schedules/ministry-1/cycle-1/assign',
+    churchTimezone: 'UTC',
+  });
+  expect(await screen.findByText('Not Found')).toBeVisible();
+  expect(screen.queryByText('Secret ministry name')).not.toBeInTheDocument();
+  expect(router.state.location.pathname).toBe(
+    '/schedules/ministry-1/cycle-1/assign',
+  );
+});
+
+it('preserves the assign destination when signed out', async () => {
+  getSession.mockResolvedValue({ data: null });
+  const path = '/schedules/ministry-1/cycle-1/assign';
+  const { router } = renderRoute({ initialPath: path, churchTimezone: 'UTC' });
+  await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+  expect(router.state.location.search).toEqual({ redirect: path });
+});
+
+it('preserves the assign destination when the board read returns 401', async () => {
+  getSession
+    .mockResolvedValueOnce({ data: { user: { id: 'u1' } } })
+    .mockResolvedValue({ data: null });
+  getCycleBuilderData.mockRejectedValue(
+    new AxiosError('Signed out', undefined, undefined, undefined, {
+      status: 401,
+    } as AxiosResponse),
+  );
+  const path = '/schedules/ministry-1/cycle-1/assign';
+  const { router } = renderRoute({ initialPath: path, churchTimezone: 'UTC' });
+  await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+  expect(router.state.location.search).toEqual({ redirect: path });
+});
+
+it('preserves the current board destination when the session expires after switching boards', async () => {
+  const { router } = renderRoute({
+    initialPath: '/schedules/ministry-1/cycle-1/assign',
+    churchTimezone: 'UTC',
+  });
+  await screen.findByTestId('event-builder-route');
+  getCycleBuilderData.mockImplementationOnce(() => {
+    getSession.mockResolvedValue({ data: null });
+    return Promise.reject(
+      new AxiosError('Signed out', undefined, undefined, undefined, {
+        status: 401,
+      } as AxiosResponse),
+    );
+  });
+  const path = '/schedules/ministry-2/cycle-2/assign';
+  await act(async () => {
+    await router.navigate({
+      to: '/schedules/$ministryId/$cycleId/assign',
+      params: { ministryId: 'ministry-2', cycleId: 'cycle-2' },
+    });
+  });
+  await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+  expect(router.state.location.search).toEqual({ redirect: path });
 });

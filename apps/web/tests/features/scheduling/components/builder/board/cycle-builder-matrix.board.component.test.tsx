@@ -1291,3 +1291,90 @@ describe('CycleBuilderMatrix', () => {
     });
   });
 });
+
+const refreshProps = {
+  selectedDate: null,
+  onSelectedDateChange: vi.fn(),
+  onSelectVolunteer: vi.fn(),
+  onSelectAssignment: vi.fn(),
+  onRemoveAssignment: vi.fn(),
+};
+
+describe('focused candidates after a refreshed payload', () => {
+  it('keeps an empty Role row focused and shows a newly added Role holder', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const data = structuredClone(boardData);
+    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+    shift.eligibleVolunteers = [];
+    shift.eligibleVolunteerCount = 0;
+    const { rerender } = renderWithProviders(
+      <CycleBuilderMatrix data={data} {...refreshProps} />,
+    );
+    const focus = screen.getByTestId(
+      'cycle-requirement-focus-requirement-role-1',
+    );
+    await userEvent.click(focus);
+    const refreshed = structuredClone(data);
+    refreshed.events[0].eventTimeBlocks[0].shifts[0].eligibleVolunteers = [
+      {
+        volunteerId: 'new-holder',
+        volunteerName: 'New Role Holder',
+        answerState: 'available',
+        conflict: null,
+        qualifiedRoleIds: ['role-1'],
+        ministryAccessLevel: 'volunteer',
+      },
+    ];
+    rerender(<CycleBuilderMatrix data={refreshed} {...refreshProps} />);
+    expect(focus).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(screen.getByTestId('volunteer-pool')).getByRole('button', {
+        name: m.builder_ui_assign_role({ name: 'New Role Holder' }),
+      }),
+    ).toBeVisible();
+  });
+});
+
+it('reranks the focused rail when a refreshed answer changes state', async () => {
+  overwriteGetLocale(() => 'pt-BR');
+  const data = structuredClone(boardData);
+  const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+  shift.eligibleVolunteers = [
+    {
+      volunteerId: 'ada',
+      volunteerName: 'Ada',
+      answerState: 'available',
+      conflict: null,
+      qualifiedRoleIds: ['role-1'],
+      ministryAccessLevel: 'volunteer',
+    },
+    {
+      volunteerId: 'grace',
+      volunteerName: 'Grace',
+      answerState: 'unanswered',
+      conflict: null,
+      qualifiedRoleIds: ['role-1'],
+      ministryAccessLevel: 'volunteer',
+    },
+  ];
+  const { rerender } = renderWithProviders(
+    <CycleBuilderMatrix data={data} {...refreshProps} />,
+  );
+  const focus = screen.getByTestId(
+    'cycle-requirement-focus-requirement-role-1',
+  );
+  await userEvent.click(focus);
+  const rail = within(screen.getByTestId('volunteer-pool'));
+  expect(
+    rail.getAllByTestId('volunteer-card').map((card) => card.textContent),
+  ).toEqual([expect.stringContaining('Ada'), expect.stringContaining('Grace')]);
+  const refreshed = structuredClone(data);
+  const refreshedShift = refreshed.events[0].eventTimeBlocks[0].shifts[0];
+  refreshedShift.eligibleVolunteers[0].answerState = 'unavailable';
+  refreshedShift.eligibleVolunteers[1].answerState = 'available';
+  rerender(<CycleBuilderMatrix data={refreshed} {...refreshProps} />);
+  expect(focus).toHaveAttribute('aria-pressed', 'true');
+  expect(
+    rail.getAllByTestId('volunteer-card').map((card) => card.textContent),
+  ).toEqual([expect.stringContaining('Grace'), expect.stringContaining('Ada')]);
+});

@@ -30,11 +30,11 @@ export function formatSyncedAgo({ syncedAt, now }: FormatSyncedAgoInput) {
     return m.builder_ui_synced_seconds({ count: seconds });
   }
   if (elapsed < HOUR_MS) {
-    return m.builder_ui_synced_minutes({
-      count: Math.floor(elapsed / MINUTE_MS),
-    });
+    const minutes = Math.floor(elapsed / MINUTE_MS);
+    return m.builder_ui_synced_minutes({ count: minutes });
   }
-  return m.builder_ui_synced_hours({ count: Math.floor(elapsed / HOUR_MS) });
+  const hours = Math.floor(elapsed / HOUR_MS);
+  return m.builder_ui_synced_hours({ count: hours });
 }
 
 interface SyncedAgoLabelProps {

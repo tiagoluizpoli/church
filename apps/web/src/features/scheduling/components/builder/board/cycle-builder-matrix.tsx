@@ -256,6 +256,14 @@ export function CycleBuilderMatrix(props: Props) {
     focused &&
     findShiftContextById({ data: props.data, shiftId: focused.shiftId });
   const focusedShift = focusedShiftContext?.shift;
+  const focusedRanking =
+    focused && focusedShift
+      ? rankVolunteersForShiftRole({
+          shift: focusedShift,
+          roleId: focused.roleId,
+          assignments: props.data.assignments,
+        })
+      : undefined;
   const volunteers = useMemo(
     () =>
       pool({ data: props.data, shift: focusedShift, timeZone: churchTimezone }),
@@ -433,11 +441,6 @@ export function CycleBuilderMatrix(props: Props) {
                   roleId: requirement.roleId,
                   roleLabel,
                   eventTimeBlockLabel,
-                  ...rankVolunteersForShiftRole({
-                    shift,
-                    roleId: requirement.roleId,
-                    assignments: props.data.assignments,
-                  }),
                 });
               }
               // Carry availability to the shared assignment path.
@@ -490,9 +493,9 @@ export function CycleBuilderMatrix(props: Props) {
                 onSelectVolunteer={
                   canManageAnyRequirement ? props.onSelectVolunteer : undefined
                 }
-                focusedVolunteerIds={focused?.ids}
+                focusedVolunteerIds={focusedRanking?.ids}
                 focusLabel={focused?.label}
-                idealVolunteerId={focused?.idealVolunteerId}
+                idealVolunteerId={focusedRanking?.idealVolunteerId}
                 assignableVolunteerFits={assignableFocusedVolunteerFits}
                 onAssignFocusedVolunteer={
                   focused && focusedRoleHasRoom

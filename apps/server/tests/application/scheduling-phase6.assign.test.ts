@@ -561,8 +561,12 @@ describe('Assignment and publication managers', () => {
       prior('a', 'ada', 'older'),
       prior('g', 'grace', 'newer'),
     ]);
-    f.shiftRepository.getById.mockImplementation(async ({ shiftId: id }) =>
-      id === older.id ? older : id === newer.id ? newer : f.shift,
+    f.shiftRepository.listConflictFacts.mockResolvedValue(
+      [older, newer].map((shift) => ({
+        shift,
+        ministryName: 'Ministry',
+        eventTitle: 'Prior service',
+      })),
     );
     f.unavailableShiftRepository.listByVolunteers.mockResolvedValue([
       new UnavailableShift({
@@ -757,9 +761,13 @@ describe('Assignment and publication managers', () => {
       },
     });
     f.assignmentRepository.listByVolunteers.mockResolvedValue([overlap]);
-    f.shiftRepository.getById.mockImplementation(async ({ shiftId: id }) =>
-      id === overlapShift.id ? overlapShift : f.shift,
-    );
+    f.shiftRepository.listConflictFacts.mockResolvedValue([
+      {
+        shift: overlapShift,
+        ministryName: 'Ministry',
+        eventTitle: 'Other service',
+      },
+    ]);
     const conflicted = await f.participationManager.listEligibleVolunteers({
       churchId,
       shiftId,

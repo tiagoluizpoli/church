@@ -13,7 +13,6 @@ import {
   eventTimeBlocksOnDay,
   timeLabel,
 } from '../../../utils/builder/cycle-builder-date.utils';
-import { rankVolunteersForShiftRole } from '../../../utils/builder/cycle-builder-ranking.utils';
 import {
   buildFocusLabel,
   type FocusedShift,
@@ -299,15 +298,6 @@ export function CycleBuilderBoardGrid({
                                                   eventTimeBlockLabel:
                                                     shift.label ??
                                                     `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`,
-                                                  ...rankVolunteersForShiftRole(
-                                                    {
-                                                      shift,
-                                                      roleId:
-                                                        requirement.roleId,
-                                                      assignments:
-                                                        data.assignments,
-                                                    },
-                                                  ),
                                                 });
                                               return (
                                                 <CycleBuilderCell

@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import type { AvailabilityStatus } from '../../../hooks/use-volunteer-pool';
+import { answerStateRank } from '../../../utils/builder/cycle-builder-answer-state.utils';
 import type {
   PickerVolunteer,
   SuggestedVolunteer,
@@ -33,16 +34,11 @@ interface DeduplicateSuggestionGroupsInput {
   suggestions: SuggestionGroups;
 }
 
-const STATUS_RANK: Record<AvailabilityStatus, number> = {
-  available: 0,
-  partial: 1,
-  unanswered: 1,
-  // biome-ignore lint/style/useNamingConvention: API state uses snake_case
-  not_asked: 2,
-  unavailable: 3,
-  // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
-  no_response: 1,
-};
+function availabilityRank(status: AvailabilityStatus): number {
+  if (status === 'partial' || status === 'no_response')
+    return answerStateRank('unanswered');
+  return answerStateRank(status);
+}
 
 const STATUS_STYLE: Record<AvailabilityStatus, string> = {
   available:
@@ -147,7 +143,8 @@ export function AssignmentPicker({
       )
       .sort(
         (a, b) =>
-          STATUS_RANK[a.availabilityStatus] - STATUS_RANK[b.availabilityStatus],
+          availabilityRank(a.availabilityStatus) -
+          availabilityRank(b.availabilityStatus),
       );
   }, [
     volunteers,
@@ -209,7 +206,7 @@ export function AssignmentPicker({
         <div className="max-h-64 space-y-1 overflow-y-auto">
           {[0, 1, 2, 3].map((rank) => {
             const matches = filtered.filter(
-              (v) => STATUS_RANK[v.availabilityStatus] === rank,
+              (v) => availabilityRank(v.availabilityStatus) === rank,
             );
             const suggested =
               displayedSuggestions && onSelectSuggestion
@@ -224,7 +221,7 @@ export function AssignmentPicker({
                       candidate &&
                       !candidate.conflictReason &&
                       candidate.isQualified !== false &&
-                      STATUS_RANK[candidate.availabilityStatus] === rank &&
+                      availabilityRank(candidate.availabilityStatus) === rank &&
                       candidate.name
                         .toLowerCase()
                         .includes(search.trim().toLowerCase())

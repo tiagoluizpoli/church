@@ -1,5 +1,12 @@
 import { NotFoundError } from '@church/core';
-import { sector, shift, shiftRequirement } from '@church/db';
+import {
+  event,
+  ministry,
+  ministryParticipation,
+  sector,
+  shift,
+  shiftRequirement,
+} from '@church/db';
 import { toDate } from '@church/time';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type {
@@ -10,9 +17,11 @@ import type {
   GetRequirementForShiftInput,
   GetShiftInput,
   ListRequirementsByParticipationInput,
+  ListShiftConflictFactsInput,
   ListShiftsByEventTimeBlockInput,
   ListShiftsByParticipationInput,
   SaveShiftRequirementInput,
+  ShiftConflictFacts,
   ShiftRepository,
   UpdateShiftInput,
 } from '../../domain/contracts/infrastructure/shift.repository';
@@ -33,6 +42,39 @@ export class DrizzleShiftRepository implements ShiftRepository {
   }
 
   private readonly db: AnyDrizzleDb;
+
+  async listConflictFacts(
+    input: ListShiftConflictFactsInput,
+  ): Promise<ShiftConflictFacts[]> {
+    if (input.shiftIds.length === 0) return [];
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .select({ shift, ministryName: ministry.name, eventTitle: event.title })
+      .from(shift)
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shift.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .where(
+        and(
+          inArray(shift.id, input.shiftIds),
+          withChurchIsolation({ table: shift, churchId: input.churchId }),
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
+          withChurchIsolation({ table: event, churchId: input.churchId }),
+          withChurchIsolation({ table: ministry, churchId: input.churchId }),
+        ),
+      );
+    return rows.map(({ shift: row, ministryName, eventTitle }) => ({
+      shift: mapShift(row),
+      ministryName,
+      eventTitle,
+    }));
+  }
 
   async createMany(input: CreateShiftsInput): Promise<Shift[]> {
     if (input.shifts.length === 0) {

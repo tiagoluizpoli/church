@@ -349,6 +349,9 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
   vi.mocked(
     repositories.assignmentRepository.listByVolunteers,
   ).mockResolvedValue([assignment]);
+  repositories.shiftRepository.listConflictFacts.mockResolvedValue([
+    { shift: otherShift, ministryName: 'Worship', eventTitle: 'Service' },
+  ]);
   const result = await manager.listEligibleVolunteers({ churchId, shiftId });
   expect(result).toEqual([
     expect.objectContaining({

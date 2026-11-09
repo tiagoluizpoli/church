@@ -96,12 +96,8 @@ export function focusKey({ shiftRequirementId }: FocusKeyInput): string {
  * The shift×role the rail is currently ranking people for. A time block can hold
  * several shifts and every shift×role pair is its own assignable place, so
  * `key` carries both — focusing one cell must not light up its siblings.
- * `ids` is ranked best-first rather than a plain set, and `idealVolunteerId`
- * is the top of that ranking who is actually free to take the shift. Both come
- * out of `rankVolunteersForShiftRole`, which reads the same
- * `shiftRoleFitForEligibleVolunteer` predicate the picker and the board read —
- * that shared rule, not a shared sort, is what stops the rail and the picker
- * disagreeing about who is a candidate at all.
+ * Candidate ranking is derived from the current payload, keeping focus stable
+ * when a refreshed read changes qualifications or answers.
  */
 export interface FocusedShift {
   key: string;
@@ -113,8 +109,6 @@ export interface FocusedShift {
   /** The role's own name, for copy that must not read "this role" (B-2). */
   roleLabel: string;
   eventTimeBlockLabel: string;
-  ids: string[];
-  idealVolunteerId?: string;
 }
 
 interface BuildFocusLabelInput {

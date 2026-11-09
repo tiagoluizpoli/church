@@ -1,10 +1,9 @@
-import { m } from '@church/i18n/messages';
 import type {
   CycleBuilderData,
   CycleBuilderShiftSummary,
 } from '../../hooks/use-cycle-builder';
 import type { PoolVolunteer } from '../../hooks/use-volunteer-pool';
-import { timeLabel } from './cycle-builder-date.utils';
+import { conflictReason } from './cycle-builder-conflict.utils';
 
 interface PoolInput {
   data: CycleBuilderData;
@@ -40,13 +39,7 @@ export function pool({ data, shift, timeZone }: PoolInput): PoolVolunteer[] {
       result.set(volunteer.volunteerId, {
         ...existing,
         status: volunteer.answerState,
-        conflictReason: conflict
-          ? m.builder_conflict_reason({
-              ministry: conflict.ministryName,
-              start: timeLabel({ instant: conflict.startTime, timeZone }),
-              end: timeLabel({ instant: conflict.endTime, timeZone }),
-            })
-          : undefined,
+        conflictReason: conflictReason({ conflict, timeZone }),
       });
     }
   }

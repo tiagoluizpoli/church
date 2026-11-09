@@ -12,6 +12,7 @@ import type {
   MinistryId,
   RoleId,
   SectorId,
+  VolunteerId,
 } from '../domain/branded-ids';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
@@ -250,10 +251,20 @@ interface LoadCheckStatesInput {
   tx?: TransactionContext;
 }
 
-interface LoadConflictDetailsInput {
+interface LoadCandidateFactsInput {
   churchId: ChurchId;
-  shifts: Shift[];
+  volunteerIds: VolunteerId[];
   tx?: TransactionContext;
+}
+
+interface CandidateFacts {
+  activeAssignments: Assignment[];
+  assignmentShiftsById: Map<string, Shift>;
+  unavailableShiftKeys: Set<string>;
+  conflictDetails: Map<
+    string,
+    Omit<NonNullable<EligibleVolunteerView['conflict']>, 'assignmentId'>
+  >;
 }
 
 interface SortEligibleVolunteersInput {
@@ -262,6 +273,7 @@ interface SortEligibleVolunteersInput {
 }
 
 interface ListEligibleForShiftsInput {
+  candidateFacts: CandidateFacts;
   churchId: ChurchId;
   participation: MinistryParticipation;
   shifts: Shift[];
@@ -522,6 +534,11 @@ export class DbParticipationManager implements IParticipationManager {
         cycleId: input.cycleId,
         tx,
       });
+      const candidateFacts = await this.loadCandidateFacts({
+        churchId: input.churchId,
+        volunteerIds: [...membershipInfoByVolunteerId.keys()] as VolunteerId[],
+        tx,
+      });
       const events: CycleBuilderEventView[] = [];
 
       for (const eventGroup of eventGroups) {
@@ -566,6 +583,7 @@ export class DbParticipationManager implements IParticipationManager {
           requirements,
           membershipInfoByVolunteerId,
           checkStates,
+          candidateFacts,
           tx,
         });
 
@@ -1088,53 +1106,14 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       const volunteerIds = qualifiedVolunteers.map((volunteer) => volunteer.id);
-      const [unavailableShifts, assignments] = await Promise.all([
-        this.unavailableShiftRepository.listByVolunteers({
-          churchId: input.churchId,
-          volunteerIds,
-          tx,
-        }),
-        this.assignmentRepository.listByVolunteers({
-          churchId: input.churchId,
-          volunteerIds,
-          tx,
-        }),
-      ]);
-      const activeAssignments = assignments.filter((assignment) =>
-        isActiveAssignmentStatus(assignment.status),
-      );
-      const assignmentShiftIds = [
-        ...new Set(
-          activeAssignments
-            .map((assignment) => assignment.shiftId)
-            .filter((shiftId): shiftId is Shift['id'] => shiftId != null),
-        ),
-      ];
-      const assignmentShifts = await Promise.all(
-        assignmentShiftIds.map((shiftId) =>
-          this.shiftRepository.getById({
-            churchId: input.churchId,
-            shiftId,
-            tx,
-          }),
-        ),
-      );
-      const assignmentShiftsById = new Map(
-        assignmentShifts.map((assignmentShift) => [
-          assignmentShift.id as string,
-          assignmentShift,
-        ]),
-      );
-      const unavailableShiftKeys = new Set(
-        unavailableShifts.map(
-          (unavailableShift) =>
-            `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
-        ),
-      );
-
-      const conflictDetails = await this.loadConflictDetails({
+      const {
+        activeAssignments,
+        assignmentShiftsById,
+        unavailableShiftKeys,
+        conflictDetails,
+      } = await this.loadCandidateFacts({
         churchId: input.churchId,
-        shifts: assignmentShifts,
+        volunteerIds,
         tx,
       });
       const eligible = qualifiedVolunteers.map((volunteer) =>
@@ -1565,42 +1544,63 @@ export class DbParticipationManager implements IParticipationManager {
     return result;
   }
 
-  private async loadConflictDetails({
+  private async loadCandidateFacts({
     churchId,
-    shifts,
+    volunteerIds,
     tx,
-  }: LoadConflictDetailsInput) {
-    const entries = await Promise.all(
-      shifts.map(async (shift) => {
-        const participation = await this.participationRepository.getById({
-          churchId,
-          participationId: shift.participationId,
-          tx,
-        });
-        const [event, ministry] = await Promise.all([
-          this.eventRepository.getEvent({
-            churchId,
-            eventId: participation.eventId,
-            tx,
-          }),
-          this.ministryRepository.getById({
-            churchId,
-            id: participation.ministryId,
-            tx,
-          }),
-        ]);
-        return [
-          shift.id as string,
-          {
-            ministryName: ministry.name,
-            eventTitle: event.title,
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-          },
-        ] as const;
+  }: LoadCandidateFactsInput): Promise<CandidateFacts> {
+    const [unavailableShifts, assignments] = await Promise.all([
+      this.unavailableShiftRepository.listByVolunteers({
+        churchId,
+        volunteerIds,
+        tx,
       }),
+      this.assignmentRepository.listByVolunteers({
+        churchId,
+        volunteerIds,
+        tx,
+      }),
+    ]);
+    const activeAssignments = assignments.filter((assignment) =>
+      isActiveAssignmentStatus(assignment.status),
     );
-    return new Map(entries);
+    const shiftIds = [
+      ...new Set(
+        activeAssignments
+          .map((assignment) => assignment.shiftId)
+          .filter((id): id is Shift['id'] => id != null),
+      ),
+    ];
+    const facts = await this.shiftRepository.listConflictFacts({
+      churchId,
+      shiftIds,
+      tx,
+    });
+    const assignmentShiftsById = new Map(
+      facts.map(({ shift }) => [shift.id as string, shift]),
+    );
+    const conflictDetails: CandidateFacts['conflictDetails'] = new Map(
+      facts.map(({ shift, ministryName, eventTitle }) => [
+        shift.id as string,
+        {
+          ministryName,
+          eventTitle,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+        },
+      ]),
+    );
+    const unavailableShiftKeys = new Set(
+      unavailableShifts.map(
+        (mark) => `${mark.volunteerId as string}:${mark.shiftId as string}`,
+      ),
+    );
+    return {
+      activeAssignments,
+      assignmentShiftsById,
+      conflictDetails,
+      unavailableShiftKeys,
+    };
   }
 
   private async listEligibleVolunteersForShifts({
@@ -1610,6 +1610,7 @@ export class DbParticipationManager implements IParticipationManager {
     requirements,
     membershipInfoByVolunteerId,
     checkStates,
+    candidateFacts,
     tx,
   }: ListEligibleForShiftsInput): Promise<
     Map<string, EligibleVolunteerView[]>
@@ -1644,62 +1645,12 @@ export class DbParticipationManager implements IParticipationManager {
       volunteersByRole.set(roleKey, volunteers);
     }
 
-    // Union of everyone who could appear so unavailable shifts/assignments load once.
-    const volunteersById = new Map<string, QualifiedVolunteerRef>();
-    for (const volunteers of volunteersByRole.values()) {
-      for (const volunteer of volunteers) {
-        volunteersById.set(volunteer.id as string, volunteer);
-      }
-    }
-    const volunteerIds = [...volunteersById.values()].map(
-      (volunteer) => volunteer.id,
-    );
-
-    const [unavailableShifts, assignments] = await Promise.all([
-      this.unavailableShiftRepository.listByVolunteers({
-        churchId,
-        volunteerIds,
-        tx,
-      }),
-      this.assignmentRepository.listByVolunteers({
-        churchId,
-        volunteerIds,
-        tx,
-      }),
-    ]);
-    const activeAssignments = assignments.filter((assignment) =>
-      isActiveAssignmentStatus(assignment.status),
-    );
-    const assignmentShiftIds = [
-      ...new Set(
-        activeAssignments
-          .map((assignment) => assignment.shiftId)
-          .filter((shiftId): shiftId is Shift['id'] => shiftId != null),
-      ),
-    ];
-    const assignmentShifts = await Promise.all(
-      assignmentShiftIds.map((shiftId) =>
-        this.shiftRepository.getById({ churchId, shiftId, tx }),
-      ),
-    );
-    const assignmentShiftsById = new Map(
-      assignmentShifts.map((assignmentShift) => [
-        assignmentShift.id as string,
-        assignmentShift,
-      ]),
-    );
-    const unavailableShiftKeys = new Set(
-      unavailableShifts.map(
-        (unavailableShift) =>
-          `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
-      ),
-    );
-
-    const conflictDetails = await this.loadConflictDetails({
-      churchId,
-      shifts: assignmentShifts,
-      tx,
-    });
+    const {
+      activeAssignments,
+      assignmentShiftsById,
+      unavailableShiftKeys,
+      conflictDetails,
+    } = candidateFacts;
     for (const shift of shifts) {
       const shiftRequirements =
         requirementsByShift.get(shift.id as string) ?? [];

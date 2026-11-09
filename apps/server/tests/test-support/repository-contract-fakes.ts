@@ -267,6 +267,9 @@ export function createSectorRepositoryFake() {
 
 export function createShiftRepositoryFake() {
   return {
+    listConflictFacts: vi
+      .fn<ShiftRepository['listConflictFacts']>()
+      .mockResolvedValue([]),
     createMany: vi.fn<ShiftRepository['createMany']>(),
     getById: vi.fn<ShiftRepository['getById']>(),
     listByParticipation: vi.fn<ShiftRepository['listByParticipation']>(),

@@ -275,22 +275,20 @@ export function useCycleBuilderActions({
   }: RemoveAssignmentInput) => {
     try {
       await deleteAssignment.mutateAsync(assignmentId);
+      const message = m.builder_logic_removed({ volunteerName });
       report({
-        message: m.builder_logic_removed({ volunteerName }),
+        message,
         tone: 'success',
       });
       return true;
     } catch (error) {
-      report({
-        message: m.builder_logic_remove_failed({
-          volunteerName,
-          message: builderErrorMessage({
-            error,
-            fallback: m.common_removal_failed(),
-          }),
-        }),
-        tone: 'error',
+      const fallback = m.common_removal_failed();
+      const refusalMessage = builderErrorMessage({ error, fallback });
+      const message = m.builder_logic_remove_failed({
+        volunteerName,
+        message: refusalMessage,
       });
+      report({ message, tone: 'error' });
       return false;
     }
   };

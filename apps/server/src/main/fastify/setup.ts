@@ -175,7 +175,9 @@ export async function createFastify({
         request.log.warn({ code: error.code }, 'No catalog message for code');
       }
       const reason =
-        error instanceof HardConstraintError && error.reason === 'NOT_QUALIFIED'
+        error instanceof HardConstraintError &&
+        (error.reason === 'NOT_QUALIFIED' ||
+          error.reason === 'DUPLICATE_ASSIGNMENT')
           ? error.reason
           : validationReason(error);
       const field = validationField(error);

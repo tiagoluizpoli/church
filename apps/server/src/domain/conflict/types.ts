@@ -1,5 +1,6 @@
 // --- Hard Constraint Reason Codes ---
 export type HardConstraintReason =
+  | 'INVALID_MOVE_TARGET'
   | 'NOT_QUALIFIED'
   | 'NOT_IN_MINISTRY'
   | 'EVENT_IN_PAST'

@@ -58,6 +58,7 @@ export function createAssignmentRepositoryFake() {
     listByVolunteerInRange:
       vi.fn<AssignmentRepository['listByVolunteerInRange']>(),
     listByRange: vi.fn<AssignmentRepository['listByRange']>(),
+    move: vi.fn<AssignmentRepository['move']>(),
     updateStatus: vi.fn<AssignmentRepository['updateStatus']>(),
     countByVolunteerInRange:
       vi.fn<AssignmentRepository['countByVolunteerInRange']>(),

@@ -167,6 +167,7 @@ function createRepos(): Repos {
     listByVolunteers: vi.fn(),
     listByVolunteerInRange: vi.fn(),
     listByRange: vi.fn(),
+    move: vi.fn(),
     updateStatus: vi.fn(),
     countByVolunteerInRange: vi.fn(),
     deleteByEvent: vi.fn(),

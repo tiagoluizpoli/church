@@ -4,7 +4,7 @@ import {
   ministryMembership as ministryMembershipTable,
   ministryParticipation,
 } from '@church/db';
-import { fromDate, parseInstant } from '@church/time';
+import { fromDate, parseInstant, setTestClock } from '@church/time';
 import { and, eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
@@ -239,6 +239,12 @@ async function seedUnqualifiedMember(
 
   return { volunteerId: volunteer.id };
 }
+
+beforeEach(() => {
+  setTestClock({
+    instant: parseInstant({ value: '2026-08-01T00:00:00.000Z' }),
+  });
+});
 
 const CYCLE_START = new Date('2026-08-01T00:00:00.000Z');
 const CYCLE_END = new Date('2026-09-01T00:00:00.000Z');

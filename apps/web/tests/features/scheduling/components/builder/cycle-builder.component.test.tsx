@@ -2,9 +2,10 @@ import type { AppConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
+import { useState } from 'react';
 import {
   afterEach,
   beforeEach,
@@ -172,7 +173,11 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => resetClock());
+afterEach(() => {
+  resetClock();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 interface RenderBuilderInput {
   createAssignment?: () => Promise<unknown>;
@@ -212,7 +217,177 @@ async function assignGraceHopper() {
   await user.click(await screen.findByTestId('suggestion-option'));
 }
 
+// JSDOM has no layout: model the source, drop zones and dnd-kit overlay at
+// the dimensions a browser computes from the overlay's inline size.
+function setupDragGeometry() {
+  class TestPointerEvent extends MouseEvent {
+    readonly isPrimary = true;
+    readonly pointerId = 1;
+  }
+  vi.stubGlobal('PointerEvent', TestPointerEvent);
+  return vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockImplementation(function (this: HTMLElement) {
+      const id = this.dataset.testid;
+      const x =
+        id === 'cycle-requirement-side'
+          ? 100
+          : id === 'cycle-requirement-wrong-role'
+            ? 200
+            : id === 'cycle-requirement-wrong-shift'
+              ? 300
+              : 0;
+      const size =
+        id === 'cycle-requirement-side' ||
+        id === 'cycle-requirement-wrong-role' ||
+        id === 'cycle-requirement-wrong-shift' ||
+        (this.style.position === 'fixed' && this.style.width === '50px') ||
+        this.getAttribute('aria-label') ===
+          'Drag Grace Hopper to another sector'
+          ? 50
+          : 0;
+      return {
+        x,
+        y: 0,
+        left: x,
+        top: 0,
+        right: x + size,
+        bottom: size,
+        width: size,
+        height: size,
+        toJSON: () => ({}),
+      };
+    });
+}
+
 describe('moving assignments', () => {
+  it('moves a dragged assignment to another sector and renders it there', async () => {
+    setupDragGeometry();
+    const data = structuredClone(builderData);
+    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+    shift.requirements.push({
+      id: 'side',
+      roleId: 'role-1',
+      sectorName: 'Side',
+      peopleNeeded: 1,
+    });
+    shift.assignments.push(existingAssignment);
+    data.assignments.push(existingAssignment);
+    const move = vi.fn();
+    function Board() {
+      const [board, setBoard] = useState(data);
+      return (
+        <CycleBuilder
+          data={board}
+          onPublish={vi.fn()}
+          isPublishing={false}
+          cycleId="cycle-1"
+          ministryId="ministry-1"
+          cycleStartDate="2026-08-01"
+          cycleEndDate="2026-08-31"
+          createAssignment={{ isPending: false, mutateAsync: vi.fn() }}
+          deleteAssignment={{ isPending: false, mutateAsync: vi.fn() }}
+          reassignAssignment={{ isPending: false, mutateAsync: vi.fn() }}
+          moveAssignment={{
+            isPending: false,
+            mutateAsync: async (input) => {
+              move(input);
+              const next = structuredClone(board);
+              next.events[0].eventTimeBlocks[0].shifts[0].assignments[0].shiftRequirementId =
+                input.body.shiftRequirementId;
+              next.assignments[0].shiftRequirementId =
+                input.body.shiftRequirementId;
+              setBoard(next);
+            },
+          }}
+        />
+      );
+    }
+    renderWithProviders(<Board />);
+    const source = screen.getByRole('button', {
+      name: 'Drag Grace Hopper to another sector',
+    });
+    fireEvent.pointerDown(source, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 20, clientY: 10 });
+    await waitFor(() => expect(source).toHaveAttribute('aria-pressed', 'true'));
+    fireEvent.pointerMove(document, { clientX: 120, clientY: 10 });
+    await screen.findByText(
+      /was moved over droppable area cycle-requirement:side/,
+    );
+    fireEvent.pointerUp(document, { clientX: 120, clientY: 10 });
+    await waitFor(() =>
+      expect(move).toHaveBeenCalledWith({
+        assignmentId: 'assignment-1',
+        body: { shiftRequirementId: 'side' },
+      }),
+    );
+    expect(
+      within(screen.getByTestId('cycle-requirement-side')).getByText(
+        'Grace Hopper',
+      ),
+    ).toBeVisible();
+    expect(
+      within(
+        screen.getByTestId('cycle-requirement-requirement-role-1'),
+      ).queryByText('Grace Hopper'),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['another role in the same Shift', 220],
+    ['the same Role in another Shift', 320],
+  ])('does not move onto %s', async (_description, destinationX) => {
+    setupDragGeometry();
+    const data = structuredClone(builderData);
+    data.roles.push({ id: 'role-2', name: 'Helper' });
+    const block = data.events[0].eventTimeBlocks[0];
+    const shift = block.shifts[0];
+    shift.requirements.push(
+      { id: 'side', roleId: 'role-1', sectorName: 'Side', peopleNeeded: 1 },
+      {
+        id: 'wrong-role',
+        roleId: 'role-2',
+        sectorName: 'Other role',
+        peopleNeeded: 1,
+      },
+    );
+    shift.assignments.push(existingAssignment);
+    data.assignments.push(existingAssignment);
+    block.shifts.push({
+      ...structuredClone(shift),
+      shiftId: 'shift-2',
+      assignments: [],
+      requirements: [
+        {
+          id: 'wrong-shift',
+          roleId: 'role-1',
+          sectorName: 'Other shift',
+          peopleNeeded: 1,
+        },
+      ],
+    });
+    const { move } = renderBuilder({ data });
+    const source = screen.getByRole('button', {
+      name: 'Drag Grace Hopper to another sector',
+    });
+    fireEvent.pointerDown(source, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 20, clientY: 10 });
+    await waitFor(() => expect(source).toHaveAttribute('aria-pressed', 'true'));
+    fireEvent.pointerMove(document, { clientX: 120, clientY: 10 });
+    await screen.findByText(
+      /was moved over droppable area cycle-requirement:side/,
+    );
+    fireEvent.pointerMove(document, { clientX: destinationX, clientY: 10 });
+    await screen.findByText(/is no longer over a droppable area/);
+    fireEvent.pointerUp(document, { clientX: destinationX, clientY: 10 });
+    expect(move).not.toHaveBeenCalled();
+    expect(
+      within(
+        screen.getByTestId('cycle-requirement-requirement-role-1'),
+      ).getByText('Grace Hopper'),
+    ).toBeVisible();
+  });
+
   it('keeps a failed move on the destination with a retry', async () => {
     const data = structuredClone(builderData);
     const shift = data.events[0].eventTimeBlocks[0].shifts[0];

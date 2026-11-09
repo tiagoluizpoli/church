@@ -7,6 +7,7 @@ import type {
   GetAssignmentInput,
   IAssignmentManager,
   ListCycleAuditLogInput,
+  MoveParticipationAssignmentInput,
   ReassignParticipationAssignmentInput,
 } from '../domain/contracts/application/assignment-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
@@ -150,6 +151,83 @@ export class DbAssignmentManager implements IAssignmentManager {
     }
 
     return nextAssignment;
+  }
+
+  async moveParticipationAssignment(
+    input: MoveParticipationAssignmentInput,
+  ): Promise<Assignment> {
+    return this.unitOfWork.run(async (tx) => {
+      const initial = await this.assignmentRepo.getById({
+        churchId: input.churchId,
+        assignmentId: input.assignmentId,
+        tx,
+      });
+      if (!initial.participationId || !initial.shiftId)
+        throw new Error('Assignment is missing its schedule reference');
+      await this.participationRepository.lockById({
+        churchId: input.churchId,
+        participationId: initial.participationId,
+        tx,
+      });
+      const current = await this.assignmentRepo.getById({
+        churchId: input.churchId,
+        assignmentId: input.assignmentId,
+        tx,
+      });
+      const requirements =
+        await this.shiftRepository.listRequirementsByParticipation({
+          churchId: input.churchId,
+          participationId: initial.participationId,
+          tx,
+        });
+      const target = requirements.find(
+        (requirement) => requirement.id === input.shiftRequirementId,
+      );
+      if (
+        !target ||
+        target.shiftId !== current.shiftId ||
+        target.roleId !== current.roleId
+      ) {
+        throw new HardConstraintError({
+          reason: 'INVALID_MOVE_TARGET',
+          message: 'Move target must have the same shift and role',
+        });
+      }
+      const assignments = await this.assignmentRepo.listByShift({
+        churchId: input.churchId,
+        shiftId: initial.shiftId,
+        tx,
+      });
+      if (
+        assignments.some(
+          (other) =>
+            other.id !== current.id &&
+            other.volunteerId === current.volunteerId &&
+            isActiveAssignmentStatus(other.status),
+        )
+      ) {
+        throw new HardConstraintError({
+          reason: 'DUPLICATE_ASSIGNMENT',
+          message: 'Volunteer is already assigned to this shift',
+        });
+      }
+      const moved = await this.assignmentRepo.move({
+        churchId: input.churchId,
+        assignmentId: current.id,
+        shiftRequirementId: target.id,
+        tx,
+      });
+      await this.auditRepo.create({
+        churchId: input.churchId,
+        input: {
+          assignmentId: current.id,
+          actorId: input.actorId,
+          action: 'updated',
+        },
+        tx,
+      });
+      return moved;
+    });
   }
 
   async listAuditLogForCycle(

@@ -14,6 +14,8 @@ import type {
   GetCycleBuilderDataParams,
   GetParticipationCompletion200,
   ListEligibleVolunteers200,
+  MoveParticipationAssignment200,
+  MoveParticipationAssignmentBody,
   PublishCycle200,
   PublishCycleBody,
   PublishCycleParams,
@@ -112,6 +114,20 @@ const deleteParticipationAssignment = (
       );
     }
   /**
+ * @summary Move an Assignment to another Sector
+ */
+const moveParticipationAssignment = (
+    assignmentId: string,
+    moveParticipationAssignmentBody: MoveParticipationAssignmentBody,
+ ) => {
+      return apiClient<MoveParticipationAssignment200>(
+      {url: `/api/v1/assign/assignments/${assignmentId}/move`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: moveParticipationAssignmentBody
+    },
+      );
+    }
+  /**
  * Replace the Volunteer on an existing Assignment, keeping its Shift and Role.
  * @summary Reassign an Assignment to another Volunteer
  */
@@ -138,12 +154,13 @@ const getParticipationCompletion = (
     },
       );
     }
-  return {getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
+  return {getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,moveParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
 export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleBuilderData']>>>
 export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleAuditLog']>>>
 export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['publishCycle']>>>
 export type ListEligibleVolunteersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['listEligibleVolunteers']>>>
 export type CreateParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['createParticipationAssignment']>>>
 export type DeleteParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['deleteParticipationAssignment']>>>
+export type MoveParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['moveParticipationAssignment']>>>
 export type ReassignParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['reassignParticipationAssignment']>>>
 export type GetParticipationCompletionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getParticipationCompletion']>>>

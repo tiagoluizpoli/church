@@ -255,6 +255,7 @@ async function seedCrossMinistryOverlap({
   });
 
   return {
+    adminUserId: seed.adminUserId,
     cycleId: cycle.id,
     overlapId: overlap.id,
     churchId: seed.churchAId,
@@ -609,6 +610,154 @@ describe('reassign without a reason input', () => {
       ]),
     );
     expect(audits).toHaveLength(2);
+  });
+});
+
+describe('move Assignment', () => {
+  it('rebinds the same Assignment and records one updated audit', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const sector = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Side Door',
+    });
+    const target = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      roleId: seed.targetRoleId,
+      sectorId: sector.id,
+      peopleNeeded: 1,
+    });
+    const current = await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${current.id}/move`,
+      payload: { shiftRequirementId: target.id },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: current.id,
+      shiftRequirementId: target.id,
+    });
+    const rows = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, current.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.shiftRequirementId).toBe(target.id);
+    const audits = await schedulingTestDb
+      .select()
+      .from(assignmentAudit)
+      .where(eq(assignmentAudit.assignmentId, current.id));
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      action: 'updated',
+      actorId: seed.adminUserId,
+    });
+  });
+  it('refuses another Shift or Role without changing the Assignment', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const current = await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const otherShift = await seedShift({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      eventTimeBlockId: seed.targetBlockId,
+      startTime: new Date('2026-09-07T10:00:00Z'),
+      endTime: new Date('2026-09-07T11:00:00Z'),
+      label: 'Later',
+    });
+    const otherRole = await seedRole({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Other role',
+    });
+    const crossShift = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: otherShift.id,
+      roleId: seed.targetRoleId,
+      peopleNeeded: 1,
+    });
+    const crossRole = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      roleId: otherRole.id,
+      peopleNeeded: 1,
+    });
+    for (const target of [crossShift, crossRole]) {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/assign/assignments/${current.id}/move`,
+        payload: { shiftRequirementId: target.id },
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({
+        error: 'HARD_CONSTRAINT_VIOLATION',
+      });
+    }
+    const [stored] = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, current.id));
+    expect(stored?.shiftRequirementId).toBe(seed.targetRequirementId);
+    const audits = await schedulingTestDb
+      .select()
+      .from(assignmentAudit)
+      .where(eq(assignmentAudit.assignmentId, current.id));
+    expect(audits).toHaveLength(0);
+  });
+
+  it('refuses a move when another active Assignment already exists for the Volunteer on the Shift', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const current = await buildAssignment({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+      status: 'declined',
+    });
+    await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${current.id}/move`,
+      payload: { shiftRequirementId: seed.targetRequirementId },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: 'HARD_CONSTRAINT_VIOLATION',
+    });
+    const audits = await schedulingTestDb
+      .select()
+      .from(assignmentAudit)
+      .where(eq(assignmentAudit.assignmentId, current.id));
+    expect(audits).toHaveLength(0);
   });
 });
 

@@ -23,6 +23,7 @@ import type {
   ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
+  MoveAssignmentRepositoryInput,
   UpdateAssignmentStatusRepositoryInput,
 } from '@/domain/contracts/infrastructure/assignment.repository';
 import { Assignment } from '@/domain/entities/assignment';
@@ -100,6 +101,28 @@ class MockAssignmentRepository implements AssignmentRepository {
     });
     this.assignments.set(a.id, a);
     return a;
+  }
+
+  async move(input: MoveAssignmentRepositoryInput): Promise<Assignment> {
+    const current = await this.getById(input);
+    const moved = new Assignment({
+      id: current.id,
+      props: {
+        churchId: current.churchId,
+        eventTimeBlockId: current.eventTimeBlockId,
+        participationId: current.participationId,
+        shiftId: current.shiftId,
+        volunteerId: current.volunteerId,
+        roleId: current.roleId,
+        shiftRequirementId: input.shiftRequirementId,
+        status: current.status,
+        reason: current.reason,
+        assignedAt: current.assignedAt,
+        assignedBy: current.assignedBy,
+      },
+    });
+    this.assignments.set(moved.id, moved);
+    return moved;
   }
 
   async getById({

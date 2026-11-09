@@ -141,6 +141,14 @@ describe('CycleBuilderCell', () => {
     renderCell({ assignments: [assignments[0]], peopleNeeded: 2 });
     expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
     expect(
+      screen.getByText(
+        m.builder_shift_started({
+          shift: 'Morning service · 09:00 – 10:00',
+          time: '09:00',
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(
       screen.queryByRole('button', { name: /Grace Hopper/ }),
     ).not.toBeInTheDocument();
     expect(
@@ -150,6 +158,22 @@ describe('CycleBuilderCell', () => {
       screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).not.toHaveAttribute('data-drop-target');
   });
+  it('renders the read-only message in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    setTestClock({
+      instant: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+    });
+    renderCell({ assignments: [assignments[0]] });
+    expect(
+      screen.getByText(
+        m.builder_shift_started({
+          shift: 'Morning service · 09:00 – 10:00',
+          time: '09:00',
+        }),
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('offers only other sectors for the same role when moving an assignment', async () => {
     const user = userEvent.setup();
     const onMove = vi.fn();

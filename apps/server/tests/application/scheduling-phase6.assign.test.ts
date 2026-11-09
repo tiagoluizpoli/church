@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
-import { parseInstant } from '@church/time';
-import { describe, expect, it } from 'vitest';
+import { parseInstant, setTestClock } from '@church/time';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
@@ -242,6 +242,9 @@ function createHarness() {
 }
 
 describe('Assignment and publication managers', () => {
+  beforeEach(() =>
+    setTestClock({ instant: parseInstant({ value: '2026-08-01T00:00:00Z' }) }),
+  );
   it('caps completion per requirement and excludes declined and cancelled assignments', async () => {
     const f = createHarness();
     const beta = new ShiftRequirement({

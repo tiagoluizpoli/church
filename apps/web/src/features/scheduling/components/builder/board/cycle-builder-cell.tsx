@@ -308,7 +308,13 @@ export function CycleBuilderCell({
 
       {isStarted ? (
         <p className="mt-2 text-muted-foreground text-xs">
-          {m.builder_shift_started()}
+          {m.builder_shift_started({
+            shift: shiftLabel,
+            time: timeLabel({
+              instant: shift.startTime,
+              timeZone: churchTimezone,
+            }),
+          })}
         </p>
       ) : null}
       {!hasRoleHolder ? (

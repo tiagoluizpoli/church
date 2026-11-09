@@ -42,6 +42,7 @@ const assignmentManager = {
   createParticipationAssignment: vi.fn(),
   deleteAssignment: vi.fn(),
   reassignParticipationAssignment: vi.fn(),
+  moveParticipationAssignment: vi.fn(),
   listAuditLogForCycle: vi.fn(),
 };
 
@@ -176,6 +177,13 @@ const scopedAssignRoutes: ScopedAssignRoute[] = [
     byAssignment: true,
   },
   {
+    method: 'PATCH',
+    url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}/move`,
+    decision: 'decideManageShift',
+    payload: { shiftRequirementId: '99999999-9999-4999-8999-999999999999' },
+    byAssignment: true,
+  },
+  {
     method: 'GET',
     url: `/api/v1/assign/participations/${ASSIGN_PARTICIPATION}/completion`,
     decision: 'decideManageParticipation',
@@ -254,6 +262,17 @@ describe('Assign route refusals', () => {
 });
 
 describe('Assign routes', () => {
+  it('refuses a signed-out move', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}/move`,
+      payload: { shiftRequirementId: '99999999-9999-4999-8999-999999999999' },
+    });
+    expect(response.statusCode).toBe(401);
+    expectNoAssignWork();
+  });
+
   it('returns 401 for any route when there is no session', async () => {
     mockGetSession.mockResolvedValueOnce(null as never);
 

@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
+import { parseInstant, setTestClock } from '@church/time';
 import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
@@ -18,7 +19,12 @@ import type {
 import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
 
-beforeEachLocale(() => overwriteGetLocale(() => 'en'));
+beforeEachLocale(() => {
+  overwriteGetLocale(() => 'en');
+  setTestClock({
+    instant: parseInstant({ value: '2026-08-01T00:00:00.000Z' }),
+  });
+});
 
 const boardData: CycleBuilderData = {
   assignments: [],

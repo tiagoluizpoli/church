@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ministry } from '@church/db';
+import { assignment, ministry, outboxMessage } from '@church/db';
 import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
@@ -27,16 +27,26 @@ import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
 import {
+  buildAssignment,
   buildEvent,
   buildEventTimeBlock,
   buildMinistryParticipation,
 } from '@/seeds/builders/scheduling';
-import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
+import {
+  buildAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
-import { createSchedulingManagers } from '@/tests/application/scheduling-schedule.helpers';
+import {
+  createSchedulingManagers,
+  seedRequirement,
+  seedRole,
+  seedShift,
+  seedVolunteerMembership,
+} from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
   resetSchedulingPhase3Db,
@@ -216,7 +226,7 @@ async function seedParticipation({
     start,
     end,
   });
-  await buildMinistryParticipation({
+  const participation = await buildMinistryParticipation({
     db,
     churchId,
     ministryId,
@@ -224,7 +234,93 @@ async function seedParticipation({
     state,
     eventTimeBlockIds: serves ? [block.id] : [],
   });
+  return { participation, block };
 }
+
+describe('late availability counts', () => {
+  it('counts marks made after assignments for their Schedule', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'September',
+      month: '2026-09',
+      lastDay: '30',
+      state: 'sent',
+    });
+    const { participation, block } = await seedParticipation({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      state: 'assigning',
+    });
+    const role = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Greeter',
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: participation.id,
+      eventTimeBlockId: block.id,
+      startTime: new Date('2026-09-06T12:00:00Z'),
+      endTime: new Date('2026-09-06T14:00:00Z'),
+      label: 'Morning',
+    });
+    const requirement = await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    const person = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Late',
+      email: 'late-count@test.com',
+    });
+    await buildAssignment({
+      db,
+      churchId: seed.churchAId,
+      participationId: participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      shiftRequirementId: requirement.id,
+      volunteerId: person.volunteer.id,
+      status: 'pending',
+      assignedAt: parseInstant({ value: '2020-01-01T00:00:00Z' }),
+    });
+    const check = await buildAvailabilityCheck({
+      db,
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryMembershipId: person.membership.id,
+      state: 'confirmed',
+    });
+    await buildUnavailableShift({
+      db,
+      churchId: seed.churchAId,
+      availabilityCheckId: check.id,
+      shiftId: shift.id,
+    });
+    signIn({ userId: seed.adminUserId, churchId: seed.churchAId });
+    const assignmentsBefore = await db.select().from(assignment);
+    const outboxBefore = await db.select().from(outboxMessage);
+    const response = await listSchedules();
+    expect(response.statusCode).toBe(200);
+    expect(response.json().schedules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ministry: expect.objectContaining({ id: seed.ministryAId }),
+          cycle: expect.objectContaining({ id: cycle.id }),
+          lateMarkCount: 1,
+        }),
+      ]),
+    );
+    expect(await db.select().from(assignment)).toEqual(assignmentsBefore);
+    expect(await db.select().from(outboxMessage)).toEqual(outboxBefore);
+  });
+});
 
 describe('GET /prepare/schedules access', () => {
   it('answers 401 when signed out', async () => {
@@ -360,6 +456,7 @@ describe('GET /prepare/schedules scoping', () => {
         state: 'sent',
       },
       stage: 'not_serving',
+      lateMarkCount: 0,
     });
     expect(schedules[4].cycle).toEqual({
       id: seed.past.id,
@@ -437,6 +534,7 @@ describe('GET /prepare/schedules scoping', () => {
           state: 'sent',
         },
         stage: 'published',
+        lateMarkCount: 0,
       },
     ]);
   });

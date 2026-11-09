@@ -2177,6 +2177,7 @@ export type ListSchedules200SchedulesItem = {
   ministry: ListSchedules200SchedulesItemMinistry;
   cycle: ListSchedules200SchedulesItemCycle;
   stage: ListSchedules200SchedulesItemStage;
+  lateMarkCount: number;
   asking?: ListSchedules200SchedulesItemAsking;
 };
 
@@ -2980,6 +2981,7 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignm
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   assignedAt: string;
   assignedBy?: string;
+  lateMark: boolean;
 };
 
 export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState = typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState[keyof typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemAnswerState];

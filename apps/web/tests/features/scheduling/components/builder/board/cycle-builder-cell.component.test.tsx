@@ -68,6 +68,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
     volunteerName: 'Grace Hopper',
   },
   {
@@ -80,6 +81,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
     volunteerName: 'Ada Lovelace',
   },
 ];
@@ -188,6 +190,21 @@ describe('CycleBuilderCell', () => {
       screen.getByRole('button', { name: m.builder_ui_move() }),
     ).toBeVisible();
     expect(m.builder_ui_move()).toBe('Mover');
+  });
+
+  it('shows the late mark and its Shift in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    renderCell({
+      shift: { ...shift, label: 'Manhã' },
+      assignments: assignments
+        .slice(0, 1)
+        .map((item) => ({ ...item, lateMark: true })),
+    });
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_late_mark_tooltip({ shift: 'Manhã' }),
+      }),
+    ).toBeVisible();
   });
 
   it('offers People and Invitations when nobody holds the role', () => {

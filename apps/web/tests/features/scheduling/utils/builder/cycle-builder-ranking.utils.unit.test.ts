@@ -53,6 +53,7 @@ function makeAssignment(
     shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2027-01-01T12:00:00.000Z',
+    lateMark: false,
     ...overrides,
   };
 }

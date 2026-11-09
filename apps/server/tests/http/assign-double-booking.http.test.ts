@@ -4,9 +4,11 @@ import {
   assignment,
   assignmentAudit,
   ministryParticipation,
+  outboxMessage,
   shiftRequirement,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
+import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -390,6 +392,69 @@ describe('builder eligibility contract', () => {
   });
 });
 
+describe('late availability marks on the board', () => {
+  it('flags an assignment when the mark was made afterwards', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const person = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Late mark',
+      email: 'late-mark@test.com',
+    });
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: person.volunteer.id,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+      status: 'pending',
+      assignedAt: parseInstant({ value: '2020-01-01T00:00:00.000Z' }),
+    });
+    const check = await buildAvailabilityCheck({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      cycleId: seed.cycleId,
+      ministryMembershipId: person.membership.id,
+      state: 'confirmed',
+    });
+    await buildUnavailableShift({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      availabilityCheckId: check.id,
+      shiftId: seed.targetShiftId,
+    });
+    const assignmentsBefore = await schedulingTestDb.select().from(assignment);
+    const outboxBefore = await schedulingTestDb.select().from(outboxMessage);
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
+    });
+    expect(response.statusCode).toBe(200);
+    const body: CycleBuilderResponse = response.json();
+    const shifts = body.events.flatMap((event) =>
+      event.eventTimeBlocks.flatMap((block) => block.shifts),
+    );
+    expect(
+      shifts.find((row) => row.shift.id === seed.targetShiftId)?.assignments,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          volunteerId: person.volunteer.id,
+          lateMark: true,
+        }),
+      ]),
+    );
+    expect(await schedulingTestDb.select().from(assignment)).toEqual(
+      assignmentsBefore,
+    );
+    expect(await schedulingTestDb.select().from(outboxMessage)).toEqual(
+      outboxBefore,
+    );
+  });
+});
+
 describe('Unavailable assignment', () => {
   it('returns an UNAVAILABLE warning when a marked volunteer is assigned', async () => {
     const seed = await seedCrossMinistryOverlap();
@@ -444,7 +509,10 @@ describe('Unavailable assignment', () => {
       .find((row) => row.shift.id === seed.targetShiftId);
     expect(shift?.assignments).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ volunteerId: person.volunteer.id }),
+        expect.objectContaining({
+          volunteerId: person.volunteer.id,
+          lateMark: false,
+        }),
       ]),
     );
     expect(shift?.eligibleVolunteers).toEqual(

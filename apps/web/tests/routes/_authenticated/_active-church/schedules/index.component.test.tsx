@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ListSchedules200SchedulesItem } from '@/infrastructure/api/churchAPI.schemas';
@@ -90,6 +90,7 @@ function schedule(
       state: 'sent',
     },
     stage: 'to_prepare',
+    lateMarkCount: 0,
     ...overrides,
   };
 }
@@ -132,6 +133,18 @@ describe('Schedules list', () => {
         await screen.findByRole('combobox', { name: m.schedules_filter() }),
       ).toBeVisible();
     else expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  it('shows a late-mark count on the Schedule row', async () => {
+    listSchedules.mockResolvedValue({
+      schedules: [schedule({ lateMarkCount: 2 })],
+    });
+    renderPrepareIndex();
+    const row = await screen.findByRole('link', { name: /Kids · Outubro/ });
+    expect(row).toHaveTextContent('⚠ 2');
+    expect(
+      within(row).getByLabelText(m.schedule_late_mark_count({ count: 2 })),
+    ).toBeVisible();
   });
 
   it('opens the selected Schedule directly on row activation', async () => {

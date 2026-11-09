@@ -27,6 +27,7 @@ const EXISTING_ASSIGNMENT: RawAssignment = {
   shiftRequirementId: 'requirement-role-1',
   status: 'confirmed',
   assignedAt: '2026-07-01T10:00:00.000Z',
+  lateMark: false,
 };
 
 function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
@@ -139,6 +140,7 @@ describe('addOptimisticAssignment', () => {
         shiftRequirementId: 'requirement-1',
         status: 'pending',
         assignedAt: '2026-07-02T10:00:00.000Z',
+        lateMark: false,
       },
     ]);
     expect(shifts[1].assignments).toEqual([]);

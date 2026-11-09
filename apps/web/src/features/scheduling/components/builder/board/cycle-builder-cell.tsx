@@ -11,6 +11,7 @@ import type {
   PickerVolunteer,
   SuggestedVolunteer,
 } from '../../../utils/builder/cycle-builder-candidate.types';
+import { timeLabel } from '../../../utils/builder/cycle-builder-date.utils';
 import {
   draggedAssignment,
   draggedVolunteerId,
@@ -36,6 +37,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export interface MoveAssignmentInput {
   assignmentId: string;
@@ -132,6 +134,10 @@ export function CycleBuilderCell({
   onDismissFailedWrite,
 }: CycleBuilderCellProps) {
   const isTouch = useFormControlSize() === 'touch';
+  const { churchTimezone } = useTimezone();
+  const shiftLabel =
+    shift.label ??
+    `${eventTimeBlockLabel} · ${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const canAdd = assignments.length < peopleNeeded;
   const hasRoleHolder = shift.eligibleVolunteers.some((volunteer) =>
@@ -318,6 +324,7 @@ export function CycleBuilderCell({
             key={assignment.id}
             assignment={assignment}
             shiftId={shift.shiftId}
+            shiftLabel={shiftLabel}
             shiftRequirementId={shiftRequirementId}
             roleId={roleId}
             isPublished={isPublished}

@@ -1210,5 +1210,7 @@
   "builder_header_filled_one": "{filled} de 1 vaga preenchida",
   "builder_ui_move": "Mover",
   "builder_ui_drag_assignment": "Arrastar {name} para outro setor",
-  "builder_ui_moved": "{name} foi movido"
+  "builder_ui_moved": "{name} foi movido",
+  "builder_late_mark_tooltip": "Indisponível após a escala: {shift}",
+  "schedule_late_mark_count": "{count} indisponibilidades após a escala"
 }

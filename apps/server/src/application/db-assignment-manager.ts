@@ -1,4 +1,5 @@
-import { toDate } from '@church/time';
+import { DomainError } from '@church/core';
+import { compareInstants, type Instant, now, toDate } from '@church/time';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
   CreateParticipationAssignmentInput,
@@ -25,6 +26,7 @@ import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 interface CreateParticipationAssignmentTransactionInput {
   input: CreateParticipationAssignmentInput;
   tx: TransactionContext;
+  currentInstant: Instant;
 }
 
 interface DbAssignmentManagerDependencies {
@@ -78,14 +80,38 @@ export class DbAssignmentManager implements IAssignmentManager {
   async createParticipationAssignment(
     input: CreateParticipationAssignmentInput,
   ): Promise<CreateParticipationAssignmentResult> {
+    const currentInstant = now();
     return this.unitOfWork.run((tx) =>
-      this.createParticipationAssignmentInTransaction({ input, tx }),
+      this.createParticipationAssignmentInTransaction({
+        input,
+        tx,
+        currentInstant,
+      }),
     );
   }
 
   async deleteAssignment(input: DeleteAssignmentInput): Promise<void> {
     const { assignmentId, churchId, actorId } = input;
+    const currentInstant = now();
     await this.unitOfWork.run(async (tx) => {
+      const assignment = await this.assignmentRepo.getById({
+        churchId,
+        assignmentId,
+        tx,
+      });
+      if (!assignment.shiftId || !assignment.participationId)
+        throw new Error('Assignment is missing a schedule reference');
+      await this.participationRepository.lockById({
+        churchId,
+        participationId: assignment.participationId,
+        tx,
+      });
+      const shift = await this.shiftRepository.getById({
+        churchId,
+        shiftId: assignment.shiftId,
+        tx,
+      });
+      assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
       await this.auditRepo.create({
         churchId,
         input: {
@@ -102,6 +128,7 @@ export class DbAssignmentManager implements IAssignmentManager {
   async reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment> {
+    const currentInstant = now();
     const nextAssignment = await this.unitOfWork.run(
       async (tx): Promise<Assignment> => {
         const currentAssignment = await this.assignmentRepo.getById({
@@ -122,6 +149,7 @@ export class DbAssignmentManager implements IAssignmentManager {
               actorId: input.actorId,
             },
             tx,
+            currentInstant,
           });
         if (!nextAssignmentResult.assignment.participationId) {
           throw new Error('Assignment is missing a participation reference');
@@ -156,6 +184,7 @@ export class DbAssignmentManager implements IAssignmentManager {
   async moveParticipationAssignment(
     input: MoveParticipationAssignmentInput,
   ): Promise<Assignment> {
+    const currentInstant = now();
     return this.unitOfWork.run(async (tx) => {
       const initial = await this.assignmentRepo.getById({
         churchId: input.churchId,
@@ -174,6 +203,12 @@ export class DbAssignmentManager implements IAssignmentManager {
         assignmentId: input.assignmentId,
         tx,
       });
+      const shift = await this.shiftRepository.getById({
+        churchId: input.churchId,
+        shiftId: initial.shiftId,
+        tx,
+      });
+      assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
       const requirements =
         await this.shiftRepository.listRequirementsByParticipation({
           churchId: input.churchId,
@@ -247,6 +282,7 @@ export class DbAssignmentManager implements IAssignmentManager {
   private async createParticipationAssignmentInTransaction({
     input,
     tx,
+    currentInstant,
   }: CreateParticipationAssignmentTransactionInput): Promise<CreateParticipationAssignmentResult> {
     // Read unlocked only to name the Participation row.
     const { participationId } = await this.shiftRepository.getById({
@@ -266,6 +302,7 @@ export class DbAssignmentManager implements IAssignmentManager {
       shiftId: input.shiftId,
       tx,
     });
+    assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
     const requirement = await this.shiftRepository.getRequirementForShift({
       churchId: input.churchId,
       shiftId: shift.id,
@@ -407,4 +444,25 @@ export class DbAssignmentManager implements IAssignmentManager {
 
 function isActiveAssignmentStatus(status: Assignment['status']): boolean {
   return status === 'draft' || status === 'pending' || status === 'confirmed';
+}
+
+interface ShiftStartGuardInput {
+  startTime: Instant;
+  currentInstant: Instant;
+}
+
+class ShiftStartedError extends DomainError {
+  readonly code = 'SHIFT_STARTED' as const;
+  constructor() {
+    super('Shift has started');
+  }
+}
+
+function assertShiftNotStarted({
+  startTime,
+  currentInstant,
+}: ShiftStartGuardInput): void {
+  if (compareInstants({ left: startTime, right: currentInstant }) <= 0) {
+    throw new ShiftStartedError();
+  }
 }

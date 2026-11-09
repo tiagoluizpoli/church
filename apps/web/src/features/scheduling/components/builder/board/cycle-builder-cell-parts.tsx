@@ -86,6 +86,7 @@ export function AssignmentButton({
   });
   const chip = (
     <AssignmentChip
+      readOnly={isPending || !isEditable}
       volunteerName={assignment.volunteerName ?? assignment.volunteerId}
       volunteerMembership={assignment.membership}
       conflictStatus={isUnavailable ? 'unavailable' : undefined}

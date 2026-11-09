@@ -3,12 +3,14 @@ import { appConfig } from '@church/app-config';
 import {
   assignment,
   assignmentAudit,
+  availabilityCheck,
+  church,
   ministryParticipation,
   outboxMessage,
   shiftRequirement,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
-import { parseInstant } from '@church/time';
+import { parseInstant, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -109,6 +111,9 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.resetAllMocks();
   await resetSchedulingPhase3Db();
+  setTestClock({
+    instant: parseInstant({ value: '2026-09-07T08:55:00.000Z' }),
+  });
 });
 
 interface SeedCrossMinistryOverlapInput {
@@ -1121,3 +1126,124 @@ describe('requirement coverage and published placement HTTP contract', () => {
     ]).toContain(sideRows);
   });
 });
+
+describe('started Shift assignments', () => {
+  it('refuses a new Assignment exactly when the Shift starts', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    setTestClock({
+      instant: parseInstant({ value: '2026-09-07T09:00:00.000Z' }),
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: seed.freeVolunteerId,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'SHIFT_STARTED' });
+  });
+});
+
+for (const timezone of ['America/Sao_Paulo', 'America/New_York'] as const) {
+  for (const state of ['assigning', 'published'] as const) {
+    for (const mutation of ['create', 'move', 'reassign', 'remove'] as const) {
+      for (const [clock, expected] of [
+        [
+          '2026-09-07T08:55:00.000Z',
+          mutation === 'create' ? 201 : mutation === 'remove' ? 204 : 200,
+        ],
+        ['2026-09-07T09:00:00.000Z', 409],
+        ['2026-09-07T10:30:00.000Z', 409],
+      ] as const) {
+        it(`${timezone} ${state}: ${mutation} at ${clock} returns ${expected}`, async () => {
+          const seed = await seedCrossMinistryOverlap();
+          await schedulingTestDb
+            .update(church)
+            .set({ timezone })
+            .where(eq(church.id, seed.churchId));
+          await schedulingTestDb
+            .update(ministryParticipation)
+            .set({ state })
+            .where(eq(ministryParticipation.id, seed.targetParticipationId));
+          const sector = await buildSector({
+            db: schedulingTestDb,
+            churchId: seed.churchId,
+            ministryId: seed.ministryId,
+            name: 'Side door',
+          });
+          const target = await seedRequirement({
+            churchId: seed.churchId,
+            participationId: seed.targetParticipationId,
+            shiftId: seed.targetShiftId,
+            roleId: seed.targetRoleId,
+            sectorId: sector.id,
+            peopleNeeded: 1,
+          });
+          const replacement = await seedVolunteerMembership({
+            churchId: seed.churchId,
+            ministryId: seed.ministryId,
+            name: 'Replacement',
+            email: 'replacement@test.com',
+          });
+          await seedRoleQualification({
+            churchId: seed.churchId,
+            membershipId: replacement.membership.id,
+            roleId: seed.targetRoleId,
+          });
+          const current =
+            mutation === 'create'
+              ? undefined
+              : await seedTargetAssignment({
+                  churchId: seed.churchId,
+                  participationId: seed.targetParticipationId,
+                  shiftId: seed.targetShiftId,
+                  volunteerId: seed.freeVolunteerId,
+                  roleId: seed.targetRoleId,
+                  shiftRequirementId: seed.targetRequirementId,
+                });
+          const checksBefore = await schedulingTestDb
+            .select()
+            .from(availabilityCheck);
+          const outboxBefore = await schedulingTestDb
+            .select()
+            .from(outboxMessage);
+          setTestClock({ instant: parseInstant({ value: clock }) });
+          const response =
+            mutation === 'create'
+              ? await app.inject({
+                  method: 'POST',
+                  url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+                  payload: {
+                    volunteerId: seed.freeVolunteerId,
+                    shiftRequirementId: seed.targetRequirementId,
+                  },
+                })
+              : mutation === 'remove'
+                ? await app.inject({
+                    method: 'DELETE',
+                    url: `/api/v1/assign/assignments/${current?.id}`,
+                  })
+                : await app.inject({
+                    method: 'PATCH',
+                    url: `/api/v1/assign/assignments/${current?.id}/${mutation}`,
+                    payload:
+                      mutation === 'move'
+                        ? { shiftRequirementId: target.id }
+                        : { volunteerId: replacement.volunteer.id },
+                  });
+          expect(response.statusCode).toBe(expected);
+          if (expected === 409)
+            expect(response.json()).toMatchObject({ error: 'SHIFT_STARTED' });
+          expect(
+            await schedulingTestDb.select().from(availabilityCheck),
+          ).toEqual(checksBefore);
+          expect(await schedulingTestDb.select().from(outboxMessage)).toEqual(
+            outboxBefore,
+          );
+        });
+      }
+    }
+  }
+}

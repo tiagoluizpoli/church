@@ -1,7 +1,8 @@
 import { m } from '@church/i18n/messages';
+import { compareInstants, now, parseInstant } from '@church/time';
 import { useDndContext, useDroppable } from '@dnd-kit/core';
 import { PlusIcon, TriangleAlertIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   type CycleBuilderAssignment,
   type CycleBuilderShiftSummary,
@@ -122,7 +123,7 @@ export function CycleBuilderCell({
   selectedVolunteerId,
   selectedVolunteerName,
   isPublished,
-  isEditable = true,
+  isEditable: editable = true,
   isFocused,
   failedWrites,
   onFocus,
@@ -133,6 +134,17 @@ export function CycleBuilderCell({
   onRetryFailedWrite,
   onDismissFailedWrite,
 }: CycleBuilderCellProps) {
+  const [currentInstant, setCurrentInstant] = useState(now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentInstant(now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const isStarted =
+    compareInstants({
+      left: parseInstant({ value: shift.startTime }),
+      right: currentInstant,
+    }) <= 0;
+  const isEditable = editable && !isStarted;
   const isTouch = useFormControlSize() === 'touch';
   const { churchTimezone } = useTimezone();
   const shiftLabel =
@@ -294,6 +306,11 @@ export function CycleBuilderCell({
         </span>
       </div>
 
+      {isStarted ? (
+        <p className="mt-2 text-muted-foreground text-xs">
+          {m.builder_shift_started()}
+        </p>
+      ) : null}
       {!hasRoleHolder ? (
         <p className="mt-2 text-muted-foreground text-xs">
           <span>

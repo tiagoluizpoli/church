@@ -70,6 +70,7 @@ export type MappedDomainCode =
   | 'MINISTRY_MEMBERSHIP_INACTIVE'
   | 'UPCOMING_ASSIGNMENTS'
   | 'HEADCOUNT_BELOW_ASSIGNED'
+  | 'SHIFT_STARTED'
   | 'SHIFT_PUBLISHED'
   | 'SHIFT_HAS_RESPONSES'
   | 'ASK_BLOCKED_FLAGGED_SHIFTS'
@@ -201,6 +202,7 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 409,
     message: m.error_headcount_below_assigned,
   },
+  SHIFT_STARTED: { status: 409, message: m.error_shift_started },
   SHIFT_PUBLISHED: { status: 409, message: m.error_shift_published },
   SHIFT_HAS_RESPONSES: {
     status: 409,

@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
+import { parseInstant, setTestClock } from '@church/time';
 import { DndContext } from '@dnd-kit/core';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -18,7 +19,12 @@ import type {
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
 
-beforeEachLocale(() => overwriteGetLocale(() => 'en'));
+beforeEachLocale(() => {
+  overwriteGetLocale(() => 'en');
+  setTestClock({
+    instant: parseInstant({ value: '2026-08-02T08:55:00.000Z' }),
+  });
+});
 
 const shift: CycleBuilderShiftSummary = {
   shiftId: 'shift-1',
@@ -128,6 +134,22 @@ function renderCell(
 }
 
 describe('CycleBuilderCell', () => {
+  it('renders started shifts without assignment actions or drop targets', () => {
+    setTestClock({
+      instant: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+    });
+    renderCell({ assignments: [assignments[0]], peopleNeeded: 2 });
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.builder_ui_add() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).not.toHaveAttribute('data-drop-target');
+  });
   it('offers only other sectors for the same role when moving an assignment', async () => {
     const user = userEvent.setup();
     const onMove = vi.fn();

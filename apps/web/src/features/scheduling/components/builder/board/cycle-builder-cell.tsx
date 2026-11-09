@@ -69,12 +69,15 @@ interface CycleBuilderCellProps {
  * board explained availability and is reachable by neither keyboard nor screen
  * reader (B-3).
  */
-const FIT_EXPLANATION: Record<ShiftRoleFit['tier'], string | undefined> = {
+const fitExplanations = (): Record<
+  ShiftRoleFit['tier'],
+  string | undefined
+> => ({
   ready: undefined,
   unavailable: undefined,
-  unqualified: 'Not qualified for this role',
+  unqualified: m.builder_ui_unqualified(),
   none: undefined,
-};
+});
 
 interface CycleBuilderCellCommitInput {
   volunteerId: string;
@@ -195,8 +198,10 @@ export function CycleBuilderCell({
   const fitExplanation =
     selectedFit.tier === 'unavailable'
       ? m.builder_unavailable_confirmation_required()
-      : FIT_EXPLANATION[selectedFit.tier];
-  const assignLabel = `Assign ${selectedVolunteerName ?? 'selected volunteer'}`;
+      : fitExplanations()[selectedFit.tier];
+  const assignLabel = m.builder_ui_assign_name({
+    name: selectedVolunteerName ?? m.builder_ui_selected_volunteer(),
+  });
   const assignButton =
     selectedVolunteerId && selectedFit.tier !== 'none' ? (
       <Button
@@ -346,7 +351,7 @@ export function CycleBuilderCell({
                 )}
               >
                 <PlusIcon className="size-3" />
-                Add
+                {m.builder_ui_add()}
               </Button>
             }
             volunteers={pickerVolunteers}

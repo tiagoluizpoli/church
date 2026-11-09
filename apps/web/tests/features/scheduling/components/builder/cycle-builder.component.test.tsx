@@ -1,13 +1,24 @@
 import type { AppConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 const parked = vi.hoisted(() => ({ auditPanel: true }));
 
@@ -232,7 +243,7 @@ describe('CycleBuilder header (B-4)', () => {
     expect(header).toHaveTextContent('01/08 – 31/08/2026');
     // One shift, one required role, nobody on it yet — read straight off the
     // builder data, so it tracks every write the board applies.
-    expect(header).toHaveTextContent('0 of 1 places filled');
+    expect(header).toHaveTextContent('0 of 1 place filled');
     expect(header).toHaveTextContent('1 shift is below target');
     // The plain inventory counters Planning and Prepare also carry.
     expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
@@ -318,7 +329,7 @@ describe('Assignment refusal', () => {
 
     await assignGraceHopper();
 
-    expect(await screen.findByText('Volunteer is booked')).toBeVisible();
+    expect(await screen.findByText('Assignment failed')).toBeVisible();
     expect(
       screen.queryByText('Volunteer already assigned'),
     ).not.toBeInTheDocument();
@@ -354,7 +365,7 @@ describe('CycleBuilder assignment announcements (B-3)', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('cycle-builder-announcer')).toHaveTextContent(
-        'Could not assign Grace Hopper to Morning service: Volunteer is booked',
+        'Could not assign Grace Hopper to Morning service: Assignment failed',
       ),
     );
   });

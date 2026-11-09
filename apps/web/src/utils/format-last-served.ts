@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import {
   calendarDaysBetween,
   isInstant,
@@ -33,7 +34,7 @@ export function formatLastServed({
   timeZone,
 }: FormatLastServedInput): string {
   if (!lastServedAt || !isInstant({ value: lastServedAt })) {
-    return 'never served';
+    return m.builder_last_never();
   }
 
   const servedDay = today({
@@ -47,13 +48,17 @@ export function formatLastServed({
     }),
     0,
   );
-  if (days === 0) return 'last served today';
-  if (days === 1) return 'last served yesterday';
-  if (days < DAYS_PER_WEEK) return `last served ${days} days ago`;
+  if (days === 0) return m.builder_last_today();
+  if (days === 1) return m.builder_last_yesterday();
+  if (days < DAYS_PER_WEEK) return m.builder_last_days({ count: days });
   if (days <= MAX_DAYS_AS_WEEKS) {
     const weeks = Math.floor(days / DAYS_PER_WEEK);
-    return `last served ${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+    return weeks === 1
+      ? m.builder_last_week_one()
+      : m.builder_last_week_many({ count: weeks });
   }
   const months = Math.floor(days / DAYS_PER_MONTH);
-  return `last served ${months} ${months === 1 ? 'month' : 'months'} ago`;
+  return months === 1
+    ? m.builder_last_month_one()
+    : m.builder_last_month_many({ count: months });
 }

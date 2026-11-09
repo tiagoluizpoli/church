@@ -78,7 +78,7 @@ const statusPresentations = (): Record<
     tone: 'text-muted-foreground',
   },
   partial: {
-    label: 'Partial',
+    label: m.builder_ui_partial(),
     tone: 'text-yellow-700 dark:text-yellow-300',
   },
   unavailable: {
@@ -87,7 +87,7 @@ const statusPresentations = (): Record<
   },
   // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
   no_response: {
-    label: 'Needs response',
+    label: m.builder_ui_needs_response(),
     tone: 'text-yellow-700 dark:text-yellow-300',
   },
 });
@@ -185,14 +185,14 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
         // a <button> is, for free.
         render={
           <button type="button" className="truncate text-left">
-            {workloadCount} this cycle
+            {m.builder_ui_workload({ count: workloadCount })}
           </button>
         }
       />
       <TooltipContent>
         {workloadCount === 1
-          ? 'Already serving 1 shift in this cycle'
-          : `Already serving ${workloadCount} shifts in this cycle`}
+          ? m.builder_ui_workload_one()
+          : m.builder_ui_workload_many({ count: workloadCount })}
       </TooltipContent>
     </Tooltip>
   );
@@ -357,13 +357,11 @@ export function VolunteerCard({
                     data-testid="volunteer-ideal-badge"
                     render={<button type="button" />}
                   >
-                    <StarIcon /> Ideal
+                    <StarIcon /> {m.builder_ui_ideal()}
                   </Badge>
                 }
               />
-              <TooltipContent>
-                Qualified, available, and not already serving this cycle
-              </TooltipContent>
+              <TooltipContent>{m.builder_ui_ideal_help()}</TooltipContent>
             </Tooltip>
           ) : null}
           <AssigneeRoleBadge
@@ -435,8 +433,11 @@ export function VolunteerCard({
             variant={assignFit === 'ready' ? 'default' : 'outline'}
             aria-label={
               assignFit === 'ready'
-                ? `Assign ${accessibleName} to this role`
-                : `Assign ${accessibleName} to this role — ${m.builder_unavailable_confirmation_required()}`
+                ? m.builder_ui_assign_role({ name: accessibleName })
+                : m.builder_ui_assign_role_explanation({
+                    name: accessibleName,
+                    explanation: m.builder_unavailable_confirmation_required(),
+                  })
             }
             data-testid="volunteer-pick-me"
             data-assign-fit={assignFit}
@@ -450,7 +451,7 @@ export function VolunteerCard({
             {assignFit === 'ready' ? null : (
               <TriangleAlertIcon className="size-3 shrink-0" />
             )}
-            Pick me
+            {m.builder_ui_pick_me()}
           </Button>
         ) : onSelect ? (
           <Button
@@ -461,12 +462,12 @@ export function VolunteerCard({
             // "Select shift" is one of the two keyboard paths that replace the
             // grip's phantom keyboard drag, so it has to say whose shift it
             // selects — 200 identically-named buttons name nobody (B-3).
-            aria-label={`Select ${accessibleName} to place on a shift`}
+            aria-label={m.builder_ui_select_person({ name: accessibleName })}
             data-testid="volunteer-select-shift"
             className={cornerActionClassName}
             onClick={() => onSelect(volunteer.volunteerId)}
           >
-            {isSelected ? 'Selected' : 'Select shift'}
+            {isSelected ? m.builder_ui_selected() : m.builder_ui_select_shift()}
           </Button>
         ) : null}
       </div>

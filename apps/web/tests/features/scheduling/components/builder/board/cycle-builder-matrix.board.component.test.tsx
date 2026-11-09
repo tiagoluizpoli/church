@@ -1,6 +1,14 @@
+import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { CycleBuilderMatrix } from '@/features/scheduling/components/builder/board/cycle-builder-matrix';
 import type {
   CycleBuilderAssignment,
@@ -9,6 +17,8 @@ import type {
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 const boardData: CycleBuilderData = {
   assignments: [],
@@ -388,6 +398,23 @@ describe('CycleBuilderMatrix', () => {
     expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
       '1 empty',
     );
+    overwriteGetLocale(() => 'pt-BR');
+    try {
+      rerender(renderBoard([secondAssignment]));
+      expect(
+        screen.getByTestId('cycle-shift-footer-shift-1'),
+      ).toHaveTextContent(m.builder_ui_empty_one());
+      rerender(renderBoard([sameShiftAssignment, secondAssignment]));
+      expect(
+        screen.getByTestId('cycle-shift-footer-shift-1'),
+      ).toHaveTextContent(m.builder_ui_full());
+      rerender(renderBoard([]));
+      expect(
+        screen.getByTestId('cycle-shift-footer-shift-1'),
+      ).toHaveTextContent(m.builder_ui_empty_many({ count: 2 }));
+    } finally {
+      overwriteGetLocale(() => 'en');
+    }
   });
 
   it('excludes same-shift assignees and warns when they serve in another shift', async () => {
@@ -663,7 +690,7 @@ describe('CycleBuilderMatrix', () => {
       // Both seeded events fall on a Sunday, so the repeated-weekday quick
       // filter should surface exactly that day.
       expect(screen.getByText('Repeats on')).toBeVisible();
-      expect(screen.getByRole('button', { name: 'Domingos' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sundays' })).toBeVisible();
     });
 
     it('keeps the always-on row to search plus Show, and folds the date filters behind one disclosure (B-4)', async () => {
@@ -763,7 +790,7 @@ describe('CycleBuilderMatrix', () => {
       expect(
         screen.getByRole('button', { name: 'Event dates' }),
       ).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByRole('button', { name: 'Domingos' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Sundays' })).toHaveAttribute(
         'aria-pressed',
         'false',
       );
@@ -950,7 +977,9 @@ describe('CycleBuilderMatrix', () => {
       // event day) via the mount-time effect, and now that DatePickerField
       // disables out-of-range days, that's also the latest value it could
       // hold — leave it as-is and only move "From" up to Aug 11th.
+      overwriteGetLocale(() => 'pt-BR');
       await pickCalendarDate({ user, trigger: rangeStart, date: '2026-08-11' });
+      overwriteGetLocale(() => 'en');
 
       // "Early Retreat" ends Aug 3rd — outside [Aug 11, Aug 12] — so it drops
       // out even though its raw column dates (Aug 1-3) never touch the

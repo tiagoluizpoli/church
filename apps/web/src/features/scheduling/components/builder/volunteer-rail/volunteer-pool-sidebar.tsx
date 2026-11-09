@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import {
   SearchIcon,
   SlidersHorizontalIcon,
@@ -134,7 +135,9 @@ export function VolunteerPoolSidebar({
     >
       <div className="flex items-center gap-2">
         <UsersRoundIcon className="size-4 text-primary" />
-        <h2 className="font-semibold text-sm">Volunteer list</h2>
+        <h2 className="font-semibold text-sm">
+          {m.builder_ui_volunteer_list()}
+        </h2>
         <Badge variant="secondary" className="ml-auto">
           {sortedFilteredVolunteers.length}
         </Badge>
@@ -147,7 +150,7 @@ export function VolunteerPoolSidebar({
                 variant={
                   isGrouped || roleFilter !== 'all' ? 'secondary' : 'ghost'
                 }
-                aria-label="Filter and group volunteers"
+                aria-label={m.builder_ui_filter_group()}
               />
             }
           >
@@ -155,7 +158,9 @@ export function VolunteerPoolSidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuGroup>
-              <DropdownMenuLabel>Group volunteers</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {m.builder_ui_group_volunteers()}
+              </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={groupMode}
                 onValueChange={(value) => {
@@ -164,25 +169,27 @@ export function VolunteerPoolSidebar({
                 }}
               >
                 <DropdownMenuRadioItem value="all">
-                  Show all
+                  {m.builder_ui_show_all()}
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="status">
-                  By status
+                  {m.builder_ui_by_status()}
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="role">
-                  By role
+                  {m.builder_ui_by_role()}
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel>Filter by role</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {m.builder_ui_filter_role()}
+              </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={roleFilter}
                 onValueChange={(value) => setRoleFilter(value)}
               >
                 <DropdownMenuRadioItem value="all">
-                  All roles
+                  {m.builder_ui_all_roles()}
                 </DropdownMenuRadioItem>
                 {roles.map((role) => (
                   <DropdownMenuRadioItem key={role.id} value={role.name}>
@@ -204,7 +211,7 @@ export function VolunteerPoolSidebar({
               variant="ghost"
               onClick={onClearFocus}
             >
-              All volunteers
+              {m.builder_ui_all_volunteers()}
             </Button>
           ) : null}
         </div>
@@ -216,7 +223,7 @@ export function VolunteerPoolSidebar({
         // explicit.
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-muted-foreground text-xs">
-            Filtered by role:
+            {m.builder_ui_filtered_role()}
           </span>
           <Badge
             variant="secondary"
@@ -227,7 +234,7 @@ export function VolunteerPoolSidebar({
             <button
               type="button"
               onClick={() => setRoleFilter('all')}
-              aria-label={`Clear ${roleFilter} filter`}
+              aria-label={m.builder_ui_clear_role({ role: roleFilter })}
               className={cn(
                 'flex items-center justify-center rounded-full hover:bg-foreground/10',
                 isTouch ? 'size-11' : 'p-0.5',
@@ -240,15 +247,12 @@ export function VolunteerPoolSidebar({
       ) : null}
       <p className="text-muted-foreground text-xs">
         {focusPartition
-          ? 'Select or drag a person onto a role. Best fits for the focused role come first.'
-          : 'Select or drag a person onto a role. Ordered by current availability and cycle workload.'}{' '}
+          ? m.builder_ui_pool_focused_help()
+          : m.builder_ui_pool_help()}{' '}
         {/* Dragging is pointer-only (no KeyboardSensor is registered), so the
             keyboard paths have to be stated rather than discovered — the grip
             used to claim them by announcing dnd-kit's default instructions. */}
-        <span className="sr-only">
-          Dragging needs a mouse or touch. To assign with the keyboard, choose a
-          role on the board, then use the Pick me button on a volunteer card.
-        </span>
+        <span className="sr-only">{m.builder_ui_keyboard_help()}</span>
       </p>
 
       <div className="relative">
@@ -256,8 +260,8 @@ export function VolunteerPoolSidebar({
         <Input
           value={nameFilter}
           onChange={(event) => setNameFilter(event.target.value)}
-          placeholder="Search by name…"
-          aria-label="Search volunteers by name"
+          placeholder={m.builder_ui_search_name()}
+          aria-label={m.builder_ui_search_volunteers_name()}
           className={cn('pl-8', isTouch ? 'text-sm' : 'h-8 text-xs')}
         />
       </div>
@@ -279,8 +283,8 @@ export function VolunteerPoolSidebar({
               <>
                 <p className="text-muted-foreground text-xs">
                   {nameFilter.trim()
-                    ? `No volunteers match “${nameFilter.trim()}”.`
-                    : `No volunteers are qualified for ${roleFilter}.`}
+                    ? m.builder_ui_no_match_name({ name: nameFilter.trim() })
+                    : m.builder_ui_no_qualified({ role: roleFilter })}
                 </p>
                 <Button
                   type="button"
@@ -291,12 +295,12 @@ export function VolunteerPoolSidebar({
                     setRoleFilter('all');
                   }}
                 >
-                  Clear filters
+                  {m.builder_ui_clear_filters()}
                 </Button>
               </>
             ) : (
               <p className="text-muted-foreground text-xs">
-                No volunteers are eligible for this cycle yet.
+                {m.builder_ui_pool_empty()}
               </p>
             )}
           </div>

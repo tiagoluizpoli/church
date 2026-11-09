@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,9 +21,25 @@ vi.mock('@church/app-config', async (importOriginal) => {
 
 beforeEach(() => {
   parked.on = true;
+  overwriteGetLocale(() => 'en');
 });
 
 describe('AssignmentChip (T100)', () => {
+  it('localizes conflict and confirmation labels in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    render(
+      <AssignmentChip
+        volunteerName="John Doe"
+        conflictStatus="double_booked"
+        confirmationStatus="confirmed"
+        isPublished
+      />,
+    );
+    expect(screen.getByTestId('conflict-badge')).toHaveTextContent(
+      m.builder_ui_double_booked(),
+    );
+    expect(screen.getByLabelText(m.builder_ui_confirmed())).toBeInTheDocument();
+  });
   it('renders the volunteer full name', () => {
     render(<AssignmentChip volunteerName="John Doe" isPublished={false} />);
     expect(screen.getByText('John Doe')).toBeVisible();

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useDroppable } from '@dnd-kit/core';
 import { LocateFixed, RotateCcwIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -164,18 +165,23 @@ export function FailedAssignmentChip({
                 'h-7 gap-1 px-2 text-xs',
                 isTouch && 'h-11 px-3 text-sm',
               )}
-              aria-label={`Retry assigning ${failedWrite.volunteerName} — ${failedWrite.message}`}
+              aria-label={m.builder_ui_retry_assign({
+                name: failedWrite.volunteerName,
+                message: failedWrite.message,
+              })}
               onClick={onRetry}
               data-testid="cycle-failed-assignment-retry"
             >
               <RotateCcwIcon className="size-3 shrink-0" />
-              Retry
+              {m.builder_ui_retry()}
             </Button>
             <Button
               type="button"
               size={isTouch ? 'icon-touch' : 'icon-sm'}
               variant="ghost"
-              aria-label={`Dismiss the failed assignment for ${failedWrite.volunteerName}`}
+              aria-label={m.builder_ui_dismiss_failed({
+                name: failedWrite.volunteerName,
+              })}
               onClick={onDismiss}
               data-testid="cycle-failed-assignment-dismiss"
             >
@@ -222,8 +228,8 @@ export function RoleFocusButton({
       aria-pressed={isFocused}
       aria-label={
         isFocused
-          ? `Showing volunteers for ${roleLabel} — clear to show the whole list`
-          : `Show volunteers for ${roleLabel} first`
+          ? m.builder_ui_focused_role({ role: roleLabel })
+          : m.builder_ui_focus_role({ role: roleLabel })
       }
       data-testid={`cycle-requirement-focus-${shiftRequirementId}`}
       onClick={onToggleFocus}

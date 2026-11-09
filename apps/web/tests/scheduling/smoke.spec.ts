@@ -44,7 +44,7 @@ test('builder renders the cycle board, volunteer rail, and publish control', asy
   await expect(
     page.getByTestId('cycle-date-staffing-percent').first(),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: /publish/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /publicar/i })).toBeVisible();
   await expect(page.getByText(/continue on desktop/i)).toHaveCount(0);
 
   const board = page.getByTestId('cycle-board-scroll');
@@ -116,7 +116,10 @@ test('a draft assignment persists through publish and can be reassigned', async 
     .click();
   await expect(firstRequirement).toBeVisible();
   await expect(firstRequirement.getByTestId('assignment-chip')).toHaveCount(0);
-  await firstRequirement.getByRole('button', { name: 'Add' }).first().click();
+  await firstRequirement
+    .getByRole('button', { name: 'Adicionar' })
+    .first()
+    .click();
   await page
     .getByTestId('assignment-picker')
     .getByTestId('picker-option')
@@ -129,15 +132,15 @@ test('a draft assignment persists through publish and can be reassigned', async 
     .click();
   await expect(requirement).toBeVisible();
 
-  await requirement.getByRole('button', { name: 'Add' }).first().click();
+  await requirement.getByRole('button', { name: 'Adicionar' }).first().click();
   const picker = page.getByTestId('assignment-picker');
   await expect(picker).toBeVisible();
   await picker.getByTestId('picker-option').first().click();
   await expect(requirement.getByTestId('assignment-chip')).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'Publish cycle' }).first().click();
-  await page.getByRole('button', { name: 'Publish cycle' }).last().click();
-  await expect(page.getByText('Cycle published')).toBeVisible();
+  await page.getByRole('button', { name: 'Publicar ciclo' }).first().click();
+  await page.getByRole('button', { name: 'Publicar ciclo' }).last().click();
+  await expect(page.getByText('Ciclo publicado')).toBeVisible();
 
   await requirement.getByTestId('assignment-chip').click();
   await expect(picker).toBeVisible();

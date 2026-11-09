@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { VolunteerPoolItem } from '../../hooks/use-volunteer-pool';
 
 export type GroupMode = 'all' | 'status' | 'role';
@@ -117,7 +118,7 @@ export function groupVolunteersByRole({
 
   if (withoutQualification.length) {
     groups.push({
-      roleName: 'No qualified roles',
+      roleName: m.builder_logic_no_qualified_roles(),
       volunteers: withoutQualification,
     });
   }

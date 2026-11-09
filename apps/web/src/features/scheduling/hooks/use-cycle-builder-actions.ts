@@ -1,10 +1,9 @@
 import { m } from '@church/i18n/messages';
-import { isAxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import type { CycleBuilderCellSelectInput } from '../components/builder/board/cycle-builder-cell';
 import type { FailedAssignmentWrite } from '../components/builder/board/cycle-builder-cell-parts';
+import { builderErrorMessage } from '../utils/builder/cycle-builder-error.utils';
 import type { CycleBuilderData } from './use-cycle-builder';
 import { isOptimisticAssignmentId } from './use-cycle-builder.optimistic';
 import { randomId } from '@/shared/utils/id';
@@ -73,21 +72,6 @@ interface RemoveAssignmentInput {
 interface ReportInput {
   message: string;
   tone: 'success' | 'error';
-}
-
-interface ErrorMessageInput {
-  error: unknown;
-  fallback: string;
-}
-
-const refusalSchema = z.object({ message: z.string().min(1) });
-
-function errorMessage({ error, fallback }: ErrorMessageInput): string {
-  const refusal = refusalSchema.safeParse(
-    isAxiosError<unknown>(error) ? error.response?.data : undefined,
-  );
-  if (refusal.success) return refusal.data.message;
-  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 export function useCycleBuilderActions({
@@ -162,7 +146,8 @@ export function useCycleBuilderActions({
     mode,
   }: ApplyAssignmentInput): Promise<boolean> => {
     const volunteerName = volunteerNameFor(input);
-    const eventTimeBlockLabel = input.eventTimeBlockLabel ?? 'this shift';
+    const eventTimeBlockLabel =
+      input.eventTimeBlockLabel ?? m.builder_logic_this_shift();
     const shouldCreate = mode === 'create' || (!mode && !input.assignmentId);
     try {
       if (!shouldCreate && input.assignmentId) {
@@ -188,12 +173,15 @@ export function useCycleBuilderActions({
       );
       onAssignmentApplied?.();
       report({
-        message: `Assigned ${volunteerName} to ${eventTimeBlockLabel}`,
+        message: m.builder_logic_assigned({
+          volunteerName,
+          eventTimeBlockLabel,
+        }),
         tone: 'success',
       });
       return true;
     } catch (error) {
-      const message = errorMessage({
+      const message = builderErrorMessage({
         error,
         fallback: m.common_assignment_failed(),
       });
@@ -213,7 +201,11 @@ export function useCycleBuilderActions({
         },
       ]);
       report({
-        message: `Could not assign ${volunteerName} to ${eventTimeBlockLabel}: ${message}`,
+        message: m.builder_logic_assign_failed({
+          volunteerName,
+          eventTimeBlockLabel,
+          message,
+        }),
         tone: 'error',
       });
       return false;
@@ -284,13 +276,19 @@ export function useCycleBuilderActions({
     try {
       await deleteAssignment.mutateAsync(assignmentId);
       report({
-        message: `Removed ${volunteerName} from this role`,
+        message: m.builder_logic_removed({ volunteerName }),
         tone: 'success',
       });
       return true;
     } catch (error) {
       report({
-        message: `Could not remove ${volunteerName}: ${errorMessage({ error, fallback: m.common_removal_failed() })}`,
+        message: m.builder_logic_remove_failed({
+          volunteerName,
+          message: builderErrorMessage({
+            error,
+            fallback: m.common_removal_failed(),
+          }),
+        }),
         tone: 'error',
       });
       return false;

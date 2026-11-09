@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
@@ -80,7 +81,7 @@ export function CycleBuilder({
     ? data.assignments.find((assignment) => assignment.id === pendingRemovalId)
     : undefined;
   const removedVolunteerName =
-    removedAssignment?.volunteerName ?? 'the volunteer';
+    removedAssignment?.volunteerName ?? m.builder_ui_the_volunteer();
 
   // Rendered on the filter toolbar's own row (B-4 header pass) rather than
   // the header — audit/publish sit with the rest of this screen's controls
@@ -94,7 +95,7 @@ export function CycleBuilder({
           variant="outline"
           onClick={() => setAuditOpen(true)}
         >
-          Audit log
+          {m.builder_ui_audit()}
         </Button>
       ) : null}
       <Button
@@ -103,7 +104,7 @@ export function CycleBuilder({
         disabled={isPublishing || actions.isSaving}
         onClick={() => setPublishDialogOpen(true)}
       >
-        {isPublishing ? 'Publishing…' : 'Publish cycle'}
+        {isPublishing ? m.builder_ui_publishing() : m.builder_ui_publish()}
       </Button>
     </>
   );
@@ -163,10 +164,9 @@ export function CycleBuilder({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove this assignment?</DialogTitle>
+            <DialogTitle>{m.builder_ui_remove_title()}</DialogTitle>
             <DialogDescription>
-              This will leave the role unfilled until another volunteer is
-              assigned.
+              {m.builder_ui_remove_description()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -175,7 +175,7 @@ export function CycleBuilder({
               variant="outline"
               onClick={() => setPendingRemovalId(null)}
             >
-              Keep assignment
+              {m.builder_ui_keep()}
             </Button>
             <Button
               type="button"
@@ -191,7 +191,9 @@ export function CycleBuilder({
                   .then(() => setPendingRemovalId(null));
               }}
             >
-              {deleteAssignment.isPending ? 'Removing…' : 'Remove assignment'}
+              {deleteAssignment.isPending
+                ? m.builder_ui_removing()
+                : m.builder_ui_remove()}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -200,11 +202,13 @@ export function CycleBuilder({
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Publish this cycle?</DialogTitle>
+            <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
             <DialogDescription>
               {belowFullCount > 0
-                ? `${belowFullCount} shifts are below their staffing target. You can publish anyway.`
-                : 'All included shifts meet their staffing target.'}
+                ? belowFullCount === 1
+                  ? m.builder_ui_publish_below_one()
+                  : m.builder_ui_publish_below_many({ count: belowFullCount })
+                : m.builder_ui_publish_full()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -213,7 +217,7 @@ export function CycleBuilder({
               variant="outline"
               onClick={() => setPublishDialogOpen(false)}
             >
-              Cancel
+              {m.builder_ui_cancel()}
             </Button>
             <Button
               type="button"
@@ -223,7 +227,9 @@ export function CycleBuilder({
                 onPublish(belowFullCount > 0);
               }}
             >
-              {isPublishing ? 'Publishing…' : 'Publish cycle'}
+              {isPublishing
+                ? m.builder_ui_publishing()
+                : m.builder_ui_publish()}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -235,7 +241,8 @@ export function CycleBuilder({
         volunteerName={actions.unavailable?.volunteerName ?? ''}
         volunteerMembership={actions.unavailable?.volunteerMembership}
         eventTimeBlockLabel={
-          actions.unavailable?.input.eventTimeBlockLabel ?? 'this shift'
+          actions.unavailable?.input.eventTimeBlockLabel ??
+          m.builder_ui_this_shift()
         }
         isPending={actions.isSaving}
         onConfirm={actions.confirmUnavailable}

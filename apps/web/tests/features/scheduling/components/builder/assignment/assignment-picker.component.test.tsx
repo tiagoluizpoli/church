@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -200,6 +201,33 @@ describe('AssignmentPicker', () => {
     expect(blocked).toBeDisabled();
     if (blocked) await user.click(blocked);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('renders the conflict reason in Portuguese and disables the volunteer', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const reason = m.builder_conflict_reason({
+      ministry: 'Louvor',
+      start: '10:00',
+      end: '12:00',
+    });
+    renderWithProviders(
+      <AssignmentPicker
+        open
+        onOpenChange={vi.fn()}
+        trigger={<button type="button">Adicionar</button>}
+        volunteers={[
+          {
+            id: 'b',
+            name: 'Bea',
+            availabilityStatus: 'available',
+            alreadyAssignedCount: 0,
+            conflictReason: reason,
+          },
+        ]}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(reason).closest('button')).toBeDisabled();
   });
 
   it('does not offer an unqualified volunteer', () => {

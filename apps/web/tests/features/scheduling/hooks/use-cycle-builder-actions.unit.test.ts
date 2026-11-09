@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   CycleBuilderAssignment,
   CycleBuilderData,
@@ -111,6 +113,85 @@ function mutations(): CycleBuilderMutations {
 }
 
 describe('useCycleBuilderActions', () => {
+  afterEach(() => overwriteGetLocale(() => 'en'));
+
+  it('announces assignment and removal outcomes in Portuguese', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const writes = mutations();
+    const { result } = renderHook(() =>
+      useCycleBuilderActions({ data: dataWithAssignments([]), ...writes }),
+    );
+    act(() =>
+      result.current.handleSelectAssignment({
+        shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
+        roleId: 'role-1',
+        volunteerId: 'volunteer-a',
+      }),
+    );
+    await waitFor(() =>
+      expect(result.current.announcement).toBe(
+        m.builder_logic_assigned({
+          volunteerName: 'Volunteer A',
+          eventTimeBlockLabel: m.builder_logic_this_shift(),
+        }),
+      ),
+    );
+    await act(async () => {
+      await result.current.removeAssignment({
+        assignmentId: 'assignment-1',
+        volunteerName: 'Volunteer A',
+      });
+    });
+    expect(result.current.announcement).toBe(
+      m.builder_logic_removed({ volunteerName: 'Volunteer A' }),
+    );
+  });
+
+  it('announces localized refusals and fallback failures in Portuguese', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const writes = mutations();
+    vi.mocked(writes.createAssignment.mutateAsync).mockRejectedValue({
+      isAxiosError: true,
+      response: { data: { message: 'Escala recusada' } },
+    });
+    vi.mocked(writes.deleteAssignment.mutateAsync).mockRejectedValue(
+      new Error('Network Error'),
+    );
+    const { result } = renderHook(() =>
+      useCycleBuilderActions({ data: dataWithAssignments([]), ...writes }),
+    );
+    act(() =>
+      result.current.handleSelectAssignment({
+        shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
+        roleId: 'role-1',
+        volunteerId: 'volunteer-a',
+      }),
+    );
+    await waitFor(() =>
+      expect(result.current.announcement).toBe(
+        m.builder_logic_assign_failed({
+          volunteerName: 'Volunteer A',
+          eventTimeBlockLabel: m.builder_logic_this_shift(),
+          message: 'Escala recusada',
+        }),
+      ),
+    );
+    await act(async () => {
+      await result.current.removeAssignment({
+        assignmentId: 'assignment-1',
+        volunteerName: 'Volunteer A',
+      });
+    });
+    expect(result.current.announcement).toBe(
+      m.builder_logic_remove_failed({
+        volunteerName: 'Volunteer A',
+        message: m.common_removal_failed(),
+      }),
+    );
+  });
+
   it('keeps another Sector failure when retrying the same Volunteer and Role in one Shift', async () => {
     const writes = mutations();
     const create = vi.mocked(writes.createAssignment.mutateAsync);

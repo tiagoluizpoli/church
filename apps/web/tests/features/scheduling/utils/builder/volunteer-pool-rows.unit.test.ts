@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { describe, expect, it } from 'vitest';
 import type { VolunteerPoolItem } from '@/features/scheduling/hooks/use-volunteer-pool';
 import {
@@ -65,7 +66,10 @@ describe('flattenPoolRows', () => {
       'card',
     ]);
     const [first] = rows;
-    expect(first).toMatchObject({ label: 'Best for this role', icon: 'focus' });
+    expect(first).toMatchObject({
+      label: m.builder_logic_best_for_role(),
+      icon: 'focus',
+    });
     // Focus ranking survives flattening: the focused person leads.
     expect(cardIds(rows)).toEqual(['bruno', 'ana']);
   });
@@ -81,7 +85,7 @@ describe('flattenPoolRows', () => {
     expect(rows).toContainEqual({
       kind: 'empty',
       key: 'empty:focused',
-      text: 'No candidates for this role',
+      text: m.builder_logic_no_candidates(),
     });
     expect(cardIds(rows)).toEqual(['ana']);
   });
@@ -139,4 +143,20 @@ describe('flattenPoolRows', () => {
 
     expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
   });
+});
+
+it('localizes focused grouping labels in Portuguese', () => {
+  overwriteGetLocale(() => 'pt-BR');
+  try {
+    const rows = flattenPoolRows({
+      groupMode: 'all',
+      focusedVolunteers: [],
+      otherVolunteers: [],
+      unavailableOpen: false,
+    });
+    expect(rows[0]).toMatchObject({ label: m.builder_logic_best_for_role() });
+    expect(rows[1]).toMatchObject({ text: m.builder_logic_no_candidates() });
+  } finally {
+    overwriteGetLocale(() => 'en');
+  }
 });

@@ -8,7 +8,7 @@ interface ShowOnlyLabelInput {
 
 /** The accessible name the cycle builder's date strip gives a day. */
 function showOnlyLabel({ day }: ShowOnlyLabelInput): string {
-  return `Show only ${dateLabel({ day, locale: 'en' })}`;
+  return `Mostrar apenas ${dateLabel({ day, locale: 'pt-BR' })}`;
 }
 
 describe('dayFilterName', () => {

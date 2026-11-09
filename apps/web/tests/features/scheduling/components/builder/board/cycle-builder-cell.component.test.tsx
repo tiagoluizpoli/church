@@ -1,14 +1,23 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { DndContext } from '@dnd-kit/core';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { CycleBuilderCell } from '@/features/scheduling/components/builder/board/cycle-builder-cell';
 import type {
   CycleBuilderAssignment,
   CycleBuilderShiftSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 const shift: CycleBuilderShiftSummary = {
   shiftId: 'shift-1',
@@ -124,12 +133,12 @@ describe('CycleBuilderCell', () => {
       pickerVolunteers: [],
     });
 
-    expect(screen.getByText('Ninguém possui a função Greeter')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Pessoas' })).toHaveAttribute(
+    expect(screen.getByText('No one holds Greeter')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'People' })).toHaveAttribute(
       'href',
       '/people',
     );
-    expect(screen.getByRole('link', { name: 'Convites' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Invitations' })).toHaveAttribute(
       'href',
       '/invitations',
     );
@@ -150,7 +159,7 @@ describe('CycleBuilderCell', () => {
     });
     expect(
       screen.getByTestId('cycle-assignment-assignment-1'),
-    ).toHaveTextContent('Indisponível');
+    ).toHaveTextContent('Unavailable');
   });
 
   it('shows one compact add chip while a role still has capacity', () => {
@@ -259,7 +268,7 @@ describe('CycleBuilderCell', () => {
       screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveClass('outline-2', 'outline-dashed');
     const assign = screen.getByRole('button', {
-      name: 'Assign Grace Hopper — Indisponível para este turno — confirmação necessária',
+      name: 'Assign Grace Hopper — Not available for this shift — confirmation required',
     });
     expect(assign).toHaveClass('text-yellow-700');
     // The explanation used to live in a native `title`, reachable by neither

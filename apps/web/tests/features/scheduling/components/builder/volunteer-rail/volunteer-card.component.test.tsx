@@ -1,10 +1,19 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { VolunteerCard } from '@/features/scheduling/components/builder/volunteer-rail/volunteer-card';
 import type { VolunteerPoolItem } from '@/features/scheduling/hooks/use-volunteer-pool';
 import { renderWithProviders } from '@/tests/setup/render';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 function buildVolunteer(
   overrides: Partial<VolunteerPoolItem>,
@@ -236,7 +245,7 @@ describe('VolunteerCard (T048)', () => {
     const pickMe = screen.getByTestId('volunteer-pick-me');
     expect(pickMe).toHaveAttribute('data-assign-fit', 'unavailable');
     expect(pickMe).toHaveAccessibleName(
-      'Assign Local Leader to this role — Indisponível para este turno — confirmação necessária',
+      'Assign Local Leader to this role — Not available for this shift — confirmation required',
     );
   });
 

@@ -60,13 +60,13 @@ const STATUS_STYLE: Record<AvailabilityStatus, string> = {
 
 const statusLabels = (): Record<AvailabilityStatus, string> => ({
   available: m.builder_state_available(),
-  partial: 'Partial availability',
+  partial: m.builder_ui_partial_availability(),
   unanswered: m.builder_state_unanswered(),
   // biome-ignore lint/style/useNamingConvention: API state uses snake_case
   not_asked: m.builder_state_not_asked(),
   unavailable: m.builder_state_unavailable(),
   // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
-  no_response: 'No response',
+  no_response: m.builder_ui_no_response(),
 });
 
 interface AssignmentPickerProps {
@@ -166,7 +166,7 @@ export function AssignmentPicker({
       >
         {mode === 'substitution' && declinedVolunteerName && (
           <p className="mb-2 font-medium text-xs">
-            Find replacement for {declinedVolunteerName}
+            {m.builder_ui_find_replacement({ name: declinedVolunteerName })}
           </p>
         )}
 
@@ -174,8 +174,8 @@ export function AssignmentPicker({
           ref={searchInputRef}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search volunteers…"
-          aria-label="Search volunteers"
+          placeholder={m.builder_ui_search_volunteers_placeholder()}
+          aria-label={m.builder_ui_search_volunteers()}
           className={isTouch ? 'mb-3 text-sm' : 'mb-3 h-8 text-xs'}
         />
 
@@ -196,14 +196,14 @@ export function AssignmentPicker({
               }}
             >
               <UnlinkIcon className="size-3.5" />
-              Unassign
+              {m.builder_ui_unassign()}
             </Button>
           </div>
         )}
 
         {filtered.length === 0 && !hasSelectableSuggestions && (
           <p className="px-1 py-2 text-muted-foreground text-xs">
-            No volunteers match
+            {m.builder_ui_no_volunteers_match()}
           </p>
         )}
         <div className="max-h-64 space-y-1 overflow-y-auto">
@@ -237,7 +237,7 @@ export function AssignmentPicker({
                 {suggested.length > 0 && onSelectSuggestion ? (
                   <SuggestionList
                     suggestions={suggested}
-                    title={rank === 0 ? 'Recommended' : undefined}
+                    title={rank === 0 ? m.builder_ui_recommended() : undefined}
                     highlightTop={rank === 0}
                     onAssign={(suggestion) => {
                       onSelectSuggestion(suggestion);
@@ -278,16 +278,19 @@ export function AssignmentPicker({
                             v.alreadyServingAssignments.length === 1 ? (
                               <span className="mt-0.5 flex items-center gap-1 text-xs text-yellow-700 dark:text-yellow-300">
                                 <TriangleAlertIcon className="size-3 shrink-0" />
-                                Serving{' '}
-                                {v.alreadyServingAssignments[0]?.summary}
+                                {m.builder_ui_serving({
+                                  summary:
+                                    v.alreadyServingAssignments[0]?.summary ??
+                                    '',
+                                })}
                               </span>
                             ) : (
                               <details className="mt-0.5 text-xs text-yellow-700 dark:text-yellow-300">
                                 <summary className="flex cursor-pointer items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                                   <TriangleAlertIcon className="size-3 shrink-0" />
-                                  Serving in{' '}
-                                  {v.alreadyServingAssignments.length} other
-                                  assignments
+                                  {m.builder_ui_serving_other({
+                                    count: v.alreadyServingAssignments.length,
+                                  })}
                                 </summary>
                                 <ul className="mt-1 flex flex-col gap-1 pl-4 text-muted-foreground">
                                   {v.alreadyServingAssignments.map(
@@ -302,9 +305,11 @@ export function AssignmentPicker({
                             )
                           ) : v.alreadyAssignedCount > 0 ? (
                             <span className="mt-0.5 block text-muted-foreground text-xs">
-                              Already assigned {v.alreadyAssignedCount} time
-                              {v.alreadyAssignedCount === 1 ? '' : 's'} this
-                              cycle
+                              {v.alreadyAssignedCount === 1
+                                ? m.builder_ui_assigned_one()
+                                : m.builder_ui_assigned_many({
+                                    count: v.alreadyAssignedCount,
+                                  })}
                             </span>
                           ) : null}
                         </span>

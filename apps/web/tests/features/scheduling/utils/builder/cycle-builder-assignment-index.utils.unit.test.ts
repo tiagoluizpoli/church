@@ -334,6 +334,16 @@ describe('candidates', () => {
     expect(conflict?.conflictReason).toBe(
       'Already serving in Worship 10:00–12:00',
     );
+    overwriteGetLocale(() => 'pt-BR');
+    const localized = candidates({
+      shift,
+      roleId: 'role-1',
+      index: indexFor(makeData()),
+    }).find((candidate) => candidate.id === 'clashing');
+    expect(localized?.conflictReason).toBe(
+      'Já está servindo em Worship 10:00–12:00',
+    );
+    overwriteGetLocale(() => 'en');
   });
 
   it('carries the cycle workload and the assignments held elsewhere', () => {

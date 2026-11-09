@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { CalendarDays } from 'lucide-react';
 import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
@@ -53,18 +54,16 @@ function BoardEmptyState({ isFiltered, onClearFilters }: BoardEmptyStateProps) {
     >
       <CalendarDays className="size-5 text-muted-foreground" />
       <p className="font-semibold text-foreground text-sm">
-        {isFiltered
-          ? 'No dates match these filters'
-          : 'No dates in this cycle yet'}
+        {isFiltered ? m.builder_ui_no_dates_match() : m.builder_ui_no_dates()}
       </p>
       <p className="max-w-md text-muted-foreground text-xs">
         {isFiltered
-          ? 'Every date is filtered out. Clear the filters to bring the board back.'
-          : 'Add events to this cycle and their dates will appear here as columns.'}
+          ? m.builder_ui_all_dates_filtered()
+          : m.builder_ui_add_events()}
       </p>
       {isFiltered ? (
         <Button type="button" variant="outline" onClick={onClearFilters}>
-          Clear filters
+          {m.builder_ui_clear_filters()}
         </Button>
       ) : null}
     </div>
@@ -167,8 +166,11 @@ export function CycleBuilderBoardGrid({
                       {dateLabel({ day: date, locale: getLocale() })}
                     </p>
                     <p className="mt-0.5 text-muted-foreground text-xs">
-                      {(eventsForDate.get(date) ?? []).length} event
-                      {(eventsForDate.get(date) ?? []).length === 1 ? '' : 's'}
+                      {(eventsForDate.get(date) ?? []).length === 1
+                        ? m.builder_ui_event_one()
+                        : m.builder_ui_event_many({
+                            count: (eventsForDate.get(date) ?? []).length,
+                          })}
                     </p>
                   </header>
                   <div className="space-y-3 p-2">
@@ -200,7 +202,8 @@ export function CycleBuilderBoardGrid({
                               className="space-y-2 rounded-md border border-dashed p-2"
                             >
                               <h3 className="font-medium text-foreground text-xs">
-                                {eventTimeBlock.label ?? 'Time block'}
+                                {eventTimeBlock.label ??
+                                  m.builder_ui_time_block()}
                               </h3>
                               <div className="space-y-2">
                                 {eventTimeBlock.shifts.map((shift) => (
@@ -258,7 +261,7 @@ export function CycleBuilderBoardGrid({
                                                   (role) =>
                                                     role.id ===
                                                     requirement.roleId,
-                                                )?.name ?? 'Role';
+                                                )?.name ?? m.builder_ui_role();
                                               const roleLabel = `${requirement.sectorName} · ${roleName}`;
                                               const requirementFocusKey =
                                                 focusKey({
@@ -387,8 +390,12 @@ export function CycleBuilderBoardGrid({
                                         const empty =
                                           needed - countCoveredPlaces(shift);
                                         return empty === 0
-                                          ? 'Full'
-                                          : `${empty} empty`;
+                                          ? m.builder_ui_full()
+                                          : empty === 1
+                                            ? m.builder_ui_empty_one()
+                                            : m.builder_ui_empty_many({
+                                                count: empty,
+                                              });
                                       })()}
                                     </p>
                                   </section>
@@ -400,7 +407,7 @@ export function CycleBuilderBoardGrid({
                     ))}
                     {(eventsForDate.get(date) ?? []).length === 0 ? (
                       <p className="px-1 py-4 text-muted-foreground text-xs">
-                        No events
+                        {m.builder_ui_no_events()}
                       </p>
                     ) : null}
                   </div>

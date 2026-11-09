@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { nowAsDate } from '@church/time';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -19,19 +20,21 @@ interface FormatSyncedAgoInput {
 
 export function formatSyncedAgo({ syncedAt, now }: FormatSyncedAgoInput) {
   const elapsed = Math.max(now - syncedAt, 0);
-  if (elapsed < SYNCED_AGO_TICK_MS) return 'Synced just now';
+  if (elapsed < SYNCED_AGO_TICK_MS) return m.builder_ui_synced_now();
   if (elapsed < MINUTE_MS) {
     // Floored to the tick so the text never claims a precision the timer does
     // not have.
     const seconds =
       Math.floor(elapsed / SYNCED_AGO_TICK_MS) *
       (SYNCED_AGO_TICK_MS / SECOND_MS);
-    return `Synced ${seconds}s ago`;
+    return m.builder_ui_synced_seconds({ count: seconds });
   }
   if (elapsed < HOUR_MS) {
-    return `Synced ${Math.floor(elapsed / MINUTE_MS)}m ago`;
+    return m.builder_ui_synced_minutes({
+      count: Math.floor(elapsed / MINUTE_MS),
+    });
   }
-  return `Synced ${Math.floor(elapsed / HOUR_MS)}h ago`;
+  return m.builder_ui_synced_hours({ count: Math.floor(elapsed / HOUR_MS) });
 }
 
 interface SyncedAgoLabelProps {
@@ -68,7 +71,9 @@ export function SyncedAgoLabel({
       className={cn('text-muted-foreground text-xs', className)}
       data-testid="cycle-builder-synced-at"
     >
-      {isRefreshing ? 'Refreshing…' : formatSyncedAgo({ syncedAt, now })}
+      {isRefreshing
+        ? m.builder_ui_refreshing()
+        : formatSyncedAgo({ syncedAt, now })}
     </span>
   );
 }

@@ -1,8 +1,17 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { SubstitutionPicker } from '@/features/scheduling/components/builder/assignment/substitution-picker';
 import type { PickerVolunteer } from '@/features/scheduling/utils/builder/cycle-builder-candidate.types';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 function pv(overrides: Partial<PickerVolunteer>): PickerVolunteer {
   return {

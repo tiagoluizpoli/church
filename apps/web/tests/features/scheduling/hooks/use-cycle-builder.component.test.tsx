@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -211,9 +212,17 @@ describe('useCycleBuilder optimistic assignments', () => {
         <StaffingBoard />
       </QueryClientProvider>,
     );
-    expect(await screen.findByText('1 of 2 places filled')).toBeVisible();
+    expect(
+      await screen.findByText(
+        m.builder_header_filled({ filled: 1, needed: 2 }),
+      ),
+    ).toBeVisible();
     screen.getByRole('button', { name: 'Assign Bruno' }).click();
-    expect(await screen.findByText('2 of 2 places filled')).toBeVisible();
+    expect(
+      await screen.findByText(
+        m.builder_header_filled({ filled: 2, needed: 2 }),
+      ),
+    ).toBeVisible();
     pending.resolve({});
   });
 

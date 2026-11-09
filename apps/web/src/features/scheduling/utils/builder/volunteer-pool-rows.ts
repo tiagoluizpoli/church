@@ -160,7 +160,7 @@ export function flattenPoolRows({
   rows.push({
     kind: 'header',
     key: 'header:focused',
-    label: 'Best for this role',
+    label: m.builder_logic_best_for_role(),
     count: focusedVolunteers.length,
     icon: 'focus',
   });
@@ -170,14 +170,14 @@ export function flattenPoolRows({
     rows.push({
       kind: 'empty',
       key: 'empty:focused',
-      text: 'No candidates for this role',
+      text: m.builder_logic_no_candidates(),
     });
   }
   if (otherVolunteers.length) {
     rows.push({
       kind: 'header',
       key: 'header:others',
-      label: 'Everyone else',
+      label: m.builder_logic_everyone_else(),
       count: otherVolunteers.length,
     });
     pushCards({ rows, volunteers: otherVolunteers, section: 'others' });

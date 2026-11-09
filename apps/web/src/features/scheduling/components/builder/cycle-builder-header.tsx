@@ -140,10 +140,14 @@ export function CycleBuilderHeader({
               <p className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="font-medium">
                   {staffing.required > 0
-                    ? m.builder_header_filled({
-                        filled: staffing.coveredPlaces,
-                        needed: staffing.required,
-                      })
+                    ? staffing.required === 1
+                      ? m.builder_header_filled_one({
+                          filled: staffing.coveredPlaces,
+                        })
+                      : m.builder_header_filled({
+                          filled: staffing.coveredPlaces,
+                          needed: staffing.required,
+                        })
                     : m.builder_header_no_staffing()}
                 </span>
                 {/* The number stays on `--foreground`: `--destructive`

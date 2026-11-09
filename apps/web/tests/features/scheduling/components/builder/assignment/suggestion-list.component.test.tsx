@@ -1,9 +1,18 @@
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { SuggestionList } from '@/features/scheduling/components/builder/assignment/suggestion-list';
 import type { SuggestedVolunteer } from '@/features/scheduling/utils/builder/cycle-builder-candidate.types';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 function make(overrides: Partial<SuggestedVolunteer>): SuggestedVolunteer {
   return {

@@ -1,13 +1,22 @@
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { DndContext } from '@dnd-kit/core';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { VolunteerPoolSidebar } from '@/features/scheduling/components/builder/volunteer-rail/volunteer-pool-sidebar';
 import type { PoolVolunteer } from '@/features/scheduling/hooks/use-volunteer-pool';
 import type { AssignableFitTier } from '@/features/scheduling/utils/builder/cycle-builder-fit.utils';
 import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 function renderSidebar(ui: ReactElement) {
   return renderWithProviders(<DndContext>{ui}</DndContext>);

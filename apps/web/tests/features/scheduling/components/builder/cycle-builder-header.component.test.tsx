@@ -204,6 +204,15 @@ it('renders staffing totals and singular and plural gaps in Portuguese', () => {
     expect(screen.getByTestId('cycle-builder-progress')).toHaveTextContent(
       '6 turnos abaixo da meta',
     );
+    rerender(
+      <CycleBuilderHeader
+        staffing={{ ...staffing, coveredPlaces: 1, required: 1 }}
+        counts={counts}
+      />,
+    );
+    expect(screen.getByTestId('cycle-builder-progress')).toHaveTextContent(
+      '1 de 1 vaga preenchida',
+    );
   } finally {
     overwriteGetLocale(() => 'en');
   }

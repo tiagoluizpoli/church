@@ -1,7 +1,8 @@
 import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnavailableConfirmDialog } from '@/features/scheduling/components/builder/assignment/unavailable-confirm-dialog';
 
 const baseProps = {
@@ -14,6 +15,35 @@ const baseProps = {
 };
 
 describe('UnavailableConfirmDialog (T104)', () => {
+  beforeEach(() => overwriteGetLocale(() => 'en'));
+  it('renders the confirmation in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    try {
+      render(
+        <UnavailableConfirmDialog
+          {...baseProps}
+          volunteerMembership={{ ministryAccessLevel: 'leader' }}
+        />,
+      );
+      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
+        m.ministry_invitation_access_leader(),
+      );
+      expect(screen.getByRole('heading')).toHaveTextContent(
+        m.builder_unavailable_confirm_title(),
+      );
+      expect(
+        screen.getByText(
+          m.builder_unavailable_confirm_description({
+            name: 'John Doe',
+            shift: baseProps.eventTimeBlockLabel,
+          }),
+        ),
+      ).toBeVisible();
+    } finally {
+      overwriteGetLocale(() => 'en');
+    }
+  });
+
   it('names the volunteer and shift', () => {
     render(<UnavailableConfirmDialog {...baseProps} />);
     expect(screen.getByText(/John Doe.*9:00 AM – 11:00 AM/)).toBeVisible();

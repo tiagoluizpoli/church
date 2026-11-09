@@ -99,7 +99,8 @@ export function buildShiftAssignmentIndex({
     if (!shiftContext) {
       continue;
     }
-    const roleLabel = roleNameById.get(assignment.roleId) ?? 'Role';
+    const roleLabel =
+      roleNameById.get(assignment.roleId) ?? m.builder_logic_role();
     const context = {
       summary: `${shiftContext.summary} · ${roleLabel}`,
       detail: `${shiftContext.detail} · ${roleLabel}`,

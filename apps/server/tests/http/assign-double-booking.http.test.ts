@@ -64,6 +64,7 @@ const authorityGuard = {
 
 const DOUBLE_BOOKED_REFUSAL = {
   error: 'HARD_CONSTRAINT_VIOLATION',
+  reason: 'DUPLICATE_ASSIGNMENT',
   message: m.error_hard_constraint_violation(),
 };
 
@@ -752,6 +753,8 @@ describe('move Assignment', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toMatchObject({
       error: 'HARD_CONSTRAINT_VIOLATION',
+      message: m.error_hard_constraint_violation(),
+      reason: 'DUPLICATE_ASSIGNMENT',
     });
     const audits = await schedulingTestDb
       .select()

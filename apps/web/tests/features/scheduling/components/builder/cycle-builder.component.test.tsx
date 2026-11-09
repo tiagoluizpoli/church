@@ -175,14 +175,17 @@ afterEach(() => resetClock());
 
 interface RenderBuilderInput {
   createAssignment?: () => Promise<unknown>;
+  moveAssignment?: () => Promise<unknown>;
   data?: CycleBuilderData;
 }
 
 function renderBuilder({
   createAssignment,
+  moveAssignment,
   data = builderData,
 }: RenderBuilderInput = {}) {
   const mutateAsync = vi.fn(createAssignment ?? (() => Promise.resolve({})));
+  const move = vi.fn(moveAssignment ?? (() => Promise.resolve({})));
   renderWithProviders(
     <CycleBuilder
       data={data}
@@ -196,9 +199,10 @@ function renderBuilder({
       createAssignment={{ isPending: false, mutateAsync }}
       deleteAssignment={{ isPending: false, mutateAsync: vi.fn() }}
       reassignAssignment={{ isPending: false, mutateAsync: vi.fn() }}
+      moveAssignment={{ isPending: false, mutateAsync: move }}
     />,
   );
-  return { mutateAsync };
+  return { mutateAsync, move };
 }
 
 async function assignGraceHopper() {
@@ -206,6 +210,38 @@ async function assignGraceHopper() {
   await user.click(screen.getByRole('button', { name: 'Add' }));
   await user.click(await screen.findByTestId('suggestion-option'));
 }
+
+describe('moving assignments', () => {
+  it('keeps a failed move on the destination with a retry', async () => {
+    const data = structuredClone(builderData);
+    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+    shift.requirements.push({
+      id: 'side',
+      roleId: 'role-1',
+      sectorName: 'Side',
+      peopleNeeded: 1,
+    });
+    shift.assignments.push(existingAssignment);
+    data.assignments.push(existingAssignment);
+    const { move } = renderBuilder({
+      data,
+      moveAssignment: () => Promise.reject(new Error('No connection')),
+    });
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('assignment-chip'));
+    await user.click(screen.getByRole('button', { name: 'Move' }));
+    await user.click(screen.getByRole('button', { name: 'Side' }));
+    expect(move).toHaveBeenCalledWith({
+      assignmentId: 'assignment-1',
+      body: { shiftRequirementId: 'side' },
+    });
+    expect(
+      await screen.findByTestId('cycle-failed-assignment-retry'),
+    ).toBeVisible();
+    await user.click(screen.getByTestId('cycle-failed-assignment-retry'));
+    await waitFor(() => expect(move).toHaveBeenCalledTimes(2));
+  });
+});
 
 describe('CycleBuilder rail selection wiring (#217)', () => {
   // apps/web/tests/scheduling/builder-reverse-highlight.spec.ts (moved down):

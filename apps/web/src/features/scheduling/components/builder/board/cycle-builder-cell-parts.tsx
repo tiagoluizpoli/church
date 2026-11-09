@@ -1,10 +1,16 @@
 import { m } from '@church/i18n/messages';
-import { useDroppable } from '@dnd-kit/core';
-import { LocateFixed, RotateCcwIcon, XIcon } from 'lucide-react';
+import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
+import {
+  GripVerticalIcon,
+  LocateFixed,
+  RotateCcwIcon,
+  XIcon,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { CycleBuilderAssignment } from '../../../hooks/use-cycle-builder';
 import { isOptimisticAssignmentId } from '../../../hooks/use-cycle-builder.optimistic';
 import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
+import { draggedAssignment } from '../../../utils/builder/cycle-builder-dnd.utils';
 import { AssignmentChip } from '../assignment/assignment-chip';
 import { AssignmentPicker } from '../assignment/assignment-picker';
 import { Button } from '@/components/ui/button';
@@ -20,6 +26,7 @@ interface AssignmentButtonProps {
   assignment: CycleBuilderAssignment;
   shiftId: string;
   shiftRequirementId: string;
+  roleId: string;
   isPublished: boolean;
   isUnavailable: boolean;
   isEditable?: boolean;
@@ -27,6 +34,8 @@ interface AssignmentButtonProps {
   onSelect: (input: AssignmentButtonSelectInput) => void;
   pickerVolunteers: PickerVolunteer[];
   onFocus: () => void;
+  moveTargets?: import('../assignment/assignment-picker').MoveTarget[];
+  onMove?: (shiftRequirementId: string) => void;
 }
 
 export interface AssignmentButtonSelectInput {
@@ -38,6 +47,7 @@ export function AssignmentButton({
   assignment,
   shiftId,
   shiftRequirementId,
+  roleId,
   isPublished,
   isUnavailable,
   isEditable = true,
@@ -45,17 +55,32 @@ export function AssignmentButton({
   onSelect,
   pickerVolunteers,
   onFocus,
+  moveTargets,
+  onMove,
 }: AssignmentButtonProps) {
   const [open, setOpen] = useState(false);
   // The row only carries a client-invented id while the create is in flight, so
   // this is the sync state, not a domain status.
   const isPending = isOptimisticAssignmentId({ assignmentId: assignment.id });
+  const { active } = useDndContext();
+  const moving = draggedAssignment({ active });
+  const drag = useDraggable({
+    id: `move-assignment:${assignment.id}`,
+    data: {
+      kind: 'assignment',
+      assignmentId: assignment.id,
+      shiftId,
+      shiftRequirementId,
+      roleId,
+    },
+    disabled: isPending || !isEditable,
+  });
   const replacementTarget = useDroppable({
     id: `cycle-assignment:${assignment.id}`,
     data: { shiftId, shiftRequirementId, assignmentId: assignment.id },
     // Replacing a row the server has never seen would send it an id it cannot
     // resolve. The window is short; refusing it is cheaper than a 404 toast.
-    disabled: isPending || !isEditable,
+    disabled: isPending || !isEditable || Boolean(moving),
   });
   const chip = (
     <AssignmentChip
@@ -84,6 +109,20 @@ export function AssignmentButton({
       data-drop-target={isPending || !isEditable ? undefined : 'replace'}
       data-testid={`cycle-assignment-${assignment.id}`}
     >
+      {!isPending && isEditable && moveTargets?.length ? (
+        <button
+          type="button"
+          ref={drag.setNodeRef}
+          {...drag.listeners}
+          {...drag.attributes}
+          aria-label={m.builder_ui_drag_assignment({
+            name: assignment.volunteerName ?? assignment.volunteerId,
+          })}
+          className="cursor-grab touch-none rounded px-1 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <GripVerticalIcon className="size-4" />
+        </button>
+      ) : null}
       {isPending || !isEditable ? (
         chip
       ) : (
@@ -98,6 +137,8 @@ export function AssignmentButton({
           hasAssignment
           onSelect={(volunteerId) => onSelect({ volunteerId })}
           onRemove={onRemove}
+          moveTargets={moveTargets}
+          onMove={onMove}
         />
       )}
     </span>

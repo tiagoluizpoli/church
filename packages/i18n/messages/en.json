@@ -1207,5 +1207,8 @@
   "builder_last_week_many": "last served {count} weeks ago",
   "builder_last_month_one": "last served 1 month ago",
   "builder_last_month_many": "last served {count} months ago",
-  "builder_header_filled_one": "{filled} of 1 place filled"
+  "builder_header_filled_one": "{filled} of 1 place filled",
+  "builder_ui_move": "Move",
+  "builder_ui_drag_assignment": "Drag {name} to another sector",
+  "builder_ui_moved": "Moved {name}"
 }

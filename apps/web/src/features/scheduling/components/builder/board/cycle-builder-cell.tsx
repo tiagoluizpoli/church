@@ -11,7 +11,10 @@ import type {
   PickerVolunteer,
   SuggestedVolunteer,
 } from '../../../utils/builder/cycle-builder-candidate.types';
-import { draggedVolunteerId } from '../../../utils/builder/cycle-builder-dnd.utils';
+import {
+  draggedAssignment,
+  draggedVolunteerId,
+} from '../../../utils/builder/cycle-builder-dnd.utils';
 import {
   isAssignableFit,
   type ShiftRoleFit,
@@ -33,6 +36,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+
+export interface MoveAssignmentInput {
+  assignmentId: string;
+  shiftRequirementId: string;
+}
 
 interface CycleBuilderCellProps {
   shift: CycleBuilderShiftSummary;
@@ -58,6 +66,7 @@ interface CycleBuilderCellProps {
   onToggleFocus: () => void;
   onSelect: (input: CycleBuilderCellSelectInput) => void;
   onRemove: (assignmentId: string) => void;
+  onMove?: (input: MoveAssignmentInput) => void;
   onRetryFailedWrite?: (failedWriteId: string) => void;
   onDismissFailedWrite?: (failedWriteId: string) => void;
 }
@@ -118,6 +127,7 @@ export function CycleBuilderCell({
   onToggleFocus,
   onSelect,
   onRemove,
+  onMove,
   onRetryFailedWrite,
   onDismissFailedWrite,
 }: CycleBuilderCellProps) {
@@ -137,6 +147,13 @@ export function CycleBuilderCell({
   // board's highlight and its drop targets tell the leader different stories.
   const { active } = useDndContext();
   const draggedId = draggedVolunteerId({ active });
+  const movingAssignment = draggedAssignment({ active });
+  const validMoveTarget = Boolean(
+    movingAssignment &&
+      movingAssignment.shiftId === shift.shiftId &&
+      movingAssignment.roleId === roleId &&
+      movingAssignment.shiftRequirementId !== shiftRequirementId,
+  );
   const draggedFit = draggedId
     ? volunteerFitForShiftRole({ shift, roleId, volunteerId: draggedId })
     : null;
@@ -145,7 +162,7 @@ export function CycleBuilderCell({
     data: { shiftId: shift.shiftId, shiftRequirementId },
     disabled:
       !isEditable ||
-      !canAdd ||
+      (movingAssignment ? !validMoveTarget : !canAdd) ||
       Boolean(draggedFit && !isAssignableFit({ fit: draggedFit })),
   });
   // Reverse highlight: selecting someone in the rail paints the board with
@@ -252,7 +269,11 @@ export function CycleBuilderCell({
         roleDropTarget.isOver && 'border-primary bg-primary/5',
       )}
       data-selected-fit={selectedFit.tier}
-      data-drop-target={isEditable && canAdd ? 'append' : undefined}
+      data-drop-target={
+        isEditable && (movingAssignment ? validMoveTarget : canAdd)
+          ? 'append'
+          : undefined
+      }
       data-testid={`cycle-requirement-${shiftRequirementId}`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -298,6 +319,7 @@ export function CycleBuilderCell({
             assignment={assignment}
             shiftId={shift.shiftId}
             shiftRequirementId={shiftRequirementId}
+            roleId={roleId}
             isPublished={isPublished}
             isUnavailable={shift.eligibleVolunteers.some(
               (volunteer) =>
@@ -308,6 +330,17 @@ export function CycleBuilderCell({
             onFocus={onFocus}
             pickerVolunteers={pickerVolunteers}
             onRemove={() => onRemove(assignment.id)}
+            moveTargets={shift.requirements.filter(
+              (requirement) =>
+                requirement.roleId === roleId &&
+                requirement.id !== shiftRequirementId,
+            )}
+            onMove={(targetId) =>
+              onMove?.({
+                assignmentId: assignment.id,
+                shiftRequirementId: targetId,
+              })
+            }
             onSelect={(input: AssignmentButtonSelectInput) =>
               commit({ ...input, assignmentId: assignment.id })
             }

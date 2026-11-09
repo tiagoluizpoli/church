@@ -34,6 +34,7 @@ import {
   weekdayForDayKey,
 } from '../../../utils/builder/cycle-builder-date.utils';
 import {
+  draggedAssignment,
   draggedVolunteerId,
   dropTargetData,
 } from '../../../utils/builder/cycle-builder-dnd.utils';
@@ -56,7 +57,10 @@ import {
 import { VolunteerCard } from '../volunteer-rail/volunteer-card';
 import { VolunteerPoolSidebar } from '../volunteer-rail/volunteer-pool-sidebar';
 import { CycleBuilderBoardGrid } from './cycle-builder-board-grid';
-import type { CycleBuilderCellSelectInput } from './cycle-builder-cell';
+import type {
+  CycleBuilderCellSelectInput,
+  MoveAssignmentInput,
+} from './cycle-builder-cell';
 import type { FailedAssignmentWrite } from './cycle-builder-cell-parts';
 import { CycleBuilderDateFilters } from './cycle-builder-date-filters';
 import { CycleBuilderDateStrip } from './cycle-builder-date-strip';
@@ -75,6 +79,7 @@ interface Props {
   onSelectVolunteer: (id: string | undefined) => void;
   onSelectAssignment: (input: CycleBuilderCellSelectInput) => void;
   onRemoveAssignment: (id: string) => void;
+  onMoveAssignment?: (input: MoveAssignmentInput) => void;
   /** Writes the server rejected, still shown in the cell they were made in. */
   failedWrites?: FailedAssignmentWrite[];
   onRetryFailedWrite?: (failedWriteId: string) => void;
@@ -400,8 +405,30 @@ export function CycleBuilderMatrix(props: Props) {
           onDragCancel={() => setDraggingVolunteerId(null)}
           onDragEnd={(event) => {
             setDraggingVolunteerId(null);
-            const volunteerId = draggedVolunteerId({ active: event.active });
+            const moving = draggedAssignment({ active: event.active });
             const target = dropTargetData({ over: event.over ?? null });
+            if (moving) {
+              if (
+                target?.shiftId === moving.shiftId &&
+                target.shiftRequirementId &&
+                target.shiftRequirementId !== moving.shiftRequirementId
+              ) {
+                const context = findShiftContextById({
+                  data: props.data,
+                  shiftId: moving.shiftId,
+                });
+                const requirement = context?.shift.requirements.find(
+                  (item) => item.id === target.shiftRequirementId,
+                );
+                if (requirement?.roleId === moving.roleId)
+                  props.onMoveAssignment?.({
+                    assignmentId: moving.assignmentId,
+                    shiftRequirementId: target.shiftRequirementId,
+                  });
+              }
+              return;
+            }
+            const volunteerId = draggedVolunteerId({ active: event.active });
             if (volunteerId && target?.shiftId && target.shiftRequirementId) {
               const shiftContext = findShiftContextById({
                 data: props.data,
@@ -478,6 +505,7 @@ export function CycleBuilderMatrix(props: Props) {
               onClearFocus={() => setFocused(null)}
               onSelectAssignment={props.onSelectAssignment}
               onRemoveAssignment={props.onRemoveAssignment}
+              onMoveAssignment={props.onMoveAssignment}
               onRetryFailedWrite={props.onRetryFailedWrite}
               onDismissFailedWrite={props.onDismissFailedWrite}
               filtersAreDefault={filtersAreDefault}

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { DndContext } from '@dnd-kit/core';
 import { screen, waitFor } from '@testing-library/react';
@@ -125,6 +126,70 @@ function renderCell(
 }
 
 describe('CycleBuilderCell', () => {
+  it('offers only other sectors for the same role when moving an assignment', async () => {
+    const user = userEvent.setup();
+    const onMove = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        requirements: [
+          ...shift.requirements,
+          {
+            id: 'target',
+            roleId: 'role-1',
+            sectorName: 'Side',
+            peopleNeeded: 1,
+          },
+          {
+            id: 'wrong-role',
+            roleId: 'role-2',
+            sectorName: 'Other',
+            peopleNeeded: 1,
+          },
+        ],
+      },
+      assignments: assignments.slice(0, 1),
+      onMove,
+    });
+    await user.click(screen.getByTestId('assignment-chip'));
+    await user.click(screen.getByRole('button', { name: 'Move' }));
+    expect(screen.getByRole('button', { name: 'Side' })).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Other' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Side' }));
+    expect(onMove).toHaveBeenCalledWith({
+      assignmentId: 'assignment-1',
+      shiftRequirementId: 'target',
+    });
+  });
+
+  it('shows the move action in Portuguese', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const user = userEvent.setup();
+    renderCell({
+      shift: {
+        ...shift,
+        requirements: [
+          ...shift.requirements,
+          {
+            id: 'side',
+            roleId: 'role-1',
+            sectorName: 'Lateral',
+            peopleNeeded: 1,
+          },
+        ],
+      },
+      assignments: assignments.slice(0, 1),
+      onMove: vi.fn(),
+    });
+    await user.click(screen.getByTestId('assignment-chip'));
+    expect(
+      screen.getByRole('button', { name: m.builder_ui_move() }),
+    ).toBeVisible();
+    expect(m.builder_ui_move()).toBe('Mover');
+  });
+
   it('offers People and Invitations when nobody holds the role', () => {
     renderCell({
       shift: { ...shift, eligibleVolunteers: [] },

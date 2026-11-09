@@ -1,11 +1,24 @@
 import type { AppConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AxiosError, AxiosHeaders } from 'axios';
+import {
+  afterEach,
+  beforeEach,
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 const parked = vi.hoisted(() => ({ auditPanel: true }));
 
@@ -58,6 +71,7 @@ const builderData: CycleBuilderData = {
           shifts: [
             {
               shiftId: 'shift-1',
+              label: 'Morning service',
               eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
@@ -77,8 +91,8 @@ const builderData: CycleBuilderData = {
                 {
                   volunteerId: 'volunteer-1',
                   volunteerName: 'Grace Hopper',
-                  isAvailable: true,
-                  hasConflict: false,
+                  answerState: 'available',
+                  conflict: null,
                   qualifiedRoleIds: ['role-1'],
                   ministryAccessLevel: 'volunteer',
                 },
@@ -229,7 +243,7 @@ describe('CycleBuilder header (B-4)', () => {
     expect(header).toHaveTextContent('01/08 – 31/08/2026');
     // One shift, one required role, nobody on it yet — read straight off the
     // builder data, so it tracks every write the board applies.
-    expect(header).toHaveTextContent('0 of 1 places filled');
+    expect(header).toHaveTextContent('0 of 1 place filled');
     expect(header).toHaveTextContent('1 shift is below target');
     // The plain inventory counters Planning and Prepare also carry.
     expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
@@ -247,6 +261,79 @@ describe('CycleBuilder header (B-4)', () => {
     expect(
       screen.queryByText(/Map the cycle, then place with confidence/),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('Unavailable assignment confirmation', () => {
+  function unavailableData(): CycleBuilderData {
+    const data = structuredClone(builderData);
+    data.events[0].eventTimeBlocks[0].shifts[0].eligibleVolunteers[0].answerState =
+      'unavailable';
+    data.events[0].eventTimeBlocks[0].shifts[0].label = 'Kids shift';
+    return data;
+  }
+
+  it('cancels without writing and confirms the named volunteer and shift once', async () => {
+    const user = userEvent.setup();
+    const { mutateAsync } = renderBuilder({ data: unavailableData() });
+    await assignGraceHopper();
+    expect(screen.getByRole('dialog')).toHaveTextContent('Grace Hopper');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Kids shift');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(mutateAsync).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.builder_unavailable_confirm_cancel(),
+      }),
+    );
+    expect(mutateAsync).not.toHaveBeenCalled();
+    await assignGraceHopper();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.builder_unavailable_confirm_action(),
+      }),
+    );
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+  });
+});
+
+describe('Assignment refusal', () => {
+  it('shows the localized HTTP refusal in the failed write', async () => {
+    const error = new AxiosError(
+      'Request failed with status code 409',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        data: { error: 'HARD_CONSTRAINT_VIOLATION', message: 'Already booked' },
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      },
+    );
+    renderBuilder({ createAssignment: () => Promise.reject(error) });
+    await assignGraceHopper();
+    expect(await screen.findByText('Already booked')).toBeVisible();
+  });
+
+  it('shows the server refusal without offering collision actions', async () => {
+    const data = structuredClone(builderData);
+    data.assignments = [
+      { ...existingAssignment, id: 'elsewhere', shiftId: 'other-shift' },
+    ];
+    renderBuilder({
+      data,
+      createAssignment: () => Promise.reject(new Error('Volunteer is booked')),
+    });
+
+    await assignGraceHopper();
+
+    expect(await screen.findByText('Assignment failed')).toBeVisible();
+    expect(
+      screen.queryByText('Volunteer already assigned'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Assign to both')).not.toBeInTheDocument();
   });
 });
 
@@ -278,7 +365,7 @@ describe('CycleBuilder assignment announcements (B-3)', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('cycle-builder-announcer')).toHaveTextContent(
-        'Could not assign Grace Hopper to Morning service: Volunteer is booked',
+        'Could not assign Grace Hopper to Morning service: Assignment failed',
       ),
     );
   });

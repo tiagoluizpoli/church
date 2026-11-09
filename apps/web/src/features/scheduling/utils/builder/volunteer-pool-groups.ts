@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { VolunteerPoolItem } from '../../hooks/use-volunteer-pool';
 
 export type GroupMode = 'all' | 'status' | 'role';
@@ -24,6 +25,7 @@ export interface FocusPartition {
 export interface StatusVolunteerGroups {
   ready: VolunteerPoolItem[];
   awaiting: VolunteerPoolItem[];
+  notAsked: VolunteerPoolItem[];
   unavailable: VolunteerPoolItem[];
 }
 
@@ -71,11 +73,13 @@ export function groupVolunteersByStatus({
   const groups: StatusVolunteerGroups = {
     ready: [],
     awaiting: [],
+    notAsked: [],
     unavailable: [],
   };
 
   for (const volunteer of volunteers) {
     if (volunteer.status === 'available') groups.ready.push(volunteer);
+    else if (volunteer.status === 'not_asked') groups.notAsked.push(volunteer);
     else if (volunteer.status === 'unavailable') {
       groups.unavailable.push(volunteer);
     } else groups.awaiting.push(volunteer);
@@ -114,7 +118,7 @@ export function groupVolunteersByRole({
 
   if (withoutQualification.length) {
     groups.push({
-      roleName: 'No qualified roles',
+      roleName: m.builder_logic_no_qualified_roles(),
       volunteers: withoutQualification,
     });
   }

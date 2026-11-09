@@ -218,6 +218,13 @@ export class DbAssignmentManager implements IAssignmentManager {
         roleId,
         tx,
       });
+    if (!hasQualification) {
+      throw new HardConstraintError({
+        reason: 'NOT_QUALIFIED',
+        message: 'Volunteer is not qualified for the requested role',
+      });
+    }
+
     const existingShiftAssignments = await this.assignmentRepo.listByShift({
       churchId: input.churchId,
       shiftId: shift.id,
@@ -225,12 +232,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     });
 
     const warnings: CreateParticipationAssignmentResult['warnings'] = [];
-    if (!hasQualification) {
-      warnings.push({
-        type: 'NOT_QUALIFIED',
-        details: 'Volunteer is not qualified for the requested role',
-      });
-    }
 
     if (
       existingShiftAssignments.some(

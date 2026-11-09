@@ -293,6 +293,7 @@ export function buildManagers({
   const participationManager =
     overrides.participationManager ??
     new DbParticipationManager({
+      availabilityCheckRepository,
       participationRepository: ministryParticipationRepository,
       shiftRepository,
       eventRepository: planningEventRepository,

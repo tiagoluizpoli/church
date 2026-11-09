@@ -1,6 +1,14 @@
+import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { CycleBuilderMatrix } from '@/features/scheduling/components/builder/board/cycle-builder-matrix';
 import type {
   CycleBuilderAssignment,
@@ -9,6 +17,8 @@ import type {
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 const boardData: CycleBuilderData = {
   assignments: [],
@@ -58,8 +68,8 @@ const boardData: CycleBuilderData = {
                 {
                   volunteerId: 'volunteer-1',
                   volunteerName: 'Grace Hopper',
-                  isAvailable: true,
-                  hasConflict: false,
+                  answerState: 'available',
+                  conflict: null,
                   qualifiedRoleIds: [],
                   ministryAccessLevel: 'volunteer',
                 },
@@ -101,16 +111,16 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
     {
       volunteerId: 'volunteer-1',
       volunteerName: 'Local Volunteer',
-      isAvailable: true,
-      hasConflict: false,
+      answerState: 'available',
+      conflict: null,
       qualifiedRoleIds: ['role-support', 'role-coordinator'],
       ministryAccessLevel: 'volunteer',
     },
     {
       volunteerId: 'volunteer-2',
       volunteerName: 'Available Volunteer',
-      isAvailable: true,
-      hasConflict: false,
+      answerState: 'available',
+      conflict: null,
       qualifiedRoleIds: ['role-support', 'role-coordinator'],
       ministryAccessLevel: 'volunteer',
     },
@@ -232,8 +242,8 @@ describe('CycleBuilderMatrix', () => {
                     {
                       volunteerId: 'volunteer-2',
                       volunteerName: 'Available Volunteer',
-                      isAvailable: true,
-                      hasConflict: false,
+                      answerState: 'available',
+                      conflict: null,
                       qualifiedRoleIds: ['role-1'],
                       ministryAccessLevel: 'volunteer',
                     },
@@ -262,8 +272,19 @@ describe('CycleBuilderMatrix', () => {
     const kidsCell = screen.getByTestId('cycle-requirement-kids-requirement');
     expect(within(babiesCell).getByText('1/1')).toBeVisible();
     expect(within(kidsCell).getByText('0/2')).toBeVisible();
-    expect(within(babiesCell).getByText('Babies Room · Greeter')).toBeVisible();
-    expect(within(kidsCell).getByText('Kids Room · Greeter')).toBeVisible();
+    expect(
+      within(screen.getByRole('group', { name: 'Babies Room' })).getByText(
+        'Greeter',
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole('group', { name: 'Kids Room' })).getByText(
+        'Greeter',
+      ),
+    ).toBeVisible();
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      '2 empty',
+    );
 
     await user.click(within(kidsCell).getByRole('button', { name: 'Add' }));
     await user.click(await screen.findByText('Available Volunteer'));
@@ -296,6 +317,106 @@ describe('CycleBuilderMatrix', () => {
     expect(within(kidsCell).getByText('0/2')).toBeVisible();
   });
 
+  it('keeps distinct Sectors with the same name separate', () => {
+    const data = boardDataWithShiftAssignments();
+    const event = data.events[0];
+    const block = event.eventTimeBlocks[0];
+    const shift = block.shifts[0];
+    const requirements = shift.requirements.map((requirement, index) => ({
+      ...requirement,
+      sectorId: `sector-${index}`,
+    }));
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={{
+          ...data,
+          events: [
+            {
+              ...event,
+              eventTimeBlocks: [
+                { ...block, shifts: [{ ...shift, requirements }] },
+              ],
+            },
+          ],
+        }}
+        selectedDate="2026-08-02"
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+    const sectors = screen.getAllByRole('group', { name: 'Main' });
+    expect(sectors).toHaveLength(2);
+    const [firstSector, secondSector] = sectors;
+    if (!(firstSector && secondSector)) throw new Error('Sectors are missing');
+    expect(within(firstSector).getByText('Support')).toBeVisible();
+    expect(within(secondSector).getByText('Coordinator')).toBeVisible();
+  });
+
+  it('updates the shift footer when assignments are added and removed', () => {
+    const data = boardDataWithShiftAssignments();
+    const event = data.events[0];
+    const block = event.eventTimeBlocks[0];
+    const shift = block.shifts[0];
+    const renderBoard = (assignments: CycleBuilderAssignment[]) => (
+      <CycleBuilderMatrix
+        data={{
+          ...data,
+          events: [
+            {
+              ...event,
+              eventTimeBlocks: [
+                { ...block, shifts: [{ ...shift, assignments }] },
+              ],
+            },
+          ],
+        }}
+        selectedDate="2026-08-02"
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />
+    );
+    const { rerender } = renderWithProviders(
+      renderBoard([sameShiftAssignment]),
+    );
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      '1 empty',
+    );
+    const secondAssignment = {
+      ...sameShiftAssignment,
+      id: 'assignment-2',
+      shiftRequirementId: 'requirement-role-coordinator',
+    };
+    rerender(renderBoard([sameShiftAssignment, secondAssignment]));
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      'Full',
+    );
+    rerender(renderBoard([secondAssignment]));
+    expect(screen.getByTestId('cycle-shift-footer-shift-1')).toHaveTextContent(
+      '1 empty',
+    );
+    overwriteGetLocale(() => 'pt-BR');
+    try {
+      rerender(renderBoard([secondAssignment]));
+      expect(
+        screen.getByTestId('cycle-shift-footer-shift-1'),
+      ).toHaveTextContent(m.builder_ui_empty_one());
+      rerender(renderBoard([sameShiftAssignment, secondAssignment]));
+      expect(
+        screen.getByTestId('cycle-shift-footer-shift-1'),
+      ).toHaveTextContent(m.builder_ui_full());
+      rerender(renderBoard([]));
+      expect(
+        screen.getByTestId('cycle-shift-footer-shift-1'),
+      ).toHaveTextContent(m.builder_ui_empty_many({ count: 2 }));
+    } finally {
+      overwriteGetLocale(() => 'en');
+    }
+  });
+
   it('excludes same-shift assignees and warns when they serve in another shift', async () => {
     const user = userEvent.setup();
     renderWithProviders(
@@ -308,6 +429,12 @@ describe('CycleBuilderMatrix', () => {
         onRemoveAssignment={vi.fn()}
       />,
     );
+
+    const morningGroup = screen.getAllByRole('group', { name: 'Main' })[0];
+    if (!morningGroup) throw new Error('Morning Sector is missing');
+    expect(within(morningGroup).getByText('Support')).toBeVisible();
+    expect(within(morningGroup).getByText('Coordinator')).toBeVisible();
+    expect(screen.queryByText(/\bteam\b/i)).not.toBeInTheDocument();
 
     const addButtons = screen.getAllByRole('button', { name: 'Add' });
     await user.click(addButtons[0]);
@@ -350,7 +477,9 @@ describe('CycleBuilderMatrix', () => {
       screen.getByTestId('cycle-event-staffing-percent-event-1'),
     ).toHaveClass('text-destructive');
     expect(screen.getByText(/Morning service/)).toBeVisible();
-    expect(screen.getByText('Main · Greeter')).toBeVisible();
+    expect(
+      within(screen.getByRole('group', { name: 'Main' })).getByText('Greeter'),
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Add' })).toHaveLength(1);
     expect(
@@ -561,7 +690,7 @@ describe('CycleBuilderMatrix', () => {
       // Both seeded events fall on a Sunday, so the repeated-weekday quick
       // filter should surface exactly that day.
       expect(screen.getByText('Repeats on')).toBeVisible();
-      expect(screen.getByRole('button', { name: 'Domingos' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sundays' })).toBeVisible();
     });
 
     it('keeps the always-on row to search plus Show, and folds the date filters behind one disclosure (B-4)', async () => {
@@ -661,7 +790,7 @@ describe('CycleBuilderMatrix', () => {
       expect(
         screen.getByRole('button', { name: 'Event dates' }),
       ).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByRole('button', { name: 'Domingos' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Sundays' })).toHaveAttribute(
         'aria-pressed',
         'false',
       );
@@ -848,7 +977,9 @@ describe('CycleBuilderMatrix', () => {
       // event day) via the mount-time effect, and now that DatePickerField
       // disables out-of-range days, that's also the latest value it could
       // hold — leave it as-is and only move "From" up to Aug 11th.
+      overwriteGetLocale(() => 'pt-BR');
       await pickCalendarDate({ user, trigger: rangeStart, date: '2026-08-11' });
+      overwriteGetLocale(() => 'en');
 
       // "Early Retreat" ends Aug 3rd — outside [Aug 11, Aug 12] — so it drops
       // out even though its raw column dates (Aug 1-3) never touch the
@@ -1159,4 +1290,91 @@ describe('CycleBuilderMatrix', () => {
       expect(percentLabel).toHaveClass('text-muted-foreground');
     });
   });
+});
+
+const refreshProps = {
+  selectedDate: null,
+  onSelectedDateChange: vi.fn(),
+  onSelectVolunteer: vi.fn(),
+  onSelectAssignment: vi.fn(),
+  onRemoveAssignment: vi.fn(),
+};
+
+describe('focused candidates after a refreshed payload', () => {
+  it('keeps an empty Role row focused and shows a newly added Role holder', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const data = structuredClone(boardData);
+    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+    shift.eligibleVolunteers = [];
+    shift.eligibleVolunteerCount = 0;
+    const { rerender } = renderWithProviders(
+      <CycleBuilderMatrix data={data} {...refreshProps} />,
+    );
+    const focus = screen.getByTestId(
+      'cycle-requirement-focus-requirement-role-1',
+    );
+    await userEvent.click(focus);
+    const refreshed = structuredClone(data);
+    refreshed.events[0].eventTimeBlocks[0].shifts[0].eligibleVolunteers = [
+      {
+        volunteerId: 'new-holder',
+        volunteerName: 'New Role Holder',
+        answerState: 'available',
+        conflict: null,
+        qualifiedRoleIds: ['role-1'],
+        ministryAccessLevel: 'volunteer',
+      },
+    ];
+    rerender(<CycleBuilderMatrix data={refreshed} {...refreshProps} />);
+    expect(focus).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(screen.getByTestId('volunteer-pool')).getByRole('button', {
+        name: m.builder_ui_assign_role({ name: 'New Role Holder' }),
+      }),
+    ).toBeVisible();
+  });
+});
+
+it('reranks the focused rail when a refreshed answer changes state', async () => {
+  overwriteGetLocale(() => 'pt-BR');
+  const data = structuredClone(boardData);
+  const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+  shift.eligibleVolunteers = [
+    {
+      volunteerId: 'ada',
+      volunteerName: 'Ada',
+      answerState: 'available',
+      conflict: null,
+      qualifiedRoleIds: ['role-1'],
+      ministryAccessLevel: 'volunteer',
+    },
+    {
+      volunteerId: 'grace',
+      volunteerName: 'Grace',
+      answerState: 'unanswered',
+      conflict: null,
+      qualifiedRoleIds: ['role-1'],
+      ministryAccessLevel: 'volunteer',
+    },
+  ];
+  const { rerender } = renderWithProviders(
+    <CycleBuilderMatrix data={data} {...refreshProps} />,
+  );
+  const focus = screen.getByTestId(
+    'cycle-requirement-focus-requirement-role-1',
+  );
+  await userEvent.click(focus);
+  const rail = within(screen.getByTestId('volunteer-pool'));
+  expect(
+    rail.getAllByTestId('volunteer-card').map((card) => card.textContent),
+  ).toEqual([expect.stringContaining('Ada'), expect.stringContaining('Grace')]);
+  const refreshed = structuredClone(data);
+  const refreshedShift = refreshed.events[0].eventTimeBlocks[0].shifts[0];
+  refreshedShift.eligibleVolunteers[0].answerState = 'unavailable';
+  refreshedShift.eligibleVolunteers[1].answerState = 'available';
+  rerender(<CycleBuilderMatrix data={refreshed} {...refreshProps} />);
+  expect(focus).toHaveAttribute('aria-pressed', 'true');
+  expect(
+    rail.getAllByTestId('volunteer-card').map((card) => card.textContent),
+  ).toEqual([expect.stringContaining('Grace'), expect.stringContaining('Ada')]);
 });

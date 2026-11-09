@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useMemo, useState } from 'react';
 import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
 import { AssigneeRoleBadge } from './assignee-role-badge';
@@ -50,7 +51,9 @@ export function SubstitutionPicker({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Find replacement for {formatVolunteerName(declinedVolunteerName)}
+            {m.builder_ui_find_replacement({
+              name: formatVolunteerName(declinedVolunteerName),
+            })}
           </DialogTitle>
         </DialogHeader>
 
@@ -65,20 +68,22 @@ export function SubstitutionPicker({
               fullNameOnExpand={declinedVolunteerName}
             />
           </span>
-          <Badge variant="destructive">Declined — find replacement</Badge>
+          <Badge variant="destructive">
+            {m.builder_ui_declined_replacement()}
+          </Badge>
         </div>
 
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search available volunteers…"
+          placeholder={m.builder_ui_search_available()}
           className="h-7 text-xs"
         />
 
         <ul className="max-h-64 space-y-1 overflow-y-auto">
           {available.length === 0 && (
             <li className="px-1 py-2 text-muted-foreground text-xs">
-              No available volunteers
+              {m.builder_ui_no_available()}
             </li>
           )}
           {available.map((v) => (
@@ -102,7 +107,7 @@ export function SubstitutionPicker({
                   variant="outline"
                   className="border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400"
                 >
-                  available
+                  {m.builder_state_available()}
                 </Badge>
               </button>
             </li>

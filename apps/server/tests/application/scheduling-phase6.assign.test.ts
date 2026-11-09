@@ -21,6 +21,7 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
+import { AvailabilityCheck } from '@/domain/entities/availability-check';
 import { Event } from '@/domain/entities/event';
 import { Ministry } from '@/domain/entities/ministry';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
@@ -164,11 +165,15 @@ function createHarness() {
   assignmentRepository.listByParticipation.mockResolvedValue([assignment]);
   assignmentRepository.create.mockResolvedValue(assignment);
   unavailableShiftRepository.listByVolunteers.mockResolvedValue([]);
+  planningEventRepository.getEvent.mockResolvedValue(event);
+  availabilityCheckRepository.listActiveMemberships.mockResolvedValue([]);
+  availabilityCheckRepository.listByCycle.mockResolvedValue([]);
   planningEventRepository.listCycleEvents.mockResolvedValue([
     { event, eventTimeBlocks: [] },
   ]);
   ministryRepository.getById.mockResolvedValue(ministry);
   const participationManager = new DbParticipationManager({
+    availabilityCheckRepository,
     participationRepository: ministryParticipationRepository,
     shiftRepository,
     eventRepository: planningEventRepository,
@@ -213,6 +218,7 @@ function createHarness() {
   });
   return {
     participationManager,
+    availabilityCheckRepository,
     assignmentManager,
     volunteerManager,
     participation,
@@ -530,12 +536,37 @@ describe('Assignment and publication managers', () => {
       alan,
       ada,
     ]);
+    f.availabilityCheckRepository.listActiveMemberships.mockResolvedValue(
+      [ada, grace, alan].map((person) => ({
+        ministryMembershipId: person.id as string,
+        volunteerId: person.id,
+        userId: person.userId,
+        volunteerName: person.name ?? '',
+      })),
+    );
+    f.availabilityCheckRepository.listByCycle.mockResolvedValue(
+      [ada, grace, alan].map(
+        (person) =>
+          new AvailabilityCheck({
+            props: {
+              churchId,
+              cycleId,
+              ministryMembershipId: person.id as string,
+              state: 'confirmed',
+            },
+          }),
+      ),
+    );
     f.assignmentRepository.listByVolunteers.mockResolvedValue([
       prior('a', 'ada', 'older'),
       prior('g', 'grace', 'newer'),
     ]);
-    f.shiftRepository.getById.mockImplementation(async ({ shiftId: id }) =>
-      id === older.id ? older : id === newer.id ? newer : f.shift,
+    f.shiftRepository.listConflictFacts.mockResolvedValue(
+      [older, newer].map((shift) => ({
+        shift,
+        ministryName: 'Ministry',
+        eventTitle: 'Prior service',
+      })),
     );
     f.unavailableShiftRepository.listByVolunteers.mockResolvedValue([
       new UnavailableShift({
@@ -554,7 +585,10 @@ describe('Assignment and publication managers', () => {
       shiftId,
     });
     expect(
-      eligible.map((item) => [item.volunteerName, item.isAvailable]),
+      eligible.map((item) => [
+        item.volunteerName,
+        item.answerState === 'available',
+      ]),
     ).toEqual([
       ['Ada Lovelace', true],
       ['Grace Hopper', true],
@@ -727,15 +761,21 @@ describe('Assignment and publication managers', () => {
       },
     });
     f.assignmentRepository.listByVolunteers.mockResolvedValue([overlap]);
-    f.shiftRepository.getById.mockImplementation(async ({ shiftId: id }) =>
-      id === overlapShift.id ? overlapShift : f.shift,
-    );
+    f.shiftRepository.listConflictFacts.mockResolvedValue([
+      {
+        shift: overlapShift,
+        ministryName: 'Ministry',
+        eventTitle: 'Other service',
+      },
+    ]);
     const conflicted = await f.participationManager.listEligibleVolunteers({
       churchId,
       shiftId,
     });
     expect(
       conflicted.find((item) => item.volunteerName === 'Amy'),
-    ).toMatchObject({ hasConflict: true });
+    ).toMatchObject({
+      conflict: expect.objectContaining({ assignmentId: expect.any(String) }),
+    });
   });
 });

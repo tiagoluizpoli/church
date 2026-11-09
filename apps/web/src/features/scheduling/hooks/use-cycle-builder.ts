@@ -3,6 +3,7 @@ import { now } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
+import { builderErrorMessage } from '../utils/builder/cycle-builder-error.utils';
 import { countCoveredPlaces } from '../utils/builder/cycle-builder-staffing.utils';
 import {
   addOptimisticAssignment,
@@ -54,14 +55,21 @@ export interface CycleBuilderRequirementSummary {
   id: string;
   roleId: string;
   sectorName: string;
+  sectorId?: string;
   peopleNeeded: number;
 }
 
 export interface CycleBuilderEligibleVolunteerSummary {
   volunteerId: string;
   volunteerName: string;
-  isAvailable: boolean;
-  hasConflict: boolean;
+  answerState: 'available' | 'unanswered' | 'not_asked' | 'unavailable';
+  conflict: {
+    assignmentId: string;
+    ministryName: string;
+    eventTitle: string;
+    startTime: string;
+    endTime: string;
+  } | null;
   lastServedAt?: string;
   qualifiedRoleIds: string[];
   ministryAccessLevel: AssigneeMembership['ministryAccessLevel'];
@@ -358,14 +366,14 @@ export function useCycleBuilder({
       // when the cycle is below its staffing target and the leader has not
       // confirmed, so the two outcomes must read differently.
       if (result.published) {
-        toast.success('Cycle published');
+        toast.success(m.builder_logic_cycle_published());
         return;
       }
-      toast.warning('Cycle not published — confirm to publish below target.');
+      toast.warning(m.builder_logic_cycle_not_published());
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : m.common_publish_failed(),
+        builderErrorMessage({ error, fallback: m.common_publish_failed() }),
       );
     },
   });

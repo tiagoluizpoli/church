@@ -250,12 +250,12 @@ export interface DayFilterNameInput {
 }
 
 /**
- * The cycle builder's "Show only <day>" control for one date column. Its
+ * The cycle builder's "Mostrar apenas <day>" control for one date column. Its
  * label ends in the day as `dd/MM`; the weekday before it is not matched.
  */
 export function dayFilterName({ day }: DayFilterNameInput): RegExp {
   const [, month, dayOfMonth] = day.split('-');
-  return new RegExp(`^Show only .*, ${dayOfMonth}/${month}$`);
+  return new RegExp(`^Mostrar apenas .*, ${dayOfMonth}/${month}$`);
 }
 
 export interface SignInPersonaPageInput {

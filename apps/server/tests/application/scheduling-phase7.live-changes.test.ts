@@ -172,6 +172,7 @@ function createHarness() {
   });
   const notifications = createChurchNotificationsSpy();
   const participationManager = new DbParticipationManager({
+    availabilityCheckRepository: availabilityCheckRepo,
     participationRepository,
     shiftRepository,
     assignmentRepository: assignmentRepo,
@@ -347,13 +348,12 @@ describe('live assignment changes', () => {
     ).rejects.toMatchObject({ reason: 'NOT_IN_MINISTRY' });
     expect(f.assignmentRepo.create).not.toHaveBeenCalled();
   });
-  it('returns a qualification warning', async () => {
+  it('refuses missing qualification', async () => {
     const f = createHarness();
     f.volunteerRepository.hasRoleQualification.mockResolvedValue(false);
-    const result = await f.manager.createParticipationAssignment(createInput);
-    expect(result.warnings).toEqual([
-      expect.objectContaining({ type: 'NOT_QUALIFIED' }),
-    ]);
+    await expect(
+      f.manager.createParticipationAssignment(createInput),
+    ).rejects.toMatchObject({ reason: 'NOT_QUALIFIED' });
   });
   it('returns an unavailability warning', async () => {
     const f = createHarness();

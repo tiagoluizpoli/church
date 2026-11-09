@@ -1,9 +1,12 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach as beforeEachLocale, describe, expect, it } from 'vitest';
 import {
   formatSyncedAgo,
   SyncedAgoLabel,
 } from '@/features/scheduling/components/builder/synced-ago-label';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 const NOW = new Date('2026-07-24T12:00:00.000Z').getTime();
 

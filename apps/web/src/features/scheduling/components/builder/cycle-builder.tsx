@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
@@ -9,9 +10,8 @@ import {
   summarizeCycleCounts,
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
-import { OverrideDialog } from './assignment/override-dialog';
+import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
 import { AuditLogPanel } from './audit-log-panel';
-import type { CycleBuilderCellSelectInput } from './board/cycle-builder-cell';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
 import { CycleBuilderHeader } from './cycle-builder-header';
 import { Button } from '@/components/ui/button';
@@ -40,17 +40,6 @@ interface CycleBuilderProps {
   reassignAssignment: CycleBuilderMutations['reassignAssignment'];
   syncedAt?: number;
   isRefreshing?: boolean;
-}
-
-interface RoleLabelForInput {
-  input: CycleBuilderCellSelectInput;
-  data: CycleBuilderData;
-}
-
-function roleLabelFor({ input, data }: RoleLabelForInput): string | undefined {
-  return (
-    input.roleLabel ?? data.roles.find((role) => role.id === input.roleId)?.name
-  );
 }
 
 export function CycleBuilder({
@@ -92,7 +81,7 @@ export function CycleBuilder({
     ? data.assignments.find((assignment) => assignment.id === pendingRemovalId)
     : undefined;
   const removedVolunteerName =
-    removedAssignment?.volunteerName ?? 'the volunteer';
+    removedAssignment?.volunteerName ?? m.builder_ui_the_volunteer();
 
   // Rendered on the filter toolbar's own row (B-4 header pass) rather than
   // the header — audit/publish sit with the rest of this screen's controls
@@ -106,7 +95,7 @@ export function CycleBuilder({
           variant="outline"
           onClick={() => setAuditOpen(true)}
         >
-          Audit log
+          {m.builder_ui_audit()}
         </Button>
       ) : null}
       <Button
@@ -115,7 +104,7 @@ export function CycleBuilder({
         disabled={isPublishing || actions.isSaving}
         onClick={() => setPublishDialogOpen(true)}
       >
-        {isPublishing ? 'Publishing…' : 'Publish cycle'}
+        {isPublishing ? m.builder_ui_publishing() : m.builder_ui_publish()}
       </Button>
     </>
   );
@@ -175,10 +164,9 @@ export function CycleBuilder({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove this assignment?</DialogTitle>
+            <DialogTitle>{m.builder_ui_remove_title()}</DialogTitle>
             <DialogDescription>
-              This will leave the role unfilled until another volunteer is
-              assigned.
+              {m.builder_ui_remove_description()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -187,7 +175,7 @@ export function CycleBuilder({
               variant="outline"
               onClick={() => setPendingRemovalId(null)}
             >
-              Keep assignment
+              {m.builder_ui_keep()}
             </Button>
             <Button
               type="button"
@@ -203,7 +191,9 @@ export function CycleBuilder({
                   .then(() => setPendingRemovalId(null));
               }}
             >
-              {deleteAssignment.isPending ? 'Removing…' : 'Remove assignment'}
+              {deleteAssignment.isPending
+                ? m.builder_ui_removing()
+                : m.builder_ui_remove()}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -212,11 +202,13 @@ export function CycleBuilder({
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Publish this cycle?</DialogTitle>
+            <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
             <DialogDescription>
               {belowFullCount > 0
-                ? `${belowFullCount} shifts are below their staffing target. You can publish anyway.`
-                : 'All included shifts meet their staffing target.'}
+                ? belowFullCount === 1
+                  ? m.builder_ui_publish_below_one()
+                  : m.builder_ui_publish_below_many({ count: belowFullCount })
+                : m.builder_ui_publish_full()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -225,7 +217,7 @@ export function CycleBuilder({
               variant="outline"
               onClick={() => setPublishDialogOpen(false)}
             >
-              Cancel
+              {m.builder_ui_cancel()}
             </Button>
             <Button
               type="button"
@@ -235,73 +227,25 @@ export function CycleBuilder({
                 onPublish(belowFullCount > 0);
               }}
             >
-              {isPublishing ? 'Publishing…' : 'Publish cycle'}
+              {isPublishing
+                ? m.builder_ui_publishing()
+                : m.builder_ui_publish()}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={actions.collision !== null}
-        onOpenChange={(open) => !open && actions.setCollision(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Volunteer already assigned</DialogTitle>
-            <DialogDescription>
-              {actions.collision?.source.volunteerName ??
-                actions.collision?.source.volunteerId}{' '}
-              is already assigned elsewhere in this cycle.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-md bg-muted/50 p-3 text-sm">
-            Choose how to handle the existing assignment.
-          </div>
-          <DialogFooter className="flex-wrap">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => actions.setCollision(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                void actions.applyCollision({
-                  action: actions.collision?.target ? 'swap' : 'move',
-                })
-              }
-            >
-              {actions.collision?.target ? 'Swap assignments' : 'Move here'}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void actions.applyCollision({ action: 'both' })}
-            >
-              Assign to both
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <OverrideDialog
-        open={actions.override !== null}
-        onOpenChange={(open) => !open && actions.setOverride(null)}
-        conflictType={actions.override?.input.conflictType ?? 'unavailable'}
-        volunteerName={actions.override?.volunteerName ?? ''}
-        volunteerMembership={actions.override?.volunteerMembership}
+      <UnavailableConfirmDialog
+        open={actions.unavailable !== null}
+        onOpenChange={(open) => !open && actions.setUnavailable(null)}
+        volunteerName={actions.unavailable?.volunteerName ?? ''}
+        volunteerMembership={actions.unavailable?.volunteerMembership}
         eventTimeBlockLabel={
-          actions.override?.input.eventTimeBlockLabel ?? 'this shift'
-        }
-        roleLabel={
-          actions.override
-            ? roleLabelFor({ input: actions.override.input, data })
-            : undefined
+          actions.unavailable?.input.eventTimeBlockLabel ??
+          m.builder_ui_this_shift()
         }
         isPending={actions.isSaving}
-        onConfirm={actions.confirmOverride}
+        onConfirm={actions.confirmUnavailable}
       />
     </WorkspacePage>
   );

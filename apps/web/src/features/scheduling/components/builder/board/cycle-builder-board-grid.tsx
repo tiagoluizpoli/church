@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { CalendarDays } from 'lucide-react';
 import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
@@ -12,13 +13,15 @@ import {
   eventTimeBlocksOnDay,
   timeLabel,
 } from '../../../utils/builder/cycle-builder-date.utils';
-import { rankVolunteersForShiftRole } from '../../../utils/builder/cycle-builder-ranking.utils';
 import {
   buildFocusLabel,
   type FocusedShift,
   focusKey,
 } from '../../../utils/builder/cycle-builder-shift-lookup.utils';
-import { staffingStatusClasses } from '../../../utils/builder/cycle-builder-staffing.utils';
+import {
+  countCoveredPlaces,
+  staffingStatusClasses,
+} from '../../../utils/builder/cycle-builder-staffing.utils';
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
@@ -50,18 +53,16 @@ function BoardEmptyState({ isFiltered, onClearFilters }: BoardEmptyStateProps) {
     >
       <CalendarDays className="size-5 text-muted-foreground" />
       <p className="font-semibold text-foreground text-sm">
-        {isFiltered
-          ? 'No dates match these filters'
-          : 'No dates in this cycle yet'}
+        {isFiltered ? m.builder_ui_no_dates_match() : m.builder_ui_no_dates()}
       </p>
       <p className="max-w-md text-muted-foreground text-xs">
         {isFiltered
-          ? 'Every date is filtered out. Clear the filters to bring the board back.'
-          : 'Add events to this cycle and their dates will appear here as columns.'}
+          ? m.builder_ui_all_dates_filtered()
+          : m.builder_ui_add_events()}
       </p>
       {isFiltered ? (
         <Button type="button" variant="outline" onClick={onClearFilters}>
-          Clear filters
+          {m.builder_ui_clear_filters()}
         </Button>
       ) : null}
     </div>
@@ -164,8 +165,11 @@ export function CycleBuilderBoardGrid({
                       {dateLabel({ day: date, locale: getLocale() })}
                     </p>
                     <p className="mt-0.5 text-muted-foreground text-xs">
-                      {(eventsForDate.get(date) ?? []).length} event
-                      {(eventsForDate.get(date) ?? []).length === 1 ? '' : 's'}
+                      {(eventsForDate.get(date) ?? []).length === 1
+                        ? m.builder_ui_event_one()
+                        : m.builder_ui_event_many({
+                            count: (eventsForDate.get(date) ?? []).length,
+                          })}
                     </p>
                   </header>
                   <div className="space-y-3 p-2">
@@ -197,7 +201,8 @@ export function CycleBuilderBoardGrid({
                               className="space-y-2 rounded-md border border-dashed p-2"
                             >
                               <h3 className="font-medium text-foreground text-xs">
-                                {eventTimeBlock.label ?? 'Time block'}
+                                {eventTimeBlock.label ??
+                                  m.builder_ui_time_block()}
                               </h3>
                               <div className="space-y-2">
                                 {eventTimeBlock.shifts.map((shift) => (
@@ -210,119 +215,179 @@ export function CycleBuilderBoardGrid({
                                         `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`}
                                     </p>
                                     <div className="space-y-2">
-                                      {shift.requirements.map((requirement) => {
-                                        const assignments =
-                                          shift.assignments.filter(
-                                            (assignment) =>
-                                              assignment.shiftRequirementId ===
-                                                requirement.id &&
-                                              isActiveAssignment({
-                                                status: assignment.status,
-                                              }),
-                                          );
-                                        const roleName =
-                                          data.roles.find(
-                                            (role) =>
-                                              role.id === requirement.roleId,
-                                          )?.name ?? 'Role';
-                                        const roleLabel = `${requirement.sectorName} · ${roleName}`;
-                                        const requirementFocusKey = focusKey({
-                                          shiftRequirementId: requirement.id,
-                                        });
-                                        const cellDerived =
-                                          cellDerivedByKey.get(
-                                            requirementFocusKey,
-                                          );
-                                        const suggestionGroups =
-                                          cellDerived?.recommendations ?? {
-                                            safe: [],
-                                            needsResponse: [],
-                                          };
-                                        const focusOnRequirement = () =>
-                                          onFocusRequirement({
-                                            key: requirementFocusKey,
-                                            label: buildFocusLabel({
-                                              roleLabel,
-                                              eventTimeBlockLabel:
-                                                eventTimeBlock.label ??
-                                                'this shift',
-                                              eventTitle: event.title,
-                                              dateText: dateLabel({
-                                                day: date,
-                                                locale: getLocale(),
-                                              }),
-                                            }),
-                                            shiftId: shift.shiftId,
-                                            shiftRequirementId: requirement.id,
-                                            roleId: requirement.roleId,
-                                            roleLabel,
-                                            eventTimeBlockLabel:
-                                              eventTimeBlock.label ??
-                                              'this shift',
-                                            ...rankVolunteersForShiftRole({
-                                              shift,
-                                              roleId: requirement.roleId,
-                                              assignments: data.assignments,
-                                            }),
-                                          });
-                                        return (
-                                          <CycleBuilderCell
-                                            key={requirement.id}
-                                            shift={shift}
-                                            shiftRequirementId={requirement.id}
-                                            roleId={requirement.roleId}
-                                            roleLabel={roleLabel}
-                                            peopleNeeded={
-                                              requirement.peopleNeeded
+                                      {[
+                                        ...new Set(
+                                          shift.requirements.map(
+                                            (requirement) =>
+                                              requirement.sectorId ??
+                                              requirement.sectorName,
+                                          ),
+                                        ),
+                                      ].map((sectorKey) => (
+                                        <fieldset
+                                          key={sectorKey}
+                                          className="space-y-2"
+                                        >
+                                          <legend className="px-1 font-semibold text-foreground">
+                                            {
+                                              shift.requirements.find(
+                                                (requirement) =>
+                                                  (requirement.sectorId ??
+                                                    requirement.sectorName) ===
+                                                  sectorKey,
+                                              )?.sectorName
                                             }
-                                            assignments={assignments}
-                                            pickerVolunteers={
-                                              cellDerived?.candidates ?? []
-                                            }
-                                            suggestions={suggestionGroups.safe}
-                                            needsResponseSuggestions={
-                                              suggestionGroups.needsResponse
-                                            }
-                                            eventTimeBlockLabel={
-                                              eventTimeBlock.label ??
-                                              'this shift'
-                                            }
-                                            selectedVolunteerId={
-                                              selectedVolunteerId
-                                            }
-                                            selectedVolunteerName={
-                                              selectedVolunteerName
-                                            }
-                                            isPublished={
-                                              event.state === 'published'
-                                            }
-                                            isFocused={
-                                              focusedKey === requirementFocusKey
-                                            }
-                                            onFocus={focusOnRequirement}
-                                            onToggleFocus={() => {
-                                              if (
-                                                focusedKey ===
-                                                requirementFocusKey
-                                              )
-                                                onClearFocus();
-                                              else focusOnRequirement();
-                                            }}
-                                            onSelect={onSelectAssignment}
-                                            onRemove={onRemoveAssignment}
-                                            failedWrites={failedWritesByCell.get(
-                                              requirementFocusKey,
-                                            )}
-                                            onRetryFailedWrite={
-                                              onRetryFailedWrite
-                                            }
-                                            onDismissFailedWrite={
-                                              onDismissFailedWrite
-                                            }
-                                          />
-                                        );
-                                      })}
+                                          </legend>
+                                          {shift.requirements
+                                            .filter(
+                                              (requirement) =>
+                                                (requirement.sectorId ??
+                                                  requirement.sectorName) ===
+                                                sectorKey,
+                                            )
+                                            .map((requirement) => {
+                                              const assignments =
+                                                shift.assignments.filter(
+                                                  (assignment) =>
+                                                    assignment.shiftRequirementId ===
+                                                      requirement.id &&
+                                                    isActiveAssignment({
+                                                      status: assignment.status,
+                                                    }),
+                                                );
+                                              const roleName =
+                                                data.roles.find(
+                                                  (role) =>
+                                                    role.id ===
+                                                    requirement.roleId,
+                                                )?.name ?? m.builder_ui_role();
+                                              const roleLabel = `${requirement.sectorName} · ${roleName}`;
+                                              const requirementFocusKey =
+                                                focusKey({
+                                                  shiftRequirementId:
+                                                    requirement.id,
+                                                });
+                                              const cellDerived =
+                                                cellDerivedByKey.get(
+                                                  requirementFocusKey,
+                                                );
+                                              const suggestionGroups =
+                                                cellDerived?.recommendations ?? {
+                                                  safe: [],
+                                                  needsResponse: [],
+                                                };
+                                              const focusOnRequirement = () =>
+                                                onFocusRequirement({
+                                                  key: requirementFocusKey,
+                                                  label: buildFocusLabel({
+                                                    roleLabel,
+                                                    eventTimeBlockLabel:
+                                                      shift.label ??
+                                                      `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`,
+                                                    eventTitle: event.title,
+                                                    dateText: dateLabel({
+                                                      day: date,
+                                                      locale: getLocale(),
+                                                    }),
+                                                  }),
+                                                  shiftId: shift.shiftId,
+                                                  shiftRequirementId:
+                                                    requirement.id,
+                                                  roleId: requirement.roleId,
+                                                  roleLabel,
+                                                  eventTimeBlockLabel:
+                                                    shift.label ??
+                                                    `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`,
+                                                });
+                                              return (
+                                                <CycleBuilderCell
+                                                  key={requirement.id}
+                                                  shift={shift}
+                                                  shiftRequirementId={
+                                                    requirement.id
+                                                  }
+                                                  roleId={requirement.roleId}
+                                                  roleLabel={roleLabel}
+                                                  displayRoleLabel={roleName}
+                                                  peopleNeeded={
+                                                    requirement.peopleNeeded
+                                                  }
+                                                  assignments={assignments}
+                                                  pickerVolunteers={
+                                                    cellDerived?.candidates ??
+                                                    []
+                                                  }
+                                                  suggestions={
+                                                    suggestionGroups.safe
+                                                  }
+                                                  needsResponseSuggestions={
+                                                    suggestionGroups.needsResponse
+                                                  }
+                                                  eventTimeBlockLabel={
+                                                    shift.label ??
+                                                    `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`
+                                                  }
+                                                  selectedVolunteerId={
+                                                    selectedVolunteerId
+                                                  }
+                                                  selectedVolunteerName={
+                                                    selectedVolunteerName
+                                                  }
+                                                  isPublished={
+                                                    event.state === 'published'
+                                                  }
+                                                  isFocused={
+                                                    focusedKey ===
+                                                    requirementFocusKey
+                                                  }
+                                                  onFocus={focusOnRequirement}
+                                                  onToggleFocus={() => {
+                                                    if (
+                                                      focusedKey ===
+                                                      requirementFocusKey
+                                                    )
+                                                      onClearFocus();
+                                                    else focusOnRequirement();
+                                                  }}
+                                                  onSelect={onSelectAssignment}
+                                                  onRemove={onRemoveAssignment}
+                                                  failedWrites={failedWritesByCell.get(
+                                                    requirementFocusKey,
+                                                  )}
+                                                  onRetryFailedWrite={
+                                                    onRetryFailedWrite
+                                                  }
+                                                  onDismissFailedWrite={
+                                                    onDismissFailedWrite
+                                                  }
+                                                />
+                                              );
+                                            })}
+                                        </fieldset>
+                                      ))}
                                     </div>
+                                    <p
+                                      className="border-t pt-2 text-right font-medium text-muted-foreground"
+                                      data-testid={`cycle-shift-footer-${shift.shiftId}`}
+                                    >
+                                      {(() => {
+                                        const needed =
+                                          shift.requirements.reduce(
+                                            (total, requirement) =>
+                                              total + requirement.peopleNeeded,
+                                            0,
+                                          );
+                                        const empty =
+                                          needed - countCoveredPlaces(shift);
+                                        return empty === 0
+                                          ? m.builder_ui_full()
+                                          : empty === 1
+                                            ? m.builder_ui_empty_one()
+                                            : m.builder_ui_empty_many({
+                                                count: empty,
+                                              });
+                                      })()}
+                                    </p>
                                   </section>
                                 ))}
                               </div>
@@ -332,7 +397,7 @@ export function CycleBuilderBoardGrid({
                     ))}
                     {(eventsForDate.get(date) ?? []).length === 0 ? (
                       <p className="px-1 py-4 text-muted-foreground text-xs">
-                        No events
+                        {m.builder_ui_no_events()}
                       </p>
                     ) : null}
                   </div>

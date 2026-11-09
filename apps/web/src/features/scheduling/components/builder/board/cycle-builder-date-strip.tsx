@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { CalendarDays, LocateFixed, XIcon } from 'lucide-react';
 import type { useDateStripDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
@@ -46,7 +47,9 @@ export function CycleBuilderDateStrip({
           <button
             type="button"
             data-testid="cycle-date-strip-focus"
-            aria-label={`Showing ${dateLabel({ day: selectedDate, locale: getLocale() })} only — clear to show all dates`}
+            aria-label={m.builder_ui_showing_date({
+              date: dateLabel({ day: selectedDate, locale: getLocale() }),
+            })}
             onClick={() => onSelectedDateChange(null)}
             className={cn(
               DATE_STRIP_FOCUS_CLASS,
@@ -58,7 +61,7 @@ export function CycleBuilderDateStrip({
               {dateLabel({ day: selectedDate, locale: getLocale() })}
             </span>
             <span className="text-muted-foreground text-xs leading-tight">
-              Show all dates
+              {m.builder_ui_show_all_dates()}
             </span>
           </button>
         ) : (
@@ -67,9 +70,11 @@ export function CycleBuilderDateStrip({
             className={DATE_STRIP_FOCUS_CLASS}
           >
             <CalendarDays className="size-4" />
-            <span className="font-semibold text-foreground">All dates</span>
+            <span className="font-semibold text-foreground">
+              {m.builder_ui_all_dates()}
+            </span>
             <span className="text-muted-foreground text-xs leading-tight">
-              Select a day
+              {m.builder_ui_select_day()}
             </span>
           </div>
         )}
@@ -83,7 +88,7 @@ export function CycleBuilderDateStrip({
       >
         <section
           className="flex min-h-10 touch-pan-y gap-2 pb-1"
-          aria-label="Cycle dates"
+          aria-label={m.builder_ui_cycle_dates()}
           onPointerDown={dragScroll.onPointerDown}
           onPointerMove={dragScroll.onPointerMove}
           onPointerUp={dragScroll.onPointerUp}
@@ -119,8 +124,10 @@ export function CycleBuilderDateStrip({
                     aria-pressed={selected}
                     aria-label={
                       selected
-                        ? 'Show all dates'
-                        : `Show only ${dateLabel({ day: date, locale: getLocale() })}`
+                        ? m.builder_ui_show_all_dates()
+                        : m.builder_ui_show_only_date({
+                            date: dateLabel({ day: date, locale: getLocale() }),
+                          })
                     }
                     onClick={() => onSelectedDateChange(selected ? null : date)}
                     className="-my-1 -ml-1 flex items-center gap-1.5 rounded-md p-1 text-foreground hover:bg-muted aria-pressed:text-primary"
@@ -142,8 +149,9 @@ export function CycleBuilderDateStrip({
                   />
                 </span>
                 <span className="mt-2 block text-muted-foreground text-xs">
-                  {dayEvents.length} event
-                  {dayEvents.length === 1 ? '' : 's'}
+                  {dayEvents.length === 1
+                    ? m.builder_ui_event_one()
+                    : m.builder_ui_event_many({ count: dayEvents.length })}
                 </span>
               </div>
             );

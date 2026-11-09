@@ -8,7 +8,7 @@ import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-me
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 
 interface AssignmentWarningResponseInput {
-  type: 'UNAVAILABLE' | 'DOUBLE_BOOKED' | 'FAIRNESS_EXCEEDED' | 'NOT_QUALIFIED';
+  type: 'UNAVAILABLE' | 'DOUBLE_BOOKED';
   details: string;
   conflictingId?: string;
 }
@@ -19,12 +19,7 @@ interface AssignmentResultResponseInput {
 }
 
 const assignmentWarningSchema = z.object({
-  type: z.enum([
-    'UNAVAILABLE',
-    'DOUBLE_BOOKED',
-    'FAIRNESS_EXCEEDED',
-    'NOT_QUALIFIED',
-  ]),
+  type: z.enum(['UNAVAILABLE', 'DOUBLE_BOOKED']),
   details: z.string(),
   conflictingId: z.string().optional(),
 });
@@ -32,8 +27,16 @@ const assignmentWarningSchema = z.object({
 export const eligibleVolunteerResponseSchema = z.object({
   volunteerId: z.string(),
   volunteerName: z.string(),
-  isAvailable: z.boolean(),
-  hasConflict: z.boolean(),
+  answerState: z.enum(['available', 'unanswered', 'not_asked', 'unavailable']),
+  conflict: z
+    .object({
+      assignmentId: z.string(),
+      ministryName: z.string(),
+      eventTitle: z.string(),
+      startTime: instantSchema,
+      endTime: instantSchema,
+    })
+    .nullable(),
   lastServedAt: instantSchema.optional(),
   qualifiedRoleIds: z.array(z.string()),
   ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
@@ -71,8 +74,8 @@ export const assignMapper = {
     return {
       volunteerId: volunteer.volunteerId as string,
       volunteerName: volunteer.volunteerName,
-      isAvailable: volunteer.isAvailable,
-      hasConflict: volunteer.hasConflict,
+      answerState: volunteer.answerState,
+      conflict: volunteer.conflict,
       lastServedAt: volunteer.lastServedAt,
       qualifiedRoleIds: volunteer.qualifiedRoleIds,
       ministryAccessLevel: volunteer.ministryAccessLevel,

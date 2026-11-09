@@ -6,11 +6,7 @@ export type HardConstraintReason =
   | 'DUPLICATE_ASSIGNMENT';
 
 // --- Soft Conflict Issue Types ---
-export type SoftConflictType =
-  | 'UNAVAILABLE'
-  | 'DOUBLE_BOOKED'
-  | 'FAIRNESS_EXCEEDED'
-  | 'NOT_QUALIFIED';
+export type SoftConflictType = 'UNAVAILABLE' | 'DOUBLE_BOOKED';
 
 // --- Conflict Issue (single detected soft conflict) ---
 export type ConflictIssue = {

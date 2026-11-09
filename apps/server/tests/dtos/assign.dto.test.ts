@@ -15,8 +15,8 @@ describe('assignMapper', () => {
       const response = assignMapper.eligibleVolunteerToResponse({
         volunteerId: VolunteerId.from('v1'),
         volunteerName: 'Jane',
-        isAvailable: true,
-        hasConflict: false,
+        answerState: 'available',
+        conflict: null,
         lastServedAt,
         qualifiedRoleIds: ['role-1', 'role-2'],
         ministryAccessLevel: 'leader',
@@ -25,8 +25,8 @@ describe('assignMapper', () => {
       expect(response).toEqual({
         volunteerId: 'v1',
         volunteerName: 'Jane',
-        isAvailable: true,
-        hasConflict: false,
+        answerState: 'available',
+        conflict: null,
         lastServedAt,
         qualifiedRoleIds: ['role-1', 'role-2'],
         ministryAccessLevel: 'leader',
@@ -37,8 +37,8 @@ describe('assignMapper', () => {
       const response = assignMapper.eligibleVolunteerToResponse({
         volunteerId: VolunteerId.from('v2'),
         volunteerName: 'John',
-        isAvailable: false,
-        hasConflict: true,
+        answerState: 'unavailable',
+        conflict: null,
         qualifiedRoleIds: [],
         ministryAccessLevel: 'volunteer',
       });
@@ -56,16 +56,16 @@ describe('assignMapper', () => {
         {
           volunteerId: VolunteerId.from('v1'),
           volunteerName: 'Jane',
-          isAvailable: true,
-          hasConflict: false,
+          answerState: 'available',
+          conflict: null,
           qualifiedRoleIds: ['role-1'],
           ministryAccessLevel: 'leader',
         },
         {
           volunteerId: VolunteerId.from('v2'),
           volunteerName: 'John',
-          isAvailable: false,
-          hasConflict: true,
+          answerState: 'unavailable',
+          conflict: null,
           qualifiedRoleIds: [],
           lastServedAt: parseInstant({ value: '2026-01-05T00:00:00.000Z' }),
           ministryAccessLevel: 'volunteer',
@@ -125,18 +125,10 @@ describe('assignMapper', () => {
             details: 'volunteer already booked',
             conflictingId: 'a2',
           },
-          {
-            type: 'FAIRNESS_EXCEEDED',
-            details: 'volunteer over fairness limit',
-          },
-          {
-            type: 'NOT_QUALIFIED',
-            details: 'volunteer is not qualified for this role',
-          },
         ],
       });
 
-      expect(response.warnings).toHaveLength(4);
+      expect(response.warnings).toHaveLength(2);
       expect(response.warnings[0]?.conflictingId).toBeUndefined();
       expect(response.warnings[1]?.conflictingId).toBe('a2');
       expect(

@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
+import { answerStateRank } from '../utils/builder/cycle-builder-answer-state.utils';
 import { isActiveAssignment } from './use-cycle-builder';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 export type AvailabilityStatus =
   | 'available'
   | 'partial'
+  | 'unanswered'
+  | 'not_asked'
   | 'unavailable'
   | 'no_response';
 
@@ -32,13 +35,13 @@ interface PoolAssignment {
   status: string;
 }
 
-const STATUS_RANK: Record<AvailabilityStatus, number> = {
-  available: 0,
-  partial: 1,
-  unavailable: 2,
-  // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
-  no_response: 3,
-};
+const NO_RESPONSE_RANK = 4;
+
+function availabilityRank(status: AvailabilityStatus): number {
+  if (status === 'partial') return answerStateRank('unanswered');
+  if (status === 'no_response') return NO_RESPONSE_RANK;
+  return answerStateRank(status);
+}
 
 export interface VolunteerPoolItem extends PoolVolunteer {
   workloadCount: number;
@@ -87,7 +90,7 @@ export function useVolunteerPool({
       })
       .map((v) => ({ ...v, workloadCount: workload.get(v.volunteerId) ?? 0 }))
       .sort((a, b) => {
-        const tier = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+        const tier = availabilityRank(a.status) - availabilityRank(b.status);
         if (tier !== 0) return tier;
         if (a.workloadCount !== b.workloadCount)
           return a.workloadCount - b.workloadCount;

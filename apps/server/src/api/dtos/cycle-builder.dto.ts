@@ -49,6 +49,12 @@ export type CycleBuilderEventViewResponse = z.infer<
 >;
 
 export const cycleBuilderResponseSchema = z.object({
+  cycle: z.object({
+    id: z.string(),
+    name: z.string(),
+    startDate: z.string().date(),
+    endDate: z.string().date(),
+  }),
   events: z.array(cycleBuilderEventViewSchema),
   roles: z.array(
     z.object({
@@ -106,6 +112,12 @@ export const publishCycleMapper = {
 export const cycleBuilderMapper = {
   toResponse(view: CycleBuilderView): CycleBuilderResponse {
     return {
+      cycle: {
+        id: view.cycle.id as string,
+        name: view.cycle.name,
+        startDate: view.cycle.startDate,
+        endDate: view.cycle.endDate,
+      },
       events: view.events.map((eventView) => ({
         participation: participationMapper.toResponse(eventView.participation),
         event: eventMapper.toResponse(eventView.event),

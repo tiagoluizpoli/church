@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useDraggable } from '@dnd-kit/core';
 import { ClockIcon, StarIcon, TriangleAlertIcon } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
@@ -59,19 +60,37 @@ interface StatusPresentation {
  * plain text rather than a `Badge` — it sits flush on the card's top padding,
  * and a badge's own box would break that corner.
  */
-const STATUS_PRESENTATION: Record<AvailabilityStatus, StatusPresentation> = {
-  available: { label: 'Available', tone: 'text-green-700 dark:text-green-400' },
-  partial: {
-    label: 'Partial',
+const statusPresentations = (): Record<
+  AvailabilityStatus,
+  StatusPresentation
+> => ({
+  available: {
+    label: m.builder_state_available(),
+    tone: 'text-green-700 dark:text-green-400',
+  },
+  unanswered: {
+    label: m.builder_state_unanswered(),
     tone: 'text-yellow-700 dark:text-yellow-300',
   },
-  unavailable: { label: 'Unavailable', tone: 'text-destructive' },
+  // biome-ignore lint/style/useNamingConvention: API state uses snake_case
+  not_asked: {
+    label: m.builder_state_not_asked(),
+    tone: 'text-muted-foreground',
+  },
+  partial: {
+    label: m.builder_ui_partial(),
+    tone: 'text-yellow-700 dark:text-yellow-300',
+  },
+  unavailable: {
+    label: m.builder_state_unavailable(),
+    tone: 'text-destructive',
+  },
   // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
   no_response: {
-    label: 'Needs response',
+    label: m.builder_ui_needs_response(),
     tone: 'text-yellow-700 dark:text-yellow-300',
   },
-};
+});
 
 interface UseIsTruncatedResult {
   /** Attach to the element whose text may clip. */
@@ -166,14 +185,14 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
         // a <button> is, for free.
         render={
           <button type="button" className="truncate text-left">
-            {workloadCount} this cycle
+            {m.builder_ui_workload({ count: workloadCount })}
           </button>
         }
       />
       <TooltipContent>
         {workloadCount === 1
-          ? 'Already serving 1 shift in this cycle'
-          : `Already serving ${workloadCount} shifts in this cycle`}
+          ? m.builder_ui_workload_one()
+          : m.builder_ui_workload_many({ count: workloadCount })}
       </TooltipContent>
     </Tooltip>
   );
@@ -183,12 +202,6 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
  * What a non-`ready` pick will be asked to justify. Spoken on the button's
  * accessible name, since the icon alone says only "something is off".
  */
-const ASSIGN_FIT_WARNING: Record<AssignableFitTier, string> = {
-  ready: '',
-  override: 'not available for this shift, needs an override',
-  unqualified: 'not qualified for this role, needs an override',
-};
-
 interface VolunteerCardProps {
   volunteer: VolunteerPoolItem;
   dragId?: string;
@@ -201,8 +214,7 @@ interface VolunteerCardProps {
    * it, to the tier that pick would land in. The card's action swaps from
    * "Select shift" to "Pick me": focus-then-pick is the builder's primary assign
    * path (B-2), so it is the filled primary button here while "Select shift"
-   * stays quiet. `override` and `unqualified` render it as a warning instead —
-   * a pick that will demand a reason must not look like a free one.
+   * stays quiet. Unavailable candidates show a warning before confirmation.
    */
   assignFit?: AssignableFitTier;
   onAssignToFocused?: (volunteerId: string) => void;
@@ -233,7 +245,7 @@ export function VolunteerCard({
         workloadCount: volunteer.workloadCount,
         conflictReason: volunteer.conflictReason,
       },
-      disabled: isOverlay,
+      disabled: isOverlay || Boolean(volunteer.conflictReason),
     });
 
   const roleLabel = formatAssigneeRoleLabel({
@@ -246,7 +258,7 @@ export function VolunteerCard({
   const accessibleName = roleLabel
     ? `${volunteer.volunteerName}, ${roleLabel}`
     : volunteer.volunteerName;
-  const status = STATUS_PRESENTATION[volunteer.status];
+  const status = statusPresentations()[volunteer.status];
   const statusLine = (
     <span className={cn('shrink-0 text-xs', status.tone)}>{status.label}</span>
   );
@@ -279,7 +291,7 @@ export function VolunteerCard({
         // three text rows below what the approved layout uses.
         'flex items-stretch gap-3 rounded-lg border bg-card p-3',
         isSelected && 'border-primary bg-primary/5 ring-1 ring-primary',
-        isDragging && 'opacity-50',
+        (isDragging || volunteer.conflictReason) && 'opacity-50',
         isOverlay && 'shadow-lg',
       )}
       data-testid="volunteer-card"
@@ -345,13 +357,11 @@ export function VolunteerCard({
                     data-testid="volunteer-ideal-badge"
                     render={<button type="button" />}
                   >
-                    <StarIcon /> Ideal
+                    <StarIcon /> {m.builder_ui_ideal()}
                   </Badge>
                 }
               />
-              <TooltipContent>
-                Qualified, available, and not already serving this cycle
-              </TooltipContent>
+              <TooltipContent>{m.builder_ui_ideal_help()}</TooltipContent>
             </Tooltip>
           ) : null}
           <AssigneeRoleBadge
@@ -360,6 +370,11 @@ export function VolunteerCard({
           />
         </div>
 
+        {volunteer.conflictReason ? (
+          <p className="text-muted-foreground text-xs">
+            {volunteer.conflictReason}
+          </p>
+        ) : null}
         {volunteer.qualifiedRoleNames?.length ? (
           <RolesLine roleNames={volunteer.qualifiedRoleNames} />
         ) : null}
@@ -406,7 +421,7 @@ export function VolunteerCard({
         ) : (
           statusLine
         )}
-        {assignFit && onAssignToFocused ? (
+        {volunteer.conflictReason ? null : assignFit && onAssignToFocused ? (
           // While a shift is focused the select affordance is redundant — the
           // rail is already scoped to one place — so the same corner commits
           // the pick instead. Conflict capture happens downstream, identical
@@ -418,27 +433,25 @@ export function VolunteerCard({
             variant={assignFit === 'ready' ? 'default' : 'outline'}
             aria-label={
               assignFit === 'ready'
-                ? `Assign ${accessibleName} to this role`
-                : `Assign ${accessibleName} to this role — ${ASSIGN_FIT_WARNING[assignFit]}`
+                ? m.builder_ui_assign_role({ name: accessibleName })
+                : m.builder_ui_assign_role_explanation({
+                    name: accessibleName,
+                    explanation: m.builder_unavailable_confirmation_required(),
+                  })
             }
             data-testid="volunteer-pick-me"
             data-assign-fit={assignFit}
             className={cn(
               cornerActionClassName,
-              // Dashed = needs an availability override, dotted = needs a
-              // qualification override — same amber, different border style,
-              // so the two risk types read apart without hovering (B-9).
-              assignFit === 'override' &&
+              assignFit === 'unavailable' &&
                 'border-yellow-600/50 border-dashed text-yellow-700 dark:text-yellow-300',
-              assignFit === 'unqualified' &&
-                'border-yellow-600/50 border-dotted text-yellow-700 dark:text-yellow-300',
             )}
             onClick={() => onAssignToFocused(volunteer.volunteerId)}
           >
             {assignFit === 'ready' ? null : (
               <TriangleAlertIcon className="size-3 shrink-0" />
             )}
-            Pick me
+            {m.builder_ui_pick_me()}
           </Button>
         ) : onSelect ? (
           <Button
@@ -449,12 +462,12 @@ export function VolunteerCard({
             // "Select shift" is one of the two keyboard paths that replace the
             // grip's phantom keyboard drag, so it has to say whose shift it
             // selects — 200 identically-named buttons name nobody (B-3).
-            aria-label={`Select ${accessibleName} to place on a shift`}
+            aria-label={m.builder_ui_select_person({ name: accessibleName })}
             data-testid="volunteer-select-shift"
             className={cornerActionClassName}
             onClick={() => onSelect(volunteer.volunteerId)}
           >
-            {isSelected ? 'Selected' : 'Select shift'}
+            {isSelected ? m.builder_ui_selected() : m.builder_ui_select_shift()}
           </Button>
         ) : null}
       </div>

@@ -26,12 +26,9 @@ export interface PickerVolunteer {
   name: string;
   membership?: AssigneeMembership;
   availabilityStatus: AvailabilityStatus;
-  /**
-   * Qualified for the role this picker is filling. `false` still lists the
-   * candidate — qualification is overridable, not a hard filter
-   * (B-2) — it only badges the pick as needing one and sorts it last.
-   */
+  /** Whether the volunteer holds the requested Role. */
   isQualified?: boolean;
+  conflictReason?: string;
   alreadyAssignedCount: number;
   alreadyServingAssignments?: ServingAssignmentContext[];
 }
@@ -41,7 +38,7 @@ export interface SuggestedVolunteer {
   id: string;
   name: string;
   membership?: AssigneeMembership;
-  status: 'available' | 'partial' | 'needs_response' | 'conflict';
+  status: AvailabilityStatus | 'needs_response' | 'conflict';
   workloadCount: number;
   alreadyServingAssignments?: ServingAssignmentContext[];
 }

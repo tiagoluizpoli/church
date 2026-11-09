@@ -5,7 +5,6 @@ import type {
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
   isAssignableFit,
-  overrideKindForFit,
   volunteerFitForShiftRole,
 } from '@/features/scheduling/utils/builder/cycle-builder-fit.utils';
 
@@ -33,8 +32,8 @@ function makeEligible(
     Pick<CycleBuilderEligibleVolunteerSummary, 'volunteerId' | 'volunteerName'>,
 ): CycleBuilderEligibleVolunteerSummary {
   return {
-    isAvailable: true,
-    hasConflict: false,
+    answerState: 'available',
+    conflict: null,
     qualifiedRoleIds: ['role-1'],
     ministryAccessLevel: 'volunteer',
     ...overrides,
@@ -48,12 +47,18 @@ describe('volunteerFitForShiftRole', () => {
       makeEligible({
         volunteerId: 'silent',
         volunteerName: 'Bruno',
-        isAvailable: false,
+        answerState: 'unavailable',
       }),
       makeEligible({
         volunteerId: 'conflicted',
         volunteerName: 'Carla',
-        hasConflict: true,
+        conflict: {
+          assignmentId: 'conflict',
+          ministryName: 'Worship',
+          eventTitle: 'Service',
+          startTime: '2026-10-04T13:00:00Z',
+          endTime: '2026-10-04T15:00:00Z',
+        },
       }),
       makeEligible({
         volunteerId: 'other-role',
@@ -80,7 +85,7 @@ describe('volunteerFitForShiftRole', () => {
         roleId: 'role-1',
         volunteerId: 'silent',
       }),
-    ).toEqual({ tier: 'override' });
+    ).toEqual({ tier: 'unavailable' });
   });
 
   it('blocks a double-booked volunteer: not assignable, no override (DOUBLE_BOOKED is always refused)', () => {
@@ -92,7 +97,6 @@ describe('volunteerFitForShiftRole', () => {
 
     expect(fit).toEqual({ tier: 'none' });
     expect(isAssignableFit({ fit })).toBe(false);
-    expect(overrideKindForFit({ fit })).toBeUndefined();
   });
 
   it('reads another role’s qualification as unqualified, not as a non-candidate', () => {
@@ -113,7 +117,13 @@ describe('volunteerFitForShiftRole', () => {
           volunteerId: 'ana',
           volunteerName: 'Ana',
           qualifiedRoleIds: ['role-2'],
-          hasConflict: true,
+          conflict: {
+            assignmentId: 'conflict',
+            ministryName: 'Worship',
+            eventTitle: 'Service',
+            startTime: '2026-10-04T13:00:00Z',
+            endTime: '2026-10-04T15:00:00Z',
+          },
         }),
       ],
     });
@@ -157,26 +167,5 @@ describe('volunteerFitForShiftRole', () => {
         volunteerId: 'ana',
       }),
     ).toEqual({ tier: 'unqualified' });
-  });
-});
-
-describe('overrideKindForFit', () => {
-  it('asks for no reason when the fit is ready', () => {
-    expect(overrideKindForFit({ fit: { tier: 'ready' } })).toBeUndefined();
-    expect(overrideKindForFit({ fit: { tier: 'none' } })).toBeUndefined();
-  });
-
-  it('asks an override fit to justify unavailability', () => {
-    expect(overrideKindForFit({ fit: { tier: 'override' } })).toBe(
-      'unavailable',
-    );
-  });
-
-  it('asks an unqualified fit to justify qualification', () => {
-    expect(
-      overrideKindForFit({
-        fit: { tier: 'unqualified' },
-      }),
-    ).toBe('not_qualified');
   });
 });

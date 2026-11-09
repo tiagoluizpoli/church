@@ -1,5 +1,6 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   CycleBuilderHeader,
   formatCycleDateRange,
@@ -8,6 +9,8 @@ import type {
   CycleCountsSummary,
   CycleStaffingSummary,
 } from '@/features/scheduling/utils/builder/cycle-builder-staffing.utils';
+
+beforeEach(() => overwriteGetLocale(() => 'en'));
 
 const staffing: CycleStaffingSummary = {
   filled: 42,
@@ -180,4 +183,37 @@ describe('CycleBuilderHeader (B-4)', () => {
       screen.getByTestId('cycle-builder-assigned-count'),
     ).toHaveTextContent('42');
   });
+});
+
+it('renders staffing totals and singular and plural gaps in Portuguese', () => {
+  overwriteGetLocale(() => 'pt-BR');
+  try {
+    const { rerender } = render(
+      <CycleBuilderHeader
+        staffing={{ ...staffing, shiftsBelowTarget: 1 }}
+        counts={counts}
+      />,
+    );
+    expect(screen.getByTestId('cycle-builder-progress')).toHaveTextContent(
+      '42 de 48 vagas preenchidas',
+    );
+    expect(screen.getByTestId('cycle-builder-progress')).toHaveTextContent(
+      '1 turno abaixo da meta',
+    );
+    rerender(<CycleBuilderHeader staffing={staffing} counts={counts} />);
+    expect(screen.getByTestId('cycle-builder-progress')).toHaveTextContent(
+      '6 turnos abaixo da meta',
+    );
+    rerender(
+      <CycleBuilderHeader
+        staffing={{ ...staffing, coveredPlaces: 1, required: 1 }}
+        counts={counts}
+      />,
+    );
+    expect(screen.getByTestId('cycle-builder-progress')).toHaveTextContent(
+      '1 de 1 vaga preenchida',
+    );
+  } finally {
+    overwriteGetLocale(() => 'en');
+  }
 });

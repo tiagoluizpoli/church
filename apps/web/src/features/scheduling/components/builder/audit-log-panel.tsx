@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,25 @@ interface AuditLogPanelProps {
   assignments: CycleBuilderData['assignments'];
   cycleId?: string;
   ministryId?: string;
+}
+
+function auditActionLabel(action: string): string {
+  switch (action) {
+    case 'created':
+      return m.builder_ui_audit_created();
+    case 'updated':
+      return m.builder_ui_audit_updated();
+    case 'deleted':
+      return m.builder_ui_audit_deleted();
+    case 'status_change':
+      return m.builder_ui_audit_status_change();
+    case 'event_published':
+      return m.builder_ui_audit_event_published();
+    case 'event_cancelled':
+      return m.builder_ui_audit_event_cancelled();
+    default:
+      return action;
+  }
 }
 
 export function AuditLogPanel({
@@ -40,23 +60,25 @@ export function AuditLogPanel({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Audit Log</DialogTitle>
+          <DialogTitle>{m.builder_ui_audit_title()}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2 text-sm">
           {auditQuery.isLoading ? (
-            <p className="text-muted-foreground">Loading cycle activity…</p>
+            <p className="text-muted-foreground">
+              {m.builder_ui_audit_loading()}
+            </p>
           ) : null}
           {auditQuery.isError ? (
             <div className="space-y-2">
-              <p className="text-destructive">Could not load cycle activity.</p>
+              <p className="text-destructive">{m.builder_ui_audit_error()}</p>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => auditQuery.refetch()}
               >
-                Try again
+                {m.builder_ui_retry()}
               </Button>
             </div>
           ) : null}
@@ -64,7 +86,7 @@ export function AuditLogPanel({
           !auditQuery.isError &&
           auditQuery.data?.items.length === 0 ? (
             <p className="text-muted-foreground">
-              No assignment changes in this cycle yet.
+              {m.builder_ui_audit_empty()}
             </p>
           ) : null}
           {auditQuery.data?.items.map((item) => {
@@ -77,7 +99,7 @@ export function AuditLogPanel({
               <div key={item.id} className="rounded border p-2">
                 <div className="font-medium">{volunteerName}</div>
                 <div className="text-muted-foreground">
-                  {item.action}
+                  {auditActionLabel(item.action)}
                   {item.reason ? ` — ${item.reason}` : ''}
                 </div>
                 <div className="text-muted-foreground text-xs">
@@ -85,7 +107,7 @@ export function AuditLogPanel({
                     value: item.timestamp,
                     timeZone: churchTimezone,
                   })}{' '}
-                  · by {item.actorId}
+                  · {m.builder_ui_audit_by({ actor: item.actorId })}
                 </div>
               </div>
             );

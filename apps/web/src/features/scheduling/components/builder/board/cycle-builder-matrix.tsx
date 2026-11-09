@@ -30,6 +30,7 @@ import {
   eventMatchesDateSpan,
   eventOccursOnDay,
   isDateWithinRange,
+  timeLabel,
   weekdayForDayKey,
 } from '../../../utils/builder/cycle-builder-date.utils';
 import {
@@ -37,7 +38,7 @@ import {
   dropTargetData,
 } from '../../../utils/builder/cycle-builder-dnd.utils';
 import {
-  overrideKindForFit,
+  isAssignableFit,
   volunteerFitForShiftRole,
 } from '../../../utils/builder/cycle-builder-fit.utils';
 import { pool } from '../../../utils/builder/cycle-builder-pool.utils';
@@ -251,7 +252,23 @@ export function CycleBuilderMatrix(props: Props) {
     }
     return byCell;
   }, [props.failedWrites]);
-  const volunteers = useMemo(() => pool(props.data), [props.data]);
+  const focusedShiftContext =
+    focused &&
+    findShiftContextById({ data: props.data, shiftId: focused.shiftId });
+  const focusedShift = focusedShiftContext?.shift;
+  const focusedRanking =
+    focused && focusedShift
+      ? rankVolunteersForShiftRole({
+          shift: focusedShift,
+          roleId: focused.roleId,
+          assignments: props.data.assignments,
+        })
+      : undefined;
+  const volunteers = useMemo(
+    () =>
+      pool({ data: props.data, shift: focusedShift, timeZone: churchTimezone }),
+    [props.data, focusedShift, churchTimezone],
+  );
   const canManageAnyRequirement = props.data.events.some((event) =>
     event.eventTimeBlocks.some(
       (eventTimeBlock) =>
@@ -279,15 +296,7 @@ export function CycleBuilderMatrix(props: Props) {
       workloadCount: workload.get(poolVolunteer.volunteerId) ?? 0,
     };
   }, [draggingVolunteerId, volunteers, activeAssignments]);
-  // Assign a rail person straight to the focused shift×role, through the very
-  // same path the board's own assign uses — so conflict overrides and
-  // already-assigned-elsewhere collisions are captured identically no matter
-  // which surface started the assignment. Clearing focus afterwards returns the
-  // cards to their plain "Select shift" state.
-  const focusedShiftContext =
-    focused &&
-    findShiftContextById({ data: props.data, shiftId: focused.shiftId });
-  const focusedShift = focusedShiftContext?.shift;
+  // Use the same assignment path for focused picks and board actions.
   const focusedRequirementIsEditable = Boolean(focused && focusedShiftContext);
   // A full role can still be focused, so the rail honours the same headcount
   // ceiling the board enforces cell-side as `canAdd`.
@@ -303,10 +312,7 @@ export function CycleBuilderMatrix(props: Props) {
   // Everyone the leader may commit to the focused shift, each carrying the tier
   // that pick would land in — so the rail's own button can say what the pick
   // costs instead of presenting a conflict commit as frictionless (B-2).
-  // Qualification, like availability and double-booking, is an override path,
-  // not a hard filter — `assignableFits()` below includes `unqualified`. Two
-  // hard "no"s stay out: someone already serving this shift and anyone whose
-  // fit is `none`.
+  // Only Role holders without a conflicting assignment can be offered here.
   const focusedShiftAssigneeIds = focusedShift
     ? new Set(
         focusedShift.assignments
@@ -332,7 +338,7 @@ export function CycleBuilderMatrix(props: Props) {
       roleId: focused.roleId,
       volunteerId,
     });
-    if (fit.tier === 'none') return;
+    if (!isAssignableFit({ fit })) return;
     props.onSelectAssignment({
       volunteerId,
       shiftId: focused.shiftId,
@@ -342,11 +348,10 @@ export function CycleBuilderMatrix(props: Props) {
         (volunteer) => volunteer.volunteerId === volunteerId,
       )?.volunteerName,
       eventTimeBlockLabel: focused.eventTimeBlockLabel,
-      roleLabel: focused.roleLabel,
-      // Whatever this pick has to justify — unavailable or not qualified —
+      // Whatever this pick has to justify — currently unavailability —
       // comes from the shared predicate, never from this call
       // site's own reading of the tier (FR-016).
-      conflictType: overrideKindForFit({ fit }),
+      unavailable: fit.tier === 'unavailable',
     });
     setFocused(null);
   };
@@ -413,7 +418,8 @@ export function CycleBuilderMatrix(props: Props) {
               const roleLabel = `${requirement.sectorName} · ${roleName}`;
               {
                 const eventTimeBlockLabel =
-                  shiftContext.eventTimeBlock.label ?? 'this shift';
+                  shift.label ??
+                  `${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
                 setFocused({
                   key: focusKey({
                     shiftRequirementId: target.shiftRequirementId,
@@ -435,18 +441,9 @@ export function CycleBuilderMatrix(props: Props) {
                   roleId: requirement.roleId,
                   roleLabel,
                   eventTimeBlockLabel,
-                  ...rankVolunteersForShiftRole({
-                    shift,
-                    roleId: requirement.roleId,
-                    assignments: props.data.assignments,
-                  }),
                 });
               }
-              // Dropping onto a shift that needs an override is an override like
-              // any other, and FR-016 does not care which gesture started it —
-              // the reason dialog is gated on this field. The drop target is
-              // disabled for tier `none`, so a drop that lands here is one the
-              // predicate already accepted.
+              // Carry availability to the shared assignment path.
               const droppedFit = volunteerFitForShiftRole({
                 shift,
                 roleId: requirement.roleId,
@@ -457,11 +454,8 @@ export function CycleBuilderMatrix(props: Props) {
                 shiftId: target.shiftId,
                 shiftRequirementId: target.shiftRequirementId,
                 roleId: requirement.roleId,
-                roleLabel,
                 assignmentId: target.assignmentId,
-                conflictType: droppedFit
-                  ? overrideKindForFit({ fit: droppedFit })
-                  : undefined,
+                unavailable: droppedFit.tier === 'unavailable',
               });
             }
           }}
@@ -499,9 +493,9 @@ export function CycleBuilderMatrix(props: Props) {
                 onSelectVolunteer={
                   canManageAnyRequirement ? props.onSelectVolunteer : undefined
                 }
-                focusedVolunteerIds={focused?.ids}
+                focusedVolunteerIds={focusedRanking?.ids}
                 focusLabel={focused?.label}
-                idealVolunteerId={focused?.idealVolunteerId}
+                idealVolunteerId={focusedRanking?.idealVolunteerId}
                 assignableVolunteerFits={assignableFocusedVolunteerFits}
                 onAssignFocusedVolunteer={
                   focused && focusedRoleHasRoom

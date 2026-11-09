@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { SuggestedVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
@@ -12,45 +13,46 @@ interface SuggestionStatusPresentation {
 
 const MAX_VISIBLE_RECOMMENDATIONS = 5;
 
-const AVAILABLE_STATUS: SuggestionStatusPresentation = {
-  label: 'Available',
+const AVAILABLE_STATUS: Pick<SuggestionStatusPresentation, 'className'> = {
   className:
     'border border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400',
 };
 
-const PARTIAL_STATUS: SuggestionStatusPresentation = {
-  label: 'Partial availability',
+const PARTIAL_STATUS: Pick<SuggestionStatusPresentation, 'className'> = {
   className:
     'border border-yellow-500/35 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300',
 };
 
-const NEEDS_RESPONSE_STATUS: SuggestionStatusPresentation = {
-  label: 'Needs response',
+const NEEDS_RESPONSE_STATUS: Pick<SuggestionStatusPresentation, 'className'> = {
   className:
     'border border-yellow-500/35 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300',
 };
 
-const CONFLICT_STATUS: SuggestionStatusPresentation = {
-  label: 'Override required',
+const CONFLICT_STATUS: Pick<SuggestionStatusPresentation, 'className'> = {
   className: 'border border-destructive/35 bg-destructive/10 text-destructive',
 };
 
 function getSuggestionStatus(
   status: SuggestedVolunteerStatus,
 ): SuggestionStatusPresentation {
-  if (status === 'available') {
-    return AVAILABLE_STATUS;
-  }
+  if (status === 'available')
+    return { ...AVAILABLE_STATUS, label: m.builder_state_available() };
+  if (status === 'unanswered')
+    return { ...NEEDS_RESPONSE_STATUS, label: m.builder_state_unanswered() };
+  if (status === 'not_asked')
+    return { ...NEEDS_RESPONSE_STATUS, label: m.builder_state_not_asked() };
+  if (status === 'unavailable')
+    return { ...CONFLICT_STATUS, label: m.builder_state_unavailable() };
 
   if (status === 'partial') {
-    return PARTIAL_STATUS;
+    return { ...PARTIAL_STATUS, label: m.builder_ui_partial_availability() };
   }
 
   if (status === 'needs_response') {
-    return NEEDS_RESPONSE_STATUS;
+    return { ...NEEDS_RESPONSE_STATUS, label: m.builder_ui_needs_response() };
   }
 
-  return CONFLICT_STATUS;
+  return { ...CONFLICT_STATUS, label: m.builder_ui_override_required() };
 }
 
 interface SuggestionListProps {
@@ -71,7 +73,7 @@ export function SuggestionList({
   if (suggestions.length === 0) {
     return (
       <span className="text-muted-foreground text-xs italic">
-        No suggestions
+        {m.builder_ui_no_suggestions()}
       </span>
     );
   }
@@ -107,8 +109,11 @@ export function SuggestionList({
                   />
                 </span>
                 <span className="mt-0.5 text-muted-foreground text-xs">
-                  Serving {suggestion.workloadCount} time
-                  {suggestion.workloadCount === 1 ? '' : 's'} this cycle
+                  {suggestion.workloadCount === 1
+                    ? m.builder_ui_serving_one()
+                    : m.builder_ui_serving_many({
+                        count: suggestion.workloadCount,
+                      })}
                   {suggestion.alreadyServingAssignments?.[0]
                     ? ` · ${suggestion.alreadyServingAssignments[0].detail}`
                     : ''}
@@ -145,7 +150,9 @@ export function SuggestionList({
       {additionalSuggestions.length > 0 ? (
         <details className="group">
           <summary className="cursor-pointer list-none text-muted-foreground text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-            More candidates ({additionalSuggestions.length})
+            {m.builder_ui_more_candidates({
+              count: additionalSuggestions.length,
+            })}
           </summary>
           <div className="pt-2">{list(additionalSuggestions)}</div>
         </details>

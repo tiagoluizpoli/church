@@ -30,7 +30,7 @@ const FILES_THAT_MUST_NOT_CLAIM_A_HARD_FILTER = [
   'board/cycle-builder-cell-parts.tsx',
   'volunteer-rail/volunteer-card.tsx',
   'assignment/assignment-picker.tsx',
-  'assignment/override-dialog.tsx',
+  'assignment/unavailable-confirm-dialog.tsx',
 ];
 
 const BANNED_PHRASES = [

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { VolunteerPoolItem } from '../../hooks/use-volunteer-pool';
 import {
   type GroupMode,
@@ -86,7 +87,7 @@ export function flattenPoolRows({
       rows.push({
         kind: 'header',
         key: 'header:ready',
-        label: 'Ready',
+        label: m.builder_state_available(),
         count: groups.ready.length,
       });
       pushCards({ rows, volunteers: groups.ready, section: 'ready' });
@@ -95,16 +96,25 @@ export function flattenPoolRows({
       rows.push({
         kind: 'header',
         key: 'header:awaiting',
-        label: 'Awaiting',
+        label: m.builder_state_unanswered(),
         count: groups.awaiting.length,
       });
       pushCards({ rows, volunteers: groups.awaiting, section: 'awaiting' });
+    }
+    if (groups.notAsked.length) {
+      rows.push({
+        kind: 'header',
+        key: 'header:not-asked',
+        label: m.builder_state_not_asked(),
+        count: groups.notAsked.length,
+      });
+      pushCards({ rows, volunteers: groups.notAsked, section: 'not-asked' });
     }
     if (groups.unavailable.length) {
       rows.push({
         kind: 'collapsible',
         key: 'collapsible:unavailable',
-        label: 'Unavailable',
+        label: m.builder_state_unavailable(),
         count: groups.unavailable.length,
         open: unavailableOpen,
       });
@@ -150,7 +160,7 @@ export function flattenPoolRows({
   rows.push({
     kind: 'header',
     key: 'header:focused',
-    label: 'Best for this role',
+    label: m.builder_logic_best_for_role(),
     count: focusedVolunteers.length,
     icon: 'focus',
   });
@@ -160,14 +170,14 @@ export function flattenPoolRows({
     rows.push({
       kind: 'empty',
       key: 'empty:focused',
-      text: 'No candidates for this role',
+      text: m.builder_logic_no_candidates(),
     });
   }
   if (otherVolunteers.length) {
     rows.push({
       kind: 'header',
       key: 'header:others',
-      label: 'Everyone else',
+      label: m.builder_logic_everyone_else(),
       count: otherVolunteers.length,
     });
     pushCards({ rows, volunteers: otherVolunteers, section: 'others' });

@@ -112,6 +112,7 @@ export interface CycleBuilderRoleOption {
 }
 
 export interface CycleBuilderView {
+  cycle: Cycle;
   events: CycleBuilderEventView[];
   roles: CycleBuilderRoleOption[];
 }
@@ -166,8 +167,14 @@ export interface UsualSetupBlockView {
 export interface EligibleVolunteerView {
   volunteerId: VolunteerId;
   volunteerName: string;
-  isAvailable: boolean;
-  hasConflict: boolean;
+  answerState: 'available' | 'unanswered' | 'not_asked' | 'unavailable';
+  conflict: {
+    assignmentId: string;
+    ministryName: string;
+    eventTitle: string;
+    startTime: Instant;
+    endTime: Instant;
+  } | null;
   lastServedAt?: Instant;
   /**
    * Every role this volunteer is qualified for in the ministry — not only the

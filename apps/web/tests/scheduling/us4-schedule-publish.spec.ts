@@ -88,26 +88,26 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   // exact person, and picker order is availability/workload-driven.
   const volunteerPool = page.getByTestId('volunteer-pool');
   await volunteerPool
-    .getByLabel('Search volunteers by name')
+    .getByLabel('Buscar voluntários por nome')
     .fill(volunteerName);
   await volunteerPool.getByTestId('volunteer-select-shift').click();
 
-  await requirement.getByRole('button', { name: /^Assign / }).click();
+  await requirement.getByRole('button', { name: /^Escalar / }).click();
   await expect(requirement.getByTestId('assignment-chip')).toContainText(
     volunteerName,
   );
   await expect(requirement).toContainText(`1/${peopleNeeded}`);
 
-  await page.getByRole('button', { name: 'Publish cycle' }).first().click();
+  await page.getByRole('button', { name: 'Publicar ciclo' }).first().click();
   const publishDialog = page.getByRole('dialog', {
-    name: 'Publish this cycle?',
+    name: 'Publicar este ciclo?',
   });
   // One seat still open — the below-full publish; the confirm authorises it.
   await expect(publishDialog).toContainText(
-    'shifts are below their staffing target',
+    '1 turno está abaixo da meta de voluntários',
   );
-  await publishDialog.getByRole('button', { name: 'Publish cycle' }).click();
-  await expect(page.getByText('Cycle published')).toBeVisible();
+  await publishDialog.getByRole('button', { name: 'Publicar ciclo' }).click();
+  await expect(page.getByText('Ciclo publicado')).toBeVisible();
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(

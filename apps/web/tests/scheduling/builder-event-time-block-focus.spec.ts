@@ -11,11 +11,6 @@ import {
  * A leader must be able to point the rail at one shift×role straight from the
  * board, without opening the assignment popover first, and the rail must
  * *promote* that shift's eligible candidates rather than hiding everyone else.
- * Qualification, like availability, is an override path rather than a hard
- * filter (B-2) — the assign-board recipe qualifies every candidate for
- * the Role they are offered for, so an unqualified pick is not exercised by
- * this spec.
- *
  * #217 — right-sized: the rail-ranking and focus-toggle assertions this file
  * used to carry are pure client-side state with no boundary crossing, and
  * already have direct component proof (cycle-builder.component.test.tsx's
@@ -24,7 +19,7 @@ import {
  * cycle-builder-cell.component.test.tsx's focus-pressed assertions). What
  * remains here is the one assertion that still needs a real browser and
  * server round trip: committing a focused pick as an actual assignment,
- * including the collision/override dialogs a real conflict can trigger.
+ * including the unavailable confirmation when needed.
  */
 
 test.describe('time block focus drives the volunteer rail', () => {
@@ -66,22 +61,11 @@ test.describe('time block focus drives the volunteer rail', () => {
     await expect(page.getByTestId('assignment-picker')).toHaveCount(0);
     await expect(rail.getByTestId('volunteer-pick-me')).toHaveCount(0);
 
-    const collisionPrompt = page.getByRole('heading', {
-      name: 'Volunteer already assigned',
+    const unavailablePrompt = page.getByRole('button', {
+      name: 'Assign anyway',
     });
-    if (await collisionPrompt.isVisible().catch(() => false)) {
-      await page
-        .getByRole('button', { name: /Move here|Swap assignments/ })
-        .click();
-    }
-
-    const overridePrompt = page.getByRole('heading', {
-      name: /Override conflict|Assign anyway/,
-    });
-    if (await overridePrompt.isVisible().catch(() => false)) {
-      await page
-        .getByRole('button', { name: /Confirm Override|Assign anyway/ })
-        .click();
+    if (await unavailablePrompt.isVisible().catch(() => false)) {
+      await unavailablePrompt.click();
     }
 
     // The test only passes once the assignment is actually reflected in the

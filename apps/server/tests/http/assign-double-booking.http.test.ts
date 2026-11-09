@@ -19,10 +19,15 @@ import {
 } from 'vitest';
 import { AssignController } from '@/api/controllers/assign-controller';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import type { CycleBuilderResponse } from '@/api/dtos/cycle-builder.dto';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
 import { buildMinistryMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingManagers,
@@ -52,6 +57,7 @@ const mockGetSession = vi.mocked(
 const activeChurchResolver = { resolve: vi.fn() };
 const authorityGuard = {
   decideManageAnyMinistry: vi.fn(),
+  decideManageMinistry: vi.fn(),
   decideManageParticipation: vi.fn(),
   decideManageShift: vi.fn(),
 };
@@ -129,6 +135,7 @@ async function seedCrossMinistryOverlap({
     autoSelected: false,
   });
   authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+  authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
   authorityGuard.decideManageParticipation.mockResolvedValue({ allowed: true });
   authorityGuard.decideManageShift.mockResolvedValue({ allowed: true });
 
@@ -224,7 +231,7 @@ async function seedCrossMinistryOverlap({
     roleId: otherRole.id,
     peopleNeeded: 1,
   });
-  await buildAssignment({
+  const overlap = await buildAssignment({
     db: schedulingTestDb,
     churchId: seed.churchAId,
     participationId: other.participation.id,
@@ -248,6 +255,8 @@ async function seedCrossMinistryOverlap({
   });
 
   return {
+    cycleId: cycle.id,
+    overlapId: overlap.id,
     churchId: seed.churchAId,
     foreignChurchId: seed.churchBId,
     foreignMinistryId: seed.ministryBId,
@@ -279,6 +288,173 @@ async function seedTargetAssignment(input: SeedTargetAssignmentInput) {
     status: 'pending',
   });
 }
+
+describe('builder eligibility contract', () => {
+  it('returns the answer state and cross-Ministry overlap details', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    for (const [name, state] of [
+      ['Available', 'confirmed'],
+      ['Unanswered', 'pending'],
+      ['Unavailable', 'confirmed'],
+    ] as const) {
+      const person = await seedVolunteerMembership({
+        churchId: seed.churchId,
+        ministryId: seed.ministryId,
+        name,
+        email: `${name.toLowerCase()}@test.com`,
+      });
+      await seedRoleQualification({
+        churchId: seed.churchId,
+        membershipId: person.membership.id,
+        roleId: seed.targetRoleId,
+      });
+      const check = await buildAvailabilityCheck({
+        db: schedulingTestDb,
+        churchId: seed.churchId,
+        cycleId: seed.cycleId,
+        ministryMembershipId: person.membership.id,
+        state,
+      });
+      if (name !== 'Available')
+        await buildUnavailableShift({
+          db: schedulingTestDb,
+          churchId: seed.churchId,
+          availabilityCheckId: check.id,
+          shiftId: seed.targetShiftId,
+        });
+    }
+    const unqualified = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unqualified',
+      email: 'eligibility-unqualified@test.com',
+    });
+    const shiftResponse = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/eligible-volunteers`,
+    });
+    expect(shiftResponse.statusCode).toBe(200);
+    expect(
+      shiftResponse
+        .json()
+        .volunteers.map(
+          (person: { volunteerId: string }) => person.volunteerId,
+        ),
+    ).not.toContain(unqualified.volunteer.id);
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
+    });
+    expect(response.statusCode).toBe(200);
+    const body: CycleBuilderResponse = response.json();
+    const shifts = body.events.flatMap((event) =>
+      event.eventTimeBlocks.flatMap((block) => block.shifts),
+    );
+    const eligible =
+      shifts.find((row) => row.shift.id === seed.targetShiftId)
+        ?.eligibleVolunteers ?? [];
+    expect(eligible.map((person) => person.volunteerName)).toEqual([
+      'Available',
+      'Unanswered',
+      'Free Volunteer',
+      'Double Booked',
+      'Unavailable',
+    ]);
+    for (const person of eligible) {
+      expect(person).not.toHaveProperty('isAvailable');
+      expect(person).not.toHaveProperty('hasConflict');
+    }
+    expect(eligible.map((person) => person.answerState)).toEqual([
+      'available',
+      'unanswered',
+      'not_asked',
+      'not_asked',
+      'unavailable',
+    ]);
+    expect(
+      eligible.find(
+        (person) => person.volunteerId === seed.doubleBookedVolunteerId,
+      ),
+    ).toMatchObject({
+      answerState: 'not_asked',
+      conflict: {
+        assignmentId: seed.overlapId,
+        ministryName: 'Other ministry',
+        eventTitle: 'Other ministry service',
+        startTime: '2026-09-07T09:30:00.000Z',
+        endTime: '2026-09-07T10:30:00.000Z',
+      },
+    });
+  });
+});
+
+describe('Unavailable assignment', () => {
+  it('returns an UNAVAILABLE warning when a marked volunteer is assigned', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const person = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unavailable Volunteer',
+      email: 'unavailable-create@test.com',
+    });
+    await seedRoleQualification({
+      churchId: seed.churchId,
+      membershipId: person.membership.id,
+      roleId: seed.targetRoleId,
+    });
+    const check = await buildAvailabilityCheck({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      cycleId: seed.cycleId,
+      ministryMembershipId: person.membership.id,
+      state: 'confirmed',
+    });
+    await buildUnavailableShift({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      availabilityCheckId: check.id,
+      shiftId: seed.targetShiftId,
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: person.volunteer.id,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'UNAVAILABLE' }),
+      ]),
+    );
+    const read = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
+    });
+    expect(read.statusCode).toBe(200);
+    const body: CycleBuilderResponse = read.json();
+    const shift = body.events
+      .flatMap((event) =>
+        event.eventTimeBlocks.flatMap((block) => block.shifts),
+      )
+      .find((row) => row.shift.id === seed.targetShiftId);
+    expect(shift?.assignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ volunteerId: person.volunteer.id }),
+      ]),
+    );
+    expect(shift?.eligibleVolunteers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          volunteerId: person.volunteer.id,
+          answerState: 'unavailable',
+        }),
+      ]),
+    );
+  });
+});
 
 describe('DOUBLE_BOOKED refusal across Ministries', () => {
   it('POST /assign/shifts/:id/assignments refuses a Volunteer with an overlapping Assignment in another Ministry', async () => {
@@ -437,7 +613,49 @@ describe('reassign without a reason input', () => {
 });
 
 describe('requirement-bound Assignment HTTP contract', () => {
-  it('derives the Role and scope, warns for missing qualification, and preserves the Sector on replacement', async () => {
+  it('refuses an unqualified member on create and reassign', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const unqualified = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unqualified',
+      email: 'refusal@test.com',
+    });
+    const refused = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: unqualified.volunteer.id,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({
+      error: 'HARD_CONSTRAINT_VIOLATION',
+      reason: 'NOT_QUALIFIED',
+    });
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: seed.freeVolunteerId,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const reassigned = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${created.json().assignment.id}/reassign`,
+      payload: { volunteerId: unqualified.volunteer.id },
+    });
+    expect(reassigned.statusCode).toBe(409);
+    expect(reassigned.json()).toMatchObject({
+      error: 'HARD_CONSTRAINT_VIOLATION',
+      reason: 'NOT_QUALIFIED',
+    });
+  });
+
+  it('derives the Role and scope, accepts a Role holder, and preserves the Sector on replacement', async () => {
     const seed = await seedCrossMinistryOverlap();
     const sector = await buildSector({
       db: schedulingTestDb,
@@ -453,17 +671,22 @@ describe('requirement-bound Assignment HTTP contract', () => {
       sectorId: sector.id,
       peopleNeeded: 1,
     });
-    const unqualified = await seedVolunteerMembership({
+    const qualified = await seedVolunteerMembership({
       churchId: seed.churchId,
       ministryId: seed.ministryId,
       name: 'Unqualified',
       email: 'requirement-warning@test.com',
     });
+    await seedRoleQualification({
+      churchId: seed.churchId,
+      membershipId: qualified.membership.id,
+      roleId: seed.targetRoleId,
+    });
     const created = await app.inject({
       method: 'POST',
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
-        volunteerId: unqualified.volunteer.id,
+        volunteerId: qualified.volunteer.id,
         shiftRequirementId: requirement.id,
       },
     });
@@ -475,13 +698,13 @@ describe('requirement-bound Assignment HTTP contract', () => {
         participationId: seed.targetParticipationId,
         roleId: seed.targetRoleId,
       },
-      warnings: [{ type: 'NOT_QUALIFIED' }],
+      warnings: [],
     });
     const duplicate = await app.inject({
       method: 'POST',
       url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
-        volunteerId: unqualified.volunteer.id,
+        volunteerId: qualified.volunteer.id,
         shiftRequirementId: seed.targetRequirementId,
       },
     });

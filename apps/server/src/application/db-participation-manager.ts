@@ -12,8 +12,8 @@ import type {
   MinistryId,
   RoleId,
   SectorId,
+  VolunteerId,
 } from '../domain/branded-ids';
-import type { ConflictIssue } from '../domain/conflict/types';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   CycleBuilderEventTimeBlockView,
@@ -46,6 +46,7 @@ import type {
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { AvailabilityCheckRepository } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
@@ -201,8 +202,8 @@ interface GetParticipationCompletionInternalInput {
 interface BuildEligibleVolunteerViewInput {
   volunteerId: string;
   volunteerName: string;
-  isUnavailable: boolean;
-  activeAssignmentWarnings: ConflictIssue[];
+  answerState: EligibleVolunteerView['answerState'];
+  conflict: EligibleVolunteerView['conflict'];
   lastServedAt?: Instant;
   qualifiedRoleIds: string[];
   ministryAccessLevel: MinistryAccessLevel;
@@ -230,6 +231,11 @@ interface BuildEligibleForVolunteerInput {
   assignmentShiftsById: Map<string, Shift>;
   unavailableShiftKeys: Set<string>;
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
+  checkStates: Map<string, 'pending' | 'confirmed'>;
+  conflictDetails: Map<
+    string,
+    Omit<NonNullable<EligibleVolunteerView['conflict']>, 'assignmentId'>
+  >;
 }
 
 interface ListVolunteerMembershipInfoInput {
@@ -238,12 +244,42 @@ interface ListVolunteerMembershipInfoInput {
   tx?: TransactionContext;
 }
 
+interface LoadCheckStatesInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: Cycle['id'];
+  tx?: TransactionContext;
+}
+
+interface LoadCandidateFactsInput {
+  churchId: ChurchId;
+  volunteerIds: VolunteerId[];
+  tx?: TransactionContext;
+}
+
+interface CandidateFacts {
+  activeAssignments: Assignment[];
+  assignmentShiftsById: Map<string, Shift>;
+  unavailableShiftKeys: Set<string>;
+  conflictDetails: Map<
+    string,
+    Omit<NonNullable<EligibleVolunteerView['conflict']>, 'assignmentId'>
+  >;
+}
+
+interface SortEligibleVolunteersInput {
+  eligible: EligibleVolunteerView[];
+  assignments: Assignment[];
+}
+
 interface ListEligibleForShiftsInput {
+  candidateFacts: CandidateFacts;
   churchId: ChurchId;
   participation: MinistryParticipation;
   shifts: Shift[];
   requirements: ShiftRequirement[];
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
+  checkStates: Map<string, 'pending' | 'confirmed'>;
   tx?: TransactionContext;
 }
 
@@ -285,6 +321,7 @@ function scheduleKey({ ministryId, cycleId }: ScheduleKeyInput): string {
 }
 
 interface DbParticipationManagerDependencies {
+  availabilityCheckRepository: AvailabilityCheckRepository;
   participationRepository: MinistryParticipationRepository;
   shiftRepository: ShiftRepository;
   eventRepository: PlanningEventRepository;
@@ -319,6 +356,7 @@ interface AssertMinistryHeadcountsInput {
 export class DbParticipationManager implements IParticipationManager {
   private readonly splitter = new ShiftSplitter();
 
+  private readonly availabilityCheckRepository: AvailabilityCheckRepository;
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly shiftRepository: ShiftRepository;
   private readonly eventRepository: PlanningEventRepository;
@@ -338,6 +376,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly unitOfWork: UnitOfWork;
 
   constructor({
+    availabilityCheckRepository,
     participationRepository,
     shiftRepository,
     eventRepository,
@@ -356,6 +395,7 @@ export class DbParticipationManager implements IParticipationManager {
     notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
+    this.availabilityCheckRepository = availabilityCheckRepository;
     this.participationRepository = participationRepository;
     this.shiftRepository = shiftRepository;
     this.eventRepository = eventRepository;
@@ -464,7 +504,7 @@ export class DbParticipationManager implements IParticipationManager {
       churchId: input.churchId,
       id: input.ministryId,
     });
-    await this.cycleRepository.getById({
+    const cycle = await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
     });
@@ -488,6 +528,17 @@ export class DbParticipationManager implements IParticipationManager {
           tx,
         });
 
+      const checkStates = await this.loadCheckStates({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        cycleId: input.cycleId,
+        tx,
+      });
+      const candidateFacts = await this.loadCandidateFacts({
+        churchId: input.churchId,
+        volunteerIds: [...membershipInfoByVolunteerId.keys()] as VolunteerId[],
+        tx,
+      });
       const events: CycleBuilderEventView[] = [];
 
       for (const eventGroup of eventGroups) {
@@ -531,6 +582,8 @@ export class DbParticipationManager implements IParticipationManager {
           shifts,
           requirements,
           membershipInfoByVolunteerId,
+          checkStates,
+          candidateFacts,
           tx,
         });
 
@@ -556,7 +609,7 @@ export class DbParticipationManager implements IParticipationManager {
         name: role.name,
       }));
 
-      return { events, roles: roleOptions };
+      return { cycle, events, roles: roleOptions };
     });
   }
 
@@ -1041,51 +1094,28 @@ export class DbParticipationManager implements IParticipationManager {
           ministryId: participation.ministryId,
           tx,
         });
+      const event = await this.eventRepository.getEvent({
+        churchId: input.churchId,
+        eventId: participation.eventId,
+        tx,
+      });
+      const checkStates = await this.loadCheckStates({
+        churchId: input.churchId,
+        ministryId: participation.ministryId,
+        cycleId: event.cycleId,
+        tx,
+      });
       const volunteerIds = qualifiedVolunteers.map((volunteer) => volunteer.id);
-      const [unavailableShifts, assignments] = await Promise.all([
-        this.unavailableShiftRepository.listByVolunteers({
-          churchId: input.churchId,
-          volunteerIds,
-          tx,
-        }),
-        this.assignmentRepository.listByVolunteers({
-          churchId: input.churchId,
-          volunteerIds,
-          tx,
-        }),
-      ]);
-      const activeAssignments = assignments.filter((assignment) =>
-        isActiveAssignmentStatus(assignment.status),
-      );
-      const assignmentShiftIds = [
-        ...new Set(
-          activeAssignments
-            .map((assignment) => assignment.shiftId)
-            .filter((shiftId): shiftId is Shift['id'] => shiftId != null),
-        ),
-      ];
-      const assignmentShifts = await Promise.all(
-        assignmentShiftIds.map((shiftId) =>
-          this.shiftRepository.getById({
-            churchId: input.churchId,
-            shiftId,
-            tx,
-          }),
-        ),
-      );
-      const assignmentShiftsById = new Map(
-        assignmentShifts.map((assignmentShift) => [
-          assignmentShift.id as string,
-          assignmentShift,
-        ]),
-      );
-      const unavailableShiftKeys = new Set(
-        unavailableShifts.map(
-          (unavailableShift) =>
-            `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
-        ),
-      );
-
+      const {
+        activeAssignments,
+        assignmentShiftsById,
+        unavailableShiftKeys,
+        conflictDetails,
+      } = await this.loadCandidateFacts({
+        churchId: input.churchId,
+        volunteerIds,
+        tx,
+      });
       const eligible = qualifiedVolunteers.map((volunteer) =>
         buildEligibleForVolunteer({
           volunteer,
@@ -1095,10 +1125,15 @@ export class DbParticipationManager implements IParticipationManager {
           assignmentShiftsById,
           unavailableShiftKeys,
           membershipInfoByVolunteerId,
+          checkStates,
+          conflictDetails,
         }),
       );
 
-      return sortEligibleVolunteers(eligible);
+      return sortEligibleVolunteers({
+        eligible,
+        assignments: activeAssignments,
+      });
     });
   }
 
@@ -1478,12 +1513,104 @@ export class DbParticipationManager implements IParticipationManager {
     return [...volunteersById.values()];
   }
 
+  private async loadCheckStates({
+    churchId,
+    ministryId,
+    cycleId,
+    tx,
+  }: LoadCheckStatesInput) {
+    const memberships =
+      await this.availabilityCheckRepository.listActiveMemberships({
+        churchId,
+        ministryId,
+        tx,
+      });
+    if (memberships.length === 0)
+      return new Map<string, 'pending' | 'confirmed'>();
+    const checks = await this.availabilityCheckRepository.listByCycle({
+      churchId,
+      cycleId,
+      ministryMembershipIds: memberships.map((m) => m.ministryMembershipId),
+      tx,
+    });
+    const volunteers = new Map(
+      memberships.map((m) => [m.ministryMembershipId, m.volunteerId as string]),
+    );
+    const result = new Map<string, 'pending' | 'confirmed'>();
+    for (const check of checks) {
+      const volunteerId = volunteers.get(check.ministryMembershipId);
+      if (volunteerId) result.set(volunteerId, check.state);
+    }
+    return result;
+  }
+
+  private async loadCandidateFacts({
+    churchId,
+    volunteerIds,
+    tx,
+  }: LoadCandidateFactsInput): Promise<CandidateFacts> {
+    const [unavailableShifts, assignments] = await Promise.all([
+      this.unavailableShiftRepository.listByVolunteers({
+        churchId,
+        volunteerIds,
+        tx,
+      }),
+      this.assignmentRepository.listByVolunteers({
+        churchId,
+        volunteerIds,
+        tx,
+      }),
+    ]);
+    const activeAssignments = assignments.filter((assignment) =>
+      isActiveAssignmentStatus(assignment.status),
+    );
+    const shiftIds = [
+      ...new Set(
+        activeAssignments
+          .map((assignment) => assignment.shiftId)
+          .filter((id): id is Shift['id'] => id != null),
+      ),
+    ];
+    const facts = await this.shiftRepository.listConflictFacts({
+      churchId,
+      shiftIds,
+      tx,
+    });
+    const assignmentShiftsById = new Map(
+      facts.map(({ shift }) => [shift.id as string, shift]),
+    );
+    const conflictDetails: CandidateFacts['conflictDetails'] = new Map(
+      facts.map(({ shift, ministryName, eventTitle }) => [
+        shift.id as string,
+        {
+          ministryName,
+          eventTitle,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+        },
+      ]),
+    );
+    const unavailableShiftKeys = new Set(
+      unavailableShifts.map(
+        (mark) => `${mark.volunteerId as string}:${mark.shiftId as string}`,
+      ),
+    );
+    return {
+      activeAssignments,
+      assignmentShiftsById,
+      conflictDetails,
+      unavailableShiftKeys,
+    };
+  }
+
   private async listEligibleVolunteersForShifts({
     churchId,
     participation,
     shifts,
     requirements,
     membershipInfoByVolunteerId,
+    checkStates,
+    candidateFacts,
     tx,
   }: ListEligibleForShiftsInput): Promise<
     Map<string, EligibleVolunteerView[]>
@@ -1518,57 +1645,12 @@ export class DbParticipationManager implements IParticipationManager {
       volunteersByRole.set(roleKey, volunteers);
     }
 
-    // Union of everyone who could appear so unavailable shifts/assignments load once.
-    const volunteersById = new Map<string, QualifiedVolunteerRef>();
-    for (const volunteers of volunteersByRole.values()) {
-      for (const volunteer of volunteers) {
-        volunteersById.set(volunteer.id as string, volunteer);
-      }
-    }
-    const volunteerIds = [...volunteersById.values()].map(
-      (volunteer) => volunteer.id,
-    );
-
-    const [unavailableShifts, assignments] = await Promise.all([
-      this.unavailableShiftRepository.listByVolunteers({
-        churchId,
-        volunteerIds,
-        tx,
-      }),
-      this.assignmentRepository.listByVolunteers({
-        churchId,
-        volunteerIds,
-        tx,
-      }),
-    ]);
-    const activeAssignments = assignments.filter((assignment) =>
-      isActiveAssignmentStatus(assignment.status),
-    );
-    const assignmentShiftIds = [
-      ...new Set(
-        activeAssignments
-          .map((assignment) => assignment.shiftId)
-          .filter((shiftId): shiftId is Shift['id'] => shiftId != null),
-      ),
-    ];
-    const assignmentShifts = await Promise.all(
-      assignmentShiftIds.map((shiftId) =>
-        this.shiftRepository.getById({ churchId, shiftId, tx }),
-      ),
-    );
-    const assignmentShiftsById = new Map(
-      assignmentShifts.map((assignmentShift) => [
-        assignmentShift.id as string,
-        assignmentShift,
-      ]),
-    );
-    const unavailableShiftKeys = new Set(
-      unavailableShifts.map(
-        (unavailableShift) =>
-          `${unavailableShift.volunteerId as string}:${unavailableShift.shiftId as string}`,
-      ),
-    );
-
+    const {
+      activeAssignments,
+      assignmentShiftsById,
+      unavailableShiftKeys,
+      conflictDetails,
+    } = candidateFacts;
     for (const shift of shifts) {
       const shiftRequirements =
         requirementsByShift.get(shift.id as string) ?? [];
@@ -1587,9 +1669,14 @@ export class DbParticipationManager implements IParticipationManager {
           assignmentShiftsById,
           unavailableShiftKeys,
           membershipInfoByVolunteerId,
+          checkStates,
+          conflictDetails,
         }),
       );
-      eligibleByShift.set(shift.id as string, sortEligibleVolunteers(eligible));
+      eligibleByShift.set(
+        shift.id as string,
+        sortEligibleVolunteers({ eligible, assignments: activeAssignments }),
+      );
     }
 
     return eligibleByShift;
@@ -1682,32 +1769,43 @@ function buildEligibleForVolunteer({
   assignmentShiftsById,
   unavailableShiftKeys,
   membershipInfoByVolunteerId,
+  checkStates,
+  conflictDetails,
 }: BuildEligibleForVolunteerInput): EligibleVolunteerView {
   const volunteerAssignments = activeAssignments.filter(
     (assignment) => assignment.volunteerId === volunteer.id,
   );
-  const warnings = volunteerAssignments
-    .filter((assignment) => assignment.shiftId !== shift.id)
-    .flatMap((assignment) => {
-      const assignmentShift = assignmentShiftsById.get(
-        assignment.shiftId as string,
-      );
-      if (
-        !assignmentShift ||
-        !rangesOverlap({
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-          otherStartTime: assignmentShift.startTime,
-          otherEndTime: assignmentShift.endTime,
-        })
-      ) {
-        return [];
-      }
-
-      return [
-        buildDoubleBookedWarning({ assignmentId: assignment.id as string }),
-      ];
-    });
+  const overlapping = volunteerAssignments.find((assignment) => {
+    const other = assignmentShiftsById.get(assignment.shiftId as string);
+    return (
+      assignment.shiftId !== shift.id &&
+      other &&
+      rangesOverlap({
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        otherStartTime: other.startTime,
+        otherEndTime: other.endTime,
+      })
+    );
+  });
+  const details =
+    overlapping && conflictDetails.get(overlapping.shiftId as string);
+  const conflict =
+    overlapping && details
+      ? { assignmentId: overlapping.id as string, ...details }
+      : null;
+  const isUnavailable = unavailableShiftKeys.has(
+    `${volunteer.id as string}:${shift.id as string}`,
+  );
+  const checkState = checkStates.get(volunteer.id as string);
+  const answerState =
+    checkState === 'pending'
+      ? 'unanswered'
+      : !checkState
+        ? 'not_asked'
+        : isUnavailable
+          ? 'unavailable'
+          : 'available';
   const lastServedAt = fairnessAssignments
     .filter((assignment) => assignment.volunteerId === volunteer.id)
     .map(
@@ -1728,10 +1826,8 @@ function buildEligibleForVolunteer({
   return buildEligibleVolunteerView({
     volunteerId: volunteer.id as string,
     volunteerName: volunteer.name ?? 'Unknown volunteer',
-    isUnavailable: unavailableShiftKeys.has(
-      `${volunteer.id as string}:${shift.id as string}`,
-    ),
-    activeAssignmentWarnings: warnings,
+    answerState,
+    conflict,
     lastServedAt,
     qualifiedRoleIds: membershipInfo?.qualifiedRoleIds ?? [],
     ministryAccessLevel: membershipInfo?.ministryAccessLevel ?? 'volunteer',
@@ -1749,13 +1845,19 @@ function toPublishCycleOutcome(
   };
 }
 
-function sortEligibleVolunteers(
-  eligible: EligibleVolunteerView[],
-): EligibleVolunteerView[] {
+function sortEligibleVolunteers({
+  eligible,
+  assignments,
+}: SortEligibleVolunteersInput): EligibleVolunteerView[] {
+  const workload = new Map<string, number>();
+  for (const assignment of assignments) {
+    const id = assignment.volunteerId as string;
+    workload.set(id, (workload.get(id) ?? 0) + 1);
+  }
   return [...eligible].sort((left, right) => {
-    if (left.isAvailable !== right.isAvailable) {
-      return left.isAvailable ? -1 : 1;
-    }
+    const order = ['available', 'unanswered', 'not_asked', 'unavailable'];
+    if (left.answerState !== right.answerState)
+      return order.indexOf(left.answerState) - order.indexOf(right.answerState);
 
     if (left.lastServedAt !== right.lastServedAt) {
       if (!left.lastServedAt) return -1;
@@ -1767,7 +1869,13 @@ function sortEligibleVolunteers(
       if (comparison !== 0) return comparison;
     }
 
-    return left.volunteerName.localeCompare(right.volunteerName);
+    const workloadDifference =
+      (workload.get(left.volunteerId as string) ?? 0) -
+      (workload.get(right.volunteerId as string) ?? 0);
+    return (
+      workloadDifference ||
+      left.volunteerName.localeCompare(right.volunteerName)
+    );
   });
 }
 
@@ -2041,25 +2149,11 @@ function isActiveAssignmentStatus(status: string): boolean {
   return status === 'draft' || status === 'pending' || status === 'confirmed';
 }
 
-interface BuildDoubleBookedWarningInput {
-  assignmentId: string;
-}
-
-function buildDoubleBookedWarning({
-  assignmentId,
-}: BuildDoubleBookedWarningInput): ConflictIssue {
-  return {
-    type: 'DOUBLE_BOOKED',
-    details: 'Volunteer is already assigned to another overlapping shift',
-    conflictingId: assignmentId,
-  };
-}
-
 function buildEligibleVolunteerView({
   volunteerId,
   volunteerName,
-  isUnavailable,
-  activeAssignmentWarnings,
+  answerState,
+  conflict,
   lastServedAt,
   qualifiedRoleIds,
   ministryAccessLevel,
@@ -2067,8 +2161,8 @@ function buildEligibleVolunteerView({
   return {
     volunteerId: volunteerId as EligibleVolunteerView['volunteerId'],
     volunteerName,
-    isAvailable: !isUnavailable,
-    hasConflict: activeAssignmentWarnings.length > 0,
+    answerState,
+    conflict,
     lastServedAt,
     qualifiedRoleIds,
     ministryAccessLevel,

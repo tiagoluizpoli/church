@@ -1184,11 +1184,11 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
 
       expect(edited?.statusCode).toBe(200);
       expect(await heldRoles(valWorship())).toEqual([f.keys]);
-      // An unqualified placement is the Assign board's warned override, never a silent qualified one.
-      expect(created?.statusCode).toBe(201);
-      expect(created?.json().warnings).toEqual([
-        expect.objectContaining({ type: 'NOT_QUALIFIED' }),
-      ]);
+      expect(created?.statusCode).toBe(409);
+      expect(created?.json()).toMatchObject({
+        error: 'HARD_CONSTRAINT_VIOLATION',
+        reason: 'NOT_QUALIFIED',
+      });
     });
 
     it('refuses the removal when a reassignment to the Volunteer commits first', async () => {

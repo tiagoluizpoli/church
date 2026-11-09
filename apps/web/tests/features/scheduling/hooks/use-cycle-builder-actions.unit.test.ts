@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   CycleBuilderAssignment,
   CycleBuilderData,
@@ -79,16 +81,16 @@ function dataWithAssignments(
                   {
                     volunteerId: 'volunteer-a',
                     volunteerName: 'Volunteer A',
-                    isAvailable: true,
-                    hasConflict: false,
+                    answerState: 'available',
+                    conflict: null,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
                   },
                   {
                     volunteerId: 'volunteer-b',
                     volunteerName: 'Volunteer B',
-                    isAvailable: false,
-                    hasConflict: false,
+                    answerState: 'unavailable',
+                    conflict: null,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
                   },
@@ -111,6 +113,85 @@ function mutations(): CycleBuilderMutations {
 }
 
 describe('useCycleBuilderActions', () => {
+  afterEach(() => overwriteGetLocale(() => 'en'));
+
+  it('announces assignment and removal outcomes in Portuguese', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const writes = mutations();
+    const { result } = renderHook(() =>
+      useCycleBuilderActions({ data: dataWithAssignments([]), ...writes }),
+    );
+    act(() =>
+      result.current.handleSelectAssignment({
+        shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
+        roleId: 'role-1',
+        volunteerId: 'volunteer-a',
+      }),
+    );
+    await waitFor(() =>
+      expect(result.current.announcement).toBe(
+        m.builder_logic_assigned({
+          volunteerName: 'Volunteer A',
+          eventTimeBlockLabel: m.builder_logic_this_shift(),
+        }),
+      ),
+    );
+    await act(async () => {
+      await result.current.removeAssignment({
+        assignmentId: 'assignment-1',
+        volunteerName: 'Volunteer A',
+      });
+    });
+    expect(result.current.announcement).toBe(
+      m.builder_logic_removed({ volunteerName: 'Volunteer A' }),
+    );
+  });
+
+  it('announces localized refusals and fallback failures in Portuguese', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const writes = mutations();
+    vi.mocked(writes.createAssignment.mutateAsync).mockRejectedValue({
+      isAxiosError: true,
+      response: { data: { message: 'Escala recusada' } },
+    });
+    vi.mocked(writes.deleteAssignment.mutateAsync).mockRejectedValue(
+      new Error('Network Error'),
+    );
+    const { result } = renderHook(() =>
+      useCycleBuilderActions({ data: dataWithAssignments([]), ...writes }),
+    );
+    act(() =>
+      result.current.handleSelectAssignment({
+        shiftId: 'shift-1',
+        shiftRequirementId: 'requirement-role-1',
+        roleId: 'role-1',
+        volunteerId: 'volunteer-a',
+      }),
+    );
+    await waitFor(() =>
+      expect(result.current.announcement).toBe(
+        m.builder_logic_assign_failed({
+          volunteerName: 'Volunteer A',
+          eventTimeBlockLabel: m.builder_logic_this_shift(),
+          message: 'Escala recusada',
+        }),
+      ),
+    );
+    await act(async () => {
+      await result.current.removeAssignment({
+        assignmentId: 'assignment-1',
+        volunteerName: 'Volunteer A',
+      });
+    });
+    expect(result.current.announcement).toBe(
+      m.builder_logic_remove_failed({
+        volunteerName: 'Volunteer A',
+        message: m.common_removal_failed(),
+      }),
+    );
+  });
+
   it('keeps another Sector failure when retrying the same Volunteer and Role in one Shift', async () => {
     const writes = mutations();
     const create = vi.mocked(writes.createAssignment.mutateAsync);
@@ -180,12 +261,12 @@ describe('useCycleBuilderActions', () => {
         volunteerId: 'volunteer-b',
         volunteerName: 'Volunteer B',
         assignmentId: 'assignment-1',
-        conflictType: 'unavailable',
+        unavailable: true,
       }),
     );
 
-    expect(result.current.override).not.toBeNull();
-    act(() => result.current.confirmOverride());
+    expect(result.current.unavailable).not.toBeNull();
+    act(() => result.current.confirmUnavailable());
 
     await waitFor(() =>
       expect(writes.reassignAssignment.mutateAsync).toHaveBeenCalledWith({
@@ -193,105 +274,6 @@ describe('useCycleBuilderActions', () => {
         body: { volunteerId: 'volunteer-b' },
       }),
     );
-  });
-
-  it('requires a confirmed override before moving a conflicted volunteer', async () => {
-    const writes = mutations();
-    const source = assignment({
-      id: 'source-assignment',
-      volunteerId: 'volunteer-b',
-    });
-    const { result } = renderHook(() =>
-      useCycleBuilderActions({
-        data: dataWithAssignments([source]),
-        ...writes,
-      }),
-    );
-
-    act(() =>
-      result.current.handleSelectAssignment({
-        shiftId: 'shift-1',
-        shiftRequirementId: 'requirement-role-1',
-        roleId: 'role-1',
-        volunteerId: 'volunteer-b',
-        volunteerName: 'Volunteer B',
-        conflictType: 'unavailable',
-      }),
-    );
-    expect(result.current.collision).not.toBeNull();
-
-    await act(async () => {
-      await result.current.applyCollision({ action: 'move' });
-    });
-    expect(result.current.override).not.toBeNull();
-
-    act(() => result.current.confirmOverride());
-    await waitFor(() =>
-      expect(writes.createAssignment.mutateAsync).toHaveBeenCalledWith({
-        shiftId: 'shift-1',
-        body: {
-          volunteerId: 'volunteer-b',
-          shiftRequirementId: 'requirement-role-1',
-        },
-      }),
-    );
-    expect(writes.deleteAssignment.mutateAsync).toHaveBeenCalledWith(
-      'source-assignment',
-    );
-  });
-
-  it('requires a confirmed override for a conflicted swap leg before both writes', async () => {
-    const writes = mutations();
-    const source = assignment({
-      id: 'source-assignment',
-      volunteerId: 'volunteer-a',
-      shiftId: 'source-shift',
-    });
-    const target = assignment({
-      id: 'target-assignment',
-      volunteerId: 'volunteer-b',
-    });
-    const data = dataWithAssignments([source, target]);
-    const sourceShift = data.events[0]?.eventTimeBlocks[0]?.shifts[0];
-    if (!sourceShift) throw new Error('Test shift missing');
-    sourceShift.shiftId = 'source-shift';
-    sourceShift.assignments = [source];
-    sourceShift.eligibleVolunteers = sourceShift.eligibleVolunteers.map(
-      (volunteer) =>
-        volunteer.volunteerId === 'volunteer-b'
-          ? { ...volunteer, isAvailable: false }
-          : volunteer,
-    );
-
-    const { result } = renderHook(() =>
-      useCycleBuilderActions({ data, ...writes }),
-    );
-    act(() =>
-      result.current.handleSelectAssignment({
-        shiftId: 'shift-1',
-        shiftRequirementId: 'requirement-role-1',
-        roleId: 'role-1',
-        volunteerId: 'volunteer-a',
-        assignmentId: 'target-assignment',
-        conflictType: undefined,
-      }),
-    );
-    await act(async () => {
-      await result.current.applyCollision({ action: 'swap' });
-    });
-    expect(result.current.override).not.toBeNull();
-
-    act(() => result.current.confirmOverride());
-    await waitFor(() =>
-      expect(writes.reassignAssignment.mutateAsync).toHaveBeenNthCalledWith(1, {
-        assignmentId: 'source-assignment',
-        body: { volunteerId: 'volunteer-b' },
-      }),
-    );
-    expect(writes.reassignAssignment.mutateAsync).toHaveBeenNthCalledWith(2, {
-      assignmentId: 'target-assignment',
-      body: { volunteerId: 'volunteer-a' },
-    });
   });
 
   it('does not treat an optimistic assignment as a server collision source', async () => {
@@ -321,7 +303,6 @@ describe('useCycleBuilderActions', () => {
     await waitFor(() =>
       expect(writes.createAssignment.mutateAsync).toHaveBeenCalled(),
     );
-    expect(result.current.collision).toBeNull();
     expect(writes.deleteAssignment.mutateAsync).not.toHaveBeenCalled();
   });
 });

@@ -23,6 +23,18 @@ export interface GetShiftInput {
   tx?: TransactionContext;
 }
 
+export interface ListShiftConflictFactsInput {
+  churchId: ChurchId;
+  shiftIds: ShiftId[];
+  tx?: TransactionContext;
+}
+
+export interface ShiftConflictFacts {
+  shift: Shift;
+  ministryName: string;
+  eventTitle: string;
+}
+
 export interface ListShiftsByParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -92,6 +104,9 @@ export interface GetRequirementForShiftInput {
 }
 
 export interface ShiftRepository {
+  listConflictFacts(
+    input: ListShiftConflictFactsInput,
+  ): Promise<ShiftConflictFacts[]>;
   createMany(input: CreateShiftsInput): Promise<Shift[]>;
   getById(input: GetShiftInput): Promise<Shift>;
   listByParticipation(input: ListShiftsByParticipationInput): Promise<Shift[]>;

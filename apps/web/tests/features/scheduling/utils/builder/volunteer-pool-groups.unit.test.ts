@@ -1,3 +1,5 @@
+import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { describe, expect, it } from 'vitest';
 import type { VolunteerPoolItem } from '@/features/scheduling/hooks/use-volunteer-pool';
 import {
@@ -130,6 +132,7 @@ describe('groupVolunteersByRole', () => {
   });
 
   it('keeps unqualified volunteers visible under their own heading, last', () => {
+    overwriteGetLocale(() => 'pt-BR');
     const groups = groupVolunteersByRole({
       volunteers: [
         makeVolunteer({
@@ -145,7 +148,8 @@ describe('groupVolunteersByRole', () => {
       ],
     });
 
-    expect(groups.at(-1)?.roleName).toBe('No qualified roles');
+    expect(groups.at(-1)?.roleName).toBe(m.builder_logic_no_qualified_roles());
+    overwriteGetLocale(() => 'en');
   });
 });
 

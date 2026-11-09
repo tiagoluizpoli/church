@@ -271,8 +271,8 @@ describe('Assign routes', () => {
       {
         volunteerId: 'vol-1',
         volunteerName: 'Ada Lovelace',
-        isAvailable: true,
-        hasConflict: false,
+        answerState: 'available',
+        conflict: null,
         lastServedAt: parseInstant({ value: '2026-08-01T10:00:00.000Z' }),
         qualifiedRoleIds: ['role-1'],
         ministryAccessLevel: 'volunteer',
@@ -290,8 +290,8 @@ describe('Assign routes', () => {
         {
           volunteerId: 'vol-1',
           volunteerName: 'Ada Lovelace',
-          isAvailable: true,
-          hasConflict: false,
+          answerState: 'available',
+          conflict: null,
           lastServedAt: '2026-08-01T10:00:00.000Z',
           qualifiedRoleIds: ['role-1'],
           ministryAccessLevel: 'volunteer',
@@ -317,8 +317,8 @@ describe('Assign routes', () => {
       }),
       warnings: [
         {
-          type: 'NOT_QUALIFIED',
-          details: 'Volunteer is not qualified for the requested role',
+          type: 'UNAVAILABLE',
+          details: 'Volunteer is unavailable',
         },
       ],
     });
@@ -357,8 +357,8 @@ describe('Assign routes', () => {
       },
       warnings: [
         {
-          type: 'NOT_QUALIFIED',
-          details: 'Volunteer is not qualified for the requested role',
+          type: 'UNAVAILABLE',
+          details: 'Volunteer is unavailable',
         },
       ],
     });
@@ -582,6 +582,12 @@ describe('Assign routes', () => {
 
   it('GET /api/v1/assign/cycles/:id/builder allows a Ministry leader and denies a non-leader', async () => {
     participationManager.getCycleBuilderData.mockResolvedValue({
+      cycle: {
+        id: 'cycle-1',
+        name: 'August',
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+      } as never,
       events: [],
       roles: [],
     });

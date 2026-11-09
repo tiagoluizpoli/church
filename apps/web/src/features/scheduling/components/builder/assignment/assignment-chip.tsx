@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { Check, Clock, X } from 'lucide-react';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
@@ -18,11 +19,11 @@ export type ConfirmationStatus = 'pending' | 'confirmed' | 'declined';
  */
 export type AssignmentSyncState = 'pending' | 'saved' | 'failed';
 
-const SYNC_STATE_LABELS: Record<AssignmentSyncState, string> = {
-  pending: 'Saving…',
-  saved: 'Saved',
-  failed: 'Not saved',
-};
+const syncStateLabels = (): Record<AssignmentSyncState, string> => ({
+  pending: m.builder_ui_saving(),
+  saved: m.builder_ui_saved(),
+  failed: m.builder_ui_not_saved(),
+});
 
 interface AssignmentChipProps {
   volunteerName: string;
@@ -69,7 +70,7 @@ export function AssignmentChip({
     >
       <span className="flex items-center gap-1 truncate">
         {syncState !== 'saved' ? (
-          <span className="sr-only">{SYNC_STATE_LABELS[syncState]} — </span>
+          <span className="sr-only">{syncStateLabels()[syncState]} — </span>
         ) : null}
         {volunteerName}
         <AssigneeRoleBadge
@@ -88,22 +89,30 @@ export function AssignmentChip({
             )}
             data-testid="conflict-badge"
           >
-            {conflictStatus === 'unavailable' ? 'Unavailable' : 'Double-booked'}
+            {conflictStatus === 'unavailable'
+              ? m.builder_state_unavailable()
+              : m.builder_ui_double_booked()}
           </Badge>
         )}
 
         {assignmentResponse && isPublished && confirmationStatus && (
           <span data-testid="confirmation-badge">
             {confirmationStatus === 'confirmed' && (
-              <Check className="size-3 text-green-600" aria-label="confirmed" />
+              <Check
+                className="size-3 text-green-600"
+                aria-label={m.builder_ui_confirmed()}
+              />
             )}
             {confirmationStatus === 'declined' && (
-              <X className="size-3 text-destructive" aria-label="declined" />
+              <X
+                className="size-3 text-destructive"
+                aria-label={m.builder_ui_declined()}
+              />
             )}
             {confirmationStatus === 'pending' && (
               <Clock
                 className="size-3 text-muted-foreground"
-                aria-label="pending"
+                aria-label={m.builder_ui_pending()}
               />
             )}
           </span>

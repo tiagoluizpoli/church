@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { formatWeekdayPluralOfIndex } from '@church/time';
 import { ChevronDownIcon, ChevronUpIcon, FilterIcon } from 'lucide-react';
@@ -96,13 +97,15 @@ export function CycleBuilderDateFilters({
     >
       <section className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="space-y-1">
-          <Label htmlFor="cycle-builder-event-search">Search events</Label>
+          <Label htmlFor="cycle-builder-event-search">
+            {m.builder_ui_search_events()}
+          </Label>
           <Input
             id="cycle-builder-event-search"
             value={eventQuery}
             onChange={(event) => onEventQueryChange(event.target.value)}
-            placeholder="Search events…"
-            aria-label="Search events"
+            placeholder={m.builder_ui_search_events_placeholder()}
+            aria-label={m.builder_ui_search_events()}
             className="w-40"
           />
         </div>
@@ -110,7 +113,7 @@ export function CycleBuilderDateFilters({
             <label> that owns no control is announced with nothing attached
             to it (B-3). */}
         <fieldset className="space-y-1">
-          <legend className={GROUP_LABEL_CLASS}>Show</legend>
+          <legend className={GROUP_LABEL_CLASS}>{m.builder_ui_show()}</legend>
           <div className="flex gap-1">
             <Button
               type="button"
@@ -118,7 +121,7 @@ export function CycleBuilderDateFilters({
               aria-pressed={dateMode === 'event_dates'}
               onClick={() => onDateModeChange('event_dates')}
             >
-              Event dates
+              {m.builder_ui_event_dates()}
             </Button>
             <Button
               type="button"
@@ -126,7 +129,7 @@ export function CycleBuilderDateFilters({
               aria-pressed={dateMode === 'all_cycle_dates'}
               onClick={() => onDateModeChange('all_cycle_dates')}
             >
-              All cycle dates
+              {m.builder_ui_all_cycle_dates()}
             </Button>
           </div>
         </fieldset>
@@ -135,7 +138,7 @@ export function CycleBuilderDateFilters({
           render={<Button type="button" variant="outline" />}
         >
           <FilterIcon className="size-3.5" />
-          Date filters
+          {m.builder_ui_date_filters()}
           {activeDateFilterCount > 0 ? (
             <Badge variant="secondary">{activeDateFilterCount}</Badge>
           ) : null}
@@ -152,10 +155,13 @@ export function CycleBuilderDateFilters({
             disabled={filtersAreDefault}
             onClick={onClearFilters}
           >
-            Clear filters
+            {m.builder_ui_clear_filters()}
           </Button>
           <span className="pb-1.5 text-muted-foreground text-xs">
-            {visibleDateCount} of {totalDateCount} dates visible
+            {m.builder_ui_dates_visible({
+              visible: visibleDateCount,
+              total: totalDateCount,
+            })}
           </span>
         </div>
         {actions ? (
@@ -165,7 +171,9 @@ export function CycleBuilderDateFilters({
       <CollapsibleContent className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <Label htmlFor="cycle-builder-date-span-mode">Date range</Label>
+            <Label htmlFor="cycle-builder-date-span-mode">
+              {m.builder_ui_date_range()}
+            </Label>
             {/* No height-forcing wrapper: `SelectTrigger` now reads the
                 surrounding `FormControlSizeProvider` like every other
                 control on this row (B-7). */}
@@ -188,30 +196,34 @@ export function CycleBuilderDateFilters({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="starts">Starts</SelectItem>
-                <SelectItem value="ends">Ends</SelectItem>
-                <SelectItem value="within">Within</SelectItem>
+                <SelectItem value="starts">{m.builder_ui_starts()}</SelectItem>
+                <SelectItem value="ends">{m.builder_ui_ends()}</SelectItem>
+                <SelectItem value="within">{m.builder_ui_within()}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cycle-builder-date-start-filter">From</Label>
+            <Label htmlFor="cycle-builder-date-start-filter">
+              {m.builder_ui_from()}
+            </Label>
             <DatePickerField
               id="cycle-builder-date-start-filter"
               value={rangeStart}
               onChange={onRangeStartChange}
-              placeholder="From"
+              placeholder={m.builder_ui_from()}
               minDate={cycleStartDate}
               maxDate={cycleEndDate}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cycle-builder-date-end-filter">To</Label>
+            <Label htmlFor="cycle-builder-date-end-filter">
+              {m.builder_ui_to()}
+            </Label>
             <DatePickerField
               id="cycle-builder-date-end-filter"
               value={rangeEnd}
               onChange={onRangeEndChange}
-              placeholder="To"
+              placeholder={m.builder_ui_to()}
               minDate={cycleStartDate}
               maxDate={cycleEndDate}
             />
@@ -219,7 +231,9 @@ export function CycleBuilderDateFilters({
         </div>
         {weekdayFilters.length > 0 ? (
           <fieldset className="space-y-1">
-            <legend className={GROUP_LABEL_CLASS}>Repeats on</legend>
+            <legend className={GROUP_LABEL_CLASS}>
+              {m.builder_ui_repeats()}
+            </legend>
             <div className="flex flex-wrap gap-1">
               {weekdayFilters.map((day) => (
                 <Button

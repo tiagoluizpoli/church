@@ -1,3 +1,4 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import {
   addCalendarDays,
   type Instant,
@@ -34,8 +35,21 @@ function lastServed(days: number): string {
 }
 
 describe('formatLastServed', () => {
-  beforeEach(() => setTestClock({ instant: NOW }));
+  beforeEach(() => {
+    overwriteGetLocale(() => 'en');
+    setTestClock({ instant: NOW });
+  });
   afterEach(() => resetClock());
+
+  it('uses Portuguese singular and plural relative dates', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    expect(formatLastServed({ timeZone: SAO_PAULO })).toBe('nunca serviu');
+    expect(lastServed(1)).toBe('serviu ontem');
+    expect(lastServed(7)).toBe('serviu há 1 semana');
+    expect(lastServed(35)).toBe('serviu há 5 semanas');
+    expect(lastServed(57)).toBe('serviu há 1 mês');
+    expect(lastServed(120)).toBe('serviu há 4 meses');
+  });
 
   it('reports a volunteer who has never served', () => {
     expect(formatLastServed({ timeZone: SAO_PAULO })).toBe('never served');

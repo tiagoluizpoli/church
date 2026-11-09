@@ -1,14 +1,23 @@
+import { overwriteGetLocale } from '@church/i18n/runtime';
 import { DndContext } from '@dnd-kit/core';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { CycleBuilderCell } from '@/features/scheduling/components/builder/board/cycle-builder-cell';
 import type {
   CycleBuilderAssignment,
   CycleBuilderShiftSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
 const shift: CycleBuilderShiftSummary = {
   shiftId: 'shift-1',
@@ -31,16 +40,16 @@ const shift: CycleBuilderShiftSummary = {
     {
       volunteerId: 'volunteer-1',
       volunteerName: 'Grace Hopper',
-      isAvailable: true,
-      hasConflict: false,
+      answerState: 'available',
+      conflict: null,
       qualifiedRoleIds: [],
       ministryAccessLevel: 'volunteer',
     },
     {
       volunteerId: 'volunteer-2',
       volunteerName: 'Ada Lovelace',
-      isAvailable: true,
-      hasConflict: false,
+      answerState: 'available',
+      conflict: null,
       qualifiedRoleIds: [],
       ministryAccessLevel: 'volunteer',
     },
@@ -116,6 +125,43 @@ function renderCell(
 }
 
 describe('CycleBuilderCell', () => {
+  it('offers People and Invitations when nobody holds the role', () => {
+    renderCell({
+      shift: { ...shift, eligibleVolunteers: [] },
+      roleLabel: 'Main · Greeter',
+      displayRoleLabel: 'Greeter',
+      pickerVolunteers: [],
+    });
+
+    expect(screen.getByText('No one holds Greeter')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'People' })).toHaveAttribute(
+      'href',
+      '/people',
+    );
+    expect(screen.getByRole('link', { name: 'Invitations' })).toHaveAttribute(
+      'href',
+      '/invitations',
+    );
+    for (const link of screen.getAllByRole('link')) {
+      expect(link).toHaveAttribute('target', '_blank');
+    }
+  });
+
+  it('keeps an unavailable warning on an assigned volunteer', () => {
+    renderCell({
+      assignments: [assignments[0]],
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], answerState: 'unavailable' },
+        ],
+      },
+    });
+    expect(
+      screen.getByTestId('cycle-assignment-assignment-1'),
+    ).toHaveTextContent('Unavailable');
+  });
+
   it('shows one compact add chip while a role still has capacity', () => {
     renderCell({ assignments: [assignments[0]] });
 
@@ -204,7 +250,7 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            isAvailable: false,
+            answerState: 'unavailable',
             qualifiedRoleIds: ['role-1'],
           },
         ],
@@ -215,14 +261,14 @@ describe('CycleBuilderCell', () => {
 
     expect(
       screen.getByTestId('cycle-requirement-requirement-role-1'),
-    ).toHaveAttribute('data-selected-fit', 'override');
+    ).toHaveAttribute('data-selected-fit', 'unavailable');
     // Dashed amber outline, not a fainter ring than the safe tier: the
     // dangerous one used to be the harder of the two to see (B-3).
     expect(
       screen.getByTestId('cycle-requirement-requirement-role-1'),
     ).toHaveClass('outline-2', 'outline-dashed');
     const assign = screen.getByRole('button', {
-      name: 'Assign Grace Hopper — Not available for this shift — assigning is an override',
+      name: 'Assign Grace Hopper — Not available for this shift — confirmation required',
     });
     expect(assign).toHaveClass('text-yellow-700');
     // The explanation used to live in a native `title`, reachable by neither
@@ -237,7 +283,13 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            hasConflict: true,
+            conflict: {
+              assignmentId: 'conflict',
+              ministryName: 'Worship',
+              eventTitle: 'Service',
+              startTime: '2026-10-04T13:00:00Z',
+              endTime: '2026-10-04T15:00:00Z',
+            },
             qualifiedRoleIds: ['role-1'],
           },
         ],
@@ -254,8 +306,7 @@ describe('CycleBuilderCell', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers an unqualified selection with a warning instead of hiding it (B-2)', async () => {
-    const user = userEvent.setup();
+  it('does not offer assignment for an unqualified selection', async () => {
     const onSelect = vi.fn();
     renderCell({
       shift: {
@@ -270,37 +321,11 @@ describe('CycleBuilderCell', () => {
       onSelect,
     });
 
-    // Qualification is a soft constraint with friction, not a hard filter:
-    // the fit still surfaces as an assignable tier the cell renders...
-    expect(
-      screen.getByTestId('cycle-requirement-requirement-role-1'),
-    ).toHaveAttribute('data-selected-fit', 'unqualified');
-    // Dotted, not dashed: `unqualified` reads apart from `override` at a
-    // glance, without hovering, even though both share the amber "needs a
-    // reason" color (B-9).
-    expect(
-      screen.getByTestId('cycle-requirement-requirement-role-1'),
-    ).toHaveClass('outline-2', 'outline-dotted');
-    // ...and Add stays available beside it — selecting someone must not take
-    // away the picker from the cells where they don't qualify (B-7).
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
-
-    const assign = screen.getByRole('button', {
-      name: 'Assign Grace Hopper — Not qualified for this role — assigning is an override',
-    });
-    expect(assign).toHaveClass('text-yellow-700');
-
-    await user.click(assign);
-
-    // `overrideKindForFit()` translates the tier to `not_qualified`, which
-    // opens `OverrideDialog`'s not-qualified variant (FR-016) — the same path
-    // every other override reaches, never a silent commit.
-    expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        volunteerId: 'volunteer-1',
-        conflictType: 'not_qualified',
-      }),
-    );
+    expect(
+      screen.queryByRole('button', { name: /Assign Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('sends the conflict with an override assignment so a reason is captured (FR-016)', async () => {
@@ -312,7 +337,7 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            isAvailable: false,
+            answerState: 'unavailable',
             qualifiedRoleIds: ['role-1'],
           },
         ],
@@ -326,12 +351,12 @@ describe('CycleBuilderCell', () => {
       screen.getByRole('button', { name: /^Assign Grace Hopper/ }),
     );
 
-    // `CycleBuilder` opens the override dialog on `conflictType` alone —
+    // The board uses the availability state to confirm the assignment —
     // without it the assignment is applied with no reason and no audit.
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({
         volunteerId: 'volunteer-1',
-        conflictType: 'unavailable',
+        unavailable: true,
       }),
     );
   });
@@ -356,7 +381,7 @@ describe('CycleBuilderCell', () => {
     );
 
     expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ conflictType: undefined }),
+      expect.objectContaining({ unavailable: false }),
     );
   });
 

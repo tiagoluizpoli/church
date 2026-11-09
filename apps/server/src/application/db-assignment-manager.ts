@@ -22,11 +22,12 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
+import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 
 interface CreateParticipationAssignmentTransactionInput {
   input: CreateParticipationAssignmentInput;
   tx: TransactionContext;
-  currentInstant: Instant;
+  participation: MinistryParticipation;
 }
 
 interface DbAssignmentManagerDependencies {
@@ -80,19 +81,29 @@ export class DbAssignmentManager implements IAssignmentManager {
   async createParticipationAssignment(
     input: CreateParticipationAssignmentInput,
   ): Promise<CreateParticipationAssignmentResult> {
-    const currentInstant = now();
-    return this.unitOfWork.run((tx) =>
-      this.createParticipationAssignmentInTransaction({
+    return this.unitOfWork.run(async (tx) => {
+      // Read unlocked only to name the Participation row. Saves and Publish
+      // take the same lock before reading the committed Shift graph.
+      const { participationId } = await this.shiftRepository.getById({
+        churchId: input.churchId,
+        shiftId: input.shiftId,
+        tx,
+      });
+      const participation = await this.participationRepository.lockById({
+        churchId: input.churchId,
+        participationId,
+        tx,
+      });
+      return this.createParticipationAssignmentInTransaction({
         input,
         tx,
-        currentInstant,
-      }),
-    );
+        participation,
+      });
+    });
   }
 
   async deleteAssignment(input: DeleteAssignmentInput): Promise<void> {
     const { assignmentId, churchId, actorId } = input;
-    const currentInstant = now();
     await this.unitOfWork.run(async (tx) => {
       const assignment = await this.assignmentRepo.getById({
         churchId,
@@ -111,6 +122,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         shiftId: assignment.shiftId,
         tx,
       });
+      const currentInstant = now();
       assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
       await this.auditRepo.create({
         churchId,
@@ -128,17 +140,28 @@ export class DbAssignmentManager implements IAssignmentManager {
   async reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment> {
-    const currentInstant = now();
     const nextAssignment = await this.unitOfWork.run(
       async (tx): Promise<Assignment> => {
+        const initial = await this.assignmentRepo.getById({
+          churchId: input.churchId,
+          assignmentId: input.assignmentId,
+          tx,
+        });
+        if (!initial.participationId)
+          throw new Error('Assignment is missing a participation reference');
+        const participation = await this.participationRepository.lockById({
+          churchId: input.churchId,
+          participationId: initial.participationId,
+          tx,
+        });
+        // A move may have committed while this call waited for the lock.
         const currentAssignment = await this.assignmentRepo.getById({
           churchId: input.churchId,
           assignmentId: input.assignmentId,
           tx,
         });
-        if (!currentAssignment.shiftId) {
+        if (!currentAssignment.shiftId)
           throw new Error('Assignment is missing a shift reference');
-        }
         const nextAssignmentResult =
           await this.createParticipationAssignmentInTransaction({
             input: {
@@ -149,7 +172,7 @@ export class DbAssignmentManager implements IAssignmentManager {
               actorId: input.actorId,
             },
             tx,
-            currentInstant,
+            participation,
           });
         if (!nextAssignmentResult.assignment.participationId) {
           throw new Error('Assignment is missing a participation reference');
@@ -184,7 +207,6 @@ export class DbAssignmentManager implements IAssignmentManager {
   async moveParticipationAssignment(
     input: MoveParticipationAssignmentInput,
   ): Promise<Assignment> {
-    const currentInstant = now();
     return this.unitOfWork.run(async (tx) => {
       const initial = await this.assignmentRepo.getById({
         churchId: input.churchId,
@@ -208,6 +230,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         shiftId: initial.shiftId,
         tx,
       });
+      const currentInstant = now();
       assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
       const requirements =
         await this.shiftRepository.listRequirementsByParticipation({
@@ -282,26 +305,14 @@ export class DbAssignmentManager implements IAssignmentManager {
   private async createParticipationAssignmentInTransaction({
     input,
     tx,
-    currentInstant,
+    participation,
   }: CreateParticipationAssignmentTransactionInput): Promise<CreateParticipationAssignmentResult> {
-    // Read unlocked only to name the Participation row.
-    const { participationId } = await this.shiftRepository.getById({
-      churchId: input.churchId,
-      shiftId: input.shiftId,
-      tx,
-    });
-    // The Participation before its Shifts, as saves and Publish lock: their
-    // committed graph and state are read below, and neither can deadlock with this.
-    const participation = await this.participationRepository.lockById({
-      churchId: input.churchId,
-      participationId,
-      tx,
-    });
     const shift = await this.shiftRepository.getById({
       churchId: input.churchId,
       shiftId: input.shiftId,
       tx,
     });
+    const currentInstant = now();
     assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
     const requirement = await this.shiftRepository.getRequirementForShift({
       churchId: input.churchId,

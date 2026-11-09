@@ -1,4 +1,5 @@
 import { getLocale } from '@church/i18n/runtime';
+import { compareInstants, now, parseInstant } from '@church/time';
 import {
   DndContext,
   DragOverlay,
@@ -69,6 +70,8 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { toCycleDayKey } from '@/shared/utils/date';
 
+const SHIFT_CLOCK_REFRESH_INTERVAL_MS = 30_000;
+
 interface Props {
   data: CycleBuilderData;
   cycleStartDate?: string;
@@ -89,6 +92,14 @@ interface Props {
 }
 
 export function CycleBuilderMatrix(props: Props) {
+  const [currentInstant, setCurrentInstant] = useState(now);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const instant = now();
+      setCurrentInstant(instant);
+    }, SHIFT_CLOCK_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, []);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const { churchTimezone } = useTimezone();
   const sensors = useSensors(
@@ -302,7 +313,14 @@ export function CycleBuilderMatrix(props: Props) {
     };
   }, [draggingVolunteerId, volunteers, activeAssignments]);
   // Use the same assignment path for focused picks and board actions.
-  const focusedRequirementIsEditable = Boolean(focused && focusedShiftContext);
+  const focusedShiftStart = focusedShift
+    ? parseInstant({ value: focusedShift.startTime })
+    : undefined;
+  const focusedRequirementIsEditable = Boolean(
+    focused &&
+      focusedShiftStart &&
+      compareInstants({ left: focusedShiftStart, right: currentInstant }) > 0,
+  );
   // A full role can still be focused, so the rail honours the same headcount
   // ceiling the board enforces cell-side as `canAdd`.
   const focusedRoleHasRoom = Boolean(
@@ -337,6 +355,12 @@ export function CycleBuilderMatrix(props: Props) {
       : undefined;
   const assignFocusedVolunteer = (volunteerId: string) => {
     if (!focused || !focusedShift || !focusedRoleHasRoom) return;
+    if (!focusedShiftStart) return;
+    const dispatchInstant = now();
+    if (
+      compareInstants({ left: focusedShiftStart, right: dispatchInstant }) <= 0
+    )
+      return;
     if (focusedShiftAssigneeIds?.has(volunteerId)) return;
     const fit = volunteerFitForShiftRole({
       shift: focusedShift,

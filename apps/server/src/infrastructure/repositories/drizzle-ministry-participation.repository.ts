@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import {
+  assignment,
   availabilityCheck,
   cycle,
   event,
@@ -7,6 +8,7 @@ import {
   ministryParticipation,
   participationEventTimeBlockInclusion,
   shift,
+  unavailableShift,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import {
@@ -14,6 +16,7 @@ import {
   asc,
   count,
   eq,
+  gt,
   inArray,
   isNull,
   min,
@@ -38,6 +41,7 @@ import type {
   MinistryParticipationRepository,
   RemoveInclusionInput,
   ScheduleCheckCountRow,
+  ScheduleLateMarkCountRow,
   ScheduleServingStateRow,
   ScheduleSummaryRow,
   TouchParticipationInput,
@@ -629,6 +633,53 @@ export class DrizzleMinistryParticipationRepository
           ne(event.status, 'cancelled'),
         ),
       );
+  }
+
+  async countScheduleLateMarks({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleLateMarkCountRow[]> {
+    return getClient({ db: this.db, tx })
+      .select({
+        ministryId: ministryParticipation.ministryId,
+        cycleId: event.cycleId,
+        count: count(),
+      })
+      .from(assignment)
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, assignment.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(
+        unavailableShift,
+        eq(unavailableShift.shiftId, assignment.shiftId),
+      )
+      .innerJoin(
+        availabilityCheck,
+        eq(availabilityCheck.id, unavailableShift.availabilityCheckId),
+      )
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .where(
+        and(
+          withChurchIsolation({ table: assignment, churchId }),
+          eq(ministryMembership.volunteerId, assignment.volunteerId),
+          eq(ministryMembership.ministryId, ministryParticipation.ministryId),
+          eq(availabilityCheck.cycleId, event.cycleId),
+          isNull(availabilityCheck.withdrawnAt),
+          eq(ministryMembership.status, 'active'),
+          gt(unavailableShift.createdAt, assignment.assignedAt),
+          inArray(assignment.status, ['draft', 'pending', 'confirmed']),
+          inArray(ministryParticipation.ministryId, ministryIds),
+          inArray(event.cycleId, cycleIds),
+        ),
+      )
+      .groupBy(ministryParticipation.ministryId, event.cycleId);
   }
 
   async countScheduleChecks({

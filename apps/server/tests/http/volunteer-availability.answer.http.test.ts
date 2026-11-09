@@ -20,7 +20,9 @@ import {
   it,
   vi,
 } from 'vitest';
+import { AssignController } from '@/api/controllers/assign-controller';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import type { CycleBuilderResponse } from '@/api/dtos/cycle-builder.dto';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
@@ -30,6 +32,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
+import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   buildAvailabilityCheck,
   buildUnavailableShift,
@@ -61,14 +64,25 @@ const ROOT = '/api/v1/volunteer/availability-checks';
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
+  const managers = createSchedulingManagers();
+  const activeChurchResolver = new DbActiveChurchResolver({
+    churchRepository: new DrizzleChurchRepository({ db }),
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+    actorRepository: new DrizzleAuthorityActorResolver({ db }),
+    membershipRepository: new DrizzleChurchMembershipRepository({ db }),
+  });
   const controller = new VolunteerController({
-    volunteerManager: createSchedulingManagers().volunteerManager,
-    activeChurchResolver: new DbActiveChurchResolver({
-      churchRepository: new DrizzleChurchRepository({ db }),
-      unitOfWork: new DrizzleUnitOfWork({ db }),
-      actorRepository: new DrizzleAuthorityActorResolver({ db }),
-      membershipRepository: new DrizzleChurchMembershipRepository({ db }),
-    }),
+    volunteerManager: managers.volunteerManager,
+    activeChurchResolver,
+    config: appConfig,
+  });
+  const assignController = new AssignController({
+    participationManager: managers.participationManager,
+    assignmentManager: managers.assignmentManager,
+    activeChurchResolver,
+    authorityGuard: {
+      decideManageMinistry: async () => ({ allowed: true }),
+    } as never,
     config: appConfig,
   });
   await app.register(
@@ -76,6 +90,10 @@ beforeAll(async () => {
       instance.register(controller.registerRoutes.bind(controller), {
         prefix: controller.prefix,
       });
+      instance.register(
+        assignController.registerRoutes.bind(assignController),
+        { prefix: assignController.prefix },
+      );
     },
     { prefix: '/api/v1' },
   );
@@ -163,17 +181,91 @@ async function seedAnswer() {
     endTime: new Date('2026-09-07T02:00:00Z'),
     label: 'Night',
   });
-  await seedRequirement({
+  const requirement = await seedRequirement({
     churchId,
     participationId: graph.participation.id,
     shiftId: shift.id,
     roleId: role.id,
     peopleNeeded: 1,
   });
-  return { ...seeded, graph, shift };
+  return { ...seeded, graph, shift, requirement };
 }
 
 describe('Volunteer answers through PostgreSQL', () => {
+  it.each([
+    { assignedAt: '2020-01-01T00:00:00Z', lateMark: true },
+    { assignedAt: '2090-01-01T00:00:00Z', lateMark: false },
+  ])('preserves the assignment ordering on repeated unchanged answers', async ({
+    assignedAt,
+    lateMark,
+  }) => {
+    const {
+      churchId,
+      ministryId,
+      period,
+      member,
+      role,
+      check,
+      graph,
+      shift,
+      requirement,
+    } = await seedAnswer();
+    await buildAssignment({
+      db,
+      churchId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      volunteerId: member.volunteer.id,
+      roleId: role.id,
+      shiftRequirementId: requirement.id,
+      status: 'pending',
+      assignedAt: parseInstant({ value: assignedAt }),
+    });
+    const first = await app.inject({
+      method: 'PUT',
+      url: `${ROOT}/${check.id}/answer`,
+      payload: { shiftIds: [shift.id] },
+    });
+    expect(first.statusCode).toBe(200);
+    const [mark] = await db
+      .select()
+      .from(unavailableShift)
+      .where(eq(unavailableShift.availabilityCheckId, check.id));
+    for (let index = 0; index < 2; index++) {
+      const saved = await app.inject({
+        method: 'PUT',
+        url: `${ROOT}/${check.id}/answer`,
+        payload: { shiftIds: [shift.id] },
+      });
+      expect(saved.statusCode).toBe(200);
+      expect(
+        await db
+          .select()
+          .from(unavailableShift)
+          .where(eq(unavailableShift.availabilityCheckId, check.id)),
+      ).toEqual([mark]);
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/assign/cycles/${period.id}/builder?ministryId=${ministryId}`,
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      const body: CycleBuilderResponse = response.json();
+      const shifts = body.events.flatMap((event) =>
+        event.eventTimeBlocks.flatMap((block) => block.shifts),
+      );
+      expect(
+        shifts.find((row) => row.shift.id === shift.id)?.assignments,
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            volunteerId: member.volunteer.id,
+            lateMark,
+          }),
+        ]),
+      );
+    }
+  });
+
   it('replaces marks and confirms a pending check in one answer', async () => {
     const { check, shift, churchId } = await seedAnswer();
     await buildUnavailableShift({

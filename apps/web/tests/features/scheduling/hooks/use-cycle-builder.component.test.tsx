@@ -53,6 +53,7 @@ const ANA_ASSIGNMENT: RawAssignment = {
   shiftRequirementId: 'requirement-1',
   status: 'confirmed',
   assignedAt: '2026-07-01T10:00:00.000Z',
+  lateMark: false,
 };
 
 function makeCycleBuilderData(): GetCycleBuilderData200 {

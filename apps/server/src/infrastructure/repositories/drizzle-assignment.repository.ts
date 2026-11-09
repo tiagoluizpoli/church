@@ -30,6 +30,7 @@ import type {
   ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
+  MoveAssignmentRepositoryInput,
   UpdateAssignmentStatusRepositoryInput,
 } from '../../domain/contracts/infrastructure/assignment.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
@@ -329,6 +330,19 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
         eventTimeBlockId: row.eventTimeBlockId,
       }),
     );
+  }
+
+  async move(input: MoveAssignmentRepositoryInput): Promise<Assignment> {
+    await getClient({ db: this.db, tx: input.tx })
+      .update(assignment)
+      .set({ shiftRequirementId: input.shiftRequirementId })
+      .where(
+        and(
+          eq(assignment.id, input.assignmentId),
+          withChurchIsolation({ table: assignment, churchId: input.churchId }),
+        ),
+      );
+    return this.getById(input);
   }
 
   async updateStatus({

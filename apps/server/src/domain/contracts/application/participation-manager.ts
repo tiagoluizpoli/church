@@ -85,8 +85,13 @@ export interface GetCycleBuilderDataInput {
 export interface CycleBuilderShiftView {
   shift: Shift;
   requirements: CycleBuilderRequirementView[];
-  assignments: Assignment[];
+  assignments: CycleBuilderAssignmentView[];
   eligibleVolunteers: EligibleVolunteerView[];
+}
+
+export interface CycleBuilderAssignmentView {
+  assignment: Assignment;
+  lateMark: boolean;
 }
 
 /** A requirement as the Cycle Builder read returns it. */
@@ -242,6 +247,7 @@ export interface ScheduleView {
   ministry: Ministry;
   cycle: Cycle;
   stage: ScheduleStage;
+  lateMarkCount: number;
   asking?: ScheduleAskingView;
 }
 

@@ -59,3 +59,31 @@ export function dropTargetData({
         : undefined,
   };
 }
+
+export interface AssignmentDragData {
+  assignmentId: string;
+  shiftId: string;
+  shiftRequirementId: string;
+  roleId: string;
+}
+
+export function draggedAssignment({
+  active,
+}: DraggedVolunteerIdInput): AssignmentDragData | undefined {
+  const data: unknown = active?.data.current;
+  if (
+    !isRecord(data) ||
+    data.kind !== 'assignment' ||
+    typeof data.assignmentId !== 'string' ||
+    typeof data.shiftId !== 'string' ||
+    typeof data.shiftRequirementId !== 'string' ||
+    typeof data.roleId !== 'string'
+  )
+    return undefined;
+  return {
+    assignmentId: data.assignmentId,
+    shiftId: data.shiftId,
+    shiftRequirementId: data.shiftRequirementId,
+    roleId: data.roleId,
+  };
+}

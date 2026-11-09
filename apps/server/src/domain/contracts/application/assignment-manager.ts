@@ -32,6 +32,13 @@ export interface ReassignParticipationAssignmentInput {
   actorId: UserId;
 }
 
+export interface MoveParticipationAssignmentInput {
+  churchId: ChurchId;
+  assignmentId: AssignmentId;
+  shiftRequirementId: ShiftRequirementId;
+  actorId: UserId;
+}
+
 export interface GetAssignmentInput {
   assignmentId: AssignmentId;
   churchId: ChurchId;
@@ -56,6 +63,9 @@ export interface IAssignmentManager {
   ): Promise<CreateParticipationAssignmentResult>;
   reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
+  ): Promise<Assignment>;
+  moveParticipationAssignment(
+    input: MoveParticipationAssignmentInput,
   ): Promise<Assignment>;
   deleteAssignment(input: DeleteAssignmentInput): Promise<void>;
   listAuditLogForCycle(

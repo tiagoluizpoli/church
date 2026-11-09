@@ -58,6 +58,7 @@ export function createAssignmentRepositoryFake() {
     listByVolunteerInRange:
       vi.fn<AssignmentRepository['listByVolunteerInRange']>(),
     listByRange: vi.fn<AssignmentRepository['listByRange']>(),
+    move: vi.fn<AssignmentRepository['move']>(),
     updateStatus: vi.fn<AssignmentRepository['updateStatus']>(),
     countByVolunteerInRange:
       vi.fn<AssignmentRepository['countByVolunteerInRange']>(),
@@ -210,6 +211,8 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['listScheduleSummaries']>(),
     listScheduleServingStates:
       vi.fn<MinistryParticipationRepository['listScheduleServingStates']>(),
+    countScheduleLateMarks:
+      vi.fn<MinistryParticipationRepository['countScheduleLateMarks']>(),
     countScheduleChecks:
       vi.fn<MinistryParticipationRepository['countScheduleChecks']>(),
   } satisfies MinistryParticipationRepository;

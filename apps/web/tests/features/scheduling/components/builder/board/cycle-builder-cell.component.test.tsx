@@ -1,4 +1,6 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
+import { parseInstant, setTestClock } from '@church/time';
 import { DndContext } from '@dnd-kit/core';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -17,7 +19,12 @@ import type {
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
 
-beforeEachLocale(() => overwriteGetLocale(() => 'en'));
+beforeEachLocale(() => {
+  overwriteGetLocale(() => 'en');
+  setTestClock({
+    instant: parseInstant({ value: '2026-08-02T08:55:00.000Z' }),
+  });
+});
 
 const shift: CycleBuilderShiftSummary = {
   shiftId: 'shift-1',
@@ -67,6 +74,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
     volunteerName: 'Grace Hopper',
   },
   {
@@ -79,6 +87,7 @@ const assignments: CycleBuilderAssignment[] = [
     shiftRequirementId: 'requirement-role-1',
     status: 'confirmed',
     assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
     volunteerName: 'Ada Lovelace',
   },
 ];
@@ -125,6 +134,128 @@ function renderCell(
 }
 
 describe('CycleBuilderCell', () => {
+  it('renders started shifts without assignment actions or drop targets', () => {
+    setTestClock({
+      instant: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+    });
+    renderCell({ assignments: [assignments[0]], peopleNeeded: 2 });
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        m.builder_shift_started({
+          shift: 'Morning service · 09:00 – 10:00',
+          time: '09:00',
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.builder_ui_add() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).not.toHaveAttribute('data-drop-target');
+    expect(
+      screen.getByTestId('cycle-assignment-assignment-1'),
+    ).not.toHaveAttribute('data-drop-target');
+  });
+  it('renders the read-only message in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    setTestClock({
+      instant: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+    });
+    renderCell({ assignments: [assignments[0]] });
+    expect(
+      screen.getByText(
+        m.builder_shift_started({
+          shift: 'Morning service · 09:00 – 10:00',
+          time: '09:00',
+        }),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('offers only other sectors for the same role when moving an assignment', async () => {
+    const user = userEvent.setup();
+    const onMove = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        requirements: [
+          ...shift.requirements,
+          {
+            id: 'target',
+            roleId: 'role-1',
+            sectorName: 'Side',
+            peopleNeeded: 1,
+          },
+          {
+            id: 'wrong-role',
+            roleId: 'role-2',
+            sectorName: 'Other',
+            peopleNeeded: 1,
+          },
+        ],
+      },
+      assignments: assignments.slice(0, 1),
+      onMove,
+    });
+    await user.click(screen.getByTestId('assignment-chip'));
+    await user.click(screen.getByRole('button', { name: 'Move' }));
+    expect(screen.getByRole('button', { name: 'Side' })).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Other' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Side' }));
+    expect(onMove).toHaveBeenCalledWith({
+      assignmentId: 'assignment-1',
+      shiftRequirementId: 'target',
+    });
+  });
+
+  it('shows the move action in Portuguese', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const user = userEvent.setup();
+    renderCell({
+      shift: {
+        ...shift,
+        requirements: [
+          ...shift.requirements,
+          {
+            id: 'side',
+            roleId: 'role-1',
+            sectorName: 'Lateral',
+            peopleNeeded: 1,
+          },
+        ],
+      },
+      assignments: assignments.slice(0, 1),
+      onMove: vi.fn(),
+    });
+    await user.click(screen.getByTestId('assignment-chip'));
+    expect(
+      screen.getByRole('button', { name: m.builder_ui_move() }),
+    ).toBeVisible();
+    expect(m.builder_ui_move()).toBe('Mover');
+  });
+
+  it('shows the late mark and its Shift in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    renderCell({
+      shift: { ...shift, label: 'Manhã' },
+      assignments: assignments
+        .slice(0, 1)
+        .map((item) => ({ ...item, lateMark: true })),
+    });
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_late_mark_tooltip({ shift: 'Manhã' }),
+      }),
+    ).toBeVisible();
+  });
+
   it('offers People and Invitations when nobody holds the role', () => {
     renderCell({
       shift: { ...shift, eligibleVolunteers: [] },

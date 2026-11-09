@@ -167,6 +167,7 @@ function createRepos(): Repos {
     listByVolunteers: vi.fn(),
     listByVolunteerInRange: vi.fn(),
     listByRange: vi.fn(),
+    move: vi.fn(),
     updateStatus: vi.fn(),
     countByVolunteerInRange: vi.fn(),
     deleteByEvent: vi.fn(),
@@ -235,6 +236,7 @@ function createRepos(): Repos {
     findAvailabilityRequestedAt: vi.fn(),
     listScheduleSummaries: vi.fn(),
     listScheduleServingStates: vi.fn(),
+    countScheduleLateMarks: vi.fn(),
     countScheduleChecks: vi.fn(),
   };
 

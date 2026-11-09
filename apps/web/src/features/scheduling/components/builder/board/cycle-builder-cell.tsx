@@ -1,7 +1,8 @@
 import { m } from '@church/i18n/messages';
+import { compareInstants, now, parseInstant } from '@church/time';
 import { useDndContext, useDroppable } from '@dnd-kit/core';
 import { PlusIcon, TriangleAlertIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   type CycleBuilderAssignment,
   type CycleBuilderShiftSummary,
@@ -11,7 +12,11 @@ import type {
   PickerVolunteer,
   SuggestedVolunteer,
 } from '../../../utils/builder/cycle-builder-candidate.types';
-import { draggedVolunteerId } from '../../../utils/builder/cycle-builder-dnd.utils';
+import { timeLabel } from '../../../utils/builder/cycle-builder-date.utils';
+import {
+  draggedAssignment,
+  draggedVolunteerId,
+} from '../../../utils/builder/cycle-builder-dnd.utils';
 import {
   isAssignableFit,
   type ShiftRoleFit,
@@ -33,6 +38,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+
+export interface MoveAssignmentInput {
+  assignmentId: string;
+  shiftRequirementId: string;
+}
 
 interface CycleBuilderCellProps {
   shift: CycleBuilderShiftSummary;
@@ -58,6 +69,7 @@ interface CycleBuilderCellProps {
   onToggleFocus: () => void;
   onSelect: (input: CycleBuilderCellSelectInput) => void;
   onRemove: (assignmentId: string) => void;
+  onMove?: (input: MoveAssignmentInput) => void;
   onRetryFailedWrite?: (failedWriteId: string) => void;
   onDismissFailedWrite?: (failedWriteId: string) => void;
 }
@@ -111,17 +123,33 @@ export function CycleBuilderCell({
   selectedVolunteerId,
   selectedVolunteerName,
   isPublished,
-  isEditable = true,
+  isEditable: editable = true,
   isFocused,
   failedWrites,
   onFocus,
   onToggleFocus,
   onSelect,
   onRemove,
+  onMove,
   onRetryFailedWrite,
   onDismissFailedWrite,
 }: CycleBuilderCellProps) {
+  const [currentInstant, setCurrentInstant] = useState(now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentInstant(now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const isStarted =
+    compareInstants({
+      left: parseInstant({ value: shift.startTime }),
+      right: currentInstant,
+    }) <= 0;
+  const isEditable = editable && !isStarted;
   const isTouch = useFormControlSize() === 'touch';
+  const { churchTimezone } = useTimezone();
+  const shiftLabel =
+    shift.label ??
+    `${eventTimeBlockLabel} · ${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const canAdd = assignments.length < peopleNeeded;
   const hasRoleHolder = shift.eligibleVolunteers.some((volunteer) =>
@@ -137,6 +165,13 @@ export function CycleBuilderCell({
   // board's highlight and its drop targets tell the leader different stories.
   const { active } = useDndContext();
   const draggedId = draggedVolunteerId({ active });
+  const movingAssignment = draggedAssignment({ active });
+  const validMoveTarget = Boolean(
+    movingAssignment &&
+      movingAssignment.shiftId === shift.shiftId &&
+      movingAssignment.roleId === roleId &&
+      movingAssignment.shiftRequirementId !== shiftRequirementId,
+  );
   const draggedFit = draggedId
     ? volunteerFitForShiftRole({ shift, roleId, volunteerId: draggedId })
     : null;
@@ -145,7 +180,7 @@ export function CycleBuilderCell({
     data: { shiftId: shift.shiftId, shiftRequirementId },
     disabled:
       !isEditable ||
-      !canAdd ||
+      (movingAssignment ? !validMoveTarget : !canAdd) ||
       Boolean(draggedFit && !isAssignableFit({ fit: draggedFit })),
   });
   // Reverse highlight: selecting someone in the rail paints the board with
@@ -252,7 +287,11 @@ export function CycleBuilderCell({
         roleDropTarget.isOver && 'border-primary bg-primary/5',
       )}
       data-selected-fit={selectedFit.tier}
-      data-drop-target={isEditable && canAdd ? 'append' : undefined}
+      data-drop-target={
+        isEditable && (movingAssignment ? validMoveTarget : canAdd)
+          ? 'append'
+          : undefined
+      }
       data-testid={`cycle-requirement-${shiftRequirementId}`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -267,6 +306,17 @@ export function CycleBuilderCell({
         </span>
       </div>
 
+      {isStarted ? (
+        <p className="mt-2 text-muted-foreground text-xs">
+          {m.builder_shift_started({
+            shift: shiftLabel,
+            time: timeLabel({
+              instant: shift.startTime,
+              timeZone: churchTimezone,
+            }),
+          })}
+        </p>
+      ) : null}
       {!hasRoleHolder ? (
         <p className="mt-2 text-muted-foreground text-xs">
           <span>
@@ -297,7 +347,9 @@ export function CycleBuilderCell({
             key={assignment.id}
             assignment={assignment}
             shiftId={shift.shiftId}
+            shiftLabel={shiftLabel}
             shiftRequirementId={shiftRequirementId}
+            roleId={roleId}
             isPublished={isPublished}
             isUnavailable={shift.eligibleVolunteers.some(
               (volunteer) =>
@@ -308,6 +360,17 @@ export function CycleBuilderCell({
             onFocus={onFocus}
             pickerVolunteers={pickerVolunteers}
             onRemove={() => onRemove(assignment.id)}
+            moveTargets={shift.requirements.filter(
+              (requirement) =>
+                requirement.roleId === roleId &&
+                requirement.id !== shiftRequirementId,
+            )}
+            onMove={(targetId) =>
+              onMove?.({
+                assignmentId: assignment.id,
+                shiftRequirementId: targetId,
+              })
+            }
             onSelect={(input: AssignmentButtonSelectInput) =>
               commit({ ...input, assignmentId: assignment.id })
             }

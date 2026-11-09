@@ -33,6 +33,7 @@ interface AssignmentChipProps {
   isPublished: boolean;
   syncState?: AssignmentSyncState;
   onClick?: () => void;
+  readOnly?: boolean;
 }
 
 export function AssignmentChip({
@@ -43,12 +44,14 @@ export function AssignmentChip({
   isPublished,
   syncState = 'saved',
   onClick,
+  readOnly = false,
 }: AssignmentChipProps) {
   const { assignmentResponse } = appConfig.parked;
   const isTouch = useFormControlSize() === 'touch';
+  const Tag = readOnly ? 'span' : 'button';
   return (
-    <button
-      type="button"
+    <Tag
+      type={readOnly ? undefined : 'button'}
       onClick={onClick}
       className={cn(
         'radius-control inline-flex max-w-full items-center justify-between gap-1 border px-2 py-1 text-left text-xs transition-colors hover:bg-muted/50',
@@ -118,6 +121,6 @@ export function AssignmentChip({
           </span>
         )}
       </span>
-    </button>
+    </Tag>
   );
 }

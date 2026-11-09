@@ -1,4 +1,5 @@
 import { getLocale } from '@church/i18n/runtime';
+import { compareInstants, now, parseInstant } from '@church/time';
 import {
   DndContext,
   DragOverlay,
@@ -34,6 +35,7 @@ import {
   weekdayForDayKey,
 } from '../../../utils/builder/cycle-builder-date.utils';
 import {
+  draggedAssignment,
   draggedVolunteerId,
   dropTargetData,
 } from '../../../utils/builder/cycle-builder-dnd.utils';
@@ -56,7 +58,10 @@ import {
 import { VolunteerCard } from '../volunteer-rail/volunteer-card';
 import { VolunteerPoolSidebar } from '../volunteer-rail/volunteer-pool-sidebar';
 import { CycleBuilderBoardGrid } from './cycle-builder-board-grid';
-import type { CycleBuilderCellSelectInput } from './cycle-builder-cell';
+import type {
+  CycleBuilderCellSelectInput,
+  MoveAssignmentInput,
+} from './cycle-builder-cell';
 import type { FailedAssignmentWrite } from './cycle-builder-cell-parts';
 import { CycleBuilderDateFilters } from './cycle-builder-date-filters';
 import { CycleBuilderDateStrip } from './cycle-builder-date-strip';
@@ -64,6 +69,8 @@ import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { toCycleDayKey } from '@/shared/utils/date';
+
+const SHIFT_CLOCK_REFRESH_INTERVAL_MS = 30_000;
 
 interface Props {
   data: CycleBuilderData;
@@ -75,6 +82,7 @@ interface Props {
   onSelectVolunteer: (id: string | undefined) => void;
   onSelectAssignment: (input: CycleBuilderCellSelectInput) => void;
   onRemoveAssignment: (id: string) => void;
+  onMoveAssignment?: (input: MoveAssignmentInput) => void;
   /** Writes the server rejected, still shown in the cell they were made in. */
   failedWrites?: FailedAssignmentWrite[];
   onRetryFailedWrite?: (failedWriteId: string) => void;
@@ -84,6 +92,14 @@ interface Props {
 }
 
 export function CycleBuilderMatrix(props: Props) {
+  const [currentInstant, setCurrentInstant] = useState(now);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const instant = now();
+      setCurrentInstant(instant);
+    }, SHIFT_CLOCK_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, []);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const { churchTimezone } = useTimezone();
   const sensors = useSensors(
@@ -297,7 +313,14 @@ export function CycleBuilderMatrix(props: Props) {
     };
   }, [draggingVolunteerId, volunteers, activeAssignments]);
   // Use the same assignment path for focused picks and board actions.
-  const focusedRequirementIsEditable = Boolean(focused && focusedShiftContext);
+  const focusedShiftStart = focusedShift
+    ? parseInstant({ value: focusedShift.startTime })
+    : undefined;
+  const focusedRequirementIsEditable = Boolean(
+    focused &&
+      focusedShiftStart &&
+      compareInstants({ left: focusedShiftStart, right: currentInstant }) > 0,
+  );
   // A full role can still be focused, so the rail honours the same headcount
   // ceiling the board enforces cell-side as `canAdd`.
   const focusedRoleHasRoom = Boolean(
@@ -332,6 +355,12 @@ export function CycleBuilderMatrix(props: Props) {
       : undefined;
   const assignFocusedVolunteer = (volunteerId: string) => {
     if (!focused || !focusedShift || !focusedRoleHasRoom) return;
+    if (!focusedShiftStart) return;
+    const dispatchInstant = now();
+    if (
+      compareInstants({ left: focusedShiftStart, right: dispatchInstant }) <= 0
+    )
+      return;
     if (focusedShiftAssigneeIds?.has(volunteerId)) return;
     const fit = volunteerFitForShiftRole({
       shift: focusedShift,
@@ -400,8 +429,30 @@ export function CycleBuilderMatrix(props: Props) {
           onDragCancel={() => setDraggingVolunteerId(null)}
           onDragEnd={(event) => {
             setDraggingVolunteerId(null);
-            const volunteerId = draggedVolunteerId({ active: event.active });
+            const moving = draggedAssignment({ active: event.active });
             const target = dropTargetData({ over: event.over ?? null });
+            if (moving) {
+              if (
+                target?.shiftId === moving.shiftId &&
+                target.shiftRequirementId &&
+                target.shiftRequirementId !== moving.shiftRequirementId
+              ) {
+                const context = findShiftContextById({
+                  data: props.data,
+                  shiftId: moving.shiftId,
+                });
+                const requirement = context?.shift.requirements.find(
+                  (item) => item.id === target.shiftRequirementId,
+                );
+                if (requirement?.roleId === moving.roleId)
+                  props.onMoveAssignment?.({
+                    assignmentId: moving.assignmentId,
+                    shiftRequirementId: target.shiftRequirementId,
+                  });
+              }
+              return;
+            }
+            const volunteerId = draggedVolunteerId({ active: event.active });
             if (volunteerId && target?.shiftId && target.shiftRequirementId) {
               const shiftContext = findShiftContextById({
                 data: props.data,
@@ -478,6 +529,7 @@ export function CycleBuilderMatrix(props: Props) {
               onClearFocus={() => setFocused(null)}
               onSelectAssignment={props.onSelectAssignment}
               onRemoveAssignment={props.onRemoveAssignment}
+              onMoveAssignment={props.onMoveAssignment}
               onRetryFailedWrite={props.onRetryFailedWrite}
               onDismissFailedWrite={props.onDismissFailedWrite}
               filtersAreDefault={filtersAreDefault}

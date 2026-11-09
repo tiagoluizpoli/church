@@ -23,7 +23,9 @@ import {
 export const cycleBuilderShiftViewSchema = z.object({
   shift: shiftResponseSchema,
   requirements: z.array(shiftRequirementResponseSchema),
-  assignments: z.array(assignmentResponseSchema), // [] when none
+  assignments: z.array(
+    assignmentResponseSchema.extend({ lateMark: z.boolean() }),
+  ), // [] when none
   eligibleVolunteers: z.array(eligibleVolunteerResponseSchema),
 });
 export type CycleBuilderShiftViewResponse = z.infer<
@@ -134,9 +136,10 @@ export const cycleBuilderMapper = {
                   requirement.requirement,
                 ),
               ),
-              assignments: shiftView.assignments.map((assignment) =>
-                assignmentMapper.toResponse(assignment),
-              ),
+              assignments: shiftView.assignments.map((assignment) => ({
+                ...assignmentMapper.toResponse(assignment.assignment),
+                lateMark: assignment.lateMark,
+              })),
               eligibleVolunteers: shiftView.eligibleVolunteers.map(
                 (volunteer) =>
                   assignMapper.eligibleVolunteerToResponse(volunteer),

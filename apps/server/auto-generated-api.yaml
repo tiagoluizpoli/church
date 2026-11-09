@@ -5228,6 +5228,8 @@ paths:
                             - assigning
                             - published
                             - not_serving
+                        lateMarkCount:
+                          type: number
                         asking:
                           type: object
                           properties:
@@ -5243,6 +5245,7 @@ paths:
                         - ministry
                         - cycle
                         - stage
+                        - lateMarkCount
                       additionalProperties: false
                 required:
                   - schedules
@@ -7127,6 +7130,8 @@ paths:
                                             pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                           assignedBy:
                                             type: string
+                                          lateMark:
+                                            type: boolean
                                         required:
                                           - id
                                           - churchId
@@ -7136,6 +7141,7 @@ paths:
                                           - shiftRequirementId
                                           - status
                                           - assignedAt
+                                          - lateMark
                                         additionalProperties: false
                                     eligibleVolunteers:
                                       type: array
@@ -7727,6 +7733,110 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/assign/assignments/{assignmentId}/move:
+    patch:
+      operationId: moveParticipationAssignment
+      summary: Move an Assignment to another Sector
+      tags:
+        - assign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shiftRequirementId:
+                  type: string
+              required:
+                - shiftRequirementId
+              additionalProperties: false
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  eventTimeBlockId:
+                    type: string
+                  participationId:
+                    type: string
+                  shiftId:
+                    type: string
+                  volunteerId:
+                    type: string
+                  roleId:
+                    type: string
+                  shiftRequirementId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - pending
+                      - confirmed
+                      - declined
+                      - cancelled
+                  reason:
+                    type: string
+                  assignedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  assignedBy:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - eventTimeBlockId
+                  - volunteerId
+                  - roleId
+                  - shiftRequirementId
+                  - status
+                  - assignedAt
+                additionalProperties: false
         "403":
           description: Default Response
           content:

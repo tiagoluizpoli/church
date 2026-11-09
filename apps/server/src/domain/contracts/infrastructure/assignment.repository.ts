@@ -29,6 +29,10 @@ export interface CreateAssignmentRepositoryInput {
   tx?: TransactionContext;
 }
 
+export interface MoveAssignmentRepositoryInput extends GetAssignmentInput {
+  shiftRequirementId: ShiftRequirementId;
+}
+
 export interface UpdateAssignmentStatusInput {
   status: AssignmentStatus;
   reason?: string;
@@ -139,6 +143,7 @@ export interface AssignmentRepository {
     input: ListAssignmentsByVolunteerInRangeInput,
   ): Promise<Assignment[]>;
   listByRange(input: ListAssignmentsByRangeInput): Promise<Assignment[]>;
+  move(input: MoveAssignmentRepositoryInput): Promise<Assignment>;
   updateStatus(input: UpdateAssignmentStatusRepositoryInput): Promise<void>;
   countByVolunteerInRange(
     input: CountAssignmentsByVolunteerInRangeInput,

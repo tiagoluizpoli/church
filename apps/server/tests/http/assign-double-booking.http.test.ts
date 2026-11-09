@@ -3,10 +3,14 @@ import { appConfig } from '@church/app-config';
 import {
   assignment,
   assignmentAudit,
+  availabilityCheck,
+  church,
   ministryParticipation,
+  outboxMessage,
   shiftRequirement,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
+import { parseInstant, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -64,6 +68,7 @@ const authorityGuard = {
 
 const DOUBLE_BOOKED_REFUSAL = {
   error: 'HARD_CONSTRAINT_VIOLATION',
+  reason: 'DUPLICATE_ASSIGNMENT',
   message: m.error_hard_constraint_violation(),
 };
 
@@ -106,6 +111,9 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.resetAllMocks();
   await resetSchedulingPhase3Db();
+  setTestClock({
+    instant: parseInstant({ value: '2026-09-07T08:55:00.000Z' }),
+  });
 });
 
 interface SeedCrossMinistryOverlapInput {
@@ -255,6 +263,7 @@ async function seedCrossMinistryOverlap({
   });
 
   return {
+    adminUserId: seed.adminUserId,
     cycleId: cycle.id,
     overlapId: overlap.id,
     churchId: seed.churchAId,
@@ -388,6 +397,69 @@ describe('builder eligibility contract', () => {
   });
 });
 
+describe('late availability marks on the board', () => {
+  it('flags an assignment when the mark was made afterwards', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const person = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Late mark',
+      email: 'late-mark@test.com',
+    });
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: person.volunteer.id,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+      status: 'pending',
+      assignedAt: parseInstant({ value: '2020-01-01T00:00:00.000Z' }),
+    });
+    const check = await buildAvailabilityCheck({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      cycleId: seed.cycleId,
+      ministryMembershipId: person.membership.id,
+      state: 'confirmed',
+    });
+    await buildUnavailableShift({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      availabilityCheckId: check.id,
+      shiftId: seed.targetShiftId,
+    });
+    const assignmentsBefore = await schedulingTestDb.select().from(assignment);
+    const outboxBefore = await schedulingTestDb.select().from(outboxMessage);
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/builder?ministryId=${seed.ministryId}`,
+    });
+    expect(response.statusCode).toBe(200);
+    const body: CycleBuilderResponse = response.json();
+    const shifts = body.events.flatMap((event) =>
+      event.eventTimeBlocks.flatMap((block) => block.shifts),
+    );
+    expect(
+      shifts.find((row) => row.shift.id === seed.targetShiftId)?.assignments,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          volunteerId: person.volunteer.id,
+          lateMark: true,
+        }),
+      ]),
+    );
+    expect(await schedulingTestDb.select().from(assignment)).toEqual(
+      assignmentsBefore,
+    );
+    expect(await schedulingTestDb.select().from(outboxMessage)).toEqual(
+      outboxBefore,
+    );
+  });
+});
+
 describe('Unavailable assignment', () => {
   it('returns an UNAVAILABLE warning when a marked volunteer is assigned', async () => {
     const seed = await seedCrossMinistryOverlap();
@@ -442,7 +514,10 @@ describe('Unavailable assignment', () => {
       .find((row) => row.shift.id === seed.targetShiftId);
     expect(shift?.assignments).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ volunteerId: person.volunteer.id }),
+        expect.objectContaining({
+          volunteerId: person.volunteer.id,
+          lateMark: false,
+        }),
       ]),
     );
     expect(shift?.eligibleVolunteers).toEqual(
@@ -609,6 +684,156 @@ describe('reassign without a reason input', () => {
       ]),
     );
     expect(audits).toHaveLength(2);
+  });
+});
+
+describe('move Assignment', () => {
+  it('rebinds the same Assignment and records one updated audit', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const sector = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Side Door',
+    });
+    const target = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      roleId: seed.targetRoleId,
+      sectorId: sector.id,
+      peopleNeeded: 1,
+    });
+    const current = await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${current.id}/move`,
+      payload: { shiftRequirementId: target.id },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: current.id,
+      shiftRequirementId: target.id,
+    });
+    const rows = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, current.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.shiftRequirementId).toBe(target.id);
+    const audits = await schedulingTestDb
+      .select()
+      .from(assignmentAudit)
+      .where(eq(assignmentAudit.assignmentId, current.id));
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      action: 'updated',
+      actorId: seed.adminUserId,
+    });
+  });
+  it('refuses another Shift or Role without changing the Assignment', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const current = await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const otherShift = await seedShift({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      eventTimeBlockId: seed.targetBlockId,
+      startTime: new Date('2026-09-07T10:00:00Z'),
+      endTime: new Date('2026-09-07T11:00:00Z'),
+      label: 'Later',
+    });
+    const otherRole = await seedRole({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Other role',
+    });
+    const crossShift = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: otherShift.id,
+      roleId: seed.targetRoleId,
+      peopleNeeded: 1,
+    });
+    const crossRole = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      roleId: otherRole.id,
+      peopleNeeded: 1,
+    });
+    for (const target of [crossShift, crossRole]) {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/assign/assignments/${current.id}/move`,
+        payload: { shiftRequirementId: target.id },
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({
+        error: 'HARD_CONSTRAINT_VIOLATION',
+      });
+    }
+    const [stored] = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, current.id));
+    expect(stored?.shiftRequirementId).toBe(seed.targetRequirementId);
+    const audits = await schedulingTestDb
+      .select()
+      .from(assignmentAudit)
+      .where(eq(assignmentAudit.assignmentId, current.id));
+    expect(audits).toHaveLength(0);
+  });
+
+  it('refuses a move when another active Assignment already exists for the Volunteer on the Shift', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    const current = await buildAssignment({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+      status: 'declined',
+    });
+    await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${current.id}/move`,
+      payload: { shiftRequirementId: seed.targetRequirementId },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: 'HARD_CONSTRAINT_VIOLATION',
+      message: m.error_hard_constraint_violation(),
+      reason: 'DUPLICATE_ASSIGNMENT',
+    });
+    const audits = await schedulingTestDb
+      .select()
+      .from(assignmentAudit)
+      .where(eq(assignmentAudit.assignmentId, current.id));
+    expect(audits).toHaveLength(0);
   });
 });
 
@@ -901,3 +1126,124 @@ describe('requirement coverage and published placement HTTP contract', () => {
     ]).toContain(sideRows);
   });
 });
+
+describe('started Shift assignments', () => {
+  it('refuses a new Assignment exactly when the Shift starts', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    setTestClock({
+      instant: parseInstant({ value: '2026-09-07T09:00:00.000Z' }),
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: seed.freeVolunteerId,
+        shiftRequirementId: seed.targetRequirementId,
+      },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'SHIFT_STARTED' });
+  });
+});
+
+for (const timezone of ['America/Sao_Paulo', 'America/New_York'] as const) {
+  for (const state of ['assigning', 'published'] as const) {
+    for (const mutation of ['create', 'move', 'reassign', 'remove'] as const) {
+      for (const [clock, expected] of [
+        [
+          '2026-09-07T08:55:00.000Z',
+          mutation === 'create' ? 201 : mutation === 'remove' ? 204 : 200,
+        ],
+        ['2026-09-07T09:00:00.000Z', 409],
+        ['2026-09-07T10:30:00.000Z', 409],
+      ] as const) {
+        it(`${timezone} ${state}: ${mutation} at ${clock} returns ${expected}`, async () => {
+          const seed = await seedCrossMinistryOverlap();
+          await schedulingTestDb
+            .update(church)
+            .set({ timezone })
+            .where(eq(church.id, seed.churchId));
+          await schedulingTestDb
+            .update(ministryParticipation)
+            .set({ state })
+            .where(eq(ministryParticipation.id, seed.targetParticipationId));
+          const sector = await buildSector({
+            db: schedulingTestDb,
+            churchId: seed.churchId,
+            ministryId: seed.ministryId,
+            name: 'Side door',
+          });
+          const target = await seedRequirement({
+            churchId: seed.churchId,
+            participationId: seed.targetParticipationId,
+            shiftId: seed.targetShiftId,
+            roleId: seed.targetRoleId,
+            sectorId: sector.id,
+            peopleNeeded: 1,
+          });
+          const replacement = await seedVolunteerMembership({
+            churchId: seed.churchId,
+            ministryId: seed.ministryId,
+            name: 'Replacement',
+            email: 'replacement@test.com',
+          });
+          await seedRoleQualification({
+            churchId: seed.churchId,
+            membershipId: replacement.membership.id,
+            roleId: seed.targetRoleId,
+          });
+          const current =
+            mutation === 'create'
+              ? undefined
+              : await seedTargetAssignment({
+                  churchId: seed.churchId,
+                  participationId: seed.targetParticipationId,
+                  shiftId: seed.targetShiftId,
+                  volunteerId: seed.freeVolunteerId,
+                  roleId: seed.targetRoleId,
+                  shiftRequirementId: seed.targetRequirementId,
+                });
+          const checksBefore = await schedulingTestDb
+            .select()
+            .from(availabilityCheck);
+          const outboxBefore = await schedulingTestDb
+            .select()
+            .from(outboxMessage);
+          setTestClock({ instant: parseInstant({ value: clock }) });
+          const response =
+            mutation === 'create'
+              ? await app.inject({
+                  method: 'POST',
+                  url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+                  payload: {
+                    volunteerId: seed.freeVolunteerId,
+                    shiftRequirementId: seed.targetRequirementId,
+                  },
+                })
+              : mutation === 'remove'
+                ? await app.inject({
+                    method: 'DELETE',
+                    url: `/api/v1/assign/assignments/${current?.id}`,
+                  })
+                : await app.inject({
+                    method: 'PATCH',
+                    url: `/api/v1/assign/assignments/${current?.id}/${mutation}`,
+                    payload:
+                      mutation === 'move'
+                        ? { shiftRequirementId: target.id }
+                        : { volunteerId: replacement.volunteer.id },
+                  });
+          expect(response.statusCode).toBe(expected);
+          if (expected === 409)
+            expect(response.json()).toMatchObject({ error: 'SHIFT_STARTED' });
+          expect(
+            await schedulingTestDb.select().from(availabilityCheck),
+          ).toEqual(checksBefore);
+          expect(await schedulingTestDb.select().from(outboxMessage)).toEqual(
+            outboxBefore,
+          );
+        });
+      }
+    }
+  }
+}

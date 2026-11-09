@@ -38,6 +38,7 @@ interface CycleBuilderProps {
   createAssignment: CycleBuilderMutations['createAssignment'];
   deleteAssignment: CycleBuilderMutations['deleteAssignment'];
   reassignAssignment: CycleBuilderMutations['reassignAssignment'];
+  moveAssignment?: CycleBuilderMutations['moveAssignment'];
   syncedAt?: number;
   isRefreshing?: boolean;
 }
@@ -54,6 +55,7 @@ export function CycleBuilder({
   createAssignment,
   deleteAssignment,
   reassignAssignment,
+  moveAssignment,
   syncedAt,
   isRefreshing,
 }: CycleBuilderProps) {
@@ -74,6 +76,7 @@ export function CycleBuilder({
     createAssignment,
     deleteAssignment,
     reassignAssignment,
+    moveAssignment,
     onAssignmentApplied: () => setSelectedVolunteerId(undefined),
   });
 
@@ -141,6 +144,7 @@ export function CycleBuilder({
           )
         }
         onSelectAssignment={actions.handleSelectAssignment}
+        onMoveAssignment={actions.handleMove}
         onRemoveAssignment={setPendingRemovalId}
         actions={toolbarActions}
         failedWrites={actions.boardFailedWrites}

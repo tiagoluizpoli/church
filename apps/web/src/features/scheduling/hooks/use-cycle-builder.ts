@@ -15,6 +15,7 @@ import {
 import type {
   CreateParticipationAssignmentBody,
   GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem,
+  MoveParticipationAssignmentBody,
   ReassignParticipationAssignmentBody,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
@@ -33,6 +34,11 @@ interface CreateCycleAssignmentParams {
 interface ReassignCycleAssignmentParams {
   assignmentId: string;
   body: ReassignParticipationAssignmentBody;
+}
+
+interface MoveCycleAssignmentParams {
+  assignmentId: string;
+  body: MoveParticipationAssignmentBody;
 }
 
 interface OptimisticUpdateInput {
@@ -453,6 +459,12 @@ export function useCycleBuilder({
     onSettled: invalidate,
   });
 
+  const moveAssignment = useMutation({
+    mutationFn: ({ assignmentId, body }: MoveCycleAssignmentParams) =>
+      adminApi.moveParticipationAssignment(assignmentId, body),
+    onSettled: invalidate,
+  });
+
   const data = useMemo(() => {
     if (!query.data) return undefined;
     return mapCycleBuilderData(query.data);
@@ -465,5 +477,6 @@ export function useCycleBuilder({
     createAssignment,
     deleteAssignment,
     reassignAssignment,
+    moveAssignment,
   };
 }

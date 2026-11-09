@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { parseInstant, setTestClock } from '@church/time';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   beforeEach as beforeEachLocale,
@@ -18,7 +19,12 @@ import type {
 import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
 
-beforeEachLocale(() => overwriteGetLocale(() => 'en'));
+beforeEachLocale(() => {
+  overwriteGetLocale(() => 'en');
+  setTestClock({
+    instant: parseInstant({ value: '2026-08-01T00:00:00.000Z' }),
+  });
+});
 
 const boardData: CycleBuilderData = {
   assignments: [],
@@ -92,6 +98,7 @@ const sameShiftAssignment: CycleBuilderAssignment = {
   shiftRequirementId: 'requirement-role-support',
   status: 'confirmed',
   assignedAt: '2026-08-01T09:00:00.000Z',
+  lateMark: false,
   volunteerName: 'Local Volunteer',
 };
 
@@ -1378,3 +1385,89 @@ it('reranks the focused rail when a refreshed answer changes state', async () =>
     rail.getAllByTestId('volunteer-card').map((card) => card.textContent),
   ).toEqual([expect.stringContaining('Grace'), expect.stringContaining('Ada')]);
 });
+
+for (const locale of ['en', 'pt-BR'] as const) {
+  describe(`focused rail started Shift eligibility (${locale})`, () => {
+    function renderFocusedRail() {
+      overwriteGetLocale(() => locale);
+      const data = structuredClone(boardData);
+      data.events[0].eventTimeBlocks[0].shifts[0].eligibleVolunteers[0].qualifiedRoleIds =
+        ['role-1'];
+      const onSelectAssignment = vi.fn();
+      renderWithProviders(
+        <CycleBuilderMatrix
+          data={data}
+          {...refreshProps}
+          onSelectAssignment={onSelectAssignment}
+        />,
+      );
+      fireEvent.click(
+        screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
+      );
+      return {
+        onSelectAssignment,
+        rail: within(screen.getByTestId('volunteer-pool')),
+      };
+    }
+
+    it.each([
+      '2026-08-02T09:00:00Z',
+      '2026-08-03T09:00:00Z',
+    ])('shows no Assign action when a Shift is focused at %s', (clock) => {
+      setTestClock({ instant: parseInstant({ value: clock }) });
+      const { rail } = renderFocusedRail();
+      expect(
+        screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        rail.queryByRole('button', {
+          name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('removes Assign while focus is retained across the Shift start', () => {
+      vi.useFakeTimers();
+      try {
+        setTestClock({
+          instant: parseInstant({ value: '2026-08-02T08:59:59Z' }),
+        });
+        const { rail } = renderFocusedRail();
+        expect(
+          rail.getByRole('button', {
+            name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+          }),
+        ).toBeVisible();
+        setTestClock({
+          instant: parseInstant({ value: '2026-08-02T09:00:00Z' }),
+        });
+        act(() => vi.advanceTimersByTime(30_000));
+        expect(
+          screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(
+          rail.queryByRole('button', {
+            name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+          }),
+        ).not.toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('refuses a focused pick at start before the next presentation refresh', () => {
+      setTestClock({
+        instant: parseInstant({ value: '2026-08-02T08:59:59Z' }),
+      });
+      const { rail, onSelectAssignment } = renderFocusedRail();
+      const assign = rail.getByRole('button', {
+        name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+      });
+      setTestClock({
+        instant: parseInstant({ value: '2026-08-02T09:00:00Z' }),
+      });
+      fireEvent.click(assign);
+      expect(onSelectAssignment).not.toHaveBeenCalled();
+    });
+  });
+}

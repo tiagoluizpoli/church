@@ -65,6 +65,12 @@ export const participationCompletionResponseSchema = z.object({
   completionPercent: z.number(),
 });
 
+export const moveAssignmentBodySchema = z
+  .object({
+    shiftRequirementId: z.string(),
+  })
+  .strict();
+
 export const reassignAssignmentBodySchema = z.object({
   volunteerId: z.string(),
 });

@@ -65,6 +65,11 @@ const statusLabels = (): Record<AvailabilityStatus, string> => ({
   no_response: m.builder_ui_no_response(),
 });
 
+export interface MoveTarget {
+  id: string;
+  sectorName: string;
+}
+
 interface AssignmentPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -77,6 +82,8 @@ interface AssignmentPickerProps {
   onSelect: (volunteerId: string) => void;
   onSelectSuggestion?: (suggestion: SuggestedVolunteer) => void;
   onRemove?: () => void;
+  moveTargets?: MoveTarget[];
+  onMove?: (shiftRequirementId: string) => void;
 }
 
 export function AssignmentPicker({
@@ -91,10 +98,13 @@ export function AssignmentPicker({
   onSelect,
   onSelectSuggestion,
   onRemove,
+  moveTargets,
+  onMove,
 }: AssignmentPickerProps) {
   const labels = statusLabels();
   const isTouch = useFormControlSize() === 'touch';
   const [search, setSearch] = useState('');
+  const [moving, setMoving] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const displayedSuggestions = useMemo(
     () =>
@@ -167,6 +177,35 @@ export function AssignmentPicker({
           </p>
         )}
 
+        {moveTargets?.length && onMove ? (
+          <div className="mb-3">
+            <Button
+              type="button"
+              variant="outline"
+              size={isTouch ? 'touch' : 'sm'}
+              onClick={() => setMoving(!moving)}
+            >
+              {m.builder_ui_move()}
+            </Button>
+            {moving
+              ? moveTargets.map((target) => (
+                  <Button
+                    key={target.id}
+                    type="button"
+                    variant="ghost"
+                    size={isTouch ? 'touch' : 'sm'}
+                    onClick={() => {
+                      onMove(target.id);
+                      setMoving(false);
+                      onOpenChange(false);
+                    }}
+                  >
+                    {target.sectorName}
+                  </Button>
+                ))
+              : null}
+          </div>
+        ) : null}
         <Input
           ref={searchInputRef}
           value={search}

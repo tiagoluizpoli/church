@@ -80,6 +80,8 @@
   "error_ask_blocked_flagged_shifts": "Some Shifts have no Role needed yet. Fix them before asking for availability.",
   "error_remind_on_cooldown": "This Schedule was reminded recently. You can remind again once the wait is over.",
   "error_validation_ask_no_eligible_volunteers": "No Volunteer holds a Role these Shifts need, so there is nobody to ask.",
+  "builder_shift_started": "{shift} started at {time} and is read-only.",
+  "error_shift_started": "This Shift has started and can no longer be changed.",
   "error_shift_published": "Some Shifts have been published. Refresh and review your answer.",
   "error_shift_has_responses": "Volunteers already answered for or are assigned to a Shift this change would discard. Nothing was changed.",
   "error_upcoming_assignments": "Upcoming Assignments still depend on this. Change them in the Assign board first.",
@@ -1207,5 +1209,10 @@
   "builder_last_week_many": "last served {count} weeks ago",
   "builder_last_month_one": "last served 1 month ago",
   "builder_last_month_many": "last served {count} months ago",
-  "builder_header_filled_one": "{filled} of 1 place filled"
+  "builder_header_filled_one": "{filled} of 1 place filled",
+  "builder_ui_move": "Move",
+  "builder_ui_drag_assignment": "Drag {name} to another sector",
+  "builder_ui_moved": "Moved {name}",
+  "builder_late_mark_tooltip": "Unavailable after assignment: {shift}",
+  "schedule_late_mark_count": "{count} late availability marks"
 }

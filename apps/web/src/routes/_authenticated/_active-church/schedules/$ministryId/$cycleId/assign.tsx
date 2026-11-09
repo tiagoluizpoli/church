@@ -29,6 +29,7 @@ function EventBuilderRoute() {
     createAssignment,
     deleteAssignment,
     reassignAssignment,
+    moveAssignment,
   } = useCycleBuilder({ cycleId, ministryId });
 
   const status =
@@ -81,6 +82,7 @@ function EventBuilderRoute() {
         createAssignment={createAssignment}
         deleteAssignment={deleteAssignment}
         reassignAssignment={reassignAssignment}
+        moveAssignment={moveAssignment}
         syncedAt={query.dataUpdatedAt}
         isRefreshing={query.isFetching}
       />

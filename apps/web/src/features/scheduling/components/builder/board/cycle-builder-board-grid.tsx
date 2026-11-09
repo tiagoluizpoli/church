@@ -25,6 +25,7 @@ import {
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
+  type MoveAssignmentInput,
 } from './cycle-builder-cell';
 import type { FailedAssignmentWrite } from './cycle-builder-cell-parts';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +85,7 @@ interface CycleBuilderBoardGridProps {
   onClearFocus: () => void;
   onSelectAssignment: (input: CycleBuilderCellSelectInput) => void;
   onRemoveAssignment: (id: string) => void;
+  onMoveAssignment?: (input: MoveAssignmentInput) => void;
   onRetryFailedWrite?: (failedWriteId: string) => void;
   onDismissFailedWrite?: (failedWriteId: string) => void;
   filtersAreDefault: boolean;
@@ -113,6 +115,7 @@ export function CycleBuilderBoardGrid({
   onClearFocus,
   onSelectAssignment,
   onRemoveAssignment,
+  onMoveAssignment,
   onRetryFailedWrite,
   onDismissFailedWrite,
   filtersAreDefault,
@@ -351,6 +354,7 @@ export function CycleBuilderBoardGrid({
                                                   }}
                                                   onSelect={onSelectAssignment}
                                                   onRemove={onRemoveAssignment}
+                                                  onMove={onMoveAssignment}
                                                   failedWrites={failedWritesByCell.get(
                                                     requirementFocusKey,
                                                   )}

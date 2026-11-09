@@ -1,7 +1,10 @@
 import { m } from '@church/i18n/messages';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import type { CycleBuilderCellSelectInput } from '../components/builder/board/cycle-builder-cell';
+import type {
+  CycleBuilderCellSelectInput,
+  MoveAssignmentInput,
+} from '../components/builder/board/cycle-builder-cell';
 import type { FailedAssignmentWrite } from '../components/builder/board/cycle-builder-cell-parts';
 import { builderErrorMessage } from '../utils/builder/cycle-builder-error.utils';
 import type { CycleBuilderData } from './use-cycle-builder';
@@ -28,7 +31,16 @@ export interface ReassignAssignmentInput {
   body: ReassignAssignmentBody;
 }
 
+interface MoveMutationInput {
+  assignmentId: string;
+  body: { shiftRequirementId: string };
+}
+
 export interface CycleBuilderMutations {
+  moveAssignment?: {
+    isPending: boolean;
+    mutateAsync: (input: MoveMutationInput) => Promise<unknown>;
+  };
   createAssignment: {
     isPending: boolean;
     mutateAsync: (input: CreateAssignmentInput) => Promise<unknown>;
@@ -57,6 +69,7 @@ interface UseCycleBuilderActionsInput extends CycleBuilderMutations {
 interface FailedWriteEntry {
   failedWrite: FailedAssignmentWrite;
   input: CycleBuilderCellSelectInput;
+  move?: MoveAssignmentInput;
 }
 
 interface ApplyAssignmentInput {
@@ -79,6 +92,7 @@ export function useCycleBuilderActions({
   createAssignment,
   deleteAssignment,
   reassignAssignment,
+  moveAssignment,
   onAssignmentApplied,
 }: UseCycleBuilderActionsInput) {
   const [unavailable, setUnavailable] = useState<UnavailableState | null>(null);
@@ -87,7 +101,8 @@ export function useCycleBuilderActions({
   const isSaving =
     createAssignment.isPending ||
     deleteAssignment.isPending ||
-    reassignAssignment.isPending;
+    reassignAssignment.isPending ||
+    Boolean(moveAssignment?.isPending);
 
   const report = ({ message, tone }: ReportInput) => {
     tone === 'error' ? toast.error(message) : toast.success(message);
@@ -237,6 +252,59 @@ export function useCycleBuilderActions({
     void applyAssignment({ input });
   };
 
+  const handleMove = async (move: MoveAssignmentInput) => {
+    const assignment = data.assignments.find(
+      (item) => item.id === move.assignmentId,
+    );
+    if (!assignment?.shiftId || !moveAssignment) return;
+    const input: CycleBuilderCellSelectInput = {
+      assignmentId: assignment.id,
+      volunteerId: assignment.volunteerId,
+      shiftId: assignment.shiftId,
+      roleId: assignment.roleId,
+      shiftRequirementId: move.shiftRequirementId,
+      volunteerName: assignment.volunteerName,
+    };
+    try {
+      await moveAssignment.mutateAsync({
+        assignmentId: move.assignmentId,
+        body: { shiftRequirementId: move.shiftRequirementId },
+      });
+      setFailedWrites((current) =>
+        current.filter(
+          (record) => record.move?.assignmentId !== move.assignmentId,
+        ),
+      );
+      onAssignmentApplied?.();
+      report({
+        message: m.builder_ui_moved({ name: volunteerNameFor(input) }),
+        tone: 'success',
+      });
+    } catch (error) {
+      const message = builderErrorMessage({
+        error,
+        fallback: m.common_assignment_failed(),
+      });
+      setFailedWrites((current) => [
+        ...current,
+        {
+          input,
+          move,
+          failedWrite: {
+            failedWriteId: randomId(),
+            shiftId: input.shiftId,
+            shiftRequirementId: input.shiftRequirementId,
+            roleId: input.roleId,
+            volunteerId: input.volunteerId,
+            volunteerName: volunteerNameFor(input),
+            message,
+          },
+        },
+      ]);
+      report({ message, tone: 'error' });
+    }
+  };
+
   const retryFailedWrite = (failedWriteId: string) => {
     const record = failedWrites.find(
       (item) => item.failedWrite.failedWriteId === failedWriteId,
@@ -247,7 +315,8 @@ export function useCycleBuilderActions({
         (item) => item.failedWrite.failedWriteId !== failedWriteId,
       ),
     );
-    void applyAssignment({ input: record.input });
+    if (record.move) void handleMove(record.move);
+    else void applyAssignment({ input: record.input });
   };
 
   const dismissFailedWrite = (failedWriteId: string) => {
@@ -300,6 +369,7 @@ export function useCycleBuilderActions({
     dismissFailedWrite,
     failedWrites,
     handleSelectAssignment,
+    handleMove,
     isSaving,
     unavailable,
     removeAssignment,

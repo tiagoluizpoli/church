@@ -80,6 +80,8 @@
   "error_ask_blocked_flagged_shifts": "Alguns Turnos ainda não têm Função definida. Corrija-os antes de pedir a disponibilidade.",
   "error_remind_on_cooldown": "Esta Escala recebeu um lembrete há pouco. Você poderá lembrar de novo quando a espera terminar.",
   "error_validation_ask_no_eligible_volunteers": "Nenhum Voluntário tem uma Função necessária para estes Turnos, então não há a quem perguntar.",
+  "builder_shift_started": "{shift} começou às {time} e está somente para leitura.",
+  "error_shift_started": "Este Turno já começou e não pode mais ser alterado.",
   "error_shift_published": "Alguns Turnos já foram publicados. Atualize e revise sua resposta.",
   "error_shift_has_responses": "Voluntários já responderam ou estão escalados em um Turno que esta mudança descartaria. Nada foi alterado.",
   "error_upcoming_assignments": "Escalas futuras ainda dependem disso. Altere-as primeiro na montagem da escala.",
@@ -1207,5 +1209,10 @@
   "builder_last_week_many": "serviu há {count} semanas",
   "builder_last_month_one": "serviu há 1 mês",
   "builder_last_month_many": "serviu há {count} meses",
-  "builder_header_filled_one": "{filled} de 1 vaga preenchida"
+  "builder_header_filled_one": "{filled} de 1 vaga preenchida",
+  "builder_ui_move": "Mover",
+  "builder_ui_drag_assignment": "Arrastar {name} para outro setor",
+  "builder_ui_moved": "{name} foi movido",
+  "builder_late_mark_tooltip": "Indisponível após a escala: {shift}",
+  "schedule_late_mark_count": "{count} indisponibilidades após a escala"
 }

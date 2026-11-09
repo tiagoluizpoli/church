@@ -109,6 +109,7 @@ export function addOptimisticAssignment({
         // The server creates assignments as `pending`; anything else would
         // change the assigned counts the board renders from this row.
         status: 'pending',
+        lateMark: false,
         assignedAt,
       };
       return { ...shift, assignments: [...shift.assignments, optimistic] };

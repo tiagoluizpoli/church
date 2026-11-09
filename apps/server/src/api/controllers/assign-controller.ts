@@ -26,6 +26,7 @@ import {
   createParticipationAssignmentBodySchema,
   createParticipationAssignmentResponseSchema,
   eligibleVolunteerListResponseSchema,
+  moveAssignmentBodySchema,
   participationCompletionResponseSchema,
   reassignAssignmentBodySchema,
 } from '../dtos/assign.dto';
@@ -76,6 +77,7 @@ type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
 type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
+type MoveAssignmentBody = z.infer<typeof moveAssignmentBodySchema>;
 type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
 
 interface ResolveOwnedAssignmentInput {
@@ -401,6 +403,42 @@ export class AssignController implements FastifyController {
           actorId: UserId.from(request.userId),
         });
         return reply.status(204).send(null);
+      },
+    );
+
+    app.patch(
+      '/assignments/:assignmentId/move',
+      {
+        schema: {
+          tags: ['assign'],
+          operationId: 'moveParticipationAssignment',
+          summary: 'Move an Assignment to another Sector',
+          body: moveAssignmentBodySchema,
+          response: {
+            200: assignmentResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { assignmentId } = request.params as AssignmentRouteParams;
+        const resolved = await this.resolveScheduleAssignment({
+          request,
+          reply,
+          assignmentId,
+        });
+        if (resolved.denied) return;
+        const body = request.body as MoveAssignmentBody;
+        const moved = await this.assignmentManager.moveParticipationAssignment({
+          churchId: ChurchId.from(request.churchId),
+          assignmentId: AssignmentId.from(assignmentId),
+          shiftRequirementId: ShiftRequirementId.from({
+            raw: body.shiftRequirementId,
+          }),
+          actorId: UserId.from(request.userId),
+        });
+        return reply.send(assignmentMapper.toResponse(moved));
       },
     );
 

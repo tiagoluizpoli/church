@@ -624,14 +624,17 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         const body = request.body as UpdatePlanningEventDetailsBody;
         const location = body.location?.trim();
-        const graph = await this.planningEventManager.updateEventDetails({
+        const details = {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           title: body.title,
           location: location ? location : undefined,
-        });
-        return reply.send(eventGraphMapper.toResponse(graph));
+        };
+        const graph =
+          await this.planningEventManager.updateEventDetails(details);
+        const response = eventGraphMapper.toResponse(graph);
+        return reply.send(response);
       },
     );
 
@@ -698,14 +701,16 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         const body = request.body as MovePlanningEventBody;
-        const preview = await this.planningEventManager.previewMove({
+        const move = {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          scope: { kind: 'event' },
+          scope: { kind: 'event' } as const,
           start: dateFromInstantString({ value: body.start }),
-        });
-        return reply.send(eventMovePreviewMapper.toResponse(preview));
+        };
+        const preview = await this.planningEventManager.previewMove(move);
+        const response = eventMovePreviewMapper.toResponse(preview);
+        return reply.send(response);
       },
     );
 
@@ -728,15 +733,17 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         const body = request.body as MovePlanningEventBody;
-        const result = await this.planningEventManager.confirmMove({
+        const move = {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          scope: { kind: 'event' },
+          scope: { kind: 'event' } as const,
           start: dateFromInstantString({ value: body.start }),
           actingUserId: UserId.from(request.userId),
-        });
-        return reply.send(eventMoveMapper.toResponse(result));
+        };
+        const result = await this.planningEventManager.confirmMove(move);
+        const response = eventMoveMapper.toResponse(result);
+        return reply.send(response);
       },
     );
 
@@ -801,23 +808,24 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId, eventTimeBlockId } =
           request.params as PlanningEventTimeBlockRouteParams;
         const body = request.body as MovePlanningEventBody;
+        const move = {
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: {
+            kind: 'eventTimeBlock' as const,
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+          },
+          start: dateFromInstantString({ value: body.start }),
+        };
         const preview = await this.withNestedNotFound({
           request,
           reply,
-          operation: () =>
-            this.planningEventManager.previewMove({
-              churchId: ChurchId.from(request.churchId),
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              scope: {
-                kind: 'eventTimeBlock',
-                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-              },
-              start: dateFromInstantString({ value: body.start }),
-            }),
+          operation: () => this.planningEventManager.previewMove(move),
         });
         if (!preview) return;
-        return reply.send(eventMovePreviewMapper.toResponse(preview));
+        const response = eventMovePreviewMapper.toResponse(preview);
+        return reply.send(response);
       },
     );
 
@@ -842,24 +850,25 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId, eventTimeBlockId } =
           request.params as PlanningEventTimeBlockRouteParams;
         const body = request.body as MovePlanningEventBody;
+        const move = {
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: {
+            kind: 'eventTimeBlock' as const,
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+          },
+          start: dateFromInstantString({ value: body.start }),
+          actingUserId: UserId.from(request.userId),
+        };
         const result = await this.withNestedNotFound({
           request,
           reply,
-          operation: () =>
-            this.planningEventManager.confirmMove({
-              churchId: ChurchId.from(request.churchId),
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              scope: {
-                kind: 'eventTimeBlock',
-                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-              },
-              start: dateFromInstantString({ value: body.start }),
-              actingUserId: UserId.from(request.userId),
-            }),
+          operation: () => this.planningEventManager.confirmMove(move),
         });
         if (!result) return;
-        return reply.send(eventMoveMapper.toResponse(result));
+        const response = eventMoveMapper.toResponse(result);
+        return reply.send(response);
       },
     );
 

@@ -434,15 +434,12 @@ interface EventWhenInput {
 function eventWhen({ start, end, timeZone }: EventWhenInput): string {
   const startInstant = parseInstant({ value: start });
   const endInstant = parseInstant({ value: end });
-  const day = formatDayLabel({
-    day: today({ instant: startInstant, timeZone }),
-    locale: getLocale(),
-  });
-  const from = formatTimeOfDay({
-    time: toTimeOfDay({ instant: startInstant, timeZone }),
-  });
-  const to = formatTimeOfDay({
-    time: toTimeOfDay({ instant: endInstant, timeZone }),
-  });
+  const startDay = today({ instant: startInstant, timeZone });
+  const startTime = toTimeOfDay({ instant: startInstant, timeZone });
+  const endTime = toTimeOfDay({ instant: endInstant, timeZone });
+  const locale = getLocale();
+  const day = formatDayLabel({ day: startDay, locale });
+  const from = formatTimeOfDay({ time: startTime });
+  const to = formatTimeOfDay({ time: endTime });
   return `${day} · ${from}–${to}`;
 }

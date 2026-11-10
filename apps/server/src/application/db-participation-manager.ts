@@ -44,6 +44,7 @@ import type {
   SaveUsualSetupBlockInput,
   ScheduleSummaryView,
   ScheduleView,
+  SendScheduleUpdatesView,
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
@@ -93,6 +94,7 @@ import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
 import { PreparationEmptyError } from '../domain/errors/preparation-empty';
 import {
+  NoUnsentChangesError,
   ScheduleAlreadyPublishedError,
   ScheduleHasNoAssignmentsError,
 } from '../domain/errors/schedule-publish';
@@ -1314,6 +1316,123 @@ export class DbParticipationManager implements IParticipationManager {
           toPublishCycleOutcome,
         ),
       };
+    });
+  }
+
+  async sendScheduleUpdates(
+    input: PublishCycleInput,
+  ): Promise<SendScheduleUpdatesView> {
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
+    });
+    await this.cycleRepository.getById({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
+    });
+    return this.unitOfWork.run(async (tx) => {
+      const participations = await this.participationRepository.lockSchedule({
+        ...input,
+        tx,
+      });
+      if (participations.length === 0)
+        throw new NotFoundError('Schedule not found');
+      const events = await this.eventRepository.listCycleEvents({
+        churchId: input.churchId,
+        cycleId: input.cycleId,
+        tx,
+      });
+      const published = participations.filter(
+        (item) =>
+          item.state === 'published' &&
+          events.some(
+            ({ event }) =>
+              event.id === item.eventId && event.status !== 'cancelled',
+          ),
+      );
+      const current = await this.collectScheduleAssignments({
+        input,
+        participations: published,
+        events,
+        tx,
+      });
+      const baseline = await this.participationRepository.listScheduleLastTold({
+        ...input,
+        tx,
+      });
+      const cancelled = new Set(
+        events
+          .filter(({ event }) => event.status === 'cancelled')
+          .map(({ event }) => event.id),
+      );
+      const old = new Map(
+        baseline.map((row) => [
+          row.volunteerId,
+          row.assignments.filter((item) => !cancelled.has(item.eventId)),
+        ]),
+      );
+      const ids = [...new Set([...old.keys(), ...current.keys()])];
+      const at = now();
+      const changed = ids
+        .map((id) => ({
+          id,
+          changes: scheduleChanges({
+            before: old.get(id) ?? [],
+            after: current.get(id) ?? [],
+            at,
+          }),
+        }))
+        .filter(({ changes }) => changes.length > 0);
+      if (changed.length === 0) throw new NoUnsentChangesError();
+      const [church, ministry, cycle, volunteers] = await Promise.all([
+        this.churchRepository.getById({ id: input.churchId }),
+        this.ministryRepository.getById({
+          churchId: input.churchId,
+          id: input.ministryId,
+          tx,
+        }),
+        this.cycleRepository.getById({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          tx,
+        }),
+        this.volunteerRepository.listByIds({
+          churchId: input.churchId,
+          ids: changed.map(({ id }) => id),
+          tx,
+        }),
+      ]);
+      if (volunteers.length !== changed.length)
+        throw new NotFoundError('An assigned Volunteer could not be found');
+      for (const id of ids) {
+        await this.participationRepository.saveScheduleLastTold({
+          churchId: input.churchId,
+          ministryId: input.ministryId,
+          cycleId: input.cycleId,
+          volunteerId: id,
+          assignments: current.get(id) ?? [],
+          tx,
+        });
+      }
+      for (const volunteer of volunteers) {
+        const changes = changed.find(({ id }) => id === volunteer.id)?.changes;
+        if (!changes) throw new NotFoundError('Volunteer changes not found');
+        await this.notifications.enqueue({
+          tx,
+          kind: 'schedule_updated',
+          to: [{ userId: volunteer.userId, churchId: input.churchId }],
+          data: {
+            cycleId: cycle.id,
+            cycleName: cycle.name,
+            ministryId: ministry.id,
+            ministryName: ministry.name,
+            churchName: church.name,
+            churchTimezone: church.timezone,
+            changes,
+          },
+        });
+      }
+      return { notifiedCount: changed.length };
     });
   }
 

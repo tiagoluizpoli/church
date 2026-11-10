@@ -396,6 +396,26 @@ export function useCycleBuilder({
     },
   });
 
+  const sendUpdates = useMutation({
+    mutationFn: () => adminApi.sendScheduleUpdates(cycleId, { ministryId }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['prepare-cycle-participation', ministryId, cycleId],
+        }),
+      ]);
+      toast.success(m.schedule_updates_sent());
+    },
+    onError: (error) =>
+      toast.error(
+        builderErrorMessage({ error, fallback: m.schedule_updates_failed() }),
+      ),
+  });
+
   const queryKey = [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId];
 
   // Fire-and-forget on purpose: the cache already holds the optimistic result,
@@ -487,6 +507,7 @@ export function useCycleBuilder({
     query,
     data,
     publish,
+    sendUpdates,
     createAssignment,
     deleteAssignment,
     reassignAssignment,

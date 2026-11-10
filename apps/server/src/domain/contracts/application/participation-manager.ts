@@ -131,6 +131,10 @@ export interface PublishCycleInput {
   confirmBelowFull?: boolean;
 }
 
+export interface SendScheduleUpdatesView {
+  notifiedCount: number;
+}
+
 export interface PublishCycleParticipationOutcome {
   participationId: MinistryParticipationId;
   state: MinistryParticipation['state'];
@@ -291,6 +295,9 @@ export interface IParticipationManager {
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView>;
   publishCycle(input: PublishCycleInput): Promise<PublishCycleView>;
+  sendScheduleUpdates(
+    input: PublishCycleInput,
+  ): Promise<SendScheduleUpdatesView>;
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryView[]>;

@@ -341,6 +341,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           data: request.data,
         });
       case 'schedule_published':
+      case 'schedule_updated':
         return {
           ...request.data,
           actionUrl: webLink({
@@ -396,7 +397,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
     const { to, kind, data } = message.payload;
     const request = notificationRequestDataSchemas[kind]?.safeParse(data);
-    if (!request?.success && kind === 'schedule_published') {
+    if (
+      !request?.success &&
+      (kind === 'schedule_published' || kind === 'schedule_updated')
+    ) {
       await this.skipDelivery({
         message,
         why: 'its frozen facts predate a required field',

@@ -147,9 +147,10 @@ function PrepareWorkspaceRoute() {
               {!readOnly && schedule.stage === 'to_prepare' ? (
                 <ScheduleAsk ministryId={ministryId} cycleId={cycleId} />
               ) : null}
-              {!readOnly &&
+              {schedule.cycle.state !== 'past' &&
               (schedule.stage === 'asking' ||
-                schedule.stage === 'assigning') ? (
+                schedule.stage === 'assigning' ||
+                schedule.stage === 'published') ? (
                 <SchedulePublish ministryId={ministryId} cycleId={cycleId} />
               ) : null}
               <Link

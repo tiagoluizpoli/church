@@ -20,18 +20,32 @@ interface SchedulePublishProps {
 /** The same Schedule-wide confirmation available on the Assign board. */
 export function SchedulePublish({ ministryId, cycleId }: SchedulePublishProps) {
   const [open, setOpen] = useState(false);
-  const { data, publish } = useCycleBuilder({ ministryId, cycleId });
+  const { data, publish, sendUpdates } = useCycleBuilder({
+    ministryId,
+    cycleId,
+  });
   if (!data) return null;
   const events = data.events.filter(
     (event) =>
       event.status !== 'cancelled' &&
       (event.state === 'assigning' || event.state === 'availability_requested'),
   );
-  if (events.length === 0) return null;
+  const sendButton =
+    (data.affectedVolunteerCount ?? 0) > 0 ? (
+      <Button
+        type="button"
+        disabled={sendUpdates.isPending}
+        onClick={() => sendUpdates.mutate()}
+      >
+        {m.builder_send_updates({ count: data.affectedVolunteerCount ?? 0 })}
+      </Button>
+    ) : null;
+  if (events.length === 0) return sendButton;
   const staffing = summarizeCycleStaffing({ data: { ...data, events } });
   const below = staffing.shiftsBelowTarget > 0;
   return (
     <>
+      {sendButton}
       <Button
         type="button"
         disabled={publish.isPending}

@@ -679,6 +679,65 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
   });
 });
 
+describe('prepareEmail — Schedule updates', () => {
+  it.each([
+    'en',
+    'pt-BR',
+  ] as const)('renders frozen changes safely in %s', (locale) => {
+    const shift = {
+      eventTitle: 'Vigília <Natal>',
+      startsAt: '2026-12-25T02:30:00.000Z' as Instant,
+      endsAt: '2026-12-25T04:00:00.000Z' as Instant,
+      roleName: 'Violão & Voz',
+      sectorName: '<Palco>',
+    };
+    const email = prepareEmail({
+      from,
+      locale,
+      appName,
+      payload: {
+        kind: 'schedule.updated',
+        to: 'member@example.com',
+        churchName: 'Church',
+        recipientFirstName: 'Ana',
+        ministryName: 'Louvor',
+        cycleName: 'Dezembro',
+        churchTimezone: 'America/Sao_Paulo',
+        actionUrl: 'https://app.church.test/my-schedule',
+        changes: [
+          { kind: 'added', assignment: shift },
+          {
+            kind: 'removed',
+            assignment: { ...shift, swapRequestCovered: true },
+          },
+          { kind: 'moved', before: shift, after: shift },
+        ],
+      },
+    });
+    const options = { locale };
+    expect(email.request.subject).toBe(
+      m.notification_schedule_updated_title(
+        { ministryName: 'Louvor' },
+        options,
+      ),
+    );
+    expect(email.request.text).toContain(
+      m.notification_schedule_updated_covered({}, options),
+    );
+    expect(email.request.text).toContain(
+      'Vigília <Natal> · Violão & Voz · <Palco>',
+    );
+    expect(email.request.html).toContain(
+      'Vigília &lt;Natal&gt; · Violão &amp; Voz · &lt;Palco&gt;',
+    );
+    expect(email.request.text).toContain('https://app.church.test/my-schedule');
+    expect(email.request.text).toContain(
+      m.email_footer_membership({ churchName: 'Church' }, options),
+    );
+    expect(email.request.from).toBe('"Church" <church@example.com>');
+  });
+});
+
 describe('prepareEmail — verification code (T2)', () => {
   const churchName = `Grace & "Truth" <Church>`;
   const prepare = () =>

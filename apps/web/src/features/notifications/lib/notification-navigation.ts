@@ -65,6 +65,7 @@ export function resolveNotificationDestination(
       };
     }
     case 'schedule_published':
+    case 'schedule_updated':
       return { target: { to: '/my-schedule' }, isFallback: false };
     case 'cycle_ready_to_prepare': {
       const { cycleId, ministries } = item.data;

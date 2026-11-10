@@ -939,11 +939,89 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .set({ status: 'cancelled' })
       .where(eq(assignment.volunteerId, assigned.volunteer.id));
 
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'pending' })
+      .where(eq(assignment.id, lateAssignment.id));
+    setTestClock({ instant: '2026-12-26T09:00:00.000Z' as Instant });
+    const snapshotsBefore = await schedulingTestDb
+      .select()
+      .from(scheduleLastTold);
+    const rowsBefore = await outboxRows();
+    const failingEnqueue = vi
+      .spyOn(notifications, 'enqueue')
+      .mockRejectedValueOnce(new Error('send enqueue failed'));
+    await expect(
+      managers.participationManager.sendScheduleUpdates(publishInput),
+    ).rejects.toThrow('send enqueue failed');
+    failingEnqueue.mockRestore();
+    expect(await schedulingTestDb.select().from(scheduleLastTold)).toEqual(
+      snapshotsBefore,
+    );
+    expect(await outboxRows()).toEqual(rowsBefore);
+    const updates = await Promise.allSettled([
+      managers.participationManager.sendScheduleUpdates(publishInput),
+      managers.participationManager.sendScheduleUpdates(publishInput),
+    ]);
+    expect(
+      updates.filter((result) => result.status === 'fulfilled'),
+    ).toMatchObject([{ value: { notifiedCount: 2 } }]);
+    expect(
+      updates.filter((result) => result.status === 'rejected'),
+    ).toMatchObject([{ reason: { code: 'NO_UNSENT_CHANGES' } }]);
+    const updateRows = (await outboxRows()).filter(
+      (row) =>
+        typeof row.payload === 'object' &&
+        row.payload !== null &&
+        'kind' in row.payload &&
+        row.payload.kind === 'schedule_updated',
+    );
+    expect(updateRows).toHaveLength(2);
+    expect(updateRows.map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        to: { userId: assigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                eventTitle: 'Christmas Morning',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(updateRows.map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        to: { userId: unassigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'added',
+              assignment: expect.objectContaining({
+                eventTitle: 'Christmas Morning',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+
+    setTestClock({ instant: '2026-12-26T09:00:00.000Z' as Instant });
     const emailSender = new CaptureEmailSender('Church');
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
-    expect(emailSender.sent).toHaveLength(2);
+    expect(emailSender.sent).toHaveLength(4);
     expect(
-      emailSender.sent.find((email) => email.to === 'ana@test.com'),
+      emailSender.sent.find(
+        (email) =>
+          email.to === 'ana@test.com' && email.kind === 'schedule.published',
+      ),
     ).toMatchObject({
       kind: 'schedule.published',
       to: 'ana@test.com',
@@ -956,9 +1034,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       ],
     });
     const inbox = await schedulingTestDb.select().from(notification);
-    expect(inbox).toHaveLength(2);
+    expect(inbox).toHaveLength(4);
     expect(
-      inbox.find((row) => row.userId === assigned.volunteer.userId),
+      inbox.find(
+        (row) =>
+          row.userId === assigned.volunteer.userId &&
+          row.kind === 'schedule_published',
+      ),
     ).toMatchObject({
       userId: assigned.volunteer.userId,
       kind: 'schedule_published',
@@ -971,7 +1053,10 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     });
   });
 
-  it('skips legacy N5 outbox rows rather than reconstructing mutable facts', async () => {
+  it.each([
+    'schedule_published',
+    'schedule_updated',
+  ])('skips legacy %s outbox rows rather than reconstructing mutable facts', async (kind) => {
     const member = await seedMember({
       name: 'Legacy',
       email: 'legacy@test.com',
@@ -982,7 +1067,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       correlationId: 'legacy-n5',
       scheduledFor: new Date('2026-01-01T00:00:00Z'),
       payload: {
-        kind: 'schedule_published',
+        kind,
         to: { churchId: ids.churchId, userId: member.volunteer.userId },
         data: { participationId },
       },

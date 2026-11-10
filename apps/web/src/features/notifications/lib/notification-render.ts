@@ -1,3 +1,11 @@
+interface ScheduleUpdateShift {
+  startsAt: string;
+  endsAt: string;
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
+}
+
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import {
@@ -51,6 +59,66 @@ export function renderNotification(
         kindLabel: m.notification_kind_availability_reminder(),
         actionLabel: m.email_availability_action(),
       };
+    case 'schedule_updated': {
+      const { data } = item;
+      const timeZone = data.churchTimezone;
+      const format = (shift: ScheduleUpdateShift) => {
+        const startsAt = parseInstant({ value: shift.startsAt });
+        const endsAt = parseInstant({ value: shift.endsAt });
+        const day = formatDayLabel({
+          day: today({ instant: startsAt, timeZone }),
+          locale: getLocale(),
+        });
+        const start = formatTimeOfDay({
+          time: toTimeOfDay({ instant: startsAt, timeZone }),
+        });
+        const end = formatTimeOfDay({
+          time: toTimeOfDay({ instant: endsAt, timeZone }),
+        });
+        return [
+          day,
+          `${start}–${end}`,
+          shift.eventTitle,
+          shift.roleName,
+          shift.sectorName,
+        ].join(' · ');
+      };
+      const lines = data.changes.map((change) => {
+        if (change.kind === 'moved') {
+          const before =
+            format(change.before) +
+            (change.before.swapRequestCovered
+              ? m.notification_schedule_updated_covered()
+              : '');
+          return m.notification_schedule_updated_moved({
+            before,
+            after: format(change.after),
+          });
+        }
+        const shift =
+          format(change.assignment) +
+          (change.kind === 'removed' && change.assignment.swapRequestCovered
+            ? m.notification_schedule_updated_covered()
+            : '');
+        return change.kind === 'added'
+          ? m.notification_schedule_updated_added({ shift })
+          : m.notification_schedule_updated_removed({ shift });
+      });
+      return {
+        title: m.notification_schedule_updated_title({
+          ministryName: data.ministryName,
+        }),
+        body: [
+          m.notification_schedule_updated_body({
+            cycleName: data.cycleName,
+            ministryName: data.ministryName,
+          }),
+          ...lines,
+        ].join('\n'),
+        kindLabel: m.notification_kind_schedule_updated(),
+        actionLabel: m.email_schedule_published_action(),
+      };
+    }
     case 'schedule_published': {
       const { data } = item;
       const timeZone = data.churchTimezone;

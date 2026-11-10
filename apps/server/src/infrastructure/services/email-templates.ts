@@ -12,6 +12,7 @@ import type {
   PasswordResetEmail,
   PreparedEmail,
   SchedulePublishedEmail,
+  ScheduleUpdatedEmail,
   TransferDigestEmail,
   VerificationCodeEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -71,6 +72,7 @@ export function prepareEmail({
     case 'availability.opened':
     case 'availability.reminder':
     case 'schedule.published':
+    case 'schedule.updated':
       return prepareLayoutEmail({
         payload,
         locale,
@@ -153,7 +155,8 @@ function verificationCodeContent({
 type MemberNotificationEmail =
   | MinistryInvitationEmail
   | AvailabilityEmail
-  | SchedulePublishedEmail;
+  | SchedulePublishedEmail
+  | ScheduleUpdatedEmail;
 
 interface MemberNotificationContentInput {
   payload: MemberNotificationEmail;
@@ -174,6 +177,55 @@ function memberNotificationContent({
       : m.email_greeting_transactional({}, options),
     footer: m.email_footer_membership({ churchName }, options),
   };
+  if (payload.kind === 'schedule.updated') {
+    const title = m.notification_schedule_updated_title(
+      { ministryName },
+      options,
+    );
+    const format = (shift: SchedulePublishedEmail['shifts'][number]) =>
+      formatShiftLine({
+        ...shift,
+        churchTimezone: payload.churchTimezone,
+        locale,
+      });
+    const list = payload.changes.map((change) => {
+      if (change.kind === 'moved') {
+        const before =
+          format(change.before) +
+          (change.before.swapRequestCovered
+            ? m.notification_schedule_updated_covered({}, options)
+            : '');
+        return m.notification_schedule_updated_moved(
+          { before, after: format(change.after) },
+          options,
+        );
+      }
+      const shift =
+        format(change.assignment) +
+        (change.kind === 'removed' && change.assignment.swapRequestCovered
+          ? m.notification_schedule_updated_covered({}, options)
+          : '');
+      return change.kind === 'added'
+        ? m.notification_schedule_updated_added({ shift }, options)
+        : m.notification_schedule_updated_removed({ shift }, options);
+    });
+    return {
+      ...base,
+      subject: title,
+      heading: title,
+      facts: [
+        m.notification_schedule_updated_body(
+          { cycleName: payload.cycleName, ministryName },
+          options,
+        ),
+      ],
+      list,
+      action: {
+        label: m.email_schedule_published_action({}, options),
+        url: payload.actionUrl,
+      },
+    };
+  }
   if (payload.kind === 'schedule.published') {
     const title = m.notification_schedule_published_title(
       { ministryName },

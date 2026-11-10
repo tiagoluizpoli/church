@@ -242,6 +242,50 @@ describe('retained scheduling Notifications', () => {
   });
 
   it.each([
+    'en',
+    'pt-BR',
+  ] as const)('renders personal Schedule changes in %s', (locale) => {
+    overwriteGetLocale(() => locale);
+    const [first, second] = published.shifts;
+    if (!first || !second) throw new Error('missing shifts');
+    const item: GetNotifications200ItemsItem = {
+      ...base,
+      kind: 'schedule_updated',
+      data: {
+        cycleId: ID,
+        cycleName: published.cycleName,
+        ministryId: ID,
+        ministryName: published.ministryName,
+        churchTimezone: published.churchTimezone,
+        changes: [
+          { kind: 'added', assignment: first },
+          {
+            kind: 'removed',
+            assignment: { ...second, swapRequestCovered: true },
+          },
+          { kind: 'moved', before: first, after: second },
+        ],
+      },
+    };
+    const rendered = renderNotification(item);
+    const options = { locale };
+    expect(rendered.title).toBe(
+      m.notification_schedule_updated_title(
+        { ministryName: 'Louvor' },
+        options,
+      ),
+    );
+    expect(rendered.body).toContain(
+      m.notification_schedule_updated_covered({}, options),
+    );
+    expect(rendered.body).toContain('23:30–01:00 · Vigília de Natal');
+    expect(rendered.body).toContain('09:00–10:00 · Culto');
+    expect(resolveNotificationDestination(item).target).toEqual({
+      to: '/my-schedule',
+    });
+  });
+
+  it.each([
     'availability_opened',
     'availability_reminder',
   ] as const)('%s keeps its availability deep link for old and new facts', (kind) => {

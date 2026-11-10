@@ -8,16 +8,19 @@ import { renderWithProviders } from '@/tests/setup/render';
 const state = vi.hoisted(() => ({
   data: undefined as CycleBuilderData | undefined,
   mutate: vi.fn(),
+  send: vi.fn(),
 }));
 vi.mock('@/features/scheduling/hooks/use-cycle-builder', () => ({
   useCycleBuilder: () => ({
     data: state.data,
     publish: { isPending: false, mutate: state.mutate },
+    sendUpdates: { isPending: false, mutate: state.send },
   }),
 }));
 
 beforeEach(() => {
   state.mutate.mockReset();
+  state.send.mockReset();
   state.data = {
     roles: [],
     assignments: [],
@@ -95,4 +98,15 @@ it('removes Publish after the Schedule is published', () => {
   expect(
     screen.queryByRole('button', { name: m.builder_ui_publish() }),
   ).not.toBeInTheDocument();
+});
+
+it('sends pending changes from a published Schedule', () => {
+  if (!state.data?.events[0]) throw new Error('missing fixture');
+  state.data.events[0].state = 'published';
+  state.data.affectedVolunteerCount = 2;
+  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
+  fireEvent.click(
+    screen.getByRole('button', { name: m.builder_send_updates({ count: 2 }) }),
+  );
+  expect(state.send).toHaveBeenCalledOnce();
 });

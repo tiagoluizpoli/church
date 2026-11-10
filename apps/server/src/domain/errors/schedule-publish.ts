@@ -15,3 +15,10 @@ export class ScheduleAlreadyPublishedError extends DomainError {
     super('This Schedule is already published');
   }
 }
+
+export class NoUnsentChangesError extends DomainError {
+  readonly code = 'NO_UNSENT_CHANGES' as const;
+  constructor() {
+    super('No Volunteers have unsent Schedule changes');
+  }
+}

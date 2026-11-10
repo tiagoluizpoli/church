@@ -31,6 +31,7 @@ interface CycleBuilderProps {
   onPublish: (confirmBelowFull: boolean) => void;
   onSendUpdates?: () => void;
   isPublishing: boolean;
+  isSendingUpdates?: boolean;
   cycleId: string;
   ministryId: string;
   cycleName?: string;
@@ -49,6 +50,7 @@ export function CycleBuilder({
   onPublish,
   onSendUpdates,
   isPublishing,
+  isSendingUpdates = false,
   cycleId,
   ministryId,
   cycleName,
@@ -116,7 +118,7 @@ export function CycleBuilder({
         <Button
           type="button"
           size={isMobile ? 'touch' : 'sm'}
-          disabled={!onSendUpdates}
+          disabled={!onSendUpdates || isSendingUpdates || actions.isSaving}
           onClick={onSendUpdates}
         >
           {m.builder_send_updates({ count: data.affectedVolunteerCount ?? 0 })}

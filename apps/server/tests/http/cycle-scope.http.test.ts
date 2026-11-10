@@ -136,12 +136,16 @@ const routes = [
   ['GET', 'assign', 'builder'],
   ['GET', 'assign', 'audit'],
   ['POST', 'assign', 'publish'],
+  ['POST', 'assign', 'send-updates'],
 ] as const;
 
 describe('Schedule publish authorization and refusals', () => {
-  it('returns 401 without a session and 403 without Ministry authority', async () => {
+  it.each([
+    'publish',
+    'send-updates',
+  ])('returns 401 and 403 for %s without session or authority', async (action) => {
     const seed = await seedCycleScope();
-    const url = `/api/v1/assign/cycles/${randomUUID()}/publish?ministryId=${seed.ministryId}`;
+    const url = `/api/v1/assign/cycles/${randomUUID()}/${action}?ministryId=${seed.ministryId}`;
     mockGetSession.mockResolvedValueOnce(null);
     expect(
       (
@@ -207,6 +211,12 @@ describe('Schedule publish authorization and refusals', () => {
     expect(result.json()).toMatchObject({
       error: 'SCHEDULE_HAS_NO_ASSIGNMENTS',
     });
+    const send = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/cycles/${scope.id}/send-updates?ministryId=${seed.ministryId}`,
+    });
+    expect(send.statusCode).toBe(409);
+    expect(send.json()).toMatchObject({ error: 'NO_UNSENT_CHANGES' });
   });
 });
 

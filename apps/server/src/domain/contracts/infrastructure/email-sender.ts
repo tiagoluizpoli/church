@@ -160,6 +160,25 @@ export interface SchedulePublishedEmail {
   actionUrl: string;
 }
 
+export type ScheduleUpdatedEmailChange =
+  | {
+      kind: 'added' | 'removed';
+      assignment: SchedulePublishedEmailShift & {
+        swapRequestCovered?: boolean;
+      };
+    }
+  | {
+      kind: 'moved';
+      before: SchedulePublishedEmailShift & { swapRequestCovered?: boolean };
+      after: SchedulePublishedEmailShift;
+    };
+
+export interface ScheduleUpdatedEmail
+  extends Omit<SchedulePublishedEmail, 'kind' | 'shifts'> {
+  kind: 'schedule.updated';
+  changes: ScheduleUpdatedEmailChange[];
+}
+
 /** N2: a sent Cycle the recipient's Ministries now prepare. */
 export interface CycleReadyToPrepareEmail {
   kind: 'cycle.ready-to-prepare';
@@ -178,6 +197,7 @@ export type EmailPayload =
   | AvailabilityEmail
   | CycleReadyToPrepareEmail
   | SchedulePublishedEmail
+  | ScheduleUpdatedEmail
   | ChainedInvitationEmail
   | MinistryInvitationEmail
   | VerificationCodeEmail

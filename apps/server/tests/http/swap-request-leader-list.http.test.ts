@@ -14,6 +14,7 @@ import { SwapRequestListController } from '@/api/controllers/swap-request-list-c
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbSwapRequestListManager } from '@/application/db-swap-request-list-manager';
+import type { ChurchId, CycleId, MinistryId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
@@ -301,9 +302,9 @@ describe('Schedule open swap request count', () => {
       const rows = await new DrizzleMinistryParticipationRepository({
         db,
       }).countScheduleOpenSwapRequests({
-        churchId,
-        ministryIds: [ministryId],
-        cycleIds: [cycle.id],
+        churchId: churchId as ChurchId,
+        ministryIds: [ministryId as MinistryId],
+        cycleIds: [cycle.id as CycleId],
       });
       return rows[0]?.count ?? 0;
     };

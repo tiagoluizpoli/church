@@ -457,6 +457,7 @@ describe('GET /prepare/schedules scoping', () => {
       },
       stage: 'not_serving',
       lateMarkCount: 0,
+      openSwapRequestCount: 0,
       affectedVolunteerCount: 0,
     });
     expect(schedules[4].cycle).toEqual({
@@ -536,6 +537,7 @@ describe('GET /prepare/schedules scoping', () => {
         },
         stage: 'published',
         lateMarkCount: 0,
+        openSwapRequestCount: 0,
         affectedVolunteerCount: 0,
       },
     ]);

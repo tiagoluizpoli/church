@@ -51,6 +51,7 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -168,6 +169,7 @@ interface ResolveCheckDetailInput {
 interface DbVolunteerManagerDependencies {
   volunteerRepo: VolunteerRepository;
   assignmentRepo: AssignmentRepository;
+  swapRequestRepo: SwapRequestRepository;
   unavailableShiftRepo: UnavailableShiftRepository;
   notificationRepo: NotificationRepository;
   cycleRepo: CycleRepository;
@@ -186,6 +188,7 @@ interface DbVolunteerManagerDependencies {
 export class DbVolunteerManager implements IVolunteerManager {
   private readonly volunteerRepo: VolunteerRepository;
   private readonly assignmentRepo: AssignmentRepository;
+  private readonly swapRequestRepo: SwapRequestRepository;
   private readonly unavailableShiftRepo: UnavailableShiftRepository;
   private readonly notificationRepo: NotificationRepository;
   private readonly cycleRepo: CycleRepository;
@@ -204,6 +207,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   constructor({
     volunteerRepo,
     assignmentRepo,
+    swapRequestRepo,
     unavailableShiftRepo,
     notificationRepo,
     cycleRepo,
@@ -220,6 +224,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   }: DbVolunteerManagerDependencies) {
     this.volunteerRepo = volunteerRepo;
     this.assignmentRepo = assignmentRepo;
+    this.swapRequestRepo = swapRequestRepo;
     this.unavailableShiftRepo = unavailableShiftRepo;
     this.notificationRepo = notificationRepo;
     this.cycleRepo = cycleRepo;
@@ -806,6 +811,12 @@ export class DbVolunteerManager implements IVolunteerManager {
       .filter((name): name is string => !!name)
       .sort();
 
+    // Only the raiser's own detail read reaches here, so the note is theirs to see.
+    const openSwapRequest = await this.swapRequestRepo.findOpenByAssignment({
+      churchId,
+      assignmentId,
+    });
+
     return {
       assignmentId: assignment.id as string,
       eventId: event.id as string,
@@ -819,6 +830,14 @@ export class DbVolunteerManager implements IVolunteerManager {
       roleName: roleNameOf(assignment.roleId as string),
       leaderName: leaderName ?? null,
       roster,
+      swapRequest: openSwapRequest
+        ? {
+            id: openSwapRequest.id,
+            status: 'open',
+            note: openSwapRequest.note ?? null,
+            raisedAt: openSwapRequest.raisedAt,
+          }
+        : null,
     };
   }
 

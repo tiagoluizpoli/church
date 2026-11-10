@@ -129,6 +129,13 @@ export interface AssignmentDetail {
   roleName: string;
   leaderName: string | null;
   roster: AssignmentRosterGroup[];
+  /** The caller's own open Swap request on this Assignment, if any. */
+  swapRequest: {
+    id: string;
+    status: 'open';
+    note: string | null;
+    raisedAt: Instant;
+  } | null;
 }
 
 export interface GetAssignmentDetailInput {

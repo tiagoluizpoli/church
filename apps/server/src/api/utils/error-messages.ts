@@ -35,6 +35,7 @@ import {
   type ShiftResponseCount,
 } from '@/domain/errors/shift-has-responses';
 import { ShiftPublishedError } from '@/domain/errors/shift-published';
+import { SwapRequestNoteTooLongError } from '@/domain/errors/swap-request';
 import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import {
   type ValidationReason,
@@ -180,6 +181,12 @@ export function domainErrorMessage({
   if (floor) {
     const { assignedCount: count } = floor;
     return m.error_headcount_below_assigned_count({ count }, { locale });
+  }
+  if (error instanceof SwapRequestNoteTooLongError) {
+    return m.error_swap_request_note_too_long(
+      { max: error.maxLength },
+      { locale },
+    );
   }
   const reason = validationReason(error);
   if (error.code === 'VALIDATION_ERROR' && reason) {

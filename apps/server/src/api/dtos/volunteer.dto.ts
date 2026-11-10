@@ -211,6 +211,14 @@ export const assignmentDetailResponseSchema = z.object({
       openCount: z.number(),
     }),
   ),
+  swapRequest: z
+    .object({
+      id: z.string(),
+      status: z.literal('open'),
+      note: z.string().nullable(),
+      raisedAt: instantSchema,
+    })
+    .nullable(),
 });
 export type AssignmentDetailResponse = z.infer<
   typeof assignmentDetailResponseSchema

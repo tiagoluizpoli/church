@@ -229,6 +229,7 @@ describe('Volunteer Assignment detail', () => {
           openCount: 1,
         },
       ],
+      swapRequest: null,
     });
   });
 

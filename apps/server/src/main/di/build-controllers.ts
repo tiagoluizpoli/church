@@ -13,6 +13,7 @@ import {
   PrepareController,
   RedemptionController,
   SectorController,
+  SwapRequestController,
   UsualSetupController,
   VolunteerController,
   VolunteerScheduleController,
@@ -42,6 +43,7 @@ export function buildControllers({
     cycleManager,
     planningEventManager,
     volunteerManager,
+    swapRequestManager,
     participationManager,
     availabilityCheckManager,
     activeChurchSelectionManager,
@@ -135,5 +137,6 @@ export function buildControllers({
     }),
     new VolunteerController({ volunteerManager, activeChurchResolver, config }),
     new VolunteerScheduleController({ volunteerManager, activeChurchResolver }),
+    new SwapRequestController({ swapRequestManager, activeChurchResolver }),
   ];
 }

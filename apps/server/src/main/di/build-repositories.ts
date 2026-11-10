@@ -23,6 +23,7 @@ import {
   DrizzleSectorRepository,
   DrizzleSecurityLogRepository,
   DrizzleShiftRepository,
+  DrizzleSwapRequestRepository,
   DrizzleUnavailableShiftRepository,
   DrizzleUnitOfWork,
   DrizzleUsualSetupRepository,
@@ -39,6 +40,7 @@ export type Repositories = Pick<
   | 'planningEventRepository'
   | 'volunteerRepository'
   | 'assignmentRepository'
+  | 'swapRequestRepository'
   | 'assignmentAuditRepository'
   | 'unavailableShiftRepository'
   | 'availabilityCheckRepository'
@@ -91,6 +93,9 @@ export function buildRepositories({
   const assignmentRepository =
     overrides.assignmentRepository ??
     new DrizzleAssignmentRepository({ db: database });
+  const swapRequestRepository =
+    overrides.swapRequestRepository ??
+    new DrizzleSwapRequestRepository({ db: database });
   const assignmentAuditRepository =
     overrides.assignmentAuditRepository ??
     new DrizzleAssignmentAuditRepository({ db: database });
@@ -163,6 +168,7 @@ export function buildRepositories({
     planningEventRepository,
     volunteerRepository,
     assignmentRepository,
+    swapRequestRepository,
     assignmentAuditRepository,
     unavailableShiftRepository,
     availabilityCheckRepository,

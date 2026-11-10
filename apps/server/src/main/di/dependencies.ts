@@ -23,6 +23,7 @@ import type {
   IPeopleListManager,
   IPlanningEventManager,
   ISectorManager,
+  ISwapRequestManager,
   IVolunteerManager,
   RedemptionManager,
   VolunteerTransferManager,
@@ -57,6 +58,7 @@ import type {
   SectorRepository,
   SecurityLogRepository,
   ShiftRepository,
+  SwapRequestRepository,
   UnavailableShiftRepository,
   UnitOfWork,
   UsualSetupRepository,
@@ -75,6 +77,7 @@ export interface CompositionRootDependencies {
   planningEventRepository: PlanningEventRepository;
   volunteerRepository: VolunteerRepository;
   assignmentRepository: AssignmentRepository;
+  swapRequestRepository: SwapRequestRepository;
   assignmentAuditRepository: AssignmentAuditRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
@@ -116,6 +119,7 @@ export interface CompositionRootDependencies {
   cycleManager: ICycleManager;
   planningEventManager: IPlanningEventManager;
   volunteerManager: IVolunteerManager;
+  swapRequestManager: ISwapRequestManager;
   assignmentManager: IAssignmentManager;
   availabilityCheckManager: IAvailabilityCheckManager;
   ministryManager: IMinistryManager;

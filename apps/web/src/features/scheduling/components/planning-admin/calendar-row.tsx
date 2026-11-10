@@ -273,6 +273,8 @@ export function renderCalendarCell({
     <EventTimeBlockRowCell
       column={column}
       visibleRow={item}
+      cycleId={cycleId}
+      canPreviewMove={canPreviewMove}
       isReadOnly={isReadOnly}
       isConfirmingDelete={isConfirmingDeleteEventTimeBlock}
       deletePending={deleteEventTimeBlockPending}
@@ -370,6 +372,8 @@ function ParentRowCell({
 interface EventTimeBlockRowCellProps {
   column: DataTableColumn;
   visibleRow: Extract<CalendarVisibleRow, { kind: 'event-time-block' }>;
+  cycleId: string;
+  canPreviewMove: boolean;
   isReadOnly: boolean;
   isConfirmingDelete: boolean;
   deletePending: boolean;
@@ -383,6 +387,8 @@ interface EventTimeBlockRowCellProps {
 function EventTimeBlockRowCell({
   column,
   visibleRow,
+  cycleId,
+  canPreviewMove,
   isReadOnly,
   isConfirmingDelete,
   deletePending,
@@ -403,6 +409,16 @@ function EventTimeBlockRowCell({
             timeZone,
           })}
         </span>
+      ) : null}
+      {column.id === 'actions' && canPreviewMove ? (
+        <EventMovePreview
+          cycleId={cycleId}
+          eventId={visibleRow.parentId}
+          eventTimeBlockId={visibleRow.eventTimeBlockId}
+          title={visibleRow.label}
+          start={visibleRow.startTime as Instant}
+          size="icon-xs"
+        />
       ) : null}
       {column.id === 'actions' && !isReadOnly ? (
         <span className="flex items-center gap-1">

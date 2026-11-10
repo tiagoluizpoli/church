@@ -11,12 +11,18 @@ import { renderWithProviders } from '@/tests/setup/render';
 
 const previewPlanningEventMove = vi.fn();
 const movePlanningEvent = vi.fn();
+const previewPlanningEventTimeBlockMove = vi.fn();
+const movePlanningEventTimeBlock = vi.fn();
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
     previewPlanningEventMove: (...args: unknown[]) =>
       previewPlanningEventMove(...args),
     movePlanningEvent: (...args: unknown[]) => movePlanningEvent(...args),
+    previewPlanningEventTimeBlockMove: (...args: unknown[]) =>
+      previewPlanningEventTimeBlockMove(...args),
+    movePlanningEventTimeBlock: (...args: unknown[]) =>
+      movePlanningEventTimeBlock(...args),
   },
 }));
 
@@ -263,5 +269,63 @@ describe('EventMovePreview', () => {
       'Janela fechada',
     );
     expect(screen.queryByTestId('move-result')).not.toBeInTheDocument();
+  });
+});
+
+describe('EventMovePreview for one EventTimeBlock', () => {
+  it('previews and confirms through the nested block endpoints, never the Event ones', async () => {
+    previewPlanningEventTimeBlockMove.mockResolvedValue(preview([]));
+    movePlanningEventTimeBlock.mockResolvedValue({
+      event: { start: START, end: '2026-10-20T20:00:00.000Z' },
+      eventTimeBlocks: [],
+      withdrawn: [ANA_CLASH],
+    });
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const user = userEvent.setup();
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="America/Sao_Paulo">
+        <EventMovePreview
+          cycleId="cycle-1"
+          eventId="event-1"
+          eventTimeBlockId="block-1"
+          title="Sunday · Welcome"
+          start={START}
+        />
+      </TimezoneProvider>,
+      { queryClient },
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.event_move_preview_action_label({ title: 'Sunday · Welcome' }),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.event_move_preview_run() }),
+    );
+    await screen.findByTestId('move-preview-result');
+    await user.click(
+      screen.getByRole('button', { name: m.event_move_confirm() }),
+    );
+
+    expect(previewPlanningEventTimeBlockMove).toHaveBeenCalledWith(
+      'cycle-1',
+      'event-1',
+      'block-1',
+      { start: START },
+    );
+    expect(movePlanningEventTimeBlock).toHaveBeenCalledWith(
+      'cycle-1',
+      'event-1',
+      'block-1',
+      { start: START },
+    );
+    expect(previewPlanningEventMove).not.toHaveBeenCalled();
+    expect(movePlanningEvent).not.toHaveBeenCalled();
+    const result = await screen.findByTestId('move-result');
+    expect(within(result).getByText(/Ana \(Music\)/)).toBeInTheDocument();
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ['cycle-details', 'cycle-1'],
+    });
   });
 });

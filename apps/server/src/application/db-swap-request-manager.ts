@@ -32,6 +32,12 @@ import {
   SwapRequestUnpublishedError,
 } from '../domain/errors/swap-request';
 
+interface AssertOwnAssignmentInput {
+  churchId: ChurchId;
+  userId: UserId;
+  ownerVolunteerId: VolunteerId;
+}
+
 interface DbSwapRequestManagerDependencies {
   swapRequestRepo: SwapRequestRepository;
   assignmentRepo: AssignmentRepository;
@@ -103,11 +109,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
     churchId,
     userId,
     ownerVolunteerId,
-  }: {
-    churchId: ChurchId;
-    userId: UserId;
-    ownerVolunteerId: VolunteerId;
-  }): Promise<void> {
+  }: AssertOwnAssignmentInput): Promise<void> {
     const decision = await this.authorityManager.decideAuthority({
       churchId,
       userId,

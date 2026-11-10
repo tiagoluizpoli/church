@@ -10,4 +10,5 @@ export * from './organization';
 export * from './participation';
 export * from './planning';
 export * from './scheduling';
+export * from './swap-requests';
 export * from './todo';

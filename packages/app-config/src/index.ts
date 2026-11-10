@@ -47,6 +47,7 @@ export const appConfigSchema = z.object({
     emailIdempotencyRetentionMs: positiveInt,
   }),
   assignment: z.object({ cancelLeadTimeDays: positiveInt }),
+  swapRequest: z.object({ noteMaxLength: positiveInt }),
   availability: z.object({
     /** How long a Schedule must wait between reminders. */
     reminderCooldownMs: positiveInt,
@@ -106,6 +107,7 @@ export const appConfig = appConfigSchema.parse({
     emailIdempotencyRetentionMs: DAY_MS,
   },
   assignment: { cancelLeadTimeDays: 3 },
+  swapRequest: { noteMaxLength: 500 },
   availability: { reminderCooldownMs: DAY_MS },
   notifications: {
     email: { enabled: true },

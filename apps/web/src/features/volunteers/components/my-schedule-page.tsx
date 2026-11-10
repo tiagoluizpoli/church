@@ -110,13 +110,13 @@ function MySchedule({ data }: MyScheduleProps) {
           <ul className="space-y-2">
             {data.schedules.map((s) => (
               <li key={`${s.ministryId}:${s.cycleId}`}>
-                {/* shortcut: plain anchor until #796 adds the typed /my-schedule/$ministryId/$cycleId route; swap for <Link> then. */}
-                <a
-                  href={`/my-schedule/${s.ministryId}/${s.cycleId}`}
+                <Link
+                  to="/my-schedule/$ministryId/$cycleId"
+                  params={{ ministryId: s.ministryId, cycleId: s.cycleId }}
                   className="block rounded-md border p-3"
                 >
                   {s.ministryName} · {s.cycleName}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

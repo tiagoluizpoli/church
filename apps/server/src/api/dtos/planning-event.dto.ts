@@ -47,6 +47,16 @@ export type UpdatePlanningEventBody = z.infer<
   typeof updatePlanningEventBodySchema
 >;
 
+/** A Sent Event's details correction: title and optional location only. */
+export const updatePlanningEventDetailsBodySchema = z.object({
+  title: z.string().trim().min(1),
+  location: z.string().optional(),
+});
+
+export type UpdatePlanningEventDetailsBody = z.infer<
+  typeof updatePlanningEventDetailsBodySchema
+>;
+
 /** An Event with its EventTimeBlocks, as Cycle detail, create and edit return it. */
 export const eventGraphResponseSchema = z.object({
   event: eventResponseSchema,

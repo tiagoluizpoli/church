@@ -565,8 +565,9 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       })
       .click();
 
-    // The refusal reloads the authoritative Sent Cycle: no draft form remains.
-    await expect(page.getByTestId('event-edit-not-draft')).toBeVisible();
+    // The refusal reloads the authoritative Sent Cycle: no complete-graph form remains.
+    await expect(page.getByTestId('event-details-form')).toBeVisible();
+    await expect(page.getByTestId('event-editor-form')).toHaveCount(0);
     await page.goto(cycleUrl);
     await expect(page.getByText('Raced edit')).toHaveCount(0);
     // Every week the Sunday template generated shares this exact title, so

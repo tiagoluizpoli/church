@@ -59,7 +59,9 @@ import {
   type MovePlanningEventBody,
   movePlanningEventBodySchema,
   type UpdatePlanningEventBody,
+  type UpdatePlanningEventDetailsBody,
   updatePlanningEventBodySchema,
+  updatePlanningEventDetailsBodySchema,
 } from '../dtos/planning-event.dto';
 import {
   type SetDefaultDirectionBody,
@@ -594,6 +596,37 @@ export class ChurchAdminController implements FastifyController {
             startTime: dateFromInstantString({ value: block.startTime }),
             endTime: dateFromInstantString({ value: block.endTime }),
           })),
+        });
+        return reply.send(eventGraphMapper.toResponse(graph));
+      },
+    );
+
+    app.patch(
+      '/cycles/:cycleId/events/:eventId/details',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'updatePlanningEventDetails',
+          summary: 'Edit the details of a Sent Event',
+          description:
+            'Change only the title and location of an Event in a Sent Cycle; omitting the location clears it. EventTimeBlocks, Shifts and Assignments are untouched and no Notification is created. Past Cycles are read-only.',
+          body: updatePlanningEventDetailsBodySchema,
+          response: {
+            200: eventGraphResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as UpdatePlanningEventDetailsBody;
+        const location = body.location?.trim();
+        const graph = await this.planningEventManager.updateEventDetails({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          title: body.title,
+          location: location ? location : undefined,
         });
         return reply.send(eventGraphMapper.toResponse(graph));
       },

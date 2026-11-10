@@ -10,6 +10,7 @@ import {
   outboxMessage,
   scheduleLastTold,
   shift,
+  shiftRequirement,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
@@ -37,7 +38,7 @@ import {
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
-import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import { buildAssignment } from '@/seeds/builders/scheduling';
 import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
@@ -762,6 +763,20 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         }),
       ]),
     );
+    expect(Array.isArray(anaSnapshot?.assignments)).toBe(true);
+    if (!Array.isArray(anaSnapshot?.assignments))
+      throw new Error('missing snapshot');
+    for (const snapshot of anaSnapshot.assignments) {
+      expect(snapshot).not.toHaveProperty('swapRequestCovered', true);
+    }
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    await schedulingTestDb
+      .update(shiftRequirement)
+      .set({ peopleNeeded: 2 })
+      .where(eq(shiftRequirement.id, otherRequirement.id));
     expect(
       (await managers.participationManager.getCycleBuilderData(publishInput))
         .affectedVolunteerCount,
@@ -791,6 +806,36 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         ),
       );
     if (!original) throw new Error('missing Assignment');
+    const sideSector = await buildSector({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Side',
+    });
+    const sideRequirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId,
+      shiftId: original.shiftId,
+      roleId: role.id,
+      sectorId: sideSector.id,
+      peopleNeeded: 1,
+    });
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: sideRequirement.id })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: original.shiftRequirementId })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
     await schedulingTestDb
       .update(assignment)
       .set({

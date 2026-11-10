@@ -138,10 +138,7 @@ export function PreparationBlockEditor({
         key={eventTimeBlockId}
         block={block}
         sourceVersion={participation.dataUpdatedAt}
-        readOnly={
-          schedule.cycle.state === 'past' ||
-          event.participation.state === 'published'
-        }
+        readOnly={schedule.cycle.state === 'past'}
         participationId={event.participation.id}
         eventTitle={event.event.title}
         ministryId={ministryId}

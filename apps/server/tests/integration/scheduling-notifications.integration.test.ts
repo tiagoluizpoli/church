@@ -34,7 +34,13 @@ import {
   EventId,
   EventTimeBlockId,
   MinistryId,
+  MinistryParticipationId,
+  RoleId,
+  SectorId,
+  ShiftId,
+  ShiftRequirementId,
   UserId,
+  VolunteerId,
 } from '@/domain/branded-ids';
 import type { AvailabilityEmail } from '@/domain/contracts/infrastructure/email-sender';
 import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/notification.repository';
@@ -261,6 +267,40 @@ async function outboxRows() {
     .select()
     .from(outboxMessage)
     .where(eq(outboxMessage.churchId, ids.churchId));
+}
+
+/** The planning manager wired to the real repositories and the outbox. */
+function buildPlanningManager() {
+  return new DbPlanningEventManager({
+    cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+    eventRepository: new DrizzlePlanningEventRepository({
+      db: schedulingTestDb,
+    }),
+    templateRepository: new DrizzleEventTemplateRepository({
+      db: schedulingTestDb,
+    }),
+    churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+    unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
+    eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
+      db: schedulingTestDb,
+    }),
+    assignmentRepository: new DrizzleAssignmentRepository({
+      db: schedulingTestDb,
+    }),
+    auditRepository: new DrizzleAssignmentAuditRepository({
+      db: schedulingTestDb,
+    }),
+    swapRequestRepository: new DrizzleSwapRequestRepository({
+      db: schedulingTestDb,
+    }),
+    recipients: new ChurchRecipients({
+      churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+      volunteerRepository: new DrizzleVolunteerRepository({
+        db: schedulingTestDb,
+      }),
+    }),
+    notifications,
+  });
 }
 
 describe('scheduling Notifications through enqueue and the drainer', () => {
@@ -1307,37 +1347,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .select()
       .from(scheduleLastTold);
     const rowsBefore = await outboxRows();
-    const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
-    const planning = new DbPlanningEventManager({
-      cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
-      eventRepository: new DrizzlePlanningEventRepository({
-        db: schedulingTestDb,
-      }),
-      templateRepository: new DrizzleEventTemplateRepository({
-        db: schedulingTestDb,
-      }),
-      churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
-      unitOfWork,
-      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
-        db: schedulingTestDb,
-      }),
-      assignmentRepository: new DrizzleAssignmentRepository({
-        db: schedulingTestDb,
-      }),
-      auditRepository: new DrizzleAssignmentAuditRepository({
-        db: schedulingTestDb,
-      }),
-      swapRequestRepository: new DrizzleSwapRequestRepository({
-        db: schedulingTestDb,
-      }),
-      recipients: new ChurchRecipients({
-        churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
-        volunteerRepository: new DrizzleVolunteerRepository({
-          db: schedulingTestDb,
-        }),
-      }),
-      notifications,
-    });
+    const planning = buildPlanningManager();
 
     const moved = await planning.confirmMove({
       churchId: ChurchId.from(ids.churchId),
@@ -1439,6 +1449,145 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         }),
       }),
     );
+  });
+
+  it('a published Schedule prepares and assigns an Event added to its Sent Cycle, and Send updates tells the new Volunteer', async () => {
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    const told = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const vigilShift = await seedShift({
+      churchId: ids.churchId,
+      participationId,
+      eventTimeBlockId,
+      startTime: new Date('2026-12-25T02:30:00.000Z'),
+      endTime: new Date('2026-12-25T04:00:00.000Z'),
+      label: 'Vigil',
+    });
+    const vigilRequirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId,
+      shiftId: vigilShift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      participationId,
+      shiftId: vigilShift.id,
+      shiftRequirementId: vigilRequirement.id,
+      volunteerId: told.volunteer.id,
+      roleId: role.id,
+      status: 'confirmed',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.id, participationId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+
+    const added = await buildPlanningManager().createEvent({
+      churchId: ChurchId.from(ids.churchId),
+      actingUserId: UserId.from(ids.adminUserId),
+      cycleId: CycleId.from(cycleId),
+      title: 'Christmas Morning',
+      start: new Date('2026-12-26T10:00:00.000Z'),
+      end: new Date('2026-12-26T11:00:00.000Z'),
+      eventTimeBlocks: [
+        {
+          label: 'Morning',
+          startTime: new Date('2026-12-26T10:00:00.000Z'),
+          endTime: new Date('2026-12-26T11:00:00.000Z'),
+        },
+      ],
+    });
+    const [addedBlock] = added.eventTimeBlocks;
+    const [scaffold] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.eventId, added.event.id));
+    const sector = await buildSector({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Hall',
+    });
+    await managers.participationManager.savePreparation({
+      churchId: ChurchId.from(ids.churchId),
+      participationId: MinistryParticipationId.from(scaffold?.id ?? ''),
+      eventTimeBlockId: EventTimeBlockId.from(addedBlock?.id ?? ''),
+      serves: true,
+      shiftSplit: { kind: 'equal-n', n: 1 },
+      headcounts: [
+        {
+          shiftIndex: 0,
+          sectorId: SectorId.from(sector.id),
+          roleId: RoleId.from(role.id),
+          peopleNeeded: 1,
+        },
+      ],
+    });
+    const [addedRequirement] = await schedulingTestDb
+      .select()
+      .from(shiftRequirement)
+      .where(eq(shiftRequirement.participationId, scaffold?.id ?? ''));
+    const newcomer = await seedMember({
+      name: 'Bruno',
+      email: 'bruno@test.com',
+    });
+    await seedRoleQualification({
+      churchId: ids.churchId,
+      membershipId: newcomer.membership.id,
+      roleId: role.id,
+    });
+    await managers.assignmentManager.createParticipationAssignment({
+      churchId: ChurchId.from(ids.churchId),
+      shiftId: ShiftId.from(addedRequirement?.shiftId ?? ''),
+      volunteerId: VolunteerId.from(newcomer.volunteer.id),
+      actorId: UserId.from(ids.adminUserId),
+      shiftRequirementId: ShiftRequirementId.from({
+        raw: addedRequirement?.id ?? '',
+      }),
+    });
+
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+
+    const updates = (await outboxRows())
+      .map((row) => row.payload)
+      .filter(
+        (payload) =>
+          typeof payload === 'object' &&
+          payload !== null &&
+          'kind' in payload &&
+          payload.kind === 'schedule_updated',
+      );
+    expect(updates).toEqual([
+      expect.objectContaining({
+        to: { userId: newcomer.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'added',
+              assignment: expect.objectContaining({
+                eventTitle: 'Christmas Morning',
+                startsAt: '2026-12-26T10:00:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    ]);
   });
 
   it.each([

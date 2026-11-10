@@ -536,6 +536,8 @@ describe('Swap request Notification (N7)', () => {
       target: {
         to: '/schedules/$ministryId/$cycleId',
         params: { ministryId: ID, cycleId: ID },
+        // The same deep link the email carries.
+        search: { swapRequest: ID },
       },
       isFallback: false,
     });

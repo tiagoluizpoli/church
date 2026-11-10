@@ -338,13 +338,14 @@ describe('Raise a swap request', () => {
 
   it('accepts a note of exactly the limit', async () => {
     const { mine } = await seedGraph();
-    const note = 'x'.repeat(appConfig.swapRequest.noteMaxLength);
+    const { noteMaxLength } = appConfig.swapRequest;
+    const note = 'x'.repeat(noteMaxLength);
     expect((await raise(mine.id, { note })).statusCode).toBe(201);
   });
 
   it('is 400 naming the limit when the note is too long', async () => {
     const { mine } = await seedGraph();
-    const max = appConfig.swapRequest.noteMaxLength;
+    const { noteMaxLength: max } = appConfig.swapRequest;
     const response = await raise(mine.id, { note: 'x'.repeat(max + 1) });
     expect(response.statusCode).toBe(400);
     expect(response.json().error).toBe('SWAP_REQUEST_NOTE_TOO_LONG');

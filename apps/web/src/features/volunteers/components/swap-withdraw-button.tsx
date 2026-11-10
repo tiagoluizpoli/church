@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
 import { useState } from 'react';
+import { isConflict } from '../lib/http-status';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +27,7 @@ export function SwapWithdrawButton({ assignmentId }: SwapWithdrawButtonProps) {
   const mutation = useMutation({
     mutationFn: () => volunteerApi.withdrawSwapRequest(assignmentId),
     onSettled: (_data, error) => {
-      if (!error || (isAxiosError(error) && error.response?.status === 409)) {
+      if (!error || isConflict(error)) {
         setOpen(false);
       }
       return queryClient.invalidateQueries({
@@ -35,9 +35,7 @@ export function SwapWithdrawButton({ assignmentId }: SwapWithdrawButtonProps) {
       });
     },
   });
-  const failed =
-    mutation.isError &&
-    !(isAxiosError(mutation.error) && mutation.error.response?.status === 409);
+  const failed = mutation.isError && !isConflict(mutation.error);
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger

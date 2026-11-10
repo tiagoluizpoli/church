@@ -2,6 +2,7 @@ import { overwriteGetLocale } from '@church/i18n/runtime';
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
+import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssignmentDetailPage } from '@/features/volunteers/components/assignment-detail-page';
 import type { GetAssignmentDetail200 } from '@/infrastructure/api/churchAPI.schemas';
@@ -13,6 +14,7 @@ const api = vi.hoisted(() => ({
   withdrawSwapRequest: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', () => ({ volunteerApi: api }));
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
@@ -280,9 +282,36 @@ describe('AssignmentDetailPage', () => {
       await screen.findByRole('button', { name: 'Ask to swap' }),
     );
     await user.click(screen.getByRole('button', { name: 'Send request' }));
-    expect(
-      await screen.findByText('This Shift has already started.'),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'This Shift has already started.',
+      ),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.getAssignmentDetail).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it('closes the sheet and refetches when the Assignment is gone (404)', async () => {
+    api.getAssignmentDetail.mockResolvedValue(DETAIL);
+    api.raiseSwapRequest.mockRejectedValue(
+      new AxiosError('nf', '404', undefined, undefined, {
+        status: 404,
+        data: {},
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() =>
       expect(api.getAssignmentDetail).toHaveBeenCalledTimes(2),
     );

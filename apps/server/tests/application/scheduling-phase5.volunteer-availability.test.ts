@@ -25,6 +25,7 @@ import type {
 } from '@/domain/contracts/infrastructure/availability-check.repository';
 import { Assignment } from '@/domain/entities/assignment';
 import { AvailabilityCheck } from '@/domain/entities/availability-check';
+import { Church } from '@/domain/entities/church';
 import { Cycle } from '@/domain/entities/cycle';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
@@ -119,6 +120,16 @@ function createHarness() {
   availabilityCheckRepo.listByVolunteer.mockResolvedValue([context]);
   availabilityCheckRepo.listCheckShifts.mockResolvedValue(shifts);
   const unitOfWork = createUnitOfWorkFake({ tx });
+  const churchRepo = createChurchRepositoryFake();
+  churchRepo.getById.mockResolvedValue(
+    new Church({
+      props: {
+        name: 'Church',
+        slug: 'church',
+        timezone: 'America/Sao_Paulo',
+      },
+    }),
+  );
   const manager = new DbVolunteerManager({
     volunteerRepo,
     assignmentRepo,
@@ -131,7 +142,7 @@ function createHarness() {
     participationRepo,
     roleRepo,
     availabilityCheckRepo,
-    churchRepo: createChurchRepositoryFake(),
+    churchRepo,
     authorityManager: createAuthorityManagerFake(),
     unitOfWork,
     config: appConfig,

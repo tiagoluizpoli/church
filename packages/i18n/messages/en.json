@@ -1338,7 +1338,7 @@
   "event_move_preview_action": "Preview move",
   "event_move_preview_action_label": "Preview moving {title}",
   "event_move_preview_title": "Preview moving {title}",
-  "event_move_preview_description": "Pick the new start. Nothing is changed or sent; the preview only shows the new times and any clashes.",
+  "event_move_preview_description": "Pick the new start and preview it. Nothing changes until you confirm the move.",
   "event_move_preview_start_label": "New start",
   "event_move_preview_run": "Preview",
   "event_move_preview_running": "Checking…",
@@ -1350,5 +1350,12 @@
   "event_move_preview_no_clashes": "No Volunteer would clash.",
   "event_move_preview_clash": "{volunteer} ({ministry}): {range}",
   "event_move_preview_clashes_title_one": "1 Volunteer would clash",
-  "event_move_preview_clashes_title_other": "{count} Volunteers would clash"
+  "event_move_preview_clashes_title_other": "{count} Volunteers would clash",
+  "event_move_confirm": "Confirm move",
+  "event_move_confirming": "Moving…",
+  "event_move_confirm_hint": "Confirming checks clashes again: the Assignments withdrawn can differ from this preview. Volunteers hear about it when the leader sends updates.",
+  "event_move_done": "Moved to {range}.",
+  "event_move_withdrawn_none": "No Assignment was withdrawn.",
+  "event_move_withdrawn_title_one": "1 clashing Assignment was withdrawn",
+  "event_move_withdrawn_title_other": "{count} clashing Assignments were withdrawn"
 }

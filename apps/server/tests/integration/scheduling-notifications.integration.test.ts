@@ -1325,11 +1325,20 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     expect(moved.withdrawn.map(({ assignmentId }) => assignmentId)).toEqual([
       withdrawn.id,
     ]);
-    // The move keeps the last-told snapshots and queues no Volunteer message.
+    // The move keeps the last-told snapshots and queues only the leader's N10.
     expect(await schedulingTestDb.select().from(scheduleLastTold)).toEqual(
       snapshotsBefore,
     );
-    expect(await outboxRows()).toEqual(rowsBefore);
+    const beforeIds = new Set(rowsBefore.map(({ id }) => id));
+    const queuedByMove = (await outboxRows()).filter(
+      ({ id }) => !beforeIds.has(id),
+    );
+    expect(queuedByMove.map(({ payload }) => payload)).toEqual([
+      expect.objectContaining({
+        kind: 'event_changed',
+        to: expect.objectContaining({ userId: ids.adminUserId }),
+      }),
+    ]);
 
     await managers.participationManager.sendScheduleUpdates(publishInput);
     const updates = (await outboxRows())

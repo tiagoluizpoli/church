@@ -11,6 +11,7 @@ import {
   scheduleLastTold,
   shift,
   shiftRequirement,
+  swapRequest,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
@@ -1112,22 +1113,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     );
 
-    // A future Swap workflow records its covered outcome on the last-told fact.
-    const [lastTold] = await schedulingTestDb
-      .select()
-      .from(scheduleLastTold)
-      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
-    if (!lastTold || !Array.isArray(lastTold.assignments))
-      throw new Error('missing last-told Assignments');
-    await schedulingTestDb
-      .update(scheduleLastTold)
-      .set({
-        assignments: lastTold.assignments.map((item) => ({
-          ...item,
-          swapRequestCovered: true,
-        })),
-      })
-      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
+    // A covered Swap request on the told Assignment tags the removal.
+    await schedulingTestDb.insert(swapRequest).values({
+      churchId: ids.churchId,
+      assignmentId: lateAssignment.id,
+      status: 'covered',
+      raisedBy: unassigned.volunteer.userId,
+    });
     await schedulingTestDb
       .update(assignment)
       .set({ status: 'cancelled' })

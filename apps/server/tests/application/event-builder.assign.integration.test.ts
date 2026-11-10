@@ -99,6 +99,7 @@ function createParticipationManager(): DbParticipationManager {
     sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
     notifications: createChurchNotificationsSpy(),
     churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+    swapRequestRepo: new DrizzleSwapRequestRepository({ db: schedulingTestDb }),
     staffingSeeder: {} as never,
     unitOfWork,
   });

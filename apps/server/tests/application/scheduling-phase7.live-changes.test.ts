@@ -192,6 +192,7 @@ function createHarness() {
     roleRepository: roleRepo,
     notifications,
     churchRepository: {} as never,
+    swapRequestRepo: createSwapRequestRepositoryFake(),
     staffingSeeder: {} as never,
     unitOfWork,
   });

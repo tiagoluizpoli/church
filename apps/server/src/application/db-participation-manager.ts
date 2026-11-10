@@ -62,6 +62,7 @@ import type { PlanningEventRepository } from '../domain/contracts/infrastructure
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -114,6 +115,12 @@ import {
   wallClockUtcBounds,
 } from '../domain/services/usual-setup-planner';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
+
+interface TagCoveredSwapRequestsInput {
+  baseline: ScheduleLastToldRow[];
+  churchId: ChurchId;
+  tx: TransactionContext;
+}
 
 interface CompareScheduleAssignmentsInput {
   events: EventWithEventTimeBlocks[];
@@ -404,6 +411,7 @@ interface DbParticipationManagerDependencies {
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
   churchRepository: ChurchRepository;
+  swapRequestRepo: SwapRequestRepository;
   staffingSeeder: UsualSetupStaffingSeeder;
   notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
@@ -439,6 +447,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly roleRepository: RoleRepository;
   private readonly sectorRepository: SectorRepository;
   private readonly churchRepository: ChurchRepository;
+  private readonly swapRequestRepo: SwapRequestRepository;
   private readonly staffingSeeder: UsualSetupStaffingSeeder;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
@@ -459,11 +468,13 @@ export class DbParticipationManager implements IParticipationManager {
     roleRepository,
     sectorRepository,
     churchRepository,
+    swapRequestRepo,
     staffingSeeder,
     notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
     this.availabilityCheckRepository = availabilityCheckRepository;
+    this.swapRequestRepo = swapRequestRepo;
     this.participationRepository = participationRepository;
     this.shiftRepository = shiftRepository;
     this.eventRepository = eventRepository;
@@ -1396,8 +1407,12 @@ export class DbParticipationManager implements IParticipationManager {
         events,
         tx,
       });
-      const baseline = await this.participationRepository.listScheduleLastTold({
-        ...input,
+      const baseline = await this.tagCoveredSwapRequests({
+        baseline: await this.participationRepository.listScheduleLastTold({
+          ...input,
+          tx,
+        }),
+        churchId: input.churchId,
         tx,
       });
       const changed = compareScheduleAssignments({
@@ -1461,6 +1476,31 @@ export class DbParticipationManager implements IParticipationManager {
       }
       return { notifiedCount: changed.length };
     });
+  }
+
+  /** A told Assignment whose latest request was covered is being changed by that cover. */
+  private async tagCoveredSwapRequests({
+    baseline,
+    churchId,
+    tx,
+  }: TagCoveredSwapRequestsInput): Promise<ScheduleLastToldRow[]> {
+    return Promise.all(
+      baseline.map(async (row) => ({
+        ...row,
+        assignments: await Promise.all(
+          row.assignments.map(async (item) => {
+            const latest = await this.swapRequestRepo.findLatestByAssignment({
+              churchId,
+              assignmentId: item.assignmentId,
+              tx,
+            });
+            return latest?.status === 'covered'
+              ? { ...item, swapRequestCovered: true }
+              : item;
+          }),
+        ),
+      })),
+    );
   }
 
   private async notifySchedulePublished({

@@ -223,6 +223,7 @@ function createHarness() {
     sectorRepository,
     notifications,
     churchRepository,
+    swapRequestRepo: createSwapRequestRepositoryFake(),
     staffingSeeder: {} as never,
     unitOfWork,
   });

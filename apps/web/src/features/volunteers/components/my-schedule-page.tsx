@@ -3,7 +3,11 @@ import { compareInstants, now, parseInstant } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
+import { useMemo } from 'react';
+import { useMyScheduleRefresh } from '../hooks/use-my-schedule-refresh';
 import { assignmentDayLabel } from '../lib/assignment-day-label';
+import { BackgroundRefreshIndicator } from './background-refresh-indicator';
+import { MyScheduleOfflineBanner } from './my-schedule-offline-banner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,15 +52,35 @@ function groupByDay({ assignments, timeZone }: GroupByDayInput): DayGroup[] {
 
 interface MyScheduleProps {
   data: GetPublishedVolunteerSchedule200;
+  dataUpdatedAt: number;
+  onRefresh: () => Promise<void>;
 }
 
-function MySchedule({ data }: MyScheduleProps) {
+function MySchedule({ data, dataUpdatedAt, onRefresh }: MyScheduleProps) {
+  // Stamp the read time as an Instant whenever a fetch lands (dataUpdatedAt changes).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dataUpdatedAt is the refetch trigger
+  const lastUpdatedAt = useMemo(() => now(), [dataUpdatedAt]);
+  const refresh = useMyScheduleRefresh({
+    onRefresh,
+    visibleData: { assignments: data.assignments, schedules: data.schedules },
+  });
   const { churchTimezone: timeZone } = useTimezone();
   const current = now();
   const groups = groupByDay({ assignments: data.assignments, timeZone });
   return (
     <div className="space-y-8">
       <h1 className="font-semibold text-xl">{m.nav_my_schedule()}</h1>
+      <BackgroundRefreshIndicator
+        visible={refresh.hasBackgroundUpdate}
+        onDismiss={refresh.dismissBackgroundUpdate}
+      />
+      <MyScheduleOfflineBanner
+        isOffline={!refresh.isOnline}
+        isUsingCachedData={refresh.isUsingCachedData}
+        lastUpdatedAt={lastUpdatedAt}
+        onRefresh={refresh.refresh}
+        refreshState={refresh.refreshState}
+      />
       <section aria-labelledby="my-assignments" className="space-y-4">
         <h2 id="my-assignments" className="font-semibold">
           {m.my_schedule_assignments_heading()}
@@ -151,5 +175,13 @@ export function MySchedulePage() {
       </div>
     );
   }
-  return query.data ? <MySchedule data={query.data} /> : null;
+  return query.data ? (
+    <MySchedule
+      data={query.data}
+      dataUpdatedAt={query.dataUpdatedAt}
+      onRefresh={async () => {
+        await query.refetch({ throwOnError: true });
+      }}
+    />
+  ) : null;
 }

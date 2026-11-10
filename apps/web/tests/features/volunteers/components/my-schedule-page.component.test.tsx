@@ -92,6 +92,20 @@ describe('MySchedulePage', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('mounts the offline banner when the browser is offline', async () => {
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      value: false,
+    });
+    api.getPublishedVolunteerSchedule.mockResolvedValue(DATA);
+    renderPage();
+    expect(await screen.findByText('Offline mode')).toBeVisible();
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      value: true,
+    });
+  });
+
   it('shows the empty state in pt-BR', async () => {
     overwriteGetLocale(() => 'pt-BR');
     api.getPublishedVolunteerSchedule.mockResolvedValue({

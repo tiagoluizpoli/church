@@ -1258,5 +1258,14 @@
   "my_schedule_in_progress": "Em andamento",
   "my_schedule_no_schedules": "Nenhuma escala publicada ainda.",
   "my_schedule_loading": "Carregando sua escala…",
-  "my_schedule_load_error": "Não foi possível carregar sua escala. Tente novamente."
+  "my_schedule_load_error": "Não foi possível carregar sua escala. Tente novamente.",
+  "my_schedule_offline_title": "Modo offline",
+  "my_schedule_cached_title": "Mostrando os últimos dados da escala",
+  "my_schedule_offline_body": "Você está offline. Suas escalas e as escalas dos ministérios podem estar desatualizadas.",
+  "my_schedule_cached_body": "Sua escala pode estar desatualizada até a próxima atualização bem-sucedida.",
+  "my_schedule_last_updated": "Última atualização: {time}",
+  "my_schedule_refresh_failed": "Falha ao atualizar. Sua última escala conhecida continua visível.",
+  "my_schedule_refresh": "Atualizar escala",
+  "my_schedule_refreshing": "Atualizando escala…",
+  "my_schedule_refresh_offline": "Falha ao atualizar offline. Sua última escala conhecida continua disponível."
 }

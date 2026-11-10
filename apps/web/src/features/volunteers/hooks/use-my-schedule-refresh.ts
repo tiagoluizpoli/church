@@ -3,31 +3,31 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useOnlineState } from './use-online-state';
 
-export interface DashboardRefreshVisibleData {
-  assignmentGroups: unknown;
-  ministrySchedule: unknown;
+export interface MyScheduleRefreshVisibleData {
+  assignments: unknown;
+  schedules: unknown;
 }
 
-export interface UseDashboardRefreshOptions {
-  visibleData: DashboardRefreshVisibleData;
+export interface UseMyScheduleRefreshOptions {
+  visibleData: MyScheduleRefreshVisibleData;
   onRefresh: () => Promise<void>;
 }
 
-export type DashboardRefreshState = 'idle' | 'refreshing' | 'error';
+export type MyScheduleRefreshState = 'idle' | 'refreshing' | 'error';
 
 function serializeVisibleData(
-  visibleData: DashboardRefreshVisibleData,
+  visibleData: MyScheduleRefreshVisibleData,
 ): string {
   return JSON.stringify(visibleData);
 }
 
-export function useDashboardRefresh({
+export function useMyScheduleRefresh({
   visibleData,
   onRefresh,
-}: UseDashboardRefreshOptions) {
+}: UseMyScheduleRefreshOptions) {
   const isOnline = useOnlineState();
   const [refreshState, setRefreshState] =
-    useState<DashboardRefreshState>('idle');
+    useState<MyScheduleRefreshState>('idle');
   const [hasBackgroundUpdate, setHasBackgroundUpdate] = useState(false);
   const lastVisibleDataRef = useRef<string | undefined>(undefined);
   const isManualRefreshRef = useRef(false);
@@ -75,9 +75,7 @@ export function useDashboardRefresh({
   const refresh = async () => {
     if (!isOnline) {
       setRefreshState('error');
-      toast.error(
-        'Refresh failed while offline. Last-known dashboard data is still available.',
-      );
+      toast.error(m.my_schedule_refresh_offline());
       return;
     }
 

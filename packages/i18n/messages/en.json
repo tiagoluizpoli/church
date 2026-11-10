@@ -1258,5 +1258,14 @@
   "my_schedule_in_progress": "In progress",
   "my_schedule_no_schedules": "No published schedules yet.",
   "my_schedule_loading": "Loading your schedule…",
-  "my_schedule_load_error": "Could not load your schedule. Try again."
+  "my_schedule_load_error": "Could not load your schedule. Try again.",
+  "my_schedule_offline_title": "Offline mode",
+  "my_schedule_cached_title": "Showing last-known schedule data",
+  "my_schedule_offline_body": "You are offline. Your assignments and ministry schedules may be outdated.",
+  "my_schedule_cached_body": "Your schedule may be outdated until the next successful refresh.",
+  "my_schedule_last_updated": "Last updated: {time}",
+  "my_schedule_refresh_failed": "Refresh failed. Your last-known schedule stayed visible.",
+  "my_schedule_refresh": "Refresh schedule",
+  "my_schedule_refreshing": "Refreshing schedule…",
+  "my_schedule_refresh_offline": "Refresh failed while offline. Your last-known schedule is still available."
 }

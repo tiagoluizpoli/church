@@ -1,7 +1,5 @@
-import { useDashboardRefresh } from '../hooks/use-dashboard-refresh';
+import { useOnlineState } from '../hooks/use-online-state';
 import { useVolunteerDashboard } from '../hooks/use-volunteer-dashboard';
-import { BackgroundRefreshIndicator } from './background-refresh-indicator';
-import { DashboardOfflineBanner } from './dashboard-offline-banner';
 import { MinistryScheduleSection } from './ministry-schedule-section';
 import { UpcomingAssignmentsSection } from './upcoming-assignments-section';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,29 +43,10 @@ export function VolunteerDashboard({
     initialAssignmentId,
     initialMinistryId,
   });
-  const refresh = useDashboardRefresh({
-    onRefresh: dashboard.invalidateVolunteerDashboard,
-    visibleData: {
-      assignmentGroups: dashboard.assignmentGroups,
-      ministrySchedule: dashboard.ministrySchedule?.events ?? [],
-    },
-  });
+  const isOnline = useOnlineState();
 
   return (
     <div className="space-y-4">
-      <BackgroundRefreshIndicator
-        visible={refresh.hasBackgroundUpdate}
-        onDismiss={refresh.dismissBackgroundUpdate}
-      />
-
-      <DashboardOfflineBanner
-        isOffline={!refresh.isOnline}
-        isUsingCachedData={refresh.isUsingCachedData}
-        lastUpdatedAt={dashboard.lastUpdatedAt}
-        onRefresh={refresh.refresh}
-        refreshState={refresh.refreshState}
-      />
-
       <Tabs
         defaultValue={resolveInitialTabId({ initialSection })}
         className="w-full"
@@ -87,7 +66,7 @@ export function VolunteerDashboard({
           <UpcomingAssignmentsSection
             groups={dashboard.assignmentGroups}
             expandedEventId={dashboard.expandedAssignmentEventId}
-            isOnline={refresh.isOnline}
+            isOnline={isOnline}
             responseState={
               dashboard.respondToAssignment.isPending ? 'saving' : 'idle'
             }

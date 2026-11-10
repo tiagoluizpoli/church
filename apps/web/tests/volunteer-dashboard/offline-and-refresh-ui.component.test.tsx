@@ -2,7 +2,6 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { BackgroundRefreshIndicator } from '@/features/volunteers/components/background-refresh-indicator';
-import { DashboardOfflineBanner } from '@/features/volunteers/components/dashboard-offline-banner';
 import { UpcomingAssignmentsSection } from '@/features/volunteers/components/upcoming-assignments-section';
 import { renderWithProviders } from '@/tests/setup/render';
 
@@ -15,28 +14,6 @@ vi.mock('@church/app-config', async (importOriginal) => {
 });
 
 describe('Volunteer dashboard offline + refresh UI', () => {
-  it('shows dashboard offline banner with manual refresh affordance', () => {
-    renderWithProviders(
-      <DashboardOfflineBanner
-        isOffline={true}
-        isUsingCachedData={true}
-        lastUpdatedAt="2099-01-05T08:00:00.000Z"
-        onRefresh={vi.fn()}
-        refreshState="idle"
-      />,
-    );
-
-    expect(screen.getByText('Offline mode')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'You are offline. Cached assignments, notifications, and ministry schedule data may be outdated.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Refresh dashboard' }),
-    ).toBeInTheDocument();
-  });
-
   it('keeps assignment write affordances disabled while offline', () => {
     renderWithProviders(
       <div>

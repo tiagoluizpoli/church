@@ -431,7 +431,7 @@ describe('classifyChanges', () => {
 
   it('selects only the offline journey for the offline-specific dashboard files', () => {
     for (const changedPath of [
-      'apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx',
+      'apps/web/src/features/volunteers/components/my-schedule-offline-banner.tsx',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 

@@ -1,25 +1,26 @@
+import { m } from '@church/i18n/messages';
 import { CloudOff, RefreshCw } from 'lucide-react';
-import type { DashboardRefreshState } from '../hooks/use-dashboard-refresh';
+import type { MyScheduleRefreshState } from '../hooks/use-my-schedule-refresh';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
 
-export interface DashboardOfflineBannerProps {
+export interface MyScheduleOfflineBannerProps {
   isOffline: boolean;
   isUsingCachedData: boolean;
   lastUpdatedAt?: string;
   onRefresh: () => void;
-  refreshState: DashboardRefreshState;
+  refreshState: MyScheduleRefreshState;
 }
 
-export function DashboardOfflineBanner({
+export function MyScheduleOfflineBanner({
   isOffline,
   isUsingCachedData,
   lastUpdatedAt,
   onRefresh,
   refreshState,
-}: DashboardOfflineBannerProps) {
+}: MyScheduleOfflineBannerProps) {
   const { churchTimezone } = useTimezone();
   if (!isOffline && !isUsingCachedData && refreshState !== 'error') {
     return null;
@@ -33,17 +34,21 @@ export function DashboardOfflineBanner({
     <Alert variant={isOffline ? 'destructive' : 'default'}>
       <CloudOff className="size-4" />
       <AlertTitle>
-        {isOffline ? 'Offline mode' : 'Showing last-known dashboard data'}
+        {isOffline
+          ? m.my_schedule_offline_title()
+          : m.my_schedule_cached_title()}
       </AlertTitle>
       <AlertDescription className="space-y-3">
         <p>
           {isOffline
-            ? 'You are offline. Cached assignments, notifications, and ministry schedule data may be outdated.'
-            : 'Dashboard data may be outdated until the next successful refresh.'}
+            ? m.my_schedule_offline_body()
+            : m.my_schedule_cached_body()}
         </p>
-        {lastUpdatedLabel ? <p>Last updated: {lastUpdatedLabel}</p> : null}
+        {lastUpdatedLabel ? (
+          <p>{m.my_schedule_last_updated({ time: lastUpdatedLabel })}</p>
+        ) : null}
         {refreshState === 'error' ? (
-          <p>Refresh failed. Cached dashboard data stayed visible.</p>
+          <p>{m.my_schedule_refresh_failed()}</p>
         ) : null}
         <Button
           type="button"
@@ -53,8 +58,8 @@ export function DashboardOfflineBanner({
         >
           <RefreshCw className="mr-2 size-4" />
           {refreshState === 'refreshing'
-            ? 'Refreshing dashboard...'
-            : 'Refresh dashboard'}
+            ? m.my_schedule_refreshing()
+            : m.my_schedule_refresh()}
         </Button>
       </AlertDescription>
     </Alert>

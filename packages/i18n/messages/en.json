@@ -1235,5 +1235,21 @@
   "schedule_late_mark_count": "{count} late availability marks",
   "builder_ui_publish_gaps": "Empty places: {places}; affected shifts: {shifts}. You can publish anyway.",
   "error_schedule_has_no_assignments": "Assign at least one volunteer before publishing.",
-  "error_schedule_already_published": "This schedule has already been published."
+  "error_schedule_already_published": "This schedule has already been published.",
+  "assignment_detail_loading": "Loading assignment…",
+  "assignment_detail_load_error": "Could not load this assignment. Try again.",
+  "assignment_stale": "This assignment is no longer on your schedule.",
+  "assignment_stale_back": "Back to my schedule",
+  "assignment_field_event": "Event",
+  "assignment_field_when": "When",
+  "assignment_field_ministry": "Ministry",
+  "assignment_field_sector": "Sector",
+  "assignment_field_role": "Role",
+  "assignment_field_leader": "Leader",
+  "assignment_roster_heading": "Who is serving",
+  "assignment_roster_you": "You",
+  "assignment_roster_open": "Open",
+  "assignment_full_schedule": "Full schedule",
+  "assignment_need_help": "I need help with this",
+  "assignment_need_help_soon": "Coming soon"
 }

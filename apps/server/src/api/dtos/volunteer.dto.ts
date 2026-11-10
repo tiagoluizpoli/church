@@ -9,7 +9,6 @@ import type {
   VolunteerAvailabilityCheckSummary,
   VolunteerDashboard,
 } from '../../domain/contracts/application/volunteer-manager';
-import type { Assignment } from '../../domain/entities/assignment';
 import {
   type AssignmentResponse,
   assignmentMapper,
@@ -131,8 +130,31 @@ export const dashboardResponseSchema = z.object({
 });
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 
-export const assignmentListResponseSchema = z.object({
-  assignments: z.array(assignmentResponseSchema),
+export const volunteerScheduleResponseSchema = z.object({
+  assignments: z.array(
+    z.object({
+      assignmentId: z.string(),
+      eventId: z.string(),
+      eventTitle: z.string(),
+      shiftId: z.string(),
+      startTime: instantSchema,
+      endTime: instantSchema,
+      ministryId: z.string(),
+      ministryName: z.string(),
+      sectorName: z.string(),
+      roleId: z.string(),
+      roleName: z.string(),
+      status: z.enum(['pending', 'confirmed', 'declined']),
+    }),
+  ),
+  schedules: z.array(
+    z.object({
+      ministryId: z.string(),
+      ministryName: z.string(),
+      cycleId: z.string(),
+      cycleName: z.string(),
+    }),
+  ),
 });
 
 const ministryScheduleEventResponseSchema = z.object({
@@ -165,6 +187,31 @@ export const ministryScheduleResponseSchema = z.object({
 });
 export type MinistryScheduleResponse = z.infer<
   typeof ministryScheduleResponseSchema
+>;
+
+export const assignmentDetailResponseSchema = z.object({
+  assignmentId: z.string(),
+  eventId: z.string(),
+  eventTitle: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
+  cycleId: z.string(),
+  ministryId: z.string(),
+  ministryName: z.string(),
+  sectorName: z.string(),
+  roleName: z.string(),
+  leaderName: z.string().nullable(),
+  roster: z.array(
+    z.object({
+      sectorName: z.string(),
+      roleName: z.string(),
+      people: z.array(z.object({ name: z.string(), isYou: z.boolean() })),
+      openCount: z.number(),
+    }),
+  ),
+});
+export type AssignmentDetailResponse = z.infer<
+  typeof assignmentDetailResponseSchema
 >;
 
 export const respondToAssignmentBodySchema = z.object({
@@ -292,9 +339,6 @@ function ministryScheduleToResponse(
 
 export const volunteerMapper = {
   dashboardToResponse,
-  assignmentsToResponse(assignments: Assignment[]) {
-    return { assignments: assignments.map(assignmentToResponse) };
-  },
   ministryScheduleToResponse,
   availabilityCheckListToResponse(
     summaries: VolunteerAvailabilityCheckSummary[],

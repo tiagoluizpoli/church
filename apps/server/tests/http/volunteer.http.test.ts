@@ -33,7 +33,6 @@ const ROUTES: Array<{
   url: string;
 }> = [
   { method: 'GET', url: '/api/v1/volunteer/dashboard' },
-  { method: 'GET', url: '/api/v1/volunteer/assignments' },
   { method: 'GET', url: '/api/v1/volunteer/schedule' },
   { method: 'GET', url: '/api/v1/volunteer/ministries/some-id/schedule' },
   { method: 'GET', url: '/api/v1/volunteer/availability-checks' },

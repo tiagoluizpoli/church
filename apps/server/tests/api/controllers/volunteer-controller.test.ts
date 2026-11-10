@@ -32,7 +32,6 @@ const mockGetSession = vi.mocked(
 
 const volunteerManager = {
   getDashboard: vi.fn(),
-  getUpcomingAssignments: vi.fn(),
   getPublishedSchedule: vi.fn(),
   getMinistrySchedule: vi.fn(),
   listAvailabilityChecks: vi.fn(),
@@ -93,11 +92,18 @@ const GENERIC_NOT_FOUND = { error: 'NOT_FOUND', message: m.error_not_found() };
 
 const servingCollections = [
   { method: 'GET' as const, url: '/api/v1/volunteer/dashboard' },
-  { method: 'GET' as const, url: '/api/v1/volunteer/assignments' },
   { method: 'GET' as const, url: '/api/v1/volunteer/availability-checks' },
 ];
 
 describe('Volunteer route access', () => {
+  it('retired GET /volunteer/assignments returns 404', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/volunteer/assignments',
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it.each([
     { method: 'PUT' as const, suffix: 'unavailable-shifts' },
     { method: 'POST' as const, suffix: 'confirm' },

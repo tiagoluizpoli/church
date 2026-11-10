@@ -1235,5 +1235,21 @@
   "schedule_late_mark_count": "{count} indisponibilidades após a escala",
   "builder_ui_publish_gaps": "Vagas em aberto: {places}; turnos afetados: {shifts}. Você pode publicar mesmo assim.",
   "error_schedule_has_no_assignments": "Escale pelo menos uma pessoa voluntária antes de publicar.",
-  "error_schedule_already_published": "Esta escala já foi publicada."
+  "error_schedule_already_published": "Esta escala já foi publicada.",
+  "assignment_detail_loading": "Carregando escala…",
+  "assignment_detail_load_error": "Não foi possível carregar esta escala. Tente novamente.",
+  "assignment_stale": "Esta escala não faz mais parte da sua escala.",
+  "assignment_stale_back": "Voltar para minha escala",
+  "assignment_field_event": "Evento",
+  "assignment_field_when": "Quando",
+  "assignment_field_ministry": "Ministério",
+  "assignment_field_sector": "Setor",
+  "assignment_field_role": "Função",
+  "assignment_field_leader": "Líder",
+  "assignment_roster_heading": "Quem está servindo",
+  "assignment_roster_you": "Você",
+  "assignment_roster_open": "Em aberto",
+  "assignment_full_schedule": "Escala completa",
+  "assignment_need_help": "Preciso de ajuda com esta escala",
+  "assignment_need_help_soon": "Em breve"
 }

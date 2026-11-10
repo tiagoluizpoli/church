@@ -26,7 +26,7 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   answerAvailabilityCheckBodySchema,
   answerConflictResponseSchema,
-  assignmentListResponseSchema,
+  assignmentDetailResponseSchema,
   assignmentResponseSchema,
   availabilityCheckDetailResponseSchema,
   availabilityCheckListResponseSchema,
@@ -130,22 +130,34 @@ export class VolunteerController implements FastifyController {
     );
 
     app.get(
-      '/assignments',
+      '/assignments/:assignmentId',
       {
         schema: {
           tags: ['volunteer'],
-          operationId: 'getMyAssignments',
-          summary: "Get the caller's upcoming Assignments",
-          description: "List the current Volunteer's upcoming Assignments.",
-          response: { 200: assignmentListResponseSchema },
+          operationId: 'getAssignmentDetail',
+          summary: "Get one of the caller's Assignments",
+          description:
+            "Get one of the current Volunteer's own published Assignments with its Shift roster. Anyone else's, or one no longer on the schedule, is 404.",
+          response: {
+            200: assignmentDetailResponseSchema,
+            404: notFoundResponseSchema,
+          },
         },
       },
       async (request, reply) => {
-        const assignments = await this.volunteerManager.getUpcomingAssignments({
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+        const { assignmentId } = request.params as AssignmentRouteParams;
+        const detail = await this.withPrivateObjectNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.volunteerManager.getAssignmentDetail({
+              assignmentId: AssignmentId.from(assignmentId),
+              volunteerId: VolunteerId.from(request.volunteerId as string),
+              churchId: ChurchId.from(request.churchId),
+            }),
         });
-        return reply.send(volunteerMapper.assignmentsToResponse(assignments));
+        if (!detail) return;
+        return reply.send(detail);
       },
     );
 

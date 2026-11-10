@@ -1245,5 +1245,12 @@
   "assignment_roster_open": "Em aberto",
   "assignment_full_schedule": "Escala completa",
   "assignment_need_help": "Preciso de ajuda com esta escala",
-  "assignment_need_help_soon": "Em breve"
+  "assignment_need_help_soon": "Em breve",
+  "my_schedule_assignments_heading": "Minhas escalas",
+  "my_schedule_ministries_heading": "Escalas dos ministérios",
+  "my_schedule_empty": "Você ainda não está em nenhuma escala. Você receberá um aviso quando seu líder publicar uma.",
+  "my_schedule_in_progress": "Em andamento",
+  "my_schedule_no_schedules": "Nenhuma escala publicada ainda.",
+  "my_schedule_loading": "Carregando sua escala…",
+  "my_schedule_load_error": "Não foi possível carregar sua escala. Tente novamente."
 }

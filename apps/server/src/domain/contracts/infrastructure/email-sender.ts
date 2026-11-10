@@ -193,7 +193,22 @@ export interface CycleReadyToPrepareEmail {
   actionUrl: string;
 }
 
+/** N7: a Volunteer raised a Swap request; the note is leader-facing. */
+export interface SwapRequestEmail {
+  kind: 'swap.request';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  ministryName: string;
+  churchTimezone: string;
+  volunteerName: string;
+  shift: SchedulePublishedEmailShift;
+  note?: string;
+  actionUrl: string;
+}
+
 export type EmailPayload =
+  | SwapRequestEmail
   | AvailabilityEmail
   | CycleReadyToPrepareEmail
   | SchedulePublishedEmail

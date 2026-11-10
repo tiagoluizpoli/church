@@ -149,6 +149,28 @@ export function renderNotification(
         actionLabel: m.email_schedule_published_action(),
       };
     }
+    case 'swap_request': {
+      const { data } = item;
+      const shift = formatShiftLine({
+        shift: data.shift,
+        timeZone: data.churchTimezone,
+        locale: getLocale(),
+      });
+      return {
+        title: m.notification_swap_request_title(data),
+        body: [
+          m.notification_swap_request_body({
+            ministryName: data.ministryName,
+            shift,
+          }),
+          ...(data.note
+            ? [m.notification_swap_request_note({ note: data.note })]
+            : []),
+        ].join('\n'),
+        kindLabel: m.notification_kind_swap_request(),
+        actionLabel: m.notification_swap_request_action(),
+      };
+    }
     case 'cycle_ready_to_prepare':
       return {
         ...cycleReadyToPrepareWords(item.data),

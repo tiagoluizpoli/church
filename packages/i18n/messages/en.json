@@ -1290,5 +1290,10 @@
   "swap_kept": "Swap request kept · your leader kept you on",
   "swap_kept_reply": "Reply from your leader: {reply}",
   "swap_expired": "Swap request expired · the Shift has started",
-  "my_schedule_swap_requested": "Swap requested"
+  "my_schedule_swap_requested": "Swap requested",
+  "notification_kind_swap_request": "Swap request",
+  "notification_swap_request_title": "{volunteerName} asked to swap",
+  "notification_swap_request_body": "{ministryName}: {shift}",
+  "notification_swap_request_note": "Note: {note}",
+  "notification_swap_request_action": "Open swap request"
 }

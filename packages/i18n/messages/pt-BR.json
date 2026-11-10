@@ -1290,5 +1290,10 @@
   "swap_kept": "Pedido de troca mantido · seu líder manteve você na escala",
   "swap_kept_reply": "Resposta do seu líder: {reply}",
   "swap_expired": "Pedido de troca vencido · o Turno já começou",
-  "my_schedule_swap_requested": "Troca pedida"
+  "my_schedule_swap_requested": "Troca pedida",
+  "notification_kind_swap_request": "Pedido de troca",
+  "notification_swap_request_title": "{volunteerName} pediu troca",
+  "notification_swap_request_body": "{ministryName}: {shift}",
+  "notification_swap_request_note": "Observação: {note}",
+  "notification_swap_request_action": "Abrir pedido de troca"
 }

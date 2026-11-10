@@ -1,5 +1,11 @@
 import { appConfig } from '@church/app-config';
-import { assignment, ministryParticipation, swapRequest } from '@church/db';
+import {
+  assignment,
+  ministryMembership,
+  ministryParticipation,
+  outboxMessage,
+  swapRequest,
+} from '@church/db';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -12,19 +18,27 @@ import {
 } from 'vitest';
 import { SwapRequestController } from '@/api/controllers/swap-request-controller';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbSwapRequestManager } from '@/application/db-swap-request-manager';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
 import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   createSchedulingManagers,
@@ -67,6 +81,18 @@ beforeAll(async () => {
         assignmentRepo: new DrizzleAssignmentRepository({ db }),
         participationRepo: new DrizzleMinistryParticipationRepository({ db }),
         shiftRepo: new DrizzleShiftRepository({ db }),
+        eventRepo: new DrizzleEventRepository({ db }),
+        ministryRepo: new DrizzleMinistryRepository({ db }),
+        roleRepo: new DrizzleRoleRepository({ db }),
+        churchRepo: new DrizzleChurchRepository({ db }),
+        volunteerRepo: new DrizzleVolunteerRepository({ db }),
+        recipients: new ChurchRecipients({
+          churchRepository: new DrizzleChurchRepository({ db }),
+          volunteerRepository: new DrizzleVolunteerRepository({ db }),
+        }),
+        notifications: new ChurchNotifications({
+          outboxRepository: new DrizzleOutboxRepository({ db }),
+        }),
         unitOfWork: new DrizzleUnitOfWork({ db }),
         config: appConfig,
       }),
@@ -323,5 +349,63 @@ describe('The caller’s swap request state on the Assignment detail', () => {
       (await app.inject({ method: 'GET', url: `${ROOT}/${theirs.id}` }))
         .statusCode,
     ).toBe(404);
+  });
+});
+
+describe('N7 swap request alert enqueue', () => {
+  const alerts = async () =>
+    (await db.select().from(outboxMessage)).filter(
+      (row) => (row.payload as { kind?: string }).kind === 'swap_request',
+    );
+
+  it('enqueues one outbox row for the leader, who is also a ChurchAdmin, with frozen facts', async () => {
+    const { mine, churchId } = await seedGraph();
+    const response = await raise(mine.id, { note: 'João will cover' });
+    const rows = await alerts();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.payload).toMatchObject({
+      to: { userId: 'sched-admin-user', churchId },
+      data: {
+        swapRequestId: response.json().id,
+        volunteerName: 'Maria Souza Lima',
+        note: 'João will cover',
+        ministryName: 'Scheduling Ministry A',
+        shift: {
+          eventTitle: 'Sunday Service',
+          roleName: 'Teacher',
+          startsAt: '2030-10-13T13:00:00.000Z',
+        },
+      },
+    });
+  });
+
+  it('alerts every ChurchAdmin, once each, when the Ministry has no leader', async () => {
+    const { mine, churchId } = await seedGraph();
+    await db
+      .update(ministryMembership)
+      .set({ ministryAccessLevel: 'volunteer' });
+    await buildUser({
+      db,
+      id: 'second-admin',
+      name: 'Second',
+      email: 's@t.com',
+    });
+    await buildChurchMembership({
+      db,
+      churchId,
+      userId: 'second-admin',
+      accessLevel: 'admin',
+    });
+    await raise(mine.id);
+    const recipients = (await alerts()).map(
+      (row) => (row.payload as { to: { userId: string } }).to.userId,
+    );
+    expect(recipients.sort()).toEqual(['sched-admin-user', 'second-admin']);
+  });
+
+  it('enqueues nothing when the raise is refused', async () => {
+    const { theirs } = await seedGraph();
+    await raise(theirs.id);
+    expect(await alerts()).toHaveLength(0);
   });
 });

@@ -54,6 +54,10 @@ import {
   createPlanningEventBodySchema,
   eventGraphMapper,
   eventGraphResponseSchema,
+  eventMovePreviewMapper,
+  eventMovePreviewResponseSchema,
+  type MovePlanningEventBody,
+  movePlanningEventBodySchema,
   type UpdatePlanningEventBody,
   type UpdatePlanningEventDetailsBody,
   updatePlanningEventBodySchema,
@@ -669,6 +673,36 @@ export class ChurchAdminController implements FastifyController {
           eventId: EventId.from(eventId),
         });
         return reply.status(204).send();
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/move/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventMove',
+          summary: 'Preview moving an Event',
+          description:
+            'Preview moving a scheduled Event of a Sent Cycle to a new start, writing and sending nothing. Returns the proposed Event and EventTimeBlock bounds (duration preserved, one delta for the Event, its EventTimeBlocks and Shifts) and a typed clash row, with Volunteer and Ministry identities, for each active Assignment that would strictly overlap another active Assignment of the Church (touching ends are compatible). Advisory only: a later confirm recalculates. Refuses a Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION), an Event that has started or a target start that is not in the future (MOVE_WINDOW_CLOSED) and a final start day outside the inclusive Cycle (EVENT_OUTSIDE_CYCLE); the end may spill.',
+          body: movePlanningEventBodySchema,
+          response: {
+            200: eventMovePreviewResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as MovePlanningEventBody;
+        const preview = await this.planningEventManager.previewMove({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+          start: dateFromInstantString({ value: body.start }),
+        });
+        return reply.send(eventMovePreviewMapper.toResponse(preview));
       },
     );
 

@@ -768,6 +768,25 @@ describe('Swap requests on the board', () => {
     ).not.toContain(expect.stringMatching(/keep|cover/i));
   });
 
+  it('Cover closes the sheet and opens the Assignment actions without answering the request', async () => {
+    const keep = vi.spyOn(adminApi, 'keepSwapRequest');
+    const onSelectSwapRequest = vi.fn();
+    renderBuilder({
+      data,
+      swapRequests: [request],
+      selectedSwapRequestId: 'request-1',
+      onSelectSwapRequest,
+    });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.swap_board_cover() }),
+    );
+
+    expect(onSelectSwapRequest).toHaveBeenCalledWith(undefined);
+    expect(await screen.findByTestId('assignment-picker')).toBeInTheDocument();
+    expect(keep).not.toHaveBeenCalled();
+  });
+
   describe('Keep them on', () => {
     const keepWith = (implementation: () => Promise<unknown>) =>
       vi

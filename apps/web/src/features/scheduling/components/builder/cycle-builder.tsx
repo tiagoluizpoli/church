@@ -111,6 +111,7 @@ export function CycleBuilder({
   const removedVolunteerName =
     removedAssignment?.volunteerName ?? m.builder_ui_the_volunteer();
 
+  const [coverAssignmentId, setCoverAssignmentId] = useState<string>();
   const openRequestByAssignment = new Map(
     swapRequests
       .filter(({ status }) => status === 'open')
@@ -163,6 +164,8 @@ export function CycleBuilder({
       value={{
         openRequestByAssignment,
         onOpenSwapRequest: (id) => onSelectSwapRequest?.(id),
+        coverAssignmentId,
+        onCoverHandled: () => setCoverAssignmentId(undefined),
       }}
     >
       <WorkspacePage data-testid="cycle-builder">
@@ -309,6 +312,11 @@ export function CycleBuilder({
           <SwapRequestSheet
             ministryId={ministryId}
             request={selectedSwapRequest}
+            onCover={() => {
+              // Cover only leads to the board actions; the Assignment change closes the request.
+              setCoverAssignmentId(selectedSwapRequest.assignmentId);
+              onSelectSwapRequest?.(undefined);
+            }}
             onOpenChange={(open) => !open && onSelectSwapRequest?.(undefined)}
           />
         ) : null}

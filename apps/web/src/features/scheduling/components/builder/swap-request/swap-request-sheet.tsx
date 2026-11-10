@@ -26,6 +26,7 @@ interface SwapRequestSheetProps {
   ministryId: string;
   request: LeaderSwapRequest;
   onOpenChange: (open: boolean) => void;
+  onCover: () => void;
 }
 
 interface FactProps {
@@ -47,6 +48,7 @@ export function SwapRequestSheet({
   ministryId,
   request,
   onOpenChange,
+  onCover,
 }: SwapRequestSheetProps) {
   const { churchTimezone: timeZone } = useTimezone();
   const queryClient = useQueryClient();
@@ -87,6 +89,11 @@ export function SwapRequestSheet({
           >
             {m.swap_board_close()}
           </Button>
+          {isExpired ? null : (
+            <Button variant="outline" size="touch" onClick={onCover}>
+              {m.swap_board_cover()}
+            </Button>
+          )}
           {isExpired ? null : (
             <Button
               size="touch"

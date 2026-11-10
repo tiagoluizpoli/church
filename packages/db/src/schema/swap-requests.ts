@@ -8,7 +8,6 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { assignment } from './assignments';
 import { user } from './auth';
 import { church } from './church';
 
@@ -19,9 +18,8 @@ export const swapRequest = pgTable(
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    assignmentId: uuid('assignment_id')
-      .notNull()
-      .references(() => assignment.id, { onDelete: 'cascade' }),
+    // No FK: a removed Assignment keeps its closed request as history.
+    assignmentId: uuid('assignment_id').notNull(),
     status: text('status').notNull(),
     note: text('note'),
     reply: text('reply'),

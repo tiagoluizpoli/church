@@ -276,3 +276,52 @@ describe('Raise a swap request', () => {
     expect(await db.select().from(swapRequest)).toHaveLength(0);
   });
 });
+
+describe('The caller’s swap request state on the Assignment detail', () => {
+  const detail = async (id: string) =>
+    (await app.inject({ method: 'GET', url: `${ROOT}/${id}` })).json()
+      .swapRequest;
+  const closeAs = (status: string, reply?: string) =>
+    db.update(swapRequest).set({ status, reply, closedAt: new Date() });
+
+  it('is null when nothing was raised', async () => {
+    const { mine } = await seedGraph();
+    expect(await detail(mine.id)).toBeNull();
+  });
+
+  it.each([
+    ['withdrawn', undefined],
+    ['covered', undefined],
+    ['kept', 'Please stay on'],
+  ])('reports a %s request', async (status, reply) => {
+    const { mine } = await seedGraph();
+    await raise(mine.id, { note: 'João' });
+    await closeAs(status, reply);
+    expect(await detail(mine.id)).toMatchObject({
+      status,
+      note: 'João',
+      reply: reply ?? null,
+    });
+  });
+
+  it('reads an open request as expired once its Shift has started, writing nothing', async () => {
+    const { mine, me, churchId } = await seedGraph({ year: 2020 });
+    await db.insert(swapRequest).values({
+      churchId,
+      assignmentId: mine.id,
+      status: 'open',
+      raisedBy: me.volunteer.userId,
+    });
+    expect(await detail(mine.id)).toMatchObject({ status: 'expired' });
+    const [row] = await db.select().from(swapRequest);
+    expect(row?.status).toBe('open');
+  });
+
+  it('never shows another Volunteer’s request', async () => {
+    const { theirs } = await seedGraph();
+    expect(
+      (await app.inject({ method: 'GET', url: `${ROOT}/${theirs.id}` }))
+        .statusCode,
+    ).toBe(404);
+  });
+});

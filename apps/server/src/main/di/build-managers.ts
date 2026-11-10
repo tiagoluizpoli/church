@@ -122,6 +122,7 @@ export function buildManagers({
       volunteerRepository,
       unavailableShiftRepository,
       cycleRepository,
+      swapRequestRepo: swapRequestRepository,
       unitOfWork,
     });
   const eventManager =

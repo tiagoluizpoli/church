@@ -65,6 +65,8 @@ export interface VolunteerScheduleAssignment {
   roleId: string;
   roleName: string;
   status: 'pending' | 'confirmed' | 'declined';
+  /** An open Swap request on a not-yet-started Shift. */
+  swapRequested: boolean;
 }
 
 /** One Ministry's part of one sent Cycle, published. */
@@ -129,11 +131,13 @@ export interface AssignmentDetail {
   roleName: string;
   leaderName: string | null;
   roster: AssignmentRosterGroup[];
-  /** The caller's own open Swap request on this Assignment, if any. */
+  /** The caller's own latest Swap request on this Assignment; null is "none". */
   swapRequest: {
     id: string;
-    status: 'open';
+    /** `open` past the Shift's start already reads as `expired`. */
+    status: 'open' | 'withdrawn' | 'covered' | 'kept' | 'expired';
     note: string | null;
+    reply: string | null;
     raisedAt: Instant;
   } | null;
 }

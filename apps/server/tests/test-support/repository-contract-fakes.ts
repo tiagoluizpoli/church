@@ -301,6 +301,12 @@ export function createSwapRequestRepositoryFake() {
     findOpenByAssignment: vi
       .fn<SwapRequestRepository['findOpenByAssignment']>()
       .mockResolvedValue(null),
+    findLatestByAssignment: vi
+      .fn<SwapRequestRepository['findLatestByAssignment']>()
+      .mockResolvedValue(null),
+    listOpenAssignmentIds: vi
+      .fn<SwapRequestRepository['listOpenAssignmentIds']>()
+      .mockResolvedValue([]),
     closeOpenByAssignment:
       vi.fn<SwapRequestRepository['closeOpenByAssignment']>(),
   } satisfies SwapRequestRepository;

@@ -12535,7 +12535,14 @@ paths:
                         type: string
                         enum:
                           - open
+                          - withdrawn
+                          - covered
+                          - kept
+                          - expired
                       note:
+                        nullable: true
+                        type: string
+                      reply:
                         nullable: true
                         type: string
                       raisedAt:
@@ -12546,6 +12553,7 @@ paths:
                       - id
                       - status
                       - note
+                      - reply
                       - raisedAt
                     additionalProperties: false
                 required:
@@ -13205,6 +13213,8 @@ paths:
                             - pending
                             - confirmed
                             - declined
+                        swapRequested:
+                          type: boolean
                       required:
                         - assignmentId
                         - eventId
@@ -13218,6 +13228,7 @@ paths:
                         - roleId
                         - roleName
                         - status
+                        - swapRequested
                       additionalProperties: false
                   schedules:
                     type: array

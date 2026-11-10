@@ -1,10 +1,12 @@
 import { swapRequest } from '@church/db';
 import { now, toDate } from '@church/time';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import type { AssignmentId } from '../../domain/branded-ids';
 import type {
   CloseOpenSwapRequestInput,
   CreateSwapRequestInput,
   FindOpenSwapRequestInput,
+  ListOpenAssignmentIdsInput,
   SwapRequestRepository,
 } from '../../domain/contracts/infrastructure/swap-request.repository';
 import type { SwapRequest } from '../../domain/entities/swap-request';
@@ -64,6 +66,43 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
         ),
       );
     return row ? mapSwapRequest({ row }) : null;
+  }
+
+  async findLatestByAssignment({
+    churchId,
+    assignmentId,
+    tx,
+  }: FindOpenSwapRequestInput): Promise<SwapRequest | null> {
+    const [row] = await getClient({ db: this.db, tx })
+      .select()
+      .from(swapRequest)
+      .where(
+        and(
+          withChurchIsolation({ table: swapRequest, churchId }),
+          eq(swapRequest.assignmentId, assignmentId),
+        ),
+      )
+      .orderBy(desc(swapRequest.raisedAt))
+      .limit(1);
+    return row ? mapSwapRequest({ row }) : null;
+  }
+
+  async listOpenAssignmentIds({
+    churchId,
+    assignmentIds,
+  }: ListOpenAssignmentIdsInput) {
+    if (assignmentIds.length === 0) return [];
+    const rows = await getClient({ db: this.db })
+      .select({ assignmentId: swapRequest.assignmentId })
+      .from(swapRequest)
+      .where(
+        and(
+          withChurchIsolation({ table: swapRequest, churchId }),
+          inArray(swapRequest.assignmentId, assignmentIds),
+          eq(swapRequest.status, 'open'),
+        ),
+      );
+    return rows.map((row) => row.assignmentId as AssignmentId);
   }
 
   async closeOpenByAssignment({

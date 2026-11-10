@@ -520,6 +520,12 @@ export class DbVolunteerManager implements IVolunteerManager {
           a.cycleName.localeCompare(b.cycleName),
       );
 
+    const openSwapIds = new Set<string>(
+      await this.swapRequestRepo.listOpenAssignmentIds({
+        churchId,
+        assignmentIds: assignments.map((a) => a.id),
+      }),
+    );
     const items = await Promise.all(
       assignments.map(async (assignment) => {
         const participation = participationsById.get(
@@ -564,6 +570,10 @@ export class DbVolunteerManager implements IVolunteerManager {
           roleId: roleId as string,
           roleName: role.name,
           status: assignment.status as VolunteerScheduleAssignment['status'],
+          // Same rule as the detail read: open past the Shift's start is expired.
+          swapRequested:
+            openSwapIds.has(assignment.id as string) &&
+            compareInstants({ left: shift.startTime, right: now }) > 0,
         };
         return item;
       }),
@@ -812,10 +822,12 @@ export class DbVolunteerManager implements IVolunteerManager {
       .sort();
 
     // Only the raiser's own detail read reaches here, so the note is theirs to see.
-    const openSwapRequest = await this.swapRequestRepo.findOpenByAssignment({
-      churchId,
-      assignmentId,
-    });
+    const latestSwapRequest = await this.swapRequestRepo.findLatestByAssignment(
+      {
+        churchId,
+        assignmentId,
+      },
+    );
 
     return {
       assignmentId: assignment.id as string,
@@ -830,12 +842,18 @@ export class DbVolunteerManager implements IVolunteerManager {
       roleName: roleNameOf(assignment.roleId as string),
       leaderName: leaderName ?? null,
       roster,
-      swapRequest: openSwapRequest
+      swapRequest: latestSwapRequest
         ? {
-            id: openSwapRequest.id,
-            status: 'open',
-            note: openSwapRequest.note ?? null,
-            raisedAt: openSwapRequest.raisedAt,
+            id: latestSwapRequest.id,
+            status:
+              latestSwapRequest.status === 'open' &&
+              compareInstants({ left: shift.startTime, right: nowInstant() }) <=
+                0
+                ? 'expired'
+                : latestSwapRequest.status,
+            note: latestSwapRequest.note ?? null,
+            reply: latestSwapRequest.reply ?? null,
+            raisedAt: latestSwapRequest.raisedAt,
           }
         : null,
     };

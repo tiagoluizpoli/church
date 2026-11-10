@@ -16,6 +16,7 @@ import type { AssignmentAuditRepository } from '../domain/contracts/infrastructu
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -38,6 +39,7 @@ interface DbAssignmentManagerDependencies {
   volunteerRepository: VolunteerRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
   cycleRepository: CycleRepository;
+  swapRequestRepo: SwapRequestRepository;
   unitOfWork: UnitOfWork;
 }
 
@@ -49,6 +51,7 @@ export class DbAssignmentManager implements IAssignmentManager {
   private readonly volunteerRepository: VolunteerRepository;
   private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly cycleRepository: CycleRepository;
+  private readonly swapRequestRepo: SwapRequestRepository;
   private readonly unitOfWork: UnitOfWork;
 
   constructor({
@@ -59,6 +62,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     volunteerRepository,
     unavailableShiftRepository,
     cycleRepository,
+    swapRequestRepo,
     unitOfWork,
   }: DbAssignmentManagerDependencies) {
     this.assignmentRepo = assignmentRepo;
@@ -68,6 +72,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.volunteerRepository = volunteerRepository;
     this.unavailableShiftRepository = unavailableShiftRepository;
     this.cycleRepository = cycleRepository;
+    this.swapRequestRepo = swapRequestRepo;
     this.unitOfWork = unitOfWork;
   }
 
@@ -133,6 +138,13 @@ export class DbAssignmentManager implements IAssignmentManager {
         },
         tx,
       });
+      await this.swapRequestRepo.closeOpenByAssignment({
+        churchId,
+        assignmentId,
+        status: 'covered',
+        closedBy: actorId,
+        tx,
+      });
       await this.assignmentRepo.deleteById({ churchId, assignmentId, tx });
     });
   }
@@ -178,6 +190,13 @@ export class DbAssignmentManager implements IAssignmentManager {
           throw new Error('Assignment is missing a participation reference');
         }
 
+        await this.swapRequestRepo.closeOpenByAssignment({
+          churchId: input.churchId,
+          assignmentId: currentAssignment.id,
+          status: 'covered',
+          closedBy: input.actorId,
+          tx,
+        });
         await this.assignmentRepo.deleteById({
           churchId: input.churchId,
           assignmentId: currentAssignment.id,
@@ -269,6 +288,14 @@ export class DbAssignmentManager implements IAssignmentManager {
           message: 'Volunteer is already assigned to this shift',
         });
       }
+      // A move never carries the request along: the leader already acted.
+      await this.swapRequestRepo.closeOpenByAssignment({
+        churchId: input.churchId,
+        assignmentId: current.id,
+        status: 'covered',
+        closedBy: input.actorId,
+        tx,
+      });
       const moved = await this.assignmentRepo.move({
         churchId: input.churchId,
         assignmentId: current.id,

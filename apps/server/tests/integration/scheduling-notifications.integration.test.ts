@@ -1111,6 +1111,45 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         }),
       }),
     );
+
+    // A future Swap workflow records its covered outcome on the last-told fact.
+    const [lastTold] = await schedulingTestDb
+      .select()
+      .from(scheduleLastTold)
+      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
+    if (!lastTold || !Array.isArray(lastTold.assignments))
+      throw new Error('missing last-told Assignments');
+    await schedulingTestDb
+      .update(scheduleLastTold)
+      .set({
+        assignments: lastTold.assignments.map((item) => ({
+          ...item,
+          swapRequestCovered: true,
+        })),
+      })
+      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'cancelled' })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        kind: 'schedule_updated',
+        to: { userId: unassigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                swapRequestCovered: true,
+                sectorName: 'Side',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
   });
 
   it.each([

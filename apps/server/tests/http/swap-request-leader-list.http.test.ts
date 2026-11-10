@@ -186,7 +186,7 @@ async function seedGraph() {
           .userId,
       })
       .returning();
-    return row;
+    return row as NonNullable<typeof row>;
   };
   return { base, churchId, ministryId, cycle, maria, joao, ana, requestOn };
 }

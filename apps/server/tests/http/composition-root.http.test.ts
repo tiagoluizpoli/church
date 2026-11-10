@@ -63,7 +63,7 @@ describe('composition root', () => {
   it('builds eighteen controllers', () => {
     const { controllers } = createCompositionRoot();
     expect(controllers).toHaveLength(18);
-    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(17);
+    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(18);
   });
 
   it('reads the debug code back from an overridden capture email sender', async () => {

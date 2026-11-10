@@ -1285,8 +1285,8 @@ describe('N8 swap_request_answered through the outbox', () => {
     eventTitle: 'Sunday Service',
     roleName: 'Usher',
     sectorName: 'Main Door',
-    startsAt: '2026-12-13T13:30:00.000Z',
-    endsAt: '2026-12-13T15:00:00.000Z',
+    startsAt: '2026-12-13T13:30:00.000Z' as Instant,
+    endsAt: '2026-12-13T15:00:00.000Z' as Instant,
   };
 
   function enqueueAnswered({ reply }: { reply?: string }) {

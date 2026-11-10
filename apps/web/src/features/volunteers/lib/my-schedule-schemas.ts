@@ -18,6 +18,8 @@ const assignmentSchema = z.object({
   roleId: z.string(),
   roleName: z.string(),
   status: z.enum(['pending', 'confirmed', 'declined']),
+  // Absent in copies stored before the flag existed.
+  swapRequested: z.boolean().default(false),
 });
 
 const scheduleSummarySchema = z.object({

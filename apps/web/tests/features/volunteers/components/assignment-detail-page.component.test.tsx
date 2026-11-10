@@ -143,6 +143,7 @@ describe('AssignmentDetailPage', () => {
         id: 's-1',
         status: 'open',
         note: 'Joao will cover',
+        reply: null,
         raisedAt: '2026-10-01T10:00:00.000Z',
       },
     });
@@ -154,6 +155,49 @@ describe('AssignmentDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Ask to swap' }),
     ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['covered', null, 'Swap request covered · your leader made the change'],
+    ['kept', 'Please stay', 'Swap request kept · your leader kept you on'],
+    ['expired', null, 'Swap request expired · the Shift has started'],
+  ] as const)('shows the %s state, with no note and no waiting line', async (status, reply, line) => {
+    api.getAssignmentDetail.mockResolvedValue({
+      ...DETAIL,
+      swapRequest: {
+        id: 's-1',
+        status,
+        note: 'Joao will cover',
+        reply,
+        raisedAt: '2026-10-01T10:00:00.000Z',
+      },
+    });
+    renderPage();
+    expect(await screen.findByText(line)).toBeInTheDocument();
+    expect(screen.queryByText(/waiting for your leader/)).toBeNull();
+    expect(screen.queryByText(/Your note/)).toBeNull();
+    if (reply)
+      expect(
+        screen.getByText(`Reply from your leader: ${reply}`),
+      ).toBeInTheDocument();
+  });
+
+  it('offers Ask to swap again after a withdrawn request', async () => {
+    api.getAssignmentDetail.mockResolvedValue({
+      ...DETAIL,
+      swapRequest: {
+        id: 's-1',
+        status: 'withdrawn',
+        note: null,
+        reply: null,
+        raisedAt: '2026-10-01T10:00:00.000Z',
+      },
+    });
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Swap request/)).toBeNull();
   });
 
   it('shows the server message and refetches when the request is refused', async () => {

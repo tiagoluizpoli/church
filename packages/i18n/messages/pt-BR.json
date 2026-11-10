@@ -1285,5 +1285,10 @@
   "swap_cancel": "Cancelar",
   "swap_send_error": "Não foi possível enviar seu pedido. Tente novamente.",
   "swap_requested_waiting": "Pedido de troca enviado · aguardando seu líder",
-  "swap_requested_note": "Sua nota: {note}"
+  "swap_requested_note": "Sua nota: {note}",
+  "swap_covered": "Pedido de troca atendido · seu líder fez a alteração",
+  "swap_kept": "Pedido de troca mantido · seu líder manteve você na escala",
+  "swap_kept_reply": "Resposta do seu líder: {reply}",
+  "swap_expired": "Pedido de troca vencido · o Turno já começou",
+  "my_schedule_swap_requested": "Troca pedida"
 }

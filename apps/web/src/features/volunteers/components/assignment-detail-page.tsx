@@ -32,6 +32,14 @@ function Fact({ label, value }: FactProps) {
   );
 }
 
+const swapStatusLine = {
+  open: () => m.swap_requested_waiting(),
+  withdrawn: () => '',
+  covered: () => m.swap_covered(),
+  kept: () => m.swap_kept(),
+  expired: () => m.swap_expired(),
+};
+
 interface AssignmentFactsProps {
   detail: GetAssignmentDetail200;
 }
@@ -113,17 +121,22 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
           </div>
         ))}
       </section>
-      {swapRequest ? (
+      {swapRequest && swapRequest.status !== 'withdrawn' ? (
         <section
           aria-labelledby="swap-requested"
           className="space-y-1 rounded-md border p-3"
         >
           <p id="swap-requested" className="font-medium">
-            {m.swap_requested_waiting()}
+            {swapStatusLine[swapRequest.status]()}
           </p>
-          {swapRequest.note ? (
+          {swapRequest.status === 'open' && swapRequest.note ? (
             <p className="text-muted-foreground text-sm">
               {m.swap_requested_note({ note: swapRequest.note })}
+            </p>
+          ) : null}
+          {swapRequest.status === 'kept' && swapRequest.reply ? (
+            <p className="text-muted-foreground text-sm">
+              {m.swap_kept_reply({ reply: swapRequest.reply })}
             </p>
           ) : null}
         </section>
@@ -136,7 +149,7 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
         >
           {m.assignment_full_schedule()}
         </Link>
-        {swapRequest ||
+        {swapRequest?.status === 'open' ||
         compareInstants({
           left: parseInstant({ value: startTime }),
           right: now(),

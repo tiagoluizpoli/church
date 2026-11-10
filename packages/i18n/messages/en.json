@@ -1285,5 +1285,10 @@
   "swap_cancel": "Cancel",
   "swap_send_error": "We could not send your request. Try again.",
   "swap_requested_waiting": "Swap requested · waiting for your leader",
-  "swap_requested_note": "Your note: {note}"
+  "swap_requested_note": "Your note: {note}",
+  "swap_covered": "Swap request covered · your leader made the change",
+  "swap_kept": "Swap request kept · your leader kept you on",
+  "swap_kept_reply": "Reply from your leader: {reply}",
+  "swap_expired": "Swap request expired · the Shift has started",
+  "my_schedule_swap_requested": "Swap requested"
 }

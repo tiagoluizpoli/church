@@ -5138,6 +5138,25 @@ export type GetAssignmentDetail200RosterItem = {
   openCount: number;
 };
 
+export type GetAssignmentDetail200SwapRequestStatus = typeof GetAssignmentDetail200SwapRequestStatus[keyof typeof GetAssignmentDetail200SwapRequestStatus];
+
+
+export const GetAssignmentDetail200SwapRequestStatus = {
+  open: 'open',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetAssignmentDetail200SwapRequest = {
+  id: string;
+  status: GetAssignmentDetail200SwapRequestStatus;
+  /** @nullable */
+  note: string | null;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  raisedAt: string;
+} | null;
+
 export type GetAssignmentDetail200 = {
   assignmentId: string;
   eventId: string;
@@ -5154,6 +5173,8 @@ export type GetAssignmentDetail200 = {
   /** @nullable */
   leaderName: string | null;
   roster: GetAssignmentDetail200RosterItem[];
+  /** @nullable */
+  swapRequest: GetAssignmentDetail200SwapRequest;
 };
 
 export type GetAssignmentDetail404 = {
@@ -5440,5 +5461,44 @@ export type GetPublishedVolunteerSchedule200SchedulesItem = {
 export type GetPublishedVolunteerSchedule200 = {
   assignments: GetPublishedVolunteerSchedule200AssignmentsItem[];
   schedules: GetPublishedVolunteerSchedule200SchedulesItem[];
+};
+
+export type RaiseSwapRequestBody = {
+  note?: string;
+};
+
+export type RaiseSwapRequest201Status = typeof RaiseSwapRequest201Status[keyof typeof RaiseSwapRequest201Status];
+
+
+export const RaiseSwapRequest201Status = {
+  open: 'open',
+  covered: 'covered',
+  kept: 'kept',
+  withdrawn: 'withdrawn',
+  expired: 'expired',
+} as const;
+
+export type RaiseSwapRequest201 = {
+  id: string;
+  assignmentId: string;
+  status: RaiseSwapRequest201Status;
+  note?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  raisedAt: string;
+};
+
+export type RaiseSwapRequest400 = {
+  error: string;
+  message: string;
+};
+
+export type RaiseSwapRequest404 = {
+  error: string;
+  message: string;
+};
+
+export type RaiseSwapRequest409 = {
+  error: string;
+  message: string;
 };
 

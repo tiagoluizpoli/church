@@ -15,6 +15,8 @@ import type {
   GetPublishedVolunteerSchedule200,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
+  RaiseSwapRequest201,
+  RaiseSwapRequestBody,
   RespondToAssignment200,
   RespondToAssignmentBody
 } from './churchAPI.schemas';
@@ -141,7 +143,22 @@ const getPublishedVolunteerSchedule = (
     },
       );
     }
-  return {getVolunteerDashboard,getAssignmentDetail,respondToAssignment,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,cancelOwnAssignment,getPublishedVolunteerSchedule}};
+  /**
+ * Ask the leader to change one of the current Volunteer’s own published, not-started Assignments. The Assignment is not changed. Anyone else’s, or an unknown one, is 404.
+ * @summary Raise a swap request on one of the caller’s Assignments
+ */
+const raiseSwapRequest = (
+    assignmentId: string,
+    raiseSwapRequestBody: RaiseSwapRequestBody,
+ ) => {
+      return apiClient<RaiseSwapRequest201>(
+      {url: `/api/v1/volunteer/assignments/${assignmentId}/swap-requests`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: raiseSwapRequestBody
+    },
+      );
+    }
+  return {getVolunteerDashboard,getAssignmentDetail,respondToAssignment,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,cancelOwnAssignment,getPublishedVolunteerSchedule,raiseSwapRequest}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetAssignmentDetailResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAssignmentDetail']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
@@ -151,3 +168,4 @@ export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnTy
 export type AnswerAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['answerAvailabilityCheck']>>>
 export type CancelOwnAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['cancelOwnAssignment']>>>
 export type GetPublishedVolunteerScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getPublishedVolunteerSchedule']>>>
+export type RaiseSwapRequestResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['raiseSwapRequest']>>>

@@ -298,6 +298,9 @@ export function createShiftRepositoryFake() {
 export function createSwapRequestRepositoryFake() {
   return {
     create: vi.fn<SwapRequestRepository['create']>(),
+    listForLeader: vi
+      .fn<SwapRequestRepository['listForLeader']>()
+      .mockResolvedValue([]),
     findOpenByAssignment: vi
       .fn<SwapRequestRepository['findOpenByAssignment']>()
       .mockResolvedValue(null),

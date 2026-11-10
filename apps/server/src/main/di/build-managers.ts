@@ -20,6 +20,7 @@ import {
   DbPlanningEventManager,
   DbRedemptionManager,
   DbSectorManager,
+  DbSwapRequestListManager,
   DbSwapRequestManager,
   DbVolunteerManager,
   DbVolunteerTransferManager,
@@ -52,6 +53,7 @@ export type Managers = Pick<
   | 'planningEventManager'
   | 'volunteerManager'
   | 'swapRequestManager'
+  | 'swapRequestListManager'
   | 'participationManager'
   | 'availabilityCheckManager'
   | 'activeChurchSelectionManager'
@@ -292,6 +294,9 @@ export function buildManagers({
       unitOfWork,
       config,
     });
+  const swapRequestListManager =
+    overrides.swapRequestListManager ??
+    new DbSwapRequestListManager({ swapRequestRepo: swapRequestRepository });
   const swapRequestManager =
     overrides.swapRequestManager ??
     new DbSwapRequestManager({
@@ -402,6 +407,7 @@ export function buildManagers({
     planningEventManager,
     volunteerManager,
     swapRequestManager,
+    swapRequestListManager,
     participationManager,
     availabilityCheckManager,
     activeChurchSelectionManager,

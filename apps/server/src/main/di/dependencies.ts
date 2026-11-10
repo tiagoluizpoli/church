@@ -23,6 +23,7 @@ import type {
   IPeopleListManager,
   IPlanningEventManager,
   ISectorManager,
+  ISwapRequestListManager,
   ISwapRequestManager,
   IVolunteerManager,
   RedemptionManager,
@@ -120,6 +121,7 @@ export interface CompositionRootDependencies {
   planningEventManager: IPlanningEventManager;
   volunteerManager: IVolunteerManager;
   swapRequestManager: ISwapRequestManager;
+  swapRequestListManager: ISwapRequestListManager;
   assignmentManager: IAssignmentManager;
   availabilityCheckManager: IAvailabilityCheckManager;
   ministryManager: IMinistryManager;

@@ -1295,5 +1295,11 @@
   "notification_swap_request_title": "{volunteerName} pediu troca",
   "notification_swap_request_body": "{ministryName}: {shift}",
   "notification_swap_request_note": "Observação: {note}",
-  "notification_swap_request_action": "Abrir pedido de troca"
+  "notification_swap_request_action": "Abrir pedido de troca",
+  "swap_withdraw": "Retirar pedido",
+  "swap_withdraw_title": "Retirar seu pedido de troca?",
+  "swap_withdraw_description": "Seu líder não será avisado e sua escala continua como está.",
+  "swap_withdraw_keep": "Manter pedido",
+  "swap_withdraw_confirm": "Retirar",
+  "swap_withdraw_error": "Não foi possível retirar seu pedido. Tente novamente."
 }

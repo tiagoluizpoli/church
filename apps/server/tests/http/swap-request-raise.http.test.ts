@@ -409,3 +409,69 @@ describe('N7 swap request alert enqueue', () => {
     expect(await alerts()).toHaveLength(0);
   });
 });
+
+const withdraw = (id: string) =>
+  app.inject({ method: 'DELETE', url: `${ROOT}/${id}/swap-requests/current` });
+
+describe('Withdraw a swap request', () => {
+  it('closes the open request as withdrawn, leaves the Assignment alone and notifies nobody', async () => {
+    const { mine, me } = await seedGraph();
+    await raise(mine.id, { note: 'x' });
+    const outboxBefore = await db.select().from(outboxMessage);
+    const response = await withdraw(mine.id);
+    expect(response.statusCode).toBe(204);
+    const [row] = await db.select().from(swapRequest);
+    expect(row).toMatchObject({
+      status: 'withdrawn',
+      closedBy: me.volunteer.userId,
+    });
+    expect(row?.closedAt).toBeInstanceOf(Date);
+    const [after] = await db
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, mine.id));
+    expect(after).toMatchObject({ status: 'confirmed' });
+    expect(await db.select().from(outboxMessage)).toHaveLength(
+      outboxBefore.length,
+    );
+    const detail = await app.inject({
+      method: 'GET',
+      url: `${ROOT}/${mine.id}`,
+    });
+    expect(detail.json().swapRequest?.status).not.toBe('open');
+    // The Assignment can be raised on again.
+    expect((await raise(mine.id)).statusCode).toBe(201);
+  });
+
+  it('is 409 SWAP_REQUEST_NOT_OPEN when already withdrawn or never raised', async () => {
+    const { mine } = await seedGraph();
+    expect((await withdraw(mine.id)).json().error).toBe(
+      'SWAP_REQUEST_NOT_OPEN',
+    );
+    await raise(mine.id);
+    await withdraw(mine.id);
+    const response = await withdraw(mine.id);
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('SWAP_REQUEST_NOT_OPEN');
+  });
+
+  it('is 409 when the request was covered meanwhile', async () => {
+    const { mine } = await seedGraph();
+    await raise(mine.id);
+    await db.update(swapRequest).set({ status: 'covered' });
+    expect((await withdraw(mine.id)).statusCode).toBe(409);
+    expect((await db.select().from(swapRequest))[0]?.status).toBe('covered');
+  });
+
+  it('is 401 unsigned and a concealed 404 for another Volunteer’s or unknown Assignment', async () => {
+    const { mine, theirs } = await seedGraph();
+    await raise(mine.id);
+    expect((await withdraw(theirs.id)).statusCode).toBe(404);
+    expect(
+      (await withdraw('99999999-9999-4999-8999-999999999999')).statusCode,
+    ).toBe(404);
+    getSession.mockResolvedValue(null);
+    expect((await withdraw(mine.id)).statusCode).toBe(401);
+    expect((await db.select().from(swapRequest))[0]?.status).toBe('open');
+  });
+});

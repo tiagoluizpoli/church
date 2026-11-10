@@ -18,7 +18,8 @@ import type {
   RaiseSwapRequest201,
   RaiseSwapRequestBody,
   RespondToAssignment200,
-  RespondToAssignmentBody
+  RespondToAssignmentBody,
+  WithdrawSwapRequest204
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -158,7 +159,19 @@ const raiseSwapRequest = (
     },
       );
     }
-  return {getVolunteerDashboard,getAssignmentDetail,respondToAssignment,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,cancelOwnAssignment,getPublishedVolunteerSchedule,raiseSwapRequest}};
+  /**
+ * Close the caller’s open swap request as withdrawn. The Assignment is not changed and nobody is notified. 409 when the request is already closed.
+ * @summary Withdraw the open swap request on one of the caller’s Assignments
+ */
+const withdrawSwapRequest = (
+    assignmentId: string,
+ ) => {
+      return apiClient<WithdrawSwapRequest204>(
+      {url: `/api/v1/volunteer/assignments/${assignmentId}/swap-requests/current`, method: 'DELETE'
+    },
+      );
+    }
+  return {getVolunteerDashboard,getAssignmentDetail,respondToAssignment,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,cancelOwnAssignment,getPublishedVolunteerSchedule,raiseSwapRequest,withdrawSwapRequest}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetAssignmentDetailResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAssignmentDetail']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
@@ -169,3 +182,4 @@ export type AnswerAvailabilityCheckResult = NonNullable<Awaited<ReturnType<Retur
 export type CancelOwnAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['cancelOwnAssignment']>>>
 export type GetPublishedVolunteerScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getPublishedVolunteerSchedule']>>>
 export type RaiseSwapRequestResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['raiseSwapRequest']>>>
+export type WithdrawSwapRequestResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['withdrawSwapRequest']>>>

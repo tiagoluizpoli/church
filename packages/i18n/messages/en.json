@@ -1295,5 +1295,11 @@
   "notification_swap_request_title": "{volunteerName} asked to swap",
   "notification_swap_request_body": "{ministryName}: {shift}",
   "notification_swap_request_note": "Note: {note}",
-  "notification_swap_request_action": "Open swap request"
+  "notification_swap_request_action": "Open swap request",
+  "swap_withdraw": "Withdraw request",
+  "swap_withdraw_title": "Withdraw your swap request?",
+  "swap_withdraw_description": "Your leader will not be notified and your Assignment stays as it is.",
+  "swap_withdraw_keep": "Keep request",
+  "swap_withdraw_confirm": "Withdraw",
+  "swap_withdraw_error": "We could not withdraw your request. Try again."
 }

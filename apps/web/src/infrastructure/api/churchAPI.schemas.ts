@@ -5567,3 +5567,22 @@ export type RaiseSwapRequest409 = {
   message: string;
 };
 
+/**
+ * @nullable
+ */
+export type WithdrawSwapRequest204 = typeof WithdrawSwapRequest204[keyof typeof WithdrawSwapRequest204] | null;
+
+
+export const WithdrawSwapRequest204 = {
+} as const;
+
+export type WithdrawSwapRequest404 = {
+  error: string;
+  message: string;
+};
+
+export type WithdrawSwapRequest409 = {
+  error: string;
+  message: string;
+};
+

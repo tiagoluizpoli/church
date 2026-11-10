@@ -6,6 +6,7 @@ import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { assignmentDayLabel } from '../lib/assignment-day-label';
 import { SwapRequestSheet } from './swap-request-sheet';
+import { SwapWithdrawButton } from './swap-withdraw-button';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -126,6 +127,7 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
               {m.swap_requested_note({ note: swapRequest.note })}
             </p>
           ) : null}
+          <SwapWithdrawButton assignmentId={detail.assignmentId} />
         </section>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">

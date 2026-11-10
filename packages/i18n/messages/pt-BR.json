@@ -1285,5 +1285,11 @@
   "swap_cancel": "Cancelar",
   "swap_send_error": "Não foi possível enviar seu pedido. Tente novamente.",
   "swap_requested_waiting": "Pedido de troca enviado · aguardando seu líder",
-  "swap_requested_note": "Sua nota: {note}"
+  "swap_requested_note": "Sua nota: {note}",
+  "swap_withdraw": "Retirar pedido",
+  "swap_withdraw_title": "Retirar seu pedido de troca?",
+  "swap_withdraw_description": "Seu líder não será avisado e sua escala continua como está.",
+  "swap_withdraw_keep": "Manter pedido",
+  "swap_withdraw_confirm": "Retirar",
+  "swap_withdraw_error": "Não foi possível retirar seu pedido. Tente novamente."
 }

@@ -1285,5 +1285,11 @@
   "swap_cancel": "Cancel",
   "swap_send_error": "We could not send your request. Try again.",
   "swap_requested_waiting": "Swap requested · waiting for your leader",
-  "swap_requested_note": "Your note: {note}"
+  "swap_requested_note": "Your note: {note}",
+  "swap_withdraw": "Withdraw request",
+  "swap_withdraw_title": "Withdraw your swap request?",
+  "swap_withdraw_description": "Your leader will not be notified and your Assignment stays as it is.",
+  "swap_withdraw_keep": "Keep request",
+  "swap_withdraw_confirm": "Withdraw",
+  "swap_withdraw_error": "We could not withdraw your request. Try again."
 }

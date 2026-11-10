@@ -10,6 +10,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const api = vi.hoisted(() => ({
   getAssignmentDetail: vi.fn(),
   raiseSwapRequest: vi.fn(),
+  withdrawSwapRequest: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', () => ({ volunteerApi: api }));
 vi.mock('@tanstack/react-router', () => ({
@@ -154,6 +155,64 @@ describe('AssignmentDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Ask to swap' }),
     ).not.toBeInTheDocument();
+  });
+
+  const OPEN = {
+    id: 's-1',
+    status: 'open',
+    note: 'Joao will cover',
+    raisedAt: '2026-10-01T10:00:00.000Z',
+  } as const;
+
+  it('withdraws after one confirm and returns to the no-request state', async () => {
+    api.getAssignmentDetail
+      .mockResolvedValueOnce({ ...DETAIL, swapRequest: OPEN })
+      .mockResolvedValue(DETAIL);
+    api.withdrawSwapRequest.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Withdraw request' }),
+    );
+    expect(api.withdrawSwapRequest).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await waitFor(() =>
+      expect(api.withdrawSwapRequest).toHaveBeenCalledWith('a-1'),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Swap requested · waiting for your leader'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refetches the current state when the request was already closed', async () => {
+    api.getAssignmentDetail
+      .mockResolvedValueOnce({ ...DETAIL, swapRequest: OPEN })
+      .mockResolvedValue({
+        ...DETAIL,
+        swapRequest: { ...OPEN, status: 'covered' },
+      });
+    api.withdrawSwapRequest.mockRejectedValue(
+      new AxiosError('conflict', '409', undefined, undefined, {
+        status: 409,
+        data: { error: 'SWAP_REQUEST_NOT_OPEN', message: 'closed' },
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Withdraw request' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await waitFor(() =>
+      expect(api.getAssignmentDetail).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('shows the server message and refetches when the request is refused', async () => {

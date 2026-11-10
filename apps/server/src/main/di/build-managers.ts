@@ -27,6 +27,7 @@ import {
 } from '../../application';
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
+import { ChurchRecipients } from '../../application/church-recipients';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
@@ -299,6 +300,16 @@ export function buildManagers({
       assignmentRepo: assignmentRepository,
       participationRepo: ministryParticipationRepository,
       shiftRepo: shiftRepository,
+      eventRepo: eventRepository,
+      ministryRepo: ministryRepository,
+      roleRepo: roleRepository,
+      churchRepo: churchRepository,
+      volunteerRepo: volunteerRepository,
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository,
+      }),
+      notifications,
       unitOfWork,
       config,
     });

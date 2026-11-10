@@ -67,6 +67,17 @@ export function resolveNotificationDestination(
     case 'schedule_published':
     case 'schedule_updated':
       return { target: { to: '/my-schedule' }, isFallback: false };
+    case 'swap_request':
+      return {
+        target: {
+          to: '/schedules/$ministryId/$cycleId',
+          params: {
+            ministryId: item.data.ministryId,
+            cycleId: item.data.cycleId,
+          },
+        },
+        isFallback: false,
+      };
     case 'cycle_ready_to_prepare': {
       const { cycleId, ministries } = item.data;
       const [only, ...others] = ministries;

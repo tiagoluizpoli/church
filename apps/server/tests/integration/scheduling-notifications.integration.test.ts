@@ -1751,3 +1751,73 @@ describe('availability delivery facts resolved per recipient', () => {
     );
   });
 });
+
+describe('N7 swap_request through the outbox', () => {
+  const pt = { locale: 'pt-BR' } as const;
+  const swapRequestId = '77777777-7777-4777-8777-777777777777';
+
+  it('delivers one pt-BR email and one bell row naming the Volunteer, Shift line, note and board link', async () => {
+    await unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'swap_request',
+        to: [
+          {
+            userId: UserId.from(ids.adminUserId),
+            churchId: ChurchId.from(ids.churchId),
+          },
+        ],
+        data: {
+          swapRequestId,
+          cycleId,
+          ministryId: ids.ministryId,
+          ministryName: 'Recepção',
+          churchName: 'Scheduling Church A',
+          churchTimezone: 'America/Sao_Paulo',
+          volunteerName: 'Maria Souza',
+          shift: {
+            eventTitle: 'Culto',
+            roleName: 'Recepcionista',
+            sectorName: 'Portaria',
+            startsAt: '2030-10-13T13:00:00.000Z' as Instant,
+            endsAt: '2030-10-13T15:00:00.000Z' as Instant,
+          },
+          note: 'João cobre',
+        },
+      }),
+    );
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(1);
+    const email = emailSender.delivered[0];
+    const text = email?.request.text ?? '';
+    expect(email?.request.subject).toBe(
+      m.notification_swap_request_title({ volunteerName: 'Maria Souza' }, pt),
+    );
+    expect(text).toContain(
+      m.notification_swap_request_body(
+        {
+          ministryName: 'Recepção',
+          shift: 'dom 13 out · 10:00–12:00 · Culto · Recepcionista · Portaria',
+        },
+        pt,
+      ),
+    );
+    expect(text).toContain(
+      m.notification_swap_request_note({ note: 'João cobre' }, pt),
+    );
+    expect(text).toContain(
+      `https://app.test/schedules/${ids.ministryId}/${cycleId}?swapRequest=${swapRequestId}`,
+    );
+    const inbox = await schedulingTestDb.select().from(notification);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      userId: ids.adminUserId,
+      kind: 'swap_request',
+      data: { swapRequestId, volunteerName: 'Maria Souza', note: 'João cobre' },
+    });
+  });
+});

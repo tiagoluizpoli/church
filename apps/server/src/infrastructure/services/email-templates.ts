@@ -13,6 +13,7 @@ import type {
   PreparedEmail,
   SchedulePublishedEmail,
   ScheduleUpdatedEmail,
+  SwapRequestEmail,
   TransferDigestEmail,
   VerificationCodeEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -73,6 +74,7 @@ export function prepareEmail({
     case 'availability.reminder':
     case 'schedule.published':
     case 'schedule.updated':
+    case 'swap.request':
       return prepareLayoutEmail({
         payload,
         locale,
@@ -156,7 +158,8 @@ type MemberNotificationEmail =
   | MinistryInvitationEmail
   | AvailabilityEmail
   | SchedulePublishedEmail
-  | ScheduleUpdatedEmail;
+  | ScheduleUpdatedEmail
+  | SwapRequestEmail;
 
 interface MemberNotificationContentInput {
   payload: MemberNotificationEmail;
@@ -177,6 +180,32 @@ function memberNotificationContent({
       : m.email_greeting_transactional({}, options),
     footer: m.email_footer_membership({ churchName }, options),
   };
+  if (payload.kind === 'swap.request') {
+    const title = m.notification_swap_request_title(
+      { volunteerName: payload.volunteerName },
+      options,
+    );
+    const shift = formatShiftLine({
+      ...payload.shift,
+      churchTimezone: payload.churchTimezone,
+      locale,
+    });
+    return {
+      ...base,
+      subject: title,
+      heading: title,
+      facts: payload.note
+        ? [
+            m.notification_swap_request_body({ ministryName, shift }, options),
+            m.notification_swap_request_note({ note: payload.note }, options),
+          ]
+        : [m.notification_swap_request_body({ ministryName, shift }, options)],
+      action: {
+        label: m.notification_swap_request_action({}, options),
+        url: payload.actionUrl,
+      },
+    };
+  }
   if (payload.kind === 'schedule.updated') {
     const title = m.notification_schedule_updated_title(
       { ministryName },

@@ -16,7 +16,10 @@ export function useMyMinistryScheduleBreadcrumb(): Crumb[] {
   const { ministryId, cycleId } = useParams({ strict: false });
   const { pathname } = useLocation();
   const query = useQuery<GetMinistrySchedule200>({
-    queryKey: myMinistryScheduleKey(ministryId ?? '', cycleId ?? ''),
+    queryKey: myMinistryScheduleKey({
+      ministryId: ministryId ?? '',
+      cycleId: cycleId ?? '',
+    }),
     queryFn: skipToken,
   });
   // The same params name other routes' Ministry and Cycle crumbs.

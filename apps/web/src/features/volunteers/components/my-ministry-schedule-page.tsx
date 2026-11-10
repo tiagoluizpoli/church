@@ -17,7 +17,10 @@ export interface MyMinistrySchedulePageProps {
 type ScheduleRow = GetMinistrySchedule200['events'][number]['rows'][number];
 
 /** The page's read; the breadcrumb hook observes the same key. */
-export const myMinistryScheduleKey = (ministryId: string, cycleId: string) =>
+export const myMinistryScheduleKey = ({
+  ministryId,
+  cycleId,
+}: MyMinistrySchedulePageProps) =>
   ['my-ministry-schedule', ministryId, cycleId] as const;
 
 function groupByShift(rows: ScheduleRow[]) {
@@ -39,7 +42,7 @@ export function MyMinistrySchedulePage({
 }: MyMinistrySchedulePageProps) {
   const { churchTimezone } = useTimezone();
   const query = useQuery({
-    queryKey: myMinistryScheduleKey(ministryId, cycleId),
+    queryKey: myMinistryScheduleKey({ ministryId, cycleId }),
     queryFn: () => volunteerApi.getMinistrySchedule(ministryId, { cycleId }),
     retry: false,
   });
@@ -104,7 +107,6 @@ export function MyMinistrySchedulePage({
                   {shift.rows.map((row, index) => (
                     <li
                       // Rows repeat per place; position within the shift is the only identity.
-                      // biome-ignore lint/suspicious/noArrayIndexKey: see above
                       key={index}
                       className="flex justify-between gap-3 border px-3 py-2"
                     >

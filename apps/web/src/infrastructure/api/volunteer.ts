@@ -70,7 +70,7 @@ const respondToAssignment = (
  */
 const getMinistrySchedule = (
     ministryId: string,
-    params?: GetMinistryScheduleParams,
+    params: GetMinistryScheduleParams,
  ) => {
       return apiClient<GetMinistrySchedule200>(
       {url: `/api/v1/volunteer/ministries/${ministryId}/schedule`, method: 'GET',

@@ -7,7 +7,6 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
-import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
 import {
   churchOnlyWarningMessage,
   churchOnlyWarningSearchSchema,
@@ -25,10 +24,6 @@ export const dashboardSearchSchema = removedFromSearchSchema
   .extend(churchOnlyWarningSearchSchema.shape)
   .extend(ministryInvitationResultSearchSchema.shape)
   .extend({
-    section: z.enum(['assignments', 'ministry_schedule']).optional(),
-    eventId: z.string().optional(),
-    assignmentId: z.string().optional(),
-    ministryId: z.string().optional(),
     accessDenied: z.boolean().optional(),
   });
 
@@ -39,7 +34,7 @@ interface DashboardEntryProps {
   volunteerName?: string;
 }
 
-/** The existing dashboard content, backing both Home (`/`) and `/dashboard`. */
+/** The dashboard intro, backing both Home (`/`) and `/dashboard`; the volunteer tabs live on My schedule. */
 export function DashboardEntry({ search, volunteerName }: DashboardEntryProps) {
   useEffect(() => {
     if (search.removedFrom) {
@@ -95,11 +90,6 @@ export function DashboardEntry({ search, volunteerName }: DashboardEntryProps) {
             {m.dashboard_entry_availability_link()}
           </Link>
         }
-      />
-      <VolunteerDashboard
-        initialSection={search.section}
-        initialAssignmentId={search.assignmentId}
-        initialMinistryId={search.ministryId}
       />
     </WorkspacePage>
   );

@@ -30,10 +30,6 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-vi.mock('@/features/volunteers/components/volunteer-dashboard', () => ({
-  VolunteerDashboard: () => <div>Volunteer dashboard stub</div>,
-}));
-
 const toastInfo = vi.fn();
 vi.mock('sonner', () => ({
   toast: { info: (...args: unknown[]) => toastInfo(...args) },
@@ -54,7 +50,7 @@ describe('dashboard route', () => {
   it('toasts a removal notice naming the former Church when redirected here with removedFrom', async () => {
     renderDashboard('/dashboard?removedFrom=Old+Church');
 
-    await screen.findByText('Volunteer dashboard stub');
+    await screen.findByText(m.dashboard_entry_title());
     await waitFor(() => {
       expect(toastInfo).toHaveBeenCalledWith(
         m.no_access_removed_from({ churchName: 'Old Church' }),
@@ -65,14 +61,14 @@ describe('dashboard route', () => {
   it('does not toast on a plain, unprompted visit', async () => {
     renderDashboard();
 
-    await screen.findByText('Volunteer dashboard stub');
+    await screen.findByText(m.dashboard_entry_title());
     expect(toastInfo).not.toHaveBeenCalled();
   });
 
   it('toasts a generic access-denied notice, naming no Church, when redirected here with accessDenied', async () => {
     renderDashboard('/dashboard?accessDenied=true');
 
-    await screen.findByText('Volunteer dashboard stub');
+    await screen.findByText(m.dashboard_entry_title());
     await waitFor(() => {
       expect(toastInfo).toHaveBeenCalledWith(m.switch_church_access_denied());
     });

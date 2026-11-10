@@ -1051,6 +1051,59 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         churchTimezone: 'America/Sao_Paulo',
       },
     });
+
+    // Rebinding an Assignment to another Shift is a removal and an addition.
+    await schedulingTestDb
+      .update(assignment)
+      .set({
+        shiftId: destination.id,
+        shiftRequirementId: destinationRequirement.id,
+      })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    const rebound = (await outboxRows()).at(-1)?.payload;
+    expect(rebound).toMatchObject({
+      kind: 'schedule_updated',
+      to: { userId: unassigned.volunteer.userId, churchId: ids.churchId },
+      data: {
+        changes: [
+          {
+            kind: 'removed',
+            assignment: { startsAt: '2026-12-26T10:00:00.000Z' },
+          },
+          {
+            kind: 'added',
+            assignment: { startsAt: '2026-12-26T11:00:00.000Z' },
+          },
+        ],
+      },
+    });
+
+    const destinationSide = await seedRequirement({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: destination.id,
+      roleId: role.id,
+      sectorId: sideSector.id,
+      peopleNeeded: 1,
+    });
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: destinationSide.id })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    expect((await outboxRows()).at(-1)?.payload).toMatchObject({
+      kind: 'schedule_updated',
+      data: {
+        changes: [
+          {
+            kind: 'moved',
+            before: { sectorName: 'Geral' },
+            after: { sectorName: 'Side' },
+          },
+        ],
+      },
+    });
   });
 
   it.each([

@@ -534,7 +534,7 @@ describe('Swap request Notification (N7)', () => {
     expect(words.kindLabel).toBe(m.notification_kind_swap_request({}, pt));
     expect(resolveNotificationDestination(swap)).toEqual({
       target: {
-        to: '/schedules/$ministryId/$cycleId',
+        to: '/schedules/$ministryId/$cycleId/assign',
         params: { ministryId: ID, cycleId: ID },
         // The same deep link the email carries.
         search: { swapRequest: ID },

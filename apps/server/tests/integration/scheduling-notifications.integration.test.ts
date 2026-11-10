@@ -1905,7 +1905,7 @@ describe('N7 swap_request through the outbox', () => {
       m.notification_swap_request_note({ note: 'João cobre' }, pt),
     );
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}?swapRequest=${swapRequestId}`,
+      `https://app.test/schedules/${ids.ministryId}/${cycleId}/assign?swapRequest=${swapRequestId}`,
     );
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox).toHaveLength(1);

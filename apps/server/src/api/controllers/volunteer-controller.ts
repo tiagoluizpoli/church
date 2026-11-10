@@ -42,8 +42,7 @@ interface MinistryRouteParams {
 }
 
 const ministryScheduleQuerySchema = z.object({
-  // Absent only for the legacy dashboard, which reads every published Cycle.
-  cycleId: z.string().uuid().optional(),
+  cycleId: z.string().uuid(),
 });
 
 interface AvailabilityCheckRouteParams {
@@ -186,7 +185,7 @@ export class VolunteerController implements FastifyController {
         try {
           schedule = await this.volunteerManager.getMinistrySchedule({
             ministryId: MinistryId.from(ministryId),
-            cycleId: cycleId ? CycleId.from(cycleId) : undefined,
+            cycleId: CycleId.from(cycleId),
             volunteerId: VolunteerId.from(request.volunteerId as string),
             churchId: ChurchId.from(request.churchId),
           });

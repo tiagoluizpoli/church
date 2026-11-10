@@ -1091,7 +1091,7 @@ describe('requirement coverage and published placement HTTP contract', () => {
       .where(eq(ministryParticipation.id, seed.targetParticipationId));
     const published = await app.inject({
       method: 'GET',
-      url: `/api/v1/volunteer/ministries/${seed.ministryId}/schedule`,
+      url: `/api/v1/volunteer/ministries/${seed.ministryId}/schedule?cycleId=${seed.cycleId}`,
     });
     expect(published.statusCode).toBe(200);
     const rows = published.json().events[0].rows;

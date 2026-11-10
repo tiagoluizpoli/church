@@ -49,6 +49,7 @@ let app: FastifyTypedInstance;
 const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
 const VOLUNTEER_ID = '55555555-5555-4555-8555-555555555551';
 const MINISTRY_ID = '66666666-6666-4666-8666-666666666661';
+const CYCLE_ID = '99999999-9999-4999-8999-999999999999';
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -211,7 +212,7 @@ describe('Volunteer route access', () => {
   });
 
   it('returns the same 404 for a missing and a non-member Ministry schedule', async () => {
-    const url = `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule`;
+    const url = `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule?cycleId=${CYCLE_ID}`;
     volunteerManager.getMinistrySchedule.mockRejectedValueOnce(
       new NotFoundError(`Ministry not found: ${MINISTRY_ID}`),
     );
@@ -228,9 +229,16 @@ describe('Volunteer route access', () => {
   });
 });
 
-const CYCLE_ID = '99999999-9999-4999-8999-999999999999';
-
 describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
+  it('rejects a read without a cycleId', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule`,
+    });
+
+    expect(response.statusCode).toBe(422);
+  });
+
   it('returns the Sector for occupied and open requirement rows', async () => {
     volunteerManager.getMinistrySchedule.mockResolvedValue({
       ministryId: MINISTRY_ID,

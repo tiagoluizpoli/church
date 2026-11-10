@@ -2179,6 +2179,7 @@ export type ListSchedules200SchedulesItem = {
   cycle: ListSchedules200SchedulesItemCycle;
   stage: ListSchedules200SchedulesItemStage;
   lateMarkCount: number;
+  openSwapRequestCount: number;
   asking?: ListSchedules200SchedulesItemAsking;
 };
 

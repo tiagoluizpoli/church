@@ -1682,11 +1682,16 @@ export class DbParticipationManager implements IParticipationManager {
       ministryIds: ministries.map((ministry) => ministry.id),
       cycleIds: sentCycles.map((cycle) => cycle.id),
     };
-    const [servingStates, checkCounts, lateMarkCounts] = await Promise.all([
-      this.participationRepository.listScheduleServingStates(scope),
-      this.participationRepository.countScheduleChecks(scope),
-      this.participationRepository.countScheduleLateMarks(scope),
-    ]);
+    const [servingStates, checkCounts, lateMarkCounts, swapCounts] =
+      await Promise.all([
+        this.participationRepository.listScheduleServingStates(scope),
+        this.participationRepository.countScheduleChecks(scope),
+        this.participationRepository.countScheduleLateMarks(scope),
+        this.participationRepository.countScheduleOpenSwapRequests(scope),
+      ]);
+    const swapCountBySchedule = new Map(
+      swapCounts.map((row) => [scheduleKey(row), row.count]),
+    );
 
     const lateMarksBySchedule = new Map(
       lateMarkCounts.map((row) => [scheduleKey(row), row.count]),
@@ -1708,6 +1713,7 @@ export class DbParticipationManager implements IParticipationManager {
             servingStates: rows.map((row) => row.state),
           });
           const lateMarkCount = lateMarksBySchedule.get(key) ?? 0;
+          const openSwapRequestCount = swapCountBySchedule.get(key) ?? 0;
           const affectedVolunteerCount = await this.unitOfWork.run((tx) =>
             this.countScheduleChanges({
               churchId,
@@ -1722,6 +1728,7 @@ export class DbParticipationManager implements IParticipationManager {
               cycle,
               stage,
               lateMarkCount,
+              openSwapRequestCount,
               affectedVolunteerCount,
             };
           const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
@@ -1730,6 +1737,7 @@ export class DbParticipationManager implements IParticipationManager {
             cycle,
             stage,
             lateMarkCount,
+            openSwapRequestCount,
             affectedVolunteerCount,
             asking: { confirmed, asked },
           };

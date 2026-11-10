@@ -5232,6 +5232,8 @@ paths:
                             - not_serving
                         lateMarkCount:
                           type: number
+                        openSwapRequestCount:
+                          type: number
                         asking:
                           type: object
                           properties:
@@ -5249,6 +5251,7 @@ paths:
                         - cycle
                         - stage
                         - lateMarkCount
+                        - openSwapRequestCount
                       additionalProperties: false
                 required:
                   - schedules

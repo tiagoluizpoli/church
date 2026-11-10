@@ -254,6 +254,7 @@ export interface ScheduleView {
   cycle: Cycle;
   stage: ScheduleStage;
   lateMarkCount: number;
+  openSwapRequestCount: number;
   asking?: ScheduleAskingView;
 }
 

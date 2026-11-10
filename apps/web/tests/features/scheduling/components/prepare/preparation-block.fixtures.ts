@@ -28,6 +28,7 @@ export const SCHEDULE: ListSchedules200SchedulesItem = {
   },
   stage: 'to_prepare',
   lateMarkCount: 0,
+  openSwapRequestCount: 0,
 };
 export const REQUIREMENT: PreparationRequirement = {
   id: 'requirement-1',

@@ -60,9 +60,9 @@ describe('composition root', () => {
     }
   });
 
-  it('builds seventeen controllers', () => {
+  it('builds eighteen controllers', () => {
     const { controllers } = createCompositionRoot();
-    expect(controllers).toHaveLength(17);
+    expect(controllers).toHaveLength(18);
     expect(new Set(controllers.map((c) => c.constructor)).size).toBe(17);
   });
 

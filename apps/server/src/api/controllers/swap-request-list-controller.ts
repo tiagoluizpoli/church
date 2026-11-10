@@ -23,6 +23,12 @@ interface SwapRequestListControllerDependencies {
   authorityGuard: AuthorityGuard;
 }
 
+interface MinistryRouteParams {
+  ministryId: string;
+}
+
+type LeaderSwapRequestsQuery = z.infer<typeof leaderSwapRequestsQuerySchema>;
+
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
@@ -76,10 +82,8 @@ export class SwapRequestListController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as { ministryId: string };
-        const { cycleId } = request.query as z.infer<
-          typeof leaderSwapRequestsQuerySchema
-        >;
+        const { ministryId } = request.params as MinistryRouteParams;
+        const { cycleId } = request.query as LeaderSwapRequestsQuery;
         const churchId = ChurchId.from(request.churchId);
         const decision = await this.authorityGuard.decideManageMinistry({
           churchId,

@@ -29,8 +29,12 @@ export interface ScheduleSwapRequests {
   requests: LeaderSwapRequest[];
 }
 
+export interface LeaderSwapRequestsView {
+  schedules: ScheduleSwapRequests[];
+}
+
 export interface ISwapRequestListManager {
-  listForLeader(input: ListLeaderSwapRequestsCommand): Promise<{
-    schedules: ScheduleSwapRequests[];
-  }>;
+  listForLeader(
+    input: ListLeaderSwapRequestsCommand,
+  ): Promise<LeaderSwapRequestsView>;
 }

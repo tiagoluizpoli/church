@@ -21,6 +21,11 @@ import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
 import { adminApi } from '@/utils/api-instances';
 
+interface BoundsRange {
+  start: string;
+  end: string;
+}
+
 export interface EventMovePreviewProps {
   cycleId: string;
   eventId: string;
@@ -51,7 +56,7 @@ export function EventMovePreview({
   });
   const result = preview.data;
 
-  const range = (value: { start: string; end: string }) =>
+  const range = (value: BoundsRange) =>
     formatInstantRangeOf({ ...value, timeZone: churchTimezone });
 
   return (

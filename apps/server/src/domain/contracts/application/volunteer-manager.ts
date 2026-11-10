@@ -103,6 +103,34 @@ export interface MinistrySchedule {
   events: MinistryScheduleEvent[];
 }
 
+export interface AssignmentRosterGroup {
+  sectorName: string;
+  roleName: string;
+  people: { name: string; isYou: boolean }[];
+  openCount: number;
+}
+
+export interface AssignmentDetail {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  startTime: Instant;
+  endTime: Instant;
+  cycleId: string;
+  ministryId: string;
+  ministryName: string;
+  sectorName: string;
+  roleName: string;
+  leaderName: string | null;
+  roster: AssignmentRosterGroup[];
+}
+
+export interface GetAssignmentDetailInput {
+  assignmentId: AssignmentId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
 export interface VolunteerAvailabilityCheckSummary {
   answerBy: CalendarDay | null;
   id: string;
@@ -199,6 +227,9 @@ export interface IVolunteerManager {
   getMinistrySchedule(
     input: GetMinistryScheduleInput,
   ): Promise<MinistrySchedule>;
+  getAssignmentDetail(
+    input: GetAssignmentDetailInput,
+  ): Promise<AssignmentDetail>;
   listAvailabilityChecks(
     input: ListAvailabilityChecksInput,
   ): Promise<VolunteerAvailabilityCheckSummary[]>;

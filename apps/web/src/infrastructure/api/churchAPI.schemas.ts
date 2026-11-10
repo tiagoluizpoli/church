@@ -5126,6 +5126,86 @@ export type GetVolunteerDashboard200 = {
   ministryOptions: GetVolunteerDashboard200MinistryOptionsItem[];
 };
 
+export type GetAssignmentDetail200RosterItemPeopleItem = {
+  name: string;
+  isYou: boolean;
+};
+
+export type GetAssignmentDetail200RosterItem = {
+  sectorName: string;
+  roleName: string;
+  people: GetAssignmentDetail200RosterItemPeopleItem[];
+  openCount: number;
+};
+
+export type GetAssignmentDetail200 = {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  cycleId: string;
+  ministryId: string;
+  ministryName: string;
+  sectorName: string;
+  roleName: string;
+  /** @nullable */
+  leaderName: string | null;
+  roster: GetAssignmentDetail200RosterItem[];
+};
+
+export type GetAssignmentDetail404 = {
+  error: string;
+  message: string;
+};
+
+export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];
+
+
+export const RespondToAssignmentBodyResponse = {
+  accepted: 'accepted',
+  declined: 'declined',
+} as const;
+
+export type RespondToAssignmentBody = {
+  response: RespondToAssignmentBodyResponse;
+  reason?: string;
+};
+
+export type RespondToAssignment200Status = typeof RespondToAssignment200Status[keyof typeof RespondToAssignment200Status];
+
+
+export const RespondToAssignment200Status = {
+  draft: 'draft',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export type RespondToAssignment200 = {
+  id: string;
+  churchId: string;
+  eventTimeBlockId: string;
+  participationId?: string;
+  shiftId?: string;
+  volunteerId: string;
+  roleId: string;
+  shiftRequirementId: string;
+  status: RespondToAssignment200Status;
+  reason?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  assignedAt: string;
+  assignedBy?: string;
+};
+
+export type RespondToAssignment404 = {
+  error: string;
+  message: string;
+};
+
 export type GetMinistrySchedule200EventsItemRowsItemConfirmationState = typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState[keyof typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState];
 
 
@@ -5305,51 +5385,6 @@ export type AnswerAvailabilityCheck409 = {
   error: AnswerAvailabilityCheck409Error;
   message: string;
   shiftIds?: string[];
-};
-
-export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];
-
-
-export const RespondToAssignmentBodyResponse = {
-  accepted: 'accepted',
-  declined: 'declined',
-} as const;
-
-export type RespondToAssignmentBody = {
-  response: RespondToAssignmentBodyResponse;
-  reason?: string;
-};
-
-export type RespondToAssignment200Status = typeof RespondToAssignment200Status[keyof typeof RespondToAssignment200Status];
-
-
-export const RespondToAssignment200Status = {
-  draft: 'draft',
-  pending: 'pending',
-  confirmed: 'confirmed',
-  declined: 'declined',
-  cancelled: 'cancelled',
-} as const;
-
-export type RespondToAssignment200 = {
-  id: string;
-  churchId: string;
-  eventTimeBlockId: string;
-  participationId?: string;
-  shiftId?: string;
-  volunteerId: string;
-  roleId: string;
-  shiftRequirementId: string;
-  status: RespondToAssignment200Status;
-  reason?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  assignedAt: string;
-  assignedBy?: string;
-};
-
-export type RespondToAssignment404 = {
-  error: string;
-  message: string;
 };
 
 /**

@@ -187,6 +187,31 @@ export type MinistryScheduleResponse = z.infer<
   typeof ministryScheduleResponseSchema
 >;
 
+export const assignmentDetailResponseSchema = z.object({
+  assignmentId: z.string(),
+  eventId: z.string(),
+  eventTitle: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
+  cycleId: z.string(),
+  ministryId: z.string(),
+  ministryName: z.string(),
+  sectorName: z.string(),
+  roleName: z.string(),
+  leaderName: z.string().nullable(),
+  roster: z.array(
+    z.object({
+      sectorName: z.string(),
+      roleName: z.string(),
+      people: z.array(z.object({ name: z.string(), isYou: z.boolean() })),
+      openCount: z.number(),
+    }),
+  ),
+});
+export type AssignmentDetailResponse = z.infer<
+  typeof assignmentDetailResponseSchema
+>;
+
 export const respondToAssignmentBodySchema = z.object({
   response: z.enum(['accepted', 'declined']),
   reason: z.string().optional(),

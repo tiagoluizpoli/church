@@ -116,6 +116,9 @@ export function createSchedulingManagers({
       volunteerRepository: volunteerRepo,
       unavailableShiftRepository: unavailableShiftRepo,
       cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+      swapRequestRepo: new DrizzleSwapRequestRepository({
+        db: schedulingTestDb,
+      }),
       unitOfWork,
     }),
     participationManager: new DbParticipationManager({

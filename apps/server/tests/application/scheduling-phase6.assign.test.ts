@@ -234,6 +234,7 @@ function createHarness() {
     volunteerRepository,
     unavailableShiftRepository,
     cycleRepository,
+    swapRequestRepo: createSwapRequestRepositoryFake(),
     unitOfWork,
   });
   const volunteerManager = new DbVolunteerManager({

@@ -145,6 +145,7 @@ export const volunteerScheduleResponseSchema = z.object({
       roleId: z.string(),
       roleName: z.string(),
       status: z.enum(['pending', 'confirmed', 'declined']),
+      swapRequested: z.boolean(),
     }),
   ),
   schedules: z.array(
@@ -214,8 +215,9 @@ export const assignmentDetailResponseSchema = z.object({
   swapRequest: z
     .object({
       id: z.string(),
-      status: z.literal('open'),
+      status: z.enum(['open', 'withdrawn', 'covered', 'kept', 'expired']),
       note: z.string().nullable(),
+      reply: z.string().nullable(),
       raisedAt: instantSchema,
     })
     .nullable(),

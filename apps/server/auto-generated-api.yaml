@@ -8780,6 +8780,86 @@ paths:
                             kind:
                               type: string
                               enum:
+                                - swap_request
+                            data:
+                              type: object
+                              properties:
+                                swapRequestId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                churchTimezone:
+                                  type: string
+                                volunteerName:
+                                  type: string
+                                shift:
+                                  type: object
+                                  properties:
+                                    eventTitle:
+                                      type: string
+                                    roleName:
+                                      type: string
+                                    sectorName:
+                                      type: string
+                                    startsAt:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    endsAt:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                  required:
+                                    - eventTitle
+                                    - roleName
+                                    - sectorName
+                                    - startsAt
+                                    - endsAt
+                                  additionalProperties: false
+                                note:
+                                  type: string
+                              required:
+                                - swapRequestId
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - churchTimezone
+                                - volunteerName
+                                - shift
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
                                 - swap_request_answered
                             data:
                               type: object
@@ -12505,6 +12585,86 @@ paths:
                             kind:
                               type: string
                               enum:
+                                - swap_request
+                            data:
+                              type: object
+                              properties:
+                                swapRequestId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                ministryName:
+                                  type: string
+                                churchTimezone:
+                                  type: string
+                                volunteerName:
+                                  type: string
+                                shift:
+                                  type: object
+                                  properties:
+                                    eventTitle:
+                                      type: string
+                                    roleName:
+                                      type: string
+                                    sectorName:
+                                      type: string
+                                    startsAt:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    endsAt:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                  required:
+                                    - eventTitle
+                                    - roleName
+                                    - sectorName
+                                    - startsAt
+                                    - endsAt
+                                  additionalProperties: false
+                                note:
+                                  type: string
+                              required:
+                                - swapRequestId
+                                - cycleId
+                                - ministryId
+                                - ministryName
+                                - churchTimezone
+                                - volunteerName
+                                - shift
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
                                 - swap_request_answered
                             data:
                               type: object
@@ -12679,7 +12839,14 @@ paths:
                         type: string
                         enum:
                           - open
+                          - withdrawn
+                          - covered
+                          - kept
+                          - expired
                       note:
+                        nullable: true
+                        type: string
+                      reply:
                         nullable: true
                         type: string
                       raisedAt:
@@ -12690,6 +12857,7 @@ paths:
                       - id
                       - status
                       - note
+                      - reply
                       - raisedAt
                     additionalProperties: false
                 required:
@@ -13349,6 +13517,8 @@ paths:
                             - pending
                             - confirmed
                             - declined
+                        swapRequested:
+                          type: boolean
                       required:
                         - assignmentId
                         - eventId
@@ -13362,6 +13532,7 @@ paths:
                         - roleId
                         - roleName
                         - status
+                        - swapRequested
                       additionalProperties: false
                   schedules:
                     type: array
@@ -13457,6 +13628,61 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/volunteer/assignments/{assignmentId}/swap-requests/current:
+    delete:
+      operationId: withdrawSwapRequest
+      summary: Withdraw the open swap request on one of the caller’s Assignments
+      tags:
+        - volunteer
+      description: Close the caller’s open swap request as withdrawn. The Assignment
+        is not changed and nobody is notified. 409 when the request is already
+        closed.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
         "404":
           description: Default Response
           content:

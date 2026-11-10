@@ -101,5 +101,44 @@ export class SwapRequestController implements FastifyController {
         }
       },
     );
+
+    app.delete(
+      '/assignments/:assignmentId/swap-requests/current',
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'withdrawSwapRequest',
+          summary:
+            'Withdraw the open swap request on one of the caller’s Assignments',
+          description:
+            'Close the caller’s open swap request as withdrawn. The Assignment is not changed and nobody is notified. 409 when the request is already closed.',
+          response: {
+            204: z.null(),
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { assignmentId } = request.params as AssignmentRouteParams;
+        try {
+          await this.swapRequestManager.withdraw({
+            churchId: ChurchId.from(request.churchId),
+            userId: UserId.from(request.userId),
+            volunteerId: VolunteerId.from(request.volunteerId as string),
+            assignmentId: AssignmentId.from(assignmentId),
+          });
+          return reply.status(204).send(null);
+        } catch (error) {
+          if (
+            error instanceof AssignmentAccessDeniedError ||
+            error instanceof NotFoundError
+          ) {
+            return refuse({ reply, request, code: 'NOT_FOUND' });
+          }
+          throw error;
+        }
+      },
+    );
   }
 }

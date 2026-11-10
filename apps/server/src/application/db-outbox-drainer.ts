@@ -349,6 +349,14 @@ export class DbOutboxDrainer implements IOutboxDrainer {
             path: '/my-schedule',
           }),
         };
+      case 'swap_request':
+        return {
+          ...request.data,
+          actionUrl: webLink({
+            baseUrl: this.webBaseUrl,
+            path: `/schedules/${request.data.ministryId}/${request.data.cycleId}?swapRequest=${request.data.swapRequestId}`,
+          }),
+        };
       case 'swap_request_answered':
         return {
           ...request.data,

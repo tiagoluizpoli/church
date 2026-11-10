@@ -13,6 +13,7 @@ describe('notification kinds', () => {
       'ministry_invitation',
       'schedule_published',
       'schedule_updated',
+      'swap_request',
       'swap_request_answered',
     ]);
     for (const dropped of [

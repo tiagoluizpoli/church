@@ -40,6 +40,7 @@ const item = (id: string, startTime: string, endTime: string) => ({
   roleId: 'r',
   roleName: 'Teacher',
   status: 'confirmed' as const,
+  swapRequested: false,
 });
 
 // 13:30Z is 10:30 in São Paulo.
@@ -100,6 +101,20 @@ describe('MySchedulePage', () => {
       screen.getByRole('link', { name: 'Kids · October' }),
     ).toHaveAttribute('href', '/my-schedule/kids/c-1');
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('tags only the card whose Assignment has a swap request', async () => {
+    api.getPublishedVolunteerSchedule.mockResolvedValue({
+      ...DATA,
+      assignments: [
+        DATA.assignments[0],
+        { ...DATA.assignments[1], swapRequested: true },
+      ],
+    });
+    renderPage();
+    const tag = await screen.findByText('Swap requested');
+    expect(tag.closest('a')).toHaveAttribute('href', '/my-schedule/a-2');
+    expect(screen.getAllByText('Swap requested')).toHaveLength(1);
   });
 
   it('mounts the offline banner when the browser is offline', async () => {

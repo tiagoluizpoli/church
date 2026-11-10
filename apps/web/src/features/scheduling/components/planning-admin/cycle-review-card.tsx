@@ -27,6 +27,10 @@ import { RetryAlert } from './retry-alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import type {
+  GetCycle200CycleState,
+  GetCycle200EventsItemEventStatus,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 interface CycleReviewCardProps {
@@ -38,8 +42,8 @@ interface CycleReviewCardProps {
 }
 
 interface CanPreviewEventMoveInput {
-  cycleState: string;
-  eventStatus: string;
+  cycleState: GetCycle200CycleState;
+  eventStatus: GetCycle200EventsItemEventStatus;
 }
 
 /** Only a scheduled Event of a Sent Cycle can be moved. */

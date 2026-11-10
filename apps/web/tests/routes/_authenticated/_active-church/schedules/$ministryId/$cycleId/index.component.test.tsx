@@ -100,29 +100,9 @@ it('shows a leader-callable Schedule with a link to edit one Time block and no i
   expect(api.listScheduleSummaries).not.toHaveBeenCalled();
 });
 
-it.each([
-  'past',
-  'published',
-] as const)('shows a read-only Schedule for %s with navigation to view the block', async (state) => {
+it('shows a read-only Schedule for a past Cycle with navigation to view the block', async () => {
   api.listSchedules.mockResolvedValue({
-    schedules: [
-      {
-        ...SCHEDULE,
-        cycle: { ...SCHEDULE.cycle, state: state === 'past' ? 'past' : 'sent' },
-        stage: state === 'published' ? 'published' : 'to_prepare',
-      },
-    ],
-  });
-  api.getCycleParticipation.mockResolvedValue({
-    events: [
-      {
-        ...EVENT,
-        participation: {
-          ...EVENT.participation,
-          state: state === 'published' ? 'published' : 'preparing',
-        },
-      },
-    ],
+    schedules: [{ ...SCHEDULE, cycle: { ...SCHEDULE.cycle, state: 'past' } }],
   });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
@@ -139,6 +119,33 @@ it.each([
     ),
   ).toHaveAttribute('href');
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+});
+
+it('keeps a published Schedule preparable without asking again, so an added Event can be staffed', async () => {
+  api.listSchedules.mockResolvedValue({
+    schedules: [{ ...SCHEDULE, stage: 'published' }],
+  });
+  api.getCycleParticipation.mockResolvedValue({
+    events: [
+      {
+        ...EVENT,
+        participation: { ...EVENT.participation, state: 'published' },
+      },
+    ],
+  });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  expect(
+    await screen.findByTestId(
+      `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
+    ),
+  ).toHaveAttribute('href');
+  expect(screen.queryByText(m.prepare_block_read_only())).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: m.prepare_ask() }),
+  ).not.toBeInTheDocument();
 });
 
 it('shows the swap request count on the badge and links to the Assign board', async () => {

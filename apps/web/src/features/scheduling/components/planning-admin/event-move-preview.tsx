@@ -114,6 +114,9 @@ export function EventMovePreview({
 
   const range = (value: BoundsRange) =>
     formatInstantRangeOf({ ...value, timeZone: churchTimezone });
+  const movedRange = moved && range(moved.event);
+  const previousRange = result && range(result.event.previous);
+  const proposedRange = result && range(result.event.proposed);
 
   return (
     <>
@@ -159,7 +162,7 @@ export function EventMovePreview({
           {moved ? (
             <div className="space-y-2 text-sm" data-testid="move-result">
               <p className="font-medium">
-                {m.event_move_done({ range: range(moved.event) })}
+                {m.event_move_done({ range: movedRange ?? '' })}
               </p>
               {moved.withdrawn.length === 0 ? (
                 <p>{m.event_move_withdrawn_none()}</p>
@@ -185,28 +188,27 @@ export function EventMovePreview({
               data-testid="move-preview-result"
             >
               <p className="text-muted-foreground">
-                {m.event_move_preview_current({
-                  range: range(result.event.previous),
-                })}
+                {m.event_move_preview_current({ range: previousRange ?? '' })}
               </p>
               <p className="font-medium">
-                {m.event_move_preview_proposed({
-                  range: range(result.event.proposed),
-                })}
+                {m.event_move_preview_proposed({ range: proposedRange ?? '' })}
               </p>
               <div>
                 <h4 className="font-medium">
                   {m.event_move_preview_blocks_title()}
                 </h4>
                 <ul className="text-muted-foreground text-xs">
-                  {result.eventTimeBlocks.map((block) => (
-                    <li key={block.id}>
-                      {m.event_move_preview_block({
-                        label: block.label ?? '',
-                        range: range(block.proposed),
-                      })}
-                    </li>
-                  ))}
+                  {result.eventTimeBlocks.map(({ id, label, proposed }) => {
+                    const blockRange = range(proposed);
+                    return (
+                      <li key={id}>
+                        {m.event_move_preview_block({
+                          label: label ?? '',
+                          range: blockRange,
+                        })}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
               {result.clashes.length === 0 ? (
@@ -280,18 +282,20 @@ interface ClashListProps {
 function ClashList({ clashes, range }: ClashListProps) {
   return (
     <ul className="text-xs">
-      {clashes.map((clash) => (
-        <li key={clash.assignmentId}>
-          {m.event_move_preview_clash({
-            volunteer: clash.volunteer.name,
-            ministry: clash.ministry.name,
-            range: range({
-              start: clash.proposedStart,
-              end: clash.proposedEnd,
-            }),
-          })}
-        </li>
-      ))}
+      {clashes.map(
+        ({ assignmentId, volunteer, ministry, proposedStart, proposedEnd }) => {
+          const clashRange = range({ start: proposedStart, end: proposedEnd });
+          return (
+            <li key={assignmentId}>
+              {m.event_move_preview_clash({
+                volunteer: volunteer.name,
+                ministry: ministry.name,
+                range: clashRange,
+              })}
+            </li>
+          );
+        },
+      )}
     </ul>
   );
 }

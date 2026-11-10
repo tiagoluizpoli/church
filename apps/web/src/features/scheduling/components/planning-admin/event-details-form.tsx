@@ -18,25 +18,27 @@ export interface EventDetailsFormProps {
 
 /** Sent-state title/location correction; no graph change, no Notification. */
 export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
-  const eventId = graph.event.id;
+  const {
+    event: { id: eventId, title: savedTitle, location: savedLocation },
+  } = graph;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [title, setTitle] = useState(graph.event.title);
-  const [location, setLocation] = useState(graph.event.location ?? '');
+  const [title, setTitle] = useState(savedTitle);
+  const [location, setLocation] = useState(savedLocation ?? '');
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      adminApi.updatePlanningEventDetails(cycleId, eventId, {
-        title: title.trim(),
-        location: location.trim(),
-      }),
+    mutationFn: () => {
+      const details = { title: title.trim(), location: location.trim() };
+      return adminApi.updatePlanningEventDetails(cycleId, eventId, details);
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
         queryClient.invalidateQueries({ queryKey: ['cycles'] }),
       ]);
-      toast.success(m.event_details_updated_toast());
+      const updated = m.event_details_updated_toast();
+      toast.success(updated);
       await navigate({
         to: '/cycles/$cycleId',
         params: { cycleId },

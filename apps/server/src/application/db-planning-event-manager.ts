@@ -216,8 +216,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
+      const stored = await this.cycleRepository.getById({ ...input, tx });
       const cycle = await this.ensureCycleWritable({
-        cycle: await this.cycleRepository.getById({ ...input, tx }),
+        cycle: stored,
         churchTimeZone: church.timezone,
       });
       // Apply is Draft-only: a Sent Cycle's staffing is decided at Send.
@@ -892,11 +893,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         });
       }
       const { start, end } = proposal.proposedEvent;
+      const startDate = toDate({ instant: start });
+      const endDate = toDate({ instant: end });
       const event = await this.eventRepository.updateEvent({
         churchId,
         eventId,
-        start: toDate({ instant: start }),
-        end: toDate({ instant: end }),
+        start: startDate,
+        end: endDate,
         tx,
       });
       const movedBlockIds = proposal.eventTimeBlocks.flatMap(
@@ -1011,8 +1014,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     tx,
   }: ComputeMoveInput): Promise<ComputedMove> {
     const { churchId, eventId, scope, start } = input;
+    const stored = await this.cycleRepository.getById({ ...input, tx });
     const cycle = await this.ensureCycleWritable({
-      cycle: await this.cycleRepository.getById({ ...input, tx }),
+      cycle: stored,
       churchTimeZone: church.timezone,
     });
     const event = await this.getCycleEvent({ input, tx });
@@ -1038,36 +1042,45 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       );
     }
 
+    const { timezone: timeZone } = church;
+    const proposedStart = fromDate({ date: start });
+    const currentInstant = now();
     const proposal = proposeMove({
       scope,
       event,
       eventTimeBlocks,
-      start: fromDate({ date: start }),
-      now: now(),
+      start: proposedStart,
+      now: currentInstant,
       cycle,
-      timeZone: church.timezone,
+      timeZone,
     });
 
+    const eventTimeBlockId =
+      scope.kind === 'eventTimeBlock' ? scope.eventTimeBlockId : undefined;
     const scopeAssignments =
       await this.eventRepository.listMoveScopeAssignments({
         churchId,
         eventId,
-        eventTimeBlockId:
-          scope.kind === 'eventTimeBlock' ? scope.eventTimeBlockId : undefined,
+        eventTimeBlockId,
         tx,
       });
     const movedBlocks = proposal.eventTimeBlocks.filter(({ moved }) => moved);
+    const scopeVolunteerIds = scopeAssignments.map(
+      ({ volunteerId }) => volunteerId,
+    );
+    const { start: boundsStart, end: boundsEnd } = proposal.proposedEvent;
+    // Every moved Shift lies inside the proposed Event bounds.
+    const startTime = toDate({ instant: boundsStart });
+    const endTime = toDate({ instant: boundsEnd });
+    const excludedEventTimeBlockIds = movedBlocks.map(
+      ({ eventTimeBlockId: movedId }) => movedId,
+    );
     const candidates = await this.eventRepository.listMoveClashCandidates({
       churchId,
-      volunteerIds: [
-        ...new Set(scopeAssignments.map(({ volunteerId }) => volunteerId)),
-      ],
-      excludedEventTimeBlockIds: movedBlocks.map(
-        ({ eventTimeBlockId }) => eventTimeBlockId,
-      ),
-      // Every moved Shift lies inside the proposed Event bounds.
-      startTime: toDate({ instant: proposal.proposedEvent.start }),
-      endTime: toDate({ instant: proposal.proposedEvent.end }),
+      volunteerIds: [...new Set(scopeVolunteerIds)],
+      excludedEventTimeBlockIds,
+      startTime,
+      endTime,
       tx,
     });
 

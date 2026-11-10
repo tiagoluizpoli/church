@@ -62,13 +62,11 @@ export function formatEventWhen({
   churchTimezone: timeZone,
   locale,
 }: EventWhenInput): string {
-  const day = formatDayLabel({
-    day: today({ instant: start, timeZone }),
-    locale,
-  });
-  const from = formatTimeOfDay({
-    time: toTimeOfDay({ instant: start, timeZone }),
-  });
-  const to = formatTimeOfDay({ time: toTimeOfDay({ instant: end, timeZone }) });
+  const startDay = today({ instant: start, timeZone });
+  const startTime = toTimeOfDay({ instant: start, timeZone });
+  const endTime = toTimeOfDay({ instant: end, timeZone });
+  const day = formatDayLabel({ day: startDay, locale });
+  const from = formatTimeOfDay({ time: startTime });
+  const to = formatTimeOfDay({ time: endTime });
   return `${day} · ${from}–${to}`;
 }

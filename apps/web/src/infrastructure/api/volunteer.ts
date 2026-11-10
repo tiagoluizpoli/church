@@ -10,7 +10,6 @@ import type {
   CancelOwnAssignment204,
   GetAvailabilityCheck200,
   GetMinistrySchedule200,
-  GetMyAssignments200,
   GetPublishedVolunteerSchedule200,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
@@ -33,18 +32,6 @@ const getVolunteerDashboard = (
  ) => {
       return apiClient<GetVolunteerDashboard200>(
       {url: `/api/v1/volunteer/dashboard`, method: 'GET'
-    },
-      );
-    }
-  /**
- * List the current Volunteer's upcoming Assignments.
- * @summary Get the caller's upcoming Assignments
- */
-const getMyAssignments = (
-
- ) => {
-      return apiClient<GetMyAssignments200>(
-      {url: `/api/v1/volunteer/assignments`, method: 'GET'
     },
       );
     }
@@ -127,7 +114,7 @@ const cancelOwnAssignment = (
       );
     }
   /**
- * List the current Volunteer's Assignments from published MinistryParticipations.
+ * List the current Volunteer's upcoming and in-progress Assignments from published MinistryParticipations, with the published Schedules of every Ministry they serve in.
  * @summary Get the caller's published schedule
  */
 const getPublishedVolunteerSchedule = (
@@ -138,9 +125,8 @@ const getPublishedVolunteerSchedule = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getPublishedVolunteerSchedule}};
+  return {getVolunteerDashboard,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getPublishedVolunteerSchedule}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
-export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
 export type ListAvailabilityChecksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['listAvailabilityChecks']>>>
 export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAvailabilityCheck']>>>

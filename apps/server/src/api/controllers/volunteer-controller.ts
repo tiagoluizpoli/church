@@ -25,7 +25,6 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   answerAvailabilityCheckBodySchema,
   answerConflictResponseSchema,
-  assignmentListResponseSchema,
   assignmentResponseSchema,
   availabilityCheckDetailResponseSchema,
   availabilityCheckListResponseSchema,
@@ -120,26 +119,6 @@ export class VolunteerController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.dashboardToResponse(dashboard));
-      },
-    );
-
-    app.get(
-      '/assignments',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'getMyAssignments',
-          summary: "Get the caller's upcoming Assignments",
-          description: "List the current Volunteer's upcoming Assignments.",
-          response: { 200: assignmentListResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const assignments = await this.volunteerManager.getUpcomingAssignments({
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-        });
-        return reply.send(volunteerMapper.assignmentsToResponse(assignments));
       },
     );
 

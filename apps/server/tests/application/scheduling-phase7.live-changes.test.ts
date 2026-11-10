@@ -204,6 +204,7 @@ function createHarness() {
     ministryRepo,
     roleRepo,
     availabilityCheckRepo,
+    cycleRepo: cycleRepository,
   });
   return {
     manager,

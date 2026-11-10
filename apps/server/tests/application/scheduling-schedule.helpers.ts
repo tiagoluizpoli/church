@@ -155,6 +155,7 @@ export function createSchedulingManagers({
       participationRepo,
       roleRepo: new DrizzleRoleRepository({ db: schedulingTestDb }),
       availabilityCheckRepo,
+      cycleRepo: new DrizzleCycleRepository({ db: schedulingTestDb }),
       unitOfWork,
       config: { ...appConfig, assignment: { cancelLeadTimeDays } },
     }),

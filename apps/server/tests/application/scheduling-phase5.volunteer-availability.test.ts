@@ -1,5 +1,5 @@
 import { appConfig } from '@church/app-config';
-import { parseInstant } from '@church/time';
+import { parseCalendarDay, parseInstant } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import {
@@ -13,6 +13,7 @@ import {
   MinistryInvitationId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
   ShiftRequirementId,
   UserId,
@@ -24,6 +25,7 @@ import type {
 } from '@/domain/contracts/infrastructure/availability-check.repository';
 import { Assignment } from '@/domain/entities/assignment';
 import { AvailabilityCheck } from '@/domain/entities/availability-check';
+import { Cycle } from '@/domain/entities/cycle';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { Ministry } from '@/domain/entities/ministry';
@@ -31,10 +33,12 @@ import { MinistryParticipation } from '@/domain/entities/ministry-participation'
 import { Notification } from '@/domain/entities/notification';
 import { Role } from '@/domain/entities/role';
 import { Shift } from '@/domain/entities/shift';
+import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import {
   createAssignmentRepositoryFake,
   createAvailabilityCheckRepositoryFake,
+  createCycleRepositoryFake,
   createEventRepositoryFake,
   createMinistryParticipationRepositoryFake,
   createMinistryRepositoryFake,
@@ -108,6 +112,7 @@ function createHarness() {
   participationRepo.listByIds.mockResolvedValue([]);
   const roleRepo = createRoleRepositoryFake();
   const availabilityCheckRepo = createAvailabilityCheckRepositoryFake();
+  const cycleRepo = createCycleRepositoryFake();
   availabilityCheckRepo.getCheckContext.mockResolvedValue(context);
   availabilityCheckRepo.listByVolunteer.mockResolvedValue([context]);
   availabilityCheckRepo.listCheckShifts.mockResolvedValue(shifts);
@@ -123,6 +128,7 @@ function createHarness() {
     participationRepo,
     roleRepo,
     availabilityCheckRepo,
+    cycleRepo,
     unitOfWork,
     config: appConfig,
   });
@@ -140,6 +146,7 @@ function createHarness() {
     participationRepo,
     roleRepo,
     availabilityCheckRepo,
+    cycleRepo,
   };
 }
 
@@ -287,15 +294,26 @@ describe('volunteer dashboard', () => {
       vi.useRealTimers();
     }
   });
-  it('includes only published assignments starting in the next 30 days', async () => {
+  it('lists in-progress and later assignments with names, and the published schedules of its ministries', async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-08-01T00:00:00Z'));
+    vi.setSystemTime(new Date('2026-08-01T12:00:00Z'));
     try {
       const f = createHarness();
+      const event = new Event({
+        id: eventId,
+        props: {
+          churchId,
+          cycleId,
+          title: 'Service',
+          start: instant('2026-08-01T10:00:00Z'),
+          end: instant('2026-10-01T00:00:00Z'),
+        },
+      });
       const participation = new MinistryParticipation({
         id: MinistryParticipationId.from('participation'),
         props: { churchId, ministryId, eventId, state: 'published' },
       });
+      const requirementId = ShiftRequirementId.from({ raw: 'requirement' });
       const makeAssignment = (id: string) =>
         new Assignment({
           id,
@@ -306,14 +324,37 @@ describe('volunteer dashboard', () => {
             participationId: participation.id,
             shiftId: id,
             roleId: RoleId.from('role'),
-            shiftRequirementId: ShiftRequirementId.from({ raw: 'requirement' }),
+            shiftRequirementId: requirementId,
             status: 'confirmed',
           },
         });
-      const within = makeAssignment('within');
-      const beyond = makeAssignment('beyond');
-      f.assignmentRepo.listByVolunteer.mockResolvedValue([within, beyond]);
+      const bounds: Record<string, [string, string]> = {
+        ended: ['2026-08-01T08:00:00Z', '2026-08-01T10:00:00Z'],
+        running: ['2026-08-01T11:00:00Z', '2026-08-01T13:00:00Z'],
+        far: ['2026-09-15T00:00:00Z', '2026-09-15T01:00:00Z'],
+      };
+      f.volunteerRepo.listMemberMinistryIds.mockResolvedValue([ministryId]);
+      f.ministryRepo.listByChurch.mockResolvedValue([
+        new Ministry({ id: ministryId, props: { churchId, name: 'Music' } }),
+      ]);
+      f.participationRepo.listByMinistry.mockResolvedValue([participation]);
+      f.assignmentRepo.listByVolunteer.mockResolvedValue(
+        ['far', 'ended', 'running'].map(makeAssignment),
+      );
       f.participationRepo.listByIds.mockResolvedValue([participation]);
+      f.eventRepo.getById.mockResolvedValue(event);
+      f.cycleRepo.getById.mockResolvedValue(
+        new Cycle({
+          id: cycleId,
+          props: {
+            churchId,
+            name: 'August',
+            startDate: parseCalendarDay({ value: '2026-08-01' }),
+            endDate: parseCalendarDay({ value: '2026-08-31' }),
+            state: 'sent',
+          },
+        }),
+      );
       f.shiftRepo.getById.mockImplementation(
         async ({ shiftId }) =>
           new Shift({
@@ -322,22 +363,53 @@ describe('volunteer dashboard', () => {
               churchId,
               participationId: participation.id,
               eventTimeBlockId: EventTimeBlockId.from('block'),
-              startTime: instant(
-                shiftId === 'within'
-                  ? '2026-08-06T00:00:00Z'
-                  : '2026-09-15T00:00:00Z',
-              ),
-              endTime: instant(
-                shiftId === 'within'
-                  ? '2026-08-06T01:00:00Z'
-                  : '2026-09-15T01:00:00Z',
-              ),
+              startTime: instant(bounds[shiftId as string]?.[0] as string),
+              endTime: instant(bounds[shiftId as string]?.[1] as string),
             },
           }),
       );
-      expect(
-        await f.manager.getUpcomingAssignments({ churchId, volunteerId }),
-      ).toEqual([within]);
+      f.shiftRepo.listRequirementsByParticipation.mockResolvedValue([
+        new ShiftRequirement({
+          id: requirementId,
+          props: {
+            churchId,
+            eventTimeBlockId: EventTimeBlockId.from('block'),
+            participationId: participation.id,
+            shiftId: ShiftId.from('running'),
+            roleId: RoleId.from('role'),
+            sectorId: SectorId.from('sector'),
+            sectorName: 'Main Door',
+            peopleNeeded: 1,
+          },
+        }),
+      ]);
+      f.roleRepo.getById.mockResolvedValue(
+        new Role({
+          id: RoleId.from('role'),
+          props: { churchId, ministryId, name: 'Greeter' },
+        }),
+      );
+
+      const schedule = await f.manager.getPublishedSchedule({
+        churchId,
+        volunteerId,
+      });
+
+      expect(schedule.assignments).toEqual([
+        expect.objectContaining({
+          assignmentId: 'running',
+          eventTitle: 'Service',
+          ministryName: 'Music',
+          sectorName: 'Main Door',
+          roleName: 'Greeter',
+          startTime: instant('2026-08-01T11:00:00Z'),
+          endTime: instant('2026-08-01T13:00:00Z'),
+        }),
+        expect.objectContaining({ assignmentId: 'far' }),
+      ]);
+      expect(schedule.schedules).toEqual([
+        { ministryId, ministryName: 'Music', cycleId, cycleName: 'August' },
+      ]);
     } finally {
       vi.useRealTimers();
     }

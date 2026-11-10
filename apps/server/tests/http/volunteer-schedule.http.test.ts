@@ -8,7 +8,6 @@ import {
   vi,
 } from 'vitest';
 import { VolunteerScheduleController } from '@/api/controllers/volunteer-schedule-controller';
-import { Assignment } from '@/domain/entities/assignment';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -72,22 +71,34 @@ beforeEach(() => {
 });
 
 describe('Volunteer published schedule route', () => {
-  it('GET /api/v1/volunteer/schedule returns only published assignments', async () => {
-    volunteerManager.getPublishedSchedule.mockResolvedValue([
-      new Assignment({
-        props: {
-          churchId: '11111111-1111-1111-1111-111111111111',
-          eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
-          participationId: '22222222-2222-2222-8222-222222222222',
-          shiftId: '66666666-6666-6666-8666-666666666666',
-          volunteerId: '44444444-4444-4444-8444-444444444444',
+  it('GET /api/v1/volunteer/schedule returns assignments and published schedules', async () => {
+    const schedule = {
+      assignments: [
+        {
+          assignmentId: 'assign-1',
+          eventId: 'event-1',
+          eventTitle: 'Sunday Service',
+          shiftId: 'shift-1',
+          startTime: '2026-08-02T12:00:00.000Z',
+          endTime: '2026-08-02T14:00:00.000Z',
+          ministryId: 'ministry-1',
+          ministryName: 'Music',
+          sectorName: 'Stage',
           roleId: 'role-1',
-          shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
+          roleName: 'Singer',
           status: 'confirmed',
         },
-        id: 'assign-1',
-      }),
-    ]);
+      ],
+      schedules: [
+        {
+          ministryId: 'ministry-1',
+          ministryName: 'Music',
+          cycleId: 'cycle-1',
+          cycleName: 'August',
+        },
+      ],
+    };
+    volunteerManager.getPublishedSchedule.mockResolvedValue(schedule);
 
     const response = await app.inject({
       method: 'GET',
@@ -95,21 +106,10 @@ describe('Volunteer published schedule route', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      assignments: [
-        {
-          id: 'assign-1',
-          churchId: '11111111-1111-1111-1111-111111111111',
-          eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
-          participationId: '22222222-2222-2222-8222-222222222222',
-          shiftId: '66666666-6666-6666-8666-666666666666',
-          shiftRequirementId: '00000000-0000-0000-0000-000000000021',
-          volunteerId: '44444444-4444-4444-8444-444444444444',
-          roleId: 'role-1',
-          status: 'confirmed',
-          assignedAt: expect.any(String),
-        },
-      ],
+    expect(response.json()).toEqual(schedule);
+    expect(volunteerManager.getPublishedSchedule).toHaveBeenCalledWith({
+      volunteerId: '44444444-4444-4444-8444-444444444444',
+      churchId: '11111111-1111-1111-1111-111111111111',
     });
   });
 });

@@ -24,6 +24,7 @@ import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prep
 import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-ask';
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
+import { swapRequestCountLabel } from '@/features/scheduling/components/prepare/schedules-list-page';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
@@ -146,7 +147,22 @@ function PrepareWorkspaceRoute() {
                         count: schedule.affectedVolunteerCount,
                       })
                     : m.schedules_published()}
+                  {schedule.openSwapRequestCount > 0
+                    ? ` · ${swapRequestCountLabel(schedule.openSwapRequestCount)}`
+                    : null}
                 </Badge>
+              ) : null}
+              {schedule.openSwapRequestCount > 0 ? (
+                <Link
+                  to="/schedules/$ministryId/$cycleId/assign"
+                  params={{ ministryId, cycleId }}
+                  data-testid="swap-requests-link"
+                  className={buttonVariants({ variant: 'outline' })}
+                >
+                  {m.schedules_swap_requests_link({
+                    count: schedule.openSwapRequestCount,
+                  })}
+                </Link>
               ) : null}
               {schedule.stage === 'asking' ? (
                 <Badge variant="secondary">{m.schedules_asking_stage()}</Badge>

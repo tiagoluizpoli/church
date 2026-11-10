@@ -150,6 +150,12 @@ interface ScheduleRowsProps {
   schedules: ListSchedules200SchedulesItem[];
 }
 
+export function swapRequestCountLabel(count: number): string {
+  return count === 1
+    ? m.schedules_swap_request_one()
+    : m.schedules_swap_requests_other({ count });
+}
+
 function stageLabel(row: ListSchedules200SchedulesItem): string {
   switch (row.stage) {
     case 'to_prepare':
@@ -160,10 +166,15 @@ function stageLabel(row: ListSchedules200SchedulesItem): string {
         : m.schedules_asking_stage();
     case 'assigning':
       return m.schedules_assigning();
-    case 'published':
-      return row.affectedVolunteerCount > 0
-        ? m.schedules_unsent({ count: row.affectedVolunteerCount })
-        : m.schedules_published();
+    case 'published': {
+      const published =
+        row.affectedVolunteerCount > 0
+          ? m.schedules_unsent({ count: row.affectedVolunteerCount })
+          : m.schedules_published();
+      return row.openSwapRequestCount > 0
+        ? `${published} · ${swapRequestCountLabel(row.openSwapRequestCount)}`
+        : published;
+    }
     case 'not_serving':
       return m.schedules_not_serving();
   }

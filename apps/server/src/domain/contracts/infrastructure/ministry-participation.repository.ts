@@ -237,6 +237,10 @@ export interface MinistryParticipationRepository {
   countScheduleLateMarks(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleLateMarkCountRow[]>;
+  /** Persisted-open requests whose Shift has not started, per Schedule. */
+  countScheduleOpenSwapRequests(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleLateMarkCountRow[]>;
   countScheduleChecks(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleCheckCountRow[]>;

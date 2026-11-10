@@ -141,6 +141,27 @@ it.each([
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 });
 
+it('shows the swap request count on the badge and links to the Assign board', async () => {
+  api.listSchedules.mockResolvedValue({
+    schedules: [{ ...SCHEDULE, stage: 'published', openSwapRequestCount: 2 }],
+  });
+  api.getCycleParticipation.mockResolvedValue({ events: [] });
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  expect(
+    await screen.findByText(
+      `${m.schedules_published()} · ${m.schedules_swap_requests_other({ count: 2 })}`,
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('link', {
+      name: m.schedules_swap_requests_link({ count: 2 }),
+    }),
+  ).toHaveAttribute('href', `/schedules/${MINISTRY_ID}/${CYCLE_ID}/assign`);
+});
+
 it('distinguishes an empty Schedule from filters with no matches', async () => {
   api.getCycleParticipation.mockResolvedValue({ events: [] });
   renderRoute({

@@ -31,7 +31,9 @@ export interface EventMovePreviewProps {
   cycleId: string;
   eventId: string;
   title: string;
-  /** The Event's current start, the field's initial value. */
+  /** Moves only this EventTimeBlock (the Event stretches) instead of the Event. */
+  eventTimeBlockId?: string;
+  /** The scope's current start, the field's initial value. */
   start: Instant;
   size?: 'touch' | 'icon-xs';
 }
@@ -54,6 +56,7 @@ export function EventMovePreview({
   cycleId,
   eventId,
   title,
+  eventTimeBlockId,
   start,
   size = 'touch',
 }: EventMovePreviewProps) {
@@ -63,11 +66,25 @@ export function EventMovePreview({
   const queryClient = useQueryClient();
   const preview = useMutation({
     mutationFn: (value: Instant) =>
-      adminApi.previewPlanningEventMove(cycleId, eventId, { start: value }),
+      eventTimeBlockId
+        ? adminApi.previewPlanningEventTimeBlockMove(
+            cycleId,
+            eventId,
+            eventTimeBlockId,
+            { start: value },
+          )
+        : adminApi.previewPlanningEventMove(cycleId, eventId, { start: value }),
   });
   const move = useMutation({
     mutationFn: (value: Instant) =>
-      adminApi.movePlanningEvent(cycleId, eventId, { start: value }),
+      eventTimeBlockId
+        ? adminApi.movePlanningEventTimeBlock(
+            cycleId,
+            eventId,
+            eventTimeBlockId,
+            { start: value },
+          )
+        : adminApi.movePlanningEvent(cycleId, eventId, { start: value }),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
@@ -111,7 +128,11 @@ export function EventMovePreview({
         {size === 'touch' ? m.event_move_preview_action() : null}
       </Button>
       <Dialog open={open} onOpenChange={changeOpen}>
-        <DialogContent data-testid="event-move-preview">
+        <DialogContent
+          data-testid={
+            eventTimeBlockId ? 'block-move-preview' : 'event-move-preview'
+          }
+        >
           <DialogHeader>
             <DialogTitle>{m.event_move_preview_title({ title })}</DialogTitle>
             <DialogDescription>

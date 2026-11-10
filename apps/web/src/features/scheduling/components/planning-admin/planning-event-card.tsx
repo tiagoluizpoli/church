@@ -151,6 +151,16 @@ export function PlanningEventCard({
                   })}
                 </span>
               </span>
+              {canPreviewMove ? (
+                <EventMovePreview
+                  cycleId={cycleId}
+                  eventId={row.eventId}
+                  eventTimeBlockId={eventTimeBlock.eventTimeBlockId}
+                  title={`${row.title} · ${eventTimeBlock.label}`}
+                  start={eventTimeBlock.startTime as Instant}
+                  size="icon-xs"
+                />
+              ) : null}
               {!isReadOnly ? (
                 <span className="flex items-center gap-1">
                   {eventTimeBlock.isOnlyEventTimeBlockInEvent ? (

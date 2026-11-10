@@ -548,8 +548,13 @@ async function seedMoveRace() {
   return { ...seed, laterShift, laterRequirement, moving };
 }
 
-for (const first of ['move', 'create'] as const) {
-  it(`move confirm and Assignment creation never store an overlapping pair when ${first} goes first`, async () => {
+for (const [scope, first] of [
+  ['event', 'move'],
+  ['event', 'create'],
+  ['eventTimeBlock', 'move'],
+  ['eventTimeBlock', 'create'],
+] as const) {
+  it(`${scope} move confirm and Assignment creation never store an overlapping pair when ${first} goes first`, async () => {
     const seed = await seedMoveRace();
     const blocker = new pg.Client({
       connectionString: getIntegrationDatabaseUrl(),
@@ -560,7 +565,11 @@ for (const first of ['move', 'create'] as const) {
       app
         .inject({
           method: 'POST',
-          url: `/api/v1/admin/cycles/${seed.cycle.id}/events/${seed.graph.event.id}/move`,
+          url: `/api/v1/admin/cycles/${seed.cycle.id}/events/${seed.graph.event.id}${
+            scope === 'event'
+              ? ''
+              : `/event-time-blocks/${seed.graph.eventTimeBlock.id}`
+          }/move`,
           headers: seed.headers,
           payload: { start: '2026-08-09T09:00:00.000Z' },
         })

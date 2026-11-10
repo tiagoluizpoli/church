@@ -32,6 +32,7 @@ import {
   ChurchId,
   CycleId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   UserId,
 } from '@/domain/branded-ids';
@@ -57,7 +58,10 @@ import {
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
-import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAssignment,
+  buildEventTimeBlock,
+} from '@/seeds/builders/scheduling';
 import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   createSchedulingManagers,
@@ -1181,7 +1185,10 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
   });
 
-  it('an Event move tells Volunteers nothing until Send updates, which lists the kept Assignment as moved and the clash-withdrawn one as removed', async () => {
+  it.each([
+    'event',
+    'eventTimeBlock',
+  ] as const)('a %s move tells Volunteers nothing until Send updates, which lists the kept Assignment as moved and the clash-withdrawn one as removed', async (scopeKind) => {
     const kept = await seedMember({ name: 'Ana', email: 'ana@test.com' });
     const clashing = await seedMember({
       name: 'Bruno',
@@ -1232,6 +1239,25 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         status: 'confirmed',
       });
     };
+    // A block move leaves this other block's Shift alone (same times).
+    const stayingBlock = await buildEventTimeBlock({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      eventId,
+      start: parseInstant({ value: '2026-12-25T03:00:00.000Z' }),
+      end: parseInstant({ value: '2026-12-25T03:30:00.000Z' }),
+    });
+    const staying = await seedMember({
+      name: 'Carla',
+      email: 'carla@test.com',
+    });
+    await seedBooking({
+      participation: participationId,
+      eventTimeBlock: stayingBlock.id,
+      volunteerId: staying.volunteer.id,
+      startTime: '2026-12-25T03:00:00.000Z',
+      endTime: '2026-12-25T03:30:00.000Z',
+    });
     // The Vigil (25 Dec 02:30–04:00 UTC) moves by +31h to 26 Dec 09:30–11:00.
     await seedBooking({
       participation: participationId,
@@ -1317,7 +1343,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       churchId: ChurchId.from(ids.churchId),
       cycleId: CycleId.from(cycleId),
       eventId: EventId.from(eventId),
-      scope: { kind: 'event' },
+      scope:
+        scopeKind === 'event'
+          ? { kind: 'event' }
+          : {
+              kind: 'eventTimeBlock',
+              eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+            },
       start: new Date('2026-12-26T09:30:00.000Z'),
       actingUserId: UserId.from(ids.adminUserId),
     });
@@ -1350,7 +1382,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
           'kind' in payload &&
           payload.kind === 'schedule_updated',
       );
-    expect(updates).toHaveLength(2);
+    // The Event bounds are part of every Assignment's snapshot, so Carla in the
+    // staying block is told only because the moved block stretched the Event.
+    expect(updates).toHaveLength(3);
     expect(updates).toContainEqual(
       expect.objectContaining({
         to: { userId: kept.volunteer.userId, churchId: ids.churchId },
@@ -1363,6 +1397,27 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
               }),
               after: expect.objectContaining({
                 startsAt: '2026-12-26T09:30:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: staying.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'moved',
+              before: expect.objectContaining({
+                startsAt: '2026-12-25T03:00:00.000Z',
+              }),
+              after: expect.objectContaining({
+                startsAt:
+                  scopeKind === 'event'
+                    ? '2026-12-26T10:00:00.000Z'
+                    : '2026-12-25T03:00:00.000Z',
               }),
             }),
           ],

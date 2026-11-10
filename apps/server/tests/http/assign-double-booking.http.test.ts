@@ -1095,35 +1095,27 @@ describe('requirement coverage and published placement HTTP contract', () => {
     });
     expect(published.statusCode).toBe(200);
     const rows = published.json().events[0].rows;
-    expect(rows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          sectorName: 'Geral',
-          roleName: 'Greeter',
-          confirmationState: 'confirmed',
-        }),
-        expect.objectContaining({
-          sectorName: 'Geral',
-          confirmationState: 'pending',
-        }),
-        expect.objectContaining({
-          sectorName: 'Side Door',
-          confirmationState: 'declined',
-        }),
-        expect.objectContaining({
-          sectorName: 'Side Door',
-          confirmationState: 'open',
-        }),
-      ]),
-    );
-    expect(rows).toHaveLength(4);
+    // A declined place reads as Open; rows carry no confirmation state.
+    expect(rows).toHaveLength(3);
+    for (const row of rows) expect(row).not.toHaveProperty('confirmationState');
+    expect(
+      rows.filter(
+        (row: { sectorName: string; volunteerDisplayName?: string }) =>
+          row.sectorName === 'Geral' && row.volunteerDisplayName,
+      ),
+    ).toHaveLength(2);
+    expect(
+      rows.filter(
+        (row: { sectorName: string; volunteerDisplayName?: string }) =>
+          row.sectorName === 'Side Door' && !row.volunteerDisplayName,
+      ),
+    ).toHaveLength(1);
     const sideRows = rows
       .map((row: { sectorName: string }) => row.sectorName)
       .join(',');
-    expect([
-      'Geral,Geral,Side Door,Side Door',
-      'Side Door,Side Door,Geral,Geral',
-    ]).toContain(sideRows);
+    expect(['Geral,Geral,Side Door', 'Side Door,Geral,Geral']).toContain(
+      sideRows,
+    );
   });
 });
 

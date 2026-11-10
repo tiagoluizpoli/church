@@ -4,6 +4,7 @@ import type {
   ISwapRequestManager,
   RaisedSwapRequest,
   RaiseSwapRequestCommand,
+  WithdrawSwapRequestCommand,
 } from '../domain/contracts/application/swap-request-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
@@ -14,6 +15,7 @@ import { SwapRequest } from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import {
   SwapRequestAlreadyOpenError,
+  SwapRequestNotOpenError,
   SwapRequestShiftStartedError,
   SwapRequestUnpublishedError,
 } from '../domain/errors/swap-request';
@@ -109,5 +111,48 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       note: swapRequest.note,
       raisedAt: swapRequest.raisedAt,
     };
+  }
+
+  async withdraw({
+    churchId,
+    userId,
+    volunteerId,
+    assignmentId,
+  }: WithdrawSwapRequestCommand): Promise<void> {
+    const assignment = await this.assignmentRepo.getById({
+      churchId,
+      assignmentId,
+    });
+    if (assignment.volunteerId !== volunteerId) {
+      throw new AssignmentAccessDeniedError();
+    }
+    await this.unitOfWork.run(async (tx) => {
+      const open = await this.swapRequestRepo.findOpenByAssignment({
+        churchId,
+        assignmentId,
+        tx,
+      });
+      if (!open) throw new SwapRequestNotOpenError();
+      if (open.raisedBy !== userId) throw new AssignmentAccessDeniedError();
+      // Expiry is derived: an open request on a started Shift reads as expired, so it is closed.
+      if (assignment.shiftId) {
+        const shift = await this.shiftRepo.getById({
+          churchId,
+          shiftId: assignment.shiftId,
+        });
+        if (
+          compareInstants({ left: shift.startTime, right: nowInstant() }) <= 0
+        ) {
+          throw new SwapRequestNotOpenError();
+        }
+      }
+      await this.swapRequestRepo.closeOpenByAssignment({
+        churchId,
+        assignmentId,
+        status: 'withdrawn',
+        closedBy: userId,
+        tx,
+      });
+    });
   }
 }

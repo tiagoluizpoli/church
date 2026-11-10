@@ -16,6 +16,8 @@ export interface RaiseSwapRequestCommand {
   note?: string;
 }
 
+export type WithdrawSwapRequestCommand = Omit<RaiseSwapRequestCommand, 'note'>;
+
 export interface RaisedSwapRequest {
   id: SwapRequestId;
   assignmentId: AssignmentId;
@@ -26,4 +28,6 @@ export interface RaisedSwapRequest {
 
 export interface ISwapRequestManager {
   raise(input: RaiseSwapRequestCommand): Promise<RaisedSwapRequest>;
+  /** Closes the caller's open request as `withdrawn`; never touches the Assignment or notifies. */
+  withdraw(input: WithdrawSwapRequestCommand): Promise<void>;
 }

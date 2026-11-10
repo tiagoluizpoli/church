@@ -1229,7 +1229,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   it.each([
     'event',
     'eventTimeBlock',
-  ] as const)('a %s move tells Volunteers nothing until Send updates, which lists the kept Assignment as moved and the clash-withdrawn one as removed', async (scopeKind) => {
+  ] as const)('a %s move tells Volunteers nothing until Send updates, which lists the kept Assignment as moved, the clash-withdrawn one as removed, and leaves unmoved Shifts out', async (scopeKind) => {
     const kept = await seedMember({ name: 'Ana', email: 'ana@test.com' });
     const clashing = await seedMember({
       name: 'Bruno',
@@ -1393,9 +1393,38 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
           'kind' in payload &&
           payload.kind === 'schedule_updated',
       );
-    // The Event bounds are part of every Assignment's snapshot, so Carla in the
-    // staying block is told only because the moved block stretched the Event.
-    expect(updates).toHaveLength(3);
+    // A block move stretches the Event, yet Carla's own Shift in the staying
+    // block is unchanged, so only the whole-Event move tells her.
+    const toCarla = {
+      userId: staying.volunteer.userId,
+      churchId: ids.churchId,
+    };
+    if (scopeKind === 'event') {
+      expect(updates).toHaveLength(3);
+      expect(updates).toContainEqual(
+        expect.objectContaining({
+          to: toCarla,
+          data: expect.objectContaining({
+            changes: [
+              expect.objectContaining({
+                kind: 'moved',
+                before: expect.objectContaining({
+                  startsAt: '2026-12-25T03:00:00.000Z',
+                }),
+                after: expect.objectContaining({
+                  startsAt: '2026-12-26T10:00:00.000Z',
+                }),
+              }),
+            ],
+          }),
+        }),
+      );
+    } else {
+      expect(updates).toHaveLength(2);
+      expect(updates).not.toContainEqual(
+        expect.objectContaining({ to: toCarla }),
+      );
+    }
     expect(updates).toContainEqual(
       expect.objectContaining({
         to: { userId: kept.volunteer.userId, churchId: ids.churchId },
@@ -1408,27 +1437,6 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
               }),
               after: expect.objectContaining({
                 startsAt: '2026-12-26T09:30:00.000Z',
-              }),
-            }),
-          ],
-        }),
-      }),
-    );
-    expect(updates).toContainEqual(
-      expect.objectContaining({
-        to: { userId: staying.volunteer.userId, churchId: ids.churchId },
-        data: expect.objectContaining({
-          changes: [
-            expect.objectContaining({
-              kind: 'moved',
-              before: expect.objectContaining({
-                startsAt: '2026-12-25T03:00:00.000Z',
-              }),
-              after: expect.objectContaining({
-                startsAt:
-                  scopeKind === 'event'
-                    ? '2026-12-26T10:00:00.000Z'
-                    : '2026-12-25T03:00:00.000Z',
               }),
             }),
           ],

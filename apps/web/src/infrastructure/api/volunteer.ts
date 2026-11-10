@@ -10,6 +10,7 @@ import type {
   CancelOwnAssignment204,
   GetAvailabilityCheck200,
   GetMinistrySchedule200,
+  GetMinistryScheduleParams,
   GetMyAssignments200,
   GetPublishedVolunteerSchedule200,
   GetVolunteerDashboard200,
@@ -54,9 +55,11 @@ const getMyAssignments = (
  */
 const getMinistrySchedule = (
     ministryId: string,
+    params?: GetMinistryScheduleParams,
  ) => {
       return apiClient<GetMinistrySchedule200>(
-      {url: `/api/v1/volunteer/ministries/${ministryId}/schedule`, method: 'GET'
+      {url: `/api/v1/volunteer/ministries/${ministryId}/schedule`, method: 'GET',
+        params
     },
       );
     }

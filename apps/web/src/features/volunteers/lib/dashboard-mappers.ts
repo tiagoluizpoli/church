@@ -34,7 +34,6 @@ export interface DashboardMinistryScheduleRow {
   sectorName: string;
   roleName: string;
   volunteerDisplayName?: string;
-  confirmationState: 'pending' | 'confirmed' | 'declined' | 'open';
 }
 
 export interface DashboardMinistryScheduleEvent {

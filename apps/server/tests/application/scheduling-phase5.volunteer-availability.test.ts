@@ -35,6 +35,7 @@ import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import {
   createAssignmentRepositoryFake,
   createAvailabilityCheckRepositoryFake,
+  createCycleRepositoryFake,
   createEventRepositoryFake,
   createMinistryParticipationRepositoryFake,
   createMinistryRepositoryFake,
@@ -100,6 +101,7 @@ function createHarness() {
   const notificationRepo = createNotificationRepositoryFake();
   notificationRepo.list.mockResolvedValue({ items: [] });
   notificationRepo.countUnread.mockResolvedValue(0);
+  const cycleRepo = createCycleRepositoryFake();
   const eventRepo = createEventRepositoryFake();
   const shiftRepo = createShiftRepositoryFake();
   const ministryRepo = createMinistryRepositoryFake();
@@ -117,6 +119,7 @@ function createHarness() {
     assignmentRepo,
     unavailableShiftRepo,
     notificationRepo,
+    cycleRepo,
     eventRepo,
     shiftRepo,
     ministryRepo,

@@ -239,6 +239,7 @@ function createHarness() {
     assignmentRepo: assignmentRepository,
     unavailableShiftRepo: unavailableShiftRepository,
     notificationRepo: notificationRepository,
+    cycleRepo: cycleRepository,
     eventRepo: eventRepository,
     shiftRepo: shiftRepository,
     ministryRepo: ministryRepository,
@@ -696,27 +697,30 @@ describe('Assignment and publication managers', () => {
     const schedule = await f.volunteerManager.getMinistrySchedule({
       churchId,
       ministryId,
+      cycleId,
       volunteerId,
     });
+    expect(schedule).toMatchObject({ cycleName: 'Cycle', published: true });
+    // A declined place reads as Open; rows carry no confirmation state.
     expect(schedule.events[0]?.rows).toEqual([
       expect.objectContaining({
         roleName: 'Host',
         sectorName: 'Alpha',
         volunteerDisplayName: 'Alice A.',
-        confirmationState: 'pending',
       }),
-      expect.objectContaining({
-        roleName: 'Host',
-        sectorName: 'Beta',
-        volunteerDisplayName: 'Alice A.',
-        confirmationState: 'declined',
-      }),
-      expect.objectContaining({
-        roleName: 'Host',
-        sectorName: 'Beta',
-        confirmationState: 'open',
-      }),
+      expect.objectContaining({ roleName: 'Host', sectorName: 'Beta' }),
     ]);
+    expect(schedule.events[0]?.rows[0]).not.toHaveProperty('confirmationState');
+    expect(schedule.events[0]?.rows[1]).not.toHaveProperty(
+      'volunteerDisplayName',
+    );
+    const otherCycle = await f.volunteerManager.getMinistrySchedule({
+      churchId,
+      ministryId,
+      cycleId: CycleId.from('other-cycle'),
+      volunteerId,
+    });
+    expect(otherCycle).toMatchObject({ published: false, events: [] });
     expect(
       f.ministryParticipationRepository.listByMinistry,
     ).toHaveBeenCalledWith({ churchId, ministryId, state: 'published' });

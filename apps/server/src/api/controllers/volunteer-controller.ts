@@ -6,6 +6,7 @@ import {
   AssignmentId,
   AvailabilityCheckId,
   ChurchId,
+  CycleId,
   MinistryId,
   ShiftId,
   UserId,
@@ -39,6 +40,11 @@ import { refuse } from '../utils/refuse';
 interface MinistryRouteParams {
   ministryId: string;
 }
+
+const ministryScheduleQuerySchema = z.object({
+  // Absent only for the legacy dashboard, which reads every published Cycle.
+  cycleId: z.string().uuid().optional(),
+});
 
 interface AvailabilityCheckRouteParams {
   checkId: string;
@@ -149,6 +155,7 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getMinistrySchedule',
+          querystring: ministryScheduleQuerySchema,
           summary: "Get the caller's published Ministry schedule",
           description:
             "Get the current Volunteer's published schedule within one Ministry.",
@@ -160,10 +167,14 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const { ministryId } = request.params as MinistryRouteParams;
+        const { cycleId } = request.query as z.infer<
+          typeof ministryScheduleQuerySchema
+        >;
         let schedule: MinistrySchedule;
         try {
           schedule = await this.volunteerManager.getMinistrySchedule({
             ministryId: MinistryId.from(ministryId),
+            cycleId: cycleId ? CycleId.from(cycleId) : undefined,
             volunteerId: VolunteerId.from(request.volunteerId as string),
             churchId: ChurchId.from(request.churchId),
           });

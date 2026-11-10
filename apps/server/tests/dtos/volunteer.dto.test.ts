@@ -193,6 +193,7 @@ describe('volunteerMapper', () => {
       const schedule = {
         ministryId: 'm1',
         ministryName: 'Worship',
+        published: true,
         events: [],
       };
 
@@ -205,6 +206,7 @@ describe('volunteerMapper', () => {
       const schedule = {
         ministryId: 'm1',
         ministryName: 'Worship',
+        published: true,
         events: [
           {
             eventId: 'event-1',
@@ -218,7 +220,6 @@ describe('volunteerMapper', () => {
                 eventTimeBlockLabel: 'Worship Set',
                 sectorName: 'Sanctuary',
                 roleName: 'Vocalist',
-                confirmationState: 'confirmed' as const,
               },
             ],
           },

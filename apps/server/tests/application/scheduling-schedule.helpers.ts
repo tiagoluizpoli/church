@@ -149,6 +149,7 @@ export function createSchedulingManagers({
       notificationRepo: new DrizzleNotificationRepository({
         db: schedulingTestDb,
       }),
+      cycleRepo: new DrizzleCycleRepository({ db: schedulingTestDb }),
       eventRepo: plainEventRepo,
       shiftRepo,
       ministryRepo,

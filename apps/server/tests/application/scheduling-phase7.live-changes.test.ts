@@ -200,6 +200,7 @@ function createHarness() {
     unitOfWork,
     config: appConfig,
     notificationRepo,
+    cycleRepo: cycleRepository,
     eventRepo,
     ministryRepo,
     roleRepo,

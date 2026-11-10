@@ -3,6 +3,7 @@ import type {
   AssignmentId,
   AvailabilityCheckId,
   ChurchId,
+  CycleId,
   MinistryId,
   ShiftId,
   UserId,
@@ -56,8 +57,8 @@ export interface MinistryScheduleRow {
   eventTimeBlockLabel: string;
   sectorName: string;
   roleName: string;
+  /** Absent for an unfilled place ('Open'). */
   volunteerDisplayName?: string;
-  confirmationState: 'pending' | 'confirmed' | 'declined' | 'open';
 }
 
 export interface MinistryScheduleEvent {
@@ -72,6 +73,10 @@ export interface MinistryScheduleEvent {
 export interface MinistrySchedule {
   ministryId: string;
   ministryName: string;
+  /** Set only when the read was scoped to one Cycle. */
+  cycleId?: string;
+  cycleName?: string;
+  published: boolean;
   events: MinistryScheduleEvent[];
 }
 
@@ -164,6 +169,7 @@ export interface GetPublishedScheduleInput {
 
 export interface GetMinistryScheduleInput {
   ministryId: MinistryId;
+  cycleId?: CycleId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
 }

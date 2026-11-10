@@ -148,7 +148,6 @@ const ministryScheduleEventResponseSchema = z.object({
       sectorName: z.string(),
       roleName: z.string(),
       volunteerDisplayName: z.string().optional(),
-      confirmationState: z.enum(['pending', 'confirmed', 'declined', 'open']),
     }),
   ),
 });
@@ -159,6 +158,9 @@ type MinistryScheduleEventResponse = z.infer<
 export const ministryScheduleResponseSchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
+  cycleId: z.string().optional(),
+  cycleName: z.string().optional(),
+  published: z.boolean(),
   events: z.array(ministryScheduleEventResponseSchema),
 });
 export type MinistryScheduleResponse = z.infer<
@@ -281,6 +283,9 @@ function ministryScheduleToResponse(
   return {
     ministryId: schedule.ministryId,
     ministryName: schedule.ministryName,
+    cycleId: schedule.cycleId,
+    cycleName: schedule.cycleName,
+    published: schedule.published,
     events: schedule.events.map(ministryScheduleEventToResponse),
   };
 }

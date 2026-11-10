@@ -5157,15 +5157,12 @@ export type GetMyAssignments200 = {
   assignments: GetMyAssignments200AssignmentsItem[];
 };
 
-export type GetMinistrySchedule200EventsItemRowsItemConfirmationState = typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState[keyof typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState];
-
-
-export const GetMinistrySchedule200EventsItemRowsItemConfirmationState = {
-  pending: 'pending',
-  confirmed: 'confirmed',
-  declined: 'declined',
-  open: 'open',
-} as const;
+export type GetMinistryScheduleParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+cycleId?: string;
+};
 
 export type GetMinistrySchedule200EventsItemRowsItem = {
   eventTimeBlockId: string;
@@ -5173,7 +5170,6 @@ export type GetMinistrySchedule200EventsItemRowsItem = {
   sectorName: string;
   roleName: string;
   volunteerDisplayName?: string;
-  confirmationState: GetMinistrySchedule200EventsItemRowsItemConfirmationState;
 };
 
 export type GetMinistrySchedule200EventsItem = {
@@ -5190,6 +5186,9 @@ export type GetMinistrySchedule200EventsItem = {
 export type GetMinistrySchedule200 = {
   ministryId: string;
   ministryName: string;
+  cycleId?: string;
+  cycleName?: string;
+  published: boolean;
   events: GetMinistrySchedule200EventsItem[];
 };
 

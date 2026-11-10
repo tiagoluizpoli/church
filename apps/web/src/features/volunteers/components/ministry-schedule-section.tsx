@@ -1,4 +1,3 @@
-import { appConfig } from '@church/app-config';
 import { useEffect, useState } from 'react';
 import type {
   DashboardMinistryOption,
@@ -33,24 +32,6 @@ export interface MinistryScheduleSectionProps {
   onSelectMinistry: (ministryId: string) => void;
 }
 
-function getConfirmationStateLabel(
-  state: DashboardMinistryScheduleEvent['rows'][number]['confirmationState'],
-): string {
-  if (state === 'confirmed') {
-    return 'Confirmed';
-  }
-
-  if (state === 'declined') {
-    return 'Declined';
-  }
-
-  if (state === 'pending') {
-    return 'Pending';
-  }
-
-  return 'Open';
-}
-
 export function MinistryScheduleSection({
   ministries,
   selectedMinistryId,
@@ -59,7 +40,6 @@ export function MinistryScheduleSection({
   isLoading,
   onSelectMinistry,
 }: MinistryScheduleSectionProps) {
-  const { assignmentResponse } = appConfig.parked;
   const { churchTimezone } = useTimezone();
   const [expandedEventId, setExpandedEventId] = useState<string | undefined>();
 
@@ -189,14 +169,6 @@ export function MinistryScheduleSection({
                                 Volunteer: {row.volunteerDisplayName ?? 'Open'}
                               </div>
                             </div>
-
-                            {assignmentResponse ? (
-                              <Badge variant="outline">
-                                {getConfirmationStateLabel(
-                                  row.confirmationState,
-                                )}
-                              </Badge>
-                            ) : null}
                           </div>
                         </div>
                       ))}

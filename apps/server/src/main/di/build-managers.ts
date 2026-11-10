@@ -276,6 +276,7 @@ export function buildManagers({
       assignmentRepo: assignmentRepository,
       unavailableShiftRepo: unavailableShiftRepository,
       notificationRepo: notificationRepository,
+      cycleRepo: cycleRepository,
       eventRepo: eventRepository,
       shiftRepo: shiftRepository,
       ministryRepo: ministryRepository,

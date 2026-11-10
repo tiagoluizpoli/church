@@ -12520,6 +12520,13 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: query
+          name: cycleId
+          required: false
+        - schema:
+            type: string
           in: path
           name: ministryId
           required: true
@@ -12535,6 +12542,12 @@ paths:
                     type: string
                   ministryName:
                     type: string
+                  cycleId:
+                    type: string
+                  cycleName:
+                    type: string
+                  published:
+                    type: boolean
                   events:
                     type: array
                     items:
@@ -12569,19 +12582,11 @@ paths:
                                 type: string
                               volunteerDisplayName:
                                 type: string
-                              confirmationState:
-                                type: string
-                                enum:
-                                  - pending
-                                  - confirmed
-                                  - declined
-                                  - open
                             required:
                               - eventTimeBlockId
                               - eventTimeBlockLabel
                               - sectorName
                               - roleName
-                              - confirmationState
                             additionalProperties: false
                       required:
                         - eventId
@@ -12594,6 +12599,7 @@ paths:
                 required:
                   - ministryId
                   - ministryName
+                  - published
                   - events
                 additionalProperties: false
         "404":

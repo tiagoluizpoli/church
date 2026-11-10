@@ -35,6 +35,7 @@ import type {
   CheckContext,
   CheckShiftRow,
 } from '../domain/contracts/infrastructure/availability-check.repository';
+import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
@@ -141,6 +142,7 @@ interface DbVolunteerManagerDependencies {
   assignmentRepo: AssignmentRepository;
   unavailableShiftRepo: UnavailableShiftRepository;
   notificationRepo: NotificationRepository;
+  cycleRepo: CycleRepository;
   eventRepo: EventRepository;
   shiftRepo: ShiftRepository;
   ministryRepo: MinistryRepository;
@@ -156,6 +158,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   private readonly assignmentRepo: AssignmentRepository;
   private readonly unavailableShiftRepo: UnavailableShiftRepository;
   private readonly notificationRepo: NotificationRepository;
+  private readonly cycleRepo: CycleRepository;
   private readonly eventRepo: EventRepository;
   private readonly shiftRepo: ShiftRepository;
   private readonly ministryRepo: MinistryRepository;
@@ -171,6 +174,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     assignmentRepo,
     unavailableShiftRepo,
     notificationRepo,
+    cycleRepo,
     eventRepo,
     shiftRepo,
     ministryRepo,
@@ -184,6 +188,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     this.assignmentRepo = assignmentRepo;
     this.unavailableShiftRepo = unavailableShiftRepo;
     this.notificationRepo = notificationRepo;
+    this.cycleRepo = cycleRepo;
     this.eventRepo = eventRepo;
     this.shiftRepo = shiftRepo;
     this.ministryRepo = ministryRepo;
@@ -422,7 +427,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   async getMinistrySchedule(
     input: GetMinistryScheduleInput,
   ): Promise<MinistrySchedule> {
-    const { churchId, ministryId, volunteerId } = input;
+    const { churchId, ministryId, volunteerId, cycleId } = input;
 
     const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds({
       churchId,
@@ -432,8 +437,9 @@ export class DbVolunteerManager implements IVolunteerManager {
       throw new IsolationBreachError();
     }
 
-    const [ministry, participations, roles] = await Promise.all([
+    const [ministry, cycle, participations, roles] = await Promise.all([
       this.ministryRepo.getById({ churchId, id: ministryId }),
+      cycleId ? this.cycleRepo.getById({ churchId, cycleId }) : undefined,
       this.participationRepo.listByMinistry({
         churchId,
         ministryId,
@@ -441,7 +447,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       }),
       this.roleRepo.listByMinistry({ churchId, ministryId }),
     ]);
-    const eventData = await Promise.all(
+    const allEventData = await Promise.all(
       participations.map(async (participation) => ({
         event: await this.eventRepo.getById({
           churchId,
@@ -461,6 +467,9 @@ export class DbVolunteerManager implements IVolunteerManager {
         }),
       })),
     );
+    const eventData = cycleId
+      ? allEventData.filter((item) => item.event.cycleId === cycleId)
+      : allEventData;
     const assignments = eventData
       .flatMap((item) => item.assignments)
       .filter((assignment) => isPublishedStatus(assignment.status));
@@ -481,10 +490,14 @@ export class DbVolunteerManager implements IVolunteerManager {
     return {
       ministryId: ministry.id as string,
       ministryName: ministry.name,
+      cycleId: cycle ? (cycle.id as string) : undefined,
+      cycleName: cycle?.name,
+      // No published MinistryParticipation in the Cycle yet: "not published".
+      published: eventData.length > 0,
       events: eventData.map(
         ({ event, shifts, requirements, assignments: eventAssignments }) => {
           const activeAssignments = eventAssignments.filter((assignment) =>
-            isPublishedStatus(assignment.status),
+            countsTowardRequirementCoverage({ status: assignment.status }),
           );
           const rows = shifts.flatMap((shift) => {
             const shiftAssignments = activeAssignments.filter(
@@ -512,14 +525,9 @@ export class DbVolunteerManager implements IVolunteerManager {
                     roleNames.get(requirement.roleId as string) ??
                     'Unknown role',
                   volunteerDisplayName,
-                  confirmationState: isPublishedStatus(assignment.status)
-                    ? assignment.status
-                    : 'pending',
                 };
               });
-              const filledCount = boundAssignments.filter((assignment) =>
-                countsTowardRequirementCoverage({ status: assignment.status }),
-              ).length;
+              const filledCount = boundAssignments.length;
               const openRows = Array.from(
                 { length: Math.max(0, requirement.peopleNeeded - filledCount) },
                 () => ({
@@ -529,7 +537,6 @@ export class DbVolunteerManager implements IVolunteerManager {
                   roleName:
                     roleNames.get(requirement.roleId as string) ??
                     'Unknown role',
-                  confirmationState: 'open' as const,
                 }),
               );
               return [...assignmentRows, ...openRows];

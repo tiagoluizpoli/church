@@ -45,7 +45,6 @@ describe('MinistryScheduleSection', () => {
                 sectorName: 'Main Door',
                 roleName: 'Usher',
                 volunteerDisplayName: 'Alice T.',
-                confirmationState: 'confirmed',
               },
               {
                 eventTimeBlockId: 'event-time-block-1',
@@ -53,7 +52,6 @@ describe('MinistryScheduleSection', () => {
                 sectorName: 'Side Door',
                 roleName: 'Usher',
                 volunteerDisplayName: 'Open',
-                confirmationState: 'open',
               },
             ],
           },
@@ -73,7 +71,7 @@ describe('MinistryScheduleSection', () => {
 
     expect(screen.getByText('Volunteer: Alice T.')).toBeInTheDocument();
     expect(screen.queryByText(/^Team:/)).not.toBeInTheDocument();
-    expect(screen.getByText('Confirmed')).toBeInTheDocument();
+    expect(screen.queryByText('Confirmed')).not.toBeInTheDocument();
     expect(screen.getByText('Usher · Main Door')).toBeInTheDocument();
     expect(screen.getByText('Usher · Side Door')).toBeInTheDocument();
   });
@@ -133,7 +131,6 @@ describe('MinistryScheduleSection', () => {
                 sectorName: 'Main Door',
                 roleName: 'Usher',
                 volunteerDisplayName: 'Alice T.',
-                confirmationState: 'confirmed',
               },
             ],
           },

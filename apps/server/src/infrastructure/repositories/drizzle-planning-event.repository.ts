@@ -22,6 +22,7 @@ import {
   lt,
   notInArray,
   type SQL,
+  sql,
 } from 'drizzle-orm';
 import {
   AssignmentId,
@@ -38,6 +39,8 @@ import type {
   ListCycleEventsInput,
   ListMoveClashCandidatesInput,
   ListMoveScopeAssignmentsInput,
+  LockEventParticipationsInput,
+  MoveEventTimeBlocksInput,
   PlanningEventRepository,
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
@@ -383,5 +386,58 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       shiftStart: fromDate({ date: row.shiftStart }),
       shiftEnd: fromDate({ date: row.shiftEnd }),
     }));
+  }
+
+  async lockParticipations({
+    churchId,
+    eventId,
+    tx,
+  }: LockEventParticipationsInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .select({ id: ministryParticipation.id })
+      .from(ministryParticipation)
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          eq(ministryParticipation.eventId, eventId),
+        ),
+      )
+      .orderBy(asc(ministryParticipation.id))
+      .for('no key update');
+  }
+
+  async moveEventTimeBlocks({
+    churchId,
+    eventTimeBlockIds,
+    deltaMs,
+    tx,
+  }: MoveEventTimeBlocksInput): Promise<void> {
+    if (eventTimeBlockIds.length === 0) return;
+    const client = getClient({ db: this.db, tx });
+    const delta = sql`(${deltaMs} * interval '1 millisecond')`;
+    await client
+      .update(eventTimeBlock)
+      .set({
+        startTime: sql`${eventTimeBlock.startTime} + ${delta}`,
+        endTime: sql`${eventTimeBlock.endTime} + ${delta}`,
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
+          inArray(eventTimeBlock.id, eventTimeBlockIds),
+        ),
+      );
+    await client
+      .update(shift)
+      .set({
+        startTime: sql`${shift.startTime} + ${delta}`,
+        endTime: sql`${shift.endTime} + ${delta}`,
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      );
   }
 }

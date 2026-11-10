@@ -24,6 +24,7 @@ import type { VolunteerRepository } from '../domain/contracts/infrastructure/vol
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
+import { removeAssignment } from './remove-assignment';
 
 interface CreateParticipationAssignmentTransactionInput {
   input: CreateParticipationAssignmentInput;
@@ -87,6 +88,13 @@ export class DbAssignmentManager implements IAssignmentManager {
     input: CreateParticipationAssignmentInput,
   ): Promise<CreateParticipationAssignmentResult> {
     return this.unitOfWork.run(async (tx) => {
+      // Overlap is checked against Shift bounds an Event move rewrites, so
+      // creation shares move confirmation's Church lock, taken before any
+      // Participation lock (every holder of both takes the Church lock first).
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
       // Read unlocked only to name the Participation row. Saves and Publish
       // take the same lock before reading the committed Shift graph.
       const { participationId } = await this.shiftRepository.getById({
@@ -129,23 +137,15 @@ export class DbAssignmentManager implements IAssignmentManager {
       });
       const currentInstant = now();
       assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
-      await this.auditRepo.create({
-        churchId,
-        input: {
-          assignmentId,
-          actorId,
-          action: 'deleted',
-        },
-        tx,
-      });
-      await this.swapRequestRepo.closeOpenByAssignment({
+      await removeAssignment({
         churchId,
         assignmentId,
-        status: 'covered',
-        closedBy: actorId,
+        actorId,
         tx,
+        assignmentRepository: this.assignmentRepo,
+        auditRepository: this.auditRepo,
+        swapRequestRepository: this.swapRequestRepo,
       });
-      await this.assignmentRepo.deleteById({ churchId, assignmentId, tx });
     });
   }
 
@@ -154,6 +154,11 @@ export class DbAssignmentManager implements IAssignmentManager {
   ): Promise<Assignment> {
     const nextAssignment = await this.unitOfWork.run(
       async (tx): Promise<Assignment> => {
+        // Creates an Assignment: the same Church lock as creation.
+        await this.cycleRepository.acquireChurchLock({
+          churchId: input.churchId,
+          tx,
+        });
         const initial = await this.assignmentRepo.getById({
           churchId: input.churchId,
           assignmentId: input.assignmentId,

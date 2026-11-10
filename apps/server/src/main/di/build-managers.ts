@@ -275,6 +275,9 @@ export function buildManagers({
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,
+      assignmentRepository,
+      auditRepository: assignmentAuditRepository,
+      swapRequestRepository,
     });
   const volunteerManager =
     overrides.volunteerManager ??

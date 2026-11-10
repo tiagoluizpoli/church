@@ -4,6 +4,7 @@ import type {
   EventId,
   EventTemplateId,
   EventTimeBlockId,
+  UserId,
 } from '../../branded-ids';
 import type { Event } from '../../entities/event';
 import type { EventTimeBlock } from '../../entities/event-time-block';
@@ -133,6 +134,18 @@ export interface PlanningMovePreview {
   clashes: MoveClash[];
 }
 
+export interface ConfirmPlanningMoveManagerInput
+  extends PlanningMoveManagerInput {
+  /** The ChurchAdmin who confirms; audits the withdrawals. */
+  actingUserId: UserId;
+}
+
+/** The moved graph and the clashing Assignments confirm actually withdrew. */
+export interface PlanningMoveResult {
+  graph: PlanningEventGraph;
+  withdrawn: MoveClash[];
+}
+
 export interface IPlanningEventManager {
   generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
@@ -161,4 +174,12 @@ export interface IPlanningEventManager {
   previewMove(
     input: PreviewPlanningMoveManagerInput,
   ): Promise<PlanningMovePreview>;
+  /**
+   * Recalculates the move under the Church lock (shared with Assignment
+   * creation), moves the scope and withdraws the clashing Assignments, all in
+   * one transaction.
+   */
+  confirmMove(
+    input: ConfirmPlanningMoveManagerInput,
+  ): Promise<PlanningMoveResult>;
 }

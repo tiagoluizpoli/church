@@ -174,6 +174,10 @@ function createPlanningEventHarness() {
     ...dependencies,
     templateRepository,
     eventTimeBlockRepository,
+    // Move confirmation is covered by the HTTP suite on real PostgreSQL.
+    assignmentRepository: {} as never,
+    auditRepository: {} as never,
+    swapRequestRepository: {} as never,
   });
   return {
     manager,

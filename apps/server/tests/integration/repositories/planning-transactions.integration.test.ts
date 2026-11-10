@@ -5,6 +5,8 @@ import { DbEventTemplateManager } from '@/application/db-event-template-manager'
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import { ChurchId } from '@/domain/branded-ids';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -14,6 +16,7 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -80,6 +83,15 @@ function createManagers() {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,
+      assignmentRepository: new DrizzleAssignmentRepository({
+        db: schedulingTestDb,
+      }),
+      auditRepository: new DrizzleAssignmentAuditRepository({
+        db: schedulingTestDb,
+      }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({
+        db: schedulingTestDb,
+      }),
     }),
     templateManager: new DbEventTemplateManager({
       templateRepository,

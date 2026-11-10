@@ -1,31 +1,42 @@
 import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
 import {
+  assignment,
   ministryParticipation,
   outboxMessage,
   scheduleLastTold,
   session,
+  shift,
 } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { env } from '@church/env/server';
 import { parseInstant, setTestClock } from '@church/time';
 import { makeSignature } from 'better-auth/crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, lt, ne } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { AssignController } from '@/api/controllers/assign-controller';
+import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -58,30 +69,54 @@ beforeAll(async () => {
     outboxRepository: new DrizzleOutboxRepository({ db }),
   });
   const managers = createSchedulingManagers({ notifications });
+  const authorityGuard = new AuthorityGuard({
+    manager: new DbAuthorityManager({
+      actorRepository,
+      scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
+      eventRepository: new DrizzleEventRepository({ db }),
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      ministryRepository,
+    }),
+  });
+  const activeChurchResolver = new DbActiveChurchResolver({
+    actorRepository,
+    membershipRepository: new DrizzleChurchMembershipRepository({ db }),
+    churchRepository: new DrizzleChurchRepository({ db }),
+    unitOfWork,
+  });
+  // Move confirm races Assignment creation through the real routes.
+  const adminController = new ChurchAdminController({
+    cycleManager: {} as never,
+    eventTemplateManager: {} as never,
+    ministryManager: {} as never,
+    planningEventManager: new DbPlanningEventManager({
+      cycleRepository: new DrizzleCycleRepository({ db }),
+      eventRepository: new DrizzlePlanningEventRepository({ db }),
+      templateRepository: new DrizzleEventTemplateRepository({ db }),
+      churchRepository: new DrizzleChurchRepository({ db }),
+      unitOfWork,
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      assignmentRepository: new DrizzleAssignmentRepository({ db }),
+      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+    }),
+    activeChurchResolver,
+    authorityGuard,
+  });
   const controller = new AssignController({
     participationManager: managers.participationManager,
     assignmentManager: managers.assignmentManager,
-    activeChurchResolver: new DbActiveChurchResolver({
-      actorRepository,
-      membershipRepository: new DrizzleChurchMembershipRepository({ db }),
-      churchRepository: new DrizzleChurchRepository({ db }),
-      unitOfWork,
-    }),
-    authorityGuard: new AuthorityGuard({
-      manager: new DbAuthorityManager({
-        actorRepository,
-        scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
-        eventRepository: new DrizzleEventRepository({ db }),
-        eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-        ministryRepository,
-      }),
-    }),
+    activeChurchResolver,
+    authorityGuard,
     config: appConfig,
   });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
         prefix: controller.prefix,
+      });
+      instance.register(adminController.registerRoutes.bind(adminController), {
+        prefix: adminController.prefix,
       });
     },
     { prefix: '/api/v1' },
@@ -275,9 +310,12 @@ async function readBackendPid(client: pg.Client): Promise<number> {
 async function waitForBlockedRequest(
   client: pg.Client,
   blockerPid: number,
-): Promise<number> {
+  /** Stops waiting, answering undefined, once the request settled unblocked. */
+  settled: () => boolean = () => false,
+): Promise<number | undefined> {
   const deadline = performance.now() + 10_000;
   while (performance.now() < deadline) {
+    if (settled()) return undefined;
     await client.query('SELECT pg_stat_clear_snapshot()');
     const result = await client.query<{ pid: number }>(
       `SELECT pid FROM pg_stat_activity WHERE wait_event_type = 'Lock'
@@ -386,6 +424,7 @@ it('reassign keeps the Sector committed by a concurrent successful move', async 
       .then((result) => result);
     pending.push(move);
     const movePid = await waitForBlockedRequest(blocker, blockerPid);
+    if (movePid === undefined) throw new Error('Move never paused');
     const reassign = app
       .inject({
         method: 'PATCH',
@@ -430,3 +469,160 @@ it('reassign keeps the Sector committed by a concurrent successful move', async 
     await blocker.end();
   }
 });
+
+/** Every pair of active Assignments of one Volunteer whose Shifts strictly overlap. */
+async function overlappingActivePairs() {
+  const other = alias(assignment, 'other_assignment');
+  const otherShift = alias(shift, 'other_shift');
+  const active = ['draft', 'pending', 'confirmed'] as const;
+  return db
+    .select({ left: assignment.id, right: other.id })
+    .from(assignment)
+    .innerJoin(shift, eq(shift.id, assignment.shiftId))
+    .innerJoin(
+      other,
+      and(
+        eq(other.volunteerId, assignment.volunteerId),
+        ne(other.id, assignment.id),
+      ),
+    )
+    .innerJoin(otherShift, eq(otherShift.id, other.shiftId))
+    .where(
+      and(
+        inArray(assignment.status, [...active]),
+        inArray(other.status, [...active]),
+        lt(shift.startTime, otherShift.endTime),
+        lt(otherShift.startTime, shift.endTime),
+      ),
+    );
+}
+
+/**
+ * The Replacement serves the 2 August Shift that moves onto 9 August
+ * 09:00–11:00, and is being added to the 9 August Shift at that same time:
+ * a Shift outside the moved scope, whose Participation the move never locks.
+ */
+async function seedMoveRace() {
+  const seed = await seedLockedAssignment();
+  const later = await createSchedulingPhase3EventGraph({
+    churchId: seed.churchAId,
+    cycleId: seed.cycle.id,
+    ministryId: seed.ministryAId,
+    title: 'Next Sunday',
+    start: new Date('2026-08-09T09:00:00Z'),
+    end: new Date('2026-08-09T11:00:00Z'),
+    status: 'scheduled',
+  });
+  const laterShift = await seedShift({
+    churchId: seed.churchAId,
+    participationId: later.participation.id,
+    eventTimeBlockId: later.eventTimeBlock.id,
+    label: 'Morning',
+    startTime: later.eventTimeBlock.startTime,
+    endTime: later.eventTimeBlock.endTime,
+  });
+  const laterRequirement = await seedRequirement({
+    churchId: seed.churchAId,
+    participationId: later.participation.id,
+    shiftId: laterShift.id,
+    roleId: seed.source.roleId,
+    peopleNeeded: 1,
+  });
+  const moving = await buildAssignment({
+    db,
+    churchId: seed.churchAId,
+    participationId: seed.graph.participation.id,
+    shiftId: seed.shift.id,
+    roleId: seed.source.roleId,
+    volunteerId: seed.replacementId,
+    shiftRequirementId: seed.source.id,
+    status: 'confirmed',
+  });
+  return { ...seed, laterShift, laterRequirement, moving };
+}
+
+for (const first of ['move', 'create'] as const) {
+  it(`move confirm and Assignment creation never store an overlapping pair when ${first} goes first`, async () => {
+    const seed = await seedMoveRace();
+    const blocker = new pg.Client({
+      connectionString: getIntegrationDatabaseUrl(),
+    });
+    await blocker.connect();
+    const pending: Promise<unknown>[] = [];
+    const confirmMove = () =>
+      app
+        .inject({
+          method: 'POST',
+          url: `/api/v1/admin/cycles/${seed.cycle.id}/events/${seed.graph.event.id}/move`,
+          headers: seed.headers,
+          payload: { start: '2026-08-09T09:00:00.000Z' },
+        })
+        .then((result) => result);
+    const createAssignment = () =>
+      app
+        .inject({
+          method: 'POST',
+          url: `/api/v1/assign/shifts/${seed.laterShift.id}/assignments`,
+          headers: seed.headers,
+          payload: {
+            volunteerId: seed.replacementId,
+            shiftRequirementId: seed.laterRequirement.id,
+          },
+        })
+        .then((result) => result);
+    try {
+      await blocker.query('BEGIN');
+      const blockerPid = await readBackendPid(blocker);
+      // Real row locks pause the first request after it read what it decides
+      // on: the move at its Shift write, the creation at its Assignment insert.
+      await blocker.query(
+        first === 'move'
+          ? 'SELECT id FROM shift WHERE id = $1 FOR UPDATE'
+          : 'SELECT id FROM shift_requirement WHERE id = $1 FOR UPDATE',
+        [first === 'move' ? seed.shift.id : seed.laterRequirement.id],
+      );
+      const firstRequest =
+        first === 'move' ? confirmMove() : createAssignment();
+      pending.push(firstRequest);
+      const firstPid = await waitForBlockedRequest(blocker, blockerPid);
+      if (firstPid === undefined) throw new Error('First request never paused');
+      const secondRequest =
+        first === 'move' ? createAssignment() : confirmMove();
+      pending.push(secondRequest);
+      let secondSettled = false;
+      void secondRequest.finally(() => {
+        secondSettled = true;
+      });
+      // Queues behind the shared Church lock; without it the second request
+      // commits here, deciding on the first one's uncommitted state.
+      await waitForBlockedRequest(blocker, firstPid, () => secondSettled);
+      await blocker.query('COMMIT');
+      const [move, create] =
+        first === 'move'
+          ? [await firstRequest, await secondRequest]
+          : [await secondRequest, await firstRequest];
+
+      expect(move.statusCode).toBe(200);
+      expect(await overlappingActivePairs()).toEqual([]);
+      if (first === 'move') {
+        // Created after the move: the moved Shift now overlaps the new one.
+        expect(create.statusCode).toBe(409);
+        expect(create.json()).toMatchObject({
+          error: 'HARD_CONSTRAINT_VIOLATION',
+          reason: 'DUPLICATE_ASSIGNMENT',
+        });
+        expect(move.json().withdrawn).toEqual([]);
+      } else {
+        // Created before the move: confirm withdraws the moved Assignment.
+        expect(create.statusCode).toBe(201);
+        expect(move.json().withdrawn).toEqual([
+          expect.objectContaining({ assignmentId: seed.moving.id }),
+        ]);
+      }
+    } finally {
+      await blocker.query('ROLLBACK');
+      await Promise.allSettled(pending);
+      await blocker.end();
+    }
+  });
+}

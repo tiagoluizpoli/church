@@ -54,8 +54,10 @@ import {
   createPlanningEventBodySchema,
   eventGraphMapper,
   eventGraphResponseSchema,
+  eventMoveMapper,
   eventMovePreviewMapper,
   eventMovePreviewResponseSchema,
+  eventMoveResponseSchema,
   type MovePlanningEventBody,
   movePlanningEventBodySchema,
   type UpdatePlanningEventBody,
@@ -703,6 +705,37 @@ export class ChurchAdminController implements FastifyController {
           start: dateFromInstantString({ value: body.start }),
         });
         return reply.send(eventMovePreviewMapper.toResponse(preview));
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/move',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'movePlanningEvent',
+          summary: 'Move an Event',
+          description:
+            'Move a scheduled Event of a Sent Cycle to a new start. Recalculates the clashes under the Church lock shared with Assignment creation (never trusting a preview), applies one delta to the Event, its active EventTimeBlocks and their Shifts, and withdraws only the active Assignments that would strictly overlap another active Assignment of the Church: each is audited, its open SwapRequest closes as covered, and it is deleted. Kept Assignments keep their identity, UnavailableShifts and open SwapRequests; last-told snapshots are untouched, so Send updates tells Volunteers. Returns the moved graph and the actual withdrawals. Refuses as preview does.',
+          body: movePlanningEventBodySchema,
+          response: {
+            200: eventMoveResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as MovePlanningEventBody;
+        const result = await this.planningEventManager.confirmMove({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+          start: dateFromInstantString({ value: body.start }),
+          actingUserId: UserId.from(request.userId),
+        });
+        return reply.send(eventMoveMapper.toResponse(result));
       },
     );
 

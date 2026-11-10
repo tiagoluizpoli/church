@@ -97,6 +97,20 @@ export interface ListMoveClashCandidatesInput {
   tx?: TransactionContext;
 }
 
+export interface LockEventParticipationsInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  tx: TransactionContext;
+}
+
+export interface MoveEventTimeBlocksInput {
+  churchId: ChurchId;
+  eventTimeBlockIds: EventTimeBlockId[];
+  /** Added to each block's and each of its Shifts' start and end. */
+  deltaMs: number;
+  tx: TransactionContext;
+}
+
 export interface PlanningEventRepository {
   createEvent(input: CreatePlanningEventInput): Promise<Event>;
   updateEvent(input: UpdatePlanningEventInput): Promise<Event>;
@@ -124,4 +138,12 @@ export interface PlanningEventRepository {
   listMoveClashCandidates(
     input: ListMoveClashCandidatesInput,
   ): Promise<MoveClashCandidate[]>;
+  /**
+   * Row-locks (`FOR NO KEY UPDATE`, ascending id) the Event's
+   * MinistryParticipations, the lock Assignment removal and preparation
+   * saves take; needs `tx`.
+   */
+  lockParticipations(input: LockEventParticipationsInput): Promise<void>;
+  /** Shifts the blocks and all of their Shifts by one delta. */
+  moveEventTimeBlocks(input: MoveEventTimeBlocksInput): Promise<void>;
 }

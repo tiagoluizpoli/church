@@ -25,17 +25,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
-import { ChurchId, CycleId, MinistryId, UserId } from '@/domain/branded-ids';
+import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import {
+  ChurchId,
+  CycleId,
+  EventId,
+  MinistryId,
+  UserId,
+} from '@/domain/branded-ids';
 import type { AvailabilityEmail } from '@/domain/contracts/infrastructure/email-sender';
 import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/notification.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import {
+  DrizzleAssignmentAuditRepository,
+  DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
+  DrizzleEventTemplateRepository,
+  DrizzleEventTimeBlockRepository,
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
   DrizzleNotificationRepository,
+  DrizzlePlanningEventRepository,
+  DrizzleSwapRequestRepository,
+  DrizzleUnitOfWork,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
@@ -1161,6 +1175,195 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     expect(later.length).toBeGreaterThan(0);
     expect(JSON.stringify(later.map((row) => row.payload))).not.toContain(
       'swapRequestCovered',
+    );
+  });
+
+  it('an Event move tells Volunteers nothing until Send updates, which lists the kept Assignment as moved and the clash-withdrawn one as removed', async () => {
+    const kept = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const clashing = await seedMember({
+      name: 'Bruno',
+      email: 'bruno@test.com',
+    });
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    interface SeedBookingInput {
+      participation: string;
+      eventTimeBlock: string;
+      volunteerId: string;
+      startTime: string;
+      endTime: string;
+    }
+    const seedBooking = async ({
+      participation,
+      eventTimeBlock,
+      volunteerId,
+      startTime,
+      endTime,
+    }: SeedBookingInput) => {
+      const booked = await seedShift({
+        churchId: ids.churchId,
+        participationId: participation,
+        eventTimeBlockId: eventTimeBlock,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        label: 'Shift',
+      });
+      const requirement = await seedRequirement({
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        roleId: role.id,
+        peopleNeeded: 1,
+      });
+      return buildAssignment({
+        db: schedulingTestDb,
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        shiftRequirementId: requirement.id,
+        volunteerId,
+        roleId: role.id,
+        status: 'confirmed',
+      });
+    };
+    // The Vigil (25 Dec 02:30–04:00 UTC) moves by +31h to 26 Dec 09:30–11:00.
+    await seedBooking({
+      participation: participationId,
+      eventTimeBlock: eventTimeBlockId,
+      volunteerId: kept.volunteer.id,
+      startTime: '2026-12-25T02:30:00.000Z',
+      endTime: '2026-12-25T03:15:00.000Z',
+    });
+    const withdrawn = await seedBooking({
+      participation: participationId,
+      eventTimeBlock: eventTimeBlockId,
+      volunteerId: clashing.volunteer.id,
+      startTime: '2026-12-25T03:15:00.000Z',
+      endTime: '2026-12-25T04:00:00.000Z',
+    });
+    // Bruno also serves Christmas Morning 10:00–11:00, overlapping 10:15–11:00.
+    const morning = await createSchedulingPhase3EventGraph({
+      churchId: ids.churchId,
+      cycleId,
+      ministryId: ids.ministryId,
+      title: 'Christmas Morning',
+      start: new Date('2026-12-26T10:00:00.000Z'),
+      end: new Date('2026-12-26T11:00:00.000Z'),
+      status: 'scheduled',
+    });
+    await seedBooking({
+      participation: morning.participation.id,
+      eventTimeBlock: morning.eventTimeBlock.id,
+      volunteerId: clashing.volunteer.id,
+      startTime: '2026-12-26T10:00:00.000Z',
+      endTime: '2026-12-26T11:00:00.000Z',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, ids.ministryId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+    const snapshotsBefore = await schedulingTestDb
+      .select()
+      .from(scheduleLastTold);
+    const rowsBefore = await outboxRows();
+    const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
+    const planning = new DbPlanningEventManager({
+      cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+      eventRepository: new DrizzlePlanningEventRepository({
+        db: schedulingTestDb,
+      }),
+      templateRepository: new DrizzleEventTemplateRepository({
+        db: schedulingTestDb,
+      }),
+      churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+      unitOfWork,
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
+        db: schedulingTestDb,
+      }),
+      assignmentRepository: new DrizzleAssignmentRepository({
+        db: schedulingTestDb,
+      }),
+      auditRepository: new DrizzleAssignmentAuditRepository({
+        db: schedulingTestDb,
+      }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({
+        db: schedulingTestDb,
+      }),
+    });
+
+    const moved = await planning.confirmMove({
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      eventId: EventId.from(eventId),
+      scope: { kind: 'event' },
+      start: new Date('2026-12-26T09:30:00.000Z'),
+      actingUserId: UserId.from(ids.adminUserId),
+    });
+
+    expect(moved.withdrawn.map(({ assignmentId }) => assignmentId)).toEqual([
+      withdrawn.id,
+    ]);
+    // The move keeps the last-told snapshots and queues no Volunteer message.
+    expect(await schedulingTestDb.select().from(scheduleLastTold)).toEqual(
+      snapshotsBefore,
+    );
+    expect(await outboxRows()).toEqual(rowsBefore);
+
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    const updates = (await outboxRows())
+      .map((row) => row.payload)
+      .filter(
+        (payload) =>
+          typeof payload === 'object' &&
+          payload !== null &&
+          'kind' in payload &&
+          payload.kind === 'schedule_updated',
+      );
+    expect(updates).toHaveLength(2);
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: kept.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'moved',
+              before: expect.objectContaining({
+                startsAt: '2026-12-25T02:30:00.000Z',
+              }),
+              after: expect.objectContaining({
+                startsAt: '2026-12-26T09:30:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: clashing.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                startsAt: '2026-12-25T03:15:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
     );
   });
 

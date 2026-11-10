@@ -10,6 +10,7 @@ import {
   EventTemplateId,
   EventTimeBlockId,
   TemplateTimeBlockId,
+  UserId,
 } from '@/domain/branded-ids';
 import { Church } from '@/domain/entities/church';
 import { Cycle, type CycleState } from '@/domain/entities/cycle';
@@ -40,6 +41,7 @@ import {
 } from '@/tests/test-support/repository-contract-fakes';
 
 const churchId = ChurchId.from('church-1');
+const actingUserId = UserId.from('user-1');
 const cycleId = CycleId.from('cycle-1');
 const eventId = EventId.from('event-1');
 const eventTimeBlockId = EventTimeBlockId.from('block-1');
@@ -174,6 +176,11 @@ function createPlanningEventHarness() {
     ...dependencies,
     templateRepository,
     eventTimeBlockRepository,
+    recipients: {
+      ministryLeadersOrAdmins: vi.fn(),
+      eventChangedRecipients: vi.fn().mockResolvedValue([]),
+    },
+    notifications: { enqueue: vi.fn() },
   });
   return {
     manager,
@@ -577,6 +584,7 @@ describe('DbPlanningEventManager', () => {
     const { manager, eventRepository } = createPlanningEventHarness();
     const result = await manager.createEvent({
       churchId,
+      actingUserId,
       cycleId,
       title: 'Service',
       start,
@@ -589,6 +597,7 @@ describe('DbPlanningEventManager', () => {
     );
     expect(eventRepository.seedParticipations).toHaveBeenCalledWith({
       churchId,
+      cycleId,
       eventId,
       tx,
     });
@@ -624,6 +633,7 @@ describe('DbPlanningEventManager', () => {
     const localEnd = new Date('2099-01-03T02:59:59.999Z');
     const result = await manager.createEvent({
       churchId,
+      actingUserId,
       cycleId,
       title: 'Local day',
       start: localStart,
@@ -644,6 +654,7 @@ describe('DbPlanningEventManager', () => {
     await expect(
       manager.createEvent({
         churchId,
+        actingUserId,
         cycleId,
         title: 'Service',
         start,
@@ -659,6 +670,7 @@ describe('DbPlanningEventManager', () => {
     await expect(
       manager.createEvent({
         churchId,
+        actingUserId,
         cycleId,
         title: 'Outside',
         start: new Date('2099-03-01T09:00:00Z'),
@@ -678,6 +690,7 @@ describe('DbPlanningEventManager', () => {
     await expect(
       manager.createEvent({
         churchId,
+        actingUserId,
         cycleId,
         title: 'Past',
         start,

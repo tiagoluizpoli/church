@@ -8,6 +8,7 @@ import type {
   CycleReadyToPrepareEmail,
   EmailLocale,
   EmailPayload,
+  EventChangedEmail,
   MinistryInvitationEmail,
   PasswordResetEmail,
   PreparedEmail,
@@ -24,7 +25,7 @@ import {
   formatEmailDuration,
   renderEmailLayout,
 } from './email-layout';
-import { formatShiftLine } from './email-shift-line';
+import { formatEventWhen, formatShiftLine } from './email-shift-line';
 
 export interface PrepareEmailFromInput {
   payload: EmailPayload;
@@ -88,6 +89,13 @@ export function prepareEmail({
         locale,
         from: sender(payload.churchName),
         content: cycleReadyToPrepareContent({ payload, locale }),
+      });
+    case 'event.changed':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: eventChangedContent({ payload, locale }),
       });
     case 'swap-request.answered':
       return prepareLayoutEmail({
@@ -423,6 +431,53 @@ function cycleReadyToPrepareContent({
     ],
     action: {
       label: m.notification_cycle_ready_to_prepare_action({}, options),
+      url: payload.actionUrl,
+    },
+    footer: m.email_footer_membership({ churchName }, options),
+  };
+}
+
+interface EventChangedContentInput {
+  payload: EventChangedEmail;
+  locale: EmailLocale;
+}
+
+/** N10 on the bell's catalog keys; `change.kind` picks the wording. */
+function eventChangedContent({
+  payload,
+  locale,
+}: EventChangedContentInput): EmailContent {
+  const options = { locale };
+  const { change, cycleName, eventTitle, ministryNames, churchName } = payload;
+  const firstName = payload.recipientFirstName.trim();
+  const title = m.notification_event_changed_add_title(
+    { cycleName, eventTitle },
+    options,
+  );
+  const when = formatEventWhen({
+    start: change.start,
+    end: change.end,
+    churchTimezone: payload.churchTimezone,
+    locale,
+  });
+  const ministryList = { ministryNames: ministryNames.join(', ') };
+  return {
+    subject: title,
+    greeting: firstName
+      ? m.email_greeting_notification({ firstName }, options)
+      : m.email_greeting_transactional({}, options),
+    heading: title,
+    facts: [
+      m.notification_event_changed_add_body(
+        { adminName: payload.adminName, when },
+        options,
+      ),
+      ministryNames.length === 1
+        ? m.notification_event_changed_ministries_one(ministryList, options)
+        : m.notification_event_changed_ministries_other(ministryList, options),
+    ],
+    action: {
+      label: m.notification_event_changed_action({}, options),
       url: payload.actionUrl,
     },
     footer: m.email_footer_membership({ churchName }, options),

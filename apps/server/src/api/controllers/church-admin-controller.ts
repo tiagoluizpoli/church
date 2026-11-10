@@ -525,9 +525,9 @@ export class ChurchAdminController implements FastifyController {
         schema: {
           tags: ['planning'],
           operationId: 'createPlanningEvent',
-          summary: 'Create a Draft Event with its Time blocks',
+          summary: 'Create an Event with its Time blocks',
           description:
-            'Create a one-off or multi-day Draft Event and every one of its EventTimeBlocks together, with its participation scaffold and no staffing. Its Church-local start day must fall within the inclusive Cycle; its end may spill past it.',
+            'Create a one-off or multi-day Event and every one of its EventTimeBlocks together, with its participation scaffold and no staffing. A Draft Cycle saves a Draft Event; a Sent Cycle saves a scheduled Event, every active Ministry starts Not served at its Schedule stage, and affected leaders get an N10 Notification. Its Church-local start day must fall within the inclusive Cycle; its end may spill past it.',
           body: createPlanningEventBodySchema,
           response: {
             201: eventGraphResponseSchema,
@@ -541,6 +541,7 @@ export class ChurchAdminController implements FastifyController {
         const location = body.location?.trim();
         const graph = await this.planningEventManager.createEvent({
           churchId: ChurchId.from(request.churchId),
+          actingUserId: UserId.from(request.userId),
           cycleId: CycleId.from(cycleId),
           title: body.title,
           location: location ? location : undefined,

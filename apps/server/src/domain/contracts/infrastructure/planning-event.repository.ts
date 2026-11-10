@@ -4,6 +4,7 @@ import type {
   EventId,
   EventTemplateId,
   EventTimeBlockId,
+  MinistryId,
   TemplateTimeBlockId,
 } from '../../branded-ids';
 import type {
@@ -69,6 +70,7 @@ export interface CreatePlanningEventTimeBlockInput {
 
 export interface SeedPlanningParticipationsInput {
   churchId: ChurchId;
+  cycleId: CycleId;
   eventId: EventId;
   tx?: TransactionContext;
 }
@@ -91,5 +93,11 @@ export interface PlanningEventRepository {
   createEventTimeBlock(
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId>;
-  seedParticipations(input: SeedPlanningParticipationsInput): Promise<void>;
+  /**
+   * One participation per active Ministry, at that Ministry's furthest-behind
+   * stage in the Cycle (`preparing` when it has none yet). Returns those Ministries.
+   */
+  seedParticipations(
+    input: SeedPlanningParticipationsInput,
+  ): Promise<{ id: MinistryId; name: string }[]>;
 }

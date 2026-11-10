@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
@@ -80,6 +81,15 @@ function createManagers() {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository: new DrizzleVolunteerRepository({
+          db: schedulingTestDb,
+        }),
+      }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db: schedulingTestDb }),
+      }),
     }),
     templateManager: new DbEventTemplateManager({
       templateRepository,

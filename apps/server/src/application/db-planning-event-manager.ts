@@ -11,7 +11,11 @@ import type {
   ChurchId,
   EventId,
   EventTimeBlockId,
+  MinistryId,
+  UserId,
 } from '../domain/branded-ids';
+import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
+import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
@@ -91,6 +95,16 @@ interface LoadWritableEventTimeBlockInput {
   tx: TransactionContext;
 }
 
+interface EnqueueEventAddedInput {
+  churchId: ChurchId;
+  actingUserId: UserId;
+  church: Church;
+  cycle: Cycle;
+  event: Event;
+  ministries: { id: MinistryId; name: string }[];
+  tx: TransactionContext;
+}
+
 interface DbPlanningEventManagerDependencies {
   cycleRepository: CycleRepository;
   eventRepository: PlanningEventRepository;
@@ -98,6 +112,8 @@ interface DbPlanningEventManagerDependencies {
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
   eventTimeBlockRepository: EventTimeBlockRepository;
+  recipients: IChurchRecipients;
+  notifications: IChurchNotifications;
 }
 
 /**
@@ -114,6 +130,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
+  private readonly recipients: IChurchRecipients;
+  private readonly notifications: IChurchNotifications;
 
   constructor({
     cycleRepository,
@@ -122,6 +140,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     churchRepository,
     unitOfWork,
     eventTimeBlockRepository,
+    recipients,
+    notifications,
   }: DbPlanningEventManagerDependencies) {
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
@@ -129,6 +149,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
+    this.recipients = recipients;
+    this.notifications = notifications;
   }
 
   async generateFromTemplates(
@@ -226,6 +248,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           targetEventId = created.id;
           await this.eventRepository.seedParticipations({
             churchId: input.churchId,
+            cycleId: input.cycleId,
             eventId: targetEventId,
             tx,
           });
@@ -299,8 +322,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
-      // Draft-only: post-Send additions belong to their own operation.
-      if (cycle.state !== 'draft') {
+      const isDraft = cycle.state === 'draft';
+      if (!isDraft && cycle.state !== 'sent') {
         throw new IllegalStateTransitionError({
           from: cycle.state,
           to: 'create-event',
@@ -320,7 +343,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         location: input.location,
         start: input.start,
         end: input.end,
-        status: 'draft',
+        status: isDraft ? 'draft' : 'scheduled',
         tx,
       });
 
@@ -340,8 +363,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         );
       }
 
-      await this.eventRepository.seedParticipations({
+      const ministries = await this.eventRepository.seedParticipations({
         churchId: input.churchId,
+        cycleId: input.cycleId,
         eventId: event.id,
         tx,
       });
@@ -352,6 +376,17 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         blockIds,
         tx,
       });
+      if (!isDraft) {
+        await this.enqueueEventAdded({
+          churchId: input.churchId,
+          actingUserId: input.actingUserId,
+          church,
+          cycle,
+          event,
+          ministries,
+          tx,
+        });
+      }
       return { event, eventTimeBlocks };
     });
   }
@@ -683,6 +718,46 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
     });
+  }
+
+  /** N10 add: one outbox row per recipient, in the planning transaction. */
+  private async enqueueEventAdded({
+    churchId,
+    actingUserId,
+    church,
+    cycle,
+    event,
+    ministries,
+    tx,
+  }: EnqueueEventAddedInput): Promise<void> {
+    const adminName =
+      (await this.churchRepository.findUserName({
+        userId: actingUserId,
+      })) ?? '';
+    const recipients = await this.recipients.eventChangedRecipients({
+      tx,
+      churchId,
+      ministryIds: ministries.map(({ id }) => id),
+      actingUserId,
+    });
+    for (const { ministryIds, ...recipient } of recipients) {
+      await this.notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [recipient],
+        data: {
+          cycleId: cycle.id,
+          cycleName: cycle.name,
+          eventId: event.id,
+          eventTitle: event.title,
+          adminName,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          ministries: ministries.filter(({ id }) => ministryIds.includes(id)),
+          change: { kind: 'add', start: event.start, end: event.end },
+        },
+      });
+    }
   }
 
   private async ensureCycleWritable({

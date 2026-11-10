@@ -10,7 +10,7 @@ import {
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, eq, isNull } from 'drizzle-orm';
-import type { EventTimeBlockId } from '../../domain/branded-ids';
+import type { EventTimeBlockId, MinistryId } from '../../domain/branded-ids';
 import type {
   CreatePlanningEventInput,
   CreatePlanningEventTimeBlockInput,
@@ -240,10 +240,10 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
 
   async seedParticipations(
     input: SeedPlanningParticipationsInput,
-  ): Promise<void> {
+  ): Promise<{ id: MinistryId; name: string }[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     const ministries = await db
-      .select({ id: ministry.id })
+      .select({ id: ministry.id, name: ministry.name })
       .from(ministry)
       .where(
         and(
@@ -255,15 +255,61 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .for('share');
 
     if (ministries.length === 0) {
-      return;
+      return [];
     }
+
+    // A Sent Cycle's Ministry already has a Schedule stage: join it, so the
+    // new participation is not stranded in `preparing`.
+    const existing = await db
+      .select({
+        ministryId: ministryParticipation.ministryId,
+        state: ministryParticipation.state,
+      })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
+          eq(event.cycleId, input.cycleId),
+        ),
+      );
 
     await db.insert(ministryParticipation).values(
       ministries.map((ministryRow) => ({
         churchId: input.churchId,
         ministryId: ministryRow.id,
         eventId: input.eventId,
+        state: furthestBehindState({
+          states: existing
+            .filter((row) => row.ministryId === ministryRow.id)
+            .map((row) => row.state),
+        }),
       })),
     );
+    return ministries.map((row) => ({
+      id: row.id as MinistryId,
+      name: row.name,
+    }));
   }
+}
+
+const STATES_FURTHEST_BEHIND_FIRST = [
+  'preparing',
+  'availability_requested',
+  'assigning',
+  'published',
+] as const;
+
+interface FurthestBehindStateInput {
+  states: (typeof STATES_FURTHEST_BEHIND_FIRST)[number][];
+}
+
+function furthestBehindState({ states }: FurthestBehindStateInput) {
+  return (
+    STATES_FURTHEST_BEHIND_FIRST.find((state) => states.includes(state)) ??
+    'preparing'
+  );
 }

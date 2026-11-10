@@ -174,6 +174,9 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
     Boolean(selectedCycle) &&
     !cycleIsReadOnly({ cycle: selectedCycle });
   const canEditDraft = isReviewingCycle && selectedCycle?.state === 'draft';
+  const canAddEvent =
+    isReviewingCycle &&
+    (selectedCycle?.state === 'draft' || selectedCycle?.state === 'sent');
 
   return (
     <>
@@ -190,7 +193,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
             {m.cycles_apply_button()}
           </Button>
         ) : null}
-        {canEditDraft && selectedCycle ? (
+        {canAddEvent && selectedCycle ? (
           <Link
             to="/cycles/$cycleId/events/new"
             params={{ cycleId: selectedCycle.id }}

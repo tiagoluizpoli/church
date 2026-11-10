@@ -275,6 +275,11 @@ export function buildManagers({
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository,
+      }),
+      notifications,
     });
   const volunteerManager =
     overrides.volunteerManager ??

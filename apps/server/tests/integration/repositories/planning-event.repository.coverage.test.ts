@@ -244,8 +244,9 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
     await expect(
       repo.seedParticipations({
         churchId: ChurchId.from(emptyChurch.id),
+        cycleId: CycleId.from('88888888-8888-4888-8888-888888888888'),
         eventId: EventId.from('99999999-9999-4999-8999-999999999999'),
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual([]);
   });
 });

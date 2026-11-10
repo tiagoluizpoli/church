@@ -85,6 +85,7 @@ export function resolveNotificationDestination(
         isFallback: false,
       };
     }
+    case 'event_changed':
     case 'cycle_ready_to_prepare': {
       const { cycleId, ministries } = item.data;
       const [only, ...others] = ministries;

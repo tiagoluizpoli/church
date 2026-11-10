@@ -358,7 +358,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     page.getByRole('link', {
       name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
     }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
   await expect(
     page.getByRole('link', {

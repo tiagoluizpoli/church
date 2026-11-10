@@ -4,6 +4,7 @@ import type {
   EventId,
   EventTemplateId,
   EventTimeBlockId,
+  MinistryId,
   TemplateTimeBlockId,
   VolunteerId,
 } from '../../branded-ids';
@@ -72,8 +73,15 @@ export interface CreatePlanningEventTimeBlockInput {
   tx?: TransactionContext;
 }
 
+/** A Ministry that received a participation scaffold. */
+export interface SeededMinistry {
+  id: MinistryId;
+  name: string;
+}
+
 export interface SeedPlanningParticipationsInput {
   churchId: ChurchId;
+  cycleId: CycleId;
   eventId: EventId;
   tx?: TransactionContext;
 }
@@ -115,7 +123,13 @@ export interface PlanningEventRepository {
   createEventTimeBlock(
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId>;
-  seedParticipations(input: SeedPlanningParticipationsInput): Promise<void>;
+  /**
+   * One participation per active Ministry, at that Ministry's furthest-behind
+   * stage in the Cycle (`preparing` when it has none yet). Returns those Ministries.
+   */
+  seedParticipations(
+    input: SeedPlanningParticipationsInput,
+  ): Promise<SeededMinistry[]>;
   /** The active Assignments (draft, pending, confirmed) on the move scope. */
   listMoveScopeAssignments(
     input: ListMoveScopeAssignmentsInput,

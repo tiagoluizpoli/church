@@ -17,6 +17,7 @@ import {
   type AvailabilityDeliveryFacts,
   availabilityNotificationDataSchema,
   cycleReadyToPrepareNotificationDataSchema,
+  eventChangedNotificationDataSchema,
   ministryInvitationNotificationDataSchema,
   type NotificationDeliveryData,
   type NotificationDeliveryDataByKind,
@@ -229,6 +230,20 @@ export function buildChurchNotifier({
         actionUrl: data.actionUrl,
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      event_changed: ({ data, address }) => ({
+        kind: 'event.changed',
+        to: address.email,
+        churchName: data.churchName,
+        recipientFirstName: address.firstName,
+        cycleName: data.cycleName,
+        eventTitle: data.eventTitle,
+        adminName: data.adminName,
+        churchTimezone: data.churchTimezone,
+        ministryNames: data.ministries.map((ministry) => ministry.name),
+        change: data.change,
+        actionUrl: data.actionUrl,
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       transfer_ministry_digest: ({ data, address }) =>
         transferDigestEmail({
           kind: 'transfer.ministry-digest',
@@ -308,6 +323,11 @@ export function buildChurchNotifier({
       swap_request_answered: ({ data }) => ({
         kind: 'swap_request_answered',
         data: swapRequestAnsweredNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      event_changed: ({ data }) => ({
+        kind: 'event_changed',
+        data: eventChangedNotificationDataSchema.parse(data),
       }),
     }),
     sink: new InboxNotificationSink({ notificationRepository }),

@@ -404,7 +404,7 @@ describe('EventCreatePage', () => {
     renderPage();
     await screen.findByTestId('event-editor-form');
     await user.type(titleInput(), 'Service');
-    getCycle.mockResolvedValue(cycleResponse({ state: 'sent' }));
+    getCycle.mockResolvedValue(cycleResponse({ state: 'past' }));
 
     await user.click(saveButton());
 
@@ -451,7 +451,17 @@ describe('EventCreatePage', () => {
     expect(await screen.findByTestId('event-editor-form')).toBeInTheDocument();
   });
 
-  it('says a missing Cycle was not found and a Sent Cycle takes no new Event', async () => {
+  it('offers the complete editor on a Sent Cycle', async () => {
+    getCycle.mockResolvedValue(cycleResponse({ state: 'sent' }));
+    renderPage();
+
+    expect(await screen.findByTestId('event-editor-form')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('event-create-not-draft'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('says a missing Cycle was not found and a Past Cycle takes no new Event', async () => {
     getCycle.mockRejectedValueOnce(refusal({ status: 404, data: {} }));
     const { unmount } = renderPage();
     expect(
@@ -459,7 +469,7 @@ describe('EventCreatePage', () => {
     ).toHaveTextContent(m.cycle_review_not_found());
     unmount();
 
-    getCycle.mockResolvedValue(cycleResponse({ state: 'sent' }));
+    getCycle.mockResolvedValue(cycleResponse({ state: 'past' }));
     renderPage();
     expect(
       await screen.findByTestId('event-create-not-draft'),

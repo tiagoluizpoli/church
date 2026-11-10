@@ -4,14 +4,12 @@ import type {
   ChurchId,
   SwapRequestId,
   UserId,
-  VolunteerId,
 } from '../../branded-ids';
 import type { SwapRequestStatus } from '../../entities/swap-request';
 
 export interface RaiseSwapRequestCommand {
   churchId: ChurchId;
   userId: UserId;
-  volunteerId: VolunteerId;
   assignmentId: AssignmentId;
   note?: string;
 }

@@ -1,10 +1,11 @@
-import { compareInstants, now } from '@church/time';
+import { now } from '@church/time';
 import type {
   ISwapRequestListManager,
   ListLeaderSwapRequestsCommand,
   ScheduleSwapRequests,
 } from '../domain/contracts/application/swap-request-list-manager';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
+import { isSwapRequestExpired } from '../domain/entities/swap-request';
 
 interface DbSwapRequestListManagerDependencies {
   swapRequestRepo: SwapRequestRepository;
@@ -27,12 +28,12 @@ export class DbSwapRequestListManager implements ISwapRequestListManager {
         openCount: 0,
         requests: [],
       };
-      // Expiry is derived: an open request whose Shift started is expired.
-      const status =
-        row.status === 'open' &&
-        compareInstants({ left: row.startsAt, right: at }) > 0
-          ? 'open'
-          : 'expired';
+      const expired = isSwapRequestExpired({
+        status: row.status,
+        shiftStart: row.startsAt,
+        at,
+      });
+      const status = row.status === 'open' && !expired ? 'open' : 'expired';
       if (status === 'open') schedule.openCount += 1;
       schedule.requests.push({ ...row, status });
       schedules.set(cycleId, schedule);

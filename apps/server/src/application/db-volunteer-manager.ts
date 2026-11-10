@@ -61,6 +61,7 @@ import type {
   AssignmentStatus,
 } from '../domain/entities/assignment';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
+import { isSwapRequestExpired } from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
@@ -573,7 +574,11 @@ export class DbVolunteerManager implements IVolunteerManager {
           // Same rule as the detail read: open past the Shift's start is expired.
           swapRequested:
             openSwapIds.has(assignment.id as string) &&
-            compareInstants({ left: shift.startTime, right: now }) > 0,
+            !isSwapRequestExpired({
+              status: 'open',
+              shiftStart: shift.startTime,
+              at: now,
+            }),
         };
         return item;
       }),
@@ -845,12 +850,13 @@ export class DbVolunteerManager implements IVolunteerManager {
       swapRequest: latestSwapRequest
         ? {
             id: latestSwapRequest.id,
-            status:
-              latestSwapRequest.status === 'open' &&
-              compareInstants({ left: shift.startTime, right: nowInstant() }) <=
-                0
-                ? 'expired'
-                : latestSwapRequest.status,
+            status: isSwapRequestExpired({
+              status: latestSwapRequest.status,
+              shiftStart: shift.startTime,
+              at: nowInstant(),
+            })
+              ? 'expired'
+              : latestSwapRequest.status,
             note: latestSwapRequest.note ?? null,
             reply: latestSwapRequest.reply ?? null,
             raisedAt: latestSwapRequest.raisedAt,

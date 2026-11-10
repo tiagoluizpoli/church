@@ -187,8 +187,8 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
     status,
     closedBy,
     tx,
-  }: CloseOpenSwapRequestInput): Promise<void> {
-    await getClient({ db: this.db, tx })
+  }: CloseOpenSwapRequestInput): Promise<boolean> {
+    const closed = await getClient({ db: this.db, tx })
       .update(swapRequest)
       .set({
         status,
@@ -201,6 +201,8 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
           eq(swapRequest.assignmentId, assignmentId),
           eq(swapRequest.status, 'open'),
         ),
-      );
+      )
+      .returning({ id: swapRequest.id });
+    return closed.length > 0;
   }
 }

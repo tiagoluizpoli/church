@@ -1,5 +1,5 @@
 import { Entity } from '@church/core';
-import { type Instant, now } from '@church/time';
+import { compareInstants, type Instant, now } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
@@ -20,6 +20,23 @@ export const SWAP_REQUEST_STATUS_OPTIONS = [
 ] as const;
 export type SwapRequestStatus = (typeof SWAP_REQUEST_STATUS_OPTIONS)[number];
 export type ClosedSwapRequestStatus = Exclude<SwapRequestStatus, 'open'>;
+
+export interface IsSwapRequestExpiredInput {
+  status: SwapRequestStatus;
+  shiftStart: Instant;
+  at: Instant;
+}
+
+/** Expiry is derived, never stored: a request still `open` once its Shift has started reads as expired. */
+export function isSwapRequestExpired({
+  status,
+  shiftStart,
+  at,
+}: IsSwapRequestExpiredInput): boolean {
+  return (
+    status === 'open' && compareInstants({ left: shiftStart, right: at }) <= 0
+  );
+}
 
 export interface SwapRequestProps {
   churchId: ChurchId;

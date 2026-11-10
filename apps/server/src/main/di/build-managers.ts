@@ -316,6 +316,7 @@ export function buildManagers({
         volunteerRepository,
       }),
       notifications,
+      authorityManager,
       unitOfWork,
       config,
     });

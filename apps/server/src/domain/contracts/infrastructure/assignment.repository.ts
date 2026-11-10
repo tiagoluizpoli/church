@@ -42,6 +42,8 @@ export interface GetAssignmentInput {
   churchId: ChurchId;
   assignmentId: AssignmentId;
   tx?: TransactionContext;
+  /** Row-locks the Assignment (`FOR UPDATE`) so a racing removal waits; needs `tx`. */
+  forUpdate?: boolean;
 }
 
 export interface FindAssignmentByEventTimeBlockAndVolunteerInput {

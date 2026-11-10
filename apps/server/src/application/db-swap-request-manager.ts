@@ -1,5 +1,7 @@
 import type { AppConfig } from '@church/app-config';
 import { compareInstants, now as nowInstant } from '@church/time';
+import type { ChurchId, UserId, VolunteerId } from '../domain/branded-ids';
+import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
@@ -18,7 +20,10 @@ import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.r
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import { SwapRequest } from '../domain/entities/swap-request';
+import {
+  isSwapRequestExpired,
+  SwapRequest,
+} from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import {
   SwapRequestAlreadyOpenError,
@@ -39,6 +44,7 @@ interface DbSwapRequestManagerDependencies {
   volunteerRepo: VolunteerRepository;
   recipients: IChurchRecipients;
   notifications: IChurchNotifications;
+  authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
   unitOfWork: UnitOfWork;
   config: AppConfig;
 }
@@ -55,6 +61,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
   private readonly volunteerRepo: VolunteerRepository;
   private readonly recipients: IChurchRecipients;
   private readonly notifications: IChurchNotifications;
+  private readonly authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
   private readonly unitOfWork: UnitOfWork;
   private readonly noteMaxLength: number;
 
@@ -70,6 +77,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
     volunteerRepo,
     recipients,
     notifications,
+    authorityManager,
     unitOfWork,
     config,
   }: DbSwapRequestManagerDependencies) {
@@ -84,58 +92,38 @@ export class DbSwapRequestManager implements ISwapRequestManager {
     this.volunteerRepo = volunteerRepo;
     this.recipients = recipients;
     this.notifications = notifications;
+    this.authorityManager = authorityManager;
     this.unitOfWork = unitOfWork;
-    this.noteMaxLength = config.swapRequest.noteMaxLength;
+    const { noteMaxLength } = config.swapRequest;
+    this.noteMaxLength = noteMaxLength;
+  }
+
+  /** Self-service only (ADR-0009): the caller must be the Assignment's own Volunteer. */
+  private async assertOwnAssignment({
+    churchId,
+    userId,
+    ownerVolunteerId,
+  }: {
+    churchId: ChurchId;
+    userId: UserId;
+    ownerVolunteerId: VolunteerId;
+  }): Promise<void> {
+    const decision = await this.authorityManager.decideAuthority({
+      churchId,
+      userId,
+      action: 'participate',
+      resource: { type: 'church', churchId, ownerVolunteerId },
+      scope: 'object',
+    });
+    if (!decision.allowed) throw new AssignmentAccessDeniedError();
   }
 
   async raise({
     churchId,
     userId,
-    volunteerId,
     assignmentId,
     note,
   }: RaiseSwapRequestCommand): Promise<RaisedSwapRequest> {
-    const assignment = await this.assignmentRepo.getById({
-      churchId,
-      assignmentId,
-    });
-    if (assignment.volunteerId !== volunteerId) {
-      throw new AssignmentAccessDeniedError();
-    }
-    const { shiftId, participationId } = assignment;
-    const published =
-      assignment.status === 'pending' ||
-      assignment.status === 'confirmed' ||
-      assignment.status === 'declined';
-    if (!published || !shiftId || !participationId) {
-      throw new SwapRequestUnpublishedError();
-    }
-    const participation = await this.participationRepo.getById({
-      churchId,
-      participationId,
-    });
-    if (participation.state !== 'published') {
-      throw new SwapRequestUnpublishedError();
-    }
-    // The Shift's own start, not the Event's (ADR-0003).
-    const shift = await this.shiftRepo.getById({ churchId, shiftId });
-    if (compareInstants({ left: shift.startTime, right: nowInstant() }) <= 0) {
-      throw new SwapRequestShiftStartedError();
-    }
-    // Display facts for the N7 alert, frozen into the outbox rows.
-    const { ministryId, eventId } = participation;
-    const [event, ministry, church, people, roles, requirements] =
-      await Promise.all([
-        this.eventRepo.getById({ churchId, eventId }),
-        this.ministryRepo.getById({ churchId, id: ministryId }),
-        this.churchRepo.getById({ id: churchId }),
-        this.volunteerRepo.listByIds({ churchId, ids: [volunteerId] }),
-        this.roleRepo.listByMinistry({ churchId, ministryId }),
-        this.shiftRepo.listRequirementsByParticipation({
-          churchId,
-          participationId,
-        }),
-      ]);
     const swapRequest = SwapRequest.raise({
       churchId,
       assignmentId,
@@ -143,8 +131,56 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       raisedBy: userId,
       noteMaxLength: this.noteMaxLength,
     });
-    // One transaction so a notification enqueue can join the insert.
+    // One transaction: the Assignment row stays locked from its validation to the
+    // insert, so a concurrent removal waits and the raise then reads it as gone.
     await this.unitOfWork.run(async (tx) => {
+      const assignment = await this.assignmentRepo.getById({
+        churchId,
+        assignmentId,
+        tx,
+        forUpdate: true,
+      });
+      const { volunteerId, shiftId, participationId } = assignment;
+      await this.assertOwnAssignment({
+        churchId,
+        userId,
+        ownerVolunteerId: volunteerId,
+      });
+      const published =
+        assignment.status === 'pending' ||
+        assignment.status === 'confirmed' ||
+        assignment.status === 'declined';
+      if (!published || !shiftId || !participationId) {
+        throw new SwapRequestUnpublishedError();
+      }
+      const participation = await this.participationRepo.getById({
+        churchId,
+        participationId,
+      });
+      if (participation.state !== 'published') {
+        throw new SwapRequestUnpublishedError();
+      }
+      // The Shift's own start, not the Event's (ADR-0003).
+      const shift = await this.shiftRepo.getById({ churchId, shiftId });
+      if (
+        compareInstants({ left: shift.startTime, right: nowInstant() }) <= 0
+      ) {
+        throw new SwapRequestShiftStartedError();
+      }
+      // Display facts for the N7 alert, frozen into the outbox rows.
+      const { ministryId, eventId } = participation;
+      const [event, ministry, church, people, roles, requirements] =
+        await Promise.all([
+          this.eventRepo.getById({ churchId, eventId }),
+          this.ministryRepo.getById({ churchId, id: ministryId }),
+          this.churchRepo.getById({ id: churchId }),
+          this.volunteerRepo.listByIds({ churchId, ids: [volunteerId] }),
+          this.roleRepo.listByMinistry({ churchId, ministryId }),
+          this.shiftRepo.listRequirementsByParticipation({
+            churchId,
+            participationId,
+          }),
+        ]);
       const open = await this.swapRequestRepo.findOpenByAssignment({
         churchId,
         assignmentId,
@@ -197,16 +233,17 @@ export class DbSwapRequestManager implements ISwapRequestManager {
   async withdraw({
     churchId,
     userId,
-    volunteerId,
     assignmentId,
   }: WithdrawSwapRequestCommand): Promise<void> {
     const assignment = await this.assignmentRepo.getById({
       churchId,
       assignmentId,
     });
-    if (assignment.volunteerId !== volunteerId) {
-      throw new AssignmentAccessDeniedError();
-    }
+    await this.assertOwnAssignment({
+      churchId,
+      userId,
+      ownerVolunteerId: assignment.volunteerId,
+    });
     await this.unitOfWork.run(async (tx) => {
       const open = await this.swapRequestRepo.findOpenByAssignment({
         churchId,
@@ -214,26 +251,30 @@ export class DbSwapRequestManager implements ISwapRequestManager {
         tx,
       });
       if (!open) throw new SwapRequestNotOpenError();
-      if (open.raisedBy !== userId) throw new AssignmentAccessDeniedError();
-      // Expiry is derived: an open request on a started Shift reads as expired, so it is closed.
       if (assignment.shiftId) {
         const shift = await this.shiftRepo.getById({
           churchId,
           shiftId: assignment.shiftId,
         });
         if (
-          compareInstants({ left: shift.startTime, right: nowInstant() }) <= 0
+          isSwapRequestExpired({
+            status: open.status,
+            shiftStart: shift.startTime,
+            at: nowInstant(),
+          })
         ) {
           throw new SwapRequestNotOpenError();
         }
       }
-      await this.swapRequestRepo.closeOpenByAssignment({
+      // Conditional on `open`: a request closed since the read above is a refusal.
+      const closed = await this.swapRequestRepo.closeOpenByAssignment({
         churchId,
         assignmentId,
         status: 'withdrawn',
         closedBy: userId,
         tx,
       });
+      if (!closed) throw new SwapRequestNotOpenError();
     });
   }
 }

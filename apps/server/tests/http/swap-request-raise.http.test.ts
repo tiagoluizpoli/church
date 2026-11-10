@@ -21,12 +21,15 @@ import { VolunteerController } from '@/api/controllers/volunteer-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbSwapRequestManager } from '@/application/db-swap-request-manager';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
@@ -64,6 +67,41 @@ const getSession = vi.mocked(auth.api.getSession);
 let app: FastifyTypedInstance;
 const ROOT = '/api/v1/volunteer/assignments';
 
+type ManagerDeps = ConstructorParameters<typeof DbSwapRequestManager>[0];
+
+function makeManager(overrides: Partial<ManagerDeps> = {}) {
+  const plainEventRepo = new DrizzleEventRepository({ db });
+  const ministryRepo = new DrizzleMinistryRepository({ db });
+  return new DbSwapRequestManager({
+    swapRequestRepo: new DrizzleSwapRequestRepository({ db }),
+    assignmentRepo: new DrizzleAssignmentRepository({ db }),
+    participationRepo: new DrizzleMinistryParticipationRepository({ db }),
+    shiftRepo: new DrizzleShiftRepository({ db }),
+    eventRepo: plainEventRepo,
+    ministryRepo,
+    roleRepo: new DrizzleRoleRepository({ db }),
+    churchRepo: new DrizzleChurchRepository({ db }),
+    volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    recipients: new ChurchRecipients({
+      churchRepository: new DrizzleChurchRepository({ db }),
+      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+    }),
+    notifications: new ChurchNotifications({
+      outboxRepository: new DrizzleOutboxRepository({ db }),
+    }),
+    authorityManager: new DbAuthorityManager({
+      actorRepository: new DrizzleAuthorityActorResolver({ db }),
+      scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
+      eventRepository: plainEventRepo,
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      ministryRepository: ministryRepo,
+    }),
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+    config: appConfig,
+    ...overrides,
+  });
+}
+
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
   const activeChurchResolver = new DbActiveChurchResolver({
@@ -72,30 +110,10 @@ beforeAll(async () => {
     actorRepository: new DrizzleAuthorityActorResolver({ db }),
     membershipRepository: new DrizzleChurchMembershipRepository({ db }),
   });
-  const swapRequestRepo = new DrizzleSwapRequestRepository({ db });
   const controllers = [
     new SwapRequestController({
       activeChurchResolver,
-      swapRequestManager: new DbSwapRequestManager({
-        swapRequestRepo,
-        assignmentRepo: new DrizzleAssignmentRepository({ db }),
-        participationRepo: new DrizzleMinistryParticipationRepository({ db }),
-        shiftRepo: new DrizzleShiftRepository({ db }),
-        eventRepo: new DrizzleEventRepository({ db }),
-        ministryRepo: new DrizzleMinistryRepository({ db }),
-        roleRepo: new DrizzleRoleRepository({ db }),
-        churchRepo: new DrizzleChurchRepository({ db }),
-        volunteerRepo: new DrizzleVolunteerRepository({ db }),
-        recipients: new ChurchRecipients({
-          churchRepository: new DrizzleChurchRepository({ db }),
-          volunteerRepository: new DrizzleVolunteerRepository({ db }),
-        }),
-        notifications: new ChurchNotifications({
-          outboxRepository: new DrizzleOutboxRepository({ db }),
-        }),
-        unitOfWork: new DrizzleUnitOfWork({ db }),
-        config: appConfig,
-      }),
+      swapRequestManager: makeManager(),
     }),
     new VolunteerController({
       volunteerManager: createSchedulingManagers().volunteerManager,
@@ -200,6 +218,11 @@ async function seedGraph({ year = 2030 }: { year?: number } = {}) {
   return { churchId, graph, shift, me, mine, theirs };
 }
 
+const alertsFor = async (_churchId: string) =>
+  (await db.select().from(outboxMessage)).filter(
+    (row) => (row.payload as { kind?: string }).kind === 'swap_request',
+  );
+
 const raise = (id: string, body: object = {}) =>
   app.inject({
     method: 'POST',
@@ -257,6 +280,33 @@ describe('Raise a swap request', () => {
       (await raise('99999999-9999-4999-8999-999999999999')).statusCode,
     ).toBe(404);
     expect(await db.select().from(swapRequest)).toHaveLength(0);
+  });
+
+  it('is a concealed 404 and enqueues nothing when the Assignment is removed while the raise waits', async () => {
+    const { mine, churchId } = await seedGraph();
+    // A removal that holds the Assignment row until released.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let locked!: () => void;
+    const lockTaken = new Promise<void>((resolve) => {
+      locked = resolve;
+    });
+    const removal = db.transaction(async (tx) => {
+      await tx.delete(assignment).where(eq(assignment.id, mine.id));
+      locked();
+      await held;
+    });
+    await lockTaken;
+    const pending = raise(mine.id, { note: 'late' });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await removal;
+    const response = await pending;
+    expect(response.statusCode).toBe(404);
+    expect(await db.select().from(swapRequest)).toHaveLength(0);
+    expect(await alertsFor(churchId)).toHaveLength(0);
   });
 
   it('is 409 SWAP_REQUEST_UNPUBLISHED when the Schedule is not published', async () => {
@@ -460,6 +510,32 @@ describe('Withdraw a swap request', () => {
     await raise(mine.id);
     await db.update(swapRequest).set({ status: 'covered' });
     expect((await withdraw(mine.id)).statusCode).toBe(409);
+    expect((await db.select().from(swapRequest))[0]?.status).toBe('covered');
+  });
+
+  it('is 409 when the request is closed between the read and the close', async () => {
+    const { mine } = await seedGraph();
+    await raise(mine.id);
+    const real = new DrizzleSwapRequestRepository({ db });
+    const racing = Object.create(real) as DrizzleSwapRequestRepository;
+    // Another actor covers the request right after the withdraw read it open.
+    racing.findOpenByAssignment = async (input) => {
+      const open = await real.findOpenByAssignment(input);
+      await db.update(swapRequest).set({ status: 'covered' });
+      return open;
+    };
+    const manager = makeManager({ swapRequestRepo: racing });
+    const [row] = await db.select().from(swapRequest);
+    const { churchId, assignmentId, raisedBy } = row as typeof row & {
+      raisedBy: string;
+    };
+    await expect(
+      manager.withdraw({
+        churchId: churchId as never,
+        userId: raisedBy as never,
+        assignmentId: assignmentId as never,
+      }),
+    ).rejects.toMatchObject({ code: 'SWAP_REQUEST_NOT_OPEN' });
     expect((await db.select().from(swapRequest))[0]?.status).toBe('covered');
   });
 

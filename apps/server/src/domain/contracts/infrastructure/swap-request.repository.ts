@@ -75,6 +75,6 @@ export interface SwapRequestRepository {
   listOpenAssignmentIds(
     input: ListOpenAssignmentIdsInput,
   ): Promise<AssignmentId[]>;
-  /** Closes the Assignment's open request, if any; a no-op otherwise. Never deletes. */
-  closeOpenByAssignment(input: CloseOpenSwapRequestInput): Promise<void>;
+  /** Closes the Assignment's open request only while it is still open; false when none was (already closed or none raised). Never deletes. */
+  closeOpenByAssignment(input: CloseOpenSwapRequestInput): Promise<boolean>;
 }

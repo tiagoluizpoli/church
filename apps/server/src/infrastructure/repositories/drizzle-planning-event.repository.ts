@@ -24,6 +24,7 @@ import {
   inArray,
   isNull,
   lt,
+  ne,
   notInArray,
   type SQL,
   sql,
@@ -56,6 +57,7 @@ import type {
   Event,
   EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
+import { deriveScheduleParticipationState } from '../../domain/entities/ministry-participation';
 import type {
   MoveClashCandidate,
   MoveScopeAssignment,
@@ -295,15 +297,22 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       return [];
     }
 
-    // A Sent Cycle's Ministry already has a Schedule stage: join it, so the
-    // new participation is not stranded in `preparing`.
-    const existing = await db
-      .select({
+    // The Schedule stage counts serving, non-cancelled Events only, as the
+    // Schedules list derives it.
+    const serving = await db
+      .selectDistinct({
         ministryId: ministryParticipation.ministryId,
         state: ministryParticipation.state,
       })
       .from(ministryParticipation)
       .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(
+        participationEventTimeBlockInclusion,
+        eq(
+          participationEventTimeBlockInclusion.participationId,
+          ministryParticipation.id,
+        ),
+      )
       .where(
         and(
           withChurchIsolation({
@@ -311,6 +320,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
             churchId: input.churchId,
           }),
           eq(event.cycleId, input.cycleId),
+          ne(event.status, 'cancelled'),
         ),
       );
 
@@ -319,8 +329,8 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         churchId: input.churchId,
         ministryId: ministryRow.id,
         eventId: input.eventId,
-        state: furthestBehindState({
-          states: existing
+        state: deriveScheduleParticipationState({
+          servingStates: serving
             .filter((row) => row.ministryId === ministryRow.id)
             .map((row) => row.state),
         }),
@@ -547,22 +557,4 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         ),
       );
   }
-}
-
-const STATES_FURTHEST_BEHIND_FIRST = [
-  'preparing',
-  'availability_requested',
-  'assigning',
-  'published',
-] as const;
-
-interface FurthestBehindStateInput {
-  states: (typeof STATES_FURTHEST_BEHIND_FIRST)[number][];
-}
-
-function furthestBehindState({ states }: FurthestBehindStateInput) {
-  return (
-    STATES_FURTHEST_BEHIND_FIRST.find((state) => states.includes(state)) ??
-    'preparing'
-  );
 }

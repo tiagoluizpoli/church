@@ -61,7 +61,12 @@ import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
-import { buildCycle, buildEvent } from '@/seeds/builders/scheduling';
+import {
+  buildCycle,
+  buildEvent,
+  buildEventTimeBlock,
+  buildMinistryParticipation,
+} from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -680,23 +685,71 @@ describe('POST /admin/cycles/:cycleId/events on a Sent Cycle', () => {
     expect(await db.select().from(shift)).toHaveLength(0);
   });
 
-  it('starts a participation at the Ministry Schedule stage already reached', async () => {
+  it('starts a participation at the Schedule stage its serving, non-cancelled Events reached', async () => {
     const seed = await signIn();
     const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
-    const earlier = await buildEvent({
-      db,
-      churchId: seed.churchAId,
-      cycleId: target.id,
-      title: 'Earlier',
-      start: parseInstant({ value: '2026-10-13T15:00:00.000Z' }),
-      end: parseInstant({ value: '2026-10-13T17:00:00.000Z' }),
+    interface SeedScheduleEventInput {
+      title: string;
+      day: string;
+      status: 'scheduled' | 'cancelled';
+      state: 'preparing' | 'assigning';
+      serves: boolean;
+    }
+    const seedScheduleEvent = async ({
+      title,
+      day,
+      status,
+      state,
+      serves,
+    }: SeedScheduleEventInput) => {
+      const start = parseInstant({ value: `${day}T15:00:00.000Z` });
+      const end = parseInstant({ value: `${day}T17:00:00.000Z` });
+      const seeded = await buildEvent({
+        db,
+        churchId: seed.churchAId,
+        cycleId: target.id,
+        title,
+        start,
+        end,
+        status,
+      });
+      const block = await buildEventTimeBlock({
+        db,
+        churchId: seed.churchAId,
+        eventId: seeded.id,
+        start,
+        end,
+      });
+      await buildMinistryParticipation({
+        db,
+        churchId: seed.churchAId,
+        ministryId: seed.ministryAId,
+        eventId: seeded.id,
+        state,
+        eventTimeBlockIds: serves ? [block.id] : [],
+      });
+    };
+    await seedScheduleEvent({
+      title: 'Served',
+      day: '2026-10-13',
       status: 'scheduled',
-    });
-    await db.insert(ministryParticipation).values({
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      eventId: earlier.id,
       state: 'assigning',
+      serves: true,
+    });
+    // Neither a Not served Event nor a cancelled one holds the Schedule back.
+    await seedScheduleEvent({
+      title: 'Not served',
+      day: '2026-10-20',
+      status: 'scheduled',
+      state: 'preparing',
+      serves: false,
+    });
+    await seedScheduleEvent({
+      title: 'Cancelled',
+      day: '2026-10-27',
+      status: 'cancelled',
+      state: 'preparing',
+      serves: true,
     });
 
     const response = await postEvent({

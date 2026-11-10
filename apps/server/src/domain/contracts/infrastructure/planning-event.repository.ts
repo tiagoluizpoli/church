@@ -154,8 +154,8 @@ export interface PlanningEventRepository {
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId>;
   /**
-   * One participation per active Ministry, at that Ministry's furthest-behind
-   * stage in the Cycle (`preparing` when it has none yet). Returns those Ministries.
+   * One participation per active Ministry, at its Schedule's stage in the Cycle
+   * (`deriveScheduleParticipationState`). Returns those Ministries.
    */
   seedParticipations(
     input: SeedPlanningParticipationsInput,

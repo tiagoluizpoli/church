@@ -71,6 +71,7 @@ import {
 import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   createSchedulingManagers,
+  seedInclusion,
   seedRequirement,
   seedRole,
   seedRoleQualification,
@@ -1458,6 +1459,11 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       name: 'Host',
     });
     const told = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    await seedInclusion({
+      churchId: ids.churchId,
+      participationId,
+      eventTimeBlockId,
+    });
     const vigilShift = await seedShift({
       churchId: ids.churchId,
       participationId,

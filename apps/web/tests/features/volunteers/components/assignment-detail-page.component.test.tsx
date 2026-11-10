@@ -9,8 +9,18 @@ import { renderWithProviders } from '@/tests/setup/render';
 const api = vi.hoisted(() => ({ getAssignmentDetail: vi.fn() }));
 vi.mock('@/utils/api-instances', () => ({ volunteerApi: api }));
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
+  Link: ({
+    to,
+    params = {},
+    children,
+  }: {
+    to: string;
+    params?: Record<string, string>;
+    children: React.ReactNode;
+  }) => (
+    <a href={to.replace(/\$(\w+)/g, (_, key: string) => params[key] ?? '')}>
+      {children}
+    </a>
   ),
 }));
 

@@ -645,11 +645,11 @@ describe('DbPlanningEventManager', () => {
     expect(result.event.start).toBe('2099-01-02T03:00:00.000Z');
     expect(result.event.end).toBe('2099-01-03T02:59:59.999Z');
   });
-  it('refuses a Draft-only create on a sent cycle without writing', async () => {
+  it('refuses a create on a past cycle without writing', async () => {
     const { manager, cycleRepository, eventRepository } =
       createPlanningEventHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(
-      makeCycle({ state: 'sent' }),
+      makeCycle({ state: 'past' }),
     );
     await expect(
       manager.createEvent({

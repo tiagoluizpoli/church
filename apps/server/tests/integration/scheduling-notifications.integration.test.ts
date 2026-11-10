@@ -70,6 +70,7 @@ import {
   buildEventTimeBlock,
 } from '@/seeds/builders/scheduling';
 import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
+import { buildMinistryMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingManagers,
   seedInclusion,
@@ -263,6 +264,11 @@ const scheduleKey = () => ({
   ministryId: MinistryId.from(ids.ministryId),
   cycleId: CycleId.from(cycleId),
 });
+
+interface EventChangedRow {
+  to: { userId: string };
+  data: { ministries: { id: string }[] };
+}
 
 async function outboxRows() {
   return schedulingTestDb
@@ -1870,6 +1876,76 @@ describe('N10 event_changed (add) through the outbox', () => {
       }),
     );
   }
+
+  it('a real Sent-add sends one row per User, merging leader and fallback lines, and keeps the acting admin a leader recipient', async () => {
+    const sibling = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Sibling Ministry',
+    });
+    const leaderless = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Leaderless Ministry',
+    });
+    // Leads Ministry A and Sibling, and as a ChurchAdmin is Leaderless's fallback.
+    const lead = await seedVolunteerMembership({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Lia',
+      email: 'lia@test.com',
+      ministryAccessLevel: 'leader',
+    });
+    await buildMinistryMembership({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      ministryId: sibling.id,
+      volunteerId: lead.volunteer.id,
+      ministryAccessLevel: 'leader',
+      roleIds: [],
+    });
+    await buildChurchMembership({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      userId: lead.volunteer.userId,
+      accessLevel: 'admin',
+    });
+
+    await buildPlanningManager().createEvent({
+      churchId: ChurchId.from(ids.churchId),
+      actingUserId: UserId.from(ids.adminUserId),
+      cycleId: CycleId.from(cycleId),
+      title: 'Christmas Morning',
+      start: new Date('2026-12-26T10:00:00.000Z'),
+      end: new Date('2026-12-26T11:00:00.000Z'),
+      eventTimeBlocks: [
+        {
+          label: 'Morning',
+          startTime: new Date('2026-12-26T10:00:00.000Z'),
+          endTime: new Date('2026-12-26T11:00:00.000Z'),
+        },
+      ],
+    });
+
+    const ministryIdsByUser = new Map(
+      (await outboxRows()).map(({ payload }) => {
+        const { to, data } = payload as EventChangedRow;
+        const ministryIds = data.ministries.map(({ id }) => id).sort();
+        return [to.userId, ministryIds];
+      }),
+    );
+    expect(ministryIdsByUser).toEqual(
+      new Map([
+        // The acting admin keeps its leader line but is nobody's fallback.
+        [ids.adminUserId, [ids.ministryId]],
+        [
+          lead.volunteer.userId,
+          [ids.ministryId, sibling.id, leaderless.id].sort(),
+        ],
+      ]),
+    );
+    expect(await outboxRows()).toHaveLength(2);
+  });
 
   it('renders the pt-BR email with an escaped title, Church-Timezone time and an absolute link, and stores the bell row', async () => {
     await enqueueAdded({ eventTitle: 'Vigília <b>especial</b>' });

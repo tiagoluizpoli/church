@@ -343,6 +343,10 @@ interface QueuedNotification {
 async function queuedNotifications(): Promise<QueuedNotification[]> {
   const rows = await db.select().from(outboxMessage);
   return rows
+    .filter(
+      (row) =>
+        (row.payload as { kind: string }).kind === 'cycle_ready_to_prepare',
+    )
     .map((row) => {
       const payload = row.payload as {
         to: { userId: string };
@@ -823,7 +827,7 @@ describe('POST /admin/cycles/:cycleId/send', () => {
     expect(await queuedNotifications()).toHaveLength(1);
   });
 
-  it('orders a racing Event write with Send: either the Event is sent with the Cycle or it is refused afterwards', async () => {
+  it('orders a racing Event write with Send: the Event is sent with the Cycle or added to it as scheduled afterwards', async () => {
     const seed = await signIn();
     const target = await seedCycle({ churchId: seed.churchAId });
     expect((await postEvening({ cycleId: target.id })).statusCode).toBe(201);
@@ -834,15 +838,16 @@ describe('POST /admin/cycles/:cycleId/send', () => {
     ]);
 
     expect(sent.statusCode).toBe(204);
-    expect([201, 409]).toContain(created.statusCode);
+    expect(created.statusCode).toBe(201);
     const events = await db
       .select({ status: event.status })
       .from(event)
       .where(eq(event.cycleId, target.id));
-    expect(events).toHaveLength(created.statusCode === 201 ? 2 : 1);
+    expect(events).toHaveLength(2);
     expect(new Set(events.map(({ status }) => status))).toEqual(
       new Set(['scheduled']),
     );
+    // N10 add rows (if the Event landed after Send) are not N2 rows.
     expect(await queuedNotifications()).toHaveLength(1);
   });
 });

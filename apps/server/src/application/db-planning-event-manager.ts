@@ -11,7 +11,6 @@ import type {
   ChurchId,
   EventId,
   EventTimeBlockId,
-  MinistryId,
   UserId,
 } from '../domain/branded-ids';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
@@ -33,7 +32,10 @@ import type { ChurchRepository } from '../domain/contracts/infrastructure/church
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
-import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
+import type {
+  PlanningEventRepository,
+  SeededMinistry,
+} from '../domain/contracts/infrastructure/planning-event.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Church } from '../domain/entities/church';
@@ -101,7 +103,7 @@ interface EnqueueEventAddedInput {
   church: Church;
   cycle: Cycle;
   event: Event;
-  ministries: { id: MinistryId; name: string }[];
+  ministries: SeededMinistry[];
   tx: TransactionContext;
 }
 

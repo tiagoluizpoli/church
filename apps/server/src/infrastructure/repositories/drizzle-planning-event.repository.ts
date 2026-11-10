@@ -18,6 +18,7 @@ import type {
   GetPlanningEventInput,
   ListCycleEventsInput,
   PlanningEventRepository,
+  SeededMinistry,
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
@@ -240,7 +241,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
 
   async seedParticipations(
     input: SeedPlanningParticipationsInput,
-  ): Promise<{ id: MinistryId; name: string }[]> {
+  ): Promise<SeededMinistry[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     const ministries = await db
       .select({ id: ministry.id, name: ministry.name })

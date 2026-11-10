@@ -68,6 +68,12 @@ export interface CreatePlanningEventTimeBlockInput {
   tx?: TransactionContext;
 }
 
+/** A Ministry that received a participation scaffold. */
+export interface SeededMinistry {
+  id: MinistryId;
+  name: string;
+}
+
 export interface SeedPlanningParticipationsInput {
   churchId: ChurchId;
   cycleId: CycleId;
@@ -99,5 +105,5 @@ export interface PlanningEventRepository {
    */
   seedParticipations(
     input: SeedPlanningParticipationsInput,
-  ): Promise<{ id: MinistryId; name: string }[]>;
+  ): Promise<SeededMinistry[]>;
 }

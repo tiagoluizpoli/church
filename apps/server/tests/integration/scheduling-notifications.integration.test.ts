@@ -17,6 +17,7 @@ import { m } from '@church/i18n/messages';
 import {
   type Instant,
   parseCalendarDay,
+  parseInstant,
   resetClock,
   setTestClock,
 } from '@church/time';
@@ -1415,8 +1416,8 @@ describe('N10 event_changed (add) through the outbox', () => {
           ministries: [{ id: ids.ministryId, name: 'Scheduling Ministry A' }],
           change: {
             kind: 'add',
-            start: '2026-12-13T22:00:00.000Z',
-            end: '2026-12-14T00:00:00.000Z',
+            start: parseInstant({ value: '2026-12-13T22:00:00.000Z' }),
+            end: parseInstant({ value: '2026-12-14T00:00:00.000Z' }),
           },
         },
       }),

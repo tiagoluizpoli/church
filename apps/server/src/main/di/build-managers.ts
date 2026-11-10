@@ -282,6 +282,7 @@ export function buildManagers({
       participationRepo: ministryParticipationRepository,
       roleRepo: roleRepository,
       availabilityCheckRepo: availabilityCheckRepository,
+      cycleRepo: cycleRepository,
       unitOfWork,
       config,
     });

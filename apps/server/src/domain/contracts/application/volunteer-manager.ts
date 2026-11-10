@@ -51,6 +51,34 @@ export interface VolunteerDashboard {
   ministryOptions: DashboardMinistryOption[];
 }
 
+export interface VolunteerScheduleAssignment {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  shiftId: string;
+  startTime: Instant;
+  endTime: Instant;
+  ministryId: string;
+  ministryName: string;
+  sectorName: string;
+  roleId: string;
+  roleName: string;
+  status: 'pending' | 'confirmed' | 'declined';
+}
+
+/** One Ministry's part of one sent Cycle, published. */
+export interface VolunteerPublishedScheduleSummary {
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+}
+
+export interface VolunteerPublishedSchedule {
+  assignments: VolunteerScheduleAssignment[];
+  schedules: VolunteerPublishedScheduleSummary[];
+}
+
 export interface MinistryScheduleRow {
   eventTimeBlockId: string;
   eventTimeBlockLabel: string;
@@ -152,11 +180,6 @@ export interface GetDashboardInput {
   churchId: ChurchId;
 }
 
-export interface GetUpcomingAssignmentsInput {
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-}
-
 export interface GetPublishedScheduleInput {
   volunteerId: VolunteerId;
   churchId: ChurchId;
@@ -170,10 +193,9 @@ export interface GetMinistryScheduleInput {
 
 export interface IVolunteerManager {
   getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard>;
-  getUpcomingAssignments(
-    input: GetUpcomingAssignmentsInput,
-  ): Promise<Assignment[]>;
-  getPublishedSchedule(input: GetPublishedScheduleInput): Promise<Assignment[]>;
+  getPublishedSchedule(
+    input: GetPublishedScheduleInput,
+  ): Promise<VolunteerPublishedSchedule>;
   getMinistrySchedule(
     input: GetMinistryScheduleInput,
   ): Promise<MinistrySchedule>;

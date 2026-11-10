@@ -5126,37 +5126,6 @@ export type GetVolunteerDashboard200 = {
   ministryOptions: GetVolunteerDashboard200MinistryOptionsItem[];
 };
 
-export type GetMyAssignments200AssignmentsItemStatus = typeof GetMyAssignments200AssignmentsItemStatus[keyof typeof GetMyAssignments200AssignmentsItemStatus];
-
-
-export const GetMyAssignments200AssignmentsItemStatus = {
-  draft: 'draft',
-  pending: 'pending',
-  confirmed: 'confirmed',
-  declined: 'declined',
-  cancelled: 'cancelled',
-} as const;
-
-export type GetMyAssignments200AssignmentsItem = {
-  id: string;
-  churchId: string;
-  eventTimeBlockId: string;
-  participationId?: string;
-  shiftId?: string;
-  volunteerId: string;
-  roleId: string;
-  shiftRequirementId: string;
-  status: GetMyAssignments200AssignmentsItemStatus;
-  reason?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  assignedAt: string;
-  assignedBy?: string;
-};
-
-export type GetMyAssignments200 = {
-  assignments: GetMyAssignments200AssignmentsItem[];
-};
-
 export type GetMinistrySchedule200EventsItemRowsItemConfirmationState = typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState[keyof typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState];
 
 
@@ -5401,30 +5370,37 @@ export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPu
 
 
 export const GetPublishedVolunteerSchedule200AssignmentsItemStatus = {
-  draft: 'draft',
   pending: 'pending',
   confirmed: 'confirmed',
   declined: 'declined',
-  cancelled: 'cancelled',
 } as const;
 
 export type GetPublishedVolunteerSchedule200AssignmentsItem = {
-  id: string;
-  churchId: string;
-  eventTimeBlockId: string;
-  participationId?: string;
-  shiftId?: string;
-  volunteerId: string;
-  roleId: string;
-  shiftRequirementId: string;
-  status: GetPublishedVolunteerSchedule200AssignmentsItemStatus;
-  reason?: string;
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  shiftId: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  assignedAt: string;
-  assignedBy?: string;
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  ministryId: string;
+  ministryName: string;
+  sectorName: string;
+  roleId: string;
+  roleName: string;
+  status: GetPublishedVolunteerSchedule200AssignmentsItemStatus;
+};
+
+export type GetPublishedVolunteerSchedule200SchedulesItem = {
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
 };
 
 export type GetPublishedVolunteerSchedule200 = {
   assignments: GetPublishedVolunteerSchedule200AssignmentsItem[];
+  schedules: GetPublishedVolunteerSchedule200SchedulesItem[];
 };
 

@@ -245,6 +245,7 @@ function createHarness() {
     participationRepo: ministryParticipationRepository,
     roleRepo: roleRepository,
     availabilityCheckRepo: availabilityCheckRepository,
+    cycleRepo: cycleRepository,
     unitOfWork,
     config: appConfig,
   });
@@ -263,6 +264,7 @@ function createHarness() {
     shiftRepository,
     ministryParticipationRepository,
     volunteerRepository,
+    ministryRepository,
     assignmentRepository,
     unavailableShiftRepository,
     planningEventRepository,
@@ -515,9 +517,29 @@ describe('Assignment and publication managers', () => {
       published,
       f.participation,
     ]);
-    await expect(
-      f.volunteerManager.getPublishedSchedule({ churchId, volunteerId }),
-    ).resolves.toEqual([visible]);
+    f.volunteerRepository.listMemberMinistryIds.mockResolvedValue([]);
+    f.ministryRepository.listByChurch.mockResolvedValue([]);
+    f.eventRepository.getById.mockResolvedValue(f.event);
+    f.shiftRepository.getById.mockResolvedValue(
+      new Shift({
+        id: shiftId,
+        props: {
+          churchId,
+          participationId: MinistryParticipationId.from('published'),
+          eventTimeBlockId: EventTimeBlockId.from('block'),
+          startTime: start,
+          endTime: end,
+        },
+      }),
+    );
+    f.shiftRepository.listRequirementsByParticipation.mockResolvedValue([]);
+    const schedule = await f.volunteerManager.getPublishedSchedule({
+      churchId,
+      volunteerId,
+    });
+    expect(schedule.assignments.map((a) => a.assignmentId)).toEqual([
+      'visible',
+    ]);
   });
 
   it('ranks available volunteers by earlier service and marks unavailable volunteers last', async () => {

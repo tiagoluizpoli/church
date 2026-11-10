@@ -5,7 +5,7 @@ import {
   outboxMessage,
   swapRequest,
 } from '@church/db';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -434,6 +434,82 @@ describe('Keep a swap request', () => {
 
     expect(response.statusCode).toBe(409);
     expect((await statusOf(row.id))?.status).toBe('covered');
+    expect(await outbox()).toHaveLength(0);
+  });
+
+  it('answers 409 for a request closed by a cover that removed its Assignment', async () => {
+    const { churchId, ministryId, maria, ana, requestOn } = await seedGraph();
+    const row = await requestOn({
+      volunteerId: maria.volunteer.id,
+      startOffsetHours: 24,
+    });
+    await db
+      .update(swapRequest)
+      .set({ status: 'covered' })
+      .where(eq(swapRequest.id, row.id));
+    await db.delete(assignment).where(eq(assignment.id, row.assignmentId));
+    signInAs({ userId: ana.volunteer.userId, churchId });
+
+    const response = await keep({ ministryId, swapRequestId: row.id });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('SWAP_REQUEST_NOT_OPEN');
+    expect(await outbox()).toHaveLength(0);
+  });
+
+  it('has one outcome when a keep races a cover that removes the Assignment', async () => {
+    const { churchId, ministryId, maria, ana, requestOn } = await seedGraph();
+    const row = await requestOn({
+      volunteerId: maria.volunteer.id,
+      startOffsetHours: 24,
+    });
+    signInAs({ userId: ana.volunteer.userId, churchId });
+    // The cover is the Assignment removal's transaction: conditional close, then delete.
+    const cover = db.transaction(async (tx) => {
+      await tx
+        .update(swapRequest)
+        .set({ status: 'covered' })
+        .where(and(eq(swapRequest.id, row.id), eq(swapRequest.status, 'open')));
+      await tx.delete(assignment).where(eq(assignment.id, row.assignmentId));
+    });
+
+    const [response] = await Promise.all([
+      keep({ ministryId, swapRequestId: row.id }),
+      cover,
+    ]);
+
+    const final = (await statusOf(row.id))?.status;
+    if (response.statusCode === 204) {
+      expect(final).toBe('kept');
+      expect(await outbox()).toHaveLength(1);
+    } else {
+      expect(response.statusCode).toBe(409);
+      expect(final).toBe('covered');
+      expect(await outbox()).toHaveLength(0);
+    }
+  });
+
+  it('rolls back the close when the N8 enqueue fails', async () => {
+    const { churchId, ministryId, maria, ana, requestOn } = await seedGraph();
+    const row = await requestOn({
+      volunteerId: maria.volunteer.id,
+      startOffsetHours: 24,
+    });
+    const manager = makeManager();
+    vi.spyOn(ChurchNotifications.prototype, 'enqueue').mockRejectedValueOnce(
+      new Error('outbox down'),
+    );
+
+    await expect(
+      manager.keep({
+        churchId: churchId as never,
+        userId: ana.volunteer.userId as never,
+        ministryId: ministryId as never,
+        swapRequestId: row.id as never,
+      }),
+    ).rejects.toThrow('outbox down');
+
+    expect((await statusOf(row.id))?.status).toBe('open');
     expect(await outbox()).toHaveLength(0);
   });
 });

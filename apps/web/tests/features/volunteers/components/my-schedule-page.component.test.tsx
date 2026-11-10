@@ -15,10 +15,12 @@ vi.mock('@tanstack/react-router', () => ({
     children,
   }: {
     to: string;
-    params: { assignmentId: string };
+    params: Record<string, string>;
     children: React.ReactNode;
   }) => (
-    <a href={to.replace('$assignmentId', params.assignmentId)}>{children}</a>
+    <a href={to.replace(/\$(\w+)/g, (_, key: string) => params[key] ?? '')}>
+      {children}
+    </a>
   ),
 }));
 

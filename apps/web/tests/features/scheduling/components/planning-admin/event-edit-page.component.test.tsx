@@ -481,6 +481,15 @@ describe('Edit Sent Event details', () => {
     );
   });
 
+  it('keeps the Draft times-and-blocks instructions out of the header', async () => {
+    renderPage();
+    await screen.findByTestId('event-details-form');
+    expect(
+      screen.queryByText(m.event_editor_edit_description()),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(m.event_details_description())).toBeVisible();
+  });
+
   it('saves only title and location, then returns to the review revealing the Event', async () => {
     updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
     const user = userEvent.setup();

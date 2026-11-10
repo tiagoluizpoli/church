@@ -9,7 +9,10 @@ import {
   EventEditorPage,
 } from './event-editor-page';
 import { useEditEvent } from './use-edit-event';
-import type { GetCycle200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetCycle200Cycle,
+  GetCycle200EventsItem,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export interface EventEditPageProps {
@@ -27,10 +30,15 @@ export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
       cycleId={cycleId}
       testId="event-edit"
       title={m.event_editor_edit_title()}
-      description={m.event_editor_edit_description()}
+      // The Draft copy invites time and block changes a Sent Event refuses.
+      description={({ cycle, events }) =>
+        editsSentDetails({ cycle, graph: findGraph({ events, eventId }) })
+          ? null
+          : m.event_editor_edit_description()
+      }
     >
       {({ cycle, events }) => {
-        const graph = events.find(({ event }) => event.id === eventId);
+        const graph = findGraph({ events, eventId });
         if (!graph) {
           return (
             <div
@@ -44,7 +52,7 @@ export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
             </div>
           );
         }
-        if (cycle.state === 'sent' && graph.event.status === 'scheduled') {
+        if (editsSentDetails({ cycle, graph })) {
           return <EventDetailsForm cycleId={cycleId} graph={graph} />;
         }
         if (cycle.state !== 'draft' || graph.event.status !== 'draft') {
@@ -96,4 +104,23 @@ function EventEditForm({ cycleId, cycle, graph }: EventEditFormProps) {
       }
     />
   );
+}
+
+interface FindGraphInput {
+  events: GetCycle200EventsItem[];
+  eventId: string;
+}
+
+function findGraph({ events, eventId }: FindGraphInput) {
+  return events.find(({ event }) => event.id === eventId);
+}
+
+interface EditsSentDetailsInput {
+  cycle: GetCycle200Cycle;
+  graph: GetCycle200EventsItem | undefined;
+}
+
+/** A Sent Cycle's scheduled Event edits its details only. */
+function editsSentDetails({ cycle, graph }: EditsSentDetailsInput) {
+  return cycle.state === 'sent' && graph?.event.status === 'scheduled';
 }

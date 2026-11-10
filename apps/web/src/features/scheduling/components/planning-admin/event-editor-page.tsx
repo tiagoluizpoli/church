@@ -20,7 +20,8 @@ export interface EventEditorPageProps {
   /** Prefixes the page's test ids, e.g. `event-create`. */
   testId: string;
   title: string;
-  description: string;
+  /** A function picks the copy once the Cycle is read; `null` shows none. */
+  description: string | ((details: GetCycle200) => string | null);
   children: (details: GetCycle200) => ReactNode;
 }
 
@@ -73,12 +74,19 @@ export function EventEditorPage({
     queryFn: () => adminApi.getCycle(cycleId),
     retry: false,
   });
+  const { data: details } = cycleQuery;
+  const shownDescription =
+    typeof description === 'string'
+      ? description
+      : details && description(details);
 
   return (
     <Card className="surface-panel" data-testid={`${testId}-page`}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        {shownDescription ? (
+          <CardDescription>{shownDescription}</CardDescription>
+        ) : null}
       </CardHeader>
       <CardContent>
         {cycleQuery.data ? (

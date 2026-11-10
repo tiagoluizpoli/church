@@ -901,7 +901,7 @@
   "event_editor_saving": "Saving…",
   "event_editor_cancel": "Cancel",
   "event_editor_created_toast": "Event added to the Cycle.",
-  "event_editor_not_draft": "Events can only be added while the Cycle is a Draft.",
+  "event_editor_not_draft": "Events can’t be added to a past Cycle.",
   "event_editor_back_to_cycle": "Back to the Cycle",
   "event_editor_edit_title": "Edit Event",
   "event_editor_edit_description": "Change when the Event happens in the Church Timezone and its Time blocks. Saved Time blocks keep their link to the template they came from.",

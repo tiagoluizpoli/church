@@ -151,6 +151,8 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     expect(
       screen.queryByRole('button', { name: /add manual event/i }),
     ).not.toBeInTheDocument();
+    // A Sent Cycle still takes a new Event through the complete editor.
+    expect(screen.getByTestId('add-event-link')).toBeVisible();
   });
 
   it('opens New cycle over the list without leaving /cycles, keeping the page title', async () => {

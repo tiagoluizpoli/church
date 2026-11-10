@@ -901,7 +901,7 @@
   "event_editor_saving": "Salvando…",
   "event_editor_cancel": "Cancelar",
   "event_editor_created_toast": "Evento adicionado ao ciclo.",
-  "event_editor_not_draft": "Só é possível adicionar eventos enquanto o ciclo é um rascunho.",
+  "event_editor_not_draft": "Não é possível adicionar eventos a um ciclo passado.",
   "event_editor_back_to_cycle": "Voltar ao ciclo",
   "event_editor_edit_title": "Editar evento",
   "event_editor_edit_description": "Altere quando o evento acontece no fuso horário da igreja e os seus horários. Os horários salvos mantêm o vínculo com o modelo de origem.",

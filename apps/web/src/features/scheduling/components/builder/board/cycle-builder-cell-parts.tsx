@@ -13,6 +13,7 @@ import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candi
 import { draggedAssignment } from '../../../utils/builder/cycle-builder-dnd.utils';
 import { AssignmentChip } from '../assignment/assignment-chip';
 import { AssignmentPicker } from '../assignment/assignment-picker';
+import { useSwapRequestBoard } from '../swap-request/swap-request-context';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import {
@@ -66,6 +67,8 @@ export function AssignmentButton({
   const isPending = isOptimisticAssignmentId({ assignmentId: assignment.id });
   const { active } = useDndContext();
   const moving = draggedAssignment({ active });
+  const { openRequestByAssignment, onOpenSwapRequest } = useSwapRequestBoard();
+  const openSwapRequestId = openRequestByAssignment.get(assignment.id);
   const drag = useDraggable({
     id: `move-assignment:${assignment.id}`,
     data: {
@@ -124,6 +127,19 @@ export function AssignmentButton({
           className="cursor-grab touch-none rounded px-1 focus-visible:ring-2 focus-visible:ring-ring"
         >
           <GripVerticalIcon className="size-4" />
+        </button>
+      ) : null}
+      {openSwapRequestId ? (
+        <button
+          type="button"
+          aria-label={m.swap_board_warning_label({
+            name: assignment.volunteerName ?? assignment.volunteerId,
+          })}
+          className="rounded px-1 focus-visible:ring-2 focus-visible:ring-ring"
+          data-testid="swap-request-warning"
+          onClick={() => onOpenSwapRequest(openSwapRequestId)}
+        >
+          ⚠
         </button>
       ) : null}
       {assignment.lateMark ? (

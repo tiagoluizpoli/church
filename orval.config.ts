@@ -21,6 +21,7 @@ export default defineConfig({
           'redemption',
           'invitations',
           'people',
+          'swap-requests',
         ],
       },
     },

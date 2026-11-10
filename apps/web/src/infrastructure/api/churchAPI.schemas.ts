@@ -5638,3 +5638,54 @@ export type WithdrawSwapRequest409 = {
   message: string;
 };
 
+export type ListMinistrySwapRequestsParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+cycleId?: string;
+};
+
+export type ListMinistrySwapRequests200SchedulesItemRequestsItemStatus = typeof ListMinistrySwapRequests200SchedulesItemRequestsItemStatus[keyof typeof ListMinistrySwapRequests200SchedulesItemRequestsItemStatus];
+
+
+export const ListMinistrySwapRequests200SchedulesItemRequestsItemStatus = {
+  open: 'open',
+  expired: 'expired',
+} as const;
+
+export type ListMinistrySwapRequests200SchedulesItemRequestsItem = {
+  id: string;
+  assignmentId: string;
+  volunteerName: string;
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startsAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endsAt: string;
+  note?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  raisedAt: string;
+  status: ListMinistrySwapRequests200SchedulesItemRequestsItemStatus;
+};
+
+export type ListMinistrySwapRequests200SchedulesItem = {
+  cycleId: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openCount: number;
+  requests: ListMinistrySwapRequests200SchedulesItemRequestsItem[];
+};
+
+export type ListMinistrySwapRequests200 = {
+  schedules: ListMinistrySwapRequests200SchedulesItem[];
+};
+
+export type ListMinistrySwapRequests404 = {
+  error: string;
+  message: string;
+};
+

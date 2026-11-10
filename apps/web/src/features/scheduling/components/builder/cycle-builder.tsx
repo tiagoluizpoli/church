@@ -14,6 +14,11 @@ import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialo
 import { AuditLogPanel } from './audit-log-panel';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
 import { CycleBuilderHeader } from './cycle-builder-header';
+import { SwapRequestBoardProvider } from './swap-request/swap-request-context';
+import {
+  type LeaderSwapRequest,
+  SwapRequestSheet,
+} from './swap-request/swap-request-sheet';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -43,6 +48,10 @@ interface CycleBuilderProps {
   moveAssignment?: CycleBuilderMutations['moveAssignment'];
   syncedAt?: number;
   isRefreshing?: boolean;
+  /** The leader list for this Schedule: drives the ⚠ and the request sheet. */
+  swapRequests?: LeaderSwapRequest[];
+  selectedSwapRequestId?: string;
+  onSelectSwapRequest?: (swapRequestId: string | undefined) => void;
 }
 
 export function CycleBuilder({
@@ -62,6 +71,9 @@ export function CycleBuilder({
   moveAssignment,
   syncedAt,
   isRefreshing,
+  swapRequests = [],
+  selectedSwapRequestId,
+  onSelectSwapRequest,
 }: CycleBuilderProps) {
   const { auditPanel } = appConfig.parked;
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -98,6 +110,15 @@ export function CycleBuilder({
     : undefined;
   const removedVolunteerName =
     removedAssignment?.volunteerName ?? m.builder_ui_the_volunteer();
+
+  const openRequestByAssignment = new Map(
+    swapRequests
+      .filter(({ status }) => status === 'open')
+      .map(({ assignmentId, id }) => [assignmentId, id]),
+  );
+  const selectedSwapRequest = swapRequests.find(
+    ({ id }) => id === selectedSwapRequestId,
+  );
 
   // Rendered on the filter toolbar's own row (B-4 header pass) rather than
   // the header — audit/publish sit with the rest of this screen's controls
@@ -138,145 +159,159 @@ export function CycleBuilder({
   );
 
   return (
-    <WorkspacePage data-testid="cycle-builder">
-      <p
-        aria-live="polite"
-        className="sr-only"
-        data-testid="cycle-builder-announcer"
-      >
-        {actions.announcement}
-      </p>
-      <CycleBuilderHeader
-        cycleName={cycleName}
-        cycleStartDate={cycleStartDate}
-        cycleEndDate={cycleEndDate}
-        staffing={staffing}
-        counts={counts}
-        syncedAt={syncedAt}
-        isRefreshing={isRefreshing}
-      />
-
-      <CycleBuilderMatrix
-        data={data}
-        cycleStartDate={cycleStartDate}
-        cycleEndDate={cycleEndDate}
-        selectedDate={selectedDate}
-        onSelectedDateChange={setSelectedDate}
-        selectedVolunteerId={selectedVolunteerId}
-        onSelectVolunteer={(volunteerId) =>
-          setSelectedVolunteerId((current) =>
-            current === volunteerId ? undefined : volunteerId,
-          )
-        }
-        onSelectAssignment={actions.handleSelectAssignment}
-        onMoveAssignment={actions.handleMove}
-        onRemoveAssignment={setPendingRemovalId}
-        actions={toolbarActions}
-        failedWrites={actions.boardFailedWrites}
-        onRetryFailedWrite={actions.retryFailedWrite}
-        onDismissFailedWrite={actions.dismissFailedWrite}
-      />
-
-      {auditPanel ? (
-        <AuditLogPanel
-          open={auditOpen}
-          onOpenChange={setAuditOpen}
-          assignments={data.assignments}
-          cycleId={cycleId}
-          ministryId={ministryId}
+    <SwapRequestBoardProvider
+      value={{
+        openRequestByAssignment,
+        onOpenSwapRequest: (id) => onSelectSwapRequest?.(id),
+      }}
+    >
+      <WorkspacePage data-testid="cycle-builder">
+        <p
+          aria-live="polite"
+          className="sr-only"
+          data-testid="cycle-builder-announcer"
+        >
+          {actions.announcement}
+        </p>
+        <CycleBuilderHeader
+          cycleName={cycleName}
+          cycleStartDate={cycleStartDate}
+          cycleEndDate={cycleEndDate}
+          staffing={staffing}
+          counts={counts}
+          syncedAt={syncedAt}
+          isRefreshing={isRefreshing}
         />
-      ) : null}
 
-      <Dialog
-        open={pendingRemovalId !== null}
-        onOpenChange={(open) => !open && setPendingRemovalId(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{m.builder_ui_remove_title()}</DialogTitle>
-            <DialogDescription>
-              {m.builder_ui_remove_description()}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPendingRemovalId(null)}
-            >
-              {m.builder_ui_keep()}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleteAssignment.isPending}
-              onClick={() => {
-                if (!pendingRemovalId) return;
-                void actions
-                  .removeAssignment({
-                    assignmentId: pendingRemovalId,
-                    volunteerName: removedVolunteerName,
-                  })
-                  .then(() => setPendingRemovalId(null));
-              }}
-            >
-              {deleteAssignment.isPending
-                ? m.builder_ui_removing()
-                : m.builder_ui_remove()}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <CycleBuilderMatrix
+          data={data}
+          cycleStartDate={cycleStartDate}
+          cycleEndDate={cycleEndDate}
+          selectedDate={selectedDate}
+          onSelectedDateChange={setSelectedDate}
+          selectedVolunteerId={selectedVolunteerId}
+          onSelectVolunteer={(volunteerId) =>
+            setSelectedVolunteerId((current) =>
+              current === volunteerId ? undefined : volunteerId,
+            )
+          }
+          onSelectAssignment={actions.handleSelectAssignment}
+          onMoveAssignment={actions.handleMove}
+          onRemoveAssignment={setPendingRemovalId}
+          actions={toolbarActions}
+          failedWrites={actions.boardFailedWrites}
+          onRetryFailedWrite={actions.retryFailedWrite}
+          onDismissFailedWrite={actions.dismissFailedWrite}
+        />
 
-      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
-            <DialogDescription>
-              {belowFullCount > 0
-                ? m.builder_ui_publish_gaps({
-                    places: emptyPlaces,
-                    shifts: belowFullCount,
-                  })
-                : m.builder_ui_publish_full()}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPublishDialogOpen(false)}
-            >
-              {m.builder_ui_cancel()}
-            </Button>
-            <Button
-              type="button"
-              disabled={isPublishing}
-              onClick={() => {
-                setPublishDialogOpen(false);
-                onPublish(belowFullCount > 0);
-              }}
-            >
-              {isPublishing
-                ? m.builder_ui_publishing()
-                : m.builder_ui_publish()}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {auditPanel ? (
+          <AuditLogPanel
+            open={auditOpen}
+            onOpenChange={setAuditOpen}
+            assignments={data.assignments}
+            cycleId={cycleId}
+            ministryId={ministryId}
+          />
+        ) : null}
 
-      <UnavailableConfirmDialog
-        open={actions.unavailable !== null}
-        onOpenChange={(open) => !open && actions.setUnavailable(null)}
-        volunteerName={actions.unavailable?.volunteerName ?? ''}
-        volunteerMembership={actions.unavailable?.volunteerMembership}
-        eventTimeBlockLabel={
-          actions.unavailable?.input.eventTimeBlockLabel ??
-          m.builder_ui_this_shift()
-        }
-        isPending={actions.isSaving}
-        onConfirm={actions.confirmUnavailable}
-      />
-    </WorkspacePage>
+        <Dialog
+          open={pendingRemovalId !== null}
+          onOpenChange={(open) => !open && setPendingRemovalId(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{m.builder_ui_remove_title()}</DialogTitle>
+              <DialogDescription>
+                {m.builder_ui_remove_description()}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPendingRemovalId(null)}
+              >
+                {m.builder_ui_keep()}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleteAssignment.isPending}
+                onClick={() => {
+                  if (!pendingRemovalId) return;
+                  void actions
+                    .removeAssignment({
+                      assignmentId: pendingRemovalId,
+                      volunteerName: removedVolunteerName,
+                    })
+                    .then(() => setPendingRemovalId(null));
+                }}
+              >
+                {deleteAssignment.isPending
+                  ? m.builder_ui_removing()
+                  : m.builder_ui_remove()}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
+              <DialogDescription>
+                {belowFullCount > 0
+                  ? m.builder_ui_publish_gaps({
+                      places: emptyPlaces,
+                      shifts: belowFullCount,
+                    })
+                  : m.builder_ui_publish_full()}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPublishDialogOpen(false)}
+              >
+                {m.builder_ui_cancel()}
+              </Button>
+              <Button
+                type="button"
+                disabled={isPublishing}
+                onClick={() => {
+                  setPublishDialogOpen(false);
+                  onPublish(belowFullCount > 0);
+                }}
+              >
+                {isPublishing
+                  ? m.builder_ui_publishing()
+                  : m.builder_ui_publish()}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <UnavailableConfirmDialog
+          open={actions.unavailable !== null}
+          onOpenChange={(open) => !open && actions.setUnavailable(null)}
+          volunteerName={actions.unavailable?.volunteerName ?? ''}
+          volunteerMembership={actions.unavailable?.volunteerMembership}
+          eventTimeBlockLabel={
+            actions.unavailable?.input.eventTimeBlockLabel ??
+            m.builder_ui_this_shift()
+          }
+          isPending={actions.isSaving}
+          onConfirm={actions.confirmUnavailable}
+        />
+
+        {selectedSwapRequest ? (
+          <SwapRequestSheet
+            request={selectedSwapRequest}
+            onOpenChange={(open) => !open && onSelectSwapRequest?.(undefined)}
+          />
+        ) : null}
+      </WorkspacePage>
+    </SwapRequestBoardProvider>
   );
 }

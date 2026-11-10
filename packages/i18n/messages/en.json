@@ -1306,5 +1306,19 @@
   "swap_withdraw_description": "Your leader will not be notified and your Assignment stays as it is.",
   "swap_withdraw_keep": "Keep request",
   "swap_withdraw_confirm": "Withdraw",
-  "swap_withdraw_error": "We could not withdraw your request. Try again."
+  "swap_withdraw_error": "We could not withdraw your request. Try again.",
+  "swap_board_warning_label": "Open swap request from {name}",
+  "swap_board_sheet_title": "Swap request",
+  "swap_board_sheet_description": "A Volunteer asked to swap this Shift. Their Assignment stays until you change it.",
+  "swap_board_volunteer": "Volunteer",
+  "swap_board_shift": "Shift",
+  "swap_board_sector_role": "Sector × Role",
+  "swap_board_note": "Note",
+  "swap_board_raised_at": "Raised",
+  "swap_board_status": "Status",
+  "swap_board_status_open": "Open",
+  "swap_board_status_expired": "Unanswered",
+  "swap_board_expired_hint": "The Shift has started, so this request can no longer be answered.",
+  "swap_board_unavailable": "This swap request is no longer open or could not be found.",
+  "swap_board_close": "Close"
 }

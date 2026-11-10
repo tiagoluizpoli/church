@@ -1306,5 +1306,19 @@
   "swap_withdraw_description": "Seu líder não será avisado e sua escala continua como está.",
   "swap_withdraw_keep": "Manter pedido",
   "swap_withdraw_confirm": "Retirar",
-  "swap_withdraw_error": "Não foi possível retirar seu pedido. Tente novamente."
+  "swap_withdraw_error": "Não foi possível retirar seu pedido. Tente novamente.",
+  "swap_board_warning_label": "Pedido de troca aberto de {name}",
+  "swap_board_sheet_title": "Pedido de troca",
+  "swap_board_sheet_description": "Um voluntário pediu para trocar este turno. A escala dele continua até você mudá-la.",
+  "swap_board_volunteer": "Voluntário",
+  "swap_board_shift": "Turno",
+  "swap_board_sector_role": "Setor × Função",
+  "swap_board_note": "Observação",
+  "swap_board_raised_at": "Enviado em",
+  "swap_board_status": "Situação",
+  "swap_board_status_open": "Aberto",
+  "swap_board_status_expired": "Sem resposta",
+  "swap_board_expired_hint": "O turno já começou, então este pedido não pode mais ser respondido.",
+  "swap_board_unavailable": "Este pedido de troca não está mais aberto ou não foi encontrado.",
+  "swap_board_close": "Fechar"
 }

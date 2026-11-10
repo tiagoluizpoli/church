@@ -9,6 +9,7 @@ import { getPeople } from '@/infrastructure/api/people';
 import { getPlanning } from '@/infrastructure/api/planning';
 import { getPrepare } from '@/infrastructure/api/prepare';
 import { getRedemption } from '@/infrastructure/api/redemption';
+import { getSwapRequests } from '@/infrastructure/api/swap-requests';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
 
 const generatedVolunteerApi = getVolunteer();
@@ -19,6 +20,7 @@ export const adminApi = {
   ...getPlanning(),
   ...getPrepare(),
   ...getAssign(),
+  ...getSwapRequests(),
 };
 export const volunteerApi = {
   ...generatedVolunteerApi,
